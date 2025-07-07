@@ -1,170 +1,60 @@
-# Data Modals – Unit Test Index
+# Kategori Modal Data
 
-This README acts as a single gateway to every **unit test** that lives inside `components/Modals/Data/*`.  If you are looking for logic-only coverage (services, hooks, pure utilities) or need to add new unit tests, start here.
+> **Peringatan:** Arsitektur untuk semua modal di bawah kategori ini diatur oleh [Panduan Arsitektur Utama Modal](../README.md). Dokumen ini hanya berfungsi sebagai ringkasan kategori.
 
----
+## Tujuan
 
-## 🗂️ Directory Map
+Direktori ini berisi semua fitur modal yang berhubungan dengan **manipulasi dan manajemen data**. Ini mencakup konfigurasi variabel, operasi pada kasus (baris), dan perubahan struktur dataset.
 
-```
-components/Modals/Data/
-├─ Aggregate/
-│  └─ __tests__/
-├─ DefineDateTime/
-│  └─ __tests__/
-├─ DefineVarProps/
-│  └─ __tests__/
-├─ DuplicateCases/
-│  └─ __tests__/
-├─ Restructure/
-│  └─ __tests__/
-├─ SelectCases/
-│  └─ __tests__/
-├─ SetMeasurementLevel/
-│  └─ __tests__/
-├─ SortCases/
-│  └─ __tests__/
-├─ SortVars/
-│  └─ __tests__/
-├─ Transpose/
-│  └─ __tests__/
-├─ UnusualCases/
-│  └─ __tests__/
-└─ WeightCases/
-   └─ __tests__/
-```
+## Daftar Fitur
 
-Each `__tests__` folder follows the same convention: **unit tests** verify pure business logic (services, hooks, helpers). UI-centric or integration tests are documented inside the modal-specific README files and are deliberately omitted from this index.
+-   **Properti Variabel**:
+    -   `DefineVarProps`: Mendefinisikan properti variabel.
+    -   `SetMeasurementLevel`: Mengatur level pengukuran.
+    -   `DefineDateTime`: Mengkonfigurasi format tanggal & waktu.
+-   **Operasi Kasus**:
+    -   `SortCases`: Mengurutkan kasus.
+    -   `DuplicateCases`: Mengelola kasus duplikat.
+    -   `UnusualCases`: Menemukan kasus yang tidak biasa.
+    -   `WeightCases`: Menerapkan pembobotan kasus.
+-   **Operasi Struktur**:
+    -   `SortVars`: Mengurutkan variabel.
+    -   `Transpose`: Mentransposisi dataset.
+    -   `Restructure`: Merestrukturisasi data.
+    -   `Aggregate`: Mengagregasi data.
+
+## Registrasi Fitur
+
+Semua modal dalam kategori ini didaftarkan melalui `DataRegistry.tsx`, yang kemudian digabungkan ke dalam sistem modal utama.
 
 ---
 
-## 🔢 Aggregate
-Location: `Aggregate/__tests__/`
+## 🧪 Test Suite Index
 
-| File | Focus |
-|------|-------|
-| `Utils.test.ts` | Utility functions for aggregation operators & grouping logic. |
-| `useAggregateData.test.ts` | Hook that manages state, validation, and side-effects. |
+Semua modal di kategori *Data* memiliki folder `__tests__` masing-masing yang menggunakan **Jest** & **React-Testing-Library** (serta utilitas *vitest* di beberapa kasus) untuk memverifikasi UI, hook, dan fungsi murni.  Tabel ringkas di bawah ini membantu Anda menemukan titik masuk tes utama dengan cepat.
 
-_Note_: `Aggregate.test.tsx` is a UI test and therefore excluded from this index._
+| Modal | Fokus Pengujian | Berkas Utama |
+|-------|-----------------|--------------|
+| **Aggregate** | Komponen modal, hook state (`useAggregateData`), fungsi utilitas | `Aggregate.test.tsx`, `useAggregateData.test.ts`, `Utils.test.ts` |
+| **DefineDateTime** | Komponen modal, hook (`useDefineDateTime`), formatter & service pembuat variabel | `DefineDateTime.test.tsx`, `useDefineDateTime.test.ts`, `dateTimeFormatters.test.ts`, `dateTimeService.test.ts` |
+| **DefineVarProps** | Wizard tiga-langkah (scan → editor), hook, service & utilitas | `index.test.tsx`, `PropertiesEditor.test.tsx`, `usePropertiesEditor.test.ts`, `useVariablesToScan.test.ts`, `variablePropertiesService.test.ts`, `VariablesToScan.test.tsx` |
+| **DuplicateCases** | Komponen modal, hook (`useDuplicateCases`), layanan `duplicateCasesService` | `index.test.tsx`, `useDuplicateCases.test.ts`, `duplicateCasesService.test.ts` |
+| **Restructure** | Wizard UI, hook (`useRestructure`), layanan `restructureService` | `Restructure.test.tsx`, `useRestructure.test.ts`, `restructureService.test.ts` |
+| **SelectCases** | Modal multi-dialog, evaluator ekspresi, selector sampel & rentang | `SelectCases.test.tsx`, `evaluator.test.ts`, `selectors.test.ts`, `SelectCasesIfCondition.test.tsx`, `SelectCasesRandomSample.test.tsx`, `SelectCasesRange.test.tsx`, `useSelectCases.test.ts` |
+| **SetMeasurementLevel** | UI editor level pengukuran, hook | `index.test.tsx`, `SetMeasurementLevelUI.test.tsx`, `useSetMeasurementLevel.test.tsx` |
+| **SortCases** | UI pemilahan kasus, hook | `SortCases.test.tsx`, `useSortCases.test.ts` |
+| **SortVars** | UI pemilahan variabel, layanan sort, hook | `SortVarsUI.test.tsx`, `sortVarsService.test.ts`, `useSortVariables.test.ts` |
+| **Transpose** | UI, hook (`useTranspose`), layanan `transposeService` | `Transpose.test.tsx`, `useTranspose.test.ts`, `transposeService.test.ts` |
+| **UnusualCases** | UI tab‐bertahap, hook (`useUnusualCases`) | `index.test.tsx`, `OptionsTab.test.tsx`, `useUnusualCases.test.ts` |
+| **WeightCases** | UI, hook (`useWeightCases`) | `index.test.tsx`, `WeightCasesUI.test.tsx`, `useWeightCases.test.ts` |
 
----
+> 📄  Masing-masing sub-direktori juga memiliki `README.md` spesifik fitur yang menjelaskan use-case & strategi pengujian secara lebih mendalam.
 
-## 🗓️ DefineDateTime
-Location: `DefineDateTime/__tests__/`
+### Menambahkan Pengujian Baru
 
-| File | Focus |
-|------|-------|
-| `dateTimeService.test.ts` | Service responsible for generating new date/time variables. |
-| `dateTimeFormatters.test.ts` | Formatter helpers for date/time patterns. |
-| `useDefineDateTime.test.ts` | Hook controlling state & validation. |
+1. Buat berkas di sub-direktori `__tests__` modul terkait.
+2. Gunakan pola penamaan `<NamaFitur>.<scope>.test.ts(x)` agar konsisten.
+3. Pastikan impor jalur relatif menggunakan alias `@/` sesuai konfigurasi `tsconfig.json`.
+4. Perbarui tabel di atas bila menambah kategori tes baru (mis. *integration* vs *unit*).
 
-_Note_: `DefineDateTime.test.tsx` is a UI test and therefore excluded from this index._
-
----
-
-## 🏷️ DefineVarProps
-Location: `DefineVarProps/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `variablePropertiesService.test.ts` | Service that persists variable property changes. |
-| `useVariablesToScan.test.ts` | Hook for scanning & selecting variables. |
-| `usePropertiesEditor.test.ts` | Hook that powers the properties wizard editor. |
-
----
-
-## 📑 DuplicateCases
-Location: `DuplicateCases/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `duplicateCasesService.test.ts` | Service for detecting & handling duplicates. |
-| `useDuplicateCases.test.ts` | Hook that orchestrates duplicate case workflows. |
-
----
-
-## 🔄 Restructure
-Location: `Restructure/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `restructureService.test.ts` | Core algorithms for restructuring data. |
-| `useRestructure.test.ts` | Hook state & validation for restructuring wizard. |
-
----
-
-## 🎯 SelectCases
-Location: `SelectCases/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `evaluator.test.ts` | Expression evaluator for case selection criteria. |
-| `selectors.test.ts` | Helper functions for sample & range selectors. |
-| `useSelectCases.test.ts` | Hook that manages selection mode & validation. |
-
----
-
-## 🧮 SetMeasurementLevel
-Location: `SetMeasurementLevel/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `useSetMeasurementLevel.test.tsx` | Hook logic for editing measurement levels. |
-
-_Note_: While this file ends with `.tsx`, it exercises pure hook logic and is treated as a unit test._
-
----
-
-## ↕️ SortCases
-Location: `SortCases/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `useSortCases.test.ts` | Sorting algorithm & hook state management. |
-
----
-
-## 🔠 SortVars
-Location: `SortVars/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `sortVarsService.test.ts` | Service that reorders variables based on given criteria. |
-| `useSortVariables.test.ts` | Hook handling variable sorting workflow. |
-
----
-
-## 🔀 Transpose
-Location: `Transpose/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `transposeService.test.ts` | Core logic for transposing rows ↔ columns. |
-| `useTranspose.test.ts` | Hook controlling transpose configuration & validation. |
-
----
-
-## ⚠️ UnusualCases
-Location: `UnusualCases/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `useUnusualCases.test.ts` | Hook for detecting statistical outliers & unusual cases. |
-
----
-
-## ⚖️ WeightCases
-Location: `WeightCases/__tests__/`
-
-_There are currently no dedicated unit tests for this modal. Only UI tests exist (`index.test.tsx`, `WeightCasesUI.test.tsx`). Consider adding unit tests for weighting calculations & validation logic._
-
----
-
-### Adding New Unit Tests
-1. Place the file under the appropriate modal's `__tests__` directory with a `.test.ts` extension (or `.test.tsx` for logic-heavy hooks).
-2. Update the modal-specific README **and** this central index so future contributors can find it quickly.
-
----
-
-_Last updated: <!-- KEEP THIS COMMENT: the CI tool replaces it with commit SHA & date -->_ 
+Dengan indeks ini, kontributor dapat menavigasi suite pengujian Data modal secara efisien dan menjaga cakupan tetap terorganisir. 

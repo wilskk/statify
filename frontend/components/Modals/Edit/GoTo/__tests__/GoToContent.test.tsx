@@ -5,12 +5,6 @@ import '@testing-library/jest-dom';
 import { GoToContent } from '../components/GoToContent';
 import { GoToMode } from '../types';
 
-// Stub out Tour-related components to avoid importing heavy dependencies
-jest.mock('../components/Tour', () => ({
-    TourPopup: jest.fn(() => null),
-    ActiveElementHighlight: jest.fn(() => null),
-}));
-
 // We will not mock the hook anymore, to test the component's integration with it.
 // We will mock the stores that the hook depends on instead.
 jest.mock('@/stores/useVariableStore', () => ({

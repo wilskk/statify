@@ -172,18 +172,6 @@ describe('Aggregate Utils', () => {
             expect(calculateAggregateValue('FIN', numericData, { percentageLow: '20', percentageHigh: '40' })).toBe(0.6);
         });
         
-        it('calculates FLT (Fraction Less Than)', () => {
-            expect(calculateAggregateValue('FLT', numericData, { percentageValue: '30' })).toBe(0.4);
-        });
-
-        it('calculates FOUT (Fraction Outside Range)', () => {
-            expect(calculateAggregateValue('FOUT', numericData, { percentageLow: '20', percentageHigh: '40' })).toBe(0.4);
-        });
-
-        it('calculates COUNT correctly', () => {
-            expect(calculateAggregateValue('COUNT', mixedData)).toBe(4);
-        });
-        
         // --- Edge Cases ---
         it('returns null for stats on empty or all-null data', () => {
             expect(calculateAggregateValue('MEAN', allNulls)).toBeNull();

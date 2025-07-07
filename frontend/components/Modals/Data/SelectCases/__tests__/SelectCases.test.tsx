@@ -86,21 +86,21 @@ describe('SelectCases Component', () => {
     it('renders the component in dialog mode correctly', () => {
         renderComponent();
         expect(screen.getByText('Variables:')).toBeInTheDocument();
-        expect(screen.getAllByRole('button', { name: 'OK' })[0]).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'OK' })).toBeInTheDocument();
         expect(screen.getByText(/Variable 1/)).toBeInTheDocument();
     });
 
     it('renders the component in sidebar mode correctly', () => {
         renderComponent({}, "sidebar");
         expect(screen.getByText('Variables:')).toBeInTheDocument();
-        expect(screen.getAllByRole('button', { name: 'OK' })[0]).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'OK' })).not.toBeInTheDocument();
     });
 
     it('calls handleConfirm, handleReset, and onClose for dialog buttons', async () => {
         const user = userEvent.setup();
         renderComponent();
         
-        await user.click(screen.getAllByRole('button', { name: /ok/i })[0]);
+        await user.click(screen.getByRole('button', { name: /ok/i }));
         expect(mockHandleConfirm).toHaveBeenCalledTimes(1);
 
         await user.click(screen.getByRole('button', { name: /reset/i }));
@@ -135,7 +135,7 @@ describe('SelectCases Component', () => {
     it('disables buttons and shows processing state when isProcessing is true', () => {
         renderComponent({ isProcessing: true });
         
-        const okButton = screen.getAllByRole('button', { name: 'Processing...' })[0];
+        const okButton = screen.getByRole('button', { name: 'Processing...' });
         expect(okButton).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
@@ -149,8 +149,7 @@ describe('SelectCases Component', () => {
         expect(screen.getByText(errorMessage)).toBeInTheDocument();
 
         // Check if close button works
-        const okButtons = screen.getAllByRole('button', { name: /ok/i });
-        const okButton = okButtons[okButtons.length - 1];
+        const okButton = screen.getByRole('button', { name: /ok/i });
         fireEvent.click(okButton);
         expect(mockSetErrorDialogOpen).toHaveBeenCalledWith(false);
     });

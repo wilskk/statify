@@ -17,16 +17,14 @@ import { HelpCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 
 // Tour guide
-import {
-    useTourGuide,
-    TabType,
-    TabControlProps,
-    useVariableManagement,
-    useStatisticsSettings,
-    usePlotsSettings,
-    useExploreAnalysis,
-} from "./hooks";
+import { useTourGuide, TabType, TabControlProps } from "./hooks/useTourGuide";
 import { TourPopup } from "@/components/Common/TourComponents";
+
+// State Management Hooks
+import { useVariableManagement } from "./hooks/useVariableManagement";
+import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
+import { usePlotsSettings } from "./hooks/usePlotsSettings";
+import { useExploreAnalysis } from "./hooks/useExploreAnalysis";
 
 // Child Components
 import VariablesTab from "./VariablesTab";
@@ -40,17 +38,7 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
     // State Hooks
     const variableManager = useVariableManagement();
     const statisticsSettings = useStatisticsSettings();
-    const plotsSettings = usePlotsSettings() || {
-        boxplotType: 'dependents-together',
-        setBoxplotType: () => {},
-        showStemAndLeaf: false,
-        setShowStemAndLeaf: () => {},
-        showHistogram: false,
-        setShowHistogram: () => {},
-        showNormalityPlots: false,
-        setShowNormalityPlots: () => {},
-        resetPlotsSettings: () => {},
-    } as ReturnType<typeof usePlotsSettings>;
+    const plotsSettings = usePlotsSettings();
 
     // Analysis Hook
     const analysisParams = {
@@ -90,9 +78,9 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
     };
     
     const handleReset = () => {
-        variableManager.resetVariableSelections?.();
-        statisticsSettings.resetStatisticsSettings?.();
-        plotsSettings.resetPlotsSettings?.();
+        variableManager.resetVariableSelections();
+        statisticsSettings.resetStatisticsSettings();
+        plotsSettings.resetPlotsSettings();
         // error state is managed by analysis hook, might need a resetter there too
         setActiveTab("variables");
     };
@@ -157,7 +145,7 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <Button variant="ghost" size="icon" onClick={startTour} aria-label="Help" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8">
                         <HelpCircle size={18} />
                     </Button>
                 </div>

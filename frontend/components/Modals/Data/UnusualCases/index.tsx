@@ -13,10 +13,13 @@ import { TourPopup } from "@/components/Common/TourComponents";
 import { useTourGuide, TabControlProps } from './hooks/useTourGuide';
 import { useUnusualCases } from "./hooks/useUnusualCases";
 import { baseTourSteps } from './tourConfig';
-import { IdentifyUnusualCasesProps, TabType, VariablesTabProps, OptionsTabProps } from "./types";
+import { IdentifyUnusualCasesProps, TabType, VariablesTabProps, OptionsTabProps, OutputTabProps, SaveTabProps, MissingValuesTabProps } from "./types";
 
 import VariablesTab from "./VariablesTab";
 import OptionsTab from "./OptionsTab";
+import OutputTab from "./OutputTab";
+import SaveTab from "./SaveTab";
+import MissingValuesTab from "./MissingValuesTab";
 
 const getVariableIcon = (variable: Variable) => {
     switch (variable.measure) {
@@ -52,6 +55,9 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
 
     const variablesTabProps: VariablesTabProps = { ...hookProps, getVariableIcon, getDisplayName, tourActive, currentStep, tourSteps };
     const optionsTabProps: OptionsTabProps = { ...hookProps, tourActive, currentStep, tourSteps };
+    const outputTabProps: OutputTabProps = { ...hookProps, tourActive, currentStep, tourSteps };
+    const saveTabProps: SaveTabProps = { ...hookProps, tourActive, currentStep, tourSteps };
+    const missingValuesTabProps: MissingValuesTabProps = { ...hookProps, tourActive, currentStep, tourSteps };
 
     return (
         <>
@@ -67,12 +73,18 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                         <TabsList className="bg-muted rounded-none h-9 p-0">
                             <TabsTrigger id="variables-tab-trigger" value="variables" className="px-3 h-8 rounded-none text-xs">Variables</TabsTrigger>
                             <TabsTrigger id="options-tab-trigger" value="options" className="px-3 h-8 rounded-none text-xs">Options</TabsTrigger>
+                            <TabsTrigger id="output-tab-trigger" value="output" className="px-3 h-8 rounded-none text-xs">Output</TabsTrigger>
+                            <TabsTrigger id="save-tab-trigger" value="save" className="px-3 h-8 rounded-none text-xs">Save</TabsTrigger>
+                            <TabsTrigger id="missing-tab-trigger" value="missing" className="px-3 h-8 rounded-none text-xs">Missing Values</TabsTrigger>
                         </TabsList>
                     </div>
                     
                     <div className="flex-grow overflow-y-auto">
                         <TabsContent value="variables" className="p-4"><VariablesTab {...variablesTabProps} /></TabsContent>
                         <TabsContent value="options" className="p-4"><OptionsTab {...optionsTabProps} /></TabsContent>
+                        <TabsContent value="output" className="p-4"><OutputTab {...outputTabProps} /></TabsContent>
+                        <TabsContent value="save" className="p-4"><SaveTab {...saveTabProps} /></TabsContent>
+                        <TabsContent value="missing" className="p-4"><MissingValuesTab {...missingValuesTabProps} /></TabsContent>
                     </div>
                 </Tabs>
 

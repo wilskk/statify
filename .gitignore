@@ -66,7 +66,6 @@ yarn-error.log*
 # =============================================================================
 # Documentation folder
 /_skripsi penulisan
-frontend/docs/_skripsi penulisan/
 
 # Test directories that might be temporary
 /_test/

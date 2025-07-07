@@ -31,7 +31,6 @@ Location: `Crosstabs/__tests__/`
 | `useCrosstabsAnalysis.test.ts` | Worker communication, result aggregation, error handling for the `useCrosstabsAnalysis` hook. |
 | `useTourGuide.test.ts` | End-to-end tour lifecycle & automatic tab switching. |
 | `formatters.test.ts` | Unit tests for `formatCaseProcessingSummary` & `formatCrosstabulationTable`. |
-| `CellsTab.test.tsx` | Unit tests for the Cells tab component (UI rendering, option toggles, noninteger weight visibility). |
 
 ---
 
@@ -42,6 +41,8 @@ Location: `Descriptive/__tests__/`
 |------|-------|
 | `Descriptive.test.tsx` | UI & user-flow of the Descriptive modal (variables/statistics tabs, buttons, help tour). |
 | `useDescriptivesAnalysis.test.ts` | Worker exchange, Z-score creation, store integration. |
+| `useVariableSelection.test.ts` | Available/selected list management, re-ordering, reset. |
+| `useStatisticsSettings.test.ts` | State management for statistic options & reset behaviour. |
 
 ---
 
@@ -66,6 +67,8 @@ Location: `Frequencies/__tests__/`
 |------|-------|
 | `Frequencies.test.tsx` | UI rendering, tab switching (Variables/Statistics/Charts), OK/Cancel/Reset flows, help tour. |
 | `useFrequenciesAnalysis.test.ts` | Worker payloads, result parsing, error states. |
+| `useVariableSelection.test.ts` | Variable list management for frequencies analysis. |
+| `useStatisticsSettings.test.ts` | Percentiles, central-tendency & dispersion option state management. |
 | `useTourGuide.test.ts` | Tour lifecycle & tab enforcement. |
 | `formatters.test.ts` | Formatting helpers for statistics and frequency tables. |
 

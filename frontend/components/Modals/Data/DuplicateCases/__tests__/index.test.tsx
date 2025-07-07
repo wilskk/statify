@@ -127,7 +127,7 @@ describe('DuplicateCases Component', () => {
 
   it('calls handleConfirm when OK button is clicked', () => {
     render(<DuplicateCases onClose={mockOnClose} />);
-    const okButton = screen.getByTestId('duplicatecases-main-ok');
+    const okButton = screen.getByRole('button', { name: 'OK' });
     fireEvent.click(okButton);
     expect(defaultDuplicateCasesProps.handleConfirm).toHaveBeenCalledTimes(1);
   });

@@ -203,7 +203,6 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                         <Button
                             onClick={handleConfirm}
                             disabled={isProcessing}
-                            data-testid="duplicatecases-main-ok"
                         >
                             {isProcessing ? "Processing..." : "OK"}
                         </Button>
@@ -225,27 +224,25 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                 )}
             </AnimatePresence>
 
-            {errorDialogOpen && (
-                <Dialog open={true} onOpenChange={setErrorDialogOpen}>
-                    <DialogContent role="dialog" aria-label="IBM SPSS Statistics" className="max-w-[400px] p-6 bg-popover border border-border shadow-md rounded-md">
-                        <DialogHeader className="mb-4">
-                            <DialogTitle className="text-[18px] font-semibold text-popover-foreground">IBM SPSS Statistics</DialogTitle>
-                        </DialogHeader>
-                        <div className="flex gap-4 items-start">
-                            <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
-                            <p className="text-sm text-popover-foreground">{errorMessage}</p>
-                        </div>
-                        <DialogFooter className="mt-6">
-                            <Button
-                                className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                                onClick={() => setErrorDialogOpen(false)}
-                            >
-                                OK
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            )}
+            <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+                <DialogContent className="max-w-[400px] p-6 bg-popover border border-border shadow-md rounded-md">
+                    <DialogHeader className="mb-4">
+                        <DialogTitle className="text-[18px] font-semibold text-popover-foreground">IBM SPSS Statistics</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex gap-4 items-start">
+                        <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-popover-foreground">{errorMessage}</p>
+                    </div>
+                    <DialogFooter className="mt-6">
+                        <Button
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
+                            onClick={() => setErrorDialogOpen(false)}
+                        >
+                            OK
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 };

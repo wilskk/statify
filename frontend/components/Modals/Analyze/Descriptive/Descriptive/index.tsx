@@ -4,7 +4,8 @@ import React, { FC, useState, useCallback, useEffect, useMemo } from "react";
 import {
     DialogContent,
     DialogHeader,
-    DialogTitle
+    DialogTitle,
+    DialogFooter
 } from "@/components/ui/dialog";
 import {
     Tabs,
@@ -14,14 +15,11 @@ import {
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { HelpCircle, Loader2 } from "lucide-react";
-import {
-    useVariableSelection,
-    useStatisticsSettings,
-    useDescriptivesAnalysis,
-    useTourGuide,
-    TabControlProps
-} from "./hooks";
+import { useVariableSelection } from "./hooks/useVariableSelection";
+import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
+import { useDescriptivesAnalysis } from "./hooks/useDescriptivesAnalysis";
 import { BaseModalProps } from "@/types/modalTypes";
+import { useTourGuide, TabControlProps } from "./hooks/useTourGuide";
 import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { AnimatePresence } from "framer-motion";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -206,7 +204,6 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                                     variant="ghost" 
                                     size="icon" 
                                     onClick={startTour}
-                                    aria-label="Start feature tour"
                                     className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
                                 >
                                     <HelpCircle className="h-4 w-4" />

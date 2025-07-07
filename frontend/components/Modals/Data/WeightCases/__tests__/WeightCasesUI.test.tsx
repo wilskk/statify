@@ -65,8 +65,8 @@ describe('WeightCasesUI Component', () => {
         renderComponent();
         const user = userEvent.setup();
         
-        const okButtons = screen.getAllByRole('button', { name: /^ok$/i });
-        await user.click(okButtons[0]);
+        const okButton = screen.getByRole('button', { name: /ok/i });
+        await user.click(okButton);
 
         expect(mockHandleSave).toHaveBeenCalledTimes(1);
     });

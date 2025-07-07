@@ -7,16 +7,14 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "dev": "tsx watch server/index.ts",
-    "test": "jest --passWithNoTests"
+    "test": "jest"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "formidable": "^3.5.2",
     "sav-reader": "^2.0.8",
-    "sav-writer": "^1.0.0",
-    "helmet": "^7.0.0",
-    "express-rate-limit": "^7.0.0"
+    "sav-writer": "^1.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

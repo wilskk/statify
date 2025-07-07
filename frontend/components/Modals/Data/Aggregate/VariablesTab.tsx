@@ -103,19 +103,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
         [reorderBreakVariables, reorderAggregatedVariables]
     );
 
-    const handleVariableItemDoubleClick = useCallback(
-        (variable: Variable | AggregatedVariable, sourceListId: string) => {
-            if (sourceListId === 'available' || sourceListId === 'break') {
-                const id = (variable as any).columnIndex ?? (variable as any).tempId;
-                _hvd && id !== undefined && _hvd(id as any, sourceListId as any);
-            } else if (sourceListId === 'aggregated') {
-                const id = (variable as any).tempId ?? (variable as any).aggregateId;
-                _had && id && _had(id as any);
-            }
-        },
-        [_hvd, _had]
-    );
-
     /* ------------ Highlight bridge ------------ */
     const bridgeSetHighlightedVariable = useCallback(
         (info: { id: string; source: string } | null) => {
@@ -207,13 +194,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     </div>
     );
 
-    const getDisplayNameWrapped = useCallback((variable: any) => {
-        if (variable && typeof variable === 'object' && 'displayName' in variable && variable.displayName) {
-            return variable.displayName as string;
-        }
-        return getDisplayName(variable as any);
-    }, [getDisplayName]);
-
     /* ------------ Render ------------ */
     return (
         <div className="flex flex-col gap-4 py-2">
@@ -225,9 +205,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 setHighlightedVariable={bridgeSetHighlightedVariable}
                 onMoveVariable={onMoveVariable as any}
                 onReorderVariable={onReorderVariable as any}
-                onVariableDoubleClick={handleVariableItemDoubleClick as any}
                 getVariableIcon={getVariableIcon}
-                getDisplayName={getDisplayNameWrapped as any}
+                getDisplayName={getDisplayName as any}
                 renderListFooter={renderListFooter}
                 renderExtraInfoContent={renderExtraInfoContent}
                 renderRightColumnFooter={renderRightColumnFooter}

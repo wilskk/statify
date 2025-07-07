@@ -390,10 +390,9 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
     // --- Rendering Logic ---
     const renderVariableItem = (variable: Variable, listId: string, index: number) => {
-        const varRawId = variable[variableIdKey] ?? (variable as any).columnIndex ?? (variable as any).aggregateId ?? (variable as any).name;
-        const varId = varRawId !== undefined && varRawId !== null ? String(varRawId) : undefined;
-        if (varId === undefined) {
-            console.warn("Variable missing identifier for rendering:", variable);
+        const varId = variable[variableIdKey]?.toString();
+        if (varId === undefined || varId === null) {
+            console.warn("Variable missing ID for rendering:", variable);
             return null;
         }
 
@@ -500,12 +499,6 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         // Adjust overflow for single-item lists
         const overflowStyle = isSingleItemList ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden";
 
-        const testIdMap: Record<string, string> = {
-            available: 'available-variable-list',
-            break: 'break-variable-list',
-            aggregated: 'aggregated-variable-list',
-        };
-
         return (
             <div 
                 key={id} 
@@ -528,10 +521,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 )}
                 <div
                     data-list-id={id}
-                    data-testid={testIdMap[id]}
                     id={id === 'selected' ? 'selected-variables-list' : undefined}
-                    role="group"
-                    aria-label={title || id}
                     className={`
                         border p-1 rounded-md w-full transition-colors relative bg-background
                         ${overflowStyle}

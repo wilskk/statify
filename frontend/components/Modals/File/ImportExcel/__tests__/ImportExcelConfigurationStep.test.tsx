@@ -68,11 +68,10 @@ describe('ImportExcelConfigurationStep Component', () => {
         await user.click(screen.getByText('Sheet2'));
 
         expect(mockParseSheetForPreview).toHaveBeenCalledTimes(2);
-        // Ensure it was called for Sheet2
+        // Ensure it was called with options for Sheet2
         expect(mockParseSheetForPreview).toHaveBeenLastCalledWith(
-            expect.any(Object), // workbook argument
-            'Sheet2',           // sheet name argument
-            expect.any(Object)  // options argument
+            expect.objectContaining({ sheetName: 'Sheet2' }),
+            expect.any(Object)
         );
     });
 

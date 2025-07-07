@@ -2,8 +2,6 @@
  * API configuration and utilities
  */
 
-import { v4 as uuidv4 } from 'uuid';
-
 // Base URL for API calls
 export const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
@@ -35,24 +33,8 @@ export class ApiError extends Error {
   }
 }
 
-// Generate or retrieve a stable pseudo-user ID stored in localStorage
-const USER_ID_KEY = 'statify_user_id';
-export const getUserId = (): string => {
-  // During SSR localStorage is undefined – fallback to empty string
-  if (typeof window === 'undefined') return '';
-  let id = localStorage.getItem(USER_ID_KEY);
-  if (!id) {
-    id = uuidv4();
-    localStorage.setItem(USER_ID_KEY, id);
-  }
-  return id;
-};
-
 // Helper function to handle API responses
 export async function handleApiResponse(response: Response) {
-  if (response.status === 429) {
-    throw new ApiError('Terlalu banyak permintaan, silakan coba lagi nanti', 429);
-  }
   if (!response.ok) {
     const errorText = await response.text();
     throw new ApiError(
