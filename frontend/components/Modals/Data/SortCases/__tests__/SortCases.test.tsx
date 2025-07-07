@@ -109,10 +109,10 @@ describe('SortCasesUI', () => {
             highlightedVariable: { id: '1', source: 'sortBy' },
         });
 
-        expect(screen.getByText('Sort Order:')).toBeInTheDocument();
+        expect(screen.getByText('Direction for selected variable:')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /move up/i })).toBeInTheDocument();
-        const ascendingCheckbox = screen.getByRole('checkbox', { name: /ascending/i });
-        expect(ascendingCheckbox).toBeChecked();
+        const ascendingRadio = screen.getByRole('radio', { name: /ascending/i });
+        expect(ascendingRadio).toBeChecked();
     });
     
     it('calls changeSortDirection when a sort direction checkbox is clicked', async () => {
@@ -123,8 +123,8 @@ describe('SortCasesUI', () => {
             highlightedVariable: { id: '1', source: 'sortBy' },
         });
 
-        const descendingCheckbox = screen.getByRole('checkbox', { name: /descending/i });
-        await user.click(descendingCheckbox);
+        const descendingRadio = screen.getByRole('radio', { name: /descending/i });
+        await user.click(descendingRadio);
         
         expect(mockChangeSortDirection).toHaveBeenCalledWith('1', 'desc');
     });

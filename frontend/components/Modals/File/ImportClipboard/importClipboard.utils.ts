@@ -71,6 +71,11 @@ export const excelStyleTextToColumns = (
     }
 ): string[][] => {
     console.log('[excelStyleTextToColumns] INPUT Text:', text.substring(0, 100), 'Options:', options);
+
+    if (!text || text.trim() === '') {
+        return [];
+    }
+    
     console.log('Excel Text to Columns - Processing with options:', options);
     console.log('Input text sample:', text.slice(0, 200) + (text.length > 200 ? '...' : ''));
     

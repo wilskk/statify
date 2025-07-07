@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ExportCsv } from '..'; // Adjust the import path as necessary
 
@@ -21,6 +22,7 @@ describe('ExportCsv Component', () => {
   const mockHandleFilenameChange = jest.fn();
   const mockHandleExport = jest.fn();
   const mockStartTour = jest.fn();
+  const user = userEvent.setup();
 
   beforeEach(() => {
     // Reset mocks before each test
@@ -94,14 +96,14 @@ describe('ExportCsv Component', () => {
     expect(mockHandleFilenameChange).toHaveBeenCalledWith('new-file');
   });
 
-  it('calls handleChange when a checkbox is clicked', () => {
+  it('calls handleChange when a checkbox is clicked', async () => {
     render(<ExportCsv onClose={mockOnClose} />);
     const includeHeadersCheckbox = screen.getByLabelText(/Include variable names as header row/i);
-    fireEvent.click(includeHeadersCheckbox);
+    await user.click(includeHeadersCheckbox);
     expect(mockHandleChange).toHaveBeenCalledWith('includeHeaders', expect.any(Boolean));
   });
 
-  it('calls handleExport when export button is clicked', () => {
+  it('calls handleExport when export button is clicked', async () => {
     (useExportCsv as jest.Mock).mockReturnValueOnce({
         exportOptions: { filename: 'test-file', delimiter: ',', includeHeaders: true, includeVariableProperties: false, quoteStrings: true, encoding: 'utf-8' },
         isExporting: false,
@@ -112,14 +114,14 @@ describe('ExportCsv Component', () => {
   
       render(<ExportCsv onClose={mockOnClose} />);
       const exportButton = screen.getByRole('button', { name: /Export/i });
-      fireEvent.click(exportButton);
+      await user.click(exportButton);
       expect(mockHandleExport).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onClose when cancel button is clicked', () => {
+  it('calls onClose when cancel button is clicked', async () => {
     render(<ExportCsv onClose={mockOnClose} />);
     const cancelButton = screen.getByRole('button', { name: /Cancel/i });
-    fireEvent.click(cancelButton);
+    await user.click(cancelButton);
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
@@ -137,10 +139,10 @@ describe('ExportCsv Component', () => {
     expect(screen.getByRole('button', { name: /Exporting.../i })).toBeDisabled();
   });
 
-  it('calls startTour when help button is clicked', () => {
+  it('calls startTour when help button is clicked', async () => {
     render(<ExportCsv onClose={mockOnClose} />);
     const helpButton = screen.getByRole('button', { name: /Start feature tour/i });
-    fireEvent.click(helpButton);
+    await user.click(helpButton);
     expect(mockStartTour).toHaveBeenCalledTimes(1);
   });
 });

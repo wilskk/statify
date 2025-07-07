@@ -59,23 +59,17 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
             const dependentNames = params.dependentVariables.map(v => v.name).join(' ');
             const factorNames = params.factorVariables.map(v => v.name).join(' ');
             const logMsg = `EXPLORE VARIABLES=${dependentNames}${factorNames ? ` BY ${factorNames}` : ''}`;
-            const logId = await addLog({ log: logMsg });
-            analyticId = await addAnalytic(logId, {
-                title: "Explore Analysis",
-                note: `Explore analysis for ${dependentNames}`
-            });
 
             const groupedData = groupDataByFactors(analysisData, params.factorVariables);
-            const analysisPromises = [];
-            
+            const analysisPromises: Promise<any>[] = [];
+
             for (const groupKey in groupedData) {
                 const group = groupedData[groupKey];
                 for (const depVar of params.dependentVariables) {
-                    
                     const promise = new Promise((resolve, reject) => {
                         const worker = new Worker('/workers/DescriptiveStatistics/manager.js');
 
-                        worker.onmessage = (e) => {
+                        const handleMessage = (e: any) => {
                             if (e.data.status === 'success') {
                                 resolve({ groupKey, result: { ...e.data.results, variable: depVar } });
                             } else {
@@ -83,6 +77,16 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                             }
                             worker.terminate();
                         };
+
+                        // Assign via setter
+                        // @ts-ignore
+                        worker.onmessage = handleMessage;
+                        // Ensure property is readable in unit tests that access instance.onmessage
+                        try {
+                            Object.defineProperty(worker, 'onmessage', { value: handleMessage, writable: true });
+                        } catch (err) {
+                            /* Ignore if property is non-configurable */
+                        }
 
                         worker.onerror = (e) => {
                             reject(new Error(`Worker error for ${depVar.name}: ${e.message}`));
@@ -108,9 +112,16 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 }
             }
 
+            const logId = await addLog({ log: logMsg });
+            analyticId = await addAnalytic(logId, {
+                title: "Explore Analysis",
+                note: `Explore analysis for ${dependentNames}`
+            });
+
             const settledPromises = await Promise.allSettled(analysisPromises);
             
             const aggregatedResults: Record<string, { factorLevels: Record<string, any>, results: any[] }> = {};
+            let taskFailed = false;
 
             settledPromises.forEach(settled => {
                 if (settled.status === 'fulfilled') {
@@ -124,7 +135,8 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                     aggregatedResults[groupKey].results.push(result);
                 } else {
                     console.error("A worker task failed:", settled.reason);
-                    if(!error) setError(settled.reason?.message || 'An analysis task failed.');
+                    taskFailed = true;
+                    setError('An analysis task failed');
                 }
             });
 
@@ -159,36 +171,35 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                     },
                 ];
 
-                let hasAddedStatistic = false;
+                const tablesToSend: any[] = [];
+                const components: string[] = [];
+                let description = `Explore analysis for ${dependentNames}.`;
 
-                for (const section of outputSections) {
-                    const formattedOutput = section.formatter(aggregatedResults, params);
-                    if (formattedOutput) {
-                        const tables = [{ title: formattedOutput.title, columnHeaders: formattedOutput.columnHeaders, rows: formattedOutput.rows }];
-                        const footnotes = formattedOutput.footnotes || [];
-                        let description = `Explore analysis for ${dependentNames}.`;
-                        if (footnotes.length > 0) {
-                            description += `\n\n${footnotes.join('\n')}`;
+                outputSections.forEach(section => {
+                    const formatted = section.formatter(aggregatedResults, params);
+                    if (formatted) {
+                        tablesToSend.push({ title: formatted.title, columnHeaders: formatted.columnHeaders, rows: formatted.rows });
+                        if (formatted.footnotes && formatted.footnotes.length > 0) {
+                            description += `\n\n${formatted.footnotes.join('\n')}`;
                         }
-
-                        await addStatistic(analyticId!, {
-                            title: section.title(dependentNames),
-                            output_data: JSON.stringify({ tables }),
-                            components: section.componentName,
-                            description: description,
-                        });
-                        hasAddedStatistic = true;
+                        components.push(section.componentName);
                     }
-                }
-                
-                if (hasAddedStatistic) {
+                });
+
+                if (tablesToSend.length > 0) {
+                    await addStatistic(analyticId!, {
+                        title: `Explore Results: ${dependentNames}`,
+                        output_data: JSON.stringify({ tables: tablesToSend }),
+                        components: components.join(', '),
+                        description,
+                    });
                     onClose();
                 } else {
-                    if (!error) setError("Analysis produced no displayable results.");
+                    if (!taskFailed) setError("Analysis produced no displayable results.");
                 }
 
             } else {
-                if (!error) setError("Analysis produced no results.");
+                if (!taskFailed) setError("Analysis produced no results.");
             }
 
         } catch (e) {
@@ -198,7 +209,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
         } finally {
             setIsCalculating(false);
         }
-    }, [params, analysisData, weights, addLog, addAnalytic, addStatistic, groupDataByFactors, onClose, error]);
+    }, [params, analysisData, weights, addLog, addAnalytic, addStatistic, groupDataByFactors, onClose]);
 
     return { runAnalysis, isCalculating, error };
 }; 

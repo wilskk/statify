@@ -3,21 +3,22 @@
 import React, { FC, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, FileText, Loader2, X, HelpCircle, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { AlertCircle, FileText, Loader2, X, HelpCircle, ChevronLeft, ChevronRight, Info, UploadCloud } from "lucide-react";
 import { useMobile } from "@/hooks/useMobile";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { useDropzone } from "react-dropzone";
 
 interface ImportCsvSelectionProps {
     onClose: () => void;
-    onFileSelect: (file: File | null) => void;
+    onFileSelect: (file: File) => void;
     onContinue: () => void;
     isLoading: boolean;
-    error: string | null;
     selectedFile: File | null;
+    error: string | null;
 }
 
 // Tipe data untuk tour
@@ -180,18 +181,15 @@ const ActiveElementHighlight: FC<{active: boolean}> = ({active}) => {
     return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none" />;
 };
 
-
 export const ImportCsvSelection: FC<ImportCsvSelectionProps> = ({
     onClose,
     onFileSelect,
     onContinue,
     isLoading,
+    selectedFile,
     error,
-    selectedFile
 }) => {
     const { isMobile, isPortrait } = useMobile();
-
-    // Tour state and logic
     const [tourActive, setTourActive] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
@@ -215,29 +213,46 @@ export const ImportCsvSelection: FC<ImportCsvSelectionProps> = ({
         return targetElements[baseTourSteps[currentStep].targetId] || null;
     }, [tourActive, currentStep, targetElements]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selected = e.target.files?.[0] || null;
-        if (selected) {
-            onFileSelect(selected);
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files[0]) {
+            onFileSelect(event.target.files[0]);
         }
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
     };
 
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const file = e.dataTransfer.files[0];
-            if (file.type === "text/csv" || file.name.endsWith('.csv')) {
-                onFileSelect(file);
+    const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+            if (event.dataTransfer.files[0].type === "text/csv") {
+                onFileSelect(event.dataTransfer.files[0]);
             }
         }
     };
+
+    /**
+     * Handler passed to `useDropzone` that conforms to its expected callback signature.
+     * It extracts the first accepted CSV file (if any) and forwards it to `onFileSelect`.
+     */
+    const handleDropZone = useCallback(
+        (acceptedFiles: File[]) => {
+            if (acceptedFiles && acceptedFiles.length > 0) {
+                const file = acceptedFiles[0];
+                if (file.type === "text/csv") {
+                    onFileSelect(file);
+                }
+            }
+        },
+        [onFileSelect]
+    );
+
+    const { getRootProps, getInputProps } = useDropzone({
+        onDrop: handleDropZone,
+        noClick: true,
+        noKeyboard: true,
+    });
 
     return (
         <div className="flex flex-col h-full">
@@ -270,7 +285,7 @@ export const ImportCsvSelection: FC<ImportCsvSelectionProps> = ({
             <div className="p-6 flex-grow flex flex-col">
                 <div
                     id="import-csv-dropzone-wrapper"
-                    className={cn(`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors flex-grow mb-4 relative`, 
+                    className={cn(`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors flex-grow mb-4 relative`,
                         isMobile && isPortrait ? 'min-h-[150px]' : 'min-h-[200px]',
                         error ? "border-destructive bg-destructive/5 hover:border-destructive/60" : "border-input hover:border-primary/80 hover:bg-muted/50"
                     )}
@@ -285,26 +300,11 @@ export const ImportCsvSelection: FC<ImportCsvSelectionProps> = ({
                     <p className={`text-xs text-muted-foreground ${error ? 'text-destructive/70' : ''}`}>
                         {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : "or drag and drop here"}
                     </p>
-                    <input id="csv-file-input-content" type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
+                    <input id="csv-file-input-content" type="file" accept=".csv" onChange={handleFileChange} className="hidden" data-testid="dropzone-input" />
                     <ActiveElementHighlight active={tourActive && currentStep === 0} />
                 </div>
 
-                {selectedFile && !error && ( 
-                    <div className="mb-4 p-3 bg-muted/50 border border-border rounded-md flex items-center justify-between">
-                        <div className="flex items-center overflow-hidden">
-                            <FileText size={20} className="mr-2.5 text-primary flex-shrink-0" />
-                            <div className="overflow-hidden">
-                                <p className="text-sm font-medium text-foreground truncate">{selectedFile.name}</p>
-                                <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                            </div>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => onFileSelect(null)} className="text-muted-foreground hover:text-destructive h-7 w-7 flex-shrink-0">
-                            <X size={16} />
-                        </Button>
-                    </div>
-                )}
-
-                {error && ( 
+                {error && (
                     <Alert variant="destructive" className="mb-4">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>{error}</AlertDescription>

@@ -29,4 +29,22 @@ Fitur ini dirancang untuk memungkinkan pengguna, terutama yang baru, agar dapat 
 -   **Dukungan Tipe File Lain**: Menambahkan dataset contoh dalam format lain seperti `.csv` atau `.xlsx`. Struktur file `example-datasets.ts` sudah siap untuk ini.
 -   **Deskripsi Dataset**: Menambahkan deskripsi singkat atau tooltip untuk setiap dataset yang menjelaskan konteks data dan analisis apa yang cocok untuk dilakukan.
 -   **Fungsi Pencarian/Filter**: Mengimplementasikan bar pencarian untuk memudahkan pengguna menemukan dataset tertentu, terutama jika daftarnya bertambah banyak.
--   **Pratinjau Data**: Memberikan kemampuan untuk melihat pratinjau beberapa baris dan kolom dari dataset sebelum memutuskan untuk memuatnya secara penuh. 
+-   **Pratinjau Data**: Memberikan kemampuan untuk melihat pratinjau beberapa baris dan kolom dari dataset sebelum memutuskan untuk memuatnya secara penuh.
+
+## 5. Strategi Pengujian (Unit Testing)
+
+> Semua pengujian berada di `components/Modals/File/ExampleDataset/__tests__/` dan mengikuti pola umum proyek (React-Testing-Library + Jest).
+
+| Berkas | Fokus |
+|--------|-------|
+| `ExampleDatasetModal.test.tsx` | Pengujian UI untuk modal: render daftar file, interaksi klik (memanggil `loadDataset`), overlay loading, pesan error, dan tombol Cancel. |
+| `useExampleDatasetLogic.test.ts` | Pengujian hook: alur pemuatan dataset (loading state ➜ fetch ➜ overwrite store ➜ close), pemanggilan store (`overwriteAll`, `resetData`, `setMeta`), serta penanganan error. |
+| `services.test.ts` *(opsional)* | Pengujian utilitas/service: mock `fetch` dan `uploadSavFile` untuk memastikan alur jaringan berjalan benar. |
+
+### Cara Menambah Pengujian Baru
+1. Tambahkan berkas tes di folder `__tests__`.
+2. Perbarui tabel di atas **dan** indeks pengujian sentral pada `components/Modals/File/README.md`.
+
+---
+
+_Last updated: <!-- KEEP THIS COMMENT: the CI tool replaces it with commit SHA & date -->_ 

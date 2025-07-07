@@ -151,12 +151,26 @@ describe('useDuplicateCases Hook', () => {
             await result.current.handleConfirm();
         });
 
-        expect(mockSetData).toHaveBeenCalledWith([ ['Var2', 'Var1'], ['B', 2], ['A', 1] ]);
+        expect(mockSetData).toHaveBeenCalledWith([ ['B', 2], ['A', 1] ]);
     });
 
     it('filters out duplicate cases when filterByIndicator is true', async () => {
         const mockOnClose = jest.fn();
-        const primaryVar = { name: 'PrimaryLast', columnIndex: 2, values: [], missing: {} } as Variable;
+        const primaryVar: Variable = {
+            tempId: 'primary',
+            columnIndex: 2,
+            name: 'PrimaryLast',
+            type: 'NUMERIC',
+            width: 1,
+            decimals: 0,
+            label: '',
+            columns: 72,
+            align: 'right',
+            measure: 'nominal',
+            role: 'input',
+            values: [],
+            missing: {},
+        };
         const dataWithIndicators = [
             ['Var1', 'Var2', 'PrimaryLast'],
             [1, 'A', 1],

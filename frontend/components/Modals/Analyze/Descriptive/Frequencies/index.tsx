@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/tabs";
 import { HelpCircle } from "lucide-react";
 import { BaseModalProps } from "@/types/modalTypes";
-import { useTourGuide, TabControlProps } from "./hooks/useTourGuide";
+import { useTourGuide, TabControlProps } from "./hooks";
 import { TourPopup } from "@/components/Common/TourComponents";
 import { AnimatePresence } from "framer-motion";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -153,6 +153,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({
                                     variant="ghost"
                                     size="icon"
                                     onClick={startTour}
+                                    aria-label="Start feature tour"
                                     className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
                                 >
                                     <HelpCircle className="h-4 w-4" />

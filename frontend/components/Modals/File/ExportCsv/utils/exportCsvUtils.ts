@@ -68,7 +68,8 @@ export const generateCsvContent = (
         const propHeaders = [
             "Index", "Name", "Type", "Width", "Decimals",
             "Label", "Measure", "Align", "Role", "MissingValues", "ValueLabels"
-        ].join(delimiter);
+        ].map(h => escapeCsvCell(h, delimiter, true))
+         .join(delimiter);
         lines.push(`# ${propHeaders}`);
 
         variables.forEach(v => {

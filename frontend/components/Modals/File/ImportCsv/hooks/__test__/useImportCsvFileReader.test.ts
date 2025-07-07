@@ -1,118 +1,143 @@
 import { renderHook, act } from '@testing-library/react';
 import { useImportCsvFileReader } from '../useImportCsvFileReader';
 
-// Mock FileReader
-const mockFileReader = {
-  onload: jest.fn(),
-  onerror: jest.fn(),
-  readAsText: jest.fn(),
-  result: '',
-};
+describe('useImportCsvFileReader hook', () => {
+    let mockFileReader: {
+        onload: (() => void) | null;
+        onerror: ((error: any) => void) | null;
+        readAsText: jest.Mock;
+        result: string | null;
+    };
 
-global.FileReader = jest.fn(() => mockFileReader) as any;
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  // Reset the mock result for each test
-  mockFileReader.result = '';
-});
-
-describe('useImportCsvFileReader', () => {
-  it('should return the initial state correctly', () => {
-    const { result } = renderHook(() => useImportCsvFileReader());
-
-    expect(result.current.fileContent).toBeNull();
-    expect(result.current.fileName).toBe('');
-    expect(result.current.error).toBeNull();
-    expect(result.current.isLoading).toBe(false);
-  });
-
-  it('should read a file successfully', () => {
-    const { result } = renderHook(() => useImportCsvFileReader());
-    const mockFile = new File(['col1,col2\nval1,val2'], 'test.csv', { type: 'text/csv' });
-    const fileContent = 'col1,col2\nval1,val2';
-
-    act(() => {
-      result.current.readFile(mockFile);
+    beforeAll(() => {
+        // Mock the global FileReader
+        global.FileReader = jest.fn(() => mockFileReader) as any;
     });
 
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.fileName).toBe('test.csv');
-    expect(mockFileReader.readAsText).toHaveBeenCalledWith(mockFile);
-
-    // Simulate successful file read
-    act(() => {
-      mockFileReader.result = fileContent;
-      mockFileReader.onload();
+    beforeEach(() => {
+        // Reset the mock before each test
+        mockFileReader = {
+            onload: null,
+            onerror: null,
+            readAsText: jest.fn(),
+            result: null,
+        };
     });
 
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.fileContent).toBe(fileContent);
-    expect(result.current.error).toBeNull();
-  });
-
-  it('should handle file read error', () => {
-    const { result } = renderHook(() => useImportCsvFileReader());
-    const mockFile = new File([''], 'error.csv', { type: 'text/csv' });
-
-    act(() => {
-      result.current.readFile(mockFile);
+    it('should have correct initial state', () => {
+        const { result } = renderHook(() => useImportCsvFileReader());
+        
+        expect(result.current.fileContent).toBeNull();
+        expect(result.current.fileName).toBe('');
+        expect(result.current.error).toBeNull();
+        expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.isLoading).toBe(true);
+    it('should successfully read a file and update state', () => {
+        const { result } = renderHook(() => useImportCsvFileReader());
+        const file = new File(['col1,col2\nval1,val2'], 'test.csv', { type: 'text/csv' });
+        const fileContent = 'col1,col2\nval1,val2';
 
-    // Simulate file read error
-    act(() => {
-      mockFileReader.onerror(new Error('Test error'));
+        act(() => {
+            result.current.readFile(file);
+        });
+
+        // Check loading state
+        expect(result.current.isLoading).toBe(true);
+        expect(result.current.fileName).toBe('test.csv');
+        expect(mockFileReader.readAsText).toHaveBeenCalledWith(file);
+
+        // Simulate successful file read
+        act(() => {
+            mockFileReader.result = fileContent;
+            mockFileReader.onload?.();
+        });
+
+        // Check final state
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.fileContent).toBe(fileContent);
+        expect(result.current.error).toBeNull();
     });
 
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBe('An error occurred while trying to read the file. Please try again.');
-    expect(result.current.fileContent).toBeNull();
-    expect(result.current.fileName).toBe('');
-  });
+    it('should handle file reader errors', () => {
+        const { result } = renderHook(() => useImportCsvFileReader());
+        const file = new File([''], 'error.csv', { type: 'text/csv' });
+        const errorEvent = new ProgressEvent('error');
 
-  it('should handle empty file content', () => {
-    const { result } = renderHook(() => useImportCsvFileReader());
-    const mockFile = new File([''], 'empty.csv', { type: 'text/csv' });
+        act(() => {
+            result.current.readFile(file);
+        });
 
-    act(() => {
-      result.current.readFile(mockFile);
+        expect(result.current.isLoading).toBe(true);
+
+        // Simulate error
+        act(() => {
+            mockFileReader.onerror?.(errorEvent);
+        });
+        
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.fileContent).toBeNull();
+        expect(result.current.fileName).toBe('');
+        expect(result.current.error).toBe('An error occurred while trying to read the file. Please try again.');
     });
 
-    // Simulate successful read but with empty content
-    act(() => {
-      mockFileReader.result = '';
-      mockFileReader.onload();
+    it('should handle empty file content', () => {
+        const { result } = renderHook(() => useImportCsvFileReader());
+        const file = new File([''], 'empty.csv', { type: 'text/csv' });
+
+        act(() => {
+            result.current.readFile(file);
+        });
+
+        act(() => {
+            mockFileReader.result = '';
+            mockFileReader.onload?.();
+        });
+
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.fileContent).toBe(null);
+        expect(result.current.fileName).toBe('');
+        expect(result.current.error).toBe('The selected file is empty or could not be read.');
+    });
+    
+    it('should not do anything if no file is provided', () => {
+        const { result } = renderHook(() => useImportCsvFileReader());
+
+        act(() => {
+            // @ts-ignore
+            result.current.readFile(null);
+        });
+
+        expect(result.current.error).toBe('Please select a CSV file.');
+        expect(mockFileReader.readAsText).not.toHaveBeenCalled();
     });
 
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBe('The selected file is empty or could not be read.');
-    expect(result.current.fileContent).toBeNull();
-    expect(result.current.fileName).toBe('');
-  });
+    it('should reset the state', () => {
+        const { result } = renderHook(() => useImportCsvFileReader());
+        const file = new File(['a,b'], 'test.csv');
 
-  it('should reset the state', () => {
-    const { result } = renderHook(() => useImportCsvFileReader());
-    const mockFile = new File(['content'], 'test.csv', { type: 'text/csv' });
+        // Set some state
+        act(() => {
+            result.current.readFile(file);
+        });
+        act(() => {
+            mockFileReader.result = 'a,b';
+            mockFileReader.onload?.();
+        });
 
-    // First, read a file to change the state
-    act(() => {
-      result.current.readFile(mockFile);
-      mockFileReader.result = 'content';
-      mockFileReader.onload();
+        // Verify state is set
+        expect(result.current.fileContent).toBe('a,b');
+        expect(result.current.fileName).toBe('test.csv');
+
+        // Reset the state
+        act(() => {
+            result.current.resetFileState();
+        });
+
+        // Verify state is reset
+        expect(result.current.fileContent).toBeNull();
+        expect(result.current.fileName).toBe('');
+        expect(result.current.error).toBeNull();
+        expect(result.current.isLoading).toBe(false);
     });
-
-    expect(result.current.fileContent).toBe('content');
-
-    // Now, reset the state
-    act(() => {
-      result.current.resetFileState();
-    });
-
-    expect(result.current.fileContent).toBeNull();
-    expect(result.current.fileName).toBe('');
-    expect(result.current.error).toBeNull();
-    expect(result.current.isLoading).toBe(false);
-  });
-});
+}); 

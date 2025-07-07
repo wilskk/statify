@@ -52,7 +52,13 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
             <div className="relative p-6 flex-grow overflow-y-auto">
                  {isLoading && (
                     <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-10">
-                        <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+                        {/* Added testing attributes for accessibility and testing purposes */}
+                        <Loader2
+                            className="h-8 w-8 animate-spin text-foreground"
+                            data-testid="loading-spinner"
+                            role="status"
+                            aria-label="loading"
+                        />
                     </div>
                 )}
                 {error && (

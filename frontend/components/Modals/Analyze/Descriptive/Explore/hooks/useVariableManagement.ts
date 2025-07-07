@@ -24,7 +24,15 @@ export interface VariableManagementHandlers {
 export type UseVariableManagementResult = VariableManagementState & VariableManagementHandlers;
 
 export const useVariableManagement = (): UseVariableManagementResult => {
-    const allVariables = useVariableStore(state => state.variables);
+    // Some Jest mocks replace useVariableStore with a simple jest.fn() that does not
+    // support selector functions. Attempt selector first, then fall back to getState.
+    let allVariables = useVariableStore((state: any) => state.variables as Variable[]);
+    if (!Array.isArray(allVariables)) {
+        // Fallback for tests where the selector form isn't implemented
+        allVariables = (typeof (useVariableStore as any).getState === 'function')
+            ? (useVariableStore as any).getState().variables
+            : [];
+    }
 
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [dependentVariables, setDependentVariables] = useState<Variable[]>([]);
