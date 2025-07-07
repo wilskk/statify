@@ -1,10 +1,10 @@
 import { useState } from "react";
 // Store imports are no longer directly needed here as service handles them
 // import { useDataStore, CellUpdate } from "@/stores/useDataStore"; 
-// import { useVariableStore } from "@/stores/useVariableStore";
+import { useVariableStore } from "@/stores/useVariableStore";
 import { 
     CSVProcessingError 
-} from "../utils/importCsvUtils"; 
+} from "../importCsvUtils"; 
 import { CSVProcessingOptions } from "../types";
 // import { DataRow } from "@/types/Data"; // No longer needed here
 import { importCsvDataService } from "../services/services"; // Import the new service
@@ -23,8 +23,7 @@ export const useImportCsvProcessor = () => {
         setIsProcessing(true);
         
         try {
-            // Reset existing data and variables using the service
-            await importCsvDataService.resetStores();
+            // Reset is no longer needed here, overwriteAll handles it.
             
             // Parse CSV off main thread
             const result: ProcessedCsvData = await parseCsvWithWorker(fileContent, options);

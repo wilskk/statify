@@ -6,6 +6,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     // DialogFooter, // Not used directly if buttons are custom
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -358,6 +359,8 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
         applyNameLabel,
         handleReset,
         handleConfirm,
+        addNumberOfCases,
+        setAddNumberOfCases,
     } = useAggregateData();
 
     // Tour state
@@ -481,6 +484,8 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
                         highlightedVariable={highlightedVariable}
                         breakName={breakName}
                         setBreakName={setBreakName}
+                        addNumberOfCases={addNumberOfCases}
+                        setAddNumberOfCases={setAddNumberOfCases}
                         handleVariableSelect={handleVariableSelect}
                         handleVariableDoubleClick={handleVariableDoubleClick}
                         handleAggregatedVariableSelect={handleAggregatedVariableSelect}
@@ -631,6 +636,9 @@ const Aggregate: FC<AggregateDataProps> = ({ onClose, containerType = "dialog" }
             <DialogContent className="max-w-[650px] p-0">
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                     <DialogTitle className="text-[22px] font-semibold text-foreground">Aggregate Data</DialogTitle>
+                    <DialogDescription className="text-sm text-muted-foreground">
+                        Create summary statistics for variables, grouped by one or more break variables.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-grow flex flex-col overflow-hidden">

@@ -1,51 +1,68 @@
-# Explore Modal - Implementation Plan
+# Fitur Analisis: Explore
 
-This document outlines the plan to implement the full functionality for the Explore analysis modal. The current implementation is a UI placeholder; this plan will connect it to the backend worker for real data analysis.
+Dokumen ini memberikan panduan lengkap mengenai fungsionalitas, komponen, dan detail teknis dari fitur "Explore".
 
-## Current State
+## 1. Gambaran Umum
 
-- The UI is well-defined with three tabs: Variables, Statistics, and Plots.
-- The component structure is in place (`index.tsx`, `VariablesTab.tsx`, etc.).
-- State is managed directly in `index.tsx` using numerous `useState` hooks.
-- The analysis logic in `handleExplore` is a placeholder that does not perform any calculations.
-- The backend `ExamineCalculator` in the `DescriptiveStatistics` worker contains the necessary statistical logic but is not yet being used by this feature.
+Fitur "Explore" dirancang untuk analisis data eksplorasi (EDA) yang mendalam. Tujuannya adalah untuk merangkum karakteristik utama dari variabel, sering kali secara terpisah untuk kelompok-kelompok kasus yang berbeda. Ini sangat berguna untuk memeriksa asumsi statistik (seperti normalitas) dan mengidentifikasi nilai-nilai ekstrem (outlier).
 
-## Implementation Steps
+Fitur ini menggunakan antarmuka berbasis tab yang memungkinkan konfigurasi analisis secara modular:
+-   **Tab Variabel**: Untuk mendefinisikan variabel dependen, variabel faktor (pengelompokan), dan variabel label.
+-   **Tab Statistik**: Untuk memilih statistik deskriptif dan robust yang akan dihitung.
+-   **Tab Plot**: Untuk memilih visualisasi grafis guna memeriksa distribusi data.
 
-### 1. State Management Refactoring
-To improve code structure and maintainability, all state management will be extracted from `index.tsx` into custom hooks.
+## 2. Komponen Antarmuka & Fungsionalitas
 
--   **`useVariableManagement.ts`**: Will manage the state and logic for variable selection (available, dependent, factor, and label lists).
--   **`useStatisticsSettings.ts`**: Will manage the state for all options in the "Statistics" tab (descriptives, confidence intervals, M-estimators, etc.).
--   **`usePlotsSettings.ts`**: Will manage the state for all options in the "Plots" tab (boxplot types, histograms, etc.).
+### a. Tab Variabel (Variables)
 
-### 2. Analysis Logic Implementation
-A new central hook will be created to handle the entire analysis workflow.
+-   **Dependent List**: Variabel-variabel numerik yang akan dianalisis.
+-   **Factor List**: Variabel-variabel kategorikal yang digunakan untuk membagi data menjadi beberapa kelompok. Analisis akan dilakukan secara terpisah untuk setiap kelompok.
+-   **Label Cases by**: Variabel yang nilainya akan digunakan untuk memberi label pada outlier di dalam plot.
 
--   **`useExploreAnalysis.ts`**:
-    -   It will create and manage the web worker instance pointing to `/workers/DescriptiveStatistics/manager.js`.
-    -   It will contain the primary `runAnalysis` function, which will be triggered when the user clicks "OK".
-    -   **Factor Handling**: It will implement the crucial logic for grouping the dataset by the specified factor variables before sending data to the worker.
-    -   It will iterate through each dependent variable and each factor-based data group, sending an `examine` analysis request to the worker for each combination.
-    -   It will listen for results, process them, and format them into a structured object for output.
-    -   It will use the `useResultStore` to save the log, the analysis, and the final results.
+### b. Tab Statistik (Statistics)
 
-### 3. UI Component Updates
-The main and tab components will be updated to consume the new hooks.
+-   **Descriptives**: Jika dicentang, akan menampilkan tabel statistik deskriptif yang komprehensif.
+    -   `Confidence Interval for Mean`: Memungkinkan pengguna mengatur tingkat kepercayaan untuk rata-rata (default 95%).
+-   **M-estimators**: Menghitung estimasi lokasi yang robust, yang kurang sensitif terhadap outlier.
+-   **Outliers**: Mengidentifikasi lima nilai tertinggi dan terendah sebagai kandidat outlier.
+-   **Percentiles**: Menghitung persentil data, termasuk kuartil.
 
--   **`index.tsx`**: Will be refactored to use the new hooks, drastically reducing its internal complexity. The `handleExplore` and `handleReset` functions will be streamlined to call functions exposed by the hooks.
--   **`VariablesTab.tsx`**, **`StatisticsTab.tsx`**, **`PlotsTab.tsx`**: Will be updated to receive their state and handlers directly from the new hooks, removing prop-drilling.
--   **`types.ts`**: Will be updated to reflect the new hook-based architecture and define the structure for the analysis results.
+### c. Tab Plot (Plots)
 
-### 4. Output Rendering
-A new component will be created to display the results of the analysis.
+-   **Boxplots**:
+    -   `Factor levels together`: Menampilkan boxplot untuk setiap kelompok faktor secara berdampingan.
+    -   `Dependents together`: Menampilkan boxplot untuk setiap variabel dependen secara berdampingan.
+-   **Descriptive Plots**:
+    -   `Stem-and-leaf`: Plot teks yang menunjukkan bentuk distribusi.
+    -   `Histogram`: Representasi grafis dari distribusi frekuensi.
+-   **Normality plots with tests**: Menghasilkan plot (seperti Q-Q plot) dan uji statistik (seperti Shapiro-Wilk) untuk memeriksa asumsi normalitas.
 
--   **`ExploreOutput.tsx`**:
-    -   This component will be responsible for rendering the complex, structured JSON output from the `useExploreAnalysis` hook.
-    -   It will display descriptive statistics tables, M-Estimator results, percentile tables, and potentially placeholder sections for plots.
-    -   It will be registered as the renderer for the `explore` analysis type.
+## 3. Alur Kerja Analisis
 
-This structured approach will result in a robust, maintainable, and powerful "Explore" feature that is well-integrated into the application's architecture.
+1.  Pengguna memilih satu atau lebih variabel dependen.
+2.  (Opsional) Pengguna memilih variabel faktor untuk analisis per kelompok.
+3.  Pengguna berpindah ke tab "Statistics" dan "Plots" untuk mengonfigurasi output yang diinginkan.
+4.  Setelah menekan "OK", `useExploreAnalysis` hook akan mengambil alih.
+5.  Hook mengelompokkan data berdasarkan variabel faktor.
+6.  Untuk setiap kelompok data (dan setiap variabel dependen), sebuah `examine` job dikirim ke Web Worker.
+7.  Worker melakukan perhitungan statistik di latar belakang.
+8.  Setelah semua hasil diterima, `formatters` menyusunnya menjadi tabel-tabel yang siap ditampilkan (Case Processing Summary, Descriptives, M-Estimators, Percentiles, Extreme Values).
+9.  Hasil akhir disimpan di `ResultStore` dan ditampilkan kepada pengguna.
+
+## 4. Detail Teknis
+
+-   **Arsitektur Hook**: Fungsionalitas dipisahkan ke dalam beberapa custom hook untuk keterbacaan dan pemeliharaan yang lebih baik:
+    -   `useVariableManagement`: Mengelola semua logika pemindahan dan pemilihan variabel.
+    -   `useStatisticsSettings` & `usePlotsSettings`: Mengelola state untuk opsi di tab masing-masing.
+    -   `useExploreAnalysis`: Orkestrator utama yang menangani proses analisis.
+-   **Analisis Latar Belakang**: Perhitungan statistik dilakukan di Web Worker untuk mencegah pemblokiran UI, terutama pada dataset besar atau analisis yang kompleks.
+
+## 5. Rencana Pengembangan (Future Enhancements)
+
+-   **Implementasi Plot**: Saat ini, opsi di tab "Plots" sudah dapat dipilih, namun hasil grafisnya belum dirender. Langkah selanjutnya adalah membuat komponen renderer untuk Boxplot, Stem-and-leaf, dan Histogram.
+-   **Opsi "Display"**: Menambahkan opsi untuk hanya menampilkan statistik, hanya plot, atau keduanya (perilaku standar SPSS).
+-   **Uji Normalitas**: Mengimplementasikan dan menampilkan hasil dari uji Shapiro-Wilk atau Kolmogorov-Smirnov pada output.
+-   **Uji Levene**: Menambahkan uji homogenitas varians (Levene's test) ketika variabel faktor digunakan.
 
 # Explore Modal Component
 

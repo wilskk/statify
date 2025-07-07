@@ -9,6 +9,9 @@ ARG NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 ENV NODE_ENV=development
 
+# Install system packages required to compile native dependencies (e.g., canvas)
+RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev pixman-dev libpng-dev
+
 # Copy frontend package.json dan install dependencies
 COPY package.json package-lock.json* ./
 RUN npm install
@@ -36,6 +39,10 @@ ENV NODE_ENV=production
 ARG NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 
+# Runtime may only need lightweight libraries; remove heavy build deps
+# (Add if runtime errors) For now keep minimal lib dependencies (cairo, pango etc.)
+RUN apk add --no-cache cairo pango libjpeg-turbo giflib pixman libpng
+
 # Copy package files
 COPY package.json package-lock.json* ./
 
@@ -51,11 +58,14 @@ COPY tailwind.config.ts ./
 COPY --from=builder /app/frontend/.next ./.next
 COPY --from=builder /app/frontend/public ./public
 COPY --from=builder /app/frontend/.env.production ./.env.production
-# Ensure WASM files are copied if they exist
-RUN mkdir -p ./wasm
-COPY --from=builder /app/frontend/wasm/ ./wasm/
 
 EXPOSE 3001
+
+# Healthcheck for container
+HEALTHCHECK CMD wget -qO- http://localhost:3001/ || exit 1
+
+# Run as non-root user for security
+USER node
 
 # Run Next.js
 CMD ["npm", "run", "start"]

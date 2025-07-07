@@ -15,9 +15,6 @@ export { default as Descriptives } from './Descriptive';
 export { default as Explore } from './Explore';
 export { default as Frequencies } from './Frequencies';
 export { default as Crosstabs } from './Crosstabs';
-export { default as Ratio } from './Ratio';
-export { default as PPPlots } from './PPPlots';
-export { default as QQPlots } from './QQPlots';
 
 // Helper function to identify Descriptive modals
 export const isDescriptiveModal = (type: ModalType): boolean => {
@@ -25,9 +22,6 @@ export const isDescriptiveModal = (type: ModalType): boolean => {
         ModalType.Descriptives,
         ModalType.Explore,
         ModalType.Frequencies,
-        ModalType.Crosstabs,
-        ModalType.Ratio,
-        ModalType.PPPlots,
-        ModalType.QQPlots
+        ModalType.Crosstabs
     ].includes(type);
 }; 

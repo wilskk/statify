@@ -15,7 +15,7 @@ import {
     PaperSize,
     SelectedOptions
 } from "../types"; // sebelumnya "../types/types"
-import { generateAutoTableDataFromString } from "../utils"; // Only this is needed from main utils
+import { generateAutoTableDataFromString } from "../print.utils"; // Only this is needed from main utils
 import {
     addDataGridView,
     addVariableView,
@@ -36,14 +36,6 @@ export const usePrintLogic = ({
 
     const { isMobile, isPortrait } = useMobile();
 
-    const dataStore = useDataStore();
-    const variableStore = useVariableStore();
-    const resultStore = useResultStore();
-    
-    const availableData: DataRow[] = useMemo(() => dataStore.data || [], [dataStore.data]);
-    const availableVariables: Variable[] = useMemo(() => variableStore.variables || [], [variableStore.variables]);
-    const logs: Log[] = useMemo(() => resultStore.logs || [], [resultStore.logs]);
-
     const resetOptions = useCallback(() => {
         setFileName("");
         setSelectedOptions({
@@ -59,6 +51,15 @@ export const usePrintLogic = ({
         setIsGenerating(true);
 
         try {
+            // Fetch latest data from stores before printing
+            await useDataStore.getState().loadData();
+            await useVariableStore.getState().loadVariables();
+            await useResultStore.getState().loadResults();
+
+            const availableData = useDataStore.getState().data;
+            const availableVariables = useVariableStore.getState().variables;
+            const logs = useResultStore.getState().logs;
+            
             const doc = new jsPDF({ format: paperSize }) as any; 
             let currentY = 10;
 
@@ -107,9 +108,6 @@ export const usePrintLogic = ({
         fileName, 
         selectedOptions, 
         paperSize, 
-        availableData, 
-        availableVariables, 
-        logs, 
         isGenerating, 
         onClose
         // generateAutoTableDataFromString is stable, no need to list as dependency if imported correctly

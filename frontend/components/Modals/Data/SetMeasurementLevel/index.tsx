@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import VariableTab from "./VariableTab";
 import { SetMeasurementLevelProps } from "./types";
 import { useSetMeasurementLevel } from "./hooks/useSetMeasurementLevel";
+import { SetMeasurementLevelUI } from "./SetMeasurementLevelUI";
 
 // Main component
 // interface SetMeasurementLevelProps {
@@ -15,34 +15,12 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({
     onClose,
     containerType = "dialog" 
 }) => {
-    const {
-        unknownVariables,
-        nominalVariables,
-        ordinalVariables,
-        scaleVariables,
-        highlightedVariable,
-        setHighlightedVariable,
-        handleMoveVariable,
-        handleReorderVariable,
-        handleSave,
-        handleReset,
-    } = useSetMeasurementLevel({ onClose });
-
-    // All state, effects, and handlers (except those passed to VariableTab) are now in the hook.
+    const hook = useSetMeasurementLevel({ onClose });
 
     return (
-        <VariableTab
+        <SetMeasurementLevelUI 
+            {...hook}
             onClose={onClose}
-            unknownVariables={unknownVariables}
-            nominalVariables={nominalVariables}
-            ordinalVariables={ordinalVariables}
-            scaleVariables={scaleVariables}
-            highlightedVariable={highlightedVariable}
-            setHighlightedVariable={setHighlightedVariable}
-            handleMoveVariable={handleMoveVariable}
-            handleReorderVariable={handleReorderVariable}
-            handleSave={handleSave}
-            handleReset={handleReset}
             containerType={containerType}
         />
     );

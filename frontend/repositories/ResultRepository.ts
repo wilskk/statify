@@ -22,12 +22,8 @@ export class ResultRepository {
 
   async saveLog(log: Log): Promise<number> {
     try {
-      if (log.id !== undefined) {
-        await db.logs.update(log.id, { log: log.log });
-        return log.id;
-      } else {
-        return await db.logs.add({ log: log.log });
-      }
+      // Use put for simplicity (add or update)
+      return await db.logs.put({ log: log.log, id: log.id });
     } catch (error) {
       console.error("Failed to save log:", error);
       throw error;
@@ -36,21 +32,8 @@ export class ResultRepository {
 
   async deleteLog(id: number): Promise<void> {
     try {
-      // First get all analytics for this log
-      const analytics = await db.analytics.where('log_id').equals(id).toArray();
-      
-      // Delete all statistics for these analytics
-      for (const analytic of analytics) {
-        if (analytic.id) {
-          await db.statistics.where('analytic_id').equals(analytic.id).delete();
-        }
-      }
-      
-      // Delete all analytics for this log
-      await db.analytics.where('log_id').equals(id).delete();
-      
-      // Finally delete the log itself
-      await db.logs.delete(id);
+      // Delegate complex transactional delete to the db layer
+      await db.deleteLogAndRelations(id);
     } catch (error) {
       console.error(`Failed to delete log with ID ${id}:`, error);
       throw error;
@@ -59,20 +42,9 @@ export class ResultRepository {
 
   async saveAnalytic(analytic: Analytic): Promise<number> {
     try {
-      if (analytic.id !== undefined) {
-        await db.analytics.update(analytic.id, {
-          log_id: analytic.log_id,
-          title: analytic.title,
-          note: analytic.note
-        });
-        return analytic.id;
-      } else {
-        return await db.analytics.add({
-          log_id: analytic.log_id,
-          title: analytic.title,
-          note: analytic.note
-        });
-      }
+      // Use put for simplicity (add or update)
+      const { statistics, ...analyticData } = analytic; // Exclude relations
+      return await db.analytics.put(analyticData);
     } catch (error) {
       console.error("Failed to save analytic:", error);
       throw error;
@@ -81,24 +53,8 @@ export class ResultRepository {
 
   async saveStatistic(statistic: Statistic): Promise<number> {
     try {
-      if (statistic.id !== undefined) {
-        await db.statistics.update(statistic.id, {
-          analytic_id: statistic.analytic_id,
-          title: statistic.title,
-          output_data: statistic.output_data,
-          components: statistic.components,
-          description: statistic.description
-        });
-        return statistic.id;
-      } else {
-        return await db.statistics.add({
-          analytic_id: statistic.analytic_id,
-          title: statistic.title,
-          output_data: statistic.output_data,
-          components: statistic.components,
-          description: statistic.description
-        });
-      }
+      // Use put for simplicity (add or update)
+      return await db.statistics.put(statistic);
     } catch (error) {
       console.error("Failed to save statistic:", error);
       throw error;
@@ -107,11 +63,14 @@ export class ResultRepository {
 
   async deleteAnalytic(id: number): Promise<void> {
     try {
-      // First delete all statistics for this analytic
-      await db.statistics.where('analytic_id').equals(id).delete();
-      
-      // Then delete the analytic itself
-      await db.analytics.delete(id);
+      // Wrap in a transaction to ensure atomicity
+      await db.transaction('rw', db.analytics, db.statistics, async () => {
+        // First delete all statistics for this analytic
+        await db.statistics.where('analyticId').equals(id).delete();
+        
+        // Then delete the analytic itself
+        await db.analytics.delete(id);
+      });
     } catch (error) {
       console.error(`Failed to delete analytic with ID ${id}:`, error);
       throw error;

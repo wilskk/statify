@@ -1,16 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useVariableStore } from '@/stores/useVariableStore';
 import { Variable } from '@/types/Variable';
 import { TargetListConfig } from '@/components/Common/VariableListManager'; // Assuming TargetListConfig is exported
 
 interface UseVariablesToScanProps {
+    initialAvailableVariables: Variable[];
     onContinue: (variables: Variable[], caseLimit: string | null, valueLimit: string | null) => void;
     // onClose is handled by the component directly, not part of this hook's core logic
 }
 
-export const useVariablesToScan = ({ onContinue }: UseVariablesToScanProps) => {
-    const { variables: storeVariables } = useVariableStore();
-
+export const useVariablesToScan = ({ initialAvailableVariables, onContinue }: UseVariablesToScanProps) => {
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [variablesToScan, setVariablesToScan] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'toScan'} | null>(null);
@@ -23,14 +21,14 @@ export const useVariablesToScan = ({ onContinue }: UseVariablesToScanProps) => {
     const [valueLimit, setValueLimit] = useState<string>("200");
 
     useEffect(() => {
-        if (storeVariables && storeVariables.length > 0) {
-            const validVars = storeVariables.filter(v => v.name !== "").map(v => ({
+        if (initialAvailableVariables && initialAvailableVariables.length > 0) {
+            const validVars = initialAvailableVariables.filter(v => v.name !== "").map(v => ({
                 ...v,
                 tempId: v.tempId || `temp_${v.columnIndex}`
             }));
             setAvailableVariables(validVars);
         }
-    }, [storeVariables]);
+    }, [initialAvailableVariables]);
 
     const moveToScan = useCallback((variable: Variable, targetIndex?: number) => {
         if (!variable.tempId) return;

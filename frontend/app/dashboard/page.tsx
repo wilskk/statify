@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FolderOpen, FilePlus, Database } from 'lucide-react';
 import { useMetaStore } from '@/stores/useMetaStore';
@@ -8,8 +8,7 @@ import { useModal, ModalType } from '@/hooks/useModal';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { DashboardLandingSkeleton } from '@/components/ui/Skeletons';
-import { ExampleDatasetModal } from '@/components/pages/dashboard/landing/ExampleDatasetModal';
-import { DashboardLanding, ResourceItem, DataAction } from '@/components/pages/dashboard/landing/DashboardLanding';
+import { DashboardLanding, ResourceItem, DataAction } from '@/app/dashboard/components/landing/DashboardLanding';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -17,7 +16,6 @@ export default function DashboardPage() {
     const { openModal } = useModal();
     const { resetData } = useDataStore();
     const { resetVariables } = useVariableStore();
-    const [isExampleDatasetModalOpen, setIsExampleDatasetModalOpen] = useState(false);
 
     useEffect(() => {
         if (metaIsLoaded && meta.name) {
@@ -58,7 +56,7 @@ export default function DashboardPage() {
             icon: <Database className="h-12 w-12 text-primary" />,
             title: 'Dataset Contoh',
             description: 'Akses berbagai dataset untuk latihan',
-            action: () => setIsExampleDatasetModalOpen(true),
+            action: () => openModal(ModalType.ExampleDataset),
             primary: false
         }
     ];
@@ -86,10 +84,6 @@ export default function DashboardPage() {
     return (
         <>
             <DashboardLanding dataActions={dataActions} resources={resources} />
-            <ExampleDatasetModal 
-                isOpen={isExampleDatasetModalOpen}
-                onClose={() => setIsExampleDatasetModalOpen(false)}
-            />
         </>
     );
 }

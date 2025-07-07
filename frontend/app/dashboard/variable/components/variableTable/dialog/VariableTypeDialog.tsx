@@ -43,7 +43,7 @@ interface VariableTypeDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSave: (type: VariableType, width: number, decimals: number) => void;
-    initialType: VariableType;
+    initialType?: VariableType;
     initialWidth: number;
     initialDecimals: number;
 }
@@ -52,7 +52,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
     open,
     onOpenChange,
     onSave,
-    initialType,
+    initialType = "NUMERIC",
     initialWidth,
     initialDecimals
 }) => {

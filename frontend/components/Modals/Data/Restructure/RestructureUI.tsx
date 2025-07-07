@@ -14,7 +14,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon, Database, RotateCcw, ArrowRightLeft, AlertTriangle, HelpCircle } from "lucide-react";
 import { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
-import { RestructureMethod, UseRestructureReturn } from "./useRestructure";
+import { RestructureMethod } from "./types";
+import { UseRestructureReturn } from "./hooks/useRestructure";
 
 interface RestructureUIProps {
     hook: UseRestructureReturn;
@@ -183,7 +184,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                                                 type="radio"
                                                 checked={method === RestructureMethod.VariablesToCases}
                                                 onChange={() => setMethod(RestructureMethod.VariablesToCases)}
-                                                className="mt-1"
+                                                className="mt-1 accent-primary"
                                             />
                                             <div className="flex-1">
                                                 <div className="font-medium">Variables to Cases</div>
@@ -212,7 +213,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                                                 type="radio"
                                                 checked={method === RestructureMethod.CasesToVariables}
                                                 onChange={() => setMethod(RestructureMethod.CasesToVariables)}
-                                                className="mt-1"
+                                                className="mt-1 accent-primary"
                                             />
                                             <div className="flex-1">
                                                 <div className="font-medium">Cases to Variables</div>
@@ -241,7 +242,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                                                 type="radio"
                                                 checked={method === RestructureMethod.TransposeAllData}
                                                 onChange={() => setMethod(RestructureMethod.TransposeAllData)}
-                                                className="mt-1"
+                                                className="mt-1 accent-primary"
                                             />
                                             <div className="flex-1">
                                                 <div className="font-medium">Transpose All Data</div>
@@ -336,7 +337,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                                                 id="createCount"
                                                 checked={createCount}
                                                 onChange={(e) => setCreateCount(e.target.checked)}
-                                                className="rounded"
+                                                className="rounded accent-primary"
                                             />
                                             <Label htmlFor="createCount" className="text-sm">
                                                 Create count variable
@@ -352,7 +353,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                                                 id="createIndex"
                                                 checked={createIndex}
                                                 onChange={(e) => setCreateIndex(e.target.checked)}
-                                                className="rounded"
+                                                className="rounded accent-primary"
                                             />
                                             <Label htmlFor="createIndex" className="text-sm">
                                                 Create index variable
@@ -372,7 +373,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                                                 id="dropEmptyVariables"
                                                 checked={dropEmptyVariables}
                                                 onChange={(e) => setDropEmptyVariables(e.target.checked)}
-                                                className="rounded"
+                                                className="rounded accent-primary"
                                             />
                                             <Label htmlFor="dropEmptyVariables" className="text-sm">
                                                 Drop empty variables

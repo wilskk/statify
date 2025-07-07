@@ -2,6 +2,7 @@ import React from 'react';
 import type { Variable } from "@/types/Variable";
 import type { TourStep } from './hooks/useTourGuide';
 import type { Dispatch, SetStateAction } from 'react';
+import { useUnusualCases } from './hooks/useUnusualCases';
 
 export type TabType = 'variables' | 'options' | 'output' | 'save' | 'missing';
 
@@ -9,6 +10,8 @@ export interface IdentifyUnusualCasesProps {
     onClose: () => void;
     containerType?: "dialog" | "sidebar";
 }
+
+export type UnusualCasesHook = ReturnType<typeof useUnusualCases>;
 
 // From VariablesTab.tsx
 export type UnusualCasesSource = 'available' | 'analysis' | 'identifier';
@@ -19,63 +22,41 @@ interface TourTabProps {
     tourSteps?: TourStep[];
 }
 
-export interface VariablesTabProps extends TourTabProps {
-    availableVariables: Variable[];
-    analysisVariables: Variable[];
-    caseIdentifierVariable: Variable | null;
-    highlightedVariable: { tempId: string, source: UnusualCasesSource } | null;
-    setHighlightedVariable: Dispatch<SetStateAction<{ tempId: string, source: UnusualCasesSource } | null>>;
-    moveToAvailableVariables: (variable: Variable, source: 'analysis' | 'identifier', targetIndex?: number) => void;
-    moveToAnalysisVariables: (variable: Variable, targetIndex?: number) => void;
-    moveToCaseIdentifierVariable: (variable: Variable) => void;
-    reorderVariables: (source: 'analysis', variables: Variable[]) => void;
-    errorMsg: string | null;
+export type VariablesTabProps = Pick<UnusualCasesHook, 
+    | "availableVariables" | "analysisVariables" | "caseIdentifierVariable" 
+    | "highlightedVariable" | "setHighlightedVariable" | "moveToAvailableVariables" 
+    | "moveToAnalysisVariables" | "moveToCaseIdentifierVariable" | "reorderVariables" | "errorMsg"
+> & {
     getVariableIcon: (variable: Variable) => React.JSX.Element;
     getDisplayName: (variable: Variable) => string;
-}
+} & TourTabProps;
+
 
 // From OutputTab.tsx
-export interface OutputTabProps extends TourTabProps {
-    showUnusualCasesList: boolean;
-    setShowUnusualCasesList: (value: boolean) => void;
-    peerGroupNorms: boolean;
-    setPeerGroupNorms: (value: boolean) => void;
-    anomalyIndices: boolean;
-    setAnomalyIndices: (value: boolean) => void;
-    reasonOccurrence: boolean;
-    setReasonOccurrence: (value: boolean) => void;
-    caseProcessed: boolean;
-    setCaseProcessed: (value: boolean) => void;
-}
+export type OutputTabProps = Pick<UnusualCasesHook,
+    | "showUnusualCasesList" | "setShowUnusualCasesList" | "peerGroupNorms" 
+    | "setPeerGroupNorms" | "anomalyIndices" | "setAnomalyIndices" 
+    | "reasonOccurrence" | "setReasonOccurrence" | "caseProcessed" | "setCaseProcessed"
+> & TourTabProps;
 
 // From SaveTab.tsx
-export interface SaveTabProps extends TourTabProps {
-    saveAnomalyIndex: boolean;
-    setSaveAnomalyIndex: (value: boolean) => void;
-    anomalyIndexName: string;
-    setAnomalyIndexName: (value: string) => void;
-    replaceExisting: boolean;
-    setReplaceExisting: (value: boolean) => void;
-}
+export type SaveTabProps = Pick<UnusualCasesHook,
+    | "saveAnomalyIndex" | "setSaveAnomalyIndex" | "anomalyIndexName" 
+    | "setAnomalyIndexName" | "savePeerGroups" | "setSavePeerGroups"
+    | "saveReasons" | "setSaveReasons" | "replaceExisting" | "setReplaceExisting"
+> & TourTabProps;
+
 
 // From MissingValuesTab.tsx
-export interface MissingValuesTabProps extends TourTabProps {
-    missingValuesOption: string;
-    setMissingValuesOption: (value: string) => void;
-    useProportionMissing: boolean;
-    setUseProportionMissing: (value: boolean) => void;
-}
+export type MissingValuesTabProps = Pick<UnusualCasesHook,
+    | "missingValuesOption" | "setMissingValuesOption" | "useProportionMissing" | "setUseProportionMissing"
+> & TourTabProps;
+
 
 // From OptionsTab.tsx
-export interface OptionsTabProps extends TourTabProps {
-    identificationCriteria: string;
-    setIdentificationCriteria: (value: string) => void;
-    percentageValue: string;
-    setPercentageValue: (value: string) => void;
-    fixedNumber: string;
-    setFixedNumber: (value: string) => void;
-    useMinimumValue: boolean;
-    setUseMinimumValue: (value: boolean) => void;
-    cutoffValue: string;
-    setCutoffValue: (value: string) => void;
-} 
+export type OptionsTabProps = Pick<UnusualCasesHook,
+    | "identificationCriteria" | "setIdentificationCriteria" | "percentageValue" | "setPercentageValue"
+    | "fixedNumber" | "setFixedNumber" | "useMinimumValue" | "setUseMinimumValue"
+    | "cutoffValue" | "setCutoffValue" | "minPeerGroups" | "setMinPeerGroups"
+    | "maxPeerGroups" | "setMaxPeerGroups" | "maxReasons" | "setMaxReasons"
+> & TourTabProps; 

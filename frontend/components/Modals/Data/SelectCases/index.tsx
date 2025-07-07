@@ -5,6 +5,8 @@ import {
     Dialog,
     DialogContent,
     DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +59,22 @@ const SelectCasesContent: FC<{
         setSelectOption,
         isProcessing
     } = useSelectCases();
+
+    // Side-effect: listen to custom events for sidebar footer buttons
+    React.useEffect(() => {
+        const handleOk = () => {
+            if (!isProcessing) handleConfirm();
+        };
+        const handleResetEvent = () => {
+            if (!isProcessing) handleReset();
+        };
+        document.addEventListener('selectCasesOk', handleOk);
+        document.addEventListener('selectCasesReset', handleResetEvent);
+        return () => {
+            document.removeEventListener('selectCasesOk', handleOk);
+            document.removeEventListener('selectCasesReset', handleResetEvent);
+        };
+    }, [isProcessing, handleConfirm, handleReset]);
 
     const handleHelp = () => {
         console.log("Help requested");
@@ -262,25 +280,30 @@ const SelectCasesContent: FC<{
                 </div>
             </div>
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                {/* Left: Help icon */}
-                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <HelpCircle size={18} className="mr-1" />
+            {containerType === 'dialog' && (
+                <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                    {/* Left: Help icon */}
+                    <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                        <HelpCircle size={18} className="mr-1" />
+                    </div>
+                    {/* Right: Buttons */}
+                    <div className="flex items-center gap-2">
+                        {isProcessing && <span className="text-xs text-muted-foreground mr-2">Processing...</span>}
+                        <Button variant="outline" className="mr-2" onClick={handleReset} disabled={isProcessing}>Reset</Button>
+                        <Button variant="outline" className="mr-2" onClick={onClose} disabled={isProcessing}>Cancel</Button>
+                        <Button onClick={handleConfirm} disabled={isProcessing}>
+                            {isProcessing ? "Processing..." : "OK"}
+                        </Button>
+                    </div>
                 </div>
-                {/* Right: Buttons */}
-                <div className="flex items-center gap-2">
-                    {isProcessing && <span className="text-xs text-muted-foreground mr-2">Processing...</span>}
-                    <Button variant="outline" className="mr-2" onClick={handleReset} disabled={isProcessing}>Reset</Button>
-                    <Button variant="outline" className="mr-2" onClick={onClose} disabled={isProcessing}>Cancel</Button>
-                    <Button onClick={handleConfirm} disabled={isProcessing}>
-                        {isProcessing ? "Processing..." : "OK"}
-                    </Button>
-                </div>
-            </div>
+            )}
 
             {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
                 <DialogContent className="max-w-[400px] p-6 bg-popover border border-border shadow-md rounded-md">
+                    <DialogHeader>
+                        <DialogTitle>Action Cannot Be Completed</DialogTitle>
+                    </DialogHeader>
                     <div className="flex gap-4 items-start">
                         <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-popover-foreground">{errorMessage}</p>
@@ -336,12 +359,29 @@ const SelectCases: FC<{
     onClose: () => void;
     containerType?: "dialog" | "sidebar";
 }> = ({ onClose, containerType = "dialog" }) => {
-    // If sidebar mode, use a div container
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
-                <div className="flex-grow flex flex-col overflow-hidden">
+                <div className="flex-grow overflow-auto">
                     <SelectCasesContent onClose={onClose} containerType={containerType} />
+                </div>
+                {/* Footer for sidebar */}
+                <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary shrink-0">
+                    <div className="flex items-center text-muted-foreground">
+                        <HelpCircle size={18} className="mr-1" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" className="mr-2"
+                            onClick={() => document.dispatchEvent(new CustomEvent('selectCasesReset'))}>
+                            Reset
+                        </Button>
+                        <Button variant="outline" className="mr-2" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button onClick={() => document.dispatchEvent(new CustomEvent('selectCasesOk'))}>
+                            OK
+                        </Button>
+                    </div>
                 </div>
             </div>
         );
