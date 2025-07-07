@@ -34,6 +34,8 @@ export function transformKMeansResult(
                 },
             ],
             rows: [],
+            note: data.initial_centers.note,
+            interpretation: data.initial_centers.interpretation,
         };
 
         // Fill data rows
@@ -76,6 +78,8 @@ export function transformKMeansResult(
                 },
             ],
             rows: [],
+            note: data.iteration_history.note,
+            interpretation: data.iteration_history.interpretation,
         };
 
         // Fill data rows
@@ -126,6 +130,8 @@ export function transformKMeansResult(
             title: "Cluster Membership",
             columnHeaders,
             rows: [],
+            note: data.cluster_membership.note,
+            interpretation: data.cluster_membership.interpretation,
         };
 
         // Fill data rows
@@ -171,6 +177,8 @@ export function transformKMeansResult(
                 },
             ],
             rows: [],
+            note: data.final_cluster_centers.note,
+            interpretation: data.final_cluster_centers.interpretation,
         };
 
         // Fill data rows
@@ -204,6 +212,8 @@ export function transformKMeansResult(
                 })),
             ],
             rows: [],
+            note: data.distances_between_centers.note,
+            interpretation: data.distances_between_centers.interpretation,
         };
 
         // Fill data rows
@@ -252,6 +262,8 @@ export function transformKMeansResult(
                 { header: "Sig.", key: "significance" },
             ],
             rows: [],
+            note: data.anova.note,
+            interpretation: data.anova.interpretation,
         };
 
         // Fill data rows
@@ -290,6 +302,8 @@ export function transformKMeansResult(
                 { header: "", key: "total" },
             ],
             rows: [],
+            note: data.cases_count.note,
+            interpretation: data.cases_count.interpretation,
         };
 
         data.cases_count.clusters.forEach((cluster: any, index: number) => {
@@ -339,8 +353,8 @@ export function transformKMeansResult(
                     y: plot.y_label,
                     category: "Cluster",
                 },
-                description: `Scatter plot of ${plot.y_label} vs ${plot.x_label}, grouped by cluster.`,
-                notes: null,
+                description: plot.interpretation,
+                notes: `Scatter plot of ${plot.y_label} vs ${plot.x_label}, grouped by cluster.`,
                 title: "Cluster Plot",
                 subtitle: `${plot.y_label} vs ${plot.x_label}`,
             },

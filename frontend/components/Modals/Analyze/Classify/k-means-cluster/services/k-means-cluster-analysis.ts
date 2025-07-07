@@ -60,9 +60,9 @@ export async function analyzeKMeansCluster({
     /*
      * 🎉 Final Result Process 🎯
      * */
-    // await resultKMeans({
-    //     formattedResult: formattedResults ?? [],
-    //     configData,
-    //     variables,
-    // });
+    await resultKMeans({
+        formattedResult: formattedResults ?? [],
+        configData,
+        variables,
+    });
 }
