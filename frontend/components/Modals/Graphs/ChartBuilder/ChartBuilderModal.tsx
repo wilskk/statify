@@ -772,8 +772,8 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
           <ChartPreview
             ref={chartPreviewRef}
             chartType={chartType}
-            width={480}
-            height={280}
+            width={600}
+            height={370}
             useaxis={true}
             sideVariables={sideVariables}
             side2Variables={side2Variables}

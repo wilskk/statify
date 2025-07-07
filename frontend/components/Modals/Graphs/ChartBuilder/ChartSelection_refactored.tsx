@@ -19,15 +19,6 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
 
   useEffect(() => {
     if (chartContainerRef.current) {
-      // Cleanup any existing 3D charts first
-      const existingContainer = chartContainerRef.current.firstChild as any;
-      if (
-        existingContainer &&
-        typeof existingContainer.cleanup === "function"
-      ) {
-        existingContainer.cleanup();
-      }
-
       chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
 
       const data1 = [
@@ -826,18 +817,6 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
       }
     }
   }, [chartType, width, height, useaxis]);
-
-  // Cleanup WebGL contexts on unmount
-  useEffect(() => {
-    return () => {
-      if (chartContainerRef.current) {
-        const container = chartContainerRef.current.firstChild as any;
-        if (container && typeof container.cleanup === "function") {
-          container.cleanup();
-        }
-      }
-    };
-  }, []);
 
   return (
     <div

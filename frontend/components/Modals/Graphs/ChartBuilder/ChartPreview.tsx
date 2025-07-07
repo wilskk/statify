@@ -194,16 +194,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
     const variables = useVariableStore.getState().variables;
 
-    function is3DChart(type: string) {
-      return [
-        "3D Bar Chart2",
-        "Clustered 3D Bar Chart",
-        "Stacked 3D Bar Chart",
-        "3D Scatter Plot",
-        "Grouped 3D Scatter Plot",
-      ].includes(type);
-    }
-
     // Function to generate chart JSON using DataProcessingService + ChartService
     const generateChartJSON = useCallback(() => {
       // Check if we have basic data
@@ -401,31 +391,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             bottom2Variables.length > 0
           );
 
-        case "Candlestick Chart":
-          // Need low, high, close (and optionally open)
-          return (
-            lowVariables.length > 0 &&
-            highVariables.length > 0 &&
-            closeVariables.length > 0
-          );
-
-        case "Range Chart":
-          // Need low and high
-          return lowVariables.length > 0 && highVariables.length > 0;
-
-        case "Pie Chart":
-        case "Doughnut Chart":
-          // Need at least one variable (could be side or bottom)
-          return sideVariables.length > 0 || bottomVariables.length > 0;
-
-        case "Heatmap":
-          // Need X, Y, and value
-          return bottomVariables.length > 0 && sideVariables.length > 0;
-
-        case "Dual Axis Chart":
-          // Need primary Y and secondary Y
-          return sideVariables.length > 0 && side2Variables.length > 0;
-
         default:
           // Default: need at least one variable
           return (
@@ -443,9 +408,9 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       generateChartJSON();
     }, [generateChartJSON]);
 
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [isCalculating, setIsCalculating] = useState(false);
-    const svgRef = useRef<SVGSVGElement | null>(null);
+    // const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    // const [isCalculating, setIsCalculating] = useState(false);
+    // const svgRef = useRef<SVGSVGElement | null>(null);
     const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
     const [modalState, setModalState] = useState<{
@@ -1107,7 +1072,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             subtitle,
             titleColor: "hsl(var(--foreground))",
             subtitleColor: "hsl(var(--muted-foreground))",
-            titleFontSize: 14,
+            titleFontSize: 18,
             subtitleFontSize: 10,
           },
           axisConfig: {
@@ -1257,6 +1222,9 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       [createChartConfig, processedResult.data]
     );
 
+    // This is a refactored version of the chart rendering logic
+    // Combining two separate switch statements into one unified switch statement
+
     useEffect(() => {
       console.log("🎨 Chart rendering useEffect triggered:", {
         chartType,
@@ -1268,13 +1236,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         }),
       });
 
-      if (svgRef.current) {
-        const svg = d3.select(svgRef.current);
+      if (chartContainerRef.current) {
+        chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+        chartContainerRef.current.id = "chart-container"; // Pastikan ada ID
+        let chartNode = null;
+        const svg = d3.select(chartContainerRef.current);
         svg.selectAll("*").remove();
 
-        let chartNode = null;
-
+        // UNIFIED SWITCH STATEMENT - All chart types in one place
         switch (chartType) {
+          // === REGULAR 2D CHARTS ===
           case "Vertical Bar Chart": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
@@ -1426,10 +1397,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Histogram": {
+          case "Stacked Area Chart": {
             const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-            chartNode = chartUtils.createHistogram(
+            const config = createStackedChartConfig(chartType, isDefault);
+
+            chartNode = chartUtils.createStackedAreaChart(
               config.data,
               width,
               height,
@@ -1442,6 +1414,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
+          // === SCATTER PLOTS ===
           case "Scatter Plot": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
@@ -1474,56 +1447,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Boxplot": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-            chartNode = chartUtils.createBoxplot(
-              config.data,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
-          case "Error Bar Chart": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createErrorBarChartConfig(chartType, isDefault);
-
-            chartNode = chartUtils.createErrorBarChart(
-              config.data,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
-          case "Stacked Area Chart": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createStackedChartConfig(chartType, isDefault);
-
-            chartNode = chartUtils.createStackedAreaChart(
-              config.data,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
           case "Grouped Scatter Plot": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
@@ -1541,6 +1464,159 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
+          case "Scatter Plot Matrix": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+            chartNode = chartUtils.createScatterPlotMatrix(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              chartColors
+            );
+            break;
+          }
+
+          // === STATISTICAL CHARTS ===
+          case "Histogram": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+            chartNode = chartUtils.createHistogram(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "Stacked Histogram": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createStackedChartConfig(chartType, isDefault);
+
+            chartNode = chartUtils.createStackedHistogram(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "Boxplot": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+            chartNode = chartUtils.createBoxplot(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "Clustered Boxplot": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+            chartNode = chartUtils.createClusteredBoxplot(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "1-D Boxplot": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+            chartNode = chartUtils.create1DBoxplot(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "Violin Plot": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+            chartNode = chartUtils.createViolinPlot(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          // === ERROR BAR CHARTS ===
+          case "Error Bar Chart": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createErrorBarChartConfig(chartType, isDefault);
+
+            chartNode = chartUtils.createErrorBarChart(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "Clustered Error Bar Chart": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createClusteredErrorBarChartConfig(
+              chartType,
+              isDefault
+            );
+
+            console.log("config.data", config.data);
+
+            chartNode = chartUtils.createClusteredErrorBarChart(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          // === SPECIALIZED CHARTS ===
           case "Dot Plot": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
@@ -1591,16 +1667,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Clustered Error Bar Chart": {
+          case "Drop Line Chart": {
             const isDefault = processedResult.data.length === 0;
-            const config = createClusteredErrorBarChartConfig(
-              chartType,
-              isDefault
-            );
+            const config = createChartConfig(chartType, isDefault);
 
-            console.log("config.data", config.data);
-
-            chartNode = chartUtils.createClusteredErrorBarChart(
+            chartNode = chartUtils.createDropLineChart(
               config.data,
               width,
               height,
@@ -1613,41 +1684,38 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Scatter Plot Matrix": {
+          case "Summary Point Plot": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
-            chartNode = chartUtils.createScatterPlotMatrix(
+            const statistics = selectedStatistic || "mean";
+
+            console.log("🔄 Summary Point Plot rendering:", {
+              selectedStatistic,
+              statistics,
+              isDefault,
+              dataLength: config.data.length,
+              data: config.data,
+            });
+
+            chartNode = chartUtils.createSummaryPointPlot(
               config.data,
               width,
               height,
               useaxis,
+              statistics,
               config.titleConfig,
               config.axisConfig,
+              config.scaleConfig,
               chartColors
             );
             break;
           }
 
-          case "Stacked Histogram": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createStackedChartConfig(chartType, isDefault);
-
-            chartNode = chartUtils.createStackedHistogram(
-              config.data,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              chartColors
-            );
-            break;
-          }
-
-          case "Frequency Polygon": {
+          case "Stem And Leaf Plot": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
-            chartNode = chartUtils.createFrequencyPolygon(
+
+            chartNode = chartUtils.createStemAndLeafPlot(
               config.data,
               width,
               height,
@@ -1660,11 +1728,20 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Clustered Boxplot": {
+          case "Density Chart": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
-            chartNode = chartUtils.createClusteredBoxplot(
-              config.data,
+
+            // Convert config.data to array of numbers for density chart
+            const densityData =
+              Array.isArray(config.data) && config.data.length > 0
+                ? config.data
+                    .map((d) => (typeof d === "number" ? d : d.value))
+                    .filter((v) => !isNaN(v))
+                : config.data;
+
+            chartNode = chartUtils.createDensityChart(
+              densityData,
               width,
               height,
               useaxis,
@@ -1676,22 +1753,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "1-D Boxplot": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-            chartNode = chartUtils.create1DBoxplot(
-              config.data,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
+          // === RANGE CHARTS ===
           case "Simple Range Bar": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
@@ -1759,6 +1821,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
+          // === DUAL AXIS CHARTS ===
           case "Vertical Bar & Line Chart": {
             const isDefault = processedResult.data.length === 0;
             const config = createDualAxisChartConfig(chartType, isDefault);
@@ -1794,7 +1857,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Dual Axes Scatter Plot":
+          case "Dual Axes Scatter Plot": {
             const dualAxisScatterConfig = createDualAxisChartConfig(chartType);
             const dualAxesScatterPlotData =
               processedResult.data.length === 0
@@ -1820,153 +1883,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               dualAxisScatterConfig.scaleConfig,
               chartColors
             );
-
-            break;
-
-          case "Drop Line Chart": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-
-            chartNode = chartUtils.createDropLineChart(
-              config.data,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
             break;
           }
 
-          case "Summary Point Plot": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-            const statistics = selectedStatistic || "mean";
-
-            console.log("🔄 Summary Point Plot rendering:", {
-              selectedStatistic,
-              statistics,
-              isDefault,
-              dataLength: config.data.length,
-              data: config.data,
-            });
-
-            chartNode = chartUtils.createSummaryPointPlot(
-              config.data,
-              width,
-              height,
-              useaxis,
-              statistics,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
-          case "Stem And Leaf Plot": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-
-            chartNode = chartUtils.createStemAndLeafPlot(
-              config.data,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
-          case "Violin Plot": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-            chartNode = chartUtils.createViolinPlot(
-              config.data,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
-          case "Density Chart": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-
-            // Convert config.data to array of numbers for density chart
-            const densityData =
-              Array.isArray(config.data) && config.data.length > 0
-                ? config.data
-                    .map((d) => (typeof d === "number" ? d : d.value))
-                    .filter((v) => !isNaN(v))
-                : config.data;
-
-            chartNode = chartUtils.createDensityChart(
-              densityData,
-              width,
-              height,
-              useaxis,
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
-          default:
-            console.error("Unknown chart type:", chartType);
-            break;
-        }
-
-        // Jika chartNode valid, append ke svgRef
-        if (chartNode && svgRef.current) {
-          console.log("chartContainerRef.current:", svgRef.current);
-          svgRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
-          console.log("chartContainerRef.current:", svgRef.current);
-          console.log("chart:", chartNode);
-        }
-      }
-      if (chartContainerRef.current) {
-        chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-        chartContainerRef.current.id = "chart-container"; // Pastikan ada ID
-        let chartNode = null;
-
-        switch (chartType) {
-          // case "3D Bar Chart":
-          //   chartUtils.create3DBarChart(
-          //     "chart-container", // Pakai ID container
-          //     processedResult.data.length === 0
-          //       ? [
-          //           { x: "A", y: "D", z: 50 },
-          //           { x: "B", y: "E", z: 100 },
-          //           { x: "C", y: "G", z: 180 },
-          //           { x: "D", y: "M", z: 60 },
-          //           { x: "E", y: "O", z: 30 },
-          //           { x: "F", y: "G", z: 50 },
-          //         ]
-          //       : [],
-          //     useaxis
-          //   );
-          //   console.log(
-          //     "ECharts GL status:",
-          //     echarts.getInstanceByDom(chartContainerRef.current)
-          //   );
-
-          //   break;
-
-          case "3D Bar Chart2":
+          // === 3D CHARTS ===
+          case "3D Bar Chart2": {
             // Buat elemen chart
             const d3BarChartData =
               processedResult.data.length === 0
@@ -1992,7 +1913,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                       d.category && Number(d.category) !== 0
                         ? Number(d.category)
                         : Number(d.bottom_0) || 0,
-
                     y: Number(d.value) || 0,
                     z: Number(d.bottom2_0) || 0,
                   }));
@@ -2002,66 +1922,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               width,
               height
             );
-
-            // Tambahkan chart ke dalam container
-            chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-            chartContainerRef.current.appendChild(chartNode);
-            console.log("chartNode:", chartNode);
-            console.log(
-              "chartContainerRef.current:",
-              chartContainerRef.current
-            );
-
             break;
+          }
 
-          // case "3D Bar Chart3":
-          //   // Advanced 3D Bar Chart dengan Three.js dan D3.js
-          //   const advanced3DBarData =
-          //     processedResult.data.length === 0
-          //       ? threeDChartUtils.createDemo3DBarData() // Gunakan demo data
-          //       : processedResult.data
-          //           .filter((d) => d.category && d.value !== undefined)
-          //           .map((d) => ({
-          //             x: String(d.category || d.bottom_0 || "Unknown"),
-          //             y: Number(d.value) || 0,
-          //             z: String(d.color || d.bottom2_0 || "Default"),
-          //             category: String(d.color || "default"),
-          //             color: d.color ? undefined : "#1f77b4", // Let color scale handle if no custom color
-          //           }));
-
-          //   const chartConfig = {
-          //     width: width,
-          //     height: height,
-          //     enableOrbitControls: true,
-          //     showGrid: true,
-          //     showAxes: true,
-          //     backgroundColor: "#f8f9fa",
-          //     cameraPosition: { x: 20, y: 20, z: 20 },
-          //     axisLabels: {
-          //       x: xAxisLabel || processedResult.axisInfo?.x || "X Axis",
-          //       y: yAxisLabel || processedResult.axisInfo?.y || "Y Axis",
-          //       z: processedResult.axisInfo?.z || "Z Axis",
-          //     },
-          //   };
-
-          //   chartNode = threeDChartUtils.createAdvanced3DBarChart(
-          //     advanced3DBarData,
-          //     chartConfig
-          //   );
-
-          //   // Tambahkan chart ke dalam container
-          //   chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-          //   chartContainerRef.current.appendChild(chartNode);
-
-          //   console.log("🎨 Advanced 3D Bar Chart rendered:", {
-          //     dataLength: advanced3DBarData.length,
-          //     config: chartConfig,
-          //     chartNode: chartNode,
-          //   });
-
-          //   break;
-
-          case "3D Scatter Plot":
+          case "3D Scatter Plot": {
             // Buat elemen chart
             const d3ScatterPlotData =
               processedResult.data.length === 0
@@ -2087,7 +1951,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                       d.category && Number(d.category) !== 0
                         ? Number(d.category)
                         : Number(d.bottom_0) || 0,
-
                     y: Number(d.value) || 0,
                     z: Number(d.bottom2_0) || 0,
                   }));
@@ -2097,19 +1960,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               width,
               height
             );
-
-            // Tambahkan chart ke dalam container
-            chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-            chartContainerRef.current.appendChild(chartNode);
-            console.log("chartNode:", chartNode);
-            console.log(
-              "chartContainerRef.current:",
-              chartContainerRef.current
-            );
-
             break;
+          }
 
-          case "Grouped 3D Scatter Plot":
+          case "Grouped 3D Scatter Plot": {
             // Buat elemen chart
             const d3GroupedScatterPlotData =
               processedResult.data.length === 0
@@ -2133,7 +1987,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                         d.category && Number(d.category) !== 0
                           ? Number(d.category)
                           : Number(d.bottom_0) || 0,
-
                       y: Number(d.value) || 0,
                       z: Number(d.bottom2_0) || 0,
                       category: String(d.color || "unknown"),
@@ -2144,53 +1997,37 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               width,
               height
             );
-
-            // Tambahkan chart ke dalam container
-            chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-            chartContainerRef.current.appendChild(chartNode);
-            console.log("chartNode:", chartNode);
-            console.log(
-              "chartContainerRef.current:",
-              chartContainerRef.current
-            );
-
             break;
+          }
 
-          case "Clustered 3D Bar Chart":
+          case "Clustered 3D Bar Chart": {
             // Buat elemen chart
             const d3ClusteredBarChartData =
               processedResult.data.length === 0
                 ? [
                     { x: 1, z: 1, y: 6, category: "A" },
-
                     { x: 2, z: 1, y: 7, category: "A" },
                     { x: 2, z: 1, y: 6, category: "B" },
                     { x: 2, z: 1, y: 5, category: "C" },
                     { x: 2, z: 1, y: 6, category: "D" },
-
                     { x: 6, z: 4, y: 7, category: "A" },
                     { x: 6, z: 4, y: 6, category: "B" },
                     { x: 6, z: 4, y: 5, category: "C" },
                     { x: 6, z: 4, y: 6, category: "D" },
-
                     { x: 4, z: 7, y: 5, category: "A" },
-
                     { x: -4, z: 6, y: 3, category: "A" },
                     { x: -4, z: 6, y: 6, category: "B" },
                     { x: -4, z: 6, y: 7, category: "C" },
                     { x: -4, z: 6, y: 1, category: "D" },
                     { x: -4, z: 6, y: 4, category: "E" },
-
                     { x: -9, z: 8, y: 4, category: "A" },
                     { x: -9, z: 8, y: 6, category: "B" },
                     { x: -9, z: 8, y: 2, category: "E" },
-
                     { x: 8, z: -6, y: 3, category: "A" },
                     { x: 8, z: -6, y: 4, category: "B" },
                     { x: 8, z: -6, y: 9, category: "C" },
                     { x: 8, z: -6, y: 2, category: "D" },
                     { x: 8, z: -6, y: 5, category: "E" },
-
                     { x: -8, z: -2, y: 3, category: "A" },
                     { x: -8, z: -2, y: 6, category: "B" },
                     { x: -8, z: -2, y: 3, category: "C" },
@@ -2204,7 +2041,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                         d.category && Number(d.category) !== 0
                           ? Number(d.category)
                           : Number(d.bottom_0) || 0,
-
                       y: Number(d.value) || 0,
                       z: Number(d.bottom2_0) || 0,
                       category: String(d.color || "unknown"),
@@ -2215,53 +2051,37 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               width,
               height
             );
-
-            // Tambahkan chart ke dalam container
-            chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-            chartContainerRef.current.appendChild(chartNode);
-            console.log("chartNode:", chartNode);
-            console.log(
-              "chartContainerRef.current:",
-              chartContainerRef.current
-            );
-
             break;
+          }
 
-          case "Stacked 3D Bar Chart":
+          case "Stacked 3D Bar Chart": {
             // Buat elemen chart
             const d3StackedBarChartData =
               processedResult.data.length === 0
                 ? [
                     { x: 1, z: 1, y: 6, category: "A" },
-
                     { x: 2, z: 6, y: 2, category: "A" },
                     { x: 2, z: 6, y: 3, category: "B" },
                     { x: 2, z: 6, y: 2, category: "C" },
                     { x: 2, z: 6, y: 1, category: "D" },
-
                     { x: 5, z: 4, y: 1, category: "A" },
                     { x: 5, z: 4, y: 2, category: "B" },
                     { x: 5, z: 4, y: 3, category: "C" },
                     { x: 5, z: 4, y: 1, category: "D" },
-
                     { x: 9, z: 7, y: 7, category: "A" },
-
                     { x: -4, z: 6, y: 3, category: "A" },
                     { x: -4, z: 6, y: 1, category: "B" },
                     { x: -4, z: 6, y: 2, category: "C" },
                     { x: -4, z: 6, y: 2, category: "D" },
                     { x: -4, z: 6, y: 1, category: "E" },
-
                     { x: -9, z: 8, y: 1, category: "A" },
                     { x: -9, z: 8, y: 2, category: "B" },
                     { x: -9, z: 8, y: 2, category: "E" },
-
                     { x: 8, z: -6, y: 3, category: "A" },
                     { x: 8, z: -6, y: 2, category: "B" },
                     { x: 8, z: -6, y: 1, category: "C" },
                     { x: 8, z: -6, y: 2, category: "D" },
                     { x: 8, z: -6, y: 2, category: "E" },
-
                     { x: -8, z: -2, y: 3, category: "A" },
                     { x: -8, z: -2, y: 2, category: "B" },
                     { x: -8, z: -2, y: 3, category: "C" },
@@ -2275,7 +2095,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                         d.category && Number(d.category) !== 0
                           ? Number(d.category)
                           : Number(d.bottom_0) || 0,
-
                       y: Number(d.value) || 0,
                       z: Number(d.bottom2_0) || 0,
                       category: String(d.color || "unknown"),
@@ -2286,57 +2105,25 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               width,
               height
             );
-
-            // Tambahkan chart ke dalam container
-            chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-            chartContainerRef.current.appendChild(chartNode);
-            console.log("chartNode:", chartNode);
-            console.log(
-              "chartContainerRef.current:",
-              chartContainerRef.current
-            );
-
             break;
+          }
 
-          // case "Bar2":
-          //   chartUtils.createBarChart(
-          //     "chart-container",
-          //     processedResult.data.length === 0
-          //       ? [
-          //           { category: "A", value: 30 },
-          //           { category: "B", value: 80 },
-          //           { category: "C", value: 45 },
-          //           { category: "D", value: 60 },
-          //           { category: "E", value: 20 },
-          //           { category: "F", value: 90 },
-          //         ]
-          //       : processedResult.data
-          //   );
-          //   break;
+          // === DEFAULT CASE ===
+          default:
+            console.error("Unknown chart type:", chartType);
+            break;
         }
 
-        // setTimeout(() => {
-        //   const chart = echarts.init(
-        //     document.getElementById("chart-container")!,
-        //     undefined,
-        //     {
-        //       width,
-        //       height,
-        //     }
-        //   );
-        //   chart.resize(); // 🔥 Paksa resize setelah render
-        // }, 100);
-
-        // window.addEventListener("resize", handleResize);
-        // return () => {
-        //   window.removeEventListener("resize", handleResize);
-        //   const instance = echarts.getInstanceByDom(chartContainerRef.current);
-        //   if (instance) {
-        //     instance.dispose();
-        //   }
-        // };
+        // Jika chartNode valid, append ke svgRef
+        if (chartNode && chartContainerRef.current) {
+          console.log("chartContainerRef.current:", chartContainerRef.current);
+          chartContainerRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
+          console.log("chartContainerRef.current:", chartContainerRef.current);
+          console.log("chart:", chartNode);
+        }
       }
     }, [
+      // Dependencies array remains the same
       chartType,
       sideVariables,
       side2Variables,
@@ -2966,48 +2753,14 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           )}
 
           {/* Kotak chart preview, hanya chart */}
-          <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[700px] max-w-full h-[450px] flex flex-col justify-between mt-8">
-            {/* Chart content saja */}
-            {chartType === "3D Bar Chart2" ||
-            chartType === "Clustered 3D Bar Chart" ||
-            chartType === "Stacked 3D Bar Chart" ||
-            chartType === "3D Scatter Plot" ||
-            chartType === "Grouped 3D Scatter Plot" ? (
-              <div className="w-full h-full flex justify-center items-center pb-10">
-                <div
-                  id="chart-container"
-                  ref={chartContainerRef}
-                  className="min-w-[500px] min-h-[280px] max-w-full max-h-full"
-                />
-              </div>
-            ) : (
+          <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[700px] max-w-full h-[450px] flex items-center justify-center mt-8">
+            <div className="bg-white rounded-lg shadow w-full h-full flex items-center justify-center">
               <div
-                className="chart-svg-center-container flex justify-center bg-white items-center"
-                style={{
-                  position: "absolute",
-                  top: "24px",
-                  left: "24px",
-                  right: "24px",
-                  bottom: "24px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <svg
-                  ref={svgRef}
-                  className="w-full h-full"
-                  preserveAspectRatio="xMidYMid meet"
-                  viewBox="0 0 680 400"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    maxWidth: "100%",
-                    maxHeight: "100%",
-                  }}
-                />
-              </div>
-            )}
+                id="chart-container"
+                ref={chartContainerRef}
+                className="w-[90%] h-[90%] max-w-[600px] max-h-[400px] bg-white"
+              />
+            </div>
           </div>
         </div>
         {/* ChartService Test Output */}

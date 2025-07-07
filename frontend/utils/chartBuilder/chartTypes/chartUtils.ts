@@ -7,6 +7,7 @@ import * as scatterUtils from "./scatterUtils";
 import * as boxplotUtils from "./boxplotUtils";
 import * as highLowChartUtils from "./highLowChartUtils";
 import * as dualAxesChartUtils from "./dualAxesChartUtils";
+import * as threeDChartUtils from "./ThreeDChart";
 import * as d3 from "d3";
 import { addAxisLabels } from "../chartUtils";
 
@@ -20,6 +21,7 @@ export const chartUtils = {
   ...boxplotUtils,
   ...highLowChartUtils,
   ...dualAxesChartUtils,
+  ...threeDChartUtils,
 };
 
 export interface ChartTitleOptions {

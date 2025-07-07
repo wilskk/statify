@@ -268,6 +268,11 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       bottom: { min: 1, max: 1 },
       bottom2: { min: 1, max: 1 },
     },
+    "3D Bar Chart (ECharts)": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+    },
     "Clustered 3D Bar Chart": {
       side: { min: 1, max: 1 },
       bottom: { min: 1, max: 1 },
