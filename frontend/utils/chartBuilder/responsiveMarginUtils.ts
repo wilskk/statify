@@ -15,9 +15,21 @@ export interface MarginPercentageConfig {
 export interface ResponsiveMarginOptions {
   width: number;
   height: number;
-  useAxis: boolean;
-  titleOptions?: any;
-  axisLabels?: { x?: string; y?: string };
+  hasTitle?: boolean;
+  hasAxisLabels?: {
+    x?: boolean;
+    y?: boolean;
+  };
+  useAxis?: boolean;
+  categories?: string[];
+  titleOptions?: {
+    title: string;
+    subtitle?: string;
+  };
+  axisLabels?: {
+    x?: string;
+    y?: string;
+  };
   maxLabelWidth?: number;
   isHorizontalChart?: boolean;
   hasLegend?: boolean;
@@ -79,8 +91,8 @@ export const calculateResponsiveMargin = (
 
   // Base margin percentages (responsive)
   const baseMarginPercent: MarginPercentageConfig = {
-    top: titleOptions ? 0.22 : isHorizontalChart && useAxis ? 0.22 : 0.02,
-    bottom: useAxis ? 0.12 : 0.02,
+    top: titleOptions ? 0.15 : isHorizontalChart && useAxis ? 0.2 : 0.02,
+    bottom: useAxis ? 0.1 : 0.02,
     left: useAxis ? 0.1 : 0.02,
     right: useAxis ? 0.1 : 0.02,
   };
@@ -121,35 +133,41 @@ export const calculateResponsiveMargin = (
         baseMarginPercent.bottom += 0.15;
         break;
       case "right":
-        baseMarginPercent.right += 0.15;
-        break;
-      case "top":
-        baseMarginPercent.top += 0.1;
-        break;
-      case "left":
-        baseMarginPercent.left += 0.08;
+        baseMarginPercent.right += 0.1;
         break;
     }
   }
 
   // Minimum margins to ensure readability
   const minMargins: MarginConfig = {
-    top: titleOptions ? 40 : isHorizontalChart && useAxis ? 60 : 5,
-    bottom: useAxis ? 25 + additionalBottomMargin : 5,
-    left: useAxis ? 25 : 5,
-    right: useAxis ? 20 : 5,
+    top: titleOptions ? 80 : isHorizontalChart && useAxis ? 60 : 5,
+    bottom: useAxis
+      ? hasLegend && legendPosition === "bottom"
+        ? 150 + additionalBottomMargin
+        : 60 + additionalBottomMargin
+      : 5,
+    left: useAxis ? 40 : 5,
+    right: useAxis
+      ? hasLegend && legendPosition === "right"
+        ? Math.max(100, width * 0.12)
+        : 10
+      : 5,
   };
 
   // Maximum margins to prevent too much spacing on large charts
   const maxMargins: MarginConfig = {
-    top: titleOptions ? 120 : isHorizontalChart && useAxis ? 70 : 40,
+    top: titleOptions ? 150 : isHorizontalChart && useAxis ? 70 : 40,
     bottom: useAxis
       ? hasLegend && legendPosition === "bottom"
         ? 150 + additionalBottomMargin
-        : 80 + additionalBottomMargin
+        : 50 + additionalBottomMargin
       : 10,
     left: useAxis ? 150 : 10,
-    right: useAxis ? 80 : 10,
+    right: useAxis
+      ? hasLegend && legendPosition === "right"
+        ? Math.max(150, width * 0.15)
+        : 40
+      : 10,
   };
 
   // Calculate responsive margins

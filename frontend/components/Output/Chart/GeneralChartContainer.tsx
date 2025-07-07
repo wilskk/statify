@@ -96,152 +96,152 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   // Parse data jika berbentuk string
   const parsedData = typeof data === "string" ? JSON.parse(data) : data;
 
-  // const convertSvgToPng = async (svgElement: SVGElement): Promise<Blob> => {
-  //   return new Promise((resolve, reject) => {
-  //     const canvas = document.createElement("canvas");
-  //     const ctx = canvas.getContext("2d");
-  //     const img = document.createElement("img");
+  const convertSvgToPng = async (svgElement: SVGElement): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = document.createElement("img");
 
-  //     img.onload = () => {
-  //       canvas.width = img.width * 2; // 2x for better quality
-  //       canvas.height = img.height * 2;
+      img.onload = () => {
+        canvas.width = img.width * 2; // 2x for better quality
+        canvas.height = img.height * 2;
 
-  //       if (ctx) {
-  //         ctx.fillStyle = "#fff";
-  //         ctx.fillRect(0, 0, canvas.width, canvas.height);
-  //         ctx.scale(2, 2); // Scale up for better quality
-  //         ctx.drawImage(img, 0, 0);
-  //         ctx.scale(0.5, 0.5); // Reset scale
+        if (ctx) {
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.scale(2, 2); // Scale up for better quality
+          ctx.drawImage(img, 0, 0);
+          ctx.scale(0.5, 0.5); // Reset scale
 
-  //         canvas.toBlob(
-  //           (blob) => {
-  //             if (blob) {
-  //               resolve(blob);
-  //             } else {
-  //               reject(new Error("PNG conversion failed"));
-  //             }
-  //           },
-  //           "image/png",
-  //           1.0
-  //         );
-  //       } else {
-  //         reject(new Error("Canvas context not available"));
-  //       }
-  //     };
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error("PNG conversion failed"));
+              }
+            },
+            "image/png",
+            1.0
+          );
+        } else {
+          reject(new Error("Canvas context not available"));
+        }
+      };
 
-  //     img.onerror = () => reject(new Error("Image loading failed"));
+      img.onerror = () => reject(new Error("Image loading failed"));
 
-  //     const svgData = new XMLSerializer().serializeToString(svgElement);
-  //     const svgBlob = new Blob([svgData], {
-  //       type: "image/svg+xml;charset=utf-8",
-  //     });
-  //     img.src = URL.createObjectURL(svgBlob);
-  //   });
-  // };
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      img.src = URL.createObjectURL(svgBlob);
+    });
+  };
 
-  // const handleCopyChart = async (
-  //   chartId: string,
-  //   format: "svg" | "png" = "svg"
-  // ) => {
-  //   const chartElement = document.getElementById(chartId);
-  //   if (!chartElement) return;
+  const handleCopyChart = async (
+    chartId: string,
+    format: "svg" | "png" = "svg"
+  ) => {
+    const chartElement = document.getElementById(chartId);
+    if (!chartElement) return;
 
-  //   const svgElement = chartElement.querySelector("svg");
-  //   if (!svgElement) return;
+    const svgElement = chartElement.querySelector("svg");
+    if (!svgElement) return;
 
-  //   try {
-  //     if (format === "svg") {
-  //       const svgData = new XMLSerializer().serializeToString(svgElement);
-  //       await navigator.clipboard.writeText(svgData);
-  //     } else {
-  //       try {
-  //         const pngBlob = await convertSvgToPng(svgElement);
-  //         await navigator.clipboard.write([
-  //           new ClipboardItem({
-  //             "image/png": pngBlob,
-  //           }),
-  //         ]);
-  //       } catch (clipboardErr) {
-  //         console.warn("PNG copy not supported, falling back to SVG");
-  //         const svgData = new XMLSerializer().serializeToString(svgElement);
-  //         await navigator.clipboard.writeText(svgData);
-  //       }
-  //     }
+    try {
+      if (format === "svg") {
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        await navigator.clipboard.writeText(svgData);
+      } else {
+        try {
+          const pngBlob = await convertSvgToPng(svgElement);
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "image/png": pngBlob,
+            }),
+          ]);
+        } catch (clipboardErr) {
+          console.warn("PNG copy not supported, falling back to SVG");
+          const svgData = new XMLSerializer().serializeToString(svgElement);
+          await navigator.clipboard.writeText(svgData);
+        }
+      }
 
-  //     setCopied((prev) => ({
-  //       ...prev,
-  //       [chartId]: {
-  //         ...prev[chartId],
-  //         [format]: true,
-  //       },
-  //     }));
+      setCopied((prev) => ({
+        ...prev,
+        [chartId]: {
+          ...prev[chartId],
+          [format]: true,
+        },
+      }));
 
-  //     setTimeout(() => {
-  //       setCopied((prev) => ({
-  //         ...prev,
-  //         [chartId]: {
-  //           ...prev[chartId],
-  //           [format]: false,
-  //         },
-  //       }));
-  //     }, 500);
-  //   } catch (err) {
-  //     console.warn("Copy failed:", err);
-  //   }
-  // };
+      setTimeout(() => {
+        setCopied((prev) => ({
+          ...prev,
+          [chartId]: {
+            ...prev[chartId],
+            [format]: false,
+          },
+        }));
+      }, 500);
+    } catch (err) {
+      console.warn("Copy failed:", err);
+    }
+  };
 
-  // const handleDownloadChart = async (
-  //   chartId: string,
-  //   format: "svg" | "png"
-  // ) => {
-  //   const chartElement = document.getElementById(chartId);
-  //   if (!chartElement) return;
+  const handleDownloadChart = async (
+    chartId: string,
+    format: "svg" | "png"
+  ) => {
+    const chartElement = document.getElementById(chartId);
+    if (!chartElement) return;
 
-  //   const svgElement = chartElement.querySelector("svg");
-  //   if (!svgElement) return;
+    const svgElement = chartElement.querySelector("svg");
+    if (!svgElement) return;
 
-  //   try {
-  //     if (format === "svg") {
-  //       const svgData = new XMLSerializer().serializeToString(svgElement);
-  //       const blob = new Blob([svgData], { type: "image/svg+xml" });
-  //       const url = URL.createObjectURL(blob);
-  //       const link = document.createElement("a");
-  //       link.href = url;
-  //       link.download = `${chartId}.svg`;
-  //       document.body.appendChild(link);
-  //       link.click();
-  //       document.body.removeChild(link);
-  //       URL.revokeObjectURL(url);
-  //     } else {
-  //       try {
-  //         const pngBlob = await convertSvgToPng(svgElement);
-  //         const url = URL.createObjectURL(pngBlob);
-  //         const link = document.createElement("a");
-  //         link.href = url;
-  //         link.download = `${chartId}.png`;
-  //         document.body.appendChild(link);
-  //         link.click();
-  //         document.body.removeChild(link);
-  //         URL.revokeObjectURL(url);
-  //       } catch (conversionErr) {
-  //         console.warn("PNG conversion failed, falling back to SVG");
-  //         // Fallback to SVG
-  //         const svgData = new XMLSerializer().serializeToString(svgElement);
-  //         const blob = new Blob([svgData], { type: "image/svg+xml" });
-  //         const url = URL.createObjectURL(blob);
-  //         const link = document.createElement("a");
-  //         link.href = url;
-  //         link.download = `${chartId}.svg`;
-  //         document.body.appendChild(link);
-  //         link.click();
-  //         document.body.removeChild(link);
-  //         URL.revokeObjectURL(url);
-  //       }
-  //     }
-  //   } catch (err) {
-  //     console.warn("Download failed:", err);
-  //   }
-  // };
+    try {
+      if (format === "svg") {
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const blob = new Blob([svgData], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${chartId}.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else {
+        try {
+          const pngBlob = await convertSvgToPng(svgElement);
+          const url = URL.createObjectURL(pngBlob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `${chartId}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } catch (conversionErr) {
+          console.warn("PNG conversion failed, falling back to SVG");
+          // Fallback to SVG
+          const svgData = new XMLSerializer().serializeToString(svgElement);
+          const blob = new Blob([svgData], { type: "image/svg+xml" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `${chartId}.svg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      }
+    } catch (err) {
+      console.warn("Download failed:", err);
+    }
+  };
 
   useEffect(() => {
     console.log("data di kontainer", parsedData);
@@ -429,7 +429,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               );
               break;
             case "Multiple Line Chart":
-              chartNode = chartUtils.createMultilineChart(
+              chartNode = chartUtils.createMultipleLineChart(
                 chartDataPoints,
                 width,
                 height,
@@ -994,7 +994,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              // onClick={() => handleDownloadChart(id, "svg")}
+              onClick={() => handleDownloadChart(id, "svg")}
               title="Download as SVG"
             >
               <Download className="w-4 h-4 inline-block mr-1" />
@@ -1005,7 +1005,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              // onClick={() => handleDownloadChart(id, "png")}
+              onClick={() => handleDownloadChart(id, "png")}
               title="Download as PNG"
             >
               <Download className="w-4 h-4 inline-block mr-1" />

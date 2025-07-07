@@ -76,7 +76,6 @@ Setiap chart type membutuhkan chart variables yang berbeda. Berikut adalah pandu
 | **Boxplot**              | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (distribution)       |
 | **Error Bar Chart**      | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai dengan error         |
 | **Dot Plot**             | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (individual points)  |
-| **Frequency Polygon**    | `x`, `y`           | -                  | X-axis: interval, Y-axis: frekuensi                  |
 | **Summary Point Plot**   | `x`, `y`           | -                  | X-axis: kategori, Y-axis: summary statistic          |
 | **Violin Plot**          | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (distribution shape) |
 
@@ -369,7 +368,7 @@ const chartVariables = {
 - **Full Aggregation Support**: `sum`, `count`, `average`, `none`
 
   - Vertical Bar Chart, Horizontal Bar Chart, Line Chart, Area Chart, Pie Chart
-  - Error Bar Chart, Frequency Polygon, Summary Point Plot
+  - Error Bar Chart, Summary Point Plot
 
 - **Data Mentah Only**: `none`
 
@@ -381,7 +380,7 @@ const chartVariables = {
 
 - **Count Only**: `count`, `none`
 
-  - Histogram, Stacked Histogram
+  - Histogram, Stacked Histogram, Frequency Polygon
 
 - **Data Individual Only**: `none`
   - Scatter plots, Range charts, Boxplots, dll
@@ -431,7 +430,6 @@ Method utama yang memproses raw data berdasarkan chart type dan mengembalikan pr
 - Boxplot
 - Error Bar Chart
 - Dot Plot
-- Frequency Polygon
 - Summary Point Plot
 - Violin Plot
 
@@ -495,7 +493,6 @@ Method utama yang memproses raw data berdasarkan chart type dan mengembalikan pr
 | Boxplot                      |           ✅           | `none` (data mentah)                         |
 | Error Bar Chart              |           ✅           | `sum`, `count`, `average`, `none`            |
 | Dot Plot                     |           ✅           | `none` (data individual)                     |
-| Frequency Polygon            |           ✅           | `sum`, `count`, `average`, `none`            |
 | Summary Point Plot           |           ✅           | `sum`, `count`, `average`, `none`            |
 | Violin Plot                  |           ✅           | `none` (data mentah)                         |
 | Scatter Plot                 |           ✅           | `none` (data individual)                     |
@@ -523,6 +520,7 @@ Method utama yang memproses raw data berdasarkan chart type dan mengembalikan pr
 | Histogram                    |          ✅\*          | `count` (binning di visualisasi), `none`     |
 | Density Chart                |           ✅           | `none` (data individual)                     |
 | Stacked Histogram            |          ✅\*          | `count` (binning di visualisasi), `none`     |
+| Frequency Polygon            |          ✅\*          | `count` (binning di visualisasi), `none`     |
 | Clustered Error Bar Chart    |           ✅           | `sum` (untuk value, error tetap 2), `none`   |
 | Scatter Plot Matrix          |           ✅           | `none` (data individual)                     |
 | Clustered Boxplot            |           ✅           | `none` (data individual)                     |
@@ -563,7 +561,7 @@ Method utama yang memproses raw data berdasarkan chart type dan mengembalikan pr
 **Charts dengan Full Aggregation Support** (`processSimpleChartData`):
 
 - Vertical Bar Chart, Horizontal Bar Chart, Line Chart, Area Chart, Pie Chart
-- Error Bar Chart, Frequency Polygon, Summary Point Plot
+- Error Bar Chart, Summary Point Plot
 - **Mendukung**: `sum`, `count`, `average`, `none`
 
 **Charts dengan Data Mentah Only** (`processSimpleChartData` dengan override):
@@ -576,7 +574,7 @@ Method utama yang memproses raw data berdasarkan chart type dan mengembalikan pr
 - Stacked/Clustered charts: `sum`, `none`
 - 3D Bar charts: `sum`, `none`
 - Difference Area, Bar & Line: `sum`, `none`
-- Histogram: `count`, `none`
+- Histogram, Frequency Polygon: `count`, `none`
 - Clustered Error Bar: `sum`, `none`
 
 **Charts dengan Data Individual** (fungsi khusus):

@@ -1,3 +1,6 @@
+import { isNull } from "mathjs";
+import { probit, mean, variance, standardDeviation } from "simple-statistics";
+
 // Interface untuk output data processing
 export interface DataProcessingOutput {
   data: any[];
@@ -30,6 +33,7 @@ export interface DataProcessingInput {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     limit?: number;
+    errorBar?: ErrorBarOptions;
   };
 }
 
@@ -41,8 +45,8 @@ const CHART_AGGREGATION_CONFIG: { [chartType: string]: string[] } = {
   "Line Chart": ["sum", "count", "average", "none"],
   "Area Chart": ["sum", "count", "average", "none"],
   "Pie Chart": ["sum", "count", "average", "none"],
-  "Error Bar Chart": ["sum", "count", "average", "none"],
-  "Frequency Polygon": ["sum", "count", "average", "none"],
+  "Error Bar Chart": ["average", "none"],
+  "Frequency Polygon": ["count", "none"],
   "Summary Point Plot": ["sum", "count", "average", "none"],
 
   // Charts dengan data mentah only
@@ -63,7 +67,7 @@ const CHART_AGGREGATION_CONFIG: { [chartType: string]: string[] } = {
   "Stacked 3D Bar Chart": ["sum", "none"],
   "Difference Area": ["sum", "none"],
   "Vertical Bar & Line Chart": ["sum", "none"],
-  "Clustered Error Bar Chart": ["sum", "none"],
+  "Clustered Error Bar Chart": ["average", "none"],
 
   // Charts dengan count only
   Histogram: ["count", "none"],
@@ -93,6 +97,12 @@ interface SimpleChartData {
   value: number;
 }
 
+interface ErrorBarChartData {
+  category: string;
+  value: number;
+  error: number;
+}
+
 interface ScatterData {
   x: number;
   y: number;
@@ -108,6 +118,12 @@ interface ThreeDData {
   x: number;
   y: number;
   z: number;
+}
+
+interface DropLineData {
+  category: string;
+  x: string;
+  y: number;
 }
 
 interface GroupedScatterData {
@@ -133,8 +149,7 @@ interface ClusteredRangeData {
 
 interface DifferenceAreaData {
   category: string;
-  value0: number;
-  value1: number;
+  [key: string]: string | number; // Support flexible column names
 }
 
 interface BarLineData {
@@ -185,6 +200,27 @@ interface ClusteredBoxplotData {
 interface OneDBoxplotData {
   value: number;
 }
+
+// Add type definitions for error bar options
+export type CIErrorBarOptions = {
+  type: "ci";
+  confidenceLevel: number;
+};
+
+export type SEErrorBarOptions = {
+  type: "se";
+  multiplier: number;
+};
+
+export type SDErrorBarOptions = {
+  type: "sd";
+  multiplier: number;
+};
+
+export type ErrorBarOptions =
+  | CIErrorBarOptions
+  | SEErrorBarOptions
+  | SDErrorBarOptions;
 
 export class DataProcessingService {
   /**
@@ -248,16 +284,23 @@ export class DataProcessingService {
         case "Line Chart":
         case "Area Chart":
         case "Pie Chart":
-        case "Error Bar Chart":
-        case "Frequency Polygon":
         case "Summary Point Plot":
         case "Violin Plot":
         case "Dot Plot":
+        case "Boxplot":
           processedData = this.processSimpleChartData(
             rawData,
             variableIndices,
             { aggregation, filterEmpty },
             chartType
+          );
+          break;
+
+        case "Error Bar Chart":
+          processedData = this.processErrorBarChartData(
+            rawData,
+            variableIndices,
+            processingOptions
           );
           break;
 
@@ -294,11 +337,9 @@ export class DataProcessingService {
 
         case "Grouped Scatter Plot":
         case "Drop Line Chart":
-          processedData = this.processGroupedScatterData(
-            rawData,
-            variableIndices,
-            { filterEmpty }
-          );
+          processedData = this.processDropLineData(rawData, variableIndices, {
+            filterEmpty,
+          });
           break;
 
         case "Simple Range Bar":
@@ -320,20 +361,31 @@ export class DataProcessingService {
           processedData = this.processDifferenceAreaData(
             rawData,
             variableIndices,
-            { filterEmpty }
+            { filterEmpty },
+            chartVariables
           );
           break;
 
         case "Vertical Bar & Line Chart":
-          processedData = this.processBarLineData(rawData, variableIndices, {
-            filterEmpty,
-          });
+          processedData = this.processBarLineData(
+            rawData,
+            variableIndices,
+            {
+              filterEmpty,
+            },
+            chartVariables
+          );
           break;
 
         case "Dual Axes Scatter Plot":
-          processedData = this.processDualAxesData(rawData, variableIndices, {
-            filterEmpty,
-          });
+          processedData = this.processDualAxesData(
+            rawData,
+            variableIndices,
+            {
+              filterEmpty,
+            },
+            chartVariables
+          );
           break;
 
         case "Grouped 3D Scatter Plot":
@@ -346,6 +398,7 @@ export class DataProcessingService {
 
         case "Histogram":
         case "Density Chart":
+        case "Frequency Polygon":
           processedData = this.processHistogramData(rawData, variableIndices, {
             aggregation,
             filterEmpty,
@@ -364,7 +417,7 @@ export class DataProcessingService {
           processedData = this.processClusteredErrorBarData(
             rawData,
             variableIndices,
-            { aggregation, filterEmpty }
+            processingOptions
           );
           break;
 
@@ -386,7 +439,6 @@ export class DataProcessingService {
           break;
 
         case "1-D Boxplot":
-        case "Boxplot":
           processedData = this.process1DBoxplotData(rawData, variableIndices, {
             filterEmpty,
           });
@@ -551,6 +603,7 @@ export class DataProcessingService {
 
       case "Histogram":
       case "Density Chart":
+      case "Frequency Polygon":
         return {
           value: getVariableName(chartVariables.y, 0),
         };
@@ -561,11 +614,19 @@ export class DataProcessingService {
           category: getVariableName(chartVariables.groupBy, 0),
         };
 
+      case "Error Bar Chart":
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          value: getVariableName(chartVariables.y, 0),
+          error: `Error of ${getVariableName(chartVariables.y, 0)}`,
+        };
+
       case "Clustered Error Bar Chart":
         return {
           category: getVariableName(chartVariables.x, 0),
           subcategory: getVariableName(chartVariables.groupBy, 0),
           value: getVariableName(chartVariables.y, 0),
+          error: `Error of ${getVariableName(chartVariables.y, 0)}`,
         };
 
       case "Scatter Plot Matrix":
@@ -835,6 +896,182 @@ export class DataProcessingService {
       .filter((item): item is SimpleChartData => item !== null);
   }
 
+  private static processErrorBarChartData(
+    rawData: any[][],
+    indices: any,
+    options: any
+  ): ErrorBarChartData[] {
+    const {
+      aggregation = "average",
+      filterEmpty = true,
+      sortBy,
+      sortOrder = "asc",
+    } = options;
+
+    // Get error bar options from options or use default
+    const errorBarOptions = this.getValidErrorBarOptions(
+      options.errorBar,
+      "ci"
+    );
+
+    console.log("🔍 Options:", options);
+    console.log("🔍 errorBarOptions:", errorBarOptions);
+
+    // Validasi indices
+    if (
+      !indices.x ||
+      !indices.y ||
+      indices.x.length === 0 ||
+      indices.y.length === 0
+    ) {
+      console.warn("Missing required indices for Error Bar Chart", indices);
+      return [];
+    }
+
+    const yIndex = indices.y[0];
+    const xIndex = indices.x[0];
+
+    // Validasi indices valid
+    if (xIndex === -1 || yIndex === -1) {
+      console.warn("Invalid indices for Error Bar Chart", { xIndex, yIndex });
+      return [];
+    }
+
+    const grouped: { [key: string]: number[] } = {};
+
+    for (const row of rawData) {
+      const category = row[xIndex];
+      const value = parseFloat(row[yIndex]);
+
+      if (
+        filterEmpty &&
+        (category === null || category === undefined || category === "")
+      )
+        continue;
+      if (isNaN(value)) continue;
+
+      const key = String(category);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(value);
+    }
+
+    const result: ErrorBarChartData[] = Object.entries(grouped).map(
+      ([category, values]) => {
+        const stats = this.calculateStatistics(values);
+        const error = this.calculateErrorBar(stats, errorBarOptions);
+
+        return {
+          category,
+          value: stats.mean,
+          error,
+        };
+      }
+    );
+
+    return this.applySorting(result, sortBy, sortOrder);
+  }
+
+  private static processClusteredErrorBarData(
+    rawData: any[][],
+    indices: any,
+    options: any
+  ): ClusteredErrorBarData[] {
+    const { filterEmpty = true } = options;
+
+    // Get error bar options from options or use default
+    const errorBarOptions = this.getValidErrorBarOptions(
+      options.errorBar,
+      "se"
+    );
+
+    console.log("🔍 errorBarOptions for clustered:", errorBarOptions);
+
+    // Validasi indices
+    if (
+      !indices.x ||
+      !indices.y ||
+      !indices.groupBy ||
+      indices.x.length === 0 ||
+      indices.y.length === 0 ||
+      indices.groupBy.length === 0
+    ) {
+      console.warn(
+        "Missing required indices for Clustered Error Bar Chart",
+        indices
+      );
+      return [];
+    }
+
+    const xIndex = indices.x[0];
+    const yIndex = indices.y[0];
+    const groupByIndex = indices.groupBy[0];
+
+    // Validasi indices valid
+    if (xIndex === -1 || yIndex === -1 || groupByIndex === -1) {
+      console.warn("Invalid indices for Clustered Error Bar Chart", {
+        xIndex,
+        yIndex,
+        groupByIndex,
+      });
+      return [];
+    }
+
+    const grouped: { [key: string]: { [subkey: string]: number[] } } = {};
+
+    for (const row of rawData) {
+      const category = row[xIndex];
+      const subcategory = row[groupByIndex];
+      const value = parseFloat(row[yIndex]);
+
+      if (
+        filterEmpty &&
+        (category === null ||
+          category === undefined ||
+          category === "" ||
+          subcategory === null ||
+          subcategory === undefined ||
+          subcategory === "" ||
+          isNaN(value))
+      )
+        continue;
+
+      const categoryKey = String(category);
+      const subcategoryKey = String(subcategory);
+
+      if (!grouped[categoryKey]) grouped[categoryKey] = {};
+      if (!grouped[categoryKey][subcategoryKey])
+        grouped[categoryKey][subcategoryKey] = [];
+      grouped[categoryKey][subcategoryKey].push(value);
+    }
+
+    const result: ClusteredErrorBarData[] = [];
+
+    for (const [category, subcategories] of Object.entries(grouped)) {
+      for (const [subcategory, values] of Object.entries(subcategories)) {
+        const stats = this.calculateStatistics(values);
+        const error = this.calculateErrorBar(stats, errorBarOptions);
+
+        result.push({
+          category,
+          subcategory,
+          value: stats.mean,
+          error,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  private static getZScore(confidenceLevel: number): number {
+    // Convert confidence level (e.g., 95) to probability (e.g., 0.95)
+    const probability = confidenceLevel / 100;
+
+    // Get z-score using probit function
+    // probit gives one-tailed z-score, so we add (1 + p)/2 to get two-tailed
+    return probit((1 + probability) / 2);
+  }
+
   private static processScatterData(
     rawData: any[][],
     indices: any,
@@ -981,6 +1218,35 @@ export class DataProcessingService {
     return this.applySorting(result, sortBy, sortOrder);
   }
 
+  private static processDropLineData(
+    rawData: any[][],
+    indices: any,
+    options: any
+  ): DropLineData[] {
+    const { filterEmpty = true, sortBy, sortOrder = "asc" } = options;
+
+    const result = rawData
+      .map((row) => {
+        const group = row[indices.groupBy[0]];
+        const xValue = row[indices.x[0]];
+        const yValue = parseFloat(row[indices.y[0]]);
+
+        if (filterEmpty && (isNull(xValue) || isNaN(yValue))) {
+          return null;
+        }
+
+        return {
+          category: String(group), // Convert to string
+          x: String(xValue),
+          y: yValue,
+        };
+      })
+      .filter((item): item is DropLineData => item !== null);
+
+    // Apply sorting
+    return this.applySorting(result, sortBy, sortOrder);
+  }
+
   private static processRangeChartData(
     rawData: any[][],
     indices: any,
@@ -1051,25 +1317,33 @@ export class DataProcessingService {
   private static processDifferenceAreaData(
     rawData: any[][],
     indices: any,
-    options: any
+    options: any,
+    chartVariables?: any
   ): DifferenceAreaData[] {
     const { filterEmpty = true } = options;
+
+    // Get actual variable names from chartVariables
+    const lowKeyName = chartVariables?.low?.[0] || "value0";
+    const highKeyName = chartVariables?.high?.[0] || "value1";
 
     return rawData
       .map((row) => {
         const category = row[indices.x[0]];
-        const value0 = parseFloat(row[indices.low[0]]);
-        const value1 = parseFloat(row[indices.high[0]]);
+        const lowValue = parseFloat(row[indices.low[0]]);
+        const highValue = parseFloat(row[indices.high[0]]);
 
-        if (filterEmpty && (isNaN(value0) || isNaN(value1))) {
+        if (filterEmpty && (isNaN(lowValue) || isNaN(highValue))) {
           return null;
         }
 
-        return {
+        // Return flexible structure with dynamic keys
+        const result: DifferenceAreaData = {
           category: String(category), // Convert to string
-          value0: value0,
-          value1: value1,
         };
+        result[lowKeyName] = lowValue;
+        result[highKeyName] = highValue;
+
+        return result;
       })
       .filter((item): item is DifferenceAreaData => item !== null);
   }
@@ -1077,12 +1351,17 @@ export class DataProcessingService {
   private static processBarLineData(
     rawData: any[][],
     indices: any,
-    options: any
-  ): BarLineData[] {
-    const { aggregation = "sum", filterEmpty = true } = options;
+    options: any,
+    chartVariables?: any
+  ): any[] {
+    const { filterEmpty = true } = options;
+    // Use chartVariables for dynamic key naming
+    const categoryKey = chartVariables?.x?.[0] || "category";
+    const barKey = chartVariables?.y?.[0] || "barValue";
+    const lineKey = chartVariables?.y2?.[0] || "lineValue";
 
     const frequencyMap: {
-      [key: string]: { barValue: number; lineValue: number };
+      [key: string]: { [key: string]: any };
     } = rawData.reduce((acc, row) => {
       const category = row[indices.x[0]];
       const barValue = parseFloat(row[indices.y[0]]);
@@ -1096,29 +1375,30 @@ export class DataProcessingService {
       }
 
       if (!isNaN(barValue) && !isNaN(lineValue)) {
-        const categoryKey = String(category); // Convert to string
-        acc[categoryKey] = {
-          barValue: barValue,
-          lineValue: lineValue,
+        const categoryKeyStr = String(category);
+        acc[categoryKeyStr] = {
+          [categoryKey]: categoryKeyStr,
+          [barKey]: barValue,
+          [lineKey]: lineValue,
         };
       }
-
       return acc;
-    }, {} as { [key: string]: { barValue: number; lineValue: number } });
+    }, {} as { [key: string]: { [key: string]: any } });
 
-    return Object.keys(frequencyMap).map((key) => ({
-      category: String(key), // Convert to string
-      barValue: frequencyMap[key].barValue,
-      lineValue: frequencyMap[key].lineValue,
-    }));
+    return Object.values(frequencyMap);
   }
 
   private static processDualAxesData(
     rawData: any[][],
     indices: any,
-    options: any
-  ): DualAxesData[] {
+    options: any,
+    chartVariables?: any
+  ): any[] {
     const { filterEmpty = true } = options;
+    // Use chartVariables for dynamic key naming
+    const xKey = chartVariables?.x?.[0] || "x";
+    const y1Key = chartVariables?.y?.[0] || "y1";
+    const y2Key = chartVariables?.y2?.[0] || "y2";
 
     return rawData
       .map((row) => {
@@ -1132,14 +1412,13 @@ export class DataProcessingService {
         ) {
           return null;
         }
-
         return {
-          x: xValue,
-          y1: y1Value,
-          y2: y2Value,
+          [xKey]: xValue,
+          [y1Key]: y1Value,
+          [y2Key]: y2Value,
         };
       })
-      .filter((item): item is DualAxesData => item !== null);
+      .filter((item) => item !== null);
   }
 
   private static processGrouped3DScatterData(
@@ -1197,10 +1476,13 @@ export class DataProcessingService {
   ): StackedHistogramData[] {
     const { filterEmpty = true } = options;
 
+    // If no groupBy variable is provided, use a default category
+    const hasGroupBy = indices.groupBy && indices.groupBy.length > 0;
+
     return rawData
       .map((row) => {
         const value = parseFloat(row[indices.x[0]]);
-        const category = row[indices.groupBy[0]];
+        const category = hasGroupBy ? row[indices.groupBy[0]] : "Default";
 
         if (filterEmpty && isNaN(value)) {
           return null;
@@ -1208,40 +1490,10 @@ export class DataProcessingService {
 
         return {
           value: value,
-          category: category,
+          category: String(category),
         };
       })
       .filter((item): item is StackedHistogramData => item !== null);
-  }
-
-  private static processClusteredErrorBarData(
-    rawData: any[][],
-    indices: any,
-    options: any
-  ): ClusteredErrorBarData[] {
-    const { filterEmpty = true } = options;
-
-    return rawData
-      .map((row) => {
-        const category = row[indices.x[0]];
-        const subcategory = row[indices.groupBy[0]];
-        const value = parseFloat(row[indices.y[0]]);
-
-        if (filterEmpty && isNaN(value)) {
-          return null;
-        }
-
-        // Placeholder error calculation - bisa disesuaikan
-        const error = 2;
-
-        return {
-          category: String(category),
-          subcategory: String(subcategory),
-          value: value,
-          error: error,
-        };
-      })
-      .filter((item): item is ClusteredErrorBarData => item !== null);
   }
 
   private static processScatterMatrixData(
@@ -1251,6 +1503,11 @@ export class DataProcessingService {
     variables: Array<{ name: string }>
   ): ScatterMatrixData[] {
     const { filterEmpty = true } = options;
+
+    // Return empty array if no variables are selected
+    if (!indices.x || indices.x.length === 0) {
+      return [];
+    }
 
     return rawData
       .map((row) => {
@@ -1362,6 +1619,87 @@ export class DataProcessingService {
         `Aggregation "${aggregation}" is not supported for chart type "${chartType}". ` +
           `Supported aggregations: ${allowedAggregations.join(", ")}`
       );
+    }
+  }
+
+  private static getDefaultErrorBarOptions(
+    type: "ci" | "se" | "sd"
+  ): ErrorBarOptions {
+    switch (type) {
+      case "ci":
+        return { type: "ci", confidenceLevel: 95 };
+      case "se":
+        return { type: "se", multiplier: 2 };
+      case "sd":
+        return { type: "sd", multiplier: 1 };
+    }
+  }
+
+  /**
+   * Helper function to get valid error bar options with fallback
+   */
+  private static getValidErrorBarOptions(
+    options: any,
+    defaultType: "ci" | "se" | "sd"
+  ): ErrorBarOptions {
+    if (!options || !options.type) {
+      return this.getDefaultErrorBarOptions(defaultType);
+    }
+
+    // Ensure we have all required properties for the type
+    return {
+      ...this.getDefaultErrorBarOptions(options.type),
+      ...options,
+    } as ErrorBarOptions;
+  }
+
+  /**
+   * Helper function to calculate statistics for error bars
+   */
+  private static calculateStatistics(values: number[]): {
+    mean: number;
+    variance: number;
+    standardDeviation: number;
+    count: number;
+  } {
+    const filteredValues = values.filter((v) => !isNaN(v));
+    const n = filteredValues.length;
+
+    if (n === 0) {
+      return { mean: 0, variance: 0, standardDeviation: 0, count: 0 };
+    }
+
+    const meanValue = mean(filteredValues);
+    const varianceValue = variance(filteredValues);
+    const stdDev = standardDeviation(filteredValues);
+
+    return {
+      mean: meanValue,
+      variance: varianceValue,
+      standardDeviation: stdDev,
+      count: n,
+    };
+  }
+
+  /**
+   * Helper function to calculate error bar value based on type
+   */
+  private static calculateErrorBar(
+    stats: { mean: number; standardDeviation: number; count: number },
+    errorBarOptions: ErrorBarOptions
+  ): number {
+    const { standardDeviation: sd, count: n } = stats;
+
+    switch (errorBarOptions.type) {
+      case "sd":
+        return sd * errorBarOptions.multiplier;
+      case "se":
+        return (sd / Math.sqrt(n)) * errorBarOptions.multiplier;
+      case "ci":
+        const z = this.getZScore(errorBarOptions.confidenceLevel);
+        return z * (sd / Math.sqrt(n));
+      default:
+        return 0;
     }
   }
 }

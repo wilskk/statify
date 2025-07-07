@@ -193,6 +193,48 @@ export const calculateXAxisRotation = (
   return { rotation: -60, needsRotation: true, maxLabelWidth: avgLabelWidth };
 };
 
+// Helper function to format numeric values with max length
+function formatNumericValue(value: number, maxLength: number): string {
+  console.log("formatNumericValue called with:", { value, maxLength });
+
+  const str = value.toString();
+  if (str.length <= maxLength) {
+    console.log("returning original:", str);
+    return str;
+  }
+
+  // If number has decimal points
+  if (str.includes(".")) {
+    const [whole, decimal] = str.split(".");
+    console.log("decimal number parts:", { whole, decimal });
+
+    if (whole.length >= maxLength) {
+      // If whole part is already too long, use exponential notation
+      const result = value.toExponential(maxLength - 4);
+      console.log("using exponential:", result);
+      return result;
+    }
+    // Calculate how many decimal places we can show
+    const availableSpace = maxLength - whole.length - 1; // -1 for decimal point
+    console.log("available space for decimals:", availableSpace);
+
+    if (availableSpace <= 0) {
+      // No space for decimals, return whole number
+      console.log("no space for decimals, returning whole:", whole);
+      return whole;
+    }
+    // Return with exact number of decimal places
+    const result = value.toFixed(availableSpace);
+    console.log("formatted with decimals:", result);
+    return result;
+  }
+
+  // For large integers, use exponential notation if longer than maxLength
+  const result = value.toExponential(maxLength - 4);
+  console.log("large integer to exponential:", result);
+  return result;
+}
+
 /**
  * Standard X-axis creation with automatic label handling
  */
@@ -206,12 +248,24 @@ export const addStandardXAxis = (
   marginLeft: number,
   marginRight: number,
   options: {
+    showAxis?: boolean;
     showTicks?: boolean;
+    showValues?: boolean;
     tickFormat?: (d: any) => string;
-    maxLabelLength?: number;
-  } = {}
+    maxValueLength?: number;
+  } = {
+    showAxis: true,
+    showTicks: true,
+    showValues: true,
+  }
 ) => {
-  const { showTicks = true, tickFormat, maxLabelLength = 12 } = options;
+  const {
+    showAxis = true,
+    showTicks = true,
+    showValues = true,
+    tickFormat,
+    maxValueLength = 12,
+  } = options;
 
   const rotationInfo = calculateXAxisRotation(
     categories,
@@ -220,46 +274,77 @@ export const addStandardXAxis = (
     marginRight
   );
 
+  // Buat axis dasar
+  const axis = d3
+    .axisBottom(xScale)
+    .tickSizeOuter(0)
+    .tickFormat(
+      showValues
+        ? (d: any) => {
+            const value = tickFormat ? tickFormat(d) : d;
+            // If the value is numeric, use number formatting
+            const num = Number(value);
+            if (!isNaN(num)) {
+              return formatNumericValue(num, maxValueLength);
+            }
+            // For non-numeric values, use truncation
+            return truncateText(value.toString(), maxValueLength);
+          }
+        : () => ""
+    )
+    .tickSize(showTicks ? 6 : 0);
+
   const xAxis = svg
     .append("g")
     .attr("transform", `translate(0,${height - marginBottom})`)
-    .call(
-      d3
-        .axisBottom(xScale)
-        .tickSizeOuter(0)
-        .tickFormat(tickFormat || ((d: any) => d))
-    );
+    .call(axis);
 
-  if (!showTicks) {
+  // Sembunyikan garis axis jika showAxis false
+  if (!showAxis) {
     xAxis.call((g) => g.select(".domain").remove());
+  }
+
+  // Sembunyikan ticks jika showTicks false
+  if (!showTicks) {
+    xAxis.call((g) => g.selectAll(".tick line").remove());
   }
 
   // Apply rotation and truncation if needed
   if (rotationInfo.needsRotation) {
     xAxis
       .selectAll("text")
-      .attr("dy", ".35em") // Reset the default dy
-      .attr("y", 0) // Reset the y position
-      .attr("x", 9) // Move text slightly right from the tick
+      .attr("dy", ".35em")
+      .attr("y", 0)
+      .attr("x", 9)
       .attr("transform", (d, i, nodes) => {
         const node = nodes[i] as SVGTextElement;
-        // Calculate offset based on rotation angle
         const yOffset = Math.abs(rotationInfo.rotation) <= 30 ? 8 : 12;
         return `translate(0,${yOffset}) rotate(${rotationInfo.rotation})`;
       })
       .style("text-anchor", "end")
       .text((d: any) => {
-        const originalText = tickFormat ? tickFormat(d) : d;
-        // Adjust maxLength based on rotation angle
+        const value = tickFormat ? tickFormat(d) : d;
+        // If the value is numeric, use number formatting
+        const num = Number(value);
+        if (!isNaN(num)) {
+          return formatNumericValue(num, maxValueLength);
+        }
+        // For non-numeric values, use truncation with adjusted length for rotation
         const adjustedMaxLength = Math.floor(
-          maxLabelLength * (1 + Math.abs(rotationInfo.rotation) / 90)
+          maxValueLength * (1 + Math.abs(rotationInfo.rotation) / 90)
         );
-        return truncateText(originalText, adjustedMaxLength);
+        return truncateText(value.toString(), adjustedMaxLength);
       });
   } else {
     xAxis.selectAll("text").text((d: any) => {
-      const originalText = tickFormat ? tickFormat(d) : d;
-      return truncateText(originalText, maxLabelLength);
+      const value = tickFormat ? tickFormat(d) : d;
+      // If the value is numeric, use number formatting
+      const num = Number(value);
+      if (!isNaN(num)) {
+        return formatNumericValue(num, maxValueLength);
+      }
+      // For non-numeric values, use truncation
+      return truncateText(value.toString(), maxValueLength);
     });
   }
 
@@ -278,10 +363,10 @@ export const addStandardYAxisForHorizontal = (
   options: {
     showTicks?: boolean;
     tickFormat?: (d: any) => string;
-    maxLabelLength?: number;
+    maxValueLength?: number;
   } = {}
 ) => {
-  const { showTicks = true, tickFormat, maxLabelLength = 3 } = options;
+  const { showTicks = true, tickFormat, maxValueLength = 3 } = options;
 
   const yAxis = d3.axisLeft(yScale).tickFormat(
     tickFormat ||
@@ -289,8 +374,8 @@ export const addStandardYAxisForHorizontal = (
         // For horizontal charts, find the display label for the category
         const dataPoint = data.find((item: any) => item.uniqueId === d);
         return dataPoint
-          ? truncateText(dataPoint.displayLabel, maxLabelLength)
-          : truncateText(d, maxLabelLength);
+          ? truncateText(dataPoint.displayLabel, maxValueLength)
+          : truncateText(d, maxValueLength);
       })
   );
 
@@ -321,32 +406,49 @@ export const addStandardXAxisForHorizontal = (
   xScale: any,
   marginTop: number,
   options: {
+    showAxis?: boolean;
     showTicks?: boolean;
+    showValues?: boolean;
     showGridLines?: boolean;
     height?: number;
     marginBottom?: number;
     tickValues?: number[];
     customFormat?: (d: any) => string;
     axisPosition?: "top" | "bottom";
-  } = {}
+    maxValueLength?: number;
+  } = {
+    showAxis: true,
+    showTicks: true,
+    showValues: true,
+  }
 ) => {
   const {
+    showAxis = true,
     showTicks = true,
+    showValues = true,
     showGridLines = true,
     height,
     marginBottom,
     tickValues,
     customFormat,
     axisPosition = "top",
+    maxValueLength = 12,
   } = options;
 
-  const xAxis =
+  const axis =
     axisPosition === "top" ? d3.axisTop(xScale) : d3.axisBottom(xScale);
 
-  xAxis.tickFormat(customFormat || ((d: any) => formatAxisNumber(Number(d))));
+  // Set format dan ukuran tick
+  axis
+    .tickFormat(
+      showValues
+        ? customFormat || ((d: any) => formatAxisNumber(Number(d)))
+        : () => ""
+    )
+    .tickSize(showTicks ? 6 : 0); // 6px adalah ukuran default tick D3
 
   if (tickValues) {
-    xAxis.tickValues(tickValues);
+    axis.tickValues(tickValues);
   }
 
   const yPos = axisPosition === "top" ? marginTop : height! - marginBottom!;
@@ -354,10 +456,16 @@ export const addStandardXAxisForHorizontal = (
   const xAxisGroup = svg
     .append("g")
     .attr("transform", `translate(0,${yPos})`)
-    .call(xAxis);
+    .call(axis);
 
-  if (!showTicks) {
+  // Sembunyikan garis axis jika showAxis false
+  if (!showAxis) {
     xAxisGroup.call((g) => g.select(".domain").remove());
+  }
+
+  // Sembunyikan ticks jika showTicks false
+  if (!showTicks) {
+    xAxisGroup.call((g) => g.selectAll(".tick line").remove());
   }
 
   // Add grid lines if requested (vertical lines for horizontal chart)
@@ -390,38 +498,79 @@ export const addStandardYAxis = (
   yScale: any,
   marginLeft: number,
   options: {
+    showAxis?: boolean;
     showTicks?: boolean;
+    showValues?: boolean;
     showGridLines?: boolean;
     width?: number;
     marginRight?: number;
     tickValues?: number[];
     customFormat?: (d: any) => string;
-  } = {}
+    maxValueLength?: number;
+  } = {
+    showAxis: true,
+    showTicks: true,
+    showValues: true,
+  }
 ) => {
   const {
+    showAxis = true,
     showTicks = true,
+    showValues = true,
     showGridLines = true,
     width,
     marginRight,
     tickValues,
     customFormat,
+    maxValueLength = 6,
   } = options;
 
-  const yAxis = d3
+  console.log("addStandardYAxis options:", { maxValueLength, customFormat });
+
+  // Buat axis dasar
+  const axis = d3
     .axisLeft(yScale)
-    .tickFormat(customFormat || ((d: any) => formatAxisNumber(Number(d))));
+    .tickFormat(
+      showValues
+        ? (d: any) => {
+            console.log("formatting tick value:", d);
+            // If customFormat is provided, use it first
+            const value = customFormat ? customFormat(d) : d;
+            console.log("after customFormat:", value);
+
+            // If the value is numeric, use number formatting
+            const num = Number(value);
+            if (!isNaN(num)) {
+              const result = formatNumericValue(num, maxValueLength);
+              console.log("numeric formatting result:", result);
+              return result;
+            }
+            // For non-numeric values, use truncation
+            const result = truncateText(value.toString(), maxValueLength);
+            console.log("text truncation result:", result);
+            return result;
+          }
+        : () => ""
+    )
+    .tickSize(showTicks ? 6 : 0);
 
   if (tickValues) {
-    yAxis.tickValues(tickValues);
+    axis.tickValues(tickValues);
   }
 
   const yAxisGroup = svg
     .append("g")
     .attr("transform", `translate(${marginLeft},0)`)
-    .call(yAxis);
+    .call(axis);
 
-  if (!showTicks) {
+  // Sembunyikan garis axis jika showAxis false
+  if (!showAxis) {
     yAxisGroup.call((g) => g.select(".domain").remove());
+  }
+
+  // Sembunyikan ticks jika showTicks false
+  if (!showTicks) {
+    yAxisGroup.call((g) => g.selectAll(".tick line").remove());
   }
 
   // Add grid lines if requested
@@ -445,6 +594,19 @@ export const addStandardYAxis = (
 
   return yAxisGroup;
 };
+
+export interface GridStyleOptions {
+  strokeOpacity: number;
+  strokeColor: string;
+  offset: number;
+}
+
+export interface YAxisOptions {
+  showGridLines?: boolean;
+  tickValues?: number[];
+  customFormat?: (value: any) => string;
+  maxValueLength?: number;
+}
 
 /**
  * Enhanced comprehensive axis setup for both vertical and horizontal charts
@@ -470,20 +632,28 @@ export const addStandardAxes = (
     chartType?: "vertical" | "horizontal";
     data?: any[]; // For horizontal charts to find display labels
     xAxisOptions?: {
-      showTicks?: boolean;
+      showAxis?: boolean; // Kontrol tampilan garis axis utama
+      showTicks?: boolean; // Kontrol tampilan garis-garis pendek
+      showValues?: boolean; // Kontrol tampilan angka/nilai di axis
+      showAxisLabel?: boolean; // Kontrol tampilan label axis (misal: "Tahun", "Jumlah")
       tickFormat?: (d: any) => string;
-      maxLabelLength?: number;
+      maxValueLength?: number; // Panjang maksimum untuk nilai di axis
       axisPosition?: "top" | "bottom";
       tickValues?: number[];
       customFormat?: (d: any) => string;
+      showGridLines?: boolean;
     };
     yAxisOptions?: {
-      showTicks?: boolean;
+      showAxis?: boolean; // Kontrol tampilan garis axis utama
+      showTicks?: boolean; // Kontrol tampilan garis-garis pendek
+      showValues?: boolean; // Kontrol tampilan angka/nilai di axis
+      showAxisLabel?: boolean; // Kontrol tampilan label axis (misal: "Tahun", "Jumlah")
       showGridLines?: boolean;
       tickValues?: number[];
       customFormat?: (d: any) => string;
-      maxLabelLength?: number;
+      maxValueLength?: number; // Panjang maksimum untuk nilai di axis
     };
+    gridStyle?: Partial<GridStyleOptions>;
   }
 ) => {
   const {
@@ -508,8 +678,50 @@ export const addStandardAxes = (
     yAxisOptions = {},
   } = config;
 
+  // Default grid style with fallback values
+  const defaultGridStyle: GridStyleOptions = {
+    strokeOpacity: 0.1,
+    strokeColor: "currentColor",
+    offset: 0.5,
+  };
+
+  const gridStyle = { ...defaultGridStyle, ...config.gridStyle };
+
   let tickValues: number[] | undefined;
   let rotationInfo: any = {};
+
+  // Add grid lines with consistent style if enabled
+  // Add horizontal grid lines if enabled for X axis
+  if (config.xAxisOptions?.showGridLines) {
+    svg
+      .append("g")
+      .attr("class", "grid-lines")
+      .attr("stroke", gridStyle.strokeColor)
+      .attr("stroke-opacity", gridStyle.strokeOpacity)
+      .selectAll("line")
+      .data(d3.ticks(yScale.domain()[0], yScale.domain()[1], height / 50))
+      .join("line")
+      .attr("y1", (d) => gridStyle.offset + yScale(d))
+      .attr("y2", (d) => gridStyle.offset + yScale(d))
+      .attr("x1", marginLeft)
+      .attr("x2", width - marginRight);
+  }
+
+  // Add vertical grid lines if enabled for Y axis
+  if (config.yAxisOptions?.showGridLines) {
+    svg
+      .append("g")
+      .attr("class", "grid-lines")
+      .attr("stroke", gridStyle.strokeColor)
+      .attr("stroke-opacity", gridStyle.strokeOpacity)
+      .selectAll("line")
+      .data(d3.ticks(xScale.domain()[0], xScale.domain()[1], width / 80))
+      .join("line")
+      .attr("x1", (d) => gridStyle.offset + xScale(d))
+      .attr("x2", (d) => gridStyle.offset + xScale(d))
+      .attr("y1", marginTop)
+      .attr("y2", height - marginBottom);
+  }
 
   if (chartType === "horizontal") {
     // For horizontal charts: X = numeric values, Y = categories
@@ -523,21 +735,25 @@ export const addStandardAxes = (
       tickValues = generateAxisTicks(xMin, xMax, majorIncrement);
     }
 
-    // Add X-axis (numeric values) - usually on top for horizontal charts
-    addStandardXAxisForHorizontal(svg, xScale, marginTop, {
-      ...xAxisOptions,
-      showGridLines: true,
-      height,
-      marginBottom,
-      tickValues: tickValues || xAxisOptions.tickValues,
-      customFormat: xAxisOptions.customFormat || formatAxisNumber,
-    });
+    // Add X-axis (numeric values) if enabled
+    if (xAxisOptions.showAxis !== false) {
+      addStandardXAxisForHorizontal(svg, xScale, marginTop, {
+        ...xAxisOptions,
+        showGridLines: false, // We're using custom grid lines now
+        height,
+        marginBottom,
+        tickValues: tickValues || xAxisOptions.tickValues,
+        customFormat: xAxisOptions.customFormat || formatAxisNumber,
+      });
+    }
 
-    // Add Y-axis (categories) - handle long category names
-    addStandardYAxisForHorizontal(svg, yScale, marginLeft, categories, data, {
-      ...yAxisOptions,
-      maxLabelLength: yAxisOptions.maxLabelLength || 15,
-    });
+    // Add Y-axis (categories) if enabled
+    if (yAxisOptions.showAxis !== false) {
+      addStandardYAxisForHorizontal(svg, yScale, marginLeft, categories, data, {
+        ...yAxisOptions,
+        maxValueLength: yAxisOptions.maxValueLength || 15,
+      });
+    }
   } else {
     // For vertical charts: X = categories, Y = numeric values
 
@@ -550,29 +766,33 @@ export const addStandardAxes = (
       tickValues = generateAxisTicks(yMin, yMax, majorIncrement);
     }
 
-    // Add X-axis (categories) with rotation handling
-    const axisResult = addStandardXAxis(
-      svg,
-      xScale,
-      height,
-      marginBottom,
-      categories,
-      width,
-      marginLeft,
-      marginRight,
-      xAxisOptions
-    );
-    rotationInfo = axisResult.rotationInfo;
+    // Add X-axis (categories) if enabled
+    if (xAxisOptions.showAxis !== false) {
+      const axisResult = addStandardXAxis(
+        svg,
+        xScale,
+        height,
+        marginBottom,
+        categories,
+        width,
+        marginLeft,
+        marginRight,
+        xAxisOptions
+      );
+      rotationInfo = axisResult.rotationInfo;
+    }
 
-    // Add Y-axis (numeric values) with grid lines
-    addStandardYAxis(svg, yScale, marginLeft, {
-      ...yAxisOptions,
-      showGridLines: true,
-      width,
-      marginRight,
-      tickValues: tickValues || yAxisOptions.tickValues,
-      customFormat: yAxisOptions.customFormat || formatAxisNumber,
-    });
+    // Add Y-axis (numeric values) if enabled
+    if (yAxisOptions.showAxis !== false) {
+      addStandardYAxis(svg, yScale, marginLeft, {
+        ...yAxisOptions,
+        showGridLines: false, // We're using custom grid lines now
+        width,
+        marginRight,
+        tickValues: tickValues || yAxisOptions.tickValues,
+        customFormat: yAxisOptions.customFormat || formatAxisNumber,
+      });
+    }
   }
 
   // Calculate additional margin needed for rotated labels (only for vertical charts)
@@ -595,6 +815,8 @@ export const addStandardAxes = (
     marginLeft,
     axisLabels,
     chartType,
+    xAxisOptions,
+    yAxisOptions,
   });
 
   return {

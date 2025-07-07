@@ -16,6 +16,9 @@ import { chartVariableConfig } from "./ChartVariableConfig";
 import clsx from "clsx";
 import { ChartService, DataProcessingService } from "@/services/chart";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
+import { groupBy } from "lodash";
+import { DataProcessingInput } from "@/services/chart/DataProcessingService";
+import { type ErrorBarOptions } from "@/services/chart/DataProcessingService";
 
 interface ChartPreviewProps {
   chartType: ChartType;
@@ -80,6 +83,7 @@ interface ChartPreviewProps {
   chartSubtitleFontSize?: number;
   // Add prop for statistic selection (Summary Point Plot)
   selectedStatistic?: "mean" | "median" | "mode" | "min" | "max";
+  errorBarOptions?: ErrorBarOptions;
 }
 
 // Definisi interface untuk data chart
@@ -148,6 +152,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       chartTitleFontSize,
       chartSubtitleFontSize,
       selectedStatistic,
+      errorBarOptions,
     },
     ref
   ) => {
@@ -250,14 +255,14 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                   bottomVariables[0] || ""
                 } categories`,
               description: `${chartType} showing data distribution`,
-              titleFontSize: chartTitleFontSize || 16,
-              subtitleFontSize: chartSubtitleFontSize || 12,
+              titleFontSize: chartTitleFontSize || 24,
+              subtitleFontSize: chartSubtitleFontSize || 14,
               axisInfo: processedResult.axisInfo,
             },
             chartConfig: {
               chartColor: chartColors,
-              width: 800,
-              height: 600,
+              width: chartType === "Scatter Plot Matrix" ? 1000 : 800,
+              height: chartType === "Scatter Plot Matrix" ? 750 : 600,
               useAxis: useaxis,
               useLegend: true,
               statistic: selectedStatistic,
@@ -756,7 +761,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             const isDefault = processedResult.data.length === 0;
             const config = createStackedChartConfig(chartType, isDefault);
 
-            chartNode = chartUtils.createMultilineChart(
+            chartNode = chartUtils.createMultipleLineChart(
               config.data,
               width,
               height,
@@ -966,7 +971,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           case "Clustered Error Bar Chart": {
             const isDefault = processedResult.data.length === 0;
-            const config = createErrorBarChartConfig(chartType, isDefault);
+            const config = createClusteredErrorBarChartConfig(
+              chartType,
+              isDefault
+            );
 
             console.log("config.data", config.data);
 
@@ -986,16 +994,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           case "Scatter Plot Matrix": {
             const isDefault = processedResult.data.length === 0;
             const config = createChartConfig(chartType, isDefault);
-            config.data = [
-              { A: 15, B: 50, C: 20 },
-              { A: 20, B: 200, C: 30 },
-              { A: 60, B: 100, C: 70 },
-              { A: 200, B: 325, C: 180 },
-              { A: 80, B: 150, C: 60 },
-              { A: 130, B: 275, C: 110 },
-            ];
-            console.log("config.data", config.data);
-
             chartNode = chartUtils.createScatterPlotMatrix(
               config.data,
               width,
@@ -1755,16 +1753,38 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       selectedStatistic,
     ]);
 
-    // Tambahkan useEffect untuk memproses data dan mengisi processedResult
+    // Process data when variables or options change
     useEffect(() => {
+      // Only process if we have data and variables
+      if (data.length === 0 || variables.length === 0) {
+        setProcessedResult({ data: [], axisInfo: {} });
+        return;
+      }
+
       try {
+        console.log("🔄 Processing data with options:", {
+          chartType,
+          variables: variables.length,
+          errorBarOptions,
+        });
+
+        const isErrorBarChart =
+          chartType === "Error Bar Chart" ||
+          chartType === "Clustered Error Bar Chart";
+
         const processingOptions = {
-          aggregation: "none" as const,
+          aggregation: isErrorBarChart
+            ? ("average" as const)
+            : ("none" as const),
           filterEmpty: true,
           sortBy: undefined,
           sortOrder: "asc" as const,
           limit: undefined,
+          ...(isErrorBarChart && {
+            errorBar: errorBarOptions,
+          }),
         };
+
         const chartVariables = {
           x: bottomVariables,
           y: sideVariables,
@@ -1775,17 +1795,19 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           z: bottom2Variables,
           y2: side2Variables,
         };
+
         const result = DataProcessingService.processDataForChart({
-          chartType: chartType,
+          chartType,
           rawData: data,
-          variables: variables,
-          chartVariables: chartVariables,
-          processingOptions: processingOptions,
+          variables,
+          chartVariables,
+          processingOptions,
         });
-        console.log("Processed result updated:", result);
+
+        console.log("✅ Data processed:", result);
         setProcessedResult(result);
       } catch (error) {
-        console.error("Error processing data:", error);
+        console.error("❌ Error processing data:", error);
         setProcessedResult({ data: [], axisInfo: {} });
       }
     }, [
@@ -1800,10 +1822,8 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       closeVariables,
       bottom2Variables,
       side2Variables,
+      errorBarOptions,
     ]);
-
-    // Computed previewData for backward compatibility
-    const previewData = processedResult.data;
 
     // Add a function to get the generated JSON (for ChartBuilderModal)
     const getGeneratedChartJSON = useCallback(() => {
@@ -1919,14 +1939,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           "Scatter Plot": scatterPlotData,
           "Scatter Plot With Fit Line": scatterPlotData,
           Boxplot: boxplotData,
-          "Scatter Plot Matrix": [
-            { A: 15, B: 50, C: 20 },
-            { A: 20, B: 200, C: 30 },
-            { A: 60, B: 100, C: 70 },
-            { A: 200, B: 325, C: 180 },
-            { A: 80, B: 150, C: 60 },
-            { A: 130, B: 275, C: 110 },
-          ],
+          "Scatter Plot Matrix": scatterPlotMatrixData,
           "Error Bar Chart": [
             {
               category: "Group A",
@@ -2047,17 +2060,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             { category: "80-84", subcategory: "M", value: 4313687 },
             { category: "80-84", subcategory: "F", value: 3432738 },
           ],
-          "Frequency Polygon": [
-            { category: "-0", value: 0 },
-            { category: "0-10", value: 5 },
-            { category: "10-20", value: 15 },
-            { category: "20-30", value: 25 },
-            { category: "30-40", value: 30 },
-            { category: "40-50", value: 20 },
-            { category: "50-60", value: 10 },
-            { category: "60-70", value: 5 },
-            { category: "80+", value: 0 },
-          ],
+          "Frequency Polygon": histogramData,
           "Clustered Error Bar Chart": [
             { category: "A", subcategory: "A1", value: 20, error: 2 },
             { category: "A", subcategory: "A2", value: 30, error: 3 },
@@ -2301,8 +2304,8 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             subtitle,
             titleColor: "hsl(var(--foreground))",
             subtitleColor: "hsl(var(--muted-foreground))",
-            titleFontSize: 16,
-            subtitleFontSize: 12,
+            titleFontSize: 14,
+            subtitleFontSize: 10,
           },
           axisConfig: {
             x: xLabel,
@@ -2426,35 +2429,31 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       ]
     ); // No dependencies needed as it's a pure function
 
-    const createErrorBarChartConfig = useCallback(
-      (chartType: string, isDefault: boolean = false) => {
-        // Fungsi deviasi standar
-        const calculateError = (values: number[]): number => {
-          if (values.length <= 1) return 0;
+    const createErrorBarChartConfig = (
+      chartType: ChartType,
+      isDefault: boolean
+    ) => {
+      const config = createChartConfig(chartType, isDefault);
 
-          const mean =
-            values.reduce((sum: number, v: number) => sum + v, 0) /
-            values.length;
-          const variance =
-            values.reduce(
-              (sum: number, v: number) => sum + Math.pow(v - mean, 2),
-              0
-            ) /
-            (values.length - 1);
-          return Math.sqrt(variance);
-        };
+      if (!isDefault) {
+        config.data = processedResult.data;
+      }
 
-        const config = createChartConfig(chartType, isDefault);
+      return config;
+    };
 
-        // Jika bukan default, hitung error dari data
-        if (!isDefault && processedResult.data.length > 0) {
-          config.data = processedResult.data;
-        }
+    const createClusteredErrorBarChartConfig = (
+      chartType: ChartType,
+      isDefault: boolean
+    ) => {
+      const config = createChartConfig(chartType, isDefault);
 
-        return config;
-      },
-      [createChartConfig, processedResult.data]
-    ); // No dependencies needed as it's a pure function
+      if (!isDefault) {
+        config.data = processedResult.data;
+      }
+
+      return config;
+    };
 
     // Helper function untuk format limited list
     const formatLimitedList = (items: string[], limit: number = 3): string => {
@@ -2465,6 +2464,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       }
       return limited.join(", ");
     };
+
+    // Add useEffect to generate chart JSON when processed data changes
+    useEffect(() => {
+      if (processedResult.data.length > 0) {
+        generateChartJSON();
+      }
+    }, [processedResult, generateChartJSON]);
 
     return (
       <div className="flex flex-col p-5 border-2 border-gray-200 rounded-lg pb-24">
@@ -2839,7 +2845,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             const itemWidth = `${(containerWidth - 20) / variables.length}px`; // Lebar tiap item berdasarkan jumlah
 
             return (
-              <div className="absolute top-1/2 left-[-140px] transform -translate-y-1/2 rotate-90 flex flex-row justify-center items-center h-[200px] gap-2 cursor-pointer">
+              <div className="absolute top-1/2 left-[-170px] transform -translate-y-1/2 rotate-90 flex flex-row justify-center items-center h-[200px] gap-2 cursor-pointer">
                 {variables.map((label, index) => {
                   // Create the simplified drop zone for handleDrop (e.g. "high", "low", "close")
                   const dropZone = label
@@ -2946,7 +2952,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           )}
 
           {/* Kotak chart preview, hanya chart */}
-          <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[650px] max-w-full h-[470px] flex flex-col justify-between mt-8">
+          <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[700px] max-w-full h-[450px] flex flex-col justify-between mt-8">
             {/* Chart content saja */}
             {chartType === "3D Bar Chart2" ||
             chartType === "Clustered 3D Bar Chart" ||
@@ -2978,7 +2984,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                   ref={svgRef}
                   className="w-full h-full"
                   preserveAspectRatio="xMidYMid meet"
-                  viewBox="0 0 580 400"
+                  viewBox="0 0 680 400"
                   style={{
                     width: "100%",
                     height: "100%",

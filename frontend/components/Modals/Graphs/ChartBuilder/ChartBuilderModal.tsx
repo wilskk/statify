@@ -47,6 +47,8 @@ import {
 } from "@/components/ui/select";
 import { HexColorPicker } from "react-colorful";
 import { chartConfigOptions } from "./ChartConfigOptions";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { type ErrorBarOptions } from "@/services/chart/DataProcessingService";
 
 interface ChartBuilderModalProps {
   onClose: () => void;
@@ -126,9 +128,62 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const variables = useVariableStore.getState().variables;
   const data = useDataStore((state) => state.data);
 
+  // Update error bar states
+  const [errorBarType, setErrorBarType] = useState<"ci" | "se" | "sd">("ci");
+  const [confidenceLevel, setConfidenceLevel] = useState<number>(95);
+  const [seMultiplier, setSeMultiplier] = useState<number>(2);
+  const [sdMultiplier, setSdMultiplier] = useState<number>(2);
+  const [errorBarOptions, setErrorBarOptions] = useState<
+    ErrorBarOptions | undefined
+  >(undefined);
+
+  // Update useEffect to create proper error bar options
+  useEffect(() => {
+    if (
+      chartType === "Error Bar Chart" ||
+      chartType === "Clustered Error Bar Chart"
+    ) {
+      let newErrorBarOptions: ErrorBarOptions;
+      switch (errorBarType) {
+        case "ci":
+          newErrorBarOptions = {
+            type: "ci",
+            confidenceLevel: confidenceLevel,
+          };
+          break;
+        case "se":
+          newErrorBarOptions = {
+            type: "se",
+            multiplier: seMultiplier,
+          };
+          break;
+        case "sd":
+          newErrorBarOptions = {
+            type: "sd",
+            multiplier: sdMultiplier,
+          };
+          break;
+      }
+      console.log("🔄 Updating error bar options:", newErrorBarOptions);
+      setErrorBarOptions(newErrorBarOptions);
+    } else {
+      setErrorBarOptions(undefined);
+    }
+  }, [chartType, errorBarType, confidenceLevel, seMultiplier, sdMultiplier]);
+
   // Utility function to check if all axis config values are false
   function isAxisConfigAllFalse(axisConfig: Record<string, boolean>) {
     return Object.values(axisConfig).every((v) => v === false);
+  }
+
+  // Helper function to check if error bar config is enabled
+  function isErrorBarEnabled(errorBarConfig: any) {
+    if (!errorBarConfig) return false;
+    return (
+      errorBarConfig.ci?.confidenceLevel ||
+      errorBarConfig.se?.multiplier ||
+      errorBarConfig.sd?.multiplier
+    );
   }
 
   const config = chartConfigOptions[chartType];
@@ -187,6 +242,12 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
             show: !isAxisConfigAllFalse((config.axis as any).y),
           },
         ]),
+    {
+      key: "error-bar",
+      label: "Error Bar",
+      icon: <BarChartIcon className="w-4 h-4 mr-2" />,
+      show: isErrorBarEnabled(config.errorBar),
+    },
   ].filter((item) => item.show);
   const [selectedSetting, setSelectedSetting] = useState<string>("title");
 
@@ -709,9 +770,10 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
           }
         >
           <ChartPreview
+            ref={chartPreviewRef}
             chartType={chartType}
             width={480}
-            height={270}
+            height={280}
             useaxis={true}
             sideVariables={sideVariables}
             side2Variables={side2Variables}
@@ -753,7 +815,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
             yRightAxisOrigin={y2AxisOptions.origin}
             chartColors={chartColors}
             selectedStatistic={selectedStatistic}
-            ref={chartPreviewRef}
+            errorBarOptions={errorBarOptions}
           />
         </div>
 
@@ -1326,6 +1388,144 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
                             />
                           </>
                         )}
+                      </div>
+                    )}
+                  {selectedSetting === "error-bar" &&
+                    config.errorBar &&
+                    isErrorBarEnabled(config.errorBar) && (
+                      <div className="space-y-2">
+                        <Label className="block text-sm font-medium text-gray-900">
+                          Error Bars Represent
+                        </Label>
+                        <div className="space-y-4">
+                          {/* Confidence Interval */}
+                          {config.errorBar.ci?.confidenceLevel && (
+                            <label className="flex items-start gap-2">
+                              <input
+                                type="radio"
+                                name="error-bar-type"
+                                value="ci"
+                                checked={errorBarType === "ci"}
+                                onChange={() => setErrorBarType("ci")}
+                                className="mt-1"
+                              />
+                              <div className="flex flex-col">
+                                <span>Confidence intervals</span>
+                                <div className="mt-1 grid grid-cols-2 items-center">
+                                  <span className="text-xs text-gray-500">
+                                    Level (%)
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.01"
+                                    className="w-20 justify-self-end p-1 border rounded disabled:bg-gray-300"
+                                    value={confidenceLevel}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      if (
+                                        !isNaN(value) &&
+                                        value >= 0 &&
+                                        value <= 100
+                                      ) {
+                                        setConfidenceLevel(value);
+                                      }
+                                    }}
+                                    disabled={errorBarType !== "ci"}
+                                    placeholder="Level (%)"
+                                  />
+                                </div>
+                              </div>
+                            </label>
+                          )}
+
+                          {/* Standard Error */}
+                          {config.errorBar.se?.multiplier && (
+                            <label className="flex items-start gap-2">
+                              <input
+                                type="radio"
+                                name="error-bar-type"
+                                value="se"
+                                checked={errorBarType === "se"}
+                                onChange={() => setErrorBarType("se")}
+                                className="mt-1"
+                              />
+                              <div className="flex flex-col">
+                                <span>Standard error</span>
+                                <div className="mt-1 grid grid-cols-2 items-center">
+                                  <span className="text-xs text-gray-500">
+                                    Multiplier
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0.01"
+                                    step="1"
+                                    className="w-20 justify-self-end p-1 border rounded disabled:bg-gray-300"
+                                    value={
+                                      errorBarType === "se"
+                                        ? seMultiplier
+                                        : seMultiplier
+                                    }
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      if (!isNaN(value) && value > 0) {
+                                        if (errorBarType === "se") {
+                                          setSeMultiplier(value);
+                                        }
+                                      }
+                                    }}
+                                    disabled={errorBarType !== "se"}
+                                    placeholder="Multiplier"
+                                  />
+                                </div>
+                              </div>
+                            </label>
+                          )}
+
+                          {/* Standard Deviation */}
+                          {config.errorBar.sd?.multiplier && (
+                            <label className="flex items-start gap-2">
+                              <input
+                                type="radio"
+                                name="error-bar-type"
+                                value="sd"
+                                checked={errorBarType === "sd"}
+                                onChange={() => setErrorBarType("sd")}
+                                className="mt-1"
+                              />
+                              <div className="flex flex-col">
+                                <span>Standard deviation</span>
+                                <div className="mt-1 grid grid-cols-2 items-center">
+                                  <span className="text-xs text-gray-500">
+                                    Multiplier
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0.01"
+                                    step="1"
+                                    className="w-20 justify-self-end p-1 border rounded disabled:bg-gray-300"
+                                    value={
+                                      errorBarType === "sd"
+                                        ? sdMultiplier
+                                        : sdMultiplier
+                                    }
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      if (!isNaN(value) && value > 0) {
+                                        if (errorBarType === "sd") {
+                                          setSdMultiplier(value);
+                                        }
+                                      }
+                                    }}
+                                    disabled={errorBarType !== "sd"}
+                                    placeholder="Multiplier"
+                                  />
+                                </div>
+                              </div>
+                            </label>
+                          )}
+                        </div>
                       </div>
                     )}
                 </div>

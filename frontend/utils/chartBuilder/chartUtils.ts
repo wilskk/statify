@@ -99,6 +99,12 @@ export interface AxisLabelConfig {
     | "line"
     | "pyramid"
     | "default";
+  xAxisOptions?: {
+    showAxisLabel?: boolean;
+  };
+  yAxisOptions?: {
+    showAxisLabel?: boolean;
+  };
 }
 
 /**
@@ -226,8 +232,15 @@ export const addYAxisLabel = (config: AxisLabelConfig) => {
  * This is a convenience function that calls both addXAxisLabel and addYAxisLabel
  */
 export const addAxisLabels = (config: AxisLabelConfig) => {
-  addXAxisLabel(config);
-  addYAxisLabel(config);
+  // Add X axis label if showAxisLabel is true
+  if (config.xAxisOptions?.showAxisLabel !== false) {
+    addXAxisLabel(config);
+  }
+
+  // Add Y axis label if showAxisLabel is true
+  if (config.yAxisOptions?.showAxisLabel !== false) {
+    addYAxisLabel(config);
+  }
 };
 
 /**
@@ -282,6 +295,7 @@ export interface LegendOptions {
   position: {
     x: number;
     y: number;
+    width?: number; // Add width for bottom legend layout calculation
   };
   itemWidth?: number;
   itemHeight?: number;
@@ -289,6 +303,8 @@ export interface LegendOptions {
   fontSize?: number;
   maxItemsPerRow?: number;
   title?: string;
+  domain?: string[]; // Add domain option
+  legendPosition?: "bottom" | "right"; // Add position option
 }
 
 export function addLegend({
@@ -297,34 +313,43 @@ export function addLegend({
   position,
   itemWidth = 19,
   itemHeight = 19,
-  itemSpacing = 120, // Reduced from 130 to 120 to fit more items
+  itemSpacing = 120,
   fontSize = 10,
   maxItemsPerRow,
   title,
+  domain: customDomain,
+  legendPosition = "bottom",
 }: LegendOptions): void {
-  const domain = colorScale.domain();
+  const domain = customDomain || colorScale.domain();
 
-  // Auto-adaptive sizing based on number of items
-  const itemCount = domain.length;
-  let adaptiveItemWidth = itemWidth;
-  let adaptiveItemHeight = itemHeight;
-  let adaptiveSpacing = itemSpacing;
-  let adaptiveFontSize = fontSize;
+  // Create canvas for text measurement
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = `${fontSize}px sans-serif`;
 
-  // Scale down if too many items (>6)
-  if (itemCount > 6) {
-    const scaleFactor = Math.max(0.7, 6 / itemCount); // Min scale 70%
-    adaptiveItemWidth = Math.round(itemWidth * scaleFactor);
-    adaptiveItemHeight = Math.round(itemHeight * scaleFactor);
-    adaptiveSpacing = Math.round(itemSpacing * scaleFactor);
-    adaptiveFontSize = Math.max(8, Math.round(fontSize * scaleFactor)); // Min font size 8px
-  }
+  // Function to truncate text with ellipsis
+  const truncateText = (text: string, maxLength: number = 18) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength - 3) + "...";
+  };
+
+  // Calculate max text width for truncated text
+  const maxTextWidth = Math.max(
+    ...domain.map((item: string) => ctx.measureText(truncateText(item)).width)
+  );
+
+  // Calculate adaptive spacing based on text width and legend position
+  const minSpacing =
+    itemWidth + 6 + maxTextWidth + (legendPosition === "right" ? 10 : 30);
+  const adaptiveSpacing = Math.max(
+    legendPosition === "right" ? minSpacing : itemSpacing,
+    minSpacing
+  );
 
   const legendGroup = svg
     .append("g")
     .attr("class", "chart-legend")
     .attr("font-family", "sans-serif")
-    .attr("font-size", adaptiveFontSize)
+    .attr("font-size", fontSize)
     .attr("text-anchor", "start")
     .attr("transform", `translate(${position.x}, ${position.y})`);
 
@@ -339,44 +364,77 @@ export function addLegend({
       .text(title);
   }
 
-  // Calculate items per row based on available width or maxItemsPerRow
-  // If maxItemsPerRow is provided, use it; otherwise show all items in one row
-  const itemsPerRow = maxItemsPerRow || domain.length;
+  // For bottom position, we want to spread items horizontally first
+  if (legendPosition === "bottom") {
+    const availableWidth = position.width || 500;
+    const itemsPerRow = Math.max(
+      1,
+      Math.floor(availableWidth / adaptiveSpacing)
+    );
 
-  domain.forEach((item: string, index: number) => {
-    const row = Math.floor(index / itemsPerRow);
-    const col = index % itemsPerRow;
-    const xOffset = col * adaptiveSpacing;
-    const yOffset = row * (adaptiveItemHeight + 8); // 8px vertical spacing between rows
+    domain.forEach((item: string, index: number) => {
+      const row = Math.floor(index / itemsPerRow);
+      const col = index % itemsPerRow;
 
-    // Create swatch rectangle
-    legendGroup
-      .append("rect")
-      .attr("x", xOffset)
-      .attr("y", yOffset)
-      .attr("width", adaptiveItemWidth)
-      .attr("height", adaptiveItemHeight)
-      .attr("fill", colorScale(item))
-      .attr("stroke", "hsl(var(--border))")
-      .attr("stroke-width", 0.5);
+      const xOffset = col * adaptiveSpacing;
+      const yOffset = row * (itemHeight + 8);
 
-    // Create label text with truncation for long names
-    const maxLabelLength = adaptiveSpacing < 100 ? 8 : 12; // Shorter labels for smaller spacing
-    const displayText =
-      item.length > maxLabelLength
-        ? item.substring(0, maxLabelLength) + "..."
-        : item;
+      // Create swatch rectangle
+      legendGroup
+        .append("rect")
+        .attr("x", xOffset)
+        .attr("y", yOffset)
+        .attr("width", itemWidth)
+        .attr("height", itemHeight)
+        .attr("fill", colorScale(item))
+        .attr("stroke", "hsl(var(--border))")
+        .attr("stroke-width", 0.5);
 
-    legendGroup
-      .append("text")
-      .attr("x", xOffset + adaptiveItemWidth + 6) // 6px gap between swatch and text
-      .attr("y", yOffset + adaptiveItemHeight / 2)
-      .attr("dy", "0.35em")
-      .attr("fill", "hsl(var(--foreground))")
-      .text(displayText)
-      .append("title") // Add tooltip for full text
-      .text(item);
-  });
+      // Create label text with truncation
+      const text = legendGroup
+        .append("text")
+        .attr("x", xOffset + itemWidth + 6)
+        .attr("y", yOffset + itemHeight / 2)
+        .attr("dy", "0.35em")
+        .attr("fill", "hsl(var(--foreground))")
+        .text(truncateText(item));
+
+      // Add title attribute for full text on hover
+      if (item.length > 20) {
+        text.append("title").text(item);
+      }
+    });
+  } else {
+    // For right position, stack items vertically
+    domain.forEach((item: string, index: number) => {
+      const yOffset = index * (itemHeight + 8);
+
+      // Create swatch rectangle
+      legendGroup
+        .append("rect")
+        .attr("x", 0)
+        .attr("y", yOffset)
+        .attr("width", itemWidth)
+        .attr("height", itemHeight)
+        .attr("fill", colorScale(item))
+        .attr("stroke", "hsl(var(--border))")
+        .attr("stroke-width", 0.5);
+
+      // Create label text with truncation
+      const text = legendGroup
+        .append("text")
+        .attr("x", itemWidth + 6)
+        .attr("y", yOffset + itemHeight / 2)
+        .attr("dy", "0.35em")
+        .attr("fill", "hsl(var(--foreground))")
+        .text(truncateText(item));
+
+      // Add title attribute for full text on hover
+      if (item.length > 20) {
+        text.append("title").text(item);
+      }
+    });
+  }
 }
 
 /**
@@ -389,7 +447,7 @@ export interface LegendPositionOptions {
   marginRight: number;
   marginBottom: number;
   marginTop: number;
-  legendPosition?: "bottom" | "right" | "top";
+  legendPosition?: "bottom" | "right";
   itemCount: number;
   itemSpacing?: number;
 }
@@ -403,50 +461,44 @@ export function calculateLegendPosition({
   marginTop,
   legendPosition = "bottom",
   itemCount,
-  itemSpacing = 120, // Reduced from 130 to 120 to fit more items
-}: LegendPositionOptions): { x: number; y: number; maxItemsPerRow?: number } {
+  itemSpacing = 120,
+  dualAxes = false, // ✅ parameter baru
+}: LegendPositionOptions & { dualAxes?: boolean }): {
+  x: number;
+  y: number;
+  width?: number;
+  maxItemsPerRow?: number;
+} {
   switch (legendPosition) {
-    case "bottom":
+    case "bottom": {
       const availableWidth = width - marginLeft - marginRight;
-
-      // Auto-adaptive spacing calculation
-      let adaptiveSpacing = itemSpacing;
-      if (itemCount > 6) {
-        const scaleFactor = Math.max(0.7, 6 / itemCount);
-        adaptiveSpacing = Math.round(itemSpacing * scaleFactor);
-      }
-
       const maxItemsPerRow = Math.max(
         1,
-        Math.floor(availableWidth / adaptiveSpacing)
+        Math.floor(availableWidth / itemSpacing)
       );
       return {
         x: marginLeft,
-        y: height - marginBottom + 50, // Increased spacing from 25 to 50
+        y: height - marginBottom + 80,
+        width: availableWidth,
         maxItemsPerRow,
       };
+    }
 
-    case "right":
+    case "right": {
+      // ✅ Geser lebih jauh ke kanan jika dual axes
+      const legendOffset = dualAxes ? 60 : 20;
       return {
-        x: width - marginRight + 10,
+        x: width - marginRight + legendOffset,
         y: marginTop,
-        maxItemsPerRow: 1, // Vertical layout
+        maxItemsPerRow: 1,
       };
-
-    case "top":
-      return {
-        x: marginLeft,
-        y: marginTop - 30,
-        maxItemsPerRow: Math.max(
-          1,
-          Math.floor((width - marginLeft - marginRight) / itemSpacing)
-        ),
-      };
+    }
 
     default:
       return {
         x: marginLeft,
-        y: height - marginBottom + 25,
+        y: height - marginBottom + 40,
+        width: width - marginLeft - marginRight,
         maxItemsPerRow: Math.max(
           1,
           Math.floor((width - marginLeft - marginRight) / itemSpacing)
@@ -454,3 +506,41 @@ export function calculateLegendPosition({
       };
   }
 }
+
+export interface StandardAxesOptions {
+  xScale: any;
+  yScale: any;
+  width: number;
+  height: number;
+  marginTop: number;
+  marginRight: number;
+  marginBottom: number;
+  marginLeft: number;
+  categories?: string[];
+  axisLabels?: { x?: string; y?: string };
+  yMin: number;
+  yMax: number;
+  chartType?: "vertical" | "horizontal";
+  xAxisOptions?: {
+    showGridLines?: boolean;
+    tickValues?: number[];
+    customFormat?: (value: number) => string;
+  };
+  yAxisOptions?: {
+    showGridLines?: boolean;
+    tickValues?: number[];
+    customFormat?: (value: number) => string;
+  };
+  gridStyle?: Partial<{
+    stroke: string;
+    strokeWidth: number;
+    opacity: number;
+  }>;
+}
+
+export const addStandardAxes = (
+  svg: d3.Selection<SVGSVGElement, any, null, undefined>,
+  options: StandardAxesOptions
+) => {
+  // ... implementation ...
+};

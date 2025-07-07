@@ -151,7 +151,7 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
     },
     "Frequency Polygon": {
       side: { min: 1, max: 1 },
-      bottom: { min: 1, max: 1 },
+      bottom: { min: 0, max: 0 },
       color: { min: 0, max: 0 },
       filter: { min: 0, max: 0 },
     },

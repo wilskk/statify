@@ -20,6 +20,17 @@ export interface DualYAxisConfig {
   y2: AxisConfig;
 }
 
+export interface ErrorBarTypeConfig {
+  confidenceLevel?: boolean;
+  multiplier?: boolean;
+}
+
+export interface ErrorBarConfig {
+  ci?: ErrorBarTypeConfig;
+  se?: ErrorBarTypeConfig;
+  sd?: ErrorBarTypeConfig;
+}
+
 export interface ChartConfigOptions {
   title: boolean;
   subtitle: boolean;
@@ -29,8 +40,8 @@ export interface ChartConfigOptions {
   subtitleFontSize: boolean;
   chartColors: boolean;
   axis: SingleYAxisConfig | DualYAxisConfig;
-  statistic?: boolean; // New option for charts that support statistic selection
-  // Tambahkan properti lain jika perlu (legend, grid, dsb)
+  statistic?: boolean;
+  errorBar?: ErrorBarConfig;
 }
 
 export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
@@ -367,6 +378,17 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     titleFontSize: true,
     subtitleFontSize: true,
     chartColors: true,
+    errorBar: {
+      ci: {
+        confidenceLevel: true,
+      },
+      se: {
+        multiplier: true,
+      },
+      sd: {
+        multiplier: true,
+      },
+    },
     axis: {
       x: {
         label: true,
@@ -517,6 +539,17 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     titleFontSize: true,
     subtitleFontSize: true,
     chartColors: true,
+    errorBar: {
+      ci: {
+        confidenceLevel: true,
+      },
+      se: {
+        multiplier: true,
+      },
+      sd: {
+        multiplier: true,
+      },
+    },
     axis: {
       x: {
         label: true,

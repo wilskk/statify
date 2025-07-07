@@ -173,17 +173,6 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         { category: "80-84", subcategory: "M", value: 4313687 },
         { category: "80-84", subcategory: "F", value: 3432738 },
       ];
-      const data13 = [
-        { category: "-0", value: 0 },
-        { category: "0-10", value: 5 },
-        { category: "10-20", value: 15 },
-        { category: "20-30", value: 25 },
-        { category: "30-40", value: 30 },
-        { category: "40-50", value: 20 },
-        { category: "50-60", value: 10 },
-        { category: "60-70", value: 5 },
-        { category: "80+", value: 0 },
-      ];
 
       const data14 = [
         { category: "A", group: "2023", value: 10 },
@@ -519,8 +508,8 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
       } else if (chartType === "Pie Chart") {
         const chartNode = chartUtils.createPieChart(
           data1,
-          width,
-          height,
+          width * 0.8,
+          height * 0.8,
           false
         );
         if (svgRef.current && chartNode) {
@@ -608,7 +597,7 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           svgRef.current.appendChild(chartNode);
         }
       } else if (chartType === "Multiple Line Chart") {
-        const chartNode = chartUtils.createMultilineChart(
+        const chartNode = chartUtils.createMultipleLineChart(
           data7,
           width,
           height,
@@ -674,7 +663,7 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         }
       } else if (chartType === "Frequency Polygon") {
         const chartNode = chartUtils.createFrequencyPolygon(
-          data13,
+          data3,
           width,
           height,
           useaxis
