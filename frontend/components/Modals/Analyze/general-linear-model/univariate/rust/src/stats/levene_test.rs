@@ -84,6 +84,12 @@ pub fn calculate_levene_test(
         dependent_variable: dep_var_name.clone(),
         entries: levene_entries,
         design: design_string,
+        note: Some(
+            "Levene's test checks if the variance of the dependent variable is equal across groups.".to_string()
+        ),
+        interpretation: Some(
+            "A significant p-value (e.g., < 0.05) suggests that the variances are not equal, violating the assumption of homogeneity of variances. Different versions of the test (based on mean, median, etc.) are provided for robustness.".to_string()
+        ),
     };
 
     Ok(vec![result])

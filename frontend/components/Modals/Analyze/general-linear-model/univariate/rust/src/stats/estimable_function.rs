@@ -114,7 +114,10 @@ pub fn calculate_general_estimable_function(
                 l_matrix: Vec::new(),
                 contrast_information: Vec::new(),
             },
-            notes: vec!["Tidak ada data atau parameter dalam model.".to_string()],
+            note: Some("No data or parameters in the model.".to_string()),
+            interpretation: Some(
+                "The general estimable function cannot be calculated because the model is empty.".to_string()
+            ),
         });
     }
 
@@ -130,9 +133,10 @@ pub fn calculate_general_estimable_function(
                 l_matrix: Vec::new(),
                 contrast_information: Vec::new(),
             },
-            notes: vec![
-                "Tidak ada parameter dalam model (setelah pembuatan nama parameter).".to_string()
-            ],
+            note: Some("No parameters in the model (after parameter name generation).".to_string()),
+            interpretation: Some(
+                "The general estimable function cannot be calculated because no model parameters could be identified.".to_string()
+            ),
         });
     }
 
@@ -500,24 +504,26 @@ pub fn calculate_general_estimable_function(
         contrast_info_strings.push(desc_str);
     }
 
-    // Menambahkan catatan-catatan penting pada hasil akhir.
-    let mut notes = Vec::new();
-    notes.push(format!("a. Design: {}", generate_design_string(&design_info)));
+    // Add important notes to the final result.
+    let mut notes_vec = Vec::new();
+    notes_vec.push(format!("a. Design: {}", generate_design_string(&design_info)));
     if is_redundant_vec.iter().any(|&x| x) {
-        notes.push(
+        notes_vec.push(
             "b. One or more β parameters may be redundant (i.e., non-estimable due to data structure).".to_string()
         );
     }
-    notes.push(
+    notes_vec.push(
         "c. Reference levels are first alphabetically/numerically; Pivot levels are last alphabetically/numerically for each factor.".to_string()
     );
-    notes.push(
+    notes_vec.push(
         format!(
-            "e. Factor processing order for effects based on first appearance in parameters: {:?}",
+            "d. Factor processing order for effects based on first appearance in parameters: {:?}",
             all_factors_ordered
         )
     );
-    notes.push(format!("f. Total unique, non-zero, L-vectors generated: {}", l_matrix_rows.len()));
+    notes_vec.push(
+        format!("e. Total unique, non-zero, L-vectors generated: {}", l_matrix_rows.len())
+    );
 
     let estimable_function_entry = GeneralEstimableFunctionEntry {
         parameter: all_model_param_names.clone(),
@@ -526,8 +532,13 @@ pub fn calculate_general_estimable_function(
         contrast_information: contrast_info_strings,
     };
 
+    let note = notes_vec.join("\n");
+    let interpretation =
+        "This table shows how each non-redundant model parameter can be estimated as a linear combination of the means of the design cells (cell means). Each row (L-vector) corresponds to a model parameter and its coefficients define the specific linear combination. This is fundamental for understanding how the model parameters relate to the observed data.".to_string();
+
     Ok(GeneralEstimableFunction {
         estimable_function: estimable_function_entry,
-        notes,
+        note: Some(note),
+        interpretation: Some(interpretation),
     })
 }

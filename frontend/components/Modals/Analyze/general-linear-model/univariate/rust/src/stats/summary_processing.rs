@@ -56,7 +56,13 @@ pub fn basic_processing_summary(
             // Konversi HashMap ke BTreeMap untuk mengurutkan hasil berdasarkan nama level (kunci).
             // BTreeMap secara otomatis menjaga urutan kunci.
             let sorted_counts = level_counts.into_iter().collect::<BTreeMap<String, usize>>();
-            result.insert(factor_name.clone(), BetweenSubjectFactors { factors: sorted_counts });
+            result.insert(factor_name.clone(), BetweenSubjectFactors {
+                factors: sorted_counts,
+                note: None,
+                interpretation: Some(
+                    "This table shows the frequency count (N) for each level of the between-subjects factors. It indicates how many subjects or observations fall into each category.".to_string()
+                ),
+            });
         }
     }
 
@@ -93,6 +99,10 @@ pub fn basic_processing_summary(
                 let sorted_counts = level_counts.into_iter().collect::<BTreeMap<String, usize>>();
                 result.insert(format!("{} (Random)", factor_name), BetweenSubjectFactors {
                     factors: sorted_counts,
+                    note: None,
+                    interpretation: Some(
+                        "This table shows the frequency count (N) for each level of the between-subjects factors. It indicates how many subjects or observations fall into each category.".to_string()
+                    ),
                 });
             }
         }

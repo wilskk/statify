@@ -239,11 +239,14 @@ pub fn calculate_lack_of_fit_tests(
             noncent_parameter: f64::NAN,
             observed_power: f64::NAN,
         },
-        notes: vec![
+        note: Some(
             format!(
-                "Tingkat signifikansi untuk uji-F dan perhitungan power: {}. Catatan: Partial eta-squared untuk Lack of Fit dihitung sebagai SS_LOF / SS_Error_Total.",
+                "Significance level for F-test and power calculation: {}. Note: Partial eta-squared for Lack of Fit is calculated as SS_LOF / SS_Error_Total.",
                 config.options.sig_level
             )
-        ],
+        ),
+        interpretation: Some(
+            "The Lack of Fit test assesses whether the model is adequate. A significant F-value (p < .05) indicates that the model does not fit the data well (i.e., there is a significant lack of fit). Pure Error represents the variability of the response variable at fixed predictor values.".to_string()
+        ),
     })
 }

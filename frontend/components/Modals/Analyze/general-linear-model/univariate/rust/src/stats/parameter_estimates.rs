@@ -31,7 +31,7 @@ pub fn calculate_parameter_estimates(
 
     // Jika tidak ada sampel data yang valid, hentikan proses.
     if design_info.n_samples == 0 {
-        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
+        return Ok(ParameterEstimates { estimates: Vec::new(), note: None, interpretation: None });
     }
 
     // Jika tidak ada parameter yang perlu diestimasi (misalnya, model kosong), kembalikan hasil kosong.
@@ -41,7 +41,7 @@ pub fn calculate_parameter_estimates(
         config.main.fix_factor.as_ref().map_or(true, |ff| ff.is_empty()) &&
         config.main.covar.as_ref().map_or(true, |cv| cv.is_empty())
     {
-        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
+        return Ok(ParameterEstimates { estimates: Vec::new(), note: None, interpretation: None });
     }
 
     // Langkah 2: Perhitungan Inti GLM
@@ -318,5 +318,10 @@ pub fn calculate_parameter_estimates(
         )
     );
 
-    Ok(ParameterEstimates { estimates, notes })
+    let note = if notes.is_empty() { None } else { Some(notes.join(" \n")) };
+    let interpretation = Some(
+        "Parameter estimates (B) represent the change in the dependent variable for a one-unit change in the predictor. The t-test checks if each parameter is significantly different from zero (p < .05). The confidence interval provides a range for the true parameter value. Redundant parameters are set to zero due to multicollinearity.".to_string()
+    );
+
+    Ok(ParameterEstimates { estimates, note, interpretation })
 }

@@ -132,5 +132,13 @@ pub fn calculate_spread_vs_level_plots(
     }
 
     // Kembalikan struktur hasil yang berisi semua titik plot yang telah dihitung.
-    Ok(SpreadVsLevelPlots { points })
+    Ok(SpreadVsLevelPlots {
+        points,
+        note: Some(
+            "Each point represents a unique combination of factor levels. The mean and standard deviation are calculated from the dependent variable values for all cases within that combination.".to_string()
+        ),
+        interpretation: Some(
+            "The Spread vs. Level plot is a diagnostic tool to check the assumption of constant variance (homoscedasticity). It plots the standard deviation (spread) against the mean (level) for each cell in the design. If the variance is constant, the points should be randomly scattered. A funnel shape suggests heteroscedasticity, where the spread changes with the level.".to_string()
+        ),
+    })
 }
