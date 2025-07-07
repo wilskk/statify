@@ -635,6 +635,618 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       }
     };
 
+    // Helper function untuk membuat chart configuration
+    const createChartConfig = useCallback(
+      (chartType: string, isDefault: boolean = false) => {
+        const simpleChartData = [
+          { category: "A", value: 30 },
+          { category: "B", value: 80 },
+          { category: "C", value: 45 },
+          { category: "D", value: 60 },
+          { category: "E", value: 20 },
+          { category: "F", value: 90 },
+        ];
+
+        const stackedChartData = [
+          { category: "male", subcategory: "blue", value: 30 },
+          { category: "male", subcategory: "white", value: 20 },
+          { category: "male", subcategory: "green", value: 10 },
+          { category: "female", subcategory: "blue", value: 25 },
+          { category: "female", subcategory: "white", value: 15 },
+          { category: "female", subcategory: "green", value: 10 },
+        ];
+
+        const lineChartData = [
+          { category: "Jan", value: 10 },
+          { category: "Feb", value: 30 },
+          { category: "Mar", value: 55 },
+          { category: "Apr", value: 60 },
+          { category: "Mei", value: 70 },
+          { category: "Jun", value: 90 },
+          { category: "Jul", value: 55 },
+          { category: "Agu", value: 30 },
+          { category: "Sep", value: 50 },
+          { category: "Okt", value: 20 },
+          { category: "Nov", value: 25 },
+          { category: "Des", value: 25 },
+        ];
+
+        const multipleLineChartData = [
+          { category: "Product A", subcategory: "Division 1", value: 30 },
+          { category: "Product A", subcategory: "Division 2", value: 20 },
+          { category: "Product B", subcategory: "Division 1", value: 25 },
+          { category: "Product B", subcategory: "Division 2", value: 15 },
+          { category: "Product C", subcategory: "Division 1", value: 40 },
+          { category: "Product C", subcategory: "Division 2", value: 10 },
+        ];
+
+        const histogramData = [5, 8, 9, 7, 3, 6, 3, 7, 3, 2, 9, 1, 4, 2, 5];
+
+        const scatterPlotData = [
+          { x: 15, y: 50 },
+          { x: 20, y: 200 },
+          { x: 60, y: 100 },
+          { x: 200, y: 325 },
+          { x: 80, y: 150 },
+          { x: 130, y: 275 },
+          { x: 50, y: 220 },
+          { x: 170, y: 300 },
+          { x: 100, y: 30 },
+          { x: 170, y: 125 },
+          { x: 150, y: 80 },
+          { x: 100, y: 190 },
+          { x: 95, y: 75 },
+        ];
+
+        const boxplotData = [
+          { category: "A", value: 20 },
+          { category: "A", value: 40 },
+          { category: "A", value: 60 },
+          { category: "A", value: 80 },
+          { category: "B", value: 30 },
+          { category: "B", value: 50 },
+          { category: "B", value: 70 },
+          { category: "B", value: 90 },
+        ];
+
+        const scatterPlotMatrixData = [
+          { A: 15, B: 50, C: 20 },
+          { A: 20, B: 200, C: 30 },
+          { A: 60, B: 100, C: 70 },
+          { A: 200, B: 325, C: 180 },
+          { A: 80, B: 150, C: 60 },
+          { A: 130, B: 275, C: 110 },
+        ];
+
+        const defaultData: Record<string, any[]> = {
+          "Vertical Bar Chart": simpleChartData,
+          "Horizontal Bar Chart": simpleChartData,
+          "Vertical Stacked Bar Chart": stackedChartData,
+          "Horizontal Stacked Bar Chart": stackedChartData,
+          "Clustered Bar Chart": stackedChartData,
+          "Line Chart": lineChartData,
+          "Multiple Line Chart": multipleLineChartData,
+          "Pie Chart": simpleChartData,
+          "Area Chart": lineChartData,
+          Histogram: histogramData,
+          "Scatter Plot": scatterPlotData,
+          "Scatter Plot With Fit Line": scatterPlotData,
+          Boxplot: boxplotData,
+          "Scatter Plot Matrix": scatterPlotMatrixData,
+          "Error Bar Chart": [
+            {
+              category: "Group A",
+              subcategory: "Control",
+              value: 25,
+              error: 5,
+            },
+            {
+              category: "Group A",
+              subcategory: "Treatment",
+              value: 30,
+              error: 3,
+            },
+            {
+              category: "Group B",
+              subcategory: "Control",
+              value: 20,
+              error: 4,
+            },
+            {
+              category: "Group B",
+              subcategory: "Treatment",
+              value: 35,
+              error: 6,
+            },
+            {
+              category: "Group C",
+              subcategory: "Control",
+              value: 28,
+              error: 2,
+            },
+            {
+              category: "Group C",
+              subcategory: "Treatment",
+              value: 32,
+              error: 4,
+            },
+          ],
+          "Stacked Area Chart": [
+            { category: "Sun", subcategory: "Product 1", value: 30 },
+            { category: "Sun", subcategory: "Product 2", value: 20 },
+            { category: "Sun", subcategory: "Product 3", value: 25 },
+            { category: "Mon", subcategory: "Product 1", value: 15 },
+            { category: "Mon", subcategory: "Product 2", value: 40 },
+            { category: "Mon", subcategory: "Product 3", value: 10 },
+            { category: "Tue", subcategory: "Product 1", value: 20 },
+            { category: "Tue", subcategory: "Product 2", value: 30 },
+            { category: "Tue", subcategory: "Product 3", value: 15 },
+            { category: "Wed", subcategory: "Product 1", value: 10 },
+            { category: "Wed", subcategory: "Product 2", value: 25 },
+            { category: "Wed", subcategory: "Product 3", value: 40 },
+          ],
+          "Grouped Scatter Plot": [
+            { category: "A", x: 5.1, y: 3.5 },
+            { category: "B", x: 4.9, y: 3.0 },
+            { category: "A", x: 4.7, y: 3.2 },
+            { category: "C", x: 4.6, y: 3.1 },
+            { category: "B", x: 5.0, y: 3.6 },
+            { category: "C", x: 5.4, y: 3.9 },
+            { category: "A", x: 4.6, y: 3.4 },
+            { category: "B", x: 5.0, y: 3.4 },
+            { category: "C", x: 4.4, y: 2.9 },
+            { category: "A", x: 4.9, y: 3.1 },
+            { category: "B", x: 5.4, y: 3.7 },
+            { category: "C", x: 4.8, y: 3.4 },
+            { category: "A", x: 4.8, y: 3.0 },
+            { category: "B", x: 4.3, y: 3.0 },
+            { category: "C", x: 5.8, y: 4.0 },
+            { category: "A", x: 5.7, y: 4.4 },
+            { category: "B", x: 5.4, y: 3.9 },
+            { category: "C", x: 5.1, y: 3.5 },
+            { category: "A", x: 5.1, y: 3.8 },
+            { category: "B", x: 5.0, y: 3.3 },
+          ],
+          "Dot Plot": [
+            { category: "A", value: 10 },
+            { category: "B", value: 40 },
+            { category: "C", value: 45 },
+            { category: "D", value: 55 },
+            { category: "E", value: 60 },
+            { category: "F", value: 70 },
+            { category: "G", value: 80 },
+            { category: "H", value: 90 },
+          ],
+          "Population Pyramid": [
+            { category: "0-4", subcategory: "M", value: 9736305 },
+            { category: "0-4", subcategory: "F", value: 10031835 },
+            { category: "5-9", subcategory: "M", value: 10117913 },
+            { category: "5-9", subcategory: "F", value: 10411857 },
+            { category: "10-14", subcategory: "M", value: 10470147 },
+            { category: "10-14", subcategory: "F", value: 11027820 },
+            { category: "15-19", subcategory: "M", value: 10561873 },
+            { category: "15-19", subcategory: "F", value: 11094262 },
+            { category: "20-24", subcategory: "M", value: 11576412 },
+            { category: "20-24", subcategory: "F", value: 10889596 },
+            { category: "25-29", subcategory: "M", value: 10625791 },
+            { category: "25-29", subcategory: "F", value: 9889569 },
+            { category: "30-34", subcategory: "M", value: 9899569 },
+            { category: "30-34", subcategory: "F", value: 10330988 },
+            { category: "35-39", subcategory: "M", value: 10330988 },
+            { category: "35-39", subcategory: "F", value: 10571884 },
+            { category: "40-44", subcategory: "M", value: 10571884 },
+            { category: "40-44", subcategory: "F", value: 11051409 },
+            { category: "45-49", subcategory: "M", value: 10173646 },
+            { category: "45-49", subcategory: "F", value: 8824852 },
+            { category: "50-54", subcategory: "M", value: 8824852 },
+            { category: "50-54", subcategory: "F", value: 6876271 },
+            { category: "55-59", subcategory: "M", value: 6876271 },
+            { category: "55-59", subcategory: "F", value: 4867513 },
+            { category: "60-64", subcategory: "M", value: 4867513 },
+            { category: "60-64", subcategory: "F", value: 3416432 },
+            { category: "65-69", subcategory: "M", value: 3416432 },
+            { category: "65-69", subcategory: "F", value: 2378691 },
+            { category: "70-74", subcategory: "M", value: 2378691 },
+            { category: "70-74", subcategory: "F", value: 2000771 },
+            { category: "75-79", subcategory: "M", value: 2000771 },
+            { category: "75-79", subcategory: "F", value: 4313687 },
+            { category: "80-84", subcategory: "M", value: 4313687 },
+            { category: "80-84", subcategory: "F", value: 3432738 },
+          ],
+          "Frequency Polygon": histogramData,
+          "Clustered Error Bar Chart": [
+            { category: "A", subcategory: "A1", value: 20, error: 2 },
+            { category: "A", subcategory: "A2", value: 30, error: 3 },
+            { category: "A", subcategory: "A3", value: 50, error: 1 },
+            { category: "B", subcategory: "A1", value: 25, error: 2 },
+            { category: "B", subcategory: "A2", value: 35, error: 3 },
+            { category: "B", subcategory: "A3", value: 53, error: 1 },
+            { category: "C", subcategory: "A1", value: 22, error: 2 },
+            { category: "C", subcategory: "A2", value: 40, error: 1 },
+            { category: "C", subcategory: "A3", value: 49, error: 3 },
+          ],
+
+          "Stacked Histogram": [
+            { value: 10, category: "A" },
+            { value: 12, category: "B" },
+            { value: 15, category: "A" },
+            { value: 18, category: "C" },
+            { value: 20, category: "B" },
+            { value: 25, category: "C" },
+            { value: 30, category: "A" },
+            { value: 10, category: "B" },
+            { value: 12, category: "C" },
+            { value: 15, category: "A" },
+            { value: 22, category: "B" },
+            { value: 28, category: "C" },
+            { value: 32, category: "A" },
+            { value: 35, category: "B" },
+            { value: 38, category: "C" },
+          ],
+          "Clustered Boxplot": [
+            { category: "A", subcategory: "X", value: 10 },
+            { category: "A", subcategory: "X", value: 12 },
+            { category: "A", subcategory: "Y", value: 15 },
+            { category: "A", subcategory: "Y", value: 18 },
+            { category: "B", subcategory: "X", value: 20 },
+            { category: "B", subcategory: "X", value: 25 },
+            { category: "B", subcategory: "Y", value: 30 },
+            { category: "B", subcategory: "Y", value: 35 },
+          ],
+          "1-D Boxplot": [
+            { value: 20 },
+            { value: 40 },
+            { value: 60 },
+            { value: 80 },
+            { value: 30 },
+            { value: 50 },
+            { value: 70 },
+            { value: 90 },
+          ],
+          "Simple Range Bar": [
+            { category: "Jan", high: 100, low: 50, close: 75 },
+            { category: "Feb", high: 110, low: 60, close: 80 },
+            { category: "Mar", high: 120, low: 70, close: 95 },
+            { category: "Apr", high: 130, low: 80, close: 100 },
+            { category: "May", high: 125, low: 75, close: 110 },
+            { category: "Jun", high: 140, low: 90, close: 120 },
+            { category: "Jul", high: 150, low: 100, close: 130 },
+            { category: "Aug", high: 145, low: 95, close: 125 },
+            { category: "Sep", high: 135, low: 85, close: 115 },
+            { category: "Oct", high: 125, low: 75, close: 105 },
+            { category: "Nov", high: 115, low: 65, close: 95 },
+            { category: "Dec", high: 105, low: 55, close: 85 },
+          ],
+          "Clustered Range Bar": [
+            { category: "A", subcategory: "X", low: 20, high: 50, close: 35 },
+            { category: "A", subcategory: "Y", low: 25, high: 55, close: 40 },
+            { category: "B", subcategory: "X", low: 15, high: 45, close: 30 },
+            { category: "B", subcategory: "Y", low: 18, high: 48, close: 33 },
+            { category: "C", subcategory: "X", low: 22, high: 60, close: 42 },
+            { category: "C", subcategory: "Y", low: 27, high: 65, close: 46 },
+            { category: "D", subcategory: "X", low: 12, high: 40, close: 28 },
+            { category: "D", subcategory: "Y", low: 14, high: 42, close: 30 },
+            { category: "E", subcategory: "X", low: 30, high: 70, close: 50 },
+            { category: "E", subcategory: "Y", low: 35, high: 75, close: 55 },
+          ],
+          "High-Low-Close Chart": [
+            { category: "Jan", high: 100, low: 50, close: 75 },
+            { category: "Feb", high: 110, low: 60, close: 80 },
+            { category: "Mar", high: 120, low: 70, close: 95 },
+            { category: "Apr", high: 130, low: 80, close: 100 },
+            { category: "May", high: 125, low: 75, close: 110 },
+            { category: "Jun", high: 140, low: 90, close: 120 },
+            { category: "Jul", high: 150, low: 100, close: 130 },
+            { category: "Aug", high: 145, low: 95, close: 125 },
+            { category: "Sep", high: 135, low: 85, close: 115 },
+            { category: "Oct", high: 125, low: 75, close: 105 },
+            { category: "Nov", high: 115, low: 65, close: 95 },
+            { category: "Dec", high: 105, low: 55, close: 85 },
+          ],
+          "Difference Area": [
+            { category: "A", value0: 62.7, value1: 63.4 },
+            { category: "B", value0: 59.9, value1: 58 },
+            { category: "C", value0: 59.1, value1: 53.3 },
+            { category: "D", value0: 58.8, value1: 55.7 },
+            { category: "E", value0: 58.7, value1: 64.2 },
+            { category: "F", value0: 57, value1: 58.8 },
+            { category: "G", value0: 56.7, value1: 57.9 },
+            { category: "H", value0: 56.8, value1: 61.8 },
+            { category: "I", value0: 56.7, value1: 69.3 },
+            { category: "J", value0: 60.1, value1: 71.2 },
+            { category: "K", value0: 61.1, value1: 68.7 },
+            { category: "L", value0: 61.5, value1: 61.8 },
+            { category: "M", value0: 64.3, value1: 63 },
+            { category: "N", value0: 67.1, value1: 66.9 },
+            { category: "O", value0: 64.6, value1: 61.7 },
+            { category: "P", value0: 61.6, value1: 61.8 },
+            { category: "Q", value0: 61.1, value1: 62.8 },
+            { category: "R", value0: 59.2, value1: 60.8 },
+            { category: "S", value0: 58.9, value1: 62.1 },
+            { category: "T", value0: 57.2, value1: 65.1 },
+          ],
+          "Vertical Bar & Line Chart": [
+            { category: "A", barValue: 20, lineValue: 30 },
+            { category: "B", barValue: 40, lineValue: 50 },
+            { category: "C", barValue: 60, lineValue: 70 },
+            { category: "D", barValue: 40, lineValue: 30 },
+            { category: "E", barValue: 30, lineValue: 30 },
+            { category: "F", barValue: 70, lineValue: 80 },
+          ],
+          "Vertical Bar & Line Chart2": [
+            {
+              category: "Aceh",
+              bars: { nilaiA: 60 },
+              lines: { nilaiB1: 40, nilaiB2: 110 },
+            },
+            {
+              category: "Sumatera Utara",
+              bars: { nilaiA: 45 },
+              lines: { nilaiB1: 50, nilaiB2: 120 },
+            },
+            {
+              category: "Sumatera Barat",
+              bars: { nilaiA: 70 },
+              lines: { nilaiB1: 30, nilaiB2: 105 },
+            },
+            {
+              category: "Riau",
+              bars: { nilaiA: 35 },
+              lines: { nilaiB1: 60, nilaiB2: 100 },
+            },
+            {
+              category: "Jambi",
+              bars: { nilaiA: 55 },
+              lines: { nilaiB1: 45, nilaiB2: 115 },
+            },
+            {
+              category: "Sumatera Selatan",
+              bars: { nilaiA: 80 },
+              lines: { nilaiB1: 20, nilaiB2: 130 },
+            },
+          ],
+          "Drop Line Chart": [
+            { x: "A", y: 70, category: "1" },
+            { x: "A", y: 15, category: "2" },
+            { x: "A", y: 25, category: "3" },
+            { x: "B", y: 25, category: "1" },
+            { x: "B", y: 45, category: "3" },
+            { x: "C", y: 40, category: "1" },
+            { x: "D", y: 25, category: "1" },
+            { x: "D", y: 60, category: "2" },
+            { x: "E", y: 20, category: "1" },
+            { x: "E", y: 65, category: "2" },
+            { x: "E", y: 80, category: "3" },
+          ],
+          "Summary Point Plot": [
+            { category: "A", value: 25 },
+            { category: "A", value: 30 },
+            { category: "A", value: 10 },
+            { category: "B", value: 28 },
+            { category: "B", value: 22 },
+            { category: "C", value: 29 },
+            { category: "C", value: 32 },
+            { category: "D", value: 33 },
+          ],
+          "Violin Plot": [
+            { category: "A", value: 10 },
+            { category: "A", value: 15 },
+            { category: "A", value: 20 },
+            { category: "A", value: 18 },
+            { category: "A", value: 12 },
+            { category: "A", value: 16 },
+            { category: "A", value: 14 },
+            { category: "A", value: 22 },
+            { category: "B", value: 5 },
+            { category: "B", value: 8 },
+            { category: "B", value: 6 },
+            { category: "B", value: 9 },
+            { category: "B", value: 4 },
+            { category: "B", value: 7 },
+            { category: "B", value: 3 },
+            { category: "B", value: 11 },
+            { category: "C", value: 22 },
+            { category: "C", value: 25 },
+            { category: "C", value: 24 },
+            { category: "C", value: 23 },
+            { category: "C", value: 26 },
+            { category: "C", value: 28 },
+            { category: "C", value: 21 },
+            { category: "C", value: 27 },
+          ],
+          "Density Chart": Array.from({ length: 100 }, () =>
+            Math.round(d3.randomNormal(500, 100)())
+          ),
+          "Stem And Leaf Plot": [
+            { stem: "1", leaves: [2, 5] },
+            { stem: "2", leaves: [1, 2, 4] },
+            { stem: "3", leaves: [1, 5, 6, 7] },
+            { stem: "4", leaves: [2, 6, 7, 8, 9] },
+            { stem: "5", leaves: [2, 3, 4, 5, 6, 7, 11] },
+            { stem: "6", leaves: [1, 1, 1, 8, 9] },
+          ],
+        };
+
+        const data = isDefault
+          ? defaultData[chartType] || []
+          : processedResult.data;
+
+        const title = chartTitle || (isDefault ? chartType : `${chartType}`);
+        const subtitle =
+          chartSubtitle ||
+          (isDefault
+            ? "Sample Data"
+            : `Showing distribution of ${sideVariables[0] || ""} across ${
+                bottomVariables[0] || ""
+              } categories`);
+
+        const xLabel =
+          xAxisLabel ||
+          (isDefault ? "Category" : bottomVariables[0] || "Category");
+        const yLabel =
+          yAxisLabel || (isDefault ? "Value" : sideVariables[0] || "Value");
+
+        return {
+          data,
+          title,
+          subtitle,
+          xLabel,
+          yLabel,
+          titleConfig: {
+            title,
+            subtitle,
+            titleColor: "hsl(var(--foreground))",
+            subtitleColor: "hsl(var(--muted-foreground))",
+            titleFontSize: 14,
+            subtitleFontSize: 10,
+          },
+          axisConfig: {
+            x: xLabel,
+            y: yLabel,
+          },
+          scaleConfig: {
+            x: {
+              min: xAxisMin,
+              max: xAxisMax,
+              majorIncrement: xAxisMajorIncrement,
+              origin: xAxisOrigin,
+            },
+            y: {
+              min: yAxisMin,
+              max: yAxisMax,
+              majorIncrement: yAxisMajorIncrement,
+              origin: yAxisOrigin,
+            },
+          },
+        };
+      },
+      [
+        bottomVariables,
+        chartSubtitle,
+        chartTitle,
+        processedResult.data,
+        sideVariables,
+        xAxisLabel,
+        xAxisMajorIncrement,
+        xAxisMax,
+        xAxisMin,
+        xAxisOrigin,
+        yAxisLabel,
+        yAxisMajorIncrement,
+        yAxisMax,
+        yAxisMin,
+        yAxisOrigin,
+      ]
+    ); // No dependencies needed as it's a pure function
+
+    const createStackedChartConfig = useCallback(
+      (chartType: string, isDefault: boolean = false) => {
+        const config = createChartConfig(chartType, isDefault);
+
+        if (
+          !isDefault &&
+          bottomVariables.length > 0 &&
+          sideVariables.length > 0
+        ) {
+          config.subtitle = `Showing distribution of ${formatLimitedList(
+            sideVariables
+          )} across ${bottomVariables[0]} categories`;
+          config.yLabel = formatLimitedList(sideVariables);
+        }
+
+        return config;
+      },
+      [bottomVariables, createChartConfig, sideVariables]
+    ); // No dependencies needed as it's a pure function
+
+    const createDualAxisChartConfig = useCallback(
+      (chartType: string, isDefault: boolean = false) => {
+        const config = createChartConfig(chartType, isDefault);
+
+        // Chart-specific dual Y axis config
+        let leftLabel, rightLabel;
+
+        if (chartType === "Vertical Bar & Line Chart") {
+          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Bar)";
+          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Line)";
+        } else if (chartType === "Dual Axes Scatter Plot") {
+          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Y1)";
+          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Y2)";
+        } else {
+          // Fallback for other dual axis charts
+          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Left)";
+          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Right)";
+        }
+
+        const dualAxisConfig = {
+          x: config.axisConfig.x,
+          y1: leftLabel,
+          y2: rightLabel,
+        };
+
+        // Separate scale configs for y1 and y2 axis
+        const dualScaleConfig = {
+          x: config.scaleConfig.x,
+          y1: {
+            min: yAxisMin,
+            max: yAxisMax,
+            majorIncrement: yAxisMajorIncrement,
+            origin: yAxisOrigin,
+          },
+          y2: {
+            min: yRightAxisMin,
+            max: yRightAxisMax,
+            majorIncrement: yRightAxisMajorIncrement,
+            origin: yRightAxisOrigin,
+          },
+        };
+
+        return {
+          ...config,
+          axisConfig: dualAxisConfig,
+          scaleConfig: dualScaleConfig,
+        };
+      },
+      [
+        createChartConfig,
+        yAxisMin,
+        yAxisMax,
+        yAxisMajorIncrement,
+        yAxisOrigin,
+        yRightAxisMin,
+        yRightAxisMax,
+        yRightAxisMajorIncrement,
+        yRightAxisOrigin,
+        yLeftAxisLabel,
+        yRightAxisLabel,
+      ]
+    ); // No dependencies needed as it's a pure function
+    const createErrorBarChartConfig = useCallback(
+      (chartType: ChartType, isDefault: boolean) => {
+        const config = createChartConfig(chartType, isDefault);
+
+        if (!isDefault) {
+          config.data = processedResult.data;
+        }
+
+        return config;
+      },
+      [createChartConfig, processedResult.data]
+    );
+
+    const createClusteredErrorBarChartConfig = useCallback(
+      (chartType: ChartType, isDefault: boolean) => {
+        const config = createChartConfig(chartType, isDefault);
+
+        if (!isDefault) {
+          config.data = processedResult.data;
+        }
+
+        return config;
+      },
+      [createChartConfig, processedResult.data]
+    );
+
     useEffect(() => {
       console.log("🎨 Chart rendering useEffect triggered:", {
         chartType,
@@ -1751,6 +2363,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       chartColors,
       processedResult,
       selectedStatistic,
+      createChartConfig,
+      createClusteredErrorBarChartConfig,
+      createDualAxisChartConfig,
+      createErrorBarChartConfig,
+      createStackedChartConfig,
     ]);
 
     // Process data when variables or options change
@@ -1841,619 +2458,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
     useImperativeHandle(ref, () => ({
       getGeneratedChartJSON: () => generatedChartJSON,
     }));
-
-    // Helper function untuk membuat chart configuration
-    const createChartConfig = useCallback(
-      (chartType: string, isDefault: boolean = false) => {
-        const simpleChartData = [
-          { category: "A", value: 30 },
-          { category: "B", value: 80 },
-          { category: "C", value: 45 },
-          { category: "D", value: 60 },
-          { category: "E", value: 20 },
-          { category: "F", value: 90 },
-        ];
-
-        const stackedChartData = [
-          { category: "male", subcategory: "blue", value: 30 },
-          { category: "male", subcategory: "white", value: 20 },
-          { category: "male", subcategory: "green", value: 10 },
-          { category: "female", subcategory: "blue", value: 25 },
-          { category: "female", subcategory: "white", value: 15 },
-          { category: "female", subcategory: "green", value: 10 },
-        ];
-
-        const lineChartData = [
-          { category: "Jan", value: 10 },
-          { category: "Feb", value: 30 },
-          { category: "Mar", value: 55 },
-          { category: "Apr", value: 60 },
-          { category: "Mei", value: 70 },
-          { category: "Jun", value: 90 },
-          { category: "Jul", value: 55 },
-          { category: "Agu", value: 30 },
-          { category: "Sep", value: 50 },
-          { category: "Okt", value: 20 },
-          { category: "Nov", value: 25 },
-          { category: "Des", value: 25 },
-        ];
-
-        const multipleLineChartData = [
-          { category: "Product A", subcategory: "Division 1", value: 30 },
-          { category: "Product A", subcategory: "Division 2", value: 20 },
-          { category: "Product B", subcategory: "Division 1", value: 25 },
-          { category: "Product B", subcategory: "Division 2", value: 15 },
-          { category: "Product C", subcategory: "Division 1", value: 40 },
-          { category: "Product C", subcategory: "Division 2", value: 10 },
-        ];
-
-        const histogramData = [5, 8, 9, 7, 3, 6, 3, 7, 3, 2, 9, 1, 4, 2, 5];
-
-        const scatterPlotData = [
-          { x: 15, y: 50 },
-          { x: 20, y: 200 },
-          { x: 60, y: 100 },
-          { x: 200, y: 325 },
-          { x: 80, y: 150 },
-          { x: 130, y: 275 },
-          { x: 50, y: 220 },
-          { x: 170, y: 300 },
-          { x: 100, y: 30 },
-          { x: 170, y: 125 },
-          { x: 150, y: 80 },
-          { x: 100, y: 190 },
-          { x: 95, y: 75 },
-        ];
-
-        const boxplotData = [
-          { category: "A", value: 20 },
-          { category: "A", value: 40 },
-          { category: "A", value: 60 },
-          { category: "A", value: 80 },
-          { category: "B", value: 30 },
-          { category: "B", value: 50 },
-          { category: "B", value: 70 },
-          { category: "B", value: 90 },
-        ];
-
-        const scatterPlotMatrixData = [
-          { A: 15, B: 50, C: 20 },
-          { A: 20, B: 200, C: 30 },
-          { A: 60, B: 100, C: 70 },
-          { A: 200, B: 325, C: 180 },
-          { A: 80, B: 150, C: 60 },
-          { A: 130, B: 275, C: 110 },
-        ];
-
-        const defaultData: Record<string, any[]> = {
-          "Vertical Bar Chart": simpleChartData,
-          "Horizontal Bar Chart": simpleChartData,
-          "Vertical Stacked Bar Chart": stackedChartData,
-          "Horizontal Stacked Bar Chart": stackedChartData,
-          "Clustered Bar Chart": stackedChartData,
-          "Line Chart": lineChartData,
-          "Multiple Line Chart": multipleLineChartData,
-          "Pie Chart": simpleChartData,
-          "Area Chart": lineChartData,
-          Histogram: histogramData,
-          "Scatter Plot": scatterPlotData,
-          "Scatter Plot With Fit Line": scatterPlotData,
-          Boxplot: boxplotData,
-          "Scatter Plot Matrix": scatterPlotMatrixData,
-          "Error Bar Chart": [
-            {
-              category: "Group A",
-              subcategory: "Control",
-              value: 25,
-              error: 5,
-            },
-            {
-              category: "Group A",
-              subcategory: "Treatment",
-              value: 30,
-              error: 3,
-            },
-            {
-              category: "Group B",
-              subcategory: "Control",
-              value: 20,
-              error: 4,
-            },
-            {
-              category: "Group B",
-              subcategory: "Treatment",
-              value: 35,
-              error: 6,
-            },
-            {
-              category: "Group C",
-              subcategory: "Control",
-              value: 28,
-              error: 2,
-            },
-            {
-              category: "Group C",
-              subcategory: "Treatment",
-              value: 32,
-              error: 4,
-            },
-          ],
-          "Stacked Area Chart": [
-            { category: "Sun", subcategory: "Product 1", value: 30 },
-            { category: "Sun", subcategory: "Product 2", value: 20 },
-            { category: "Sun", subcategory: "Product 3", value: 25 },
-            { category: "Mon", subcategory: "Product 1", value: 15 },
-            { category: "Mon", subcategory: "Product 2", value: 40 },
-            { category: "Mon", subcategory: "Product 3", value: 10 },
-            { category: "Tue", subcategory: "Product 1", value: 20 },
-            { category: "Tue", subcategory: "Product 2", value: 30 },
-            { category: "Tue", subcategory: "Product 3", value: 15 },
-            { category: "Wed", subcategory: "Product 1", value: 10 },
-            { category: "Wed", subcategory: "Product 2", value: 25 },
-            { category: "Wed", subcategory: "Product 3", value: 40 },
-          ],
-          "Grouped Scatter Plot": [
-            { category: "A", x: 5.1, y: 3.5 },
-            { category: "B", x: 4.9, y: 3.0 },
-            { category: "A", x: 4.7, y: 3.2 },
-            { category: "C", x: 4.6, y: 3.1 },
-            { category: "B", x: 5.0, y: 3.6 },
-            { category: "C", x: 5.4, y: 3.9 },
-            { category: "A", x: 4.6, y: 3.4 },
-            { category: "B", x: 5.0, y: 3.4 },
-            { category: "C", x: 4.4, y: 2.9 },
-            { category: "A", x: 4.9, y: 3.1 },
-            { category: "B", x: 5.4, y: 3.7 },
-            { category: "C", x: 4.8, y: 3.4 },
-            { category: "A", x: 4.8, y: 3.0 },
-            { category: "B", x: 4.3, y: 3.0 },
-            { category: "C", x: 5.8, y: 4.0 },
-            { category: "A", x: 5.7, y: 4.4 },
-            { category: "B", x: 5.4, y: 3.9 },
-            { category: "C", x: 5.1, y: 3.5 },
-            { category: "A", x: 5.1, y: 3.8 },
-            { category: "B", x: 5.0, y: 3.3 },
-          ],
-          "Dot Plot": [
-            { category: "A", value: 10 },
-            { category: "B", value: 40 },
-            { category: "C", value: 45 },
-            { category: "D", value: 55 },
-            { category: "E", value: 60 },
-            { category: "F", value: 70 },
-            { category: "G", value: 80 },
-            { category: "H", value: 90 },
-          ],
-          "Population Pyramid": [
-            { category: "0-4", subcategory: "M", value: 9736305 },
-            { category: "0-4", subcategory: "F", value: 10031835 },
-            { category: "5-9", subcategory: "M", value: 10117913 },
-            { category: "5-9", subcategory: "F", value: 10411857 },
-            { category: "10-14", subcategory: "M", value: 10470147 },
-            { category: "10-14", subcategory: "F", value: 11027820 },
-            { category: "15-19", subcategory: "M", value: 10561873 },
-            { category: "15-19", subcategory: "F", value: 11094262 },
-            { category: "20-24", subcategory: "M", value: 11576412 },
-            { category: "20-24", subcategory: "F", value: 10889596 },
-            { category: "25-29", subcategory: "M", value: 10625791 },
-            { category: "25-29", subcategory: "F", value: 9889569 },
-            { category: "30-34", subcategory: "M", value: 9899569 },
-            { category: "30-34", subcategory: "F", value: 10330988 },
-            { category: "35-39", subcategory: "M", value: 10330988 },
-            { category: "35-39", subcategory: "F", value: 10571884 },
-            { category: "40-44", subcategory: "M", value: 10571884 },
-            { category: "40-44", subcategory: "F", value: 11051409 },
-            { category: "45-49", subcategory: "M", value: 10173646 },
-            { category: "45-49", subcategory: "F", value: 8824852 },
-            { category: "50-54", subcategory: "M", value: 8824852 },
-            { category: "50-54", subcategory: "F", value: 6876271 },
-            { category: "55-59", subcategory: "M", value: 6876271 },
-            { category: "55-59", subcategory: "F", value: 4867513 },
-            { category: "60-64", subcategory: "M", value: 4867513 },
-            { category: "60-64", subcategory: "F", value: 3416432 },
-            { category: "65-69", subcategory: "M", value: 3416432 },
-            { category: "65-69", subcategory: "F", value: 2378691 },
-            { category: "70-74", subcategory: "M", value: 2378691 },
-            { category: "70-74", subcategory: "F", value: 2000771 },
-            { category: "75-79", subcategory: "M", value: 2000771 },
-            { category: "75-79", subcategory: "F", value: 4313687 },
-            { category: "80-84", subcategory: "M", value: 4313687 },
-            { category: "80-84", subcategory: "F", value: 3432738 },
-          ],
-          "Frequency Polygon": histogramData,
-          "Clustered Error Bar Chart": [
-            { category: "A", subcategory: "A1", value: 20, error: 2 },
-            { category: "A", subcategory: "A2", value: 30, error: 3 },
-            { category: "A", subcategory: "A3", value: 50, error: 1 },
-            { category: "B", subcategory: "A1", value: 25, error: 2 },
-            { category: "B", subcategory: "A2", value: 35, error: 3 },
-            { category: "B", subcategory: "A3", value: 53, error: 1 },
-            { category: "C", subcategory: "A1", value: 22, error: 2 },
-            { category: "C", subcategory: "A2", value: 40, error: 1 },
-            { category: "C", subcategory: "A3", value: 49, error: 3 },
-          ],
-
-          "Stacked Histogram": [
-            { value: 10, category: "A" },
-            { value: 12, category: "B" },
-            { value: 15, category: "A" },
-            { value: 18, category: "C" },
-            { value: 20, category: "B" },
-            { value: 25, category: "C" },
-            { value: 30, category: "A" },
-            { value: 10, category: "B" },
-            { value: 12, category: "C" },
-            { value: 15, category: "A" },
-            { value: 22, category: "B" },
-            { value: 28, category: "C" },
-            { value: 32, category: "A" },
-            { value: 35, category: "B" },
-            { value: 38, category: "C" },
-          ],
-          "Clustered Boxplot": [
-            { category: "A", subcategory: "X", value: 10 },
-            { category: "A", subcategory: "X", value: 12 },
-            { category: "A", subcategory: "Y", value: 15 },
-            { category: "A", subcategory: "Y", value: 18 },
-            { category: "B", subcategory: "X", value: 20 },
-            { category: "B", subcategory: "X", value: 25 },
-            { category: "B", subcategory: "Y", value: 30 },
-            { category: "B", subcategory: "Y", value: 35 },
-          ],
-          "1-D Boxplot": [
-            { value: 20 },
-            { value: 40 },
-            { value: 60 },
-            { value: 80 },
-            { value: 30 },
-            { value: 50 },
-            { value: 70 },
-            { value: 90 },
-          ],
-          "Simple Range Bar": [
-            { category: "Jan", high: 100, low: 50, close: 75 },
-            { category: "Feb", high: 110, low: 60, close: 80 },
-            { category: "Mar", high: 120, low: 70, close: 95 },
-            { category: "Apr", high: 130, low: 80, close: 100 },
-            { category: "May", high: 125, low: 75, close: 110 },
-            { category: "Jun", high: 140, low: 90, close: 120 },
-            { category: "Jul", high: 150, low: 100, close: 130 },
-            { category: "Aug", high: 145, low: 95, close: 125 },
-            { category: "Sep", high: 135, low: 85, close: 115 },
-            { category: "Oct", high: 125, low: 75, close: 105 },
-            { category: "Nov", high: 115, low: 65, close: 95 },
-            { category: "Dec", high: 105, low: 55, close: 85 },
-          ],
-          "Clustered Range Bar": [
-            { category: "A", subcategory: "X", low: 20, high: 50, close: 35 },
-            { category: "A", subcategory: "Y", low: 25, high: 55, close: 40 },
-            { category: "B", subcategory: "X", low: 15, high: 45, close: 30 },
-            { category: "B", subcategory: "Y", low: 18, high: 48, close: 33 },
-            { category: "C", subcategory: "X", low: 22, high: 60, close: 42 },
-            { category: "C", subcategory: "Y", low: 27, high: 65, close: 46 },
-            { category: "D", subcategory: "X", low: 12, high: 40, close: 28 },
-            { category: "D", subcategory: "Y", low: 14, high: 42, close: 30 },
-            { category: "E", subcategory: "X", low: 30, high: 70, close: 50 },
-            { category: "E", subcategory: "Y", low: 35, high: 75, close: 55 },
-          ],
-          "High-Low-Close Chart": [
-            { category: "Jan", high: 100, low: 50, close: 75 },
-            { category: "Feb", high: 110, low: 60, close: 80 },
-            { category: "Mar", high: 120, low: 70, close: 95 },
-            { category: "Apr", high: 130, low: 80, close: 100 },
-            { category: "May", high: 125, low: 75, close: 110 },
-            { category: "Jun", high: 140, low: 90, close: 120 },
-            { category: "Jul", high: 150, low: 100, close: 130 },
-            { category: "Aug", high: 145, low: 95, close: 125 },
-            { category: "Sep", high: 135, low: 85, close: 115 },
-            { category: "Oct", high: 125, low: 75, close: 105 },
-            { category: "Nov", high: 115, low: 65, close: 95 },
-            { category: "Dec", high: 105, low: 55, close: 85 },
-          ],
-          "Difference Area": [
-            { category: "A", value0: 62.7, value1: 63.4 },
-            { category: "B", value0: 59.9, value1: 58 },
-            { category: "C", value0: 59.1, value1: 53.3 },
-            { category: "D", value0: 58.8, value1: 55.7 },
-            { category: "E", value0: 58.7, value1: 64.2 },
-            { category: "F", value0: 57, value1: 58.8 },
-            { category: "G", value0: 56.7, value1: 57.9 },
-            { category: "H", value0: 56.8, value1: 61.8 },
-            { category: "I", value0: 56.7, value1: 69.3 },
-            { category: "J", value0: 60.1, value1: 71.2 },
-            { category: "K", value0: 61.1, value1: 68.7 },
-            { category: "L", value0: 61.5, value1: 61.8 },
-            { category: "M", value0: 64.3, value1: 63 },
-            { category: "N", value0: 67.1, value1: 66.9 },
-            { category: "O", value0: 64.6, value1: 61.7 },
-            { category: "P", value0: 61.6, value1: 61.8 },
-            { category: "Q", value0: 61.1, value1: 62.8 },
-            { category: "R", value0: 59.2, value1: 60.8 },
-            { category: "S", value0: 58.9, value1: 62.1 },
-            { category: "T", value0: 57.2, value1: 65.1 },
-          ],
-          "Vertical Bar & Line Chart": [
-            { category: "A", barValue: 20, lineValue: 30 },
-            { category: "B", barValue: 40, lineValue: 50 },
-            { category: "C", barValue: 60, lineValue: 70 },
-            { category: "D", barValue: 40, lineValue: 30 },
-            { category: "E", barValue: 30, lineValue: 30 },
-            { category: "F", barValue: 70, lineValue: 80 },
-          ],
-          "Vertical Bar & Line Chart2": [
-            {
-              category: "Aceh",
-              bars: { nilaiA: 60 },
-              lines: { nilaiB1: 40, nilaiB2: 110 },
-            },
-            {
-              category: "Sumatera Utara",
-              bars: { nilaiA: 45 },
-              lines: { nilaiB1: 50, nilaiB2: 120 },
-            },
-            {
-              category: "Sumatera Barat",
-              bars: { nilaiA: 70 },
-              lines: { nilaiB1: 30, nilaiB2: 105 },
-            },
-            {
-              category: "Riau",
-              bars: { nilaiA: 35 },
-              lines: { nilaiB1: 60, nilaiB2: 100 },
-            },
-            {
-              category: "Jambi",
-              bars: { nilaiA: 55 },
-              lines: { nilaiB1: 45, nilaiB2: 115 },
-            },
-            {
-              category: "Sumatera Selatan",
-              bars: { nilaiA: 80 },
-              lines: { nilaiB1: 20, nilaiB2: 130 },
-            },
-          ],
-          "Drop Line Chart": [
-            { x: "A", y: 70, category: "1" },
-            { x: "A", y: 15, category: "2" },
-            { x: "A", y: 25, category: "3" },
-            { x: "B", y: 25, category: "1" },
-            { x: "B", y: 45, category: "3" },
-            { x: "C", y: 40, category: "1" },
-            { x: "D", y: 25, category: "1" },
-            { x: "D", y: 60, category: "2" },
-            { x: "E", y: 20, category: "1" },
-            { x: "E", y: 65, category: "2" },
-            { x: "E", y: 80, category: "3" },
-          ],
-          "Summary Point Plot": [
-            { category: "A", value: 25 },
-            { category: "A", value: 30 },
-            { category: "A", value: 10 },
-            { category: "B", value: 28 },
-            { category: "B", value: 22 },
-            { category: "C", value: 29 },
-            { category: "C", value: 32 },
-            { category: "D", value: 33 },
-          ],
-          "Violin Plot": [
-            { category: "A", value: 10 },
-            { category: "A", value: 15 },
-            { category: "A", value: 20 },
-            { category: "A", value: 18 },
-            { category: "A", value: 12 },
-            { category: "A", value: 16 },
-            { category: "A", value: 14 },
-            { category: "A", value: 22 },
-            { category: "B", value: 5 },
-            { category: "B", value: 8 },
-            { category: "B", value: 6 },
-            { category: "B", value: 9 },
-            { category: "B", value: 4 },
-            { category: "B", value: 7 },
-            { category: "B", value: 3 },
-            { category: "B", value: 11 },
-            { category: "C", value: 22 },
-            { category: "C", value: 25 },
-            { category: "C", value: 24 },
-            { category: "C", value: 23 },
-            { category: "C", value: 26 },
-            { category: "C", value: 28 },
-            { category: "C", value: 21 },
-            { category: "C", value: 27 },
-          ],
-          "Density Chart": Array.from({ length: 100 }, () =>
-            Math.round(d3.randomNormal(500, 100)())
-          ),
-          "Stem And Leaf Plot": [
-            { stem: "1", leaves: [2, 5] },
-            { stem: "2", leaves: [1, 2, 4] },
-            { stem: "3", leaves: [1, 5, 6, 7] },
-            { stem: "4", leaves: [2, 6, 7, 8, 9] },
-            { stem: "5", leaves: [2, 3, 4, 5, 6, 7, 11] },
-            { stem: "6", leaves: [1, 1, 1, 8, 9] },
-          ],
-        };
-
-        const data = isDefault
-          ? defaultData[chartType] || []
-          : processedResult.data;
-
-        const title = chartTitle || (isDefault ? chartType : `${chartType}`);
-        const subtitle =
-          chartSubtitle ||
-          (isDefault
-            ? "Sample Data"
-            : `Showing distribution of ${sideVariables[0] || ""} across ${
-                bottomVariables[0] || ""
-              } categories`);
-
-        const xLabel =
-          xAxisLabel ||
-          (isDefault ? "Category" : bottomVariables[0] || "Category");
-        const yLabel =
-          yAxisLabel || (isDefault ? "Value" : sideVariables[0] || "Value");
-
-        return {
-          data,
-          title,
-          subtitle,
-          xLabel,
-          yLabel,
-          titleConfig: {
-            title,
-            subtitle,
-            titleColor: "hsl(var(--foreground))",
-            subtitleColor: "hsl(var(--muted-foreground))",
-            titleFontSize: 14,
-            subtitleFontSize: 10,
-          },
-          axisConfig: {
-            x: xLabel,
-            y: yLabel,
-          },
-          scaleConfig: {
-            x: {
-              min: xAxisMin,
-              max: xAxisMax,
-              majorIncrement: xAxisMajorIncrement,
-              origin: xAxisOrigin,
-            },
-            y: {
-              min: yAxisMin,
-              max: yAxisMax,
-              majorIncrement: yAxisMajorIncrement,
-              origin: yAxisOrigin,
-            },
-          },
-        };
-      },
-      [
-        bottomVariables,
-        chartSubtitle,
-        chartTitle,
-        processedResult.data,
-        sideVariables,
-        xAxisLabel,
-        xAxisMajorIncrement,
-        xAxisMax,
-        xAxisMin,
-        xAxisOrigin,
-        yAxisLabel,
-        yAxisMajorIncrement,
-        yAxisMax,
-        yAxisMin,
-        yAxisOrigin,
-      ]
-    ); // No dependencies needed as it's a pure function
-
-    const createStackedChartConfig = useCallback(
-      (chartType: string, isDefault: boolean = false) => {
-        const config = createChartConfig(chartType, isDefault);
-
-        if (
-          !isDefault &&
-          bottomVariables.length > 0 &&
-          sideVariables.length > 0
-        ) {
-          config.subtitle = `Showing distribution of ${formatLimitedList(
-            sideVariables
-          )} across ${bottomVariables[0]} categories`;
-          config.yLabel = formatLimitedList(sideVariables);
-        }
-
-        return config;
-      },
-      [bottomVariables, createChartConfig, sideVariables]
-    ); // No dependencies needed as it's a pure function
-
-    const createDualAxisChartConfig = useCallback(
-      (chartType: string, isDefault: boolean = false) => {
-        const config = createChartConfig(chartType, isDefault);
-
-        // Chart-specific dual Y axis config
-        let leftLabel, rightLabel;
-
-        if (chartType === "Vertical Bar & Line Chart") {
-          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Bar)";
-          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Line)";
-        } else if (chartType === "Dual Axes Scatter Plot") {
-          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Y1)";
-          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Y2)";
-        } else {
-          // Fallback for other dual axis charts
-          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Left)";
-          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Right)";
-        }
-
-        const dualAxisConfig = {
-          x: config.axisConfig.x,
-          y1: leftLabel,
-          y2: rightLabel,
-        };
-
-        // Separate scale configs for y1 and y2 axis
-        const dualScaleConfig = {
-          x: config.scaleConfig.x,
-          y1: {
-            min: yAxisMin,
-            max: yAxisMax,
-            majorIncrement: yAxisMajorIncrement,
-            origin: yAxisOrigin,
-          },
-          y2: {
-            min: yRightAxisMin,
-            max: yRightAxisMax,
-            majorIncrement: yRightAxisMajorIncrement,
-            origin: yRightAxisOrigin,
-          },
-        };
-
-        return {
-          ...config,
-          axisConfig: dualAxisConfig,
-          scaleConfig: dualScaleConfig,
-        };
-      },
-      [
-        createChartConfig,
-        yAxisMin,
-        yAxisMax,
-        yAxisMajorIncrement,
-        yAxisOrigin,
-        yRightAxisMin,
-        yRightAxisMax,
-        yRightAxisMajorIncrement,
-        yRightAxisOrigin,
-        yLeftAxisLabel,
-        yRightAxisLabel,
-      ]
-    ); // No dependencies needed as it's a pure function
-
-    const createErrorBarChartConfig = (
-      chartType: ChartType,
-      isDefault: boolean
-    ) => {
-      const config = createChartConfig(chartType, isDefault);
-
-      if (!isDefault) {
-        config.data = processedResult.data;
-      }
-
-      return config;
-    };
-
-    const createClusteredErrorBarChartConfig = (
-      chartType: ChartType,
-      isDefault: boolean
-    ) => {
-      const config = createChartConfig(chartType, isDefault);
-
-      if (!isDefault) {
-        config.data = processedResult.data;
-      }
-
-      return config;
-    };
 
     // Helper function untuk format limited list
     const formatLimitedList = (items: string[], limit: number = 3): string => {

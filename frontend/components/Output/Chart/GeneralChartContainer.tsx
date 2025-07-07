@@ -909,7 +909,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
       );
       setChartNodes(nodes);
     }
-  }, [data, chartDimensions]);
+  }, [data, chartDimensions, parsedData]);
 
   // Menentukan ukuran kontainer berdasarkan dimensi chart
   const containerStyle = {
