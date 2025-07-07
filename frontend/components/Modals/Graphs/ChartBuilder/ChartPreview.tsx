@@ -194,6 +194,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
     const variables = useVariableStore.getState().variables;
 
+    function is3DChart(type: string) {
+      return [
+        "3D Bar Chart2",
+        "Clustered 3D Bar Chart",
+        "Stacked 3D Bar Chart",
+        "3D Scatter Plot",
+        "Grouped 3D Scatter Plot",
+      ].includes(type);
+    }
+
     // Function to generate chart JSON using DataProcessingService + ChartService
     const generateChartJSON = useCallback(() => {
       // Check if we have basic data
@@ -2967,7 +2977,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                 <div
                   id="chart-container"
                   ref={chartContainerRef}
-                  className="min-w-[500px] min-h-[400px] max-w-full max-h-full"
+                  className="min-w-[500px] min-h-[280px] max-w-full max-h-full"
                 />
               </div>
             ) : (
