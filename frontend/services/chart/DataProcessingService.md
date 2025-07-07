@@ -40,8 +40,45 @@ interface DataProcessingInput {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     limit?: number;
+    errorBar?: ErrorBarOptions;
   };
 }
+```
+
+### DataProcessingOutput
+
+```typescript
+interface DataProcessingOutput {
+  data: any[];
+  axisInfo: Record<string, string>;
+}
+```
+
+### ErrorBarOptions
+
+```typescript
+// Confidence Interval Error Bar
+type CIErrorBarOptions = {
+  type: "ci";
+  confidenceLevel: number; // Default: 95
+};
+
+// Standard Error Error Bar
+type SEErrorBarOptions = {
+  type: "se";
+  multiplier: number; // Default: 2
+};
+
+// Standard Deviation Error Bar
+type SDErrorBarOptions = {
+  type: "sd";
+  multiplier: number; // Default: 1
+};
+
+type ErrorBarOptions =
+  | CIErrorBarOptions
+  | SEErrorBarOptions
+  | SDErrorBarOptions;
 ```
 
 ## Chart Variables Requirements
@@ -66,18 +103,18 @@ Setiap chart type membutuhkan chart variables yang berbeda. Berikut adalah pandu
 
 #### **Simple Charts (1D)**
 
-| Chart Type               | Required Variables | Optional Variables | Description                                          |
-| ------------------------ | ------------------ | ------------------ | ---------------------------------------------------- |
-| **Vertical Bar Chart**   | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai                      |
-| **Horizontal Bar Chart** | `x`, `y`           | -                  | X-axis: nilai, Y-axis: kategori                      |
-| **Line Chart**           | `x`, `y`           | -                  | X-axis: domain, Y-axis: range                        |
-| **Area Chart**           | `x`, `y`           | -                  | X-axis: domain, Y-axis: range (filled)               |
-| **Pie Chart**            | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai                      |
-| **Boxplot**              | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (distribution)       |
-| **Error Bar Chart**      | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai dengan error         |
-| **Dot Plot**             | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (individual points)  |
-| **Summary Point Plot**   | `x`, `y`           | -                  | X-axis: kategori, Y-axis: summary statistic          |
-| **Violin Plot**          | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (distribution shape) |
+| Chart Type               | Required Variables | Optional Variables | Description                                                              |
+| ------------------------ | ------------------ | ------------------ | ------------------------------------------------------------------------ |
+| **Vertical Bar Chart**   | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai                                          |
+| **Horizontal Bar Chart** | `x`, `y`           | -                  | X-axis: nilai, Y-axis: kategori                                          |
+| **Line Chart**           | `x`, `y`           | -                  | X-axis: domain, Y-axis: range                                            |
+| **Area Chart**           | `x`, `y`           | -                  | X-axis: domain, Y-axis: range (filled)                                   |
+| **Pie Chart**            | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai                                          |
+| **Boxplot**              | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (distribution)                           |
+| **Error Bar Chart**      | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai dengan error (supports errorBar options) |
+| **Dot Plot**             | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (individual points)                      |
+| **Summary Point Plot**   | `x`, `y`           | -                  | X-axis: kategori, Y-axis: summary statistic                              |
+| **Violin Plot**          | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (distribution shape)                     |
 
 **Input Wajib:**
 
@@ -742,6 +779,7 @@ interface ProcessingOptions {
   sortBy?: string | undefined; // Set to undefined to disable sorting
   sortOrder?: "asc" | "desc";
   limit?: number;
+  errorBar?: ErrorBarOptions;
 }
 ```
 
