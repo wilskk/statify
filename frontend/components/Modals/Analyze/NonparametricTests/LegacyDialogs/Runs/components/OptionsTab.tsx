@@ -2,32 +2,7 @@ import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Dispatch, SetStateAction } from "react";
-
-interface OptionsTabProps {
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
-    setDisplayStatistics: React.Dispatch<React.SetStateAction<{
-        descriptive: boolean;
-        quartiles: boolean;
-    }>>;
-    cutPoint: {
-        median: boolean;
-        mode: boolean;
-        mean: boolean;
-        custom: boolean;
-    };
-    setCutPoint: Dispatch<SetStateAction<{
-        median: boolean;
-        mode: boolean;
-        mean: boolean;
-        custom: boolean;
-    }>>;
-    customValue: number;
-    setCustomValue: Dispatch<SetStateAction<number>>;
-}
+import { OptionsTabProps } from "../types";
 
 const OptionsTab: FC<OptionsTabProps> = ({
     displayStatistics,
@@ -35,13 +10,21 @@ const OptionsTab: FC<OptionsTabProps> = ({
     cutPoint,
     setCutPoint,
     customValue,
-    setCustomValue
+    setCustomValue,
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = []
 }) => {
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+
+    const cutPointStepIndex = getStepIndex("cut-point-section");
+    const statisticsStepIndex = getStepIndex("statistics-section");
+
     return (
         <div>
             {/* Cut Point Section */}
             <div className="mb-4">
-                <div className="text-sm font-medium mb-2">Cut Point</div>
+                <div id="cut-point-section" className="text-sm font-medium mb-2">Cut Point</div>
                 <div className="border p-4 rounded-md flex flex-wrap gap-6">
                     <div className="flex items-center">
                         <Checkbox
@@ -92,7 +75,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
             
             {/* Statistics Section */}
             <div className="mb-4">
-                <div className="text-sm font-medium mb-2">Statistics</div>
+                <div id="statistics-section" className="text-sm font-medium mb-2">Statistics</div>
                 <div className="border p-4 rounded-md">
                     <div className="flex items-center gap-2 mb-2">
                         <Checkbox

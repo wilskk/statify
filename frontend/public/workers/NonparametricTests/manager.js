@@ -13,7 +13,7 @@
 // Muat semua pustaka kalkulator dan utilitas
 import './libs/utils.js';
 import './libs/chiSquare.js';
-// import './libs/runs.js';
+import './libs/runs.js';
 // import './libs/twoIndependentSamples.js';
 // import './libs/twoRelatedSamples.js';
 // import './libs/kIndependentSamples.js';
@@ -23,7 +23,7 @@ import './libs/descriptiveStatistics.js';
 // Definisikan global calculator map
 const calculators = {
     chiSquare: ChiSquareCalculator,
-    // runs: RunsCalculator,
+    runs: RunsCalculator,
     // twoIndependentSamples: TwoIndependentSamplesCalculator,
     // twoRelatedSamples: TwoRelatedSamplesCalculator,
     // kIndependentSamples: KIndependentSamplesCalculator,
@@ -78,6 +78,17 @@ onmessage = (event) => {
                 results.frequencies = calculator.getOutput().frequencies;
                 results.testStatistics = calculator.getOutput().testStatistics;
 
+            } else if (type === 'runs') {
+                calculator = new CalculatorClass({ 
+                    variable, 
+                    data,
+                    options 
+                });
+
+                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Runs Results:', JSON.stringify(calculator.getOutput().runsTest));
+                results.runsTest = calculator.getOutput().runsTest;
+            
             // } else if (['twoIndependentSamples', 'kIndependentSamples'].includes(analysisType)) {
             //     calculator = new CalculatorClass({ 
             //         variable, 
@@ -113,12 +124,17 @@ onmessage = (event) => {
             results: results,
         }
 
-        if (analysisTypes.includes('descriptiveStatistics')) {
+        if (analysisType.includes('descriptiveStatistics')) {
             postMessageBody.displayStatistics = options?.displayStatistics;
         }
 
-        if (analysisTypes.includes('chiSquare')) {
+        if (analysisType.includes('chiSquare')) {
             postMessageBody.specifiedRange = options?.expectedRange?.useSpecifiedRange;
+        }
+
+        if (analysisType.includes('runs')) {
+            postMessageBody.cutPoint = options?.cutPoint;
+            postMessageBody.customValue = options?.customValue;
         }
 
         postMessage(postMessageBody);

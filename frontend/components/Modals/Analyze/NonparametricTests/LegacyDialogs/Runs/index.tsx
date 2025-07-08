@@ -1,11 +1,13 @@
 "use client";
 
-import React, { FC, useState, useCallback, useEffect } from "react";
+import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { HelpCircle, Loader2 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import {
     DialogContent,
-    DialogFooter,
     DialogHeader,
-    DialogTitle
+    DialogTitle,
 } from "@/components/ui/dialog";
 import {
     Tabs,
@@ -13,23 +15,41 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { useVariableSelection, useTestSettings, useRunsAnalysis } from "./hooks";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useVariableStore } from "@/stores/useVariableStore";
 import { BaseModalProps } from "@/types/modalTypes";
+import {
+    useVariableSelection,
+    useTestSettings,
+    useRunsAnalysis,
+    useTourGuide,
+    baseTourSteps,
+} from "./hooks";
+import {
+    TabControlProps,
+    TabType,
+} from "./types";
 
-import VariablesTab from "./VariablesTab";
-import OptionsTab from "./OptionsTab";
+import VariablesTab from "./components/VariablesTab";
+import OptionsTab from "./components/OptionsTab";
 
-// Komponen utama konten Runs yang agnostik terhadap container
-const RunsContent: FC<BaseModalProps> = ({ onClose }) => {
+const RunsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState<"variables" | "options">("variables");
+    const isVariablesLoading = useVariableStore((state: any) => state.isLoading);
+    const variablesError = useVariableStore((state: any) => state.error);
     
     const {
         availableVariables,
-        selectedVariables,
+        testVariables,
         highlightedVariable,
         setHighlightedVariable,
-        moveToSelectedVariables,
+        moveToTestVariables,
         moveToAvailableVariables,
         reorderVariables,
         resetVariableSelection
@@ -46,23 +66,41 @@ const RunsContent: FC<BaseModalProps> = ({ onClose }) => {
     } = useTestSettings();
 
     const { 
-        isLoading,
+        isCalculating,
         errorMsg, 
         runAnalysis,
-        cancelAnalysis
+        cancelCalculation
     } = useRunsAnalysis({
-        selectedVariables,
+        testVariables,
         cutPoint,
         customValue,
         displayStatistics,
         onClose
     });
 
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab: (tab: string) => {
+            setActiveTab(tab as TabType);
+        },
+        currentActiveTab: activeTab
+    }), [activeTab]);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour
+    } = useTourGuide(baseTourSteps, containerType, tabControl);
+
     const handleReset = useCallback(() => {
         resetVariableSelection();
         resetTestSettings();
-        cancelAnalysis();
-    }, [resetVariableSelection, resetTestSettings, cancelAnalysis]);
+        cancelCalculation();
+    }, [resetVariableSelection, resetTestSettings, cancelCalculation]);
 
     const handleTabChange = useCallback((value: string) => {
         if (value === 'variables' || value === 'options') {
@@ -72,29 +110,43 @@ const RunsContent: FC<BaseModalProps> = ({ onClose }) => {
 
     useEffect(() => {
         return () => {
-            cancelAnalysis();
+            cancelCalculation();
         };
-    }, [cancelAnalysis]);
+    }, [cancelCalculation]);
 
-    return (
-        <>
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-border flex-shrink-0">
-                    <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
-                        <TabsTrigger value="options">Options</TabsTrigger>
-                    </TabsList>
+    const renderContent = () => {
+        if (isVariablesLoading) {
+            return (
+                <div className="flex items-center justify-center p-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Loading variables...</span>
                 </div>
+            );
+        }
 
+        if (variablesError) {
+            return (
+                <div className="p-10 text-destructive text-center">
+                    <p>Error loading variables:</p>
+                    <p className="text-sm">{variablesError.message}</p>
+                </div>
+            )
+        }
+
+        return (
+            <>
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
                         availableVariables={availableVariables}
-                        selectedVariables={selectedVariables}
+                        testVariables={testVariables}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
-                        moveToSelectedVariables={moveToSelectedVariables}
+                        moveToTestVariables={moveToTestVariables}
                         moveToAvailableVariables={moveToAvailableVariables}
                         reorderVariables={reorderVariables}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -106,19 +158,98 @@ const RunsContent: FC<BaseModalProps> = ({ onClose }) => {
                         setCutPoint={setCutPoint}
                         customValue={customValue}
                         setCustomValue={setCustomValue}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
+            </>
+        );
+    }
+
+    return (
+        <>
+            <AnimatePresence>
+                {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
+
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList>
+                        <TabsTrigger
+                            id="variables-tab-trigger"
+                            value="variables"
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            id="options-tab-trigger"
+                            value="options"
+                        >
+                            Options
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                {renderContent()}
             </Tabs>
 
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
-            
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
-                <div className="flex justify-end space-x-3">
+
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div className="flex items-center text-muted-foreground">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+
+                <div>
                     <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={handleReset}
+                        disabled={isCalculating}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={handleReset}
+                        disabled={isCalculating}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        id="runs-ok-button"
                         onClick={runAnalysis}
                         disabled={
-                            isLoading ||
-                            selectedVariables.length === 0 ||
+                            isCalculating ||
+                            testVariables.length === 0 ||
                             (
                                 cutPoint.median === false &&
                                 cutPoint.mode === false &&
@@ -128,28 +259,7 @@ const RunsContent: FC<BaseModalProps> = ({ onClose }) => {
                             )
                         }
                     >
-                        {isLoading ? "Processing..." : "OK"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={handleReset}
-                        disabled={isLoading}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={onClose}
-                        disabled={isLoading}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        // onClick={onHelp} // Assuming an onHelp function exists or will be added
-                        disabled={isLoading}
-                    >
-                        Help
+                        {isCalculating ? "Processing..." : "OK"}
                     </Button>
                 </div>
             </div>
@@ -157,32 +267,29 @@ const RunsContent: FC<BaseModalProps> = ({ onClose }) => {
     );
 };
 
-// Komponen Runs yang menjadi titik masuk utama
 const Runs: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
-    // Render berdasarkan containerType
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <RunsContent onClose={onClose} {...props} />
+                    <RunsContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
     }
 
-    // Default dialog view with proper Dialog components
     return (
-        <DialogContent className="max-w-[800px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
             <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                 <DialogTitle className="text-[22px] font-semibold">Runs Test</DialogTitle>
             </DialogHeader>
 
             <div className="flex-grow flex flex-col overflow-hidden">
-                <RunsContent onClose={onClose} {...props} />
+                <RunsContent onClose={onClose} containerType={containerType} {...props} />
             </div>
         </DialogContent>
     );
-}
+};
 
 export default Runs;
 export { RunsContent };

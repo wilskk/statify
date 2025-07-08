@@ -218,7 +218,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         </div>
                     </div>
                     <div className="mt-2">
-                        <div className="flex items-center">
+                        <div id="estimate-effect-size-section" className="flex items-center">
                             <Checkbox
                                 id="estimate-effect-size"
                                 checked={estimateEffectSize}
@@ -228,6 +228,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             <Label htmlFor="estimate-effect-size" className="text-sm">
                                 Estimate effect size
                             </Label>
+                            {tourActive && isTourElementActive("estimate-effect-size-section") && (
+                                <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                            )}
                         </div>
                     </div>
                 </>

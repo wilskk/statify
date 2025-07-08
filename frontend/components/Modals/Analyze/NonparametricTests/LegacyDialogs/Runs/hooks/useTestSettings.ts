@@ -1,43 +1,32 @@
 import { useState, useCallback } from 'react';
-import { TestSettingsProps, TestSettingsResult } from '../types';
+import {
+  TestSettingsProps,
+  CutPointOptions,
+  DisplayStatisticsOptions,
+} from '../types';
 
-export const useTestSettings = (props?: TestSettingsProps): TestSettingsResult => {
-  const [cutPoint, setCutPoint] = useState<{
-    median: boolean;
-    mode: boolean;
-    mean: boolean;
-    custom: boolean;
-  }>(props?.initialCutPoint ?? {
+export const useTestSettings = ({
+  initialCutPoint = {
     median: true,
     mode: false,
     mean: false,
     custom: false
-  });
-  
-  const [customValue, setCustomValue] = useState<number>(props?.initialCustomValue ?? 0);
-  
-  const [displayStatistics, setDisplayStatistics] = useState<{
-    descriptive: boolean;
-    quartiles: boolean;
-  }>(props?.initialDisplayStatistics ?? {
+  },
+  initialCustomValue = 0,
+  initialDisplayStatistics = {
     descriptive: false,
-    quartiles: false,
-  });
+    quartiles: false
+  }
+}: Omit<TestSettingsProps, 'resetTestSettings'> = {}) => {
+  const [cutPoint, setCutPoint] = useState<CutPointOptions>(initialCutPoint);
+  const [customValue, setCustomValue] = useState<number>(initialCustomValue);
+  const [displayStatistics, setDisplayStatistics] = useState<DisplayStatisticsOptions>(initialDisplayStatistics);
 
-  // Reset function
   const resetTestSettings = useCallback(() => {
-    setCutPoint(props?.initialCutPoint ?? {
-      median: true,
-      mode: false,
-      mean: false,
-      custom: false
-    });
-    setCustomValue(props?.initialCustomValue ?? 0);
-    setDisplayStatistics(props?.initialDisplayStatistics ?? {
-      descriptive: false,
-      quartiles: false,
-    });
-  }, [props?.initialCutPoint, props?.initialCustomValue, props?.initialDisplayStatistics]);
+    setCutPoint(initialCutPoint);
+    setCustomValue(initialCustomValue);
+    setDisplayStatistics(initialDisplayStatistics);
+  }, [initialCutPoint, initialCustomValue, initialDisplayStatistics]);
 
   return {
     cutPoint,

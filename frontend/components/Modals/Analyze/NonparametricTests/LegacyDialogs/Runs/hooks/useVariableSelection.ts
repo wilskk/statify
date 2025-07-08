@@ -1,93 +1,115 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
-import type { Variable } from '@/types/Variable';
-import { VariableSelectionProps, VariableSelectionResult, HighlightedVariableInfo } from '../types';
+import { Variable } from '@/types/Variable';
+import {
+  VariableSelectionProps,
+  HighlightedVariable
+} from '../types';
 
-export const useVariableSelection = (props?: VariableSelectionProps): VariableSelectionResult => {
-  const variables = useVariableStore(state => state.variables);
-  
-  // State for variable lists
-  const [availableVariables, setAvailableVariables] = useState<Variable[]>(() => {
-    // Filter out empty variable names
-    const validVars = variables.filter(v => v.name !== "");
-    return props?.initialVariables || validVars;
-  });
-  
-  const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-  const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariableInfo | null>(null);
+export const useVariableSelection = ({
+  initialVariables = []
+}: Omit<VariableSelectionProps, 'resetVariableSelection'> = {}) => {
+  const { variables } = useVariableStore();
+  const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+  const [testVariables, setTestVariables] = useState<Variable[]>(initialVariables);
+  const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariable | null>(null);
 
-  // Function to move a variable from available to selected
-  const moveToSelectedVariables = useCallback((variable: Variable, targetIndex?: number) => {
-    setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-    
-    setSelectedVariables(prev => {
-      const newList = [...prev];
-      if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newList.length) {
-        newList.splice(targetIndex, 0, variable);
-      } else {
-        newList.push(variable);
-      }
-      return newList;
-    });
-    
-    setHighlightedVariable(null);
+  useEffect(() => {
+    useVariableStore.getState().loadVariables();
   }, []);
 
-  // Function to move a variable from selected to available
-  const moveToAvailableVariables = useCallback((variable: Variable, targetIndex?: number) => {
-    setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-    
-    setAvailableVariables(prev => {
-      const newList = [...prev];
-      
-      // If target index is specified, insert at that position
-      if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newList.length) {
-        newList.splice(targetIndex, 0, variable);
-      } else {
-        // Otherwise, insert in original order from the variables array
-        const originalIndex = variables.findIndex(v => v.tempId === variable.tempId);
-        
-        // Find where to insert to maintain the original order
-        let insertIndex = 0;
-        while (
-          insertIndex < newList.length &&
-          variables.findIndex(v => v.tempId === newList[insertIndex].tempId) < originalIndex
-        ) {
-          insertIndex++;
-        }
-        
-        newList.splice(insertIndex, 0, variable);
-      }
-      
-      return newList;
-    });
-    
-    setHighlightedVariable(null);
-  }, [variables]);
+  useEffect(() => {
+    const globalVarsWithTempId = variables.map(v => ({
+      ...v,
+      tempId: v.tempId || `temp_id_${v.columnIndex}`
+    }));
+    const globalVarTempIds = new Set(globalVarsWithTempId.map(v => v.tempId));
 
-  // Function to reorder variables within a list
-  const reorderVariables = useCallback((source: 'available' | 'selected', reorderedVariables: Variable[]) => {
-    if (source === 'available') {
-      setAvailableVariables(reorderedVariables);
-    } else {
-      setSelectedVariables(reorderedVariables);
+    const stillExistingTestVars = testVariables.filter(sv => 
+        sv.tempId && globalVarTempIds.has(sv.tempId)
+    );
+
+    if (stillExistingTestVars.length !== testVariables.length || 
+        !stillExistingTestVars.every((val, index) => val.tempId === testVariables[index]?.tempId)) {
+        setTestVariables(stillExistingTestVars);
     }
-  }, []);
+    
+    const currentTestTempIds = new Set(stillExistingTestVars.filter(v => v.tempId).map(v => v.tempId!));
+    const newAvailableVariables = globalVarsWithTempId.filter(
+      v => v.name !== "" && v.tempId && !currentTestTempIds.has(v.tempId)
+    );
+    setAvailableVariables(newAvailableVariables);
 
-  // Reset function
-  const resetVariableSelection = useCallback(() => {
-    const validVars = variables.filter(v => v.name !== "");
-    setAvailableVariables(validVars);
-    setSelectedVariables([]);
+  }, [variables, testVariables]);
+
+
+  const moveToTestVariables = (variable: Variable, targetIndex?: number) => {
+    const variableWithTempId = {
+      ...variable,
+      tempId: variable.tempId || `temp_id_${variable.columnIndex}`
+    };
+    setAvailableVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
+    setTestVariables(prev => {
+      if (prev.some(v => v.tempId === variableWithTempId.tempId)) {
+        return prev;
+      }
+      const newList = [...prev];
+      if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+        newList.splice(targetIndex, 0, variableWithTempId);
+      } else {
+        newList.push(variableWithTempId);
+      }
+      return newList;
+    });
     setHighlightedVariable(null);
-  }, [variables]);
+  };
+
+  const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
+    const variableWithTempId = {
+      ...variable,
+      tempId: variable.tempId || `temp_id_${variable.columnIndex}`
+    };
+    setTestVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
+    setAvailableVariables(prev => {
+      if (prev.some(v => v.tempId === variableWithTempId.tempId)) {
+        return prev;
+      }
+      const newList = [...prev];
+      if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+        newList.splice(targetIndex, 0, variableWithTempId);
+      } else {
+        newList.push(variableWithTempId);
+      }
+      newList.sort((a, b) => (a.columnIndex || 0) - (b.columnIndex || 0));
+      return newList;
+    });
+    setHighlightedVariable(null);
+  };
+
+  const reorderVariables = (source: 'available' | 'test', variablesToReorder: Variable[]) => {
+    if (source === 'available') {
+      setAvailableVariables([...variablesToReorder]);
+    } else {
+      setTestVariables([...variablesToReorder]);
+    }
+  };
+
+  const resetVariableSelection = () => {
+    const allVariablesWithTempId = variables.map(v => ({
+      ...v,
+      tempId: v.tempId || `temp_id_${v.columnIndex}`
+    }));
+    setTestVariables([]);
+    setAvailableVariables(allVariablesWithTempId.filter(v => v.name !== ""));
+    setHighlightedVariable(null);
+  };
 
   return {
     availableVariables,
-    selectedVariables,
+    testVariables,
     highlightedVariable,
     setHighlightedVariable,
-    moveToSelectedVariables,
+    moveToTestVariables,
     moveToAvailableVariables,
     reorderVariables,
     resetVariableSelection

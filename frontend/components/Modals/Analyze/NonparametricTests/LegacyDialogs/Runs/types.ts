@@ -1,194 +1,178 @@
-import type { Variable, VariableData } from '@/types/Variable';
-import type { Dispatch, SetStateAction } from 'react';
+import { Variable } from '@/types/Variable';
+import { Dispatch, SetStateAction } from 'react';
+import { TourStep as BaseTourStep } from '@/types/tourTypes';
 import { BaseModalProps } from '@/types/modalTypes';
 
 // ---------------------------------
-// Test Settings Types
+// Constants
 // ---------------------------------
-export interface RunsTestOptions {
-  cutPoint: {
-    median: boolean;
-    mode: boolean;
-    mean: boolean;
-    custom: boolean;
-  };
-  customValue: number;
-  displayStatistics: {
-    descriptive: boolean;
-    quartiles: boolean;
-  };
-}
+
+// Tab Constants
+export const TABS = {
+  VARIABLES: 'variables' as const,
+  OPTIONS: 'options' as const,
+};
 
 // ---------------------------------
-// Variable Selection Types
+// Type
 // ---------------------------------
-export interface HighlightedVariableInfo {
+
+// Tab Type
+export type TabType = typeof TABS.VARIABLES | typeof TABS.OPTIONS;
+
+// TourStep Type
+export type TourStep = BaseTourStep & {
+  requiredTab?: TabType | string;
+  forceChangeTab?: boolean;
+};
+
+// Highlighted Variable
+export type HighlightedVariable = {
   tempId: string;
-  source: 'available' | 'selected';
+  source: 'available' | 'test';
+};
+
+// Cut Point Options
+export interface CutPointOptions {
+  median: boolean;
+  mode: boolean;
+  mean: boolean;
+  custom: boolean;
+}
+
+// Display Statistics Options
+export interface DisplayStatisticsOptions {
+  descriptive: boolean;
+  quartiles: boolean;
 }
 
 // ---------------------------------
-// Data Fetching Types
+// Props
 // ---------------------------------
-export interface FetchedData {
-  variableData: VariableData[] | null;
+
+// TabControl Props
+export interface TabControlProps {
+  setActiveTab: (tab: 'variables' | 'options') => void;
+  currentActiveTab: string;
 }
 
-// ---------------------------------
-// Worker Types
-// ---------------------------------
-export interface RunsWorkerResult {
-  success: boolean;
-  descriptives?: RunsStatistics;
-  runsMedian?: RunsResults;
-  runsMean?: RunsResults;
-  runsMode?: RunsResults;
-  runsCustom?: RunsResults;
-  cutPoint?: {
-    median: boolean;
-    mode: boolean;
-    mean: boolean;
-    custom: boolean;
-  };
-  displayStatistics?: {
-    descriptive: boolean;
-    quartiles: boolean;
-  };
-  error?: string;
+// VariablesTab Props
+export interface VariablesTabProps {
+  availableVariables: Variable[];
+  testVariables: Variable[];
+  highlightedVariable: HighlightedVariable | null;
+  setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
+  moveToTestVariables: (variable: Variable, targetIndex?: number) => void;
+  moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
+  reorderVariables: (source: 'available' | 'test', variables: Variable[]) => void;
+  tourActive?: boolean;
+  currentStep?: number;
+  tourSteps?: TourStep[];
 }
 
-export interface RunsStatistics {
-  title: string;
-  output_data: any;
-  components: string;
-  description: string;
-}
-
-export interface RunsResults {
-  title: string;
-  output_data: any;
-  components: string;
-  description: string;
-}
-
-export interface WorkerInput {
-  variableData: VariableData[];
-  cutPoint: {
-    median: boolean;
-    mode: boolean;
-    mean: boolean;
-    custom: boolean;
-  };
+// OptionsTab Props
+export interface OptionsTabProps {
+  cutPoint: CutPointOptions;
+  setCutPoint: Dispatch<SetStateAction<CutPointOptions>>;
   customValue: number;
-  displayStatistics: {
-    descriptive: boolean;
-    quartiles: boolean;
-  };
+  setCustomValue: Dispatch<SetStateAction<number>>;
+  displayStatistics: DisplayStatisticsOptions;
+  setDisplayStatistics: Dispatch<SetStateAction<DisplayStatisticsOptions>>;
+  tourActive?: boolean;
+  currentStep?: number;
+  tourSteps?: TourStep[];
 }
 
-export interface WorkerCalculationPromise {
-  resolve: (value: RunsWorkerResult | null) => void;
-  reject: (reason: any) => void;
+// TestSettings Props
+export interface TestSettingsProps {
+  initialCutPoint?: CutPointOptions;
+  initialCustomValue?: number;
+  initialDisplayStatistics?: DisplayStatisticsOptions;
 }
 
-// ---------------------------------
-// Hook Props and Results
-// ---------------------------------
+// VariableSelection Props
 export interface VariableSelectionProps {
   initialVariables?: Variable[];
 }
 
-export interface VariableSelectionResult {
-  availableVariables: Variable[];
-  selectedVariables: Variable[];
-  highlightedVariable: HighlightedVariableInfo | null;
-  setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariableInfo | null>>;
-  moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
-  moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-  reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
-  resetVariableSelection: () => void;
-}
-
-export interface TestSettingsProps {
-  initialCutPoint?: {
-    median: boolean;
-    mode: boolean;
-    mean: boolean;
-    custom: boolean;
-  };
-  initialCustomValue?: number;
-  initialDisplayStatistics?: {
-    descriptive: boolean;
-    quartiles: boolean;
-  };
-}
-
-export interface TestSettingsResult {
-  cutPoint: {
-    median: boolean;
-    mode: boolean;
-    mean: boolean;
-    custom: boolean;
-  };
-  setCutPoint: Dispatch<SetStateAction<{
-    median: boolean;
-    mode: boolean;
-    mean: boolean;
-    custom: boolean;
-  }>>;
-  customValue: number;
-  setCustomValue: Dispatch<SetStateAction<number>>;
-  displayStatistics: {
-    descriptive: boolean;
-    quartiles: boolean;
-  };
-  setDisplayStatistics: Dispatch<SetStateAction<{
-    descriptive: boolean;
-    quartiles: boolean;
-  }>>;
-  resetTestSettings: () => void;
-}
-
-export interface DataFetchingProps {
-}
-
-export interface DataFetchingResult {
-  isLoading: boolean;
-  error: string | null;
-  fetchData: (variables: Variable[]) => Promise<FetchedData>;
-  clearError: () => void;
-}
-
-export interface RunsWorkerProps {
-  workerUrl?: string;
-  timeoutDuration?: number;
-}
-
-export interface RunsWorkerHookResult {
-  isCalculating: boolean;
-  error: string | undefined;
-  calculate: (input: WorkerInput) => Promise<RunsWorkerResult | null>;
-  cancelCalculation: () => void;
-}
-
+// RunsAnalysis Props
 export interface RunsAnalysisProps extends Pick<BaseModalProps, 'onClose' | 'containerType'> {
-  selectedVariables: Variable[];
-  cutPoint: {
-    median: boolean;
-    mode: boolean;
-    mean: boolean;
-    custom: boolean;
-  };
-  customValue: number;
-  displayStatistics: {
-    descriptive: boolean;
-    quartiles: boolean;
-  };
+  testVariables: Variable[];
+  cutPoint: CutPointOptions;
+  customValue: number | null;
+  displayStatistics: DisplayStatisticsOptions;
 }
 
-export interface RunsAnalysisResult {
-  isLoading: boolean;
-  errorMsg: string | null;
-  runAnalysis: () => Promise<void>;
-  cancelAnalysis: () => void;
+// ---------------------------------
+// Result
+// ---------------------------------
+
+// UseTourGuide Result
+export interface UseTourGuideResult {
+  tourActive: boolean;
+  currentStep: number;
+  tourSteps: TourStep[];
+  currentTargetElement: HTMLElement | null;
+  startTour: () => void;
+  nextStep: () => void;
+  prevStep: () => void;
+  endTour: () => void;
+}
+
+// RunsTest
+export interface RunsTest {
+  TestValue: number;
+  CasesBelow?: number;
+  CasesAbove?: number;
+  Total: number;
+  Runs: number;
+  Z?: number;
+  PValue?: number;
+}
+
+// Descriptive Statistics
+export interface DescriptiveStatistics {
+  N: number;
+  Mean?: number;
+  StdDev?: number;
+  Min?: number;
+  Max?: number;
+  Percentile25?: number;
+  Percentile50?: number;
+  Percentile75?: number;
+}
+
+// Runs Test Result
+export interface RunsTestResult {
+  variable: Variable;
+  displayStatistics?: DisplayStatisticsOptions;
+  cutPoint?: 'Median' | 'Mean' | 'Mode' | 'Custom';
+  stats: RunsTest | DescriptiveStatistics;
 } 
+
+// Runs Test Results Collection
+export interface RunsTestResults {
+  runsTest?: RunsTestResult[];
+  cutPoint?: 'Median' | 'Mean' | 'Mode' | 'Custom';
+  descriptiveStatistics?: RunsTestResult[];
+}
+
+// ---------------------------------
+// Table Types
+// ---------------------------------
+export interface TableColumnHeader {
+  header: string;
+  key: string;
+  children?: TableColumnHeader[];
+}
+
+export interface TableRow {
+  [key: string]: any;
+  rowHeader?: any[];
+}
+
+export interface RunsTestTable {
+  title: string;
+  columnHeaders: TableColumnHeader[];
+  rows: TableRow[];
+}
