@@ -506,7 +506,7 @@ pub fn calculate_general_estimable_function(
 
     // Add important notes to the final result.
     let mut notes_vec = Vec::new();
-    notes_vec.push(format!("a. Design: {}", generate_design_string(&design_info)));
+    notes_vec.push(format!("a. {}", generate_design_string(&design_info)));
     if is_redundant_vec.iter().any(|&x| x) {
         notes_vec.push(
             "b. One or more β parameters may be redundant (i.e., non-estimable due to data structure).".to_string()

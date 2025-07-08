@@ -278,8 +278,8 @@ pub fn calculate_parameter_estimates(
     let mut note_letter = 'a';
 
     // Add dependent variable name to notes for frontend consumption
-    notes.push(format!("__DEP_VAR:{}", config.main.dep_var.as_ref().unwrap()));
-    notes.push(format!("__SIG_LEVEL:{}", sig_level));
+    notes.push(format!("Dependent Variable:{}", config.main.dep_var.as_ref().unwrap()));
+    notes.push(format!("Computed using alpha:{}", sig_level));
 
     // Add note about redundant parameters
     let mut aliased_terms_for_note: Vec<String> = term_is_aliased_map

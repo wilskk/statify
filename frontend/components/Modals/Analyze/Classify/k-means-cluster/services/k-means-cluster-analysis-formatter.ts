@@ -108,9 +108,11 @@ export function transformKMeansResult(
     }
 
     // 3. Cluster Membership
-    if (data.cluster_membership) {
+    if (data.cluster_membership && data.cluster_membership.data) {
+        const membershipData = data.cluster_membership.data;
+
         // Check if any case has a name
-        const hasCaseNames = data.cluster_membership.some(
+        const hasCaseNames = membershipData.some(
             (membership: any) =>
                 membership.case_name && membership.case_name.trim() !== ""
         );
@@ -135,7 +137,7 @@ export function transformKMeansResult(
         };
 
         // Fill data rows
-        data.cluster_membership.forEach((membership: any) => {
+        membershipData.forEach((membership: any) => {
             const rowData: any = {
                 rowHeader: [membership.case_number.toString()],
                 cluster: membership.cluster.toString(),
@@ -381,7 +383,7 @@ export function transformKMeansResult(
         if (errors.length === 1 && errors[0] === "No errors occurred.") {
             const table: Table = {
                 key: "error_table",
-                title: "Errors and Warnings",
+                title: "Errors Logs",
                 columnHeaders: [{ header: "Message", key: "message" }],
                 rows: [
                     {
@@ -394,7 +396,7 @@ export function transformKMeansResult(
         } else {
             const table: Table = {
                 key: "error_table",
-                title: "Errors and Warnings",
+                title: "Errors Logs",
                 columnHeaders: [
                     { header: "Context", key: "context" },
                     { header: "Message", key: "message" },

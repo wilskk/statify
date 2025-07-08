@@ -35,7 +35,7 @@ pub fn calculate_anova(data: &ProcessedData, config: &ClusterConfig) -> Result<A
         // Mengelompokkan data berdasarkan keanggotaan clusternya.
         let mut cluster_data: Vec<Vec<f64>> = vec![Vec::new(); num_clusters];
         for (idx, case) in data.data_matrix.iter().enumerate() {
-            let cluster = (membership[idx].cluster as usize) - 1;
+            let cluster = (membership.data[idx].cluster as usize) - 1;
             cluster_data[cluster].push(case[var_idx]);
         }
 

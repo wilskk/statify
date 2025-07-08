@@ -26,7 +26,7 @@ pub fn format_result(result: &Option<ClusteringResult>) -> Result<JsValue, JsVal
 struct FormatResult {
     initial_centers: Option<FormattedInitialClusterCenters>,
     iteration_history: Option<FormattedIterationHistory>,
-    cluster_membership: Option<Vec<ClusterMembership>>,
+    cluster_membership: Option<ClusterMembership>,
     final_cluster_centers: Option<FormattedFinalClusterCenters>,
     distances_between_centers: Option<DistancesBetweenCenters>,
     anova: Option<FormattedANOVATable>,
@@ -196,7 +196,7 @@ impl FormatResult {
         });
 
         let cases_count = result.cases_count.as_ref().map(|count| {
-            let clusters = count.clusters
+            let mut clusters: Vec<_> = count.clusters
                 .iter()
                 .map(|(cluster_name, count_val)| {
                     ClusterCount {
@@ -205,6 +205,8 @@ impl FormatResult {
                     }
                 })
                 .collect();
+
+            clusters.sort_by_key(|c| c.cluster.parse::<i32>().unwrap_or_default());
 
             FormattedCaseCountTable {
                 valid: count.valid,

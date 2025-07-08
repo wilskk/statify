@@ -1,4 +1,7 @@
-use crate::models::{ config::ClusterConfig, result::{ ClusterMembership, ProcessedData } };
+use crate::models::{
+    config::ClusterConfig,
+    result::{ ClusterMembership, ProcessedData, ClusterMembershipData },
+};
 
 use super::core::*;
 
@@ -9,7 +12,7 @@ use super::core::*;
 pub fn generate_cluster_membership(
     data: &ProcessedData,
     config: &ClusterConfig
-) -> Result<Vec<ClusterMembership>, String> {
+) -> Result<ClusterMembership, String> {
     // Menghitung pusat cluster final menggunakan algoritma K-Means hingga konvergen.
     let final_centers_result = generate_final_cluster_centers(data, config)?;
 
@@ -17,7 +20,7 @@ pub fn generate_cluster_membership(
     let final_centers = convert_map_to_matrix(&final_centers_result.centers, &data.variables);
 
     // Menentukan keanggotaan cluster untuk setiap kasus (baris) dalam matriks data.
-    let membership = data.data_matrix
+    let membership_data = data.data_matrix
         .iter()
         .enumerate()
         .map(|(idx, case)| {
@@ -25,18 +28,22 @@ pub fn generate_cluster_membership(
             let (cluster, distance) = find_nearest_cluster(case, &final_centers);
             let case_name = data.case_names.as_ref().and_then(|names| names.get(idx).cloned());
 
-            ClusterMembership {
+            ClusterMembershipData {
                 case_number: data.case_numbers[idx],
                 case_name,
                 cluster: (cluster + 1) as i32, // 1-based index
                 distance,
-                note: None,
-                interpretation: Some(
-                    "This indicates which cluster the case belongs to and its Euclidean distance to the cluster's center. A smaller distance implies a better fit of the case to its assigned cluster.".to_string()
-                ),
             }
         })
         .collect();
+
+    let membership = ClusterMembership {
+        data: membership_data,
+        note: None,
+        interpretation: Some(
+            "This indicates which cluster the case belongs to and its Euclidean distance to the cluster's center. A smaller distance implies a better fit of the case to its assigned cluster.".to_string()
+        ),
+    };
 
     Ok(membership)
 }

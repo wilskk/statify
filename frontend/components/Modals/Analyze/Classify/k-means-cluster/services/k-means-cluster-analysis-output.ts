@@ -210,9 +210,9 @@ export async function resultKMeans({
                     title: errorTable.title,
                     description:
                         errorTable.interpretation ||
-                        "Errors and warnings from the analysis.",
+                        "Errors logs from the analysis.",
                     output_data: JSON.stringify({ tables: [errorTable] }),
-                    components: "Errors and Warnings",
+                    components: "Errors Logs",
                 });
             }
 

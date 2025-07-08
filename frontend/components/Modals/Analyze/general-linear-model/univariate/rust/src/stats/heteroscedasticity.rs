@@ -129,7 +129,7 @@ pub fn calculate_heteroscedasticity_tests(
     }
 
     // Langkah 8: Tambahkan metadata ke catatan hasil untuk konsumsi di frontend.
-    let note_suffix = format!("\n__DEP_VAR:{}\n__DESIGN:{}", dep_var_name, design_string);
+    let note_suffix = format!("\nDependent Variable:{}.\n{}.", dep_var_name, design_string);
     if let Some(ref mut test) = white_test_result {
         if let Some(note) = test.note.as_mut() {
             note.push_str(&note_suffix);
