@@ -15,13 +15,20 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
   height,
   useaxis,
 }) => {
-  const svgRef = useRef<SVGSVGElement | null>(null);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (svgRef.current) {
-      const svg = d3.select(svgRef.current);
-      svg.selectAll("*").remove(); // Menghapus grafik lama sebelum menggambar yang baru
+    if (chartContainerRef.current) {
+      // Cleanup any existing 3D charts first
+      const existingContainer = chartContainerRef.current.firstChild as any;
+      if (
+        existingContainer &&
+        typeof existingContainer.cleanup === "function"
+      ) {
+        existingContainer.cleanup();
+      }
+
+      chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
 
       const data1 = [
         { category: "A", value: 30 },
@@ -32,17 +39,18 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         { category: "F", value: 90 },
       ];
       const data2 = [
-        { category: "2023-01-01", value: 10 },
-        { category: "2023-01-02", value: 30 },
-        { category: "2023-01-03", value: 55 },
-        { category: "2023-01-04", value: 60 },
-        { category: "2023-01-05", value: 70 },
-        { category: "2023-01-06", value: 90 },
-        { category: "2023-01-07", value: 55 },
-        { category: "2023-01-08", value: 30 },
-        { category: "2023-01-09", value: 50 },
-        { category: "2023-01-10", value: 20 },
-        { category: "2023-01-11", value: 25 },
+        { category: "Jan", value: 10 },
+        { category: "Feb", value: 30 },
+        { category: "Mar", value: 55 },
+        { category: "Apr", value: 60 },
+        { category: "Mei", value: 70 },
+        { category: "Jun", value: 90 },
+        { category: "Jul", value: 55 },
+        { category: "Agu", value: 30 },
+        { category: "Sep", value: 50 },
+        { category: "Okt", value: 20 },
+        { category: "Nov", value: 25 },
+        { category: "Des", value: 25 },
       ];
       const data3 = [5, 8, 9, 7, 3, 6, 3, 7, 3, 2, 9, 1, 4, 2, 5];
       const data4 = [
@@ -172,17 +180,6 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         { category: "80-84", subcategory: "M", value: 4313687 },
         { category: "80-84", subcategory: "F", value: 3432738 },
       ];
-      const data13 = [
-        { category: "-0", value: 0 },
-        { category: "0-10", value: 5 },
-        { category: "10-20", value: 15 },
-        { category: "20-30", value: 25 },
-        { category: "30-40", value: 30 },
-        { category: "40-50", value: 20 },
-        { category: "50-60", value: 10 },
-        { category: "60-70", value: 5 },
-        { category: "80+", value: 0 },
-      ];
 
       const data14 = [
         { category: "A", group: "2023", value: 10 },
@@ -205,12 +202,12 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         { category: "C", subcategory: "A3", value: 49, error: 9 },
       ];
       const data16 = [
-        { A: 15, B: 50, C: 20, category: "Group 1" },
-        { A: 20, B: 200, C: 30, category: "Group 1" },
-        { A: 60, B: 100, C: 70, category: "Group 2" },
-        { A: 200, B: 325, C: 180, category: "Group 2" },
-        { A: 80, B: 150, C: 60, category: "Group 3" },
-        { A: 130, B: 275, C: 110, category: "Group 3" },
+        { A: 15, B: 50, C: 20 },
+        { A: 20, B: 200, C: 30 },
+        { A: 60, B: 100, C: 70 },
+        { A: 200, B: 325, C: 180 },
+        { A: 80, B: 150, C: 60 },
+        { A: 130, B: 275, C: 110 },
       ];
       const data17 = [
         { value: 10, category: "A" },
@@ -368,6 +365,37 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         },
       ];
 
+      const data27 = [
+        { stem: "1", leaves: [2, 5] },
+        { stem: "2", leaves: [1, 2, 4] },
+        { stem: "3", leaves: [1, 5, 6, 7] },
+        { stem: "4", leaves: [2, 6, 7, 8, 9] },
+        { stem: "5", leaves: [2, 3, 4, 5, 6, 7, 11] },
+        { stem: "6", leaves: [1, 1, 1, 8, 9] },
+      ];
+
+      const data28 = [
+        { category: "A", value: 10 },
+        { category: "A", value: 15 },
+        { category: "A", value: 20 },
+        { category: "A", value: 18 },
+        { category: "A", value: 12 },
+        { category: "B", value: 5 },
+        { category: "B", value: 8 },
+        { category: "B", value: 6 },
+        { category: "B", value: 9 },
+        { category: "B", value: 4 },
+        { category: "C", value: 22 },
+        { category: "C", value: 25 },
+        { category: "C", value: 24 },
+        { category: "C", value: 23 },
+        { category: "C", value: 26 },
+      ];
+
+      const data29 = Array.from({ length: 100 }, () =>
+        Math.round(d3.randomNormal(500, 100)())
+      );
+
       const words = [
         "freedom",
         "justice",
@@ -447,492 +475,263 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         "knowledge",
       ].flatMap((word) => Array(25).fill(word));
 
+      // Create chart node based on chart type
+      let chartNode = null;
+
       if (chartType === "Vertical Bar Chart") {
-        // Panggil createVerticalBarChart2 tanpa svg (SVG akan dibuat di dalam fungsi)
-        const chartNode = chartUtils.createVerticalBarChart2(
+        chartNode = chartUtils.createVerticalBarChart2(
           data1,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
-        }
       } else if (chartType === "Horizontal Bar Chart") {
-        // Panggil createHorizontalBarChart untuk horizontal bar chart
-        const chartNode = chartUtils.createHorizontalBarChart(
-          data1, // Pastikan data sesuai dengan format { category, value }
+        chartNode = chartUtils.createHorizontalBarChart(
+          data1,
           width,
           height,
-          useaxis, // Menyertakan parameter axis
-          "steelblue", // Warna bar
-          0.007 // Threshold untuk filter teks
+          useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
-        }
       } else if (chartType === "Line Chart") {
-        // Panggil createLineChart untuk line chart
-        const chartNode = chartUtils.createLineChart(
-          data2, // Data dengan format { category, value }
-          width,
-          height,
-          useaxis // Parameter axis
-        );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
-        }
+        chartNode = chartUtils.createLineChart(data2, width, height, useaxis);
       } else if (chartType === "Pie Chart") {
-        const chartNode = chartUtils.createPieChart(
-          data1, // Data dengan format { name, value }
-          width,
-          height
+        chartNode = chartUtils.createPieChart(
+          data1,
+          width * 0.8,
+          height * 0.8,
+          false
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
-        }
       } else if (chartType === "Area Chart") {
-        const chartNode = chartUtils.createAreaChart(
-          data2,
-          width,
-          height,
-          useaxis
-        );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
-        }
+        chartNode = chartUtils.createAreaChart(data2, width, height, useaxis);
       } else if (chartType === "Histogram") {
-        // Tambahkan pemanggilan fungsi createHistogram untuk histogram chart
-        const chartNode = chartUtils.createHistogram(
-          data3,
-          width,
-          height,
-          useaxis
-        );
-
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
-        }
+        chartNode = chartUtils.createHistogram(data3, width, height, useaxis);
       } else if (chartType === "Scatter Plot") {
-        // Tambahkan pemanggilan fungsi createScatterPlot untuk scatter chart
-        const chartNode = chartUtils.createScatterPlot(
+        chartNode = chartUtils.createScatterPlot(data4, width, height, useaxis);
+      } else if (chartType === "Boxplot") {
+        chartNode = chartUtils.createBoxplot(data5, width, height, useaxis);
+      } else if (chartType === "Scatter Plot With Fit Line") {
+        chartNode = chartUtils.createScatterPlotWithFitLine(
           data4,
           width,
           height,
           useaxis
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
-      } else if (chartType === "Boxplot") {
-        // Tambahkan pemanggilan fungsi createBoxPlot untuk box plot chart
-        const chartNode = chartUtils.createBoxplot(
-          data5,
-          width,
-          height,
-          useaxis
-        );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
-      } else if (chartType === "Scatter Plot With Fit Line") {
-        // Tambahkan pemanggilan fungsi createScatterPlotWithFitLine untuk scatter plot dengan fit line
-        const chartNode = chartUtils.createScatterPlotWithFitLine(
-          data4, // Pastikan data sesuai dengan format { category, value }
-          width,
-          height,
-          useaxis,
-          false
-        );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Vertical Stacked Bar Chart") {
-        // Tambahkan pemanggilan fungsi untuk Vertical Stacked Bar Chart
-        const chartNode = chartUtils.createVerticalStackedBarChart(
+        chartNode = chartUtils.createVerticalStackedBarChart(
           data6,
           width,
           height,
           useaxis
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Horizontal Stacked Bar Chart") {
-        // Tambahkan pemanggilan fungsi untuk Horizontal Stacked Bar Chart
-        const chartNode = chartUtils.createHorizontalStackedBarChart(
+        chartNode = chartUtils.createHorizontalStackedBarChart(
           data6,
           width,
           height,
           useaxis
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
-      } else if (chartType === "Grouped Bar Chart") {
-        // Tambahkan pemanggilan fungsi untuk Horizontal Stacked Bar Chart
-        const chartNode = chartUtils.createGroupedBarChart(
+      } else if (chartType === "Clustered Bar Chart") {
+        chartNode = chartUtils.createClusteredBarChart(
           data6,
           width,
           height,
           useaxis
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Multiple Line Chart") {
-        const chartNode = chartUtils.createMultilineChart(
+        chartNode = chartUtils.createMultipleLineChart(
           data7,
           width,
           height,
           useaxis
         );
-
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Error Bar Chart") {
-        // Panggil fungsi error handling bar chart
-        const chartNode = chartUtils.createErrorBarChart(
+        chartNode = chartUtils.createErrorBarChart(
           data8,
           width,
           height,
           useaxis
         );
-        if (chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Stacked Area Chart") {
-        const chartNode = chartUtils.createStackedAreaChart(
+        chartNode = chartUtils.createStackedAreaChart(
           data9,
           width,
           height,
           useaxis
         );
-
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Grouped Scatter Plot") {
-        const chartNode = chartUtils.createGroupedScatterPlot(
+        chartNode = chartUtils.createGroupedScatterPlot(
           data10,
           width,
           height,
           useaxis
         );
-
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Dot Plot") {
-        const chartNode = chartUtils.createDotPlot(
-          data11,
-          width,
-          height,
-          useaxis
-        );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
+        chartNode = chartUtils.createDotPlot(data11, width, height, useaxis);
       } else if (chartType === "Population Pyramid") {
-        const chartNode = chartUtils.createPopulationPyramid(
+        chartNode = chartUtils.createPopulationPyramid(
           data12,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Frequency Polygon") {
-        const chartNode = chartUtils.createFrequencyPolygon(
-          data13,
+        chartNode = chartUtils.createFrequencyPolygon(
+          data3,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Clustered Error Bar Chart") {
-        const chartNode = chartUtils.createClusteredErrorBarChart(
+        chartNode = chartUtils.createClusteredErrorBarChart(
           data15,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Scatter Plot Matrix") {
-        const chartNode = chartUtils.createScatterPlotMatrix(
+        chartNode = chartUtils.createScatterPlotMatrix(
           data16,
-          width,
-          height,
+          Math.max(width, height),
+          Math.max(width, height),
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Stacked Histogram") {
-        const chartNode = chartUtils.createStackedHistogram(
+        chartNode = chartUtils.createStackedHistogram(
           data17,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Clustered Boxplot") {
-        const chartNode = chartUtils.createClusteredBoxplot(
+        chartNode = chartUtils.createClusteredBoxplot(
           data18,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "1-D Boxplot") {
-        const chartNode = chartUtils.create1DBoxplot(
-          data5,
-          width,
-          height,
-          useaxis
-        );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
+        chartNode = chartUtils.create1DBoxplot(data1, width, height, useaxis);
       } else if (chartType === "Simple Range Bar") {
-        const chartNode = chartUtils.createSimpleRangeBar(
+        chartNode = chartUtils.createSimpleRangeBar(
           data19,
           width,
           height,
           useaxis
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "High-Low-Close Chart") {
-        const chartNode = chartUtils.createHighLowCloseChart(
+        chartNode = chartUtils.createHighLowCloseChart(
           data19,
           width,
           height,
           useaxis
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Clustered Range Bar") {
-        const chartNode = chartUtils.createClusteredRangeBar(
+        chartNode = chartUtils.createClusteredRangeBar(
           data20,
           width,
           height,
           useaxis
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Difference Area") {
-        const chartNode = chartUtils.createDifferenceArea(
+        chartNode = chartUtils.createDifferenceArea(
           data21,
           width,
           height,
           useaxis
         );
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Vertical Bar & Line Chart") {
-        const chartNode = chartUtils.createBarAndLineChart(
+        chartNode = chartUtils.createBarAndLineChart(
           data22,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Dual Axes Scatter Plot") {
-        const chartNode = chartUtils.createDualAxesScatterPlot(
+        chartNode = chartUtils.createDualAxesScatterPlot(
           data23,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Drop Line Chart") {
-        const chartNode = chartUtils.createDropLineChart(
+        chartNode = chartUtils.createDropLineChart(
           data24,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Summary Point Plot") {
-        // Panggil createVerticalBarChart2 tanpa svg (SVG akan dibuat di dalam fungsi)
-        const chartNode = chartUtils.createSummaryPointPlot(
+        chartNode = chartUtils.createSummaryPointPlot(
           data25,
           width,
           height,
           useaxis
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
-      } else if (chartType === "Drop Line Chart") {
-        const chartNode = chartUtils.createDropLineChart(
-          data24,
-          width,
-          height,
-          useaxis
-        );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Vertical Bar & Line Chart2") {
-        const chartNode = chartUtils.createBarAndLineChart2(
+        chartNode = chartUtils.createBarAndLineChart2(
           data26,
           width,
           height,
           useaxis,
           "stacked"
         );
-
-        // Pastikan chartNode bukan null dan svgRef.current bukan null
-        if (svgRef.current && chartNode) {
-          svgRef.current.appendChild(chartNode);
-        }
-      }
-
-      // else if (chartType === "Word Cloud") {
-      //   // Tambahkan pemanggilan fungsi createBoxPlot untuk box plot chart
-      //   const chartNode = chartUtils.createWordCloud(words, width, height, {
-      //     size: (group) => group.length, // Calculate the size based on the frequency of each word
-      //     word: (d) => d, // The word itself
-      //     marginTop: 0, // Margin for top
-      //     marginRight: 0, // Margin for right
-      //     marginBottom: 0, // Margin for bottom
-      //     marginLeft: 0, // Margin for left
-      //     // maxWords: 100, // Maximum number of words in the Word Cloud
-      //     fontFamily: "sans-serif", // Font family
-      //     fontScale: 2, // Font scaling factor
-      //     fill: "black", // Word color
-      //     padding: 0, // Padding between words
-      //     rotate: 0, // Rotation for words (can be dynamic if needed)
-      //   });
-      //   if (svgRef.current && chartNode) {
-      //     svgRef.current.appendChild(chartNode);
-      //   }
-      // }
-    }
-    if (chartContainerRef.current) {
-      chartContainerRef.current.innerHTML = "";
-
-      const data1 = [
-        { x: "A", y: "D", z: 50 },
-        { x: "B", y: "E", z: 100 },
-        { x: "C", y: "G", z: 180 },
-        { x: "D", y: "M", z: 60 },
-        { x: "E", y: "O", z: 30 },
-        { x: "F", y: "G", z: 50 },
-      ];
-      if (chartType === "3D Bar Chart2") {
-        // Panggil fungsi untuk membuat chart 3D
-        const chartNode = chartUtils.create3DBarChart2(
+      } else if (chartType === "Stem And Leaf Plot") {
+        chartNode = chartUtils.createStemAndLeafPlot(
+          data27,
+          width,
+          height,
+          false
+        );
+      } else if (chartType === "Violin Plot") {
+        chartNode = chartUtils.createViolinPlot(data28, width, height, false);
+      } else if (chartType === "Density Chart") {
+        chartNode = chartUtils.createDensityChart(data29, width, height, false);
+      } else if (chartType === "3D Bar Chart2") {
+        chartNode = chartUtils.create3DBarChart2(
           [
-            { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
-            { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
-            { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
-            { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
-            { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
-            { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
-            { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
-            { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
-            { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
-            { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
-            { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
-            { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
-            { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
-            { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
-            { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+            { x: -5, y: 2, z: -5 },
+            { x: -4, y: 3, z: 6 },
+            { x: -3, y: 5, z: 4 },
+            { x: -2, y: 7, z: -6 },
+            { x: 0, y: 0, z: 0 },
+            { x: 2, y: 2, z: -6 },
+            { x: 2, y: 4, z: 7 },
+            { x: 3, y: 6, z: -5 },
+            { x: 4, y: 3, z: 2 },
+            { x: 5, y: 5, z: -9 },
+            { x: 6, y: 4, z: -2 },
+            { x: 7, y: 3, z: 5 },
+            { x: -7, y: 2, z: -6 },
+            { x: -6, y: 4, z: -2 },
+            { x: -5, y: 5, z: 5 },
           ],
           width,
           height
         );
-
-        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
-        if (chartContainerRef.current && chartNode) {
-          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-          chartContainerRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "3D Scatter Plot") {
-        // Panggil fungsi untuk membuat chart 3D
-        const chartNode = chartUtils.create3DScatterPlot(
+        chartNode = chartUtils.create3DScatterPlot(
           [
-            { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
-            { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
-            { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
-            { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
-            { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
-            { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
-            { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
-            { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
-            { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
-            { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
-            { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
-            { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
-            { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
-            { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
-            { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+            { x: -5, y: 2, z: -5 },
+            { x: -4, y: 3, z: 6 },
+            { x: -3, y: 5, z: 4 },
+            { x: -2, y: 7, z: -6 },
+            { x: 0, y: 0, z: 0 },
+            { x: 2, y: 2, z: -6 },
+            { x: 2, y: 4, z: 7 },
+            { x: 3, y: 6, z: -5 },
+            { x: 4, y: 3, z: 2 },
+            { x: 5, y: 5, z: -9 },
+            { x: 6, y: 4, z: -2 },
+            { x: 7, y: 3, z: 5 },
+            { x: -7, y: 2, z: -6 },
+            { x: -6, y: 4, z: -2 },
+            { x: -5, y: 5, z: 5 },
           ],
           width,
           height
         );
-
-        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
-        if (chartContainerRef.current && chartNode) {
-          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-          chartContainerRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Grouped 3D Scatter Plot") {
-        // Panggil fungsi untuk membuat chart 3D
-        const chartNode = chartUtils.createGrouped3DScatterPlot(
+        chartNode = chartUtils.createGrouped3DScatterPlot(
           [
             { x: 1, y: 2, z: 3, category: "A" },
             { x: 1, y: 2, z: 3, category: "B" },
@@ -949,46 +748,32 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           width,
           height
         );
-
-        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
-        if (chartContainerRef.current && chartNode) {
-          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-          chartContainerRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Clustered 3D Bar Chart") {
-        // Panggil fungsi untuk membuat chart 3D
-        const chartNode = chartUtils.createClustered3DBarChart(
+        chartNode = chartUtils.createClustered3DBarChart(
           [
             { x: 1, z: 1, y: 6, category: "A" },
-
             { x: 2, z: 1, y: 7, category: "A" },
             { x: 2, z: 1, y: 6, category: "B" },
             { x: 2, z: 1, y: 5, category: "C" },
             { x: 2, z: 1, y: 6, category: "D" },
-
             { x: 6, z: 4, y: 7, category: "A" },
             { x: 6, z: 4, y: 6, category: "B" },
             { x: 6, z: 4, y: 5, category: "C" },
             { x: 6, z: 4, y: 6, category: "D" },
-
             { x: 4, z: 7, y: 5, category: "A" },
-
             { x: -4, z: 6, y: 3, category: "A" },
             { x: -4, z: 6, y: 6, category: "B" },
             { x: -4, z: 6, y: 7, category: "C" },
             { x: -4, z: 6, y: 1, category: "D" },
             { x: -4, z: 6, y: 4, category: "E" },
-
             { x: -9, z: 8, y: 4, category: "A" },
             { x: -9, z: 8, y: 6, category: "B" },
             { x: -9, z: 8, y: 2, category: "E" },
-
             { x: 8, z: -6, y: 3, category: "A" },
             { x: 8, z: -6, y: 4, category: "B" },
             { x: 8, z: -6, y: 9, category: "C" },
             { x: 8, z: -6, y: 2, category: "D" },
             { x: 8, z: -6, y: 5, category: "E" },
-
             { x: -8, z: -2, y: 3, category: "A" },
             { x: -8, z: -2, y: 6, category: "B" },
             { x: -8, z: -2, y: 3, category: "C" },
@@ -998,46 +783,32 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           width,
           height
         );
-
-        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
-        if (chartContainerRef.current && chartNode) {
-          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-          chartContainerRef.current.appendChild(chartNode);
-        }
       } else if (chartType === "Stacked 3D Bar Chart") {
-        // Panggil fungsi untuk membuat chart 3D
-        const chartNode = chartUtils.createStacked3DBarChart(
+        chartNode = chartUtils.createStacked3DBarChart(
           [
             { x: 1, z: 1, y: 6, category: "A" },
-
             { x: 2, z: 6, y: 2, category: "A" },
             { x: 2, z: 6, y: 3, category: "B" },
             { x: 2, z: 6, y: 2, category: "C" },
             { x: 2, z: 6, y: 1, category: "D" },
-
             { x: 5, z: 4, y: 1, category: "A" },
             { x: 5, z: 4, y: 2, category: "B" },
             { x: 5, z: 4, y: 3, category: "C" },
             { x: 5, z: 4, y: 1, category: "D" },
-
             { x: 9, z: 7, y: 7, category: "A" },
-
             { x: -4, z: 6, y: 3, category: "A" },
             { x: -4, z: 6, y: 1, category: "B" },
             { x: -4, z: 6, y: 2, category: "C" },
             { x: -4, z: 6, y: 2, category: "D" },
             { x: -4, z: 6, y: 1, category: "E" },
-
             { x: -9, z: 8, y: 1, category: "A" },
             { x: -9, z: 8, y: 2, category: "B" },
             { x: -9, z: 8, y: 2, category: "E" },
-
             { x: 8, z: -6, y: 3, category: "A" },
             { x: 8, z: -6, y: 2, category: "B" },
             { x: 8, z: -6, y: 1, category: "C" },
             { x: 8, z: -6, y: 2, category: "D" },
             { x: 8, z: -6, y: 2, category: "E" },
-
             { x: -8, z: -2, y: 3, category: "A" },
             { x: -8, z: -2, y: 2, category: "B" },
             { x: -8, z: -2, y: 3, category: "C" },
@@ -1047,40 +818,33 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           width,
           height
         );
-
-        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
-        if (chartContainerRef.current && chartNode) {
-          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
-          chartContainerRef.current.appendChild(chartNode);
-        }
       }
 
-      // if (chartType === "3D Bar Chart") {
-      //   // const chartNode = chartUtils.create3DBarChart(
-      //   //   data1,
-      //   //   width,
-      //   //   height,
-      //   //   useaxis
-      //   // );
-      //   // if (svgRef.current && chartNode) {
-      //   //   svgRef.current.appendChild(chartNode); // Sama persis kayak D3
-      //   // }
-      // }
+      // Append chart node to container if valid
+      if (chartContainerRef.current && chartNode) {
+        chartContainerRef.current.appendChild(chartNode);
+      }
     }
   }, [chartType, width, height, useaxis]);
 
+  // Cleanup WebGL contexts on unmount
+  useEffect(() => {
+    const currentRef = chartContainerRef.current;
+    return () => {
+      if (currentRef) {
+        const container = currentRef.firstChild as any;
+        if (container && typeof container.cleanup === "function") {
+          container.cleanup();
+        }
+      }
+    };
+  }, []);
+
   return (
-    <>
-      {chartType.includes("3D") ? (
-        <div ref={chartContainerRef} className="chart-container" />
-      ) : (
-        <svg
-          ref={svgRef}
-          className="max-w-full max-h-full"
-          style={{ display: "block", margin: "auto" }}
-        />
-      )}
-    </>
+    <div
+      ref={chartContainerRef}
+      className="chart-container w-full h-full flex items-center justify-center"
+    />
   );
 };
 
