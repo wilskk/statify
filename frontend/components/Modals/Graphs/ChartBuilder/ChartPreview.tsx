@@ -77,6 +77,12 @@ interface ChartPreviewProps {
   yRightAxisMax?: string;
   yRightAxisMajorIncrement?: string;
   yRightAxisOrigin?: string;
+  // Tambahkan props untuk Z axis (3D charts)
+  zAxisLabel?: string;
+  zAxisMin?: string;
+  zAxisMax?: string;
+  zAxisMajorIncrement?: string;
+  zAxisOrigin?: string;
   // Tambahkan prop chartColors
   chartColors?: string[];
   chartTitleFontSize?: number;
@@ -148,6 +154,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       yRightAxisMax,
       yRightAxisMajorIncrement,
       yRightAxisOrigin,
+      zAxisLabel,
+      zAxisMin,
+      zAxisMax,
+      zAxisMajorIncrement,
+      zAxisOrigin,
       chartColors,
       chartTitleFontSize,
       chartSubtitleFontSize,
@@ -233,12 +244,12 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           // Create chart variables object
           const chartVariables = {
             x: bottomVariables,
-            y: sideVariables,
+            y: chartType.includes("3D") ? bottomVariables : sideVariables,
             groupBy: colorVariables,
             low: lowVariables,
             high: highVariables,
             close: closeVariables,
-            z: bottom2Variables,
+            z: chartType.includes("3D") ? sideVariables : bottom2Variables,
             y2: side2Variables,
           };
 
@@ -271,6 +282,9 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                 y: yAxisLabel || sideVariables[0] || "Value",
                 y1: yLeftAxisLabel || sideVariables[0] || "Y1-axis",
                 y2: yRightAxisLabel || side2Variables[0] || "Y2-axis",
+                z: chartType.includes("3D")
+                  ? zAxisLabel || bottom2Variables[0] || "Z-axis"
+                  : undefined,
               },
               axisScaleOptions: {
                 x: {
@@ -297,6 +311,14 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                   majorIncrement: yRightAxisMajorIncrement,
                   origin: yRightAxisOrigin,
                 },
+                z: chartType.includes("3D")
+                  ? {
+                      min: zAxisMin,
+                      max: zAxisMax,
+                      majorIncrement: zAxisMajorIncrement,
+                      origin: zAxisOrigin,
+                    }
+                  : undefined,
               },
             },
           });
@@ -333,8 +355,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       yAxisLabel,
       yLeftAxisLabel,
       yRightAxisLabel,
-      chartColors,
-      useaxis,
+      zAxisLabel,
       xAxisMin,
       xAxisMax,
       xAxisMajorIncrement,
@@ -347,7 +368,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       yRightAxisMax,
       yRightAxisMajorIncrement,
       yRightAxisOrigin,
+      zAxisMin,
+      zAxisMax,
+      zAxisMajorIncrement,
+      zAxisOrigin,
       selectedStatistic,
+      chartColors,
+      useaxis,
     ]);
 
     // Smart validation function for different chart types
@@ -950,12 +977,12 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           ],
           "Vertical Bar & Line Chart2": [
             {
-              category: "Aceh",
+              category: "AcehHHHHHHHHHHHHHHHHHHHHHHH",
               bars: { nilaiA: 60 },
               lines: { nilaiB1: 40, nilaiB2: 110 },
             },
             {
-              category: "Sumatera Utara",
+              category: "Sumatera UtaraAAAAAAAAAAAAAAAA",
               bars: { nilaiA: 45 },
               lines: { nilaiB1: 50, nilaiB2: 120 },
             },
@@ -1222,6 +1249,26 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       [createChartConfig, processedResult.data]
     );
 
+    // Helper to build axis scale config with only valid numbers
+    function buildAxisScaleConfig(
+      minStr?: string,
+      maxStr?: string,
+      majorStr?: string
+    ) {
+      const config: any = {};
+      if (minStr !== undefined && minStr !== "" && !isNaN(Number(minStr)))
+        config.min = parseFloat(minStr);
+      if (maxStr !== undefined && maxStr !== "" && !isNaN(Number(maxStr)))
+        config.max = parseFloat(maxStr);
+      if (majorStr !== undefined && majorStr !== "" && !isNaN(Number(majorStr)))
+        config.majorIncrement = parseFloat(majorStr);
+      // Only return if min and max are both present (required by type)
+      if (typeof config.min === "number" && typeof config.max === "number") {
+        return config;
+      }
+      return undefined;
+    }
+
     // This is a refactored version of the chart rendering logic
     // Combining two separate switch statements into one unified switch statement
 
@@ -1237,6 +1284,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       });
 
       if (chartContainerRef.current) {
+        // Cleanup any existing 3D charts first
+        const existingContainer = chartContainerRef.current.firstChild as any;
+        if (
+          existingContainer &&
+          typeof existingContainer.cleanup === "function"
+        ) {
+          existingContainer.cleanup();
+        }
+
+        chartContainerRef.current.innerHTML = "";
         chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
         chartContainerRef.current.id = "chart-container"; // Pastikan ada ID
         let chartNode = null;
@@ -1887,6 +1944,160 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           // === 3D CHARTS ===
+          case "3D Bar Chart (ECharts)": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+
+            // Data untuk ECharts
+            const echartBarData =
+              config.data.length === 0
+                ? [
+                    { x: 5, y: 2, z: 5 },
+                    { x: 4, y: 3, z: 6 },
+                    { x: 3, y: 5, z: 4 },
+                    { x: 2, y: 7, z: 6 },
+                    { x: 0, y: 0, z: 0 },
+                    { x: 2, y: 2, z: 6 },
+                    { x: 2, y: 4, z: 7 },
+                    { x: 3, y: 6, z: 5 },
+                    { x: 6, y: 4, z: 2 },
+                    { x: 7, y: 3, z: 5 },
+                    { x: 7, y: 2, z: 6 },
+                    { x: 5, y: 5, z: 5 },
+                    { x: 1, y: 1, z: 3 },
+                    { x: 4, y: 1, z: 2 },
+                    { x: 6, y: 6, z: 8 },
+                    { x: 1, y: 5, z: 4 },
+                    { x: 0, y: 3, z: 7 },
+                    { x: 3, y: 1, z: 2 },
+                    { x: 5, y: 1, z: 4 },
+                    { x: 6, y: 2, z: 5 },
+                    { x: 1, y: 3, z: 4 },
+                    { x: 4, y: 6, z: 5 },
+                  ]
+                : processedResult.data; // Langsung gunakan data yang sudah diproses
+
+            // Log data untuk debugging
+            console.log("Processed data for ECharts:", processedResult.data);
+            console.log("Final echarts data:", echartBarData);
+
+            // Prepare configuration objects
+            const titleConfig = {
+              title: chartTitle || "3D Bar Chart",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            };
+
+            const axisLabels = {
+              x: xAxisLabel,
+              y: yAxisLabel,
+              z: chartType.includes("3D") ? zAxisLabel : undefined,
+            };
+
+            const axisScaleOptions = {
+              x: buildAxisScaleConfig(xAxisMin, xAxisMax, xAxisMajorIncrement),
+              y: buildAxisScaleConfig(yAxisMin, yAxisMax, yAxisMajorIncrement),
+              z: buildAxisScaleConfig(zAxisMin, zAxisMax, zAxisMajorIncrement),
+            };
+
+            console.log("echartBarData", echartBarData);
+
+            chartNode = chartUtils.createECharts3DBarChart(
+              echartBarData,
+              width,
+              height,
+              useaxis,
+              titleConfig,
+              axisLabels,
+              axisScaleOptions,
+              chartColors
+            );
+            break;
+          }
+
+          case "3D Scatter Plot (ECharts)": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+            console.log("Menyiapkan config", config);
+
+            // Data untuk ECharts 3D Scatter Plot
+            const echartScatterData =
+              config.data.length === 0
+                ? [
+                    { x: -5, y: 2, z: -5 },
+                    { x: -4, y: 3, z: 6 },
+                    { x: -3, y: 5, z: 4 },
+                    { x: -2, y: 7, z: -6 },
+                    { x: 0, y: 0, z: 0 },
+                    { x: 2, y: 2, z: -6 },
+                    { x: 2, y: 4, z: 7 },
+                    { x: 3, y: 6, z: -5 },
+                    { x: 4, y: 3, z: 2 },
+                    { x: 5, y: 5, z: -9 },
+                    { x: 6, y: 4, z: -2 },
+                    { x: 7, y: 3, z: 5 },
+                    { x: -7, y: 2, z: -6 },
+                    { x: -6, y: 4, z: -2 },
+                    { x: -5, y: 5, z: 5 },
+                  ]
+                : processedResult.data; // Langsung gunakan data yang sudah diproses
+
+            // Log data untuk debugging
+            console.log(
+              "Processed data for ECharts 3D Scatter:",
+              processedResult.data
+            );
+            console.log("Final echarts scatter data:", echartScatterData);
+
+            // Prepare configuration objects
+            const titleConfig = {
+              title: chartTitle || "3D Scatter Plot",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            };
+
+            const axisLabels = {
+              x: xAxisLabel,
+              y: yAxisLabel,
+              z: zAxisLabel,
+            };
+
+            const axisScaleOptions = {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+              z: {
+                min: zAxisMin,
+                max: zAxisMax,
+                majorIncrement: zAxisMajorIncrement,
+                origin: zAxisOrigin,
+              },
+            };
+
+            chartNode = chartUtils.createECharts3DScatterPlot(
+              echartScatterData,
+              width,
+              height,
+              useaxis,
+              titleConfig,
+              axisLabels,
+              axisScaleOptions,
+              chartColors
+            );
+            break;
+          }
+
           case "3D Bar Chart2": {
             // Buat elemen chart
             const d3BarChartData =
@@ -1908,14 +2119,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                     { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
                     { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
                   ]
-                : processedResult.data.map((d) => ({
-                    x:
-                      d.category && Number(d.category) !== 0
-                        ? Number(d.category)
-                        : Number(d.bottom_0) || 0,
-                    y: Number(d.value) || 0,
-                    z: Number(d.bottom2_0) || 0,
-                  }));
+                : processedResult.data;
 
             chartNode = chartUtils.create3DBarChart2(
               d3BarChartData,
@@ -2108,6 +2312,216 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
+          case "Stacked 3D Bar Chart (ECharts)": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+
+            const echartStackedBarData =
+              config.data.length === 0
+                ? [
+                    { x: 1, y: 6, z: 1, group: "A" },
+                    { x: 2, y: 2, z: 6, group: "A" },
+                    { x: 2, y: 3, z: 6, group: "B" },
+                    { x: 2, y: 2, z: 6, group: "C" },
+                    { x: 2, y: 1, z: 6, group: "D" },
+                    { x: 5, y: 1, z: 4, group: "A" },
+                    { x: 5, y: 2, z: 4, group: "B" },
+                    { x: 5, y: 3, z: 4, group: "C" },
+                    { x: 5, y: 1, z: 4, group: "D" },
+                    { x: 9, y: 7, z: 7, group: "A" },
+                    { x: -4, y: 3, z: 6, group: "A" },
+                    { x: -4, y: 1, z: 6, group: "B" },
+                    { x: -4, y: 2, z: 6, group: "C" },
+                    { x: -4, y: 2, z: 6, group: "D" },
+                    { x: -4, y: 1, z: 6, group: "E" },
+                    { x: -9, y: 1, z: 8, group: "A" },
+                    { x: -9, y: 2, z: 8, group: "B" },
+                    { x: -9, y: 2, z: 8, group: "E" },
+                    { x: 8, y: 3, z: -6, group: "A" },
+                    { x: 8, y: 2, z: -6, group: "B" },
+                    { x: 8, y: 1, z: -6, group: "C" },
+                    { x: 8, y: 2, z: -6, group: "D" },
+                    { x: 8, y: 2, z: -6, group: "E" },
+                    { x: -8, y: 3, z: -2, group: "A" },
+                    { x: -8, y: 6, z: -2, group: "B" },
+                    { x: -8, y: 3, z: -2, group: "C" },
+                    { x: -8, y: 1, z: -2, group: "D" },
+                    { x: -8, y: 1, z: -2, group: "E" },
+                  ]
+                : processedResult.data.map((d) => ({
+                    x: d.x ?? d.bottom_0 ?? d.category ?? 0,
+                    y: d.y ?? d.value ?? 0,
+                    z: d.z ?? d.bottom2_0 ?? 0,
+                    group: d.color || d.group || "unknown",
+                  }));
+
+            const titleConfig = {
+              title: chartTitle || "Stacked 3D Bar Chart",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            };
+
+            const axisLabels = {
+              x: xAxisLabel,
+              y: yAxisLabel,
+              z: chartType.includes("3D") ? zAxisLabel : undefined,
+            };
+
+            const axisScaleOptions = {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+              z: chartType.includes("3D")
+                ? {
+                    min: zAxisMin,
+                    max: zAxisMax,
+                    majorIncrement: zAxisMajorIncrement,
+                    origin: zAxisOrigin,
+                  }
+                : undefined,
+            };
+
+            chartNode = chartUtils.createEChartsStacked3DBarChart(
+              echartStackedBarData,
+              width,
+              height,
+              useaxis,
+              titleConfig,
+              axisLabels,
+              axisScaleOptions,
+              chartColors
+            );
+            break;
+          }
+
+          case "Grouped 3D Scatter Plot (ECharts)": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+
+            const echartGroupedScatterData =
+              config.data.length === 0
+                ? [
+                    { x: 1, y: 2, z: 3, group: "Group A" },
+                    { x: 2, y: 3, z: 4, group: "Group A" },
+                    { x: 3, y: 4, z: 5, group: "Group A" },
+                    { x: 4, y: 5, z: 6, group: "Group B" },
+                    { x: 5, y: 6, z: 7, group: "Group B" },
+                    { x: 6, y: 7, z: 8, group: "Group B" },
+                    { x: 7, y: 8, z: 9, group: "Group C" },
+                    { x: 8, y: 9, z: 10, group: "Group C" },
+                    { x: 9, y: 10, z: 11, group: "Group C" },
+                    { x: 2, y: 4, z: 6, group: "Group A" },
+                    { x: 3, y: 5, z: 7, group: "Group B" },
+                    { x: 4, y: 6, z: 8, group: "Group C" },
+                  ]
+                : processedResult.data.map((d) => ({
+                    x: typeof d.x === "number" ? d.x : parseFloat(d.x) || 0,
+                    y: typeof d.y === "number" ? d.y : parseFloat(d.y) || 0,
+                    z: typeof d.z === "number" ? d.z : parseFloat(d.z) || 0,
+                    group: String(d.group || "Unknown"),
+                  }));
+
+            const titleConfig = {
+              title: chartTitle || "Grouped 3D Scatter Plot",
+              subtitle: chartSubtitle || "ECharts 3D Scatter Plot",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            };
+
+            const axisLabels = {
+              x: xAxisLabel,
+              y: yAxisLabel,
+              z: zAxisLabel,
+            };
+
+            const axisScaleOptions = {
+              x: buildAxisScaleConfig(xAxisMin, xAxisMax, xAxisMajorIncrement),
+              y: buildAxisScaleConfig(yAxisMin, yAxisMax, yAxisMajorIncrement),
+              z: buildAxisScaleConfig(zAxisMin, zAxisMax, zAxisMajorIncrement),
+            };
+
+            chartNode = chartUtils.createEChartsGrouped3DScatterPlot(
+              echartGroupedScatterData,
+              width,
+              height,
+              useaxis,
+              titleConfig,
+              axisLabels,
+              axisScaleOptions,
+              chartColors
+            );
+            break;
+          }
+
+          case "Clustered 3D Bar Chart (ECharts)": {
+            const isDefault = processedResult.data.length === 0;
+            const config = createChartConfig(chartType, isDefault);
+
+            const echartClusteredBarData =
+              config.data.length === 0
+                ? [
+                    { x: 1, y: 10, z: 1, group: "Group A" },
+                    { x: 2, y: 15, z: 1, group: "Group A" },
+                    { x: 3, y: 20, z: 1, group: "Group A" },
+                    { x: 1, y: 12, z: 2, group: "Group B" },
+                    { x: 2, y: 18, z: 2, group: "Group B" },
+                    { x: 3, y: 25, z: 2, group: "Group B" },
+                    { x: 1, y: 8, z: 3, group: "Group C" },
+                    { x: 2, y: 14, z: 3, group: "Group C" },
+                    { x: 3, y: 22, z: 3, group: "Group C" },
+                    { x: 4, y: 16, z: 1, group: "Group A" },
+                    { x: 4, y: 19, z: 2, group: "Group B" },
+                    { x: 4, y: 13, z: 3, group: "Group C" },
+                  ]
+                : processedResult.data.map((d) => ({
+                    x: typeof d.x === "number" ? d.x : parseFloat(d.x) || 0,
+                    y: typeof d.y === "number" ? d.y : parseFloat(d.y) || 0,
+                    z: typeof d.z === "number" ? d.z : parseFloat(d.z) || 0,
+                    group: String(d.group || "Unknown"),
+                  }));
+
+            const titleConfig = {
+              title: chartTitle || "Clustered 3D Bar Chart",
+              subtitle: chartSubtitle || "ECharts 3D Bar Chart",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            };
+
+            const axisLabels = {
+              x: xAxisLabel,
+              y: yAxisLabel,
+              z: zAxisLabel,
+            };
+
+            const axisScaleOptions = {
+              x: buildAxisScaleConfig(xAxisMin, xAxisMax, xAxisMajorIncrement),
+              y: buildAxisScaleConfig(yAxisMin, yAxisMax, yAxisMajorIncrement),
+              z: buildAxisScaleConfig(zAxisMin, zAxisMax, zAxisMajorIncrement),
+            };
+
+            chartNode = chartUtils.createEChartsClustered3DBarChart(
+              echartClusteredBarData,
+              width,
+              height,
+              useaxis,
+              titleConfig,
+              axisLabels,
+              axisScaleOptions,
+              chartColors
+            );
+            break;
+          }
+
           // === DEFAULT CASE ===
           default:
             console.error("Unknown chart type:", chartType);
@@ -2141,10 +2555,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       variables,
       chartTitle,
       chartSubtitle,
+      chartTitleFontSize,
+      chartSubtitleFontSize,
       xAxisLabel,
       yAxisLabel,
       yLeftAxisLabel,
       yRightAxisLabel,
+      zAxisLabel,
       xAxisMin,
       xAxisMax,
       xAxisMajorIncrement,
@@ -2157,6 +2574,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       yRightAxisMax,
       yRightAxisMajorIncrement,
       yRightAxisOrigin,
+      zAxisMin,
+      zAxisMax,
+      zAxisMajorIncrement,
+      zAxisOrigin,
       chartColors,
       processedResult,
       selectedStatistic,
@@ -2173,6 +2594,43 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       if (data.length === 0 || variables.length === 0) {
         setProcessedResult({ data: [], axisInfo: {} });
         return;
+      }
+
+      function normalizeRawData(
+        rawData: any[][],
+        variables: { name: string; type?: string }[]
+      ): any[][] {
+        return rawData.map((row, rowIdx) => {
+          if (row.length !== variables.length) {
+            console.warn(
+              `[normalizeRawData] ⚠️ Jumlah kolom tidak sesuai pada baris ${rowIdx}:`,
+              `data columns = ${row.length}, variables = ${variables.length}`
+            );
+          }
+
+          return row.map((cell, colIdx) => {
+            const varMeta = variables[colIdx];
+            const varName = varMeta?.name ?? `kolom${colIdx}`;
+            const type = varMeta?.type ?? "string";
+
+            let casted: any = cell;
+
+            if (type === "numeric") {
+              const num = parseFloat(cell);
+              casted = isNaN(num) ? null : num;
+            }
+
+            console.log(
+              `[normalizeRawData] row ${rowIdx}, col ${colIdx} (${varName}) →`,
+              `type: ${type}, value:`,
+              cell,
+              `→ casted:`,
+              casted
+            );
+
+            return casted;
+          });
+        });
       }
 
       try {
@@ -2201,18 +2659,18 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
         const chartVariables = {
           x: bottomVariables,
-          y: sideVariables,
+          y: chartType.includes("3D") ? bottom2Variables : sideVariables,
           groupBy: colorVariables,
           low: lowVariables,
           high: highVariables,
           close: closeVariables,
-          z: bottom2Variables,
+          z: chartType.includes("3D") ? sideVariables : bottom2Variables,
           y2: side2Variables,
         };
 
         const result = DataProcessingService.processDataForChart({
           chartType,
-          rawData: data,
+          rawData: normalizeRawData(data, variables),
           variables,
           chartVariables,
           processingOptions,
@@ -2754,11 +3212,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           {/* Kotak chart preview, hanya chart */}
           <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[700px] max-w-full h-[450px] flex items-center justify-center mt-8">
-            <div className="bg-white rounded-lg shadow w-full h-full flex items-center justify-center">
+            <div className="bg-white rounded-lg shadow w-full h-full flex items-center justify-center overflow-hidden">
               <div
                 id="chart-container"
                 ref={chartContainerRef}
-                className="w-[90%] h-[90%] max-w-[600px] max-h-[400px] bg-white"
+                className="w-[90%] h-[90%] max-w-[600px] max-h-[400px] bg-white overflow-hidden"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               />
             </div>
           </div>

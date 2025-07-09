@@ -44,7 +44,11 @@ export const chartTypes = [
   "Stem And Leaf Plot",
   "Violin Plot",
   "Density Chart",
-  // "3D Bar Chart (ECharts)",
+  "3D Bar Chart (ECharts)",
+  "3D Scatter Plot (ECharts)",
+  "Clustered 3D Bar Chart (ECharts)",
+  "Stacked 3D Bar Chart (ECharts)",
+  "Grouped 3D Scatter Plot (ECharts)",
 ] as const;
 
 export type ChartType = (typeof chartTypes)[number];

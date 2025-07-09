@@ -62,6 +62,7 @@ const CHART_AGGREGATION_CONFIG: { [chartType: string]: string[] } = {
   "Stacked Area Chart": ["sum", "none"],
   "Population Pyramid": ["sum", "none"],
   "3D Bar Chart": ["sum", "none"],
+  "3D Bar Chart (ECharts)": ["sum", "count", "average", "none"],
   "3D Bar Chart2": ["sum", "none"],
   "Clustered 3D Bar Chart": ["sum", "none"],
   "Stacked 3D Bar Chart": ["sum", "none"],
@@ -89,6 +90,9 @@ const CHART_AGGREGATION_CONFIG: { [chartType: string]: string[] } = {
   "Clustered Boxplot": ["none"],
   "1-D Boxplot": ["none"],
   "Stem And Leaf Plot": ["none"],
+  "3D Scatter Plot (ECharts)": ["none"],
+  "Clustered 3D Bar Chart (ECharts)": ["sum", "count", "average", "none"],
+  "Stacked 3D Bar Chart (ECharts)": ["sum", "count", "average", "none"],
 };
 
 // Type definitions for processed data
@@ -118,6 +122,18 @@ interface ThreeDData {
   x: number;
   y: number;
   z: number;
+}
+
+interface ThreeDDataEChart {
+  x: number | string;
+  y: number | string;
+  z: number | string;
+}
+
+interface ThreeDScatterDataEChart {
+  x: number | string;
+  y: number | string;
+  z: number; // z must be number for 3D scatter plot
 }
 
 interface DropLineData {
@@ -327,7 +343,6 @@ export class DataProcessingService {
         case "3D Bar Chart":
         case "3D Bar Chart2":
         case "3D Scatter Plot":
-        case "Clustered 3D Bar Chart":
         case "Stacked 3D Bar Chart":
           processedData = this.process3DChartData(rawData, variableIndices, {
             aggregation,
@@ -392,9 +407,66 @@ export class DataProcessingService {
           processedData = this.processGrouped3DScatterData(
             rawData,
             variableIndices,
-            { filterEmpty }
+            {
+              aggregation,
+              filterEmpty,
+            }
           );
           break;
+        case "Clustered 3D Bar Chart (ECharts)":
+        case "Stacked 3D Bar Chart (ECharts)":
+        case "Grouped 3D Scatter Plot (ECharts)":
+          processedData = this.processClustered3DBarChartEchartData(
+            rawData,
+            variableIndices,
+            {
+              aggregation,
+              filterEmpty,
+            },
+            chartVariables,
+            variables
+          );
+          break;
+
+        case "3D Bar Chart (ECharts)":
+          processedData = this.process3DChartEchartData(
+            rawData,
+            variableIndices,
+            {
+              aggregation: "none",
+              filterEmpty,
+            }
+          );
+          break;
+
+        case "3D Scatter Plot (ECharts)":
+          processedData = this.process3DScatterEchartData(
+            rawData,
+            variableIndices,
+            {
+              filterEmpty,
+            }
+          );
+          break;
+
+        // case "Stacked 3D Bar Chart (ECharts)":
+        //   processedData = this.processStacked3DBarChartEchartData(
+        //     rawData,
+        //     variableIndices,
+        //     processingOptions,
+        //     chartVariables
+        //   );
+        //   break;
+
+        // case "Grouped 3D Scatter Plot (ECharts)":
+        //   processedData = this.processGrouped3DScatterEchartData(
+        //     rawData,
+        //     variableIndices,
+        //     processingOptions,
+        //     chartVariables,
+        //     variables
+        //   );
+        //   break;
 
         case "Histogram":
         case "Density Chart":
@@ -537,9 +609,13 @@ export class DataProcessingService {
 
       case "3D Bar Chart":
       case "3D Bar Chart2":
+      case "3D Bar Chart (ECharts)":
       case "3D Scatter Plot":
+      case "3D Scatter Plot (ECharts)":
       case "Clustered 3D Bar Chart":
       case "Stacked 3D Bar Chart":
+      case "Clustered 3D Bar Chart (ECharts)":
+      case "Stacked 3D Bar Chart (ECharts)":
         return {
           x: getVariableName(chartVariables.x, 0),
           y: getVariableName(chartVariables.y, 0),
@@ -551,6 +627,15 @@ export class DataProcessingService {
         return {
           x: getVariableName(chartVariables.x, 0),
           y: getVariableName(chartVariables.y, 0),
+          category: getVariableName(chartVariables.groupBy, 0),
+        };
+
+      case "Grouped 3D Scatter Plot":
+      case "Grouped 3D Scatter Plot (ECharts)":
+        return {
+          x: getVariableName(chartVariables.x, 0),
+          y: getVariableName(chartVariables.y, 0),
+          z: getVariableName(chartVariables.z, 0),
           category: getVariableName(chartVariables.groupBy, 0),
         };
 
@@ -591,14 +676,6 @@ export class DataProcessingService {
           x: getVariableName(chartVariables.x, 0),
           y1: getVariableName(chartVariables.y, 0),
           y2: getVariableName(chartVariables.y2, 0),
-        };
-
-      case "Grouped 3D Scatter Plot":
-        return {
-          x: getVariableName(chartVariables.x, 0),
-          y: getVariableName(chartVariables.y, 0),
-          z: getVariableName(chartVariables.z, 0),
-          category: getVariableName(chartVariables.groupBy, 0),
         };
 
       case "Histogram":
@@ -804,6 +881,10 @@ export class DataProcessingService {
       sortBy,
       sortOrder = "asc",
     } = options;
+    console.log("DI service clustered bar");
+    console.log("rawData", rawData);
+    console.log("indices", indices);
+    console.log("options", options);
 
     // Get allowed aggregations for this chart type
     const allowedAggregations = chartType
@@ -1186,6 +1267,150 @@ export class DataProcessingService {
     const result = Object.values(reducedData);
 
     // Apply sorting
+    return this.applySorting(result, sortBy, sortOrder);
+  }
+
+  private static process3DChartEchartData(
+    rawData: any[][],
+    indices: any,
+    options: any
+  ): { x: string | number; y: string | number; z: string | number }[] {
+    const {
+      aggregation = "sum",
+      filterEmpty = true,
+      sortBy,
+      sortOrder = "asc",
+    } = options;
+
+    const parseFlexible = (value: any): string | number => {
+      const num = parseFloat(value);
+      return isNaN(num) ? String(value) : num;
+    };
+
+    const parseToNumber = (val: any): number | null => {
+      const num = parseFloat(val);
+      return isNaN(num) ? null : num;
+    };
+
+    if (aggregation === "none") {
+      const minLength = Math.min(
+        rawData.length,
+        ...[indices.x[0], indices.y[0], indices.z[0]].map(
+          (colIdx) =>
+            rawData.map((r) => r[colIdx]).filter((v) => v !== undefined).length
+        )
+      );
+
+      const result: {
+        x: string | number;
+        y: string | number;
+        z: string | number;
+      }[] = [];
+
+      for (let i = 0; i < rawData.length; i++) {
+        const row = rawData[i];
+        const xRaw = row[indices.x[0]];
+        const yRaw = row[indices.y[0]];
+        const zRaw = row[indices.z[0]];
+
+        if (
+          filterEmpty &&
+          (xRaw == null ||
+            yRaw == null ||
+            zRaw == null ||
+            xRaw === "" ||
+            yRaw === "" ||
+            zRaw === "")
+        ) {
+          continue;
+        }
+
+        result.push({
+          x: parseFlexible(xRaw),
+          y: parseFlexible(yRaw),
+          z: parseFlexible(zRaw),
+        });
+      }
+
+      return this.applySorting(result, sortBy, sortOrder);
+    }
+
+    // Aggregated mode (z must be numeric)
+    const reducedData: {
+      [key: string]: { x: string | number; y: string | number; z: number };
+    } = rawData.reduce((acc, row) => {
+      const xRaw = row[indices.x[0]];
+      const yRaw = row[indices.y[0]];
+      const zRaw = row[indices.z[0]];
+
+      if (filterEmpty && (xRaw == null || yRaw == null || zRaw == null)) {
+        return acc;
+      }
+
+      const xParsed = parseFlexible(xRaw);
+      const yParsed = parseFlexible(yRaw);
+      const zParsed = parseToNumber(zRaw);
+      if (zParsed == null) return acc;
+
+      const key = `${xRaw}-${yRaw}`;
+      if (!acc[key]) {
+        acc[key] = { x: xParsed, y: yParsed, z: 0 };
+      }
+
+      acc[key].z += zParsed;
+      return acc;
+    }, {} as { [key: string]: { x: string | number; y: string | number; z: number } });
+
+    const result = Object.values(reducedData);
+    return this.applySorting(result, sortBy, sortOrder);
+  }
+
+  private static process3DScatterEchartData(
+    rawData: any[][],
+    indices: any,
+    options: any
+  ): { x: string | number; y: string | number; z: number | string }[] {
+    const { filterEmpty = true, sortBy, sortOrder = "asc" } = options;
+
+    const parseFlexible = (val: any): string | number => {
+      const num = parseFloat(val);
+      return isNaN(num) ? String(val) : num;
+    };
+
+    const result: {
+      x: string | number;
+      y: string | number;
+      z: number | string;
+    }[] = [];
+
+    for (let i = 0; i < rawData.length; i++) {
+      const row = rawData[i];
+      const xRaw = row[indices.x[0]];
+      const yRaw = row[indices.y[0]];
+      const zRaw = row[indices.z[0]];
+
+      if (
+        filterEmpty &&
+        (xRaw === undefined ||
+          xRaw === null ||
+          xRaw === "" ||
+          yRaw === undefined ||
+          yRaw === null ||
+          yRaw === "" ||
+          zRaw === undefined ||
+          zRaw === null ||
+          zRaw === "")
+      ) {
+        continue; // skip baris tidak valid
+      }
+
+      result.push({
+        x: parseFlexible(xRaw),
+        y: parseFlexible(yRaw),
+        z: parseFlexible(zRaw),
+      });
+    }
+
     return this.applySorting(result, sortBy, sortOrder);
   }
 
@@ -1701,5 +1926,328 @@ export class DataProcessingService {
       default:
         return 0;
     }
+  }
+
+  // private static processClustered3DBarChartEchartData(
+  //   rawData: any[][],
+  //   indices: any,
+  //   options: any,
+  //   chartVariables?: any
+  // ): Array<{
+  //   x: string | number;
+  //   y: string | number;
+  //   z: string | number;
+  //   group: string | number;
+  // }> {
+  //   console.log("DI service clustered bar");
+  //   console.log("rawData", rawData);
+  //   console.log("indices", indices);
+  //   console.log("options", options);
+  //   console.log("chartVariables", chartVariables);
+  //   const { aggregation = "sum", filterEmpty = true } = options;
+  //   // Ambil info variabel dari chartVariables jika ada
+  //   const colorVars =
+  //     (chartVariables && chartVariables.color) || indices.colorVars || [];
+  //   const sideVars =
+  //     (chartVariables && chartVariables.y) || indices.sideVars || [];
+  //   // Mode 1: color ada (group dari color, y dari satu variabel Y)
+  //   if (
+  //     indices.color &&
+  //     indices.color.length > 0 &&
+  //     indices.y &&
+  //     indices.y.length === 1
+  //   ) {
+  //     const result: Record<
+  //       string,
+  //       { x: any; y: string | number; z: any; group: any }
+  //     > = {};
+  //     console.log("DI service clustered bar");
+  //     console.log("rawData", rawData);
+  //     rawData.forEach((row) => {
+  //       const x = row[indices.x[0]];
+  //       const yRaw = row[indices.y[0]];
+  //       const y = isNaN(Number(yRaw)) ? yRaw : Number(yRaw);
+  //       const z =
+  //         indices.z && indices.z.length > 0 ? row[indices.z[0]] : undefined;
+  //       const group = row[indices.color[0]];
+  //       if (
+  //         filterEmpty &&
+  //         (x == null || y == null || z == null || group == null)
+  //       )
+  //         return;
+  //       const key = `${x}|${z}|${group}`;
+  //       if (!result[key]) {
+  //         result[key] = { x, y: typeof y === "string" ? y : 0, z, group };
+  //       }
+  //       if (typeof y === "number" && typeof result[key].y === "number") {
+  //         result[key].y += y;
+  //       } else {
+  //         result[key].y = y;
+  //       }
+  //     });
+  //     return Object.values(result);
+  //   }
+  //   // Mode 2: color kosong, Y multi (group dari nama variabel Y)
+  //   if (
+  //     (!indices.color || indices.color.length === 0) &&
+  //     indices.y &&
+  //     indices.y.length > 1
+  //   ) {
+  //     const result: Record<
+  //       string,
+  //       { x: any; y: string | number; z: any; group: any }
+  //     > = {};
+  //     rawData.forEach((row) => {
+  //       const x = row[indices.x[0]];
+  //       const z =
+  //         indices.z && indices.z.length > 0 ? row[indices.z[0]] : undefined;
+  //       indices.y.forEach((yIdx: number, i: number) => {
+  //         const yRaw = row[yIdx];
+  //         const y = isNaN(Number(yRaw)) ? yRaw : Number(yRaw);
+  //         const group =
+  //           chartVariables && chartVariables.y && chartVariables.y[i]
+  //             ? chartVariables.y[i]
+  //             : `Y${i + 1}`;
+  //         if (
+  //           filterEmpty &&
+  //           (x == null || y == null || z == null || group == null)
+  //         )
+  //           return;
+  //         const key = `${x}|${z}|${group}`;
+  //         if (!result[key]) {
+  //           result[key] = { x, y: typeof y === "string" ? y : 0, z, group };
+  //         }
+  //         if (typeof y === "number" && typeof result[key].y === "number") {
+  //           result[key].y += y;
+  //         } else {
+  //           result[key].y = y;
+  //         }
+  //       });
+  //     });
+  //     return Object.values(result);
+  //   }
+  //   // Default fallback (mode lama, group flexible, z bisa multi)
+  //   const result: Record<string, { x: any; y: number; z: any; group: any }> =
+  //     {};
+  //   rawData.forEach((row) => {
+  //     const x = row[indices.x[0]];
+  //     const y = parseFloat(row[indices.y[0]]);
+  //     const z =
+  //       indices.z && indices.z.length > 0 ? row[indices.z[0]] : undefined;
+  //     const group =
+  //       row[
+  //         (indices.color && indices.color[0]) ||
+  //           (indices.groupBy && indices.groupBy[0]) ||
+  //           (indices.category && indices.category[0])
+  //       ] ?? "";
+  //     if (filterEmpty && (x == null || isNaN(y) || z == null)) return;
+  //     const key = `${x}|${z}|${group}`;
+  //     if (!result[key]) {
+  //       result[key] = { x, y: 0, z, group };
+  //     }
+  //     if (typeof y === "number" && typeof result[key].y === "number") {
+  //       result[key].y += y;
+  //     } else {
+  //       result[key].y = y;
+  //     }
+  //   });
+  //   return Object.values(result);
+  // }
+
+  private static processClustered3DBarChartEchartData(
+    rawData: any[][],
+    indices: any,
+    options: any,
+    chartVariables?: any,
+    variables?: Array<{ name: string; type?: string }>
+  ): Array<{
+    x: string | number;
+    y: string | number;
+    z: string | number;
+    group: string | number;
+  }> {
+    const { filterEmpty = true } = options;
+
+    const parseFlexible = (value: any): string | number => {
+      const num = parseFloat(value);
+      return isNaN(num) ? String(value) : num;
+    };
+
+    const result: Array<{
+      x: string | number;
+      y: string | number;
+      z: string | number;
+      group: string | number;
+    }> = [];
+
+    for (let i = 0; i < rawData.length; i++) {
+      const row = rawData[i];
+      const x = row[indices.x[0]];
+      const y = row[indices.y[0]];
+      const z = row[indices.z[0]];
+      const group = row[indices.groupBy[0]];
+
+      if (
+        filterEmpty &&
+        (x === undefined ||
+          x === null ||
+          x === "" ||
+          y === undefined ||
+          y === null ||
+          y === "" ||
+          z === undefined ||
+          z === null ||
+          z === "" ||
+          group === undefined ||
+          group === null ||
+          group === "")
+      ) {
+        continue;
+      }
+
+      result.push({
+        x: parseFlexible(x),
+        y: parseFlexible(y),
+        z: parseFlexible(z),
+        group: parseFlexible(group),
+      });
+    }
+
+    return result;
+  }
+  private static processStacked3DBarChartEchartData(
+    rawData: any[][],
+    indices: any,
+    options: any,
+    chartVariables?: any
+  ): Array<{
+    x: string | number;
+    y: string | number;
+    z: string | number;
+    group: string | number;
+  }> {
+    const { filterEmpty = true } = options;
+
+    const parseFlexible = (value: any): string | number => {
+      const num = parseFloat(value);
+      return isNaN(num) ? String(value) : num;
+    };
+
+    const result: Array<{
+      x: string | number;
+      y: string | number;
+      z: string | number;
+      group: string | number;
+    }> = [];
+
+    for (let i = 0; i < rawData.length; i++) {
+      const row = rawData[i];
+      const x = row[indices.x[0]];
+      const y = row[indices.y[0]];
+      const z = row[indices.z[0]];
+      const group = row[indices.groupBy[0]];
+
+      if (
+        filterEmpty &&
+        (x === undefined ||
+          x === null ||
+          x === "" ||
+          y === undefined ||
+          y === null ||
+          y === "" ||
+          z === undefined ||
+          z === null ||
+          z === "" ||
+          group === undefined ||
+          group === null ||
+          group === "")
+      ) {
+        continue;
+      }
+
+      result.push({
+        x: parseFlexible(x),
+        y: parseFlexible(y),
+        z: parseFlexible(z),
+        group: parseFlexible(group),
+      });
+    }
+
+    return result;
+  }
+
+  private static processGrouped3DScatterEchartData(
+    rawData: any[][],
+    indices: any,
+    options: any,
+    chartVariables?: any,
+    variables?: Array<{ name: string; type?: string }>
+  ): Array<{
+    x: number;
+    y: number;
+    z: number;
+    group: string;
+  }> {
+    const { filterEmpty = true } = options;
+
+    function parseByType(value: any, type: string) {
+      if (type === "numeric") {
+        const num = parseFloat(value);
+        return isNaN(num) ? null : num;
+      }
+      return value;
+    }
+
+    function getTypeByName(varName: string): string {
+      return variables?.find((v) => v.name === varName)?.type || "string";
+    }
+
+    const result: Array<{
+      x: number;
+      y: number;
+      z: number;
+      group: string;
+    }> = [];
+
+    const xVar = chartVariables?.x?.[0];
+    const yVar = chartVariables?.y?.[0];
+    const zVar = chartVariables?.z?.[0];
+    const groupVar = chartVariables?.groupBy?.[0];
+
+    const xType = getTypeByName(xVar);
+    const yType = getTypeByName(yVar);
+    const zType = getTypeByName(zVar);
+    const groupType = getTypeByName(groupVar);
+
+    rawData.forEach((row) => {
+      const x = parseByType(row[indices.x[0]], xType);
+      const y = parseByType(row[indices.y[0]], yType);
+      const z =
+        indices.z && indices.z.length > 0
+          ? parseByType(row[indices.z[0]], zType)
+          : undefined;
+      const group = parseByType(row[indices.groupBy[0]], groupType);
+
+      // Convert to numbers and filter empty
+      const xNum = typeof x === "number" ? x : parseFloat(x);
+      const yNum = typeof y === "number" ? y : parseFloat(y);
+      const zNum = typeof z === "number" ? z : parseFloat(z);
+
+      if (
+        filterEmpty &&
+        (isNaN(xNum) || isNaN(yNum) || isNaN(zNum) || !group)
+      ) {
+        return;
+      }
+
+      result.push({
+        x: xNum,
+        y: yNum,
+        z: zNum,
+        group: String(group),
+      });
+    });
+
+    return result;
   }
 }

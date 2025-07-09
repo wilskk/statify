@@ -20,6 +20,12 @@ export interface DualYAxisConfig {
   y2: AxisConfig;
 }
 
+export interface ThreeDAxisConfig {
+  x: AxisConfig;
+  y: AxisConfig;
+  z: AxisConfig;
+}
+
 export interface ErrorBarTypeConfig {
   confidenceLevel?: boolean;
   multiplier?: boolean;
@@ -39,7 +45,7 @@ export interface ChartConfigOptions {
   titleFontSize: boolean;
   subtitleFontSize: boolean;
   chartColors: boolean;
-  axis: SingleYAxisConfig | DualYAxisConfig;
+  axis: SingleYAxisConfig | DualYAxisConfig | ThreeDAxisConfig;
   statistic?: boolean;
   errorBar?: ErrorBarConfig;
 }
@@ -907,7 +913,102 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
       },
     },
   },
-
+  "3D Bar Chart (ECharts)": {
+    title: true,
+    subtitle: true,
+    titleColor: true,
+    subtitleColor: true,
+    titleFontSize: true,
+    subtitleFontSize: true,
+    chartColors: true,
+    axis: {
+      x: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      y: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      z: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+    },
+  },
+  "Stacked 3D Bar Chart (ECharts)": {
+    title: true,
+    subtitle: true,
+    titleColor: true,
+    subtitleColor: true,
+    titleFontSize: true,
+    subtitleFontSize: true,
+    chartColors: true,
+    axis: {
+      x: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      y: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      z: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+    },
+  },
+  "Clustered 3D Bar Chart (ECharts)": {
+    title: true,
+    subtitle: true,
+    titleColor: true,
+    subtitleColor: true,
+    titleFontSize: true,
+    subtitleFontSize: true,
+    chartColors: true,
+    axis: {
+      x: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      y: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      z: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+    },
+  },
   "Clustered 3D Bar Chart": {
     title: true,
     subtitle: true,
@@ -1104,6 +1205,70 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
         min: true,
         max: true,
         majorIncrement: true,
+        origin: false,
+      },
+    },
+  },
+  "3D Scatter Plot (ECharts)": {
+    title: true,
+    subtitle: true,
+    titleColor: true,
+    subtitleColor: true,
+    titleFontSize: true,
+    subtitleFontSize: true,
+    chartColors: true,
+    axis: {
+      x: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      y: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      z: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+    },
+  },
+  "Grouped 3D Scatter Plot (ECharts)": {
+    title: true,
+    subtitle: true,
+    titleColor: true,
+    subtitleColor: true,
+    titleFontSize: true,
+    subtitleFontSize: true,
+    chartColors: true,
+    axis: {
+      x: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      y: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      z: {
+        label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
     },

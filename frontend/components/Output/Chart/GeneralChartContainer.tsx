@@ -96,6 +96,45 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   // Parse data jika berbentuk string
   const parsedData = typeof data === "string" ? JSON.parse(data) : data;
 
+  // Helper function to convert string axisScaleOptions to number
+  const convertAxisScaleOptions = (options?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  }) => {
+    if (!options) return undefined;
+
+    return {
+      x: options.x
+        ? {
+            min: options.x.min ? parseFloat(options.x.min) : undefined,
+            max: options.x.max ? parseFloat(options.x.max) : undefined,
+            majorIncrement: options.x.majorIncrement
+              ? parseFloat(options.x.majorIncrement)
+              : undefined,
+          }
+        : undefined,
+      y: options.y
+        ? {
+            min: options.y.min ? parseFloat(options.y.min) : undefined,
+            max: options.y.max ? parseFloat(options.y.max) : undefined,
+            majorIncrement: options.y.majorIncrement
+              ? parseFloat(options.y.majorIncrement)
+              : undefined,
+          }
+        : undefined,
+    };
+  };
+
   const convertSvgToPng = async (svgElement: SVGElement): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement("canvas");
@@ -819,6 +858,92 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height
+              );
+              break;
+            case "3D Bar Chart (ECharts)":
+              chartNode = chartUtils.createECharts3DBarChart(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Dual Axes Scatter Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
+              );
+              break;
+            case "3D Scatter Plot (ECharts)":
+              chartNode = chartUtils.createECharts3DScatterPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Dual Axes Scatter Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
+              );
+              break;
+            case "Stacked 3D Bar Chart (ECharts)":
+              chartNode = chartUtils.createEChartsStacked3DBarChart(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Stacked 3D Bar Chart ",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
+              );
+              break;
+
+            case "Clustered 3D Bar Chart (ECharts)":
+              chartNode = chartUtils.createEChartsClustered3DBarChart(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Clustered 3D Bar Chart ",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
+              );
+              break;
+            case "Grouped 3D Scatter Plot (ECharts)":
+              chartNode = chartUtils.createEChartsGrouped3DScatterPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Grouped 3D Scatter Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Clustered 3D Bar Chart":

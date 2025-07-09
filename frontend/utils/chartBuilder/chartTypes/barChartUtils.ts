@@ -1518,7 +1518,7 @@ export const createBarAndLineChart2 = (
   height: number,
   useAxis: boolean = true,
   barMode: "grouped" | "stacked" = "grouped",
-  titleOptions?: any,
+  titleOptions?: ChartTitleOptions,
   axisLabels?: { x?: string; y?: string },
   axisScaleOptions?: {
     x?: {
@@ -1536,7 +1536,7 @@ export const createBarAndLineChart2 = (
   },
   chartColors?: string[]
 ) => {
-  // Filter data
+  // Filter and validate data
   const filteredData = data.filter(
     (d) =>
       d.bars != null &&
@@ -1546,15 +1546,22 @@ export const createBarAndLineChart2 = (
       Object.values(d.lines).every((v) => v != null && !isNaN(v))
   );
 
-  // Margin dinamis berdasarkan title dan axis labels
-  const marginTop = useAxis ? (titleOptions ? 80 : 30) : titleOptions ? 60 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? (axisLabels?.x ? 60 : 30) : 0;
-  const marginLeft = useAxis ? (axisLabels?.y ? 60 : 40) : 0;
+  if (filteredData.length === 0) {
+    console.error("No valid data available for the bar and line chart");
+    return null;
+  }
 
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Extract keys for bars and lines
   const barKeys = Object.keys(filteredData[0]?.bars || {});
   const lineKeys = Object.keys(filteredData[0]?.lines || {});
+  const allKeys = [...barKeys, ...lineKeys];
+  const categories = filteredData.map((d) => d.category);
 
+  // Calculate value ranges
   const allBarValues = filteredData.flatMap((d) => Object.values(d.bars));
   const allLineValues = filteredData.flatMap((d) => Object.values(d.lines));
 
@@ -1568,12 +1575,43 @@ export const createBarAndLineChart2 = (
       ? [...stackedBarSums, ...allLineValues]
       : [...allBarValues, ...allLineValues];
 
-  // Y scale dengan axis scale options
-  let yMin = Math.min(0, ...allValues);
-  let yMax = Math.max(...allValues);
-  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+  // Calculate max Y value for ticks and margin calculations
+  const maxValue = d3.max(allValues) ?? 0;
+  const minValue = d3.min(allValues) ?? 0;
+  const yTicks = d3.scaleLinear().domain([minValue, maxValue]).nice().ticks(5);
+
+  // Calculate max label widths for margin calculation
+  const maxYLabelWidth = Math.max(
+    ...yTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
+  );
+
+  // Calculate max legend text width
+  const maxLegendWidth = Math.max(
+    ...allKeys.map((key) => ctx.measureText(key).width)
+  );
+
+  // Use responsive margin utility with legend consideration
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxLegendWidth),
+    categories,
+    hasLegend: true,
+    legendPosition: "right",
+  });
+
+  // Y scale with axis scale options
+  let yMin = Math.min(0, minValue);
+  let yMax = maxValue;
+  let yAxisMajorIncrement = axisScaleOptions?.y?.majorIncrement
     ? Number(axisScaleOptions.y.majorIncrement)
     : undefined;
+
   if (axisScaleOptions?.y) {
     if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
       yMin = Number(axisScaleOptions.y.min);
@@ -1581,59 +1619,62 @@ export const createBarAndLineChart2 = (
       yMax = Number(axisScaleOptions.y.max);
   }
 
+  // Create scales
   const x = d3
     .scaleBand()
-    .domain(filteredData.map((d) => d.category))
-    .range([marginLeft, width - marginRight])
+    .domain(categories)
+    .range([margin.left, width - margin.right])
     .padding(0.1);
 
   const y = d3
     .scaleLinear()
     .domain([yMin, yMax])
     .nice()
-    .range([height - marginBottom, marginTop]);
+    .range([height - margin.bottom, margin.top]);
 
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Y2 scale for lines (independent domain)
+  const y2 = d3
+    .scaleLinear()
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  // Add title if provided
-  if (titleOptions) {
-    svg
-      .append("text")
-      .attr("x", width / 2)
-      .attr("y", 20)
-      .attr("text-anchor", "middle")
-      .style("font-size", `${titleOptions.titleFontSize || 16}px`)
-      .style("font-weight", "bold")
-      .style("fill", titleOptions.titleColor || "hsl(var(--foreground))")
-      .text(titleOptions.title || "");
-
-    if (titleOptions.subtitle) {
-      svg
-        .append("text")
-        .attr("x", width / 2)
-        .attr("y", 40)
-        .attr("text-anchor", "middle")
-        .style("font-size", `${titleOptions.subtitleFontSize || 12}px`)
-        .style(
-          "fill",
-          titleOptions.subtitleColor || "hsl(var(--muted-foreground))"
-        )
-        .text(titleOptions.subtitle);
-    }
-  }
-
+  // Create color scales with default fallback
   const colorBar = d3
     .scaleOrdinal<string>()
     .domain(barKeys)
+    .range(chartColors || defaultChartColors);
+
+  const colorLine = d3
+    .scaleOrdinal<string>()
+    .domain(lineKeys)
     .range(
-      chartColors && chartColors.length > 0 ? chartColors : d3.schemeCategory10
+      chartColors && chartColors.length > barKeys.length
+        ? chartColors.slice(barKeys.length)
+        : defaultChartColors.slice(barKeys.length)
     );
 
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
+
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Draw bars
   if (barMode === "grouped") {
     const x1 = d3
       .scaleBand()
@@ -1651,11 +1692,10 @@ export const createBarAndLineChart2 = (
       .data((d) => barKeys.map((key) => ({ key, value: d.bars[key] })))
       .join("rect")
       .attr("x", (d) => x1(d.key)!)
-      .attr("y", (d) => (d.value >= yMin ? y(d.value) : y(yMin)))
+      .attr("y", (d) => y(Math.max(0, d.value)))
       .attr("width", x1.bandwidth())
-      .attr("height", (d) => Math.abs(y(d.value) - y(yMin)))
-      .attr("fill", (d) => colorBar(d.key)!)
-      .attr("opacity", 0.7);
+      .attr("height", (d) => Math.abs(y(d.value) - y(0)))
+      .attr("fill", (d) => colorBar(d.key)!);
   } else {
     const stack = d3
       .stack<ChartData2>()
@@ -1670,9 +1710,8 @@ export const createBarAndLineChart2 = (
       .data(series)
       .join("g")
       .attr("fill", (d) => colorBar(d.key)!)
-      .attr("opacity", 0.7)
       .selectAll("rect")
-      .data((d) => d)
+      .data((d) => d.map((item) => ({ ...item, key: d.key })))
       .join("rect")
       .attr("x", (d) => x(d.data.category)!)
       .attr("y", (d) => y(Math.max(d[0], d[1])))
@@ -1680,92 +1719,94 @@ export const createBarAndLineChart2 = (
       .attr("width", x.bandwidth());
   }
 
-  const colorLine = d3
-    .scaleOrdinal<string>()
-    .domain(lineKeys)
-    .range(
-      chartColors && chartColors.length > barKeys.length
-        ? chartColors.slice(barKeys.length) // Use colors after bar colors
-        : d3.schemeTableau10
-    );
-
+  // Draw lines
   lineKeys.forEach((key) => {
     const line = d3
       .line<ChartData2>()
       .x((d) => x(d.category)! + x.bandwidth() / 2)
-      .y((d) => y(d.lines[key]));
+      .y((d) => y2(d.lines[key]));
 
-    // Path Line
+    // Add line path
     svg
       .append("path")
       .datum(filteredData)
       .attr("fill", "none")
       .attr("stroke", colorLine(key)!)
-      .attr("stroke-width", 3)
-      .attr("stroke-linejoin", "round")
-      .attr("stroke-linecap", "round")
+      .attr("stroke-width", 1.5)
       .attr("d", line);
 
-    // Dots di titik Line
+    // Add line points
     svg
       .selectAll(`.dot-${key}`)
       .data(filteredData)
       .join("circle")
+      .attr("class", `dot-${key}`)
       .attr("cx", (d) => x(d.category)! + x.bandwidth() / 2)
-      .attr("cy", (d) => y(d.lines[key]))
-      .attr("r", 3.5)
-      .attr("fill", colorLine(key))
-      .attr("stroke", "white")
-      .attr("stroke-width", 1.5);
+      .attr("cy", (d) => y2(d.lines[key]))
+      .attr("r", 4)
+      .attr("fill", colorLine(key)!);
   });
 
+  // Add axes if needed
   if (useAxis) {
-    const maxXTicks = 10;
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 10,
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        tickValues: yAxisMajorIncrement
+          ? generateAxisTicks(yMin, yMax, yAxisMajorIncrement)
+          : undefined,
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+      },
+    });
 
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${y(yMin)})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .tickSizeOuter(0)
-          .tickValues(
-            x
-              .domain()
-              .filter(
-                (d, i) => i % Math.ceil(x.domain().length / maxXTicks) === 0
-              )
-          )
-      );
+    // Add legend using the improved legend utility
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft: margin.left,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginTop: margin.top,
+      legendPosition: "right",
+      itemCount: allKeys.length,
+    });
 
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).tickFormat((v) => (+v).toFixed(2)));
+    // Create combined color scale for legend
+    const combinedColorScale = d3
+      .scaleOrdinal<string>()
+      .domain(allKeys)
+      .range([
+        ...barKeys.map((key) => colorBar(key)!),
+        ...lineKeys.map((key) => colorLine(key)!),
+      ]);
 
-    // Add axis labels if provided
-    if (axisLabels?.x) {
-      svg
-        .append("text")
-        .attr("x", width / 2)
-        .attr("y", height - 5)
-        .attr("text-anchor", "middle")
-        .style("font-size", "12px")
-        .style("fill", "var(--foreground)")
-        .text(axisLabels.x);
-    }
-
-    if (axisLabels?.y) {
-      svg
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -height / 2)
-        .attr("y", 15)
-        .attr("text-anchor", "middle")
-        .style("font-size", "12px")
-        .style("fill", "var(--foreground)")
-        .text(axisLabels.y);
-    }
+    addLegend({
+      svg,
+      colorScale: combinedColorScale,
+      position: legendPosition,
+      legendPosition: "right",
+      domain: allKeys,
+      itemWidth: 15,
+      itemHeight: 15,
+      fontSize: 12,
+    });
   }
 
   return svg.node();

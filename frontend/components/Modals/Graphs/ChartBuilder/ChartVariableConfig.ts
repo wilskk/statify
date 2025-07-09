@@ -273,6 +273,29 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       bottom: { min: 1, max: 1 },
       bottom2: { min: 1, max: 1 },
     },
+    "3D Scatter Plot (ECharts)": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+    },
+    "Clustered 3D Bar Chart (ECharts)": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+      color: { min: 1, max: 1 },
+    },
+    "Stacked 3D Bar Chart (ECharts)": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+      color: { min: 1, max: 1 },
+    },
+    "Grouped 3D Scatter Plot (ECharts)": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+      color: { min: 1, max: 1 },
+    },
     "Clustered 3D Bar Chart": {
       side: { min: 1, max: 1 },
       bottom: { min: 1, max: 1 },

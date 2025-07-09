@@ -1069,7 +1069,7 @@ export const createStacked3DBarChart = (
     let accumulatedHeight = 0;
     let totalHeight = d3.sum(group, (d) => yScale(d.y));
 
-    group.forEach((d) => {
+    group.forEach((d, index) => {
       const barWidth = 1;
       const barHeight = yScale(d.y);
 
@@ -1202,70 +1202,448 @@ export const getTest3DData = () => {
  * @param data Array<{ x: string|number, y: number, z: string|number }>
  * @param width Lebar chart (px)
  * @param height Tinggi chart (px)
+ * @param useAxis Boolean untuk menampilkan/menyembunyikan axis
+ * @param titleOptions Konfigurasi judul chart
+ * @param axisLabels Label untuk sumbu x, y, dan z
+ * @param axisScaleOptions Konfigurasi skala sumbu
+ * @param chartColors Array warna untuk chart
  * @returns HTMLDivElement yang sudah terisi chart
  */
 export function createECharts3DBarChart(
-  data: Array<{ x: string | number; y: number; z: string | number }>,
+  data: Array<{ x: string | number; y: string | number; z: string | number }>,
   width: number = 600,
-  height: number = 400
+  height: number = 400,
+  useAxis: boolean = true,
+  titleOptions?: any,
+  axisLabels?: { x?: string; y?: string; z?: string },
+  axisScaleOptions?: any,
+  chartColors?: string[]
 ): HTMLDivElement {
-  // Siapkan container
   const container = document.createElement("div");
   container.style.width = width + "px";
   container.style.height = height + "px";
 
-  // Siapkan data unik untuk sumbu
-  const xCategories = Array.from(new Set(data.map((d) => d.x)));
-  const zCategories = Array.from(new Set(data.map((d) => d.z)));
+  const xIsString = data.some((d) => typeof d.x === "string");
+  const yIsString = data.some((d) => typeof d.y === "string");
+  const zIsString = data.some((d) => typeof d.z === "string");
 
-  // Siapkan data untuk series
-  const seriesData = data.map((d) => [
-    typeof d.x === "number" ? d.x : xCategories.indexOf(d.x),
-    typeof d.z === "number" ? d.z : zCategories.indexOf(d.z),
-    d.y,
-  ]);
+  const xCategories = xIsString
+    ? Array.from(new Set(data.map((d) => d.x)))
+    : undefined;
+  const yCategories = yIsString
+    ? Array.from(new Set(data.map((d) => d.y)))
+    : undefined;
+  const zCategories = zIsString
+    ? Array.from(new Set(data.map((d) => d.z)))
+    : undefined;
 
-  // Option ECharts 3D Bar
+  const toIndex = (value: string | number, categories?: (string | number)[]) =>
+    categories ? categories.indexOf(value) : value;
+
+  const seriesData = data
+    .map((d) => {
+      const x = toIndex(d.x, xCategories);
+      const y = toIndex(d.y, yCategories);
+      const z = toIndex(d.z, zCategories);
+      if ([x, y, z].some((v) => v === -1)) return null;
+      return [x, y, z, d.x, d.y, d.z];
+    })
+    .filter((d): d is [number, number, number, any, any, any] => d !== null);
+
+  if (seriesData.length === 0) {
+    container.innerHTML = `<div style="color:red;padding:1em">No valid data for 3D Bar Chart</div>`;
+    return container;
+  }
+
   const option = {
-    tooltip: {},
-    visualMap: {
-      max: Math.max(...data.map((d) => d.y)),
-      inRange: {
-        color: ["#87aa66", "#eba438", "#d94d4c"],
+    title: {
+      text: titleOptions?.title || "",
+      subtext: titleOptions?.subtitle || "",
+      left: "center",
+      top: 10,
+      textStyle: {
+        color: titleOptions?.titleColor || "#333",
+        fontSize: titleOptions?.titleFontSize || 18,
+      },
+      subtextStyle: {
+        color: titleOptions?.subtitleColor || "#666",
+        fontSize: titleOptions?.subtitleFontSize || 14,
       },
     },
+    tooltip: {
+      formatter: (params: any) => {
+        const [xIdx, yIdx, zIdx, xRaw, yRaw, zRaw] = params.value;
+        return `X: ${xRaw}<br/>Y: ${yRaw}<br/>Z: ${zRaw}`;
+      },
+    },
+    visualMap: {
+      min: Math.min(...seriesData.map((d) => d[2])),
+      max: Math.max(...seriesData.map((d) => d[2])),
+      inRange: { color: chartColors || ["#87aa66", "#eba438", "#d94d4c"] },
+    },
+
     xAxis3D: {
-      type: "category",
+      type: xIsString ? "category" : "value",
       data: xCategories,
-      name: "X",
+      name: axisLabels?.x || "X",
       nameGap: 20,
+      show: useAxis,
     },
     yAxis3D: {
-      type: "value",
-      name: "Y",
+      type: yIsString ? "category" : "value",
+      data: yCategories,
+      name: axisLabels?.y || "Y",
       nameGap: 20,
+      show: useAxis,
     },
     zAxis3D: {
-      type: "category",
+      type: zIsString ? "category" : "value",
       data: zCategories,
-      name: "Z",
+      name: axisLabels?.z || "Z",
       nameGap: 20,
+      show: useAxis,
+    },
+    grid3D: {
+      boxWidth: 100,
+      boxDepth: 80,
+      viewControl: { projection: "perspective" },
+      light: {
+        main: { intensity: 1.2, shadow: true },
+        ambient: { intensity: 0.3 },
+      },
+    },
+    series: [
+      {
+        type: "bar3D",
+        data: seriesData,
+        shading: "color",
+        label: { show: false },
+        emphasis: {
+          label: { show: true, fontSize: 16 },
+          itemStyle: { opacity: 1 },
+        },
+      },
+    ],
+  };
+
+  const chart = echarts.init(container);
+  chart.setOption(option);
+
+  (container as any).cleanup = () => chart.dispose();
+  return container;
+}
+
+// --- ECharts 3D Scatter Plot ---
+/**
+ * Membuat 3D Scatter Plot menggunakan Apache ECharts (echarts + echarts-gl)
+ * @param data Array<{ x: string|number, y: string|number, z: number }>
+ * @param width Lebar chart (px)
+ * @param height Tinggi chart (px)
+ * @param useAxis Boolean untuk menampilkan/menyembunyikan axis
+ * @param titleOptions Konfigurasi judul chart
+ * @param axisLabels Label untuk sumbu x, y, dan z
+ * @param axisScaleOptions Konfigurasi skala sumbu
+ * @param chartColors Array warna untuk chart
+ * @returns HTMLDivElement yang sudah terisi chart
+ */
+export function createECharts3DScatterPlot(
+  data: Array<{ x: string | number; y: string | number; z: number | string }>,
+  width: number = 600,
+  height: number = 400,
+  useAxis: boolean = true,
+  titleOptions?: {
+    title?: string;
+    subtitle?: string;
+    titleColor?: string;
+    subtitleColor?: string;
+    titleFontSize?: number;
+    subtitleFontSize?: number;
+  },
+  axisLabels?: { x?: string; y?: string; z?: string },
+  axisScaleOptions?: any,
+  chartColors?: string[]
+): HTMLDivElement {
+  const container = document.createElement("div");
+  container.style.width = width + "px";
+  container.style.height = height + "px";
+
+  const xIsString = data.some((d) => typeof d.x === "string");
+  const yIsString = data.some((d) => typeof d.y === "string");
+  const zIsString = data.some((d) => typeof d.z === "string");
+
+  const xCategories = xIsString
+    ? Array.from(new Set(data.map((d) => d.x)))
+    : undefined;
+  const yCategories = yIsString
+    ? Array.from(new Set(data.map((d) => d.y)))
+    : undefined;
+  const zCategories = zIsString
+    ? Array.from(new Set(data.map((d) => d.z)))
+    : undefined;
+
+  const seriesData = data
+    .map((d) => {
+      let zValue: number;
+
+      if (typeof d.z === "number") {
+        zValue = d.z;
+      } else if (zIsString && zCategories) {
+        const idx = zCategories.indexOf(d.z);
+        if (idx === -1) return null;
+        zValue = idx;
+      } else {
+        const parsed = parseFloat(d.z as string);
+        if (isNaN(parsed)) return null;
+        zValue = parsed;
+      }
+
+      const xIdx = xIsString && xCategories ? xCategories.indexOf(d.x) : d.x;
+      const yIdx = yIsString && yCategories ? yCategories.indexOf(d.y) : d.y;
+
+      if ((xIsString && xIdx === -1) || (yIsString && yIdx === -1)) {
+        return null;
+      }
+
+      return [xIdx, yIdx, zValue, d.x, d.y, d.z]; // 3 terakhir untuk tooltip
+    })
+    .filter(
+      (
+        item
+      ): item is [number | string, number | string, number, any, any, any] =>
+        item !== null
+    );
+
+  if (seriesData.length === 0) {
+    container.innerHTML =
+      '<div style="color:red;padding:1em">No valid data for 3D Scatter Plot (X/Y/Z must be string or number)</div>';
+    return container;
+  }
+
+  const colorRange = chartColors || ["#87aa66", "#eba438", "#d94d4c"];
+  const visualMapMax = Math.max(...seriesData.map((d) => d[2]));
+
+  const option = {
+    title: {
+      text: titleOptions?.title || "",
+      subtext: titleOptions?.subtitle || "",
+      left: "center",
+      top: 10,
+      textStyle: {
+        color: titleOptions?.titleColor || "#333",
+        fontSize: titleOptions?.titleFontSize || 18,
+        fontWeight: "bold",
+      },
+      subtextStyle: {
+        color: titleOptions?.subtitleColor || "#666",
+        fontSize: titleOptions?.subtitleFontSize || 14,
+      },
+    },
+    tooltip: {
+      formatter: (params: any) => {
+        const [xIdx, yIdx, z, xRaw, yRaw, zRaw] = params.value;
+        return `X: ${xRaw ?? xIdx}<br/>Y: ${yRaw ?? yIdx}<br/>Z: ${zRaw ?? z}`;
+      },
+    },
+    visualMap: {
+      max: visualMapMax,
+      inRange: { color: colorRange },
+    },
+    xAxis3D: {
+      type: xIsString ? "category" : "value",
+      data: xCategories,
+      name: axisLabels?.x || "X",
+      nameGap: 20,
+      show: useAxis,
+    },
+    yAxis3D: {
+      type: yIsString ? "category" : "value",
+      data: yCategories,
+      name: axisLabels?.y || "Y",
+      nameGap: 20,
+      show: useAxis,
+    },
+    zAxis3D: {
+      type: zIsString ? "category" : "value",
+      data: zCategories,
+      name: axisLabels?.z || "Z",
+      nameGap: 20,
+      show: useAxis,
     },
     grid3D: {
       boxWidth: 100,
       boxDepth: 80,
       viewControl: {
-        // autoRotate: true,
         projection: "perspective",
       },
       light: {
-        main: {
-          intensity: 1.2,
-          shadow: true,
+        main: { intensity: 1.2, shadow: true },
+        ambient: { intensity: 0.3 },
+      },
+    },
+    series: [
+      {
+        type: "scatter3D",
+        data: seriesData,
+        symbolSize: 8,
+        itemStyle: { opacity: 0.8 },
+        emphasis: {
+          itemStyle: {
+            opacity: 1,
+            symbolSize: 12,
+          },
         },
-        ambient: {
-          intensity: 0.3,
-        },
+      },
+    ],
+  };
+
+  const chart = echarts.init(container);
+  chart.setOption(option);
+
+  (container as any).cleanup = () => chart.dispose();
+  return container;
+}
+
+// --- ECharts 3D Bar Chart dengan Z sebagai posisi ---
+/**
+ * Membuat 3D Bar Chart dengan Z sebagai posisi (bukan tinggi bar)
+ * @param data Array<{ x: string|number, y: string|number, z: number }>
+ * @param width Lebar chart (px)
+ * @param height Tinggi chart (px)
+ * @param useAxis Boolean untuk menampilkan/menyembunyikan axis
+ * @param titleOptions Konfigurasi judul chart
+ * @param axisLabels Label untuk sumbu x, y, dan z
+ * @param axisScaleOptions Konfigurasi skala sumbu
+ * @param chartColors Array warna untuk chart
+ * @returns HTMLDivElement yang sudah terisi chart
+ */
+export function createECharts3DBarChartWithZPosition(
+  data: Array<{ x: string | number; y: string | number; z: number }>,
+  width: number = 600,
+  height: number = 400,
+  useAxis: boolean = true,
+  titleOptions?: {
+    title?: string;
+    subtitle?: string;
+    titleColor?: string;
+    subtitleColor?: string;
+    titleFontSize?: number;
+    subtitleFontSize?: number;
+  },
+  axisLabels?: { x?: string; y?: string; z?: string },
+  axisScaleOptions?: any,
+  chartColors?: string[]
+): HTMLDivElement {
+  const container = document.createElement("div");
+  container.style.width = width + "px";
+  container.style.height = height + "px";
+
+  // Buat daftar kategori unik
+  const xCategories = Array.from(new Set(data.map((d) => d.x)));
+  const yCategories = Array.from(new Set(data.map((d) => d.y)));
+
+  // Konversi ke [xIndex, yIndex, z] - Z sebagai posisi
+  const seriesData = data.map((d) => {
+    // Handle Z sebagai string atau number
+    let zValue: number;
+    if (typeof d.z === "number") {
+      zValue = d.z;
+    } else if (typeof d.z === "string") {
+      const parsed = parseFloat(d.z);
+      if (isNaN(parsed)) {
+        console.warn(`Invalid Z value: "${d.z}". Using 0 as default.`);
+        zValue = 0;
+      } else {
+        zValue = parsed;
+      }
+    } else {
+      console.warn(`Invalid Z value: ${d.z}. Using 0 as default.`);
+      zValue = 0;
+    }
+
+    return [
+      typeof d.x === "number" ? d.x : xCategories.indexOf(d.x),
+      typeof d.y === "number" ? d.y : yCategories.indexOf(d.y),
+      zValue, // Z sebagai posisi Z yang tegak lurus ke atas
+    ];
+  });
+
+  const colorRange = chartColors || ["#87aa66", "#eba438", "#d94d4c"];
+
+  const option = {
+    title: {
+      text: titleOptions?.title || "",
+      subtext: titleOptions?.subtitle || "",
+      left: "center",
+      top: 10,
+      textStyle: {
+        color: titleOptions?.titleColor || "#333",
+        fontSize: titleOptions?.titleFontSize || 18,
+        fontWeight: "bold",
+      },
+      subtextStyle: {
+        color: titleOptions?.subtitleColor || "#666",
+        fontSize: titleOptions?.subtitleFontSize || 14,
+      },
+    },
+    tooltip: {
+      formatter: (params: any) => {
+        const [xIdx, yIdx, z] = params.value;
+        const xLabel =
+          typeof xIdx === "number" && xIdx < xCategories.length
+            ? xCategories[xIdx]
+            : xIdx;
+        const yLabel =
+          typeof yIdx === "number" && yIdx < yCategories.length
+            ? yCategories[yIdx]
+            : yIdx;
+        return `X: ${xLabel}<br/>Y: ${yLabel}<br/>Z: ${z}`;
+      },
+    },
+    visualMap: {
+      max: Math.max(
+        ...seriesData.map((d) =>
+          typeof d[2] === "number" ? (d[2] as number) : 0
+        )
+      ),
+      inRange: { color: colorRange },
+    },
+    xAxis3D: {
+      type: "category",
+      data: xCategories,
+      name: axisLabels?.x || "X",
+      nameGap: 20,
+      min: axisScaleOptions?.x?.min,
+      max: axisScaleOptions?.x?.max,
+      show: useAxis,
+    },
+    yAxis3D: {
+      type: "category",
+      data: yCategories,
+      name: axisLabels?.y || "Y",
+      nameGap: 20,
+      min: axisScaleOptions?.y?.min,
+      max: axisScaleOptions?.y?.max,
+      show: useAxis,
+    },
+    zAxis3D: {
+      type: "value",
+      name: axisLabels?.z || "Z",
+      nameGap: 20,
+      min: axisScaleOptions?.z?.min ? Number(axisScaleOptions.z.min) : 0,
+      max: axisScaleOptions?.z?.max
+        ? Number(axisScaleOptions.z.max)
+        : undefined,
+      show: useAxis,
+    },
+    grid3D: {
+      boxWidth: 100,
+      boxDepth: 80,
+      viewControl: {
+        projection: "perspective",
+      },
+      light: {
+        main: { intensity: 1.2, shadow: true },
+        ambient: { intensity: 0.3 },
       },
     },
     series: [
@@ -1279,26 +1657,737 @@ export function createECharts3DBarChart(
           borderWidth: 1,
         },
         emphasis: {
-          label: {
-            fontSize: 16,
-            color: "#900",
-          },
-          itemStyle: {
-            color: "#f00",
-          },
+          label: { fontSize: 16, color: "#900" },
+          itemStyle: { color: "#f00" },
         },
       },
     ],
   };
 
-  // Inisialisasi ECharts
   const chart = echarts.init(container);
   chart.setOption(option);
 
-  // Cleanup: destroy chart instance saat container dihapus
-  (container as any).cleanup = () => {
-    chart.dispose();
+  (container as any).cleanup = () => chart.dispose();
+  return container;
+}
+
+export function createEChartsStacked3DBarChart(
+  data: Array<{
+    x: string | number;
+    y: string | number;
+    z: string | number;
+    group: string | number;
+  }>,
+  width: number = 600,
+  height: number = 400,
+  useAxis: boolean = true,
+  titleOptions?: any,
+  axisLabels?: { x?: string; y?: string; z?: string },
+  axisScaleOptions?: any,
+  chartColors?: string[],
+  maxVisualHeight: number = 20
+): HTMLDivElement {
+  const container = document.createElement("div");
+  container.style.width = width + "px";
+  container.style.height = height + "px";
+
+  const xCategories = Array.from(new Set(data.map((d) => d.x)));
+  const yCategories = Array.from(new Set(data.map((d) => d.y)));
+  const groupCategories = Array.from(new Set(data.map((d) => d.group)));
+
+  const maxZOriginal = Math.max(...data.map((d) => Number(d.z) || 0));
+  const scaleZ = maxZOriginal > 0 ? maxVisualHeight / maxZOriginal : 1;
+
+  const stackMap = new Map<string, number>();
+
+  const series = groupCategories.map((group, idx) => {
+    const groupData = data.filter((d) => d.group === group);
+    const dataMap = new Map<string, { zScaled: number; zOriginal: number }>();
+
+    groupData.forEach((d) => {
+      const rawZ = Number(d.z) || 0;
+      const key = `${d.x}|${d.y}`;
+      if (rawZ !== 0 && !isNaN(rawZ)) {
+        dataMap.set(key, {
+          zScaled: rawZ * scaleZ,
+          zOriginal: rawZ,
+        });
+      }
+    });
+
+    const seriesData: any[] = [];
+
+    for (let xi = 0; xi < xCategories.length; xi++) {
+      for (let yi = 0; yi < yCategories.length; yi++) {
+        const xVal = xCategories[xi];
+        const yVal = yCategories[yi];
+        const key = `${xVal}|${yVal}`;
+        const found = dataMap.get(key);
+
+        if (found) {
+          const zBase = stackMap.get(key) ?? 0;
+          stackMap.set(key, zBase + found.zScaled);
+
+          // Data format: [xIndex, yIndex, zHeight, zBase, xRaw, yRaw, zOriginal]
+          seriesData.push([
+            xi,
+            yi,
+            found.zScaled,
+            zBase,
+            xVal,
+            yVal,
+            found.zOriginal,
+          ]);
+        }
+      }
+    }
+
+    return {
+      name: group,
+      type: "bar3D",
+      shading: "lambert",
+      label: { show: false },
+      data: seriesData,
+      emphasis: {
+        itemStyle: { opacity: 1 },
+      },
+      itemStyle: {
+        color: chartColors ? chartColors[idx % chartColors.length] : undefined,
+        opacity: 0.8,
+      },
+    };
+  });
+
+  const option = {
+    title: titleOptions
+      ? {
+          text: titleOptions.title || "Stacked 3D Bar Chart",
+          subtext: titleOptions.subtitle || "Sample Data",
+          left: "center",
+          textStyle: {
+            fontSize: titleOptions.titleFontSize || 16,
+            color: titleOptions.titleColor || "#333",
+          },
+          subtextStyle: {
+            fontSize: titleOptions.subtitleFontSize || 12,
+            color: titleOptions.subtitleColor || "#666",
+          },
+        }
+      : undefined,
+    tooltip: {
+      show: true,
+      formatter: (params: any) => {
+        const [xIdx, yIdx, zHeight, zBase, xRaw, yRaw, zRaw] = params.value;
+        return `Group: ${params.seriesName}<br/>
+                X: ${xRaw}<br/>
+                Y: ${yRaw}<br/>
+                Z: ${zRaw}`;
+      },
+    },
+    legend: {
+      top: "top",
+      right: "right",
+      orient: "vertical",
+      data: groupCategories,
+    },
+    xAxis3D: {
+      type: "value",
+      min: 0,
+      max: xCategories.length - 1,
+      name: axisLabels?.x || "X",
+      nameGap: 20,
+      show: useAxis,
+      axisLabel: {
+        formatter: (val: number) => xCategories[val] ?? val,
+      },
+    },
+    yAxis3D: {
+      type: "value",
+      min: 0,
+      max: yCategories.length - 1,
+      name: axisLabels?.y || "Y",
+      nameGap: 20,
+      show: useAxis,
+      axisLabel: {
+        formatter: (val: number) => yCategories[val] ?? val,
+      },
+    },
+    zAxis3D: {
+      type: "value",
+      name: axisLabels?.z || "Z",
+      nameGap: 20,
+      show: useAxis,
+      max: maxVisualHeight,
+    },
+    grid3D: {
+      boxWidth: 100,
+      boxDepth: 100,
+      boxHeight: 100,
+      viewControl: {
+        projection: "perspective",
+        autoRotate: false,
+        distance: 200,
+        alpha: 20,
+        beta: 40,
+      },
+      light: {
+        main: {
+          intensity: 1.2,
+          shadow: true,
+        },
+        ambient: {
+          intensity: 0.3,
+        },
+      },
+    },
+    series,
   };
 
-  return container;
+  try {
+    const chart = echarts.init(container);
+    chart.setOption(option);
+
+    const resizeObserver = new ResizeObserver(() => {
+      chart.resize();
+    });
+    resizeObserver.observe(container);
+
+    (container as any).cleanup = () => {
+      resizeObserver.disconnect();
+      chart.dispose();
+    };
+
+    return container;
+  } catch (error: any) {
+    console.error("❌ Error creating ECharts Stacked 3D Bar Chart:", error);
+
+    const fallback = document.createElement("div");
+    fallback.style.width = `${width}px`;
+    fallback.style.height = `${height}px`;
+    fallback.style.display = "flex";
+    fallback.style.alignItems = "center";
+    fallback.style.justifyContent = "center";
+    fallback.style.backgroundColor = "#f0f0f0";
+    fallback.style.border = "1px solid #ccc";
+    fallback.innerHTML = `
+      <div style="text-align: center; color: #666;">
+        <div>Error creating 3D chart</div>
+        <div style="font-size: 12px; margin-top: 5px;">${error.message}</div>
+      </div>
+    `;
+
+    return fallback;
+  }
+}
+
+// ... existing code ...
+
+export function createEChartsGrouped3DScatterPlot(
+  data: Array<{
+    x: number;
+    y: number;
+    z: number;
+    group: string;
+  }>,
+  width: number = 600,
+  height: number = 400,
+  useAxis: boolean = true,
+  titleOptions?: {
+    title?: string;
+    subtitle?: string;
+    titleColor?: string;
+    subtitleColor?: string;
+    titleFontSize?: number;
+    subtitleFontSize?: number;
+  },
+  axisLabels?: { x?: string; y?: string; z?: string },
+  axisScaleOptions?: any,
+  chartColors?: string[]
+): HTMLDivElement {
+  console.log("🎯 createEChartsGrouped3DScatterPlot called with:", {
+    dataLength: data.length,
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    axisScaleOptions,
+    chartColors,
+    data: data.slice(0, 5), // Log first 5 data points
+  });
+
+  // Create container
+  const container = document.createElement("div");
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+
+  // Get unique groups
+  const groups = Array.from(new Set(data.map((d) => d.group)));
+  console.log("📊 Unique groups found:", groups);
+
+  // Default colors for groups
+  const defaultColors = [
+    "#FF6B6B",
+    "#4ECDC4",
+    "#45B7D1",
+    "#96CEB4",
+    "#FFEAA7",
+    "#DDA0DD",
+    "#98D8C8",
+    "#F7DC6F",
+    "#BB8FCE",
+    "#85C1E9",
+  ];
+
+  const colors =
+    chartColors && chartColors.length > 0 ? chartColors : defaultColors;
+
+  // Prepare series data for each group
+  const series = groups.map((group, index) => {
+    const groupData = data
+      .filter((d) => d.group === group)
+      .map((d) => [d.x, d.y, d.z]);
+
+    return {
+      name: group,
+      type: "scatter3D",
+      data: groupData,
+      symbolSize: 8,
+      itemStyle: {
+        color: colors[index % colors.length],
+        opacity: 0.8,
+      },
+      emphasis: {
+        itemStyle: {
+          opacity: 1,
+        },
+      },
+    };
+  });
+
+  console.log("📈 Series prepared:", series.length, "series");
+
+  // Calculate axis ranges if not provided
+  const xValues = data.map((d) => d.x);
+  const yValues = data.map((d) => d.y);
+  const zValues = data.map((d) => d.z);
+
+  const xRange = {
+    min: axisScaleOptions?.x?.min
+      ? parseFloat(axisScaleOptions.x.min)
+      : Math.min(...xValues),
+    max: axisScaleOptions?.x?.max
+      ? parseFloat(axisScaleOptions.x.max)
+      : Math.max(...xValues),
+  };
+  const yRange = {
+    min: axisScaleOptions?.y?.min
+      ? parseFloat(axisScaleOptions.y.min)
+      : Math.min(...yValues),
+    max: axisScaleOptions?.y?.max
+      ? parseFloat(axisScaleOptions.y.max)
+      : Math.max(...yValues),
+  };
+  const zRange = {
+    min: axisScaleOptions?.z?.min
+      ? parseFloat(axisScaleOptions.z.min)
+      : Math.min(...zValues),
+    max: axisScaleOptions?.z?.max
+      ? parseFloat(axisScaleOptions.z.max)
+      : Math.max(...zValues),
+  };
+
+  // Create chart options
+  const option = {
+    title: titleOptions
+      ? {
+          text: titleOptions.title || "Grouped 3D Scatter Plot",
+          subtext: titleOptions.subtitle || "ECharts 3D Scatter Plot",
+          left: "center",
+          textStyle: {
+            fontSize: titleOptions.titleFontSize || 16,
+            color: titleOptions.titleColor || "#333",
+          },
+          subtextStyle: {
+            fontSize: titleOptions.subtitleFontSize || 12,
+            color: titleOptions.subtitleColor || "#666",
+          },
+        }
+      : undefined,
+    tooltip: {
+      show: true,
+      formatter: (params: any) => {
+        return `Group: ${params.seriesName}<br/>
+                X: ${params.data[0]}<br/>
+                Y: ${params.data[1]}<br/>
+                Z: ${params.data[2]}`;
+      },
+    },
+    legend: {
+      top: "top",
+      right: "right",
+      orient: "vertical",
+      data: groups,
+    },
+
+    grid3D: {
+      boxWidth: 100,
+      boxHeight: 100,
+      boxDepth: 100,
+      viewControl: {
+        projection: "perspective",
+        autoRotate: false,
+        distance: 200,
+        alpha: 20,
+        beta: 40,
+      },
+      light: {
+        main: {
+          intensity: 1.2,
+          shadow: true,
+        },
+        ambient: {
+          intensity: 0.3,
+        },
+      },
+    },
+
+    xAxis3D: useAxis
+      ? {
+          name: axisLabels?.x || "X Axis",
+          type: "value",
+          min: xRange.min,
+          max: xRange.max,
+          nameTextStyle: {
+            fontSize: 12,
+            color: "#333",
+          },
+        }
+      : undefined,
+
+    yAxis3D: useAxis
+      ? {
+          name: axisLabels?.y || "Y Axis",
+          type: "value",
+          min: yRange.min,
+          max: yRange.max,
+          nameTextStyle: {
+            fontSize: 12,
+            color: "#333",
+          },
+        }
+      : undefined,
+
+    zAxis3D: useAxis
+      ? {
+          name: axisLabels?.z || "Z Axis",
+          type: "value",
+          min: zRange.min,
+          max: zRange.max,
+          nameTextStyle: {
+            fontSize: 12,
+            color: "#333",
+          },
+        }
+      : undefined,
+
+    series: series,
+  };
+
+  console.log("🎨 Chart option created:", option);
+
+  try {
+    // Initialize chart
+    const chart = echarts.init(container);
+    chart.setOption(option);
+
+    // Handle resize
+    const resizeObserver = new ResizeObserver((entries) => {
+      chart.resize();
+    });
+    resizeObserver.observe(container);
+
+    // Store cleanup function
+    (container as any).cleanup = () => {
+      resizeObserver.disconnect();
+      chart.dispose();
+    };
+
+    console.log("✅ ECharts Grouped 3D Scatter Plot created successfully");
+    return container;
+  } catch (error: any) {
+    console.error("❌ Error creating ECharts Grouped 3D Scatter Plot:", error);
+
+    // Create fallback element
+    const fallback = document.createElement("div");
+    fallback.style.width = `${width}px`;
+    fallback.style.height = `${height}px`;
+    fallback.style.display = "flex";
+    fallback.style.alignItems = "center";
+    fallback.style.justifyContent = "center";
+    fallback.style.backgroundColor = "#f0f0f0";
+    fallback.style.border = "1px solid #ccc";
+    fallback.innerHTML = `
+      <div style="text-align: center; color: #666;">
+        <div>Error creating 3D chart</div>
+        <div style="font-size: 12px; margin-top: 5px;">${error.message}</div>
+      </div>
+    `;
+
+    return fallback;
+  }
+}
+
+// ... existing code ...
+
+export function createEChartsClustered3DBarChart(
+  data: Array<{
+    x: number;
+    y: number;
+    z: number;
+    group: string;
+  }>,
+  width: number = 600,
+  height: number = 400,
+  useAxis: boolean = true,
+  titleOptions?: {
+    title?: string;
+    subtitle?: string;
+    titleColor?: string;
+    subtitleColor?: string;
+    titleFontSize?: number;
+    subtitleFontSize?: number;
+  },
+  axisLabels?: { x?: string; y?: string; z?: string },
+  axisScaleOptions?: any,
+  chartColors?: string[]
+): HTMLDivElement {
+  console.log("🎯 createEChartsClustered3DBarChart called with:", {
+    dataLength: data.length,
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    axisScaleOptions,
+    chartColors,
+    data: data.slice(0, 5), // Log first 5 data points
+  });
+
+  // Create container
+  const container = document.createElement("div");
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+
+  // Get unique groups
+  const groups = Array.from(new Set(data.map((d) => d.group)));
+  console.log("📊 Unique groups found:", groups);
+
+  // Default colors for groups
+  const defaultColors = [
+    "#FF6B6B",
+    "#4ECDC4",
+    "#45B7D1",
+    "#96CEB4",
+    "#FFEAA7",
+    "#DDA0DD",
+    "#98D8C8",
+    "#F7DC6F",
+    "#BB8FCE",
+    "#85C1E9",
+  ];
+
+  const colors =
+    chartColors && chartColors.length > 0 ? chartColors : defaultColors;
+
+  // Prepare series data for each group
+  const series = groups.map((group, index) => {
+    const groupData = data
+      .filter((d) => d.group === group)
+      .map((d) => [d.x, d.y, d.z]);
+
+    return {
+      name: group,
+      type: "bar3D",
+      data: groupData,
+      stack: false, // Clustered, not stacked
+      shading: "lambert",
+      itemStyle: {
+        color: colors[index % colors.length],
+        opacity: 0.8,
+      },
+      emphasis: {
+        itemStyle: {
+          opacity: 1,
+        },
+      },
+      label: {
+        show: false,
+        textStyle: {
+          fontSize: 10,
+          borderWidth: 1,
+        },
+      },
+    };
+  });
+
+  console.log("📈 Series prepared:", series.length, "series");
+
+  // Calculate axis ranges if not provided
+  const xValues = data.map((d) => d.x);
+  const yValues = data.map((d) => d.y);
+  const zValues = data.map((d) => d.z);
+
+  const xRange = {
+    min: axisScaleOptions?.x?.min ?? Math.min(...xValues),
+    max: axisScaleOptions?.x?.max ?? Math.max(...xValues),
+  };
+  const yRange = {
+    min: axisScaleOptions?.y?.min ?? Math.min(...yValues),
+    max: axisScaleOptions?.y?.max ?? Math.max(...yValues),
+  };
+  const zRange = {
+    min: axisScaleOptions?.z?.min ?? Math.min(...zValues),
+    max: axisScaleOptions?.z?.max ?? Math.max(...zValues),
+  };
+
+  // Create chart options
+  const option = {
+    title: titleOptions
+      ? {
+          text: titleOptions.title || "Clustered 3D Bar Chart",
+          subtext: titleOptions.subtitle || "ECharts 3D Bar Chart",
+          left: "center",
+          textStyle: {
+            fontSize: titleOptions.titleFontSize || 16,
+            color: titleOptions.titleColor || "#333",
+          },
+          subtextStyle: {
+            fontSize: titleOptions.subtitleFontSize || 12,
+            color: titleOptions.subtitleColor || "#666",
+          },
+        }
+      : undefined,
+    tooltip: {
+      show: true,
+      formatter: (params: any) => {
+        return `Group: ${params.seriesName}<br/>
+                X: ${params.data[0]}<br/>
+                Y: ${params.data[1]}<br/>
+                Z: ${params.data[2]}`;
+      },
+    },
+    legend: {
+      top: "top",
+      right: "right",
+      orient: "vertical",
+      data: groups,
+    },
+
+    grid3D: {
+      boxWidth: 100,
+      boxHeight: 100,
+      boxDepth: 100,
+      viewControl: {
+        projection: "perspective",
+        autoRotate: false,
+        distance: 200,
+        alpha: 20,
+        beta: 40,
+      },
+      light: {
+        main: {
+          intensity: 1.2,
+          shadow: true,
+        },
+        ambient: {
+          intensity: 0.3,
+        },
+      },
+    },
+
+    xAxis3D: useAxis
+      ? {
+          name: axisLabels?.x || "X Axis",
+          type: "value",
+          min: xRange.min,
+          max: xRange.max,
+          nameTextStyle: {
+            fontSize: 12,
+            color: "#333",
+          },
+        }
+      : undefined,
+
+    yAxis3D: useAxis
+      ? {
+          name: axisLabels?.y || "Y Axis",
+          type: "value",
+          min: yRange.min,
+          max: yRange.max,
+          nameTextStyle: {
+            fontSize: 12,
+            color: "#333",
+          },
+        }
+      : undefined,
+
+    zAxis3D: useAxis
+      ? {
+          name: axisLabels?.z || "Z Axis",
+          type: "value",
+          min: zRange.min,
+          max: zRange.max,
+          nameTextStyle: {
+            fontSize: 12,
+            color: "#333",
+          },
+        }
+      : undefined,
+
+    series: series,
+  };
+
+  console.log("🎨 Chart option created:", option);
+
+  try {
+    // Initialize chart
+    const chart = echarts.init(container);
+    chart.setOption(option);
+
+    // Handle resize
+    const resizeObserver = new ResizeObserver((entries) => {
+      chart.resize();
+    });
+    resizeObserver.observe(container);
+
+    // Store cleanup function
+    (container as any).cleanup = () => {
+      resizeObserver.disconnect();
+      chart.dispose();
+    };
+
+    console.log("✅ ECharts Clustered 3D Bar Chart created successfully");
+    return container;
+  } catch (error: any) {
+    console.error("❌ Error creating ECharts Clustered 3D Bar Chart:", error);
+
+    // Create fallback element
+    const fallback = document.createElement("div");
+    fallback.style.width = `${width}px`;
+    fallback.style.height = `${height}px`;
+    fallback.style.display = "flex";
+    fallback.style.alignItems = "center";
+    fallback.style.justifyContent = "center";
+    fallback.style.backgroundColor = "#f0f0f0";
+    fallback.style.border = "1px solid #ccc";
+    fallback.innerHTML = `
+      <div style="text-align: center; color: #666;">
+        <div>Error creating 3D chart</div>
+        <div style="font-size: 12px; margin-top: 5px;">${error.message}</div>
+      </div>
+    `;
+
+    return fallback;
+  }
 }

@@ -829,9 +829,10 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
 
   // Cleanup WebGL contexts on unmount
   useEffect(() => {
+    const currentRef = chartContainerRef.current;
     return () => {
-      if (chartContainerRef.current) {
-        const container = chartContainerRef.current.firstChild as any;
+      if (currentRef) {
+        const container = currentRef.firstChild as any;
         if (container && typeof container.cleanup === "function") {
           container.cleanup();
         }

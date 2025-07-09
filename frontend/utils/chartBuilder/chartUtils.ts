@@ -132,7 +132,7 @@ export const addXAxisLabel = (config: AxisLabelConfig) => {
   // Calculate dynamic offset based on chart size and margin
   const calculateDynamicOffset = (margin: number, dimension: number) => {
     // Base offset that scales with chart size, with min/max bounds
-    return Math.max(40, Math.min(60, margin * 0.6 + dimension * 0.02));
+    return Math.max(20, Math.min(40, margin * 0.6 + dimension * 0.02));
   };
 
   switch (chartType) {

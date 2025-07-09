@@ -90,9 +90,16 @@ function generateAxisInfo(
  */
 function generateFinalAxisLabels(
   chartType: string,
-  axisLabels: { x?: string; y?: string; y1?: string; y2?: string } = {}
-): { x: string; y?: string; y1?: string; y2?: string } {
+  axisLabels: {
+    x?: string;
+    y?: string;
+    y1?: string;
+    y2?: string;
+    z?: string;
+  } = {}
+): { x: string; y?: string; y1?: string; y2?: string; z?: string } {
   const isDualAxis = isDualAxisChart(chartType);
+  const is3DChart = chartType.includes("3D");
 
   if (isDualAxis) {
     // For dual axis charts, use y1 and y2
@@ -100,6 +107,13 @@ function generateFinalAxisLabels(
       x: axisLabels.x || "X-axis",
       y1: axisLabels.y1 || axisLabels.y || "Y1-axis",
       y2: axisLabels.y2 || "Y2-axis",
+    };
+  } else if (is3DChart) {
+    // For 3D charts, use x, y, z
+    return {
+      x: axisLabels.x || "X-axis",
+      y: axisLabels.y || "Y-axis",
+      z: axisLabels.z || "Z-axis",
     };
   } else {
     // For single axis charts, use y
@@ -119,17 +133,14 @@ function generateChartColors(
   if (customColors) return customColors;
 
   const defaultColors = [
-    "#000000",
-    "#1f77b4",
-    "#ff7f0e",
-    "#2ca02c",
-    "#d62728",
-    "#9467bd",
-    "#8c564b",
-    "#e377c2",
-    "#7f7f7f",
-    "#bcbd22",
-    "#17becf",
+    "#E69F00", // blue-400
+    "#56B4E9", // green-400
+    "#009E73", // red-400
+    "#F0E442", // amber-400
+    "#0072B2", // violet-400
+    "#D55E00", // emerald-400
+    "#CC79A7", // orange-400
+    "#000000", // purple-400
   ];
 
   switch (chartType) {
@@ -189,6 +200,20 @@ function generateChartColors(
     case "Grouped 3D Scatter Plot":
       const groupCount3D = chartVariables.groupBy?.length || 1;
       return defaultColors.slice(0, groupCount3D);
+
+    case "Grouped 3D Scatter Plot (ECharts)":
+      if (Array.isArray(chartData)) {
+        // Count unique groups in the data
+        const uniqueGroups = Array.from(
+          new Set(chartData.map((d: any) => d.group))
+        );
+        const filteredGroups = uniqueGroups.filter(
+          (v) => v !== undefined && v !== null && v !== ""
+        );
+        return defaultColors.slice(0, filteredGroups.length);
+      }
+      const echartGroupCount = chartVariables.groupBy?.length || 1;
+      return defaultColors.slice(0, echartGroupCount);
 
     // Range charts - single color
     case "Simple Range Bar":
@@ -267,6 +292,7 @@ interface ChartInput {
       y?: string;
       y1?: string; // For dual axis charts
       y2?: string; // For dual axis charts
+      z?: string; // For 3D charts
     };
     axisScaleOptions?: {
       x?: {
@@ -288,6 +314,12 @@ interface ChartInput {
         origin?: string;
       };
       y2?: {
+        min?: string;
+        max?: string;
+        majorIncrement?: string;
+        origin?: string;
+      };
+      z?: {
         min?: string;
         max?: string;
         majorIncrement?: string;
@@ -323,6 +355,7 @@ interface ChartJSON {
         y?: string;
         y1?: string;
         y2?: string;
+        z?: string;
       };
       axisScaleOptions?: any;
     };
