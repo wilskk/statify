@@ -139,7 +139,7 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`${dataHeader}`],
@@ -150,7 +150,7 @@ export async function handleDecomposition(
                     },
                     chartData: structuredData,
                     chartConfig: {
-                        "width": 600,
+                        "width": 1000,
                         "height": 400,
                         "chartColor": ["#0000FF"],
                         "useLegend": true,
@@ -177,7 +177,7 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`Trend`],
@@ -188,7 +188,7 @@ export async function handleDecomposition(
                     },
                     chartData: structuredTrend,
                     chartConfig: {
-                        "width": 600,
+                        "width": 1000,
                         "height": 400,
                         "chartColor": ["#0000FF"],
                         "useLegend": true,
@@ -215,7 +215,7 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`Seasonal`],
@@ -226,7 +226,7 @@ export async function handleDecomposition(
                     },
                     chartData: structuredSeasonal,
                     chartConfig: {
-                        "width": 600,
+                        "width": 1000,
                         "height": 400,
                         "chartColor": ["#0000FF"],
                         "useLegend": true,
@@ -253,7 +253,7 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`Irregular`],
@@ -264,7 +264,7 @@ export async function handleDecomposition(
                     },
                     chartData: structuredIrregular,
                     chartConfig: {
-                        "width": 600,
+                        "width": 1000,
                         "height": 400,
                         "chartColor": ["#0000FF"],
                         "useLegend": true,
@@ -296,7 +296,7 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Multiple Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`${dataHeader}`, `Decomposition Forecasting`],
@@ -307,8 +307,8 @@ export async function handleDecomposition(
                     },
                     chartData: structuredForecasting,
                     chartConfig: {
-                        "width": 800,
-                        "height": 600,
+                        "width": 1000,
+                        "height": 500,
                         "chartColor": ["#0096FF", "#FFC300"],
                         "useLegend": true,
                         "useAxis": true,

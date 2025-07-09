@@ -129,9 +129,9 @@ export function useAnalyzeHook(
             });
 
             await addStatistic(analyticId, {
-                title: "Autocorrelation Graphic",
+                title: "Autocorrelation Correlogram",
                 output_data: acfGraphicJSON,
-                components: "Autocorrelation Graphic",
+                components: "Autocorrelation Correlogram",
                 description: "Correlogram of the autocorrelation results",
             });
 
@@ -143,9 +143,9 @@ export function useAnalyzeHook(
             });
 
             await addStatistic(analyticId, {
-                title: "Partial Autocorrelation Graphic",
+                title: "Partial Autocorrelation Correlogram",
                 output_data: pacfGraphicJSON,
-                components: "Partial Autocorrelation Graphic",
+                components: "Partial Autocorrelation Correlogram",
                 description: "Correlogram of the partial autocorrelation results",
             });
         }

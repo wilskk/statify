@@ -188,7 +188,7 @@ export async function handleBoxJenkinsModel(
                 charts: [
                     {
                         chartType: "Multiple Line Chart",
-                        chartMetaData: {
+                        chartMetadata: {
                             axisInfo: {
                                 category: `date`,
                                 subCategory: [`${dataHeader}`, `ARIMA Forecasting`],
@@ -199,8 +199,8 @@ export async function handleBoxJenkinsModel(
                         },
                         chartData: structuredForecasting,
                         chartConfig: {
-                            "width": 800,
-                            "height": 600,
+                            "width": 1000,
+                            "height": 500,
                             "chartColor": ["#0096FF", "#FFC300"],
                             "useLegend": true,
                             "useAxis": true,

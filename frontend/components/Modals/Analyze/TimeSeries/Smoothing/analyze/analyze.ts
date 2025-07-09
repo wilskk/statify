@@ -166,7 +166,7 @@ Promise<[string, string, number[], string, string]> {
             charts: [
                 {
                     chartType: "Multiple Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`${dataHeader}`, `$(nameMethod) Smoothing`],
@@ -177,8 +177,8 @@ Promise<[string, string, number[], string, string]> {
                     },
                     chartData: structuredSmoothing,
                     chartConfig: {
-                        "width": 800,
-                        "height": 600,
+                        "width": 1000,
+                        "height": 500,
                         "chartColor": ["#0096FF", "#FFC300"],
                         "useLegend": true,
                         "useAxis": true,
