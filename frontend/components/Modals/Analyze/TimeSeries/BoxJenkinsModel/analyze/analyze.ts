@@ -195,12 +195,13 @@ export async function handleBoxJenkinsModel(
                             },
                             description: `ARIMA ${dataHeader}`,
                             notes: `ARIMA ${dataHeader}`,
+                            title: `ARIMA Forecasting of ${dataHeader}`,
                         },
                         chartData: structuredForecasting,
                         chartConfig: {
                             "width": 800,
                             "height": 600,
-                            "chartColor": ["#4682B4"],
+                            "chartColor": ["#0096FF", "#FFC300"],
                             "useLegend": true,
                             "useAxis": true,
                         }

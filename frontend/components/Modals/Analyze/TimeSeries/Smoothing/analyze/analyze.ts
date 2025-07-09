@@ -173,12 +173,13 @@ Promise<[string, string, number[], string, string]> {
                         },
                         description: `Smoothing ${dataHeader} using ${nameMethod}`,
                         notes: `Smoothing ${dataHeader}`,
+                        title: `Smoothing of ${dataHeader} using ${nameMethod}`,
                     },
                     chartData: structuredSmoothing,
                     chartConfig: {
                         "width": 800,
                         "height": 600,
-                        "chartColor": ["#4682B4"],
+                        "chartColor": ["#0096FF", "#FFC300"],
                         "useLegend": true,
                         "useAxis": true,
                     }

@@ -174,8 +174,9 @@ export async function handleAutocorrelation(
                             barValue: `acf`,
                             lineValue: [`bartlet left ACF`, `bartlet right ACF`],
                         },
-                        description: `Autocorellation ${dataHeader} using ${lag}`,
-                        notes: `Autocorellation ${dataHeader}`,
+                        description: `Autocorrelation ${dataHeader} using ${lag}`,
+                        notes: `Autocorrelation ${dataHeader}`,
+                        title: `Autocorrelation Function Correlogram`,
                     },
                     chartData: structureACF,
                     config: {
@@ -217,12 +218,13 @@ export async function handleAutocorrelation(
                         },
                         description: `Autocorellation ${dataHeader} using ${lag}`,
                         notes: `Autocorellation ${dataHeader}`,
+                        title: `Partial Autocorrelation Function Correlogram`,
                     },
                     chartData: structurePACF,
                     config: {
                         "width": 800,
-                        "height": 600,
-                        "chartColor": ["#4682B4"],
+                        "height": 400,
+                        "chartColor": ["#0096FF", "#1B1212", "#1B1212"],
                         "useLegend": true,
                         "useAxis": true,
                     }

@@ -1,6 +1,7 @@
 import { se } from 'date-fns/locale';
 import init, {Decomposition} from '../../../../../../src/wasm/pkg/wasm.js';
 import {generateDate} from '../../timeSeriesGenerateDate';
+import { title } from 'process';
 
 export async function handleDecomposition(
     data: (number)[],
@@ -145,12 +146,13 @@ export async function handleDecomposition(
                         },
                         description: `${dataHeader}`,
                         notes: `${dataHeader}`,
+                        title: `Data Series ${dataHeader}`,
                     },
                     chartData: structuredData,
                     chartConfig: {
-                        "width": 400,
-                        "height": 200,
-                        "chartColor": ["#4682B4"],
+                        "width": 600,
+                        "height": 400,
+                        "chartColor": ["#0000FF"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -182,12 +184,13 @@ export async function handleDecomposition(
                         },
                         description: `Trend`,
                         notes: `Trend`,
+                        title: `Trend Component of ${dataHeader}`,
                     },
                     chartData: structuredTrend,
                     chartConfig: {
-                        "width": 400,
-                        "height": 200,
-                        "chartColor": ["#4682B4"],
+                        "width": 600,
+                        "height": 400,
+                        "chartColor": ["#0000FF"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -219,12 +222,13 @@ export async function handleDecomposition(
                         },
                         description: `Seasonal`,
                         notes: `Seasonal`,
+                        title: `Seasonal Component of ${dataHeader}`,
                     },
                     chartData: structuredSeasonal,
                     chartConfig: {
-                        "width": 400,
-                        "height": 200,
-                        "chartColor": ["#4682B4"],
+                        "width": 600,
+                        "height": 400,
+                        "chartColor": ["#0000FF"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -256,12 +260,13 @@ export async function handleDecomposition(
                         },
                         description: `Irregular`,
                         notes: `Irregular`,
+                        title: `Irregular Component of ${dataHeader}`,
                     },
                     chartData: structuredIrregular,
                     chartConfig: {
-                        "width": 400,
-                        "height": 200,
-                        "chartColor": ["#4682B4"],
+                        "width": 600,
+                        "height": 400,
+                        "chartColor": ["#0000FF"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -298,12 +303,13 @@ export async function handleDecomposition(
                         },
                         description: `Decomposition ${dataHeader}`,
                         notes: `Decomposition ${dataHeader}`,
+                        title: `Decomposition Forecasting of ${dataHeader}`,
                     },
                     chartData: structuredForecasting,
                     chartConfig: {
                         "width": 800,
                         "height": 600,
-                        "chartColor": ["#4682B4"],
+                        "chartColor": ["#0096FF", "#FFC300"],
                         "useLegend": true,
                         "useAxis": true,
                     }
