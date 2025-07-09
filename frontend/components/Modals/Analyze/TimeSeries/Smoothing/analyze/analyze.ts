@@ -153,7 +153,7 @@ Promise<[string, string, number[], string, string]> {
                 structuredSmoothing.push({
                     category: `${dateArray[i]}`,
                     subcategory: `${nameMethod}`,
-                    value: smoothingArray[i] === 0? null : smoothingArray[i],
+                    value: smoothingRound[i] === 0? null : smoothingRound[i],
                 });
                 if (smoothingArray[i] === 0.0){
                     smoothingRound[i] = NaN;

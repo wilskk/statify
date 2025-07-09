@@ -137,7 +137,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
                 };
                 const stateToSave = {
                     ...variableToSave,
-                    saveAsVariable,
+                    saveAsVariable: saveAsVariable,
                     prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("Smoothing", stateToSave, "variables");

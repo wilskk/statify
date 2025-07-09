@@ -92,6 +92,49 @@ export function useAnalyzeHook(
         return { dataValues, dataVarDef };
     };
 
+    const handleAnalyzes = async () => {
+        const validationError = validateInputs();
+        if (validationError) {
+            setErrorMsg(validationError);
+            return;
+        }
+
+        setErrorMsg(null);
+        setIsCalculating(true);
+
+        try {
+            const { dataValues, dataVarDef } = prepareData();
+
+            if (dataValues.length === 0) {
+                throw new Error("No data available for the selected variable.");
+            }
+            if (dataValues.length < 20) {
+                throw new Error("Data length is less than 20 observations.");
+            }
+
+            const results = await handleBoxJenkinsModel(
+                dataValues,
+                dataVarDef.name,
+                [arOrder, diffOrder, maOrder],
+                checkedForecasting,
+                Number(selectedPeriod[0]),
+                getTypeDate(),
+                getHour(),
+                getDay(),
+                getMonth(),
+                getYear(),
+            );
+
+            await processResults(results, dataVarDef);
+
+            setIsCalculating(false);
+            onClose();
+        } catch (ex) {
+            setErrorMsg(ex instanceof Error ? ex.message : "An unknown error occurred.");
+            setIsCalculating(false);
+        }
+    };
+
     const saveForecastingAsVariable = async (forecast: any[], dataVarDef: Variable) => {
         const newVarIndex = variables.length;
         const newVarName = `${dataVarDef.name} ARIMA (${arOrder},${diffOrder},${maOrder})`;
@@ -181,49 +224,6 @@ export function useAnalyzeHook(
                 });
                 await saveForecastingAsVariable(forecast, dataVarDef);
             }
-        }
-    };
-
-    const handleAnalyzes = async () => {
-        const validationError = validateInputs();
-        if (validationError) {
-            setErrorMsg(validationError);
-            return;
-        }
-
-        setErrorMsg(null);
-        setIsCalculating(true);
-
-        try {
-            const { dataValues, dataVarDef } = prepareData();
-
-            if (dataValues.length === 0) {
-                throw new Error("No data available for the selected variable.");
-            }
-            if (dataValues.length < 20) {
-                throw new Error("Data length is less than 20 observations.");
-            }
-
-            const results = await handleBoxJenkinsModel(
-                dataValues,
-                dataVarDef.name,
-                [arOrder, diffOrder, maOrder],
-                checkedForecasting,
-                Number(selectedPeriod[0]),
-                getTypeDate(),
-                getHour(),
-                getDay(),
-                getMonth(),
-                getYear(),
-            );
-
-            await processResults(results, dataVarDef);
-
-            setIsCalculating(false);
-            onClose();
-        } catch (ex) {
-            setErrorMsg(ex instanceof Error ? ex.message : "An unknown error occurred.");
-            setIsCalculating(false);
         }
     };
 

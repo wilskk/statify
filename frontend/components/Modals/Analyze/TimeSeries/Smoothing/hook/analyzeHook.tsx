@@ -45,11 +45,11 @@ export function useAnalyzeHook(
         if (getHour() < 0 || getHour() > 23) {
             return "Hour must be between 0 and 23.";
         }
-        if (selectedMethod[0] === "sma" && (parameters[0] < 1 || parameters[0] > 10)) {
-            return "Simple Moving Average period must be between 1 and 10.";
+        if (selectedMethod[0] === "sma" && (parameters[0] < 2 || parameters[0] > 11)) {
+            return "Simple Moving Average period must be between 2 and 11.";
         }
-        if (selectedMethod[0] === "dma" && (parameters[0] < 1 || parameters[0] > 10)) {
-            return "Double Moving Average period must be between 1 and 10.";
+        if (selectedMethod[0] === "dma" && (parameters[0] < 2 || parameters[0] > 11)) {
+            return "Double Moving Average period must be between 2 and 11.";
         }
         if (selectedMethod[0] === "ses" && (parameters[0] < 0 || parameters[0] > 1)) {
             return "Simple Exponential Smoothing alpha parameter must be between 0 and 1.";
@@ -108,6 +108,9 @@ export function useAnalyzeHook(
             if (dataValues.length < 20) {
                 throw new Error("Data length must be at least 20 observations.");
             }
+            if (selectedMethod[0] === "dma" && dataValues.length < parameters[0] * 3) {
+                throw new Error(`Data length is too short for ${parameters[0]} Double Moving Average.`);
+            }
             // Validate periodicity and data length
             const periodicity = Number(selectedPeriod[0]);
             if (selectedMethod[0] === "winter" && dataValues.length < 4 * periodicity) {
@@ -152,6 +155,65 @@ export function useAnalyzeHook(
         } catch (ex) {
             setIsCalculating(false);
             setErrorMsg(ex instanceof Error ? ex.message : "An unknown error occurred.");
+        }
+    };
+
+    const saveSmoothingResultsAsVariable = async (
+        smoothingResult: any[],
+        dataVarDef: Variable
+    ) => {
+        const newVarIndex = variables.length; // Assuming new variable is added at the end
+        let paramString = "";
+        switch(selectedMethod[0]){
+            case "sma":
+            case "dma":
+            case "ses":
+            case "des":
+                paramString = parameters[0]?.toString();
+                break;
+            case "holt":
+                paramString = `${parameters[0]}_${parameters[1]}`;
+                break;
+            case "winter":
+                paramString = `${parameters[0]}_${parameters[1]}_${parameters[2]}`;
+                break;
+            default:
+                paramString = "_";
+        }
+        const newVarName = `${dataVarDef.name} ${selectedMethod[0]}_${paramString}`;
+        const newVarLabel = `${dataVarDef.label || dataVarDef.name} (${selectedMethod[0]})`;
+
+        const smoothingVariable: Partial<Variable> = {
+            name: newVarName,
+            columnIndex: newVarIndex,
+            type: "NUMERIC",
+            label: newVarLabel,
+            values: [],
+            missing: null,
+            measure: "scale",
+            width: 8,
+            decimals: 2,
+            columns: 100,
+            align: "right",
+        };
+
+        await addVariable(smoothingVariable);
+
+        // Update bulk cells
+        const updates = [];
+
+        for (let rowIndex = 0; rowIndex < smoothingResult.length; rowIndex++) {
+            if (smoothingVariable.columnIndex !== undefined) {
+                updates.push({
+                row: rowIndex,
+                col: smoothingVariable.columnIndex,
+                value: smoothingResult[rowIndex].toString(),
+                });
+            }
+        }
+
+        if (updates.length > 0) {
+            await updateCells(updates);
         }
     };
 
@@ -221,65 +283,6 @@ export function useAnalyzeHook(
             if (saveForecasting) {
                 await saveSmoothingResultsAsVariable(smoothingResult, dataVarDef);
             }
-        }
-    };
-
-    const saveSmoothingResultsAsVariable = async (
-        smoothingResult: any[],
-        dataVarDef: Variable
-    ) => {
-        const newVarIndex = variables.length; // Assuming new variable is added at the end
-        let paramString = "";
-        switch(selectedMethod[0]){
-            case "sma":
-            case "dma":
-            case "ses":
-            case "des":
-                paramString = parameters[0]?.toString();
-                break;
-            case "holt":
-                paramString = `${parameters[0]}_${parameters[1]}`;
-                break;
-            case "winter":
-                paramString = `${parameters[0]}_${parameters[1]}_${parameters[2]}`;
-                break;
-            default:
-                paramString = "_";
-        }
-        const newVarName = `${dataVarDef.name} ${selectedMethod[0]}_${paramString}`;
-        const newVarLabel = `${dataVarDef.label || dataVarDef.name} (${selectedMethod[0]})`;
-
-        const smoothingVariable: Partial<Variable> = {
-            name: newVarName,
-            columnIndex: newVarIndex,
-            type: "NUMERIC",
-            label: newVarLabel,
-            values: [],
-            missing: null,
-            measure: "scale",
-            width: 8,
-            decimals: 2,
-            columns: 100,
-            align: "right",
-        };
-
-        await addVariable(smoothingVariable);
-
-        // Update bulk cells
-        const updates = [];
-
-        for (let rowIndex = 0; rowIndex < smoothingResult.length; rowIndex++) {
-            if (smoothingVariable.columnIndex !== undefined) {
-                updates.push({
-                row: rowIndex,
-                col: smoothingVariable.columnIndex,
-                value: smoothingResult[rowIndex].toString(),
-                });
-            }
-        }
-
-        if (updates.length > 0) {
-            await updateCells(updates);
         }
     };
 
