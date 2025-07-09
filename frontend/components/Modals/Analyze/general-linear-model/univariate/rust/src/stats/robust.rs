@@ -82,6 +82,9 @@ pub fn calculate_robust_parameter_estimates(
                     upper_bound: f64::NAN,
                 },
                 is_redundant: true,
+                partial_eta_squared: f64::NAN,
+                noncent_parameter: f64::NAN,
+                observed_power: f64::NAN,
             });
         }
         let note = Some(
@@ -309,19 +312,54 @@ pub fn calculate_robust_parameter_estimates(
         // T-value: mengukur seberapa banyak standard error koefisien dari nol. Rumus: b / SE
         // Signifikansi: probabilitas mengamati t-value yang lebih ekstrem.
         // CI: rentang di mana nilai parameter populasi sebenarnya kemungkinan besar berada.
-        let (t_value, significance, ci_lower, ci_upper) = if
+        let (
+            t_value,
+            significance,
+            ci_lower,
+            ci_upper,
+            partial_eta_squared,
+            noncent_parameter,
+            observed_power,
+        ) = if
             is_redundant ||
             param_robust_se.is_nan() ||
             param_robust_se.abs() < epsilon ||
             df_residuals == 0
         {
-            (f64::NAN, f64::NAN, f64::NAN, f64::NAN)
+            (f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::NAN)
         } else {
             let t_val = final_b / param_robust_se;
-            let sig = calculate_t_significance(t_val, df_residuals);
+            let sig = calculate_t_significance(t_val.abs(), df_residuals);
             let t_critical_res = calculate_t_critical(Some(config.options.sig_level), df_residuals);
             let ci_width = param_robust_se * t_critical_res;
-            (t_val, sig, final_b - ci_width, final_b + ci_width)
+            let ci_lower_val = final_b - ci_width;
+            let ci_upper_val = final_b + ci_width;
+
+            let partial_eta_sq_val = if config.options.est_effect_size {
+                let t_sq = t_val.powi(2);
+                let den = t_sq + (df_residuals as f64);
+                if den.abs() > 1e-12 {
+                    (t_sq / den).max(0.0).min(1.0)
+                } else {
+                    0.0
+                }
+            } else {
+                f64::NAN
+            };
+
+            let (non_cent_param, obs_power) = if config.options.obs_power {
+                let non_cent_param_val = t_val.abs();
+                let obs_power_val = calculate_observed_power_t(
+                    t_val.abs(),
+                    df_residuals,
+                    Some(config.options.sig_level)
+                );
+                (non_cent_param_val, obs_power_val)
+            } else {
+                (f64::NAN, f64::NAN)
+            };
+
+            (t_val, sig, ci_lower_val, ci_upper_val, partial_eta_sq_val, non_cent_param, obs_power)
         };
 
         estimates.push(RobustParameterEstimateEntry {
@@ -338,6 +376,9 @@ pub fn calculate_robust_parameter_estimates(
                 upper_bound: ci_upper,
             },
             is_redundant,
+            partial_eta_squared,
+            noncent_parameter,
+            observed_power,
         });
     }
 

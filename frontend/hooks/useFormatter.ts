@@ -1,11 +1,22 @@
 import { Table } from "@/types/Table";
 
-export function formatDisplayNumber(num: number | undefined | null): string {
-    if (typeof num === "undefined") return "undefined";
-    if (num === null) return "null";
+export function formatSig(value: any) {
+    if (value === null || typeof value === "undefined" || isNaN(value)) {
+        return null;
+    }
+    if (value < 0.001) {
+        return "<.001";
+    }
+    return formatDisplayNumber(value);
+}
 
-    // Handle special values
-    if (isNaN(num)) return "NaN";
+export function formatDisplayNumber(
+    num: number | undefined | null
+): string | null {
+    if (typeof num === "undefined") return "undefined";
+    if (num === null || typeof num === "undefined" || isNaN(num)) {
+        return null;
+    }
     if (!isFinite(num)) return num > 0 ? "Infinity" : "-Infinity";
 
     // Treat values very close to zero as 0
@@ -14,7 +25,7 @@ export function formatDisplayNumber(num: number | undefined | null): string {
     }
 
     // Show scientific notation for very small or very large numbers
-    if (Math.abs(num) < 1e-4 || Math.abs(num) >= 1e5) {
+    if (Math.abs(num) < 1e-4 || Math.abs(num) >= 1e16) {
         return num.toExponential(3).toUpperCase();
     }
 
@@ -30,7 +41,6 @@ export function formatDisplayNumber(num: number | undefined | null): string {
     // For regular decimal numbers
     return num.toFixed(4).replace(/\.?0+$/, "");
 }
-
 
 // Helper function to ensure columnHeaders are sufficient for all rows
 export function ensureEnoughHeaders(table: Table): Table {

@@ -228,11 +228,7 @@ fn create_empty_results(
     source.insert("Corrected Total".to_string(), TestEffectEntry {
         sum_of_squares: ss_total_corrected,
         df: design_info.n_samples.saturating_sub(1),
-        mean_square: if design_info.n_samples > 1 {
-            ss_total_corrected / ((design_info.n_samples - 1) as f64)
-        } else {
-            0.0
-        },
+        mean_square: f64::NAN,
         f_value: f64::NAN,
         significance: f64::NAN,
         partial_eta_squared: f64::NAN,
@@ -428,11 +424,7 @@ fn add_model_summary_entries(
         current_source_map.insert("Corrected Total".to_string(), TestEffectEntry {
             sum_of_squares: ss_total_corrected,
             df: df_total,
-            mean_square: if df_total > 0 {
-                ss_total_corrected / (df_total as f64)
-            } else {
-                0.0
-            },
+            mean_square: f64::NAN,
             f_value: f64::NAN,
             significance: f64::NAN,
             partial_eta_squared: f64::NAN,
@@ -449,11 +441,7 @@ fn add_model_summary_entries(
         current_source_map.insert("Total".to_string(), TestEffectEntry {
             sum_of_squares: ss_total_uncorrected,
             df: df_total_uncorrected,
-            mean_square: if df_total_uncorrected > 0 {
-                ss_total_uncorrected / (df_total_uncorrected as f64)
-            } else {
-                0.0
-            },
+            mean_square: f64::NAN,
             f_value: f64::NAN,
             significance: f64::NAN,
             partial_eta_squared: f64::NAN,
@@ -533,11 +521,7 @@ fn add_model_summary_entries(
         current_source_map.insert("Total".to_string(), TestEffectEntry {
             sum_of_squares: ss_total,
             df: df_total,
-            mean_square: if df_total > 0 {
-                ss_total / (df_total as f64)
-            } else {
-                0.0
-            },
+            mean_square: f64::NAN,
             f_value: f64::NAN,
             significance: f64::NAN,
             partial_eta_squared: f64::NAN,

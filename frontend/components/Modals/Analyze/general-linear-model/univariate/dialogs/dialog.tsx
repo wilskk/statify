@@ -306,6 +306,7 @@ export const UnivariateDialog = ({
                                 <Button
                                     className="w-full"
                                     variant="outline"
+                                    disabled={true}
                                     onClick={openDialog(setIsPlotsOpen)}
                                 >
                                     Plots
@@ -313,6 +314,7 @@ export const UnivariateDialog = ({
                                 <Button
                                     className="w-full"
                                     variant="outline"
+                                    disabled={true}
                                     onClick={openDialog(setIsPostHocOpen)}
                                 >
                                     Post Hoc
@@ -341,6 +343,7 @@ export const UnivariateDialog = ({
                                 <Button
                                     className="w-full"
                                     variant="outline"
+                                    disabled={true}
                                     onClick={openDialog(setIsBootstrapOpen)}
                                 >
                                     Bootstrap

@@ -283,6 +283,9 @@ pub struct RobustParameterEstimateEntry {
     pub t_value: f64,
     pub significance: f64,
     pub confidence_interval: ConfidenceInterval,
+    pub partial_eta_squared: f64,
+    pub noncent_parameter: f64,
+    pub observed_power: f64,
     pub is_redundant: bool,
 }
 
@@ -400,6 +403,9 @@ pub struct ContrastTestResultEntry {
     pub mean_square: f64,
     pub f_value: f64,
     pub significance: f64,
+    pub partial_eta_squared: f64,
+    pub noncent_parameter: f64,
+    pub observed_power: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
