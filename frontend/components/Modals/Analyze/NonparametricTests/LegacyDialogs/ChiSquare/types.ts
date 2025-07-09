@@ -200,8 +200,6 @@ export interface DescriptiveStatistics {
 // Chi Square Result
 export interface ChiSquareResult {
   variable: Variable;
-  displayStatistics?: DisplayStatisticsOptions;
-  specifiedRange?: boolean;
   stats: Frequencies | TestStatistics | DescriptiveStatistics;
 } 
 

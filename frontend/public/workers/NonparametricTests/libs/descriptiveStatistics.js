@@ -19,6 +19,9 @@ class DescriptiveStatisticsCalculator {
         this.data = data;
         this.options = options;
         this.initialized = false;
+
+        // Ekstrak opsi dari options
+        this.displayStatistics = options.displayStatistics || { descriptive: false, quartiles: false };
         
         // Properti yang akan dihitung
         this.validData = [];

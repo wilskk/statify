@@ -178,7 +178,6 @@ export interface IndependentSamplesEffectSizeStatistics {
 // IndependentSamplesTTest Analysis Result
 export interface IndependentSamplesTTestResult {
     variable: Variable;
-    groupingVariable?: Variable;
     stats: GroupStatistics | IndependentSamplesTest | IndependentSamplesEffectSizeStatistics;
 }
   

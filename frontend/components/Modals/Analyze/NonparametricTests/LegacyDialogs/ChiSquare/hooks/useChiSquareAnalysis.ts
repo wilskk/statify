@@ -90,7 +90,7 @@ export const useChiSquareAnalysis = ({
         });
 
         worker.onmessage = async (event) => {
-            const { variableName, results, status, error: workerError, specifiedRange, displayStatistics } = event.data;
+            const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
                 if (results.descriptiveStatistics) {
@@ -99,7 +99,6 @@ export const useChiSquareAnalysis = ({
                     if (variable && N && Mean && StdDev && Min && Max && Percentile25 && Percentile50 && Percentile75) {
                         resultsRef.current.push({
                             variable,
-                            displayStatistics,
                             stats: {
                                 N,
                                 Mean,
@@ -125,7 +124,6 @@ export const useChiSquareAnalysis = ({
                     if (variable && categoryList && observedN && expectedN && residual && N) {
                         resultsRef.current.push({
                             variable,
-                            specifiedRange,
                             stats: {
                                 categoryList,
                                 observedN,
@@ -147,13 +145,13 @@ export const useChiSquareAnalysis = ({
 
                     if (variable && ChiSquare !== undefined && DF !== undefined && PValue !== undefined) {
                         resultsRef.current.push({
-                          variable,
-                          stats: {
+                        variable,
+                        stats: {
                             ChiSquare,
                             DF,
                             PValue
-                          }
-                      });
+                        }
+                    });
                     } else {
                         console.error(`Error processing test statistics for ${variableName}:`, workerError);
                         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
@@ -187,7 +185,7 @@ export const useChiSquareAnalysis = ({
 
                         // Format tables
                         const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results, displayStatistics);
-                        const formattedFrequenciesTable = formatFrequenciesTable(results, specifiedRange);
+                        const formattedFrequenciesTable = formatFrequenciesTable(results, expectedRange.useSpecifiedRange);
                         const formattedTestStatisticsTable = formatTestStatisticsTable(results);
                       
                         console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));

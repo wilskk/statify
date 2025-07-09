@@ -1,13 +1,13 @@
 "use client";
 
-import React, { FC, useState, useEffect, useCallback } from "react";
+import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { HelpCircle, Loader2 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
-    Dialog
 } from "@/components/ui/dialog";
 import {
     Tabs,
@@ -15,21 +15,35 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import type { Variable } from "@/types/Variable";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useVariableStore } from "@/stores/useVariableStore";
 import { BaseModalProps } from "@/types/modalTypes";
-
-import VariablesTab from "./VariablesTab";
-import OptionsTab from "./OptionsTab";
-import { DefineGroupsDialog } from "./dialogs/DefineGroupsDialog";
-import { 
+import {
     useVariableSelection,
-    useTwoIndependentSamplesAnalysis
+    useTestSettings,
+    useTwoIndependentSamplesAnalysis,
+    useTourGuide,
+    baseTourSteps,
 } from "./hooks";
-import { HighlightedVariable } from "./types";
+import {
+    TabControlProps,
+    TabType,
+} from "./types";
+
+import VariablesTab from "./components/VariablesTab";
+import OptionsTab from "./components/OptionsTab";
 
 // Komponen konten yang digunakan baik untuk sidebar maupun dialog
-const TwoIndependentSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
+const TwoIndependentSamplesContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState<"variables" | "options">("variables");
+    const isVariablesLoading = useVariableStore((state: any) => state.isLoading);
+    const variablesError = useVariableStore((state: any) => state.error);
 
     const {
         availableVariables,
@@ -37,83 +51,31 @@ const TwoIndependentSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
         groupingVariable,
         highlightedVariable,
         setHighlightedVariable,
-        moveToTestVariable,
+        moveToTestVariables,
         moveToGroupingVariable,
         moveToAvailableVariables,
         reorderVariables,
         resetVariableSelection
     } = useVariableSelection();
 
-    const [showDefineGroupsModal, setShowDefineGroupsModal] = useState<boolean>(false);
-    const [group1, setGroup1] = useState<number | null>(null);
-    const [group2, setGroup2] = useState<number | null>(null);
-    const [tempGroup1, setTempGroup1] = useState<number | null>(null);
-    const [tempGroup2, setTempGroup2] = useState<number | null>(null);
-    const [groupRangeError, setGroupRangeError] = useState<string | null>(null);
-    
-    const [testType, setTestType] = useState({
-        mannWhitneyU: true,
-        mosesExtremeReactions: false,
-        kolmogorovSmirnovZ: false,
-        waldWolfowitzRuns: false
-    });
+    const {
+        group1,
+        setGroup1,
+        group2,
+        setGroup2,
+        testType,
+        setTestType,
+        displayStatistics,
+        setDisplayStatistics,
+        resetTestSettings
+    } = useTestSettings();
 
-    const [displayStatistics, setDisplayStatistics] = useState({
-        descriptive: false,
-        quartiles: false,
-    });
-
-    // Initialize temp values when modal is shown
-    useEffect(() => {
-        if (showDefineGroupsModal) {
-            setTempGroup1(group1);
-            setTempGroup2(group2);
-        }
-    }, [showDefineGroupsModal, group1, group2]);
-
-    // Handle variable selection
-    const handleVariableSelect = useCallback((variable: Variable, source: 'available' | 'selected' | 'grouping') => {
-        if (!variable) return;
-        setHighlightedVariable(variable.columnIndex ? { tempId: variable.columnIndex.toString(), source } : null);
-    }, [setHighlightedVariable]);
-
-    // Handle variable movement between lists
-    const handleVariableDoubleClick = useCallback((variable: Variable, source: 'available' | 'selected' | 'grouping') => {
-        if (!variable) return;
-
-        // Different handling based on source
-        switch (source) {
-            case 'available':
-                // Determine if it should go to test variables or grouping variable
-                if (!groupingVariable) {
-                    // Ask user if they want to use it as a grouping variable
-                    const useAsGrouping = window.confirm(`Use ${variable.name} as grouping variable?`);
-                    if (useAsGrouping) {
-                        moveToGroupingVariable(variable);
-                    } else {
-                        moveToTestVariable(variable);
-                    }
-                } else {
-                    // Already have a grouping variable, so add to test variables
-                    moveToTestVariable(variable);
-                }
-                break;
-                
-            case 'selected':
-                // Move from test variables to available
-                moveToAvailableVariables(variable, 'selected');
-                break;
-                
-            case 'grouping':
-                // Move from grouping to available
-                if (groupingVariable && groupingVariable.columnIndex === variable.columnIndex) {
-                    moveToAvailableVariables(variable, 'grouping');
-                }
-                break;
-        }
-    }, [groupingVariable, moveToTestVariable, moveToGroupingVariable, moveToAvailableVariables]);
-
-    const { isLoading, errorMsg, runAnalysis, cancelAnalysis } = useTwoIndependentSamplesAnalysis({
+    const { 
+        isCalculating,
+        errorMsg, 
+        runAnalysis,
+        cancelCalculation
+    } = useTwoIndependentSamplesAnalysis({
         testVariables,
         groupingVariable,
         group1,
@@ -123,98 +85,81 @@ const TwoIndependentSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
         onClose
     });
 
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (cancelAnalysis) {
-                cancelAnalysis();
-            }
-        };
-    }, [cancelAnalysis]);
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab: (tab: string) => {
+            setActiveTab(tab as TabType);
+        },
+        currentActiveTab: activeTab
+    }), [activeTab]);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour
+    } = useTourGuide(baseTourSteps, containerType, tabControl);
+
+    const handleReset = useCallback(() => {
+        resetVariableSelection();
+        resetTestSettings();
+        cancelCalculation();
+    }, [resetVariableSelection, resetTestSettings, cancelCalculation]);
 
     const handleTabChange = useCallback((value: string) => {
         if (value === 'variables' || value === 'options') {
-            setActiveTab(value as "variables" | "options");
+            setActiveTab(value);
         }
     }, [setActiveTab]);
 
-    const handleReset = () => {
-        resetVariableSelection();
-        setTestType({
-            mannWhitneyU: true,
-            mosesExtremeReactions: false,
-            kolmogorovSmirnovZ: false,
-            waldWolfowitzRuns: false
-        });
-        setDisplayStatistics({
-            descriptive: false,
-            quartiles: false,
-        });
-        setGroup1(null);
-        setGroup2(null);
-        setGroupRangeError(null);
-    };
+    useEffect(() => {
+        return () => {
+            cancelCalculation();
+        };
+    }, [cancelCalculation]);
 
-    // Apply changes from Define Groups dialog
-    const applyDefineGroups = () => {
-        if (tempGroup1 !== null && !Number.isInteger(tempGroup1)) {
-            setGroupRangeError("Group 1 value must be an integer");
-            return;
-        }
-        
-        if (tempGroup2 !== null && !Number.isInteger(tempGroup2)) {
-            setGroupRangeError("Group 2 value must be an integer");
-            return;
-        }
-        
-        // Ensure values are integers by rounding them
-        const group1Value = tempGroup1 !== null ? Math.floor(tempGroup1) : null;
-        const group2Value = tempGroup2 !== null ? Math.floor(tempGroup2) : null;
-        
-        setGroup1(group1Value);
-        setGroup2(group2Value);
-        setShowDefineGroupsModal(false);
-    };
-
-    return (
-        <>
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="options"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Options
-                        </TabsTrigger>
-                    </TabsList>
+    const renderContent = () => {
+        if (isVariablesLoading) {
+            return (
+                <div className="flex items-center justify-center p-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Loading variables...</span>
                 </div>
+            );
+        }
 
+        if (variablesError) {
+            return (
+                <div className="p-10 text-destructive text-center">
+                    <p>Error loading variables:</p>
+                    <p className="text-sm">{variablesError.message}</p>
+                </div>
+            )
+        }
+
+        return (
+            <>
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
                         availableVariables={availableVariables}
                         testVariables={testVariables}
                         groupingVariable={groupingVariable}
                         group1={group1}
+                        setGroup1={setGroup1}
                         group2={group2}
+                        setGroup2={setGroup2}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
-                        testType={testType}
-                        setTestType={setTestType}
-                        handleVariableSelect={handleVariableSelect}
-                        handleVariableDoubleClick={handleVariableDoubleClick}
-                        handleDefineGroupsClick={() => setShowDefineGroupsModal(true)}
-                        moveToAvailableVariables={moveToAvailableVariables}
-                        moveToTestVariable={moveToTestVariable}
+                        moveToTestVariables={moveToTestVariables}
                         moveToGroupingVariable={moveToGroupingVariable}
+                        moveToAvailableVariables={moveToAvailableVariables}
                         reorderVariables={reorderVariables}
-                        errorMsg={errorMsg}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -222,99 +167,137 @@ const TwoIndependentSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
                     <OptionsTab
                         displayStatistics={displayStatistics}
                         setDisplayStatistics={setDisplayStatistics}
+                        testType={testType}
+                        setTestType={setTestType}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
+            </>
+        );
+    }
+
+    return (
+        <>
+            <AnimatePresence>
+                {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
+
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList>
+                        <TabsTrigger
+                            id="variables-tab-trigger"
+                            value="variables"
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            id="options-tab-trigger"
+                            value="options"
+                        >
+                            Options
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                {renderContent()}
             </Tabs>
-            
-            <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={runAnalysis}
-                        disabled={
-                            isLoading ||
-                            testVariables.length < 1 ||
-                            !groupingVariable ||
-                            !group1 ||
-                            !group2 ||
-                            (
-                                testType.mannWhitneyU === false &&
-                                testType.mosesExtremeReactions === false &&
-                                testType.kolmogorovSmirnovZ === false &&
-                                testType.waldWolfowitzRuns === false
-                            )
-                        }
-                    >
-                        {isLoading ? "Calculating..." : "OK"}
-                    </Button>
+
+            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
+
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div className="flex items-center text-muted-foreground">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+
+                <div>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="mr-2"
                         onClick={handleReset}
-                        disabled={isLoading}
+                        disabled={isCalculating}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="mr-2"
                         onClick={onClose}
-                        disabled={isLoading}
+                        disabled={isCalculating}
                     >
                         Cancel
                     </Button>
+                    <Button
+                        id="independent-samples-t-test-ok-button"
+                        onClick={runAnalysis}
+                        disabled={
+                            isCalculating ||
+                            testVariables.length < 1 ||
+                            !groupingVariable ||
+                            !group1 ||
+                            !group2 ||
+                            testType.mannWhitneyU === false && testType.kolmogorovSmirnovZ === false
+                        }
+                    >
+                        {isCalculating ? "Processing..." : "OK"}
+                    </Button>
                 </div>
             </div>
-
-            {/* Define Groups Dialog */}
-            <DefineGroupsDialog
-                open={showDefineGroupsModal}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setShowDefineGroupsModal(false);
-                        // Reset temp values to current values when closing
-                        setTempGroup1(group1);
-                        setTempGroup2(group2);
-                    }
-                }}
-                tempGroup1={tempGroup1}
-                setTempGroup1={setTempGroup1}
-                tempGroup2={tempGroup2}
-                setTempGroup2={setTempGroup2}
-                groupRangeError={groupRangeError}
-                setGroupRangeError={setGroupRangeError}
-                onApply={applyDefineGroups}
-            />
         </>
     );
 };
 
-// Main component that handles rendering based on containerType
-const Index: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
-    // If sidebar mode, use div container without header
+const TwoIndependentSamples: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <TwoIndependentSamplesContent onClose={onClose} />
+                    <TwoIndependentSamplesContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
     }
 
-    // For dialog mode, use Dialog and DialogContent
     return (
-        <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[800px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Two-Independent-Samples Tests</DialogTitle>
-                </DialogHeader>
-                <div className="flex-grow flex flex-col overflow-hidden">
-                    <TwoIndependentSamplesContent onClose={onClose} />
-                </div>
-            </DialogContent>
-        </Dialog>
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Two Independent Samples</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <TwoIndependentSamplesContent onClose={onClose} containerType={containerType} {...props} />
+            </div>
+        </DialogContent>
     );
 };
 
-export default Index;
+export default TwoIndependentSamples;
+export { TwoIndependentSamplesContent };

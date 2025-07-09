@@ -88,7 +88,7 @@ export const useRunsAnalysis = ({
     });
 
     worker.onmessage = async (event) => {
-      const { variableName, results, status, error: workerError, displayStatistics, cutPoint, customValue } = event.data;
+      const { variableName, results, status, error: workerError } = event.data;
 
       if (status === 'success' && results) {
         if (results.descriptiveStatistics) {
@@ -98,7 +98,6 @@ export const useRunsAnalysis = ({
           if (variable && N && Mean && StdDev && Min && Max && Percentile25 && Percentile50 && Percentile75) {
             resultsRef.current.push({
               variable,
-              displayStatistics,
               stats: {
                 N,
                 Mean,
@@ -304,7 +303,7 @@ export const useRunsAnalysis = ({
                   cutPointType = "Mean";
                 } else if (table.title.includes("(Mode)")) {
                   cutPointType = "Mode";
-                } else if (table.title.includes("(Custom)")) {
+                } else if (table.title.includes(`Custom (${customValue})`)) {
                   cutPointType = `Custom (${customValue})`;
                 }
                 

@@ -1,187 +1,217 @@
-import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
+import { Variable } from "@/types/Variable";
 import { Dispatch, SetStateAction } from "react";
+import { TourStep as BaseTourStep } from '@/types/tourTypes';
+import { BaseModalProps } from "@/types/modalTypes";
 
 // ---------------------------------
-// Define Groups Options
+// Constants
 // ---------------------------------
-export interface DefineGroupsOptions {
-    group1: number | null;
-    group2: number | null;
-}
 
-// ---------------------------------
-// Test Settings Types
-// ---------------------------------
-export interface TwoIndependentSamplesOptions {
-    testType: {
-        mannWhitneyU: boolean;
-        mosesExtremeReactions: boolean;
-        kolmogorovSmirnovZ: boolean;
-        waldWolfowitzRuns: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
-}
-
-// ---------------------------------
-// Variable Selection Types
-// ---------------------------------
-export type HighlightedVariable = {
-    tempId: string;
-    source: 'available' | 'selected' | 'grouping';
+// Tab Constants
+export const TABS = {
+    VARIABLES: 'variables' as const,
+    OPTIONS: 'options' as const,
 };
 
+// ---------------------------------
+// Type
+// ---------------------------------
+
+// Tab Type
+export type TabType = typeof TABS.VARIABLES | typeof TABS.OPTIONS;
+
+// TourStep Type
+export type TourStep = BaseTourStep & {
+    requiredTab?: TabType | string;
+    forceChangeTab?: boolean;
+};
+
+// Highlighted Variable
+export type HighlightedVariable = {
+  tempId: string;
+  source: 'available' | 'test' | 'grouping';
+};
+
+// Test Type
+export type TestType = {
+    mannWhitneyU: boolean;
+    mosesExtremeReactions: boolean;
+    kolmogorovSmirnovZ: boolean;
+    waldWolfowitzRuns: boolean;
+};
+
+// Display Statistics Options
+export interface DisplayStatisticsOptions {
+    descriptive: boolean;
+    quartiles: boolean;
+}
+
+// ---------------------------------
+// Props
+// ---------------------------------
+
+// TabControl Props
+export interface TabControlProps {
+    setActiveTab: (tab: 'variables' | 'options') => void;
+    currentActiveTab: string;
+}
+
+// VariablesTab Props
 export interface VariablesTabProps {
     availableVariables: Variable[];
     testVariables: Variable[];
     groupingVariable: Variable | null;
     group1: number | null;
+    setGroup1: Dispatch<SetStateAction<number | null>>;
     group2: number | null;
+    setGroup2: Dispatch<SetStateAction<number | null>>;
     highlightedVariable: HighlightedVariable | null;
     setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-    testType: {
-        mannWhitneyU: boolean;
-        mosesExtremeReactions: boolean;
-        kolmogorovSmirnovZ: boolean;
-        waldWolfowitzRuns: boolean;
-    };
-    setTestType: Dispatch<SetStateAction<{
-        mannWhitneyU: boolean;
-        mosesExtremeReactions: boolean;
-        kolmogorovSmirnovZ: boolean;
-        waldWolfowitzRuns: boolean;
-    }>>;
-    handleVariableSelect: (variable: Variable, source: 'available' | 'selected' | 'grouping') => void;
-    handleVariableDoubleClick: (variable: Variable, source: 'available' | 'selected' | 'grouping') => void;
-    handleDefineGroupsClick: () => void;
-    moveToAvailableVariables: (variable: Variable, source: 'selected' | 'grouping', targetIndex?: number) => void;
-    moveToTestVariable: (variable: Variable, targetIndex?: number) => void;
-    moveToGroupingVariable: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables: (source: 'selected', variables: Variable[]) => void;
-    errorMsg: string | null;
-    containerType?: "dialog" | "sidebar";
+    moveToAvailableVariables: (variable: Variable) => void;
+    moveToTestVariables: (variable: Variable, targetIndex?: number) => void;
+    moveToGroupingVariable: (variable: Variable) => void;
+    reorderVariables: (source: 'available' | 'test', variables: Variable[]) => void;
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
-// === Analysis Params ===
-export interface TwoIndependentSamplesAnalysisParams extends Pick<BaseModalProps, 'onClose'> {
-    testVariables: Variable[];
-    groupingVariable: Variable | null;
-    group1: number | null;
-    group2: number | null;
-    testType: {
-        mannWhitneyU: boolean;
-        mosesExtremeReactions: boolean;
-        kolmogorovSmirnovZ: boolean;
-        waldWolfowitzRuns: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
+// OptionsTab Props
+export interface OptionsTabProps {
+    testType: TestType;
+    setTestType: Dispatch<SetStateAction<TestType>>;
+    displayStatistics: DisplayStatisticsOptions;
+    setDisplayStatistics: Dispatch<SetStateAction<DisplayStatisticsOptions>>;
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
-// === Results Types ===
-export interface TwoIndependentSamplesResults {
-    descriptives?: any;
-    ranks?: any;
-    mannWhitneyU?: any;
-    kolmogorovSmirnovZFrequencies?: any;
-    kolmogorovSmirnovZ?: any;
+// TestSettings Props
+export interface TestSettingsProps {
+    initialGroup1?: number | null;
+    initialGroup2?: number | null;
+    initialTestType?: TestType;
+    initialDisplayStatistics?: DisplayStatisticsOptions;
 }
 
-// === Worker Types ===
-export interface WorkerInput {
-    variableData: {
-        variable: import('@/types/Variable').Variable;
-        data: any[];
-    }[];
-    groupData: {
-        variable: import('@/types/Variable').Variable;
-        data: any[];
-    };
-    group1: number | null;
-    group2: number | null;
-    testType: {
-        mannWhitneyU: boolean;
-        mosesExtremeReactions: boolean;
-        kolmogorovSmirnovZ: boolean;
-        waldWolfowitzRuns: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
-}
-
-export interface WorkerCalculationPromise {
-    resolve: (result: TwoIndependentSamplesResults) => void;
-    reject: (reason: any) => void;
-}
-
-export interface TwoIndependentSamplesWorkerResult {
-    success: boolean;
-    descriptives?: any;
-    ranks?: any;
-    mannWhitneyU?: any;
-    kolmogorovSmirnovZFrequencies?: any;
-    kolmogorovSmirnovZ?: any;
-    error?: string;
-    testType: {
-        mannWhitneyU: boolean;
-        mosesExtremeReactions: boolean;
-        kolmogorovSmirnovZ: boolean;
-        waldWolfowitzRuns: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
-}
-
-// ---------------------------------
-// Hook Props and Results
-// ---------------------------------
+// VariableSelection Props
 export interface VariableSelectionProps {
     initialVariables?: Variable[];
 }
 
-export interface VariableSelectionResult {
-    availableVariables: Variable[];
+// TwoIndependentSamplesTestAnalysis Props
+export interface TwoIndependentSamplesTestAnalysisProps extends Pick<BaseModalProps, 'onClose'> {
     testVariables: Variable[];
     groupingVariable: Variable | null;
-    highlightedVariable: HighlightedVariable | null;
-    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-    moveToTestVariable: (variable: Variable, targetIndex?: number) => void;
-    moveToGroupingVariable: (variable: Variable) => void;
-    moveToAvailableVariables: (variable: Variable, source: 'selected' | 'grouping', targetIndex?: number) => void;
-    reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
-    resetVariableSelection: () => void;
+    group1: number | null;
+    group2: number | null;
+    testType: TestType;
+    displayStatistics: DisplayStatisticsOptions;
 }
 
-// For data fetching hook
-export interface DataFetchingResult {
-    fetchData: (testVariables: Variable[], groupingVariable: Variable) => Promise<{
-        variableData: {
-            variable: Variable;
-            data: any;
-        }[];
-        groupData: {
-            variable: Variable;
-            data: any;
-        };
-    }>;
-    isLoading: boolean;
-    error?: string;
-    clearError: () => void;
+// ---------------------------------
+// Result
+// ---------------------------------
+
+// UseTourGuide Result
+export interface UseTourGuideResult {
+    tourActive: boolean;
+    currentStep: number;
+    tourSteps: TourStep[];
+    currentTargetElement: HTMLElement | null;
+    startTour: () => void;
+    nextStep: () => void;
+    prevStep: () => void;
+    endTour: () => void;
 }
 
-// For worker communication
-export interface TwoIndependentSamplesWorkerInterface {
-    calculate: (data: WorkerInput) => Promise<TwoIndependentSamplesResults>;
-    isCalculating: boolean;
-    error?: string;
-    cancelCalculation: () => void;
-} 
+// Frequencies
+export interface FrequenciesRanks {
+    group1: {
+        label: string;
+        N: number;
+        MeanRank?: number;
+        SumRanks?: number;
+    };
+    group2: {
+        label: string;
+        N: number;
+        MeanRank?: number;
+        SumRanks?: number;
+    };
+}
+
+// KolmogorovSmirnovZ Test Statistics
+export interface KolmogorovSmirnovZTestStatistics {
+    D_absolute: number;
+    D_positive: number;
+    D_negative: number;
+    d_stat: number;
+    pValue: number;
+}
+
+// Mann-Whitney U Test Statistics
+export interface MannWhitneyUTestStatistics {
+    U: number;
+    W: number;
+    Z: number;
+    pValue: number;
+    pExact: number;
+    showExact: boolean;
+}
+  
+// Test Statistics
+export interface TestStatistics {
+    KolmogorovSmirnovZ?: KolmogorovSmirnovZTestStatistics;
+    MannWhitneyU?: MannWhitneyUTestStatistics;
+}
+  
+// Descriptive Statistics
+export interface DescriptiveStatistics {
+    N: number;
+    Mean?: number;
+    StdDev?: number;
+    Min?: number;
+    Max?: number;
+    Percentile25?: number;
+    Percentile50?: number;
+    Percentile75?: number;
+  }
+  
+// Two Independent Samples Test Result
+export interface TwoIndependentSamplesTestResult {
+    variable: Variable;
+    descriptiveStatistics?: DescriptiveStatistics;
+    frequenciesRanks?: FrequenciesRanks;
+    testStatisticsMannWhitneyU?: MannWhitneyUTestStatistics;
+    testStatisticsKolmogorovSmirnovZ?: KolmogorovSmirnovZTestStatistics;
+}
+  
+  // Two Independent Samples Test Results Collection
+  export interface TwoIndependentSamplesTestResults {
+    frequenciesRanks?: TwoIndependentSamplesTestResult[];
+    testStatisticsMannWhitneyU?: TwoIndependentSamplesTestResult[];
+    testStatisticsKolmogorovSmirnovZ?: TwoIndependentSamplesTestResult[];
+    descriptiveStatistics?: TwoIndependentSamplesTestResult[];
+  }
+  
+  // ---------------------------------
+  // Table Types
+  // ---------------------------------
+  export interface TableColumnHeader {
+    header: string;
+    key: string;
+    children?: TableColumnHeader[];
+  }
+  
+  export interface TableRow {
+    [key: string]: any;
+    rowHeader?: any[];
+  }
+  
+  export interface TwoIndependentSamplesTestTable {
+    title: string;
+    columnHeaders: TableColumnHeader[];
+    rows: TableRow[];
+  }

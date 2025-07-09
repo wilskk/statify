@@ -14,7 +14,7 @@
 import './libs/utils.js';
 import './libs/chiSquare.js';
 import './libs/runs.js';
-// import './libs/twoIndependentSamples.js';
+import './libs/twoIndependentSamples.js';
 // import './libs/twoRelatedSamples.js';
 // import './libs/kIndependentSamples.js';
 // import './libs/kRelatedSamples.js';
@@ -24,7 +24,7 @@ import './libs/descriptiveStatistics.js';
 const calculators = {
     chiSquare: ChiSquareCalculator,
     runs: RunsCalculator,
-    // twoIndependentSamples: TwoIndependentSamplesCalculator,
+    twoIndependentSamples: TwoIndependentSamplesCalculator,
     // twoRelatedSamples: TwoRelatedSamplesCalculator,
     // kIndependentSamples: KIndependentSamplesCalculator,
     // kRelatedSamples: KRelatedSamplesCalculator,
@@ -36,13 +36,15 @@ const calculators = {
  * @param {MessageEvent} event - Event pesan yang diterima.
  */
 onmessage = (event) => {
-    const { analysisType, variable, data, options } = event.data;
+    const { analysisType, variable, data, groupingVariable, groupingData, options } = event.data;
 
     // --- Start of Debugging ---
-    console.log(`[Worker] Received analysis request: ${analysisType}`);
-    console.log('[Worker] Received variable:', JSON.parse(JSON.stringify(variable)));
-    console.log('[Worker] Received data (first 5 rows):', data ? data.slice(0, 5) : 'No data');
-    console.log('[Worker] Received options:', JSON.parse(JSON.stringify(options || {})));
+    console.log('[Worker] Received analysis request:', JSON.stringify(analysisType));
+    console.log('[Worker] Received variable:', JSON.stringify(variable));
+    console.log('[Worker] Received data (first 5 rows):', data ? JSON.stringify(data.slice(0, 5)) : 'No data');
+    console.log('[Worker] Received grouping variable:', JSON.stringify(groupingVariable));
+    console.log('[Worker] Received grouping data:', JSON.stringify(groupingData));
+    console.log('[Worker] Received options:', JSON.stringify(options || {}));
     // --- End of Debugging ---
 
     try {
@@ -77,7 +79,6 @@ onmessage = (event) => {
                 console.log('[Worker] Chi Square Results:', JSON.stringify(calculator.getOutput().testStatistics));
                 results.frequencies = calculator.getOutput().frequencies;
                 results.testStatistics = calculator.getOutput().testStatistics;
-
             } else if (type === 'runs') {
                 calculator = new CalculatorClass({ 
                     variable, 
@@ -86,9 +87,28 @@ onmessage = (event) => {
                 });
 
                 console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Cut Point Results:', JSON.stringify(calculator.getOutput().cutPoint));
+                console.log('[Worker] Custom Value Results:', JSON.stringify(calculator.getOutput().customValue));
                 console.log('[Worker] Runs Results:', JSON.stringify(calculator.getOutput().runsTest));
+                results.cutPoint = calculator.getOutput().cutPoint;
+                results.customValue = calculator.getOutput().customValue;
                 results.runsTest = calculator.getOutput().runsTest;
-            
+            } else if (type === 'twoIndependentSamples') {
+                calculator = new CalculatorClass({ 
+                    variable, 
+                    data, 
+                    groupingVariable,
+                    groupingData,
+                    options 
+                });
+
+                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Two Independent Samples Results:', JSON.stringify(calculator.getOutput().frequenciesRanks));
+                console.log('[Worker] Two Independent Samples Results:', JSON.stringify(calculator.getOutput().testStatisticsMannWhitneyU));
+                console.log('[Worker] Two Independent Samples Results:', JSON.stringify(calculator.getOutput().testStatisticsKolmogorovSmirnovZ));
+                results.frequenciesRanks = calculator.getOutput().frequenciesRanks;
+                results.testStatisticsMannWhitneyU = calculator.getOutput().testStatisticsMannWhitneyU;
+                results.testStatisticsKolmogorovSmirnovZ = calculator.getOutput().testStatisticsKolmogorovSmirnovZ;
             // } else if (['twoIndependentSamples', 'kIndependentSamples'].includes(analysisType)) {
             //     calculator = new CalculatorClass({ 
             //         variable, 
@@ -118,26 +138,11 @@ onmessage = (event) => {
 
         console.log('[Worker] Final results:', JSON.stringify(results));
 
-        let postMessageBody = {
+        postMessage({
             status: 'success',
             variableName: variable.name || 'unknown',
             results: results,
-        }
-
-        if (analysisType.includes('descriptiveStatistics')) {
-            postMessageBody.displayStatistics = options?.displayStatistics;
-        }
-
-        if (analysisType.includes('chiSquare')) {
-            postMessageBody.specifiedRange = options?.expectedRange?.useSpecifiedRange;
-        }
-
-        if (analysisType.includes('runs')) {
-            postMessageBody.cutPoint = options?.cutPoint;
-            postMessageBody.customValue = options?.customValue;
-        }
-
-        postMessage(postMessageBody);
+        });
 
     } catch (error) {
         console.error(`[Worker] Error dalam worker untuk variabel ${variable?.name || 'unknown'}:`, error);

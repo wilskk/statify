@@ -16,6 +16,7 @@ import {
  */
 export function formatGroupStatisticsTable(
     results: IndependentSamplesTTestResults,
+    groupingVariableLabel: string
 ): IndependentSamplesTTestTable {
     if (!results || !results.groupStatistics || results.groupStatistics.length === 0) {
         return {
@@ -25,7 +26,7 @@ export function formatGroupStatisticsTable(
         };
     }
 
-    const label = results.groupStatistics?.[0]?.groupingVariable?.label || results.groupStatistics?.[0]?.groupingVariable?.name || '';
+    const label = groupingVariableLabel || '';
 
     const table: IndependentSamplesTTestTable = {
         title: 'Group Statistics',

@@ -285,7 +285,7 @@ class ChiSquareCalculator {
     getOutput() {
         const frequencies = this.getFrequencies();
         const testStatistics = this.getTestStatistics();
-        
+
         return {
             frequencies,
             testStatistics

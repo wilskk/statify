@@ -101,12 +101,11 @@ export const useIndependentSamplesTTestAnalysis = ({
 
             if (status === 'success' && results) {
                 if (results.groupStatistics) {
-                    const { variable, groupingVariable, group1, group2 } = results.groupStatistics;
+                    const { variable, group1, group2 } = results.groupStatistics;
 
-                    if (variable && groupingVariable && group1 && group2) {
+                    if (variable && group1 && group2) {
                         resultsRef.current.push({
                             variable,
-                            groupingVariable,
                             stats: {
                                 group1,
                                 group2
@@ -178,7 +177,7 @@ export const useIndependentSamplesTTestAnalysis = ({
                         };
 
                         // Format tables
-                        const formattedGroupStatisticsTable = formatGroupStatisticsTable(results);
+                        const formattedGroupStatisticsTable = formatGroupStatisticsTable(results, groupingVariable.label || groupingVariable.name);
                         const formattedIndependentSamplesTestTable = formatIndependentSamplesTestTable(results);
                         // const formattedIndependentSamplesEffectSizeTable = formatEffectSizeTable(results);
 

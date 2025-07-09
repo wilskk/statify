@@ -263,7 +263,9 @@ class RunsCalculator {
     getOutput() {
         const runsTest = this.getRunsTest();
 
-        return { runsTest };
+        return {
+            runsTest
+        };
     }
 }
 
