@@ -223,7 +223,10 @@ pub fn calculate_emmeans(
                     l_label: vec!["Grand Mean".to_string()],
                     l_matrix: vec![grand_mean_l_vector],
                     contrast_information: vec!["L-Matrix for Grand Mean".to_string()],
-                    notes: vec!["Defines the overall estimated grand mean.".to_string()],
+                    note: Some("Defines the overall estimated grand mean.".to_string()),
+                    interpretation: Some(
+                        "This L-vector calculates the grand mean of the model, averaging over all factor levels and using the mean of covariates.".to_string()
+                    ),
                 });
             }
             continue;
@@ -237,10 +240,13 @@ pub fn calculate_emmeans(
             .collect();
 
         if current_spec_factors.is_empty() && factor_spec_emmeans != "Intercept" {
-            // Handle kasus di mana spesifikasi bukan faktor (misalnya, nama kovariat)
+            // Handle case where the specification is not a factor (e.g., a covariate name)
             emmeans_estimates_list.push(EMMeansEstimates {
                 entries: Vec::new(),
-                notes: vec![format!("No level combinations for {}", factor_spec_emmeans)],
+                note: Some(format!("No level combinations for {}", factor_spec_emmeans)),
+                interpretation: Some(
+                    "The specified term is not a factor or has no levels, so no estimates can be calculated.".to_string()
+                ),
             });
             if config.options.coefficient_matrix {
                 emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
@@ -250,7 +256,10 @@ pub fn calculate_emmeans(
                     contrast_information: vec![
                         format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)
                     ],
-                    notes: vec![format!("No level combinations for {}.", factor_spec_emmeans)],
+                    note: Some(format!("No level combinations for {}.", factor_spec_emmeans)),
+                    interpretation: Some(
+                        "No L-vectors could be generated as there are no factor levels for the specified term.".to_string()
+                    ),
                 });
             }
             continue;
@@ -265,7 +274,10 @@ pub fn calculate_emmeans(
             Ok(combos) if combos.is_empty() => {
                 emmeans_estimates_list.push(EMMeansEstimates {
                     entries: Vec::new(),
-                    notes: vec![format!("No level combinations for {}", factor_spec_emmeans)],
+                    note: Some(format!("No level combinations for {}", factor_spec_emmeans)),
+                    interpretation: Some(
+                        "The specified term is not a factor or has no levels, so no estimates can be calculated.".to_string()
+                    ),
                 });
                 if config.options.coefficient_matrix {
                     emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
@@ -275,7 +287,10 @@ pub fn calculate_emmeans(
                         contrast_information: vec![
                             format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)
                         ],
-                        notes: vec![format!("No level combinations for {}.", factor_spec_emmeans)],
+                        note: Some(format!("No level combinations for {}.", factor_spec_emmeans)),
+                        interpretation: Some(
+                            "No L-vectors could be generated as there are no factor levels for the specified term.".to_string()
+                        ),
                     });
                 }
                 continue;
@@ -331,9 +346,12 @@ pub fn calculate_emmeans(
                 contrast_information: vec![
                     format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)
                 ],
-                notes: vec![
+                note: Some(
                     format!("Defines the EMMs for {}. Each row is an L-vector.", factor_spec_emmeans)
-                ],
+                ),
+                interpretation: Some(
+                    "These L-vectors are the linear combinations of model parameters used to calculate the Estimated Marginal Means (EMMs) for the specified effect.".to_string()
+                ),
             });
         }
 
@@ -643,7 +661,10 @@ fn generate_em_estimates_table(
 
     EMMeansEstimates {
         entries: emm_estimates_entries,
-        notes: vec![format!("Estimates for {}", factor_spec_emmeans)],
+        note: Some(format!("Estimates for {}", factor_spec_emmeans)),
+        interpretation: Some(
+            "This table shows the Estimated Marginal Means (EMMs), which are the adjusted means for each level of the factor, controlling for other variables in the model. A non-estimable EMM (shown as NaN) indicates that the mean for that level combination cannot be uniquely determined from the data.".to_string()
+        ),
     }
 }
 
@@ -809,13 +830,16 @@ fn generate_pairwise_comparisons_table(
     }
     Some(PairwiseComparisons {
         entries: pairwise_entries,
-        notes: vec![
+        note: Some(
             format!(
                 "Pairwise comparisons for {}. Adjustment for multiple comparisons: {:?}.",
                 main_effect_name,
                 config.emmeans.confi_interval_method
             )
-        ],
+        ),
+        interpretation: Some(
+            "This table compares each pair of levels for a main effect. A significant p-value (typically < .05) indicates a statistically significant difference between the two levels' means. The confidence interval for the mean difference should not contain zero for the difference to be significant.".to_string()
+        ),
     })
 }
 
@@ -896,7 +920,10 @@ fn generate_univariate_test_table(
         };
         return Some(UnivariateTests {
             entries: vec![contrast_entry, error_entry],
-            notes: vec![format!("No hypothesis to test for {} (df_hyp=0)", main_effect_name)],
+            note: Some(format!("No hypothesis to test for {} (df_hyp=0)", main_effect_name)),
+            interpretation: Some(
+                "The degrees of freedom for the hypothesis is 0, so no test can be performed.".to_string()
+            ),
         });
     }
 
@@ -915,9 +942,12 @@ fn generate_univariate_test_table(
         };
         return Some(UnivariateTests {
             entries: vec![contrast_entry, error_entry],
-            notes: vec![
+            note: Some(
                 format!("Cannot perform univariate test for {} (all EMMs non-estimable)", main_effect_name)
-            ],
+            ),
+            interpretation: Some(
+                "The univariate test could not be performed because all the estimated marginal means for this effect were non-estimable.".to_string()
+            ),
         });
     }
 
@@ -957,9 +987,12 @@ fn generate_univariate_test_table(
         };
         return Some(UnivariateTests {
             entries: vec![contrast_entry, error_entry],
-            notes: vec![
+            note: Some(
                 format!("Cannot perform univariate test for {} (L-matrix has no rows but df_hyp > 0)", main_effect_name)
-            ],
+            ),
+            interpretation: Some(
+                "The test could not be performed due to an issue in constructing the contrast matrix, which is necessary for the hypothesis test.".to_string()
+            ),
         });
     }
 
@@ -1091,7 +1124,10 @@ fn generate_univariate_test_table(
 
     Some(UnivariateTests {
         entries: vec![contrast_entry, error_entry],
-        notes: vec![format!("Univariate test for {}", main_effect_name)],
+        note: Some(format!("Univariate test for {}", main_effect_name)),
+        interpretation: Some(
+            "This F-test examines the null hypothesis that the means of all levels of the effect are equal. A significant F-value (Sig. < .05) suggests that there is a statistically significant difference somewhere among the level means.".to_string()
+        ),
     })
 }
 

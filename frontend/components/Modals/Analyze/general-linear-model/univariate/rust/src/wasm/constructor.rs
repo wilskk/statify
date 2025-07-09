@@ -45,7 +45,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse dependent data: {}", e);
-                error_collector.add_error("constructor.dependent_data", &msg);
+                error_collector.add_error("Constructor : Dependent Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -56,7 +56,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse fixed factor data: {}", e);
-                error_collector.add_error("constructor.fix_factor_data", &msg);
+                error_collector.add_error("Constructor : Fix Factor Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -67,7 +67,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse random factor data: {}", e);
-                error_collector.add_error("constructor.random_factor_data", &msg);
+                error_collector.add_error("Constructor : Random Factor Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -78,7 +78,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse covariate data: {}", e);
-                error_collector.add_error("constructor.covariate_data", &msg);
+                error_collector.add_error("Constructor : Covariate Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -87,7 +87,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse WLS weight data: {}", e);
-                error_collector.add_error("constructor.wls_data", &msg);
+                error_collector.add_error("Constructor : WLS Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -98,7 +98,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse dependent data definitions: {}", e);
-                error_collector.add_error("constructor.dependent_data_defs", &msg);
+                error_collector.add_error("Constructor : Dependent Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -109,7 +109,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse fixed factor data definitions: {}", e);
-                error_collector.add_error("constructor.fix_factor_data_defs", &msg);
+                error_collector.add_error("Constructor : Fix Factor Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -120,7 +120,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse random factor data definitions: {}", e);
-                error_collector.add_error("constructor.random_factor_data_defs", &msg);
+                error_collector.add_error("Constructor : Random Factor Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -131,7 +131,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse covariate data definitions: {}", e);
-                error_collector.add_error("constructor.covariate_data_defs", &msg);
+                error_collector.add_error("Constructor : Covariate Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -142,7 +142,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse WLS weight data definitions: {}", e);
-                error_collector.add_error("constructor.wls_data_defs", &msg);
+                error_collector.add_error("Constructor : WLS Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -151,7 +151,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse configuration: {}", e);
-                error_collector.add_error("constructor.config", &msg);
+                error_collector.add_error("Constructor : Config", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -159,7 +159,7 @@ impl UnivariateAnalysis {
         // Validate important configuration
         if config.main.dep_var.is_none() {
             let msg = "Dependent variable must be selected for univariate analysis".to_string();
-            error_collector.add_error("config.validation.dep_var", &msg);
+            error_collector.add_error("Config : Validation : Dependent Variable", &msg);
             return Err(string_to_js_error(msg));
         }
 

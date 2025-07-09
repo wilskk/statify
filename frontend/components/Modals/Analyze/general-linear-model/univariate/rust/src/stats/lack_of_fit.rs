@@ -44,11 +44,6 @@ pub fn calculate_lack_of_fit_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<LackOfFitTests, String> {
-    // Pastikan uji "Lack of Fit" diminta dalam konfigurasi.
-    if !config.options.lack_of_fit {
-        return Err("Lack of fit tests not requested in configuration".to_string());
-    }
-
     // Langkah 1: Fit model utama untuk mendapatkan Sum of Squares Error (SSE) Total.
 
     // Buat matriks desain (X), vektor respons (Y), dan bobot dari data mentah.
@@ -223,6 +218,17 @@ pub fn calculate_lack_of_fit_tests(
         (f64::NAN, f64::NAN)
     };
 
+    let mut notes = Vec::new();
+    if let Some(dep_var) = &config.main.dep_var {
+        notes.push(format!("Dependent Variable: {}", dep_var));
+    }
+    notes.push(
+        format!(
+            "Significance level for F-test and power calculation: {}. Partial eta-squared for Lack of Fit is calculated as SS_LOF / SS_Error_Total.",
+            config.options.sig_level
+        )
+    );
+
     Ok(LackOfFitTests {
         lack_of_fit: LackOfFitTestsEntries {
             sum_of_squares: ss_lack_of_fit,
@@ -244,11 +250,9 @@ pub fn calculate_lack_of_fit_tests(
             noncent_parameter: f64::NAN,
             observed_power: f64::NAN,
         },
-        notes: vec![
-            format!(
-                "Tingkat signifikansi untuk uji-F dan perhitungan power: {}. Catatan: Partial eta-squared untuk Lack of Fit dihitung sebagai SS_LOF / SS_Error_Total.",
-                config.options.sig_level
-            )
-        ],
+        note: Some(notes.join(" \n")),
+        interpretation: Some(
+            "The Lack of Fit test assesses whether the model is adequate. A significant F-value (p < .05) indicates that the model does not fit the data well (i.e., there is a significant lack of fit). Pure Error represents the variability of the response variable at fixed predictor values.".to_string()
+        ),
     })
 }

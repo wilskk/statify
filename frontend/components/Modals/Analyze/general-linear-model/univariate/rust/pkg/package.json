@@ -1,5 +1,5 @@
 {
-  "name": "Rust-Wasm",
+  "name": "wasm",
   "type": "module",
   "description": "Project Rust-Wasm Statify.",
   "version": "0.1.0",
@@ -9,12 +9,12 @@
     "url": "https://git.stis.ac.id/"
   },
   "files": [
-    "Rust_Wasm_bg.wasm",
-    "Rust_Wasm.js",
-    "Rust_Wasm.d.ts"
+    "wasm_bg.wasm",
+    "wasm.js",
+    "wasm.d.ts"
   ],
-  "main": "Rust_Wasm.js",
-  "types": "Rust_Wasm.d.ts",
+  "main": "wasm.js",
+  "types": "wasm.d.ts",
   "sideEffects": [
     "./snippets/*"
   ]

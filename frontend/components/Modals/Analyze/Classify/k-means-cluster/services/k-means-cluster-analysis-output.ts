@@ -1,11 +1,9 @@
-import {
-    KMeansClusterFinalResultType
-} from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
-import {Table} from "@/types/Table";
-import {Variable} from "@/types/Variable";
-import {useVariableStore} from "@/stores/useVariableStore";
-import {useDataStore} from "@/stores/useDataStore";
-import {useResultStore} from "@/stores/useResultStore";
+import { KMeansClusterFinalResultType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
+import { Table } from "@/types/Table";
+import { Variable } from "@/types/Variable";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useDataStore } from "@/stores/useDataStore";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultKMeans({
     formattedResult,
@@ -15,11 +13,10 @@ export async function resultKMeans({
     try {
         const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
 
-        const findTable = (key: string) => {
-            const foundTable = formattedResult.tables.find(
+        const findTable = (key: string): Table | undefined => {
+            return formattedResult.tables.find(
                 (table: Table) => table.key === key
             );
-            return foundTable ? JSON.stringify({ tables: [foundTable] }) : null;
         };
 
         const kMeansClusterAnalysisResult = async () => {
@@ -36,17 +33,23 @@ export async function resultKMeans({
             /*
              * 📊 Initial Cluster Centers Result 📊
              * */
-            const initialClusterCenters = findTable("initial_cluster_centers");
-            if (initialClusterCenters) {
+            const initialClusterCentersTable = findTable(
+                "initial_cluster_centers"
+            );
+            if (initialClusterCentersTable) {
                 const initialClusterCentersId = await addAnalytic(logId, {
-                    title: `Initial Cluster Centers`,
-                    note: "",
+                    title: initialClusterCentersTable.title,
+                    note: initialClusterCentersTable.note || "",
                 });
 
                 await addStatistic(initialClusterCentersId, {
-                    title: `Initial Cluster Centers`,
-                    description: `Initial Cluster Centers`,
-                    output_data: initialClusterCenters,
+                    title: initialClusterCentersTable.title,
+                    description:
+                        initialClusterCentersTable.interpretation ||
+                        `Initial Cluster Centers`,
+                    output_data: JSON.stringify({
+                        tables: [initialClusterCentersTable],
+                    }),
                     components: `Initial Cluster Centers`,
                 });
             }
@@ -54,17 +57,21 @@ export async function resultKMeans({
             /*
              * 📈 Iteration History Result 📈
              * */
-            const iterationHistory = findTable("iteration_history");
-            if (iterationHistory) {
+            const iterationHistoryTable = findTable("iteration_history");
+            if (iterationHistoryTable) {
                 const iterationHistoryId = await addAnalytic(logId, {
-                    title: `Iteration History`,
-                    note: "",
+                    title: iterationHistoryTable.title,
+                    note: iterationHistoryTable.note || "",
                 });
 
                 await addStatistic(iterationHistoryId, {
-                    title: `Iteration History`,
-                    description: `Iteration History`,
-                    output_data: iterationHistory,
+                    title: iterationHistoryTable.title,
+                    description:
+                        iterationHistoryTable.interpretation ||
+                        `Iteration History`,
+                    output_data: JSON.stringify({
+                        tables: [iterationHistoryTable],
+                    }),
                     components: `Iteration History`,
                 });
             }
@@ -72,17 +79,21 @@ export async function resultKMeans({
             /*
              * 👥 Cluster Membership Result 👥
              * */
-            const clusterMembership = findTable("cluster_membership");
-            if (clusterMembership) {
+            const clusterMembershipTable = findTable("cluster_membership");
+            if (clusterMembershipTable) {
                 const clusterMembershipId = await addAnalytic(logId, {
-                    title: `Cluster Membership`,
-                    note: "",
+                    title: clusterMembershipTable.title,
+                    note: clusterMembershipTable.note || "",
                 });
 
                 await addStatistic(clusterMembershipId, {
-                    title: `Cluster Membership`,
-                    description: `Cluster Membership`,
-                    output_data: clusterMembership,
+                    title: clusterMembershipTable.title,
+                    description:
+                        clusterMembershipTable.interpretation ||
+                        `Cluster Membership`,
+                    output_data: JSON.stringify({
+                        tables: [clusterMembershipTable],
+                    }),
                     components: `Cluster Membership`,
                 });
 
@@ -102,17 +113,21 @@ export async function resultKMeans({
             /*
              * 📊 Final Cluster Centers Result 📊
              * */
-            const finalClusterCenters = findTable("final_cluster_centers");
-            if (finalClusterCenters) {
+            const finalClusterCentersTable = findTable("final_cluster_centers");
+            if (finalClusterCentersTable) {
                 const finalClusterCentersId = await addAnalytic(logId, {
-                    title: `Final Cluster Centers`,
-                    note: "",
+                    title: finalClusterCentersTable.title,
+                    note: finalClusterCentersTable.note || "",
                 });
 
                 await addStatistic(finalClusterCentersId, {
-                    title: `Final Cluster Centers`,
-                    description: `Final Cluster Centers`,
-                    output_data: finalClusterCenters,
+                    title: finalClusterCentersTable.title,
+                    description:
+                        finalClusterCentersTable.interpretation ||
+                        `Final Cluster Centers`,
+                    output_data: JSON.stringify({
+                        tables: [finalClusterCentersTable],
+                    }),
                     components: `Final Cluster Centers`,
                 });
             }
@@ -120,19 +135,23 @@ export async function resultKMeans({
             /*
              * 📏 Distances between Final Cluster Centers Result 📏
              * */
-            const distancesBetweenCenters = findTable(
+            const distancesBetweenCentersTable = findTable(
                 "distances_between_centers"
             );
-            if (distancesBetweenCenters) {
+            if (distancesBetweenCentersTable) {
                 const distancesBetweenCentersId = await addAnalytic(logId, {
-                    title: `Distances between Final Cluster Centers`,
-                    note: "",
+                    title: distancesBetweenCentersTable.title,
+                    note: distancesBetweenCentersTable.note || "",
                 });
 
                 await addStatistic(distancesBetweenCentersId, {
-                    title: `Distances between Final Cluster Centers`,
-                    description: `Distances between Final Cluster Centers`,
-                    output_data: distancesBetweenCenters,
+                    title: distancesBetweenCentersTable.title,
+                    description:
+                        distancesBetweenCentersTable.interpretation ||
+                        `Distances between Final Cluster Centers`,
+                    output_data: JSON.stringify({
+                        tables: [distancesBetweenCentersTable],
+                    }),
                     components: `Distances between Final Cluster Centers`,
                 });
             }
@@ -143,14 +162,14 @@ export async function resultKMeans({
             const anovaTable = findTable("anova");
             if (anovaTable) {
                 const anovaTableId = await addAnalytic(logId, {
-                    title: `ANOVA Table`,
-                    note: "",
+                    title: anovaTable.title,
+                    note: anovaTable.note || "",
                 });
 
                 await addStatistic(anovaTableId, {
-                    title: `ANOVA Table`,
-                    description: `ANOVA Table`,
-                    output_data: anovaTable,
+                    title: anovaTable.title,
+                    description: anovaTable.interpretation || `ANOVA Table`,
+                    output_data: JSON.stringify({ tables: [anovaTable] }),
                     components: `ANOVA Table`,
                 });
             }
@@ -158,18 +177,42 @@ export async function resultKMeans({
             /*
              * 📈 Number of Cases in each Cluster Result 📈
              * */
-            const numberOfCases = findTable("number_of_cases");
-            if (numberOfCases) {
+            const numberOfCasesTable = findTable("number_of_cases");
+            if (numberOfCasesTable) {
                 const numberOfCasesId = await addAnalytic(logId, {
-                    title: `Number of Cases in each Cluster`,
-                    note: "",
+                    title: numberOfCasesTable.title,
+                    note: numberOfCasesTable.note || "",
                 });
 
                 await addStatistic(numberOfCasesId, {
-                    title: `Number of Cases in each Cluster`,
-                    description: `Number of Cases in each Cluster`,
-                    output_data: numberOfCases,
+                    title: numberOfCasesTable.title,
+                    description:
+                        numberOfCasesTable.interpretation ||
+                        `Number of Cases in each Cluster`,
+                    output_data: JSON.stringify({
+                        tables: [numberOfCasesTable],
+                    }),
                     components: `Number of Cases in each Cluster`,
+                });
+            }
+
+            /*
+             * ❗ Error Table Result ❗
+             * */
+            const errorTable = findTable("error_table");
+            if (errorTable) {
+                const errorTableId = await addAnalytic(logId, {
+                    title: errorTable.title,
+                    note: errorTable.note || "",
+                });
+
+                await addStatistic(errorTableId, {
+                    title: errorTable.title,
+                    description:
+                        errorTable.interpretation ||
+                        "Errors logs from the analysis.",
+                    output_data: JSON.stringify({ tables: [errorTable] }),
+                    components: "Errors Logs",
                 });
             }
 
@@ -180,12 +223,12 @@ export async function resultKMeans({
                 for (const chart of formattedResult.charts) {
                     const chartId = await addAnalytic(logId, {
                         title: chart.chartMetadata.title,
-                        note: chart.chartMetadata.description,
+                        note: chart.chartMetadata.notes || "",
                     });
 
                     await addStatistic(chartId, {
                         title: chart.chartMetadata.title,
-                        description: chart.chartMetadata.description,
+                        description: chart.chartMetadata.description || "",
                         output_data: JSON.stringify({ charts: [chart] }),
                         components: chart.chartType,
                     });

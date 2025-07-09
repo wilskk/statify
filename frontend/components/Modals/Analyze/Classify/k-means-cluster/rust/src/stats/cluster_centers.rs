@@ -20,6 +20,7 @@ pub fn generate_final_cluster_centers(
     let num_clusters = config.main.cluster as usize;
     let max_iterations = config.iterate.maximum_iterations;
     let convergence_criterion = config.iterate.convergence_criterion;
+    let use_running_means = config.iterate.use_running_means;
 
     // Langkah 1: Inisialisasi pusat cluster awal.
     let initial_centers_result = initialize_clusters(data, config)?;
@@ -34,45 +35,81 @@ pub fn generate_final_cluster_centers(
     let min_change_threshold = convergence_criterion * min_center_dist;
 
     // Langkah 2: Lakukan iterasi untuk menyempurnakan posisi pusat cluster.
-    for _ in 1..=max_iterations {
-        // Inisialisasi pusat cluster baru dan jumlah anggota untuk iterasi saat ini.
-        let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
+    if use_running_means {
+        let mut new_centers = current_centers.clone();
         let mut cluster_counts = vec![0; num_clusters];
 
-        // Fase Penugasan (Assignment Phase):
-        // Tetapkan setiap titik data ke cluster terdekat berdasarkan jarak Euclidean.
-        for case in &data.data_matrix {
-            let closest = find_closest_cluster(case, &current_centers);
-            cluster_counts[closest] += 1;
+        for _ in 1..=max_iterations {
+            let old_centers_for_change_calc = new_centers.clone();
 
-            // Akumulasi nilai untuk perhitungan rata-rata nanti.
-            for (j, &val) in case.iter().enumerate() {
-                new_centers[closest][j] += val;
-            }
-        }
+            for case in &data.data_matrix {
+                let closest = find_closest_cluster(case, &new_centers);
+                cluster_counts[closest] += 1;
+                let count = cluster_counts[closest] as f64;
 
-        // Fase Pembaruan (Update Phase):
-        // Hitung ulang pusat cluster sebagai titik rata-rata (centroid) dari semua titik data
-        // yang menjadi anggota cluster tersebut.
-        let mut max_change: f64 = 0.0;
-        for i in 0..num_clusters {
-            if cluster_counts[i] > 0 {
-                for j in 0..data.variables.len() {
-                    new_centers[i][j] /= cluster_counts[i] as f64;
-                    // Lacak perubahan terbesar pada posisi pusat cluster untuk memeriksa konvergensi.
-                    let change = (new_centers[i][j] - current_centers[i][j]).abs();
-                    max_change = max_change.max(change);
+                for (j, &val) in case.iter().enumerate() {
+                    new_centers[closest][j] =
+                        new_centers[closest][j] + (val - new_centers[closest][j]) / count;
                 }
             }
-        }
 
-        // Periksa kriteria konvergensi. Jika perubahan di bawah ambang batas, iterasi berhenti.
-        if max_change <= min_change_threshold {
-            break;
-        }
+            let mut max_change: f64 = 0.0;
+            for i in 0..num_clusters {
+                let change = (0..data.variables.len())
+                    .map(|j| (new_centers[i][j] - old_centers_for_change_calc[i][j]).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                max_change = max_change.max(change);
+            }
 
-        // Perbarui pusat cluster untuk iterasi berikutnya.
+            if max_change <= min_change_threshold {
+                break;
+            }
+        }
         current_centers = new_centers;
+    } else {
+        for _ in 1..=max_iterations {
+            let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
+            let mut cluster_counts = vec![0; num_clusters];
+
+            for case in &data.data_matrix {
+                let closest = find_closest_cluster(case, &current_centers);
+                cluster_counts[closest] += 1;
+
+                for (j, &val) in case.iter().enumerate() {
+                    new_centers[closest][j] += val;
+                }
+            }
+
+            for i in 0..num_clusters {
+                if cluster_counts[i] > 0 {
+                    for j in 0..data.variables.len() {
+                        new_centers[i][j] /= cluster_counts[i] as f64;
+                    }
+                }
+            }
+
+            for i in 0..num_clusters {
+                if cluster_counts[i] == 0 {
+                    new_centers[i] = current_centers[i].clone();
+                }
+            }
+
+            let mut max_change: f64 = 0.0;
+            for i in 0..num_clusters {
+                let change = (0..data.variables.len())
+                    .map(|j| (new_centers[i][j] - current_centers[i][j]).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                max_change = max_change.max(change);
+            }
+
+            if max_change <= min_change_threshold {
+                current_centers = new_centers;
+                break;
+            }
+            current_centers = new_centers;
+        }
     }
 
     // Langkah 3: Format hasil akhir dari matriks ke dalam bentuk `HashMap` untuk kemudahan penggunaan.
@@ -85,7 +122,13 @@ pub fn generate_final_cluster_centers(
         centers_map.insert(var.clone(), var_values);
     }
 
-    Ok(FinalClusterCenters { centers: centers_map })
+    Ok(FinalClusterCenters {
+        centers: centers_map,
+        note: None,
+        interpretation: Some(
+            "This table presents the final coordinates for the center of each cluster after the iterative K-Means algorithm has converged. Each row corresponds to a variable, and each column represents a cluster, showing the value of that variable at the cluster's centroid. These centers define the typical profile of a case belonging to each cluster.".to_string()
+        ),
+    })
 }
 
 /// Menghitung matriks jarak antara semua pasangan pusat cluster final.
@@ -123,5 +166,11 @@ pub fn calculate_distances_between_centers(
         }
     }
 
-    Ok(DistancesBetweenCenters { distances })
+    Ok(DistancesBetweenCenters {
+        distances,
+        note: None,
+        interpretation: Some(
+            "This table displays the Euclidean distances between the final cluster centers. Each cell (i, j) in the matrix represents the distance between the center of cluster i and the center of cluster j. Larger values indicate that clusters are more distinct and further apart in the multi-dimensional variable space. The diagonal elements are always zero.".to_string()
+        ),
+    })
 }

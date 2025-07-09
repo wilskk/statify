@@ -19,7 +19,7 @@ pub fn generate_case_count(
     let counts = (1..=num_clusters)
         .map(|i| {
             // Untuk setiap cluster `i`, filter dan hitung anggota dari `membership`.
-            let count = membership
+            let count = membership.data
                 .iter()
                 .filter(|m| m.cluster == (i as i32))
                 .count();
@@ -32,10 +32,14 @@ pub fn generate_case_count(
     // Mengkonstruksi hasil akhir dalam bentuk `CaseCountTable`.
     Ok(CaseCountTable {
         // `valid` adalah jumlah total data point yang berhasil diproses.
-        valid: membership.len(),
+        valid: membership.data.len(),
         // `missing` saat ini di-hardcode ke 0, diasumsikan tidak ada data yang hilang.
-        missing: 0,
+        missing: data.missing_cases,
         // `clusters` berisi peta dari nomor cluster ke jumlah kasusnya.
         clusters: counts,
+        note: None,
+        interpretation: Some(
+            "This table shows the number of cases assigned to each cluster. 'Valid' represents the total count of data points processed, while 'Missing' indicates cases that were excluded. The 'Clusters' field details the specific case count for each cluster.".to_string()
+        ),
     })
 }

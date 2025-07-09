@@ -146,6 +146,10 @@ pub fn calculate_descriptive_statistics(
                             is_total: true,
                         }],
                         factor_names: all_factors,
+                        note: None,
+                        interpretation: Some(
+                            "Provides the overall mean, standard deviation, and count for the dependent variable across all cases, as no factors were specified.".to_string()
+                        ),
                     },
                 ),
             ])
@@ -281,6 +285,10 @@ pub fn calculate_descriptive_statistics(
                     dependent_variable: dep_var_name.clone(),
                     groups,
                     factor_names: all_factors,
+                    note: None,
+                    interpretation: Some(
+                        "This table displays the mean, standard deviation, and count (N) for the dependent variable, broken down by each level of the specified factors and their combinations.".to_string()
+                    ),
                 },
             ),
         ])

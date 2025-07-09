@@ -421,6 +421,8 @@ export const UnivariateOptions = ({
                             id="SigLevel"
                             type="number"
                             placeholder=""
+                            min={0}
+                            max={1}
                             value={optionsState.SigLevel ?? ""}
                             onChange={(e) =>
                                 handleChange("SigLevel", Number(e.target.value))
