@@ -396,6 +396,80 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         Math.round(d3.randomNormal(500, 100)())
       );
 
+      const data30 = [
+        { x: 1, y: 6, z: 1, group: "A" },
+        { x: 2, y: 2, z: 6, group: "A" },
+        { x: 2, y: 3, z: 6, group: "B" },
+        { x: 2, y: 2, z: 6, group: "C" },
+        { x: 2, y: 1, z: 6, group: "D" },
+        { x: 5, y: 1, z: 4, group: "A" },
+        { x: 5, y: 2, z: 4, group: "B" },
+        { x: 5, y: 3, z: 4, group: "C" },
+        { x: 5, y: 1, z: 4, group: "D" },
+        { x: 9, y: 7, z: 7, group: "A" },
+        { x: -4, y: 3, z: 6, group: "A" },
+        { x: -4, y: 1, z: 6, group: "B" },
+        { x: -4, y: 2, z: 6, group: "C" },
+        { x: -4, y: 2, z: 6, group: "D" },
+        { x: -4, y: 1, z: 6, group: "E" },
+        { x: -9, y: 1, z: 8, group: "A" },
+        { x: -9, y: 2, z: 8, group: "B" },
+        { x: -9, y: 2, z: 8, group: "E" },
+        { x: 8, y: 3, z: 6, group: "A" },
+        { x: 8, y: 2, z: 6, group: "B" },
+        { x: 8, y: 1, z: 6, group: "C" },
+        { x: 8, y: 2, z: 6, group: "D" },
+        { x: 8, y: 2, z: 6, group: "E" },
+        { x: -8, y: 3, z: 2, group: "A" },
+        { x: -8, y: 6, z: 2, group: "B" },
+        { x: -8, y: 3, z: 2, group: "C" },
+        { x: -8, y: 1, z: 2, group: "D" },
+        { x: -8, y: 1, z: 2, group: "E" },
+      ];
+
+      const data31 = [
+        { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+        { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+        { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+        { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+        { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+        { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+        { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+        { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+        { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+        { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+        { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+        { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+        { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+        { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+        { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+      ];
+
+      const data32 = [
+        { x: 5, y: 2, z: 5 },
+        { x: 4, y: 3, z: 6 },
+        { x: 3, y: 5, z: 4 },
+        { x: 2, y: 7, z: 6 },
+        { x: 0, y: 0, z: 0 },
+        { x: 2, y: 2, z: 6 },
+        { x: 2, y: 4, z: 7 },
+        { x: 3, y: 6, z: 5 },
+        { x: 6, y: 4, z: 2 },
+        { x: 7, y: 3, z: 5 },
+        { x: 7, y: 2, z: 6 },
+        { x: 5, y: 5, z: 5 },
+        { x: 1, y: 1, z: 3 },
+        { x: 4, y: 1, z: 2 },
+        { x: 6, y: 6, z: 8 },
+        { x: 1, y: 5, z: 4 },
+        { x: 0, y: 3, z: 7 },
+        { x: 3, y: 1, z: 2 },
+        { x: 5, y: 1, z: 4 },
+        { x: 6, y: 2, z: 5 },
+        { x: 1, y: 3, z: 4 },
+        { x: 4, y: 6, z: 5 },
+      ];
+
       const words = [
         "freedom",
         "justice",
@@ -815,6 +889,32 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
             { x: -8, z: -2, y: 1, category: "D" },
             { x: -8, z: -2, y: 1, category: "E" },
           ],
+          width,
+          height
+        );
+      } else if (chartType === "3D Bar Chart (ECharts)") {
+        chartNode = chartUtils.createECharts3DBarChart(data32, width, height);
+      } else if (chartType === "Stacked 3D Bar Chart (ECharts)") {
+        chartNode = chartUtils.createEChartsStacked3DBarChart(
+          data30,
+          width,
+          height
+        );
+      } else if (chartType === "Clustered 3D Bar Charts (ECharts)") {
+        chartNode = chartUtils.createEChartsClustered3DBarChart(
+          data30,
+          width,
+          height
+        );
+      } else if (chartType === "Grouped 3D Scatter Plot (ECharts)") {
+        chartNode = chartUtils.createEChartsGrouped3DScatterPlot(
+          data30,
+          width,
+          height
+        );
+      } else if (chartType === "3D Scatter Plot (ECharts)") {
+        chartNode = chartUtils.createECharts3DScatterPlot(
+          data31,
           width,
           height
         );

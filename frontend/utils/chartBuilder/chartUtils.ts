@@ -139,16 +139,14 @@ export const addXAxisLabel = (config: AxisLabelConfig) => {
     case "horizontal":
       // For horizontal bar charts, X label goes below the chart (bottom)
       xPosition = width / 2;
-      yPosition =
-        height - marginBottom + calculateDynamicOffset(marginBottom, height);
+      yPosition = height - marginBottom / 3;
+      // + calculateDynamicOffset(marginBottom, height);
       break;
     case "pyramid":
       // For pyramid charts, X label goes below with adjusted positioning
       xPosition = (width + marginLeft - marginRight) / 2;
-      yPosition =
-        height -
-        marginBottom +
-        calculateDynamicOffset(marginBottom, 0.8 * height);
+      yPosition = height - marginBottom / 3;
+      // calculateDynamicOffset(marginBottom, 0.8 * height);
       break;
     case "vertical":
     case "line":
@@ -157,8 +155,9 @@ export const addXAxisLabel = (config: AxisLabelConfig) => {
     default:
       // For vertical charts, X label goes below the chart (bottom axis)
       xPosition = (width + marginLeft - marginRight) / 2;
-      yPosition =
-        height - marginBottom + calculateDynamicOffset(marginBottom, height);
+      yPosition = height - marginBottom / 3;
+
+      // + calculateDynamicOffset(marginBottom, height);
       break;
   }
 
