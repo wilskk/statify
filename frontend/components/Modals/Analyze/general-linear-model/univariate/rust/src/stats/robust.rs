@@ -15,10 +15,6 @@ pub fn calculate_robust_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<RobustParameterEstimates, String> {
-    if !config.options.param_est_rob_std_err {
-        return Err("Robust parameter estimates not requested in configuration".to_string());
-    }
-
     // Langkah 1: Membuat matriks desain (X), vektor respons (y), dan bobot (W)
     let design_info = match create_design_response_weights(data, config) {
         Ok(info) => info,
@@ -56,9 +52,10 @@ pub fn calculate_robust_parameter_estimates(
     if n_samples == 0 || p_cols_x == 0 {
         return Ok(RobustParameterEstimates {
             estimates: Vec::new(),
-            notes: vec![
+            note: Some(
                 "No data or parameters for robust estimation (after design matrix creation).".to_string()
-            ],
+            ),
+            interpretation: None,
         });
     }
 
@@ -87,10 +84,10 @@ pub fn calculate_robust_parameter_estimates(
                 is_redundant: true,
             });
         }
-        let notes = vec![
+        let note = Some(
             "All parameters are redundant or model is empty (after design matrix creation).".to_string()
-        ];
-        return Ok(RobustParameterEstimates { estimates, notes });
+        );
+        return Ok(RobustParameterEstimates { estimates, note, interpretation: None });
     }
 
     let beta_hat = &swept_info.beta_hat;
@@ -365,5 +362,10 @@ pub fn calculate_robust_parameter_estimates(
         )
     );
 
-    Ok(RobustParameterEstimates { estimates, notes })
+    let note = Some(notes.join(" "));
+    let interpretation = Some(
+        "Robust parameter estimates provide standard errors that are corrected for heteroscedasticity (unequal variances). The B-coefficient represents the change in the dependent variable for a one-unit change in the predictor. The robust t-test checks if the parameter is significantly different from zero. A significant result (p < .05) suggests the predictor has a meaningful relationship with the dependent variable.".to_string()
+    );
+
+    Ok(RobustParameterEstimates { estimates, note, interpretation })
 }

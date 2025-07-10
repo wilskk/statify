@@ -58,6 +58,8 @@ struct FormatResult {
 struct FormattedBetweenSubjectFactor {
     name: String,
     factors: Vec<FactorEntry>,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -71,6 +73,8 @@ struct FormattedDescriptiveStatistic {
     dependent_variable: String,
     groups: Vec<DescriptiveStatGroup>,
     factor_names: Vec<String>,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -78,6 +82,8 @@ struct FormattedTestsBetweenSubjectsEffects {
     sources: Vec<SourceEntry>,
     r_squared: f64,
     adjusted_r_squared: f64,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -89,6 +95,8 @@ struct SourceEntry {
 #[derive(Serialize)]
 struct FormattedSpreadVsLevelPlots {
     points: Vec<SpreadVsLevelPoint>,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -114,6 +122,8 @@ impl FormatResult {
                                 }
                             })
                             .collect(),
+                        note: bsf.note.clone(),
+                        interpretation: bsf.interpretation.clone(),
                     }
                 })
                 .collect()
@@ -127,6 +137,8 @@ impl FormatResult {
                         dependent_variable: stat.dependent_variable.clone(),
                         groups: stat.groups.clone(),
                         factor_names: stat.factor_names.clone(),
+                        note: stat.note.clone(),
+                        interpretation: stat.interpretation.clone(),
                     }
                 })
                 .collect()
@@ -149,12 +161,16 @@ impl FormatResult {
                     sources,
                     r_squared: tests.r_squared,
                     adjusted_r_squared: tests.adjusted_r_squared,
+                    note: tests.note.clone(),
+                    interpretation: tests.interpretation.clone(),
                 }
             });
 
         let spread_vs_level_plots = result.spread_vs_level_plots.as_ref().map(|plots| {
             FormattedSpreadVsLevelPlots {
                 points: plots.points.clone(),
+                note: plots.note.clone(),
+                interpretation: plots.interpretation.clone(),
             }
         });
 

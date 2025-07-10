@@ -36,8 +36,7 @@ fn get_level_values(
     let mut values = Vec::new();
     let mut factor_group_idx: Option<usize> = None;
     let mut dep_var_group_idx: Option<usize> = None;
-    let mut factor_data_source: Option<&Vec<Vec<crate::models::data::DataRecord>>> =
-        None;
+    let mut factor_data_source: Option<&Vec<Vec<crate::models::data::DataRecord>>> = None;
 
     // Cari indeks grup untuk faktor di fixed factors
     for (i, def_group) in data.fix_factor_data_defs.iter().enumerate() {
@@ -1346,13 +1345,15 @@ pub fn calculate_posthoc_tests(
         if !factor_comparison_results.is_empty() {
             collected_comparisons.push(PostHocComparison {
                 entries: factor_comparison_results,
-                notes: Vec::new(),
+                note: None,
+                interpretation: None,
             });
         }
         if !factor_homog_results.is_empty() {
             collected_homog_subsets.push(PostHocHomogoneous {
                 entries: factor_homog_results,
-                notes: Vec::new(),
+                note: None,
+                interpretation: None,
             });
         }
     }
@@ -1365,11 +1366,22 @@ pub fn calculate_posthoc_tests(
         }
     }
 
+    let final_note = if unique_notes.is_empty() { None } else { Some(unique_notes.join(" \n")) };
+
+    let comparison_interpretation = Some(
+        "Post-hoc tests compare pairs of group means after a significant ANOVA F-test. Each entry shows the result of a specific test (e.g., Tukey HSD, Bonferroni). A significant p-value (< .05) indicates a significant difference between the two group means.".to_string()
+    );
+    let homogenous_interpretation = Some(
+        "Homogeneous subsets group together factor levels whose means are not significantly different from each other. Levels within the same subset can be considered to have the same population mean.".to_string()
+    );
+
     for comp in &mut collected_comparisons {
-        comp.notes = unique_notes.clone();
+        comp.note = final_note.clone();
+        comp.interpretation = comparison_interpretation.clone();
     }
     for homog in &mut collected_homog_subsets {
-        homog.notes = unique_notes.clone();
+        homog.note = final_note.clone();
+        homog.interpretation = homogenous_interpretation.clone();
     }
 
     Ok(PostHoc {

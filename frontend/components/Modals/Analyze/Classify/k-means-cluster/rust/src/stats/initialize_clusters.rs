@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use crate::models::{
-    config::ClusterConfig,
-    result::{ InitialClusterCenters, ProcessedData },
-};
+use crate::models::{ config::ClusterConfig, result::{ InitialClusterCenters, ProcessedData } };
 
 use super::core::*;
 
@@ -101,5 +98,11 @@ pub fn initialize_clusters(
         centers_map.insert(var.clone(), var_values);
     }
 
-    Ok(InitialClusterCenters { centers: centers_map })
+    Ok(InitialClusterCenters {
+        centers: centers_map,
+        note: None,
+        interpretation: Some(
+            "This table shows the initial positions of the cluster centers before the iterative optimization process begins. These centers are selected based on the chosen initialization strategy. The quality of these initial centers can influence the final clustering outcome and convergence speed.".to_string()
+        ),
+    })
 }

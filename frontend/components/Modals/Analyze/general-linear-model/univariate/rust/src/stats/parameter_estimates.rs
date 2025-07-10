@@ -24,20 +24,14 @@ pub fn calculate_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<ParameterEstimates, String> {
-    // Langkah 1: Validasi awal
-    // Jika estimasi parameter tidak diminta dalam konfigurasi, kembalikan hasil kosong.
-    if !config.options.param_est {
-        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
-    }
-
-    // Langkah 2: Persiapan data dan matriks desain
+    // Langkah 1: Persiapan data dan matriks desain
     // Membuat matriks desain (X), vektor respons (y), dan bobot (W) berdasarkan data dan konfigurasi model.
     // `design_info` berisi semua komponen yang diperlukan untuk perhitungan GLM.
     let design_info = create_design_response_weights(data, config)?;
 
     // Jika tidak ada sampel data yang valid, hentikan proses.
     if design_info.n_samples == 0 {
-        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
+        return Ok(ParameterEstimates { estimates: Vec::new(), note: None, interpretation: None });
     }
 
     // Jika tidak ada parameter yang perlu diestimasi (misalnya, model kosong), kembalikan hasil kosong.
@@ -47,12 +41,10 @@ pub fn calculate_parameter_estimates(
         config.main.fix_factor.as_ref().map_or(true, |ff| ff.is_empty()) &&
         config.main.covar.as_ref().map_or(true, |cv| cv.is_empty())
     {
-        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
+        return Ok(ParameterEstimates { estimates: Vec::new(), note: None, interpretation: None });
     }
 
-    web_sys::console::log_1(&format!("{:?}", design_info).into());
-
-    // Langkah 3: Perhitungan Inti GLM
+    // Langkah 2: Perhitungan Inti GLM
     // Membuat matriks cross-product (Z'WZ) yang merupakan dasar untuk estimasi OLS/WLS.
     let ztwz_matrix = create_cross_product_matrix(&design_info)?;
 
@@ -69,7 +61,7 @@ pub fn calculate_parameter_estimates(
     let n_samples = design_info.n_samples;
     let r_x_rank = design_info.r_x_rank;
 
-    // Langkah 4: Menghitung Derajat Kebebasan (Degrees of Freedom) dan Mean Squared Error (MSE)
+    // Langkah 3: Menghitung Derajat Kebebasan (Degrees of Freedom) dan Mean Squared Error (MSE)
     // Derajat kebebasan untuk galat (error) dihitung sebagai: df_error = n - rank(X)
     // Di mana n adalah jumlah sampel dan rank(X) adalah rank dari matriks desain.
     let df_error_val = if n_samples > r_x_rank { (n_samples - r_x_rank) as f64 } else { 0.0 };
@@ -88,7 +80,7 @@ pub fn calculate_parameter_estimates(
     let sig_level = config.options.sig_level;
     let sig_level_opt = Some(sig_level);
 
-    // Langkah 5: Menghitung statistik untuk setiap parameter
+    // Langkah 4: Menghitung statistik untuk setiap parameter
     // Mendapatkan semua nama parameter yang akan diestimasi, diurutkan untuk konsistensi.
     let all_parameter_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
 
@@ -281,13 +273,13 @@ pub fn calculate_parameter_estimates(
         });
     }
 
-    // Langkah 6: Membuat catatan akhir untuk output.
+    // Langkah 5: Membuat catatan akhir untuk output.
     let mut notes = Vec::new();
     let mut note_letter = 'a';
 
     // Add dependent variable name to notes for frontend consumption
-    notes.push(format!("__DEP_VAR:{}", config.main.dep_var.as_ref().unwrap()));
-    notes.push(format!("__SIG_LEVEL:{}", sig_level));
+    notes.push(format!("Dependent Variable:{}", config.main.dep_var.as_ref().unwrap()));
+    notes.push(format!("Computed using alpha:{}", sig_level));
 
     // Add note about redundant parameters
     let mut aliased_terms_for_note: Vec<String> = term_is_aliased_map
@@ -326,5 +318,10 @@ pub fn calculate_parameter_estimates(
         )
     );
 
-    Ok(ParameterEstimates { estimates, notes })
+    let note = if notes.is_empty() { None } else { Some(notes.join(" \n")) };
+    let interpretation = Some(
+        "Parameter estimates (B) represent the change in the dependent variable for a one-unit change in the predictor. The t-test checks if each parameter is significantly different from zero (p < .05). The confidence interval provides a range for the true parameter value. Redundant parameters are set to zero due to multicollinearity.".to_string()
+    );
+
+    Ok(ParameterEstimates { estimates, note, interpretation })
 }

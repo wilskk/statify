@@ -1,4 +1,3 @@
-
 import { Variable } from "@/types/Variable";
 
 type VariableType = {
@@ -70,11 +69,15 @@ export function getSlicedData({
             const varDef = variables.find((v) => v.name === varName);
             if (varDef) {
                 const rawValue = row[varDef.columnIndex];
-                const num = parseFloat(rawValue);
+                const stringValue =
+                    rawValue === null || rawValue === undefined
+                        ? ""
+                        : String(rawValue);
+                const num = parseFloat(stringValue.replace(",", "."));
                 rowObj[varName] = isNaN(num)
-                    ? rawValue === ""
+                    ? stringValue === ""
                         ? null
-                        : rawValue
+                        : stringValue
                     : num;
             }
 

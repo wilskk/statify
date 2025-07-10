@@ -1,7 +1,10 @@
-import {formatDisplayNumber} from "@/hooks/useFormatter";
-import {ResultJson, Row, Table} from "@/types/Table";
+import { formatDisplayNumber } from "@/hooks/useFormatter";
+import { ResultJson, Row, Table } from "@/types/Table";
 
-export function transformUnivariateResult(data: any): ResultJson {
+export function transformUnivariateResult(
+    data: any,
+    errors: string[] = []
+): ResultJson {
     const resultJson: ResultJson = {
         tables: [],
     };
@@ -17,6 +20,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 { header: "N", key: "n" },
             ],
             rows: [],
+            note: data.between_subjects_factors[0]?.note,
+            interpretation: data.between_subjects_factors[0]?.interpretation,
         };
 
         // Process each factor
@@ -56,7 +61,7 @@ export function transformUnivariateResult(data: any): ResultJson {
 
             const table: Table = {
                 key: "descriptive_statistics",
-                title: `Descriptive Statistics - Dependent Variable: ${stat.dependent_variable}`,
+                title: `Descriptive Statistics`,
                 columnHeaders: [
                     ...factorHeaders,
                     { header: "Mean", key: "mean" },
@@ -64,6 +69,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     { header: "N", key: "n" },
                 ],
                 rows: [],
+                note: stat.note,
+                interpretation: stat.interpretation,
             };
 
             const allRows: Row[] = [];
@@ -165,6 +172,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                             sig: formatDisplayNumber(entry.significance),
                         },
                     ],
+                    note: test.note,
+                    interpretation: test.interpretation,
                 };
 
                 const nullColumns = {
@@ -203,6 +212,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: data.levene_test[0]?.note,
+                interpretation: data.levene_test[0]?.interpretation,
             };
 
             data.levene_test.forEach((test: any) => {
@@ -282,10 +293,10 @@ export function transformUnivariateResult(data: any): ResultJson {
             let designString = "";
             if (testData.note && Array.isArray(testData.note)) {
                 testData.note.forEach((note: string) => {
-                    if (note.startsWith("__DEP_VAR:")) {
-                        depVarName = note.replace("__DEP_VAR:", "");
-                    } else if (note.startsWith("__DESIGN:")) {
-                        designString = note.replace("__DESIGN:", "");
+                    if (note.startsWith("Dependent Variable:")) {
+                        depVarName = note.replace("Dependent Variable:", "");
+                    } else if (note.startsWith("Design:")) {
+                        designString = note.replace("Design:", "");
                     }
                 });
             }
@@ -300,6 +311,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: testData.note,
+                interpretation: testData.interpretation,
             };
 
             table.rows.push({
@@ -335,10 +348,10 @@ export function transformUnivariateResult(data: any): ResultJson {
             let designString = "";
             if (testData.note && Array.isArray(testData.note)) {
                 testData.note.forEach((note: string) => {
-                    if (note.startsWith("__DEP_VAR:")) {
-                        depVarName = note.replace("__DEP_VAR:", "");
-                    } else if (note.startsWith("__DESIGN:")) {
-                        designString = note.replace("__DESIGN:", "");
+                    if (note.startsWith("Dependent Variable:")) {
+                        depVarName = note.replace("Dependent Variable:", "");
+                    } else if (note.startsWith("Design:")) {
+                        designString = note.replace("Design:", "");
                     }
                 });
             }
@@ -353,6 +366,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: testData.note,
+                interpretation: testData.interpretation,
             };
 
             table.rows.push({
@@ -388,10 +403,10 @@ export function transformUnivariateResult(data: any): ResultJson {
             let designString = "";
             if (testData.note && Array.isArray(testData.note)) {
                 testData.note.forEach((note: string) => {
-                    if (note.startsWith("__DEP_VAR:")) {
-                        depVarName = note.replace("__DEP_VAR:", "");
-                    } else if (note.startsWith("__DESIGN:")) {
-                        designString = note.replace("__DESIGN:", "");
+                    if (note.startsWith("Dependent Variable:")) {
+                        depVarName = note.replace("Dependent Variable:", "");
+                    } else if (note.startsWith("Design:")) {
+                        designString = note.replace("Design:", "");
                     }
                 });
             }
@@ -406,6 +421,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: testData.note,
+                interpretation: testData.interpretation,
             };
 
             table.rows.push({
@@ -441,10 +458,10 @@ export function transformUnivariateResult(data: any): ResultJson {
             let designString = "";
             if (testData.note && Array.isArray(testData.note)) {
                 testData.note.forEach((note: string) => {
-                    if (note.startsWith("__DEP_VAR:")) {
-                        depVarName = note.replace("__DEP_VAR:", "");
-                    } else if (note.startsWith("__DESIGN:")) {
-                        designString = note.replace("__DESIGN:", "");
+                    if (note.startsWith("Dependent Variable:")) {
+                        depVarName = note.replace("Dependent Variable:", "");
+                    } else if (note.startsWith("Design:")) {
+                        designString = note.replace("Design:", "");
                     }
                 });
             }
@@ -460,6 +477,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: testData.note,
+                interpretation: testData.interpretation,
             };
 
             table.rows.push({
@@ -558,7 +577,7 @@ export function transformUnivariateResult(data: any): ResultJson {
 
         const table: Table = {
             key: "tests_of_between_subjects_effects",
-            title: `Tests of Between-Subjects Effects (Dependent Variable: ${depVarName})`,
+            title: `Tests of Between-Subjects Effects`,
             columnHeaders: [
                 { header: "Source", key: "rowHeader" },
                 {
@@ -577,6 +596,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 { header: "Observed Powerᵇ", key: "observed_power" },
             ],
             rows: [],
+            note: effects.note,
+            interpretation: effects.interpretation,
         };
 
         if (effects.sources && Array.isArray(effects.sources)) {
@@ -690,12 +711,15 @@ export function transformUnivariateResult(data: any): ResultJson {
         let alphaNoteLetter: string | null = null;
         let sigLevel = 0.05; // Default
 
-        if (estimates.notes && Array.isArray(estimates.notes)) {
-            estimates.notes.forEach((note: string) => {
-                if (note.startsWith("__DEP_VAR:")) {
-                    depVarName = note.replace("__DEP_VAR:", "");
-                } else if (note.startsWith("__SIG_LEVEL:")) {
-                    sigLevel = parseFloat(note.replace("__SIG_LEVEL:", ""));
+        if (estimates.note && typeof estimates.note === "string") {
+            const notesArray = estimates.note.split("\n");
+            notesArray.forEach((note: string) => {
+                if (note.startsWith("Dependent Variable:")) {
+                    depVarName = note.replace("Dependent Variable:", "");
+                } else if (note.startsWith("Computed using alpha:")) {
+                    sigLevel = parseFloat(
+                        note.replace("Computed using alpha:", "")
+                    );
                 } else {
                     notes.push(note);
                     if (note.includes("redundant")) {
@@ -724,7 +748,7 @@ export function transformUnivariateResult(data: any): ResultJson {
 
         const table: Table = {
             key: "parameter_estimates",
-            title: `Parameter Estimates (Dependent Variable: ${depVarName})`,
+            title: `Parameter Estimates`,
             columnHeaders: [
                 { header: "Parameter", key: "rowHeader" },
                 { header: "B", key: "b" },
@@ -753,6 +777,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 },
             ],
             rows: [],
+            note: estimates.note,
+            interpretation: estimates.interpretation,
         };
 
         const redundantRowValues = {
@@ -870,6 +896,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 }`,
                 columnHeaders,
                 rows: [],
+                note: gef.note,
+                interpretation: gef.interpretation,
             };
 
             // Transpose l_matrix to populate rows
@@ -945,6 +973,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     },
                 ],
                 rows: [],
+                note: termMatrix.note,
+                interpretation: termMatrix.interpretation,
             };
 
             termMatrix.parameter_names.forEach(
@@ -1015,6 +1045,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     },
                 ],
                 rows: [],
+                note: contrasts.note,
+                interpretation: contrasts.interpretation,
             };
 
             // Process coefficients
@@ -1073,7 +1105,7 @@ export function transformUnivariateResult(data: any): ResultJson {
 
         const table: Table = {
             key: "lack_of_fit_tests",
-            title: `Lack of Fit Tests (Dependent Variable: ${depVarName})`,
+            title: `Lack of Fit Tests`,
             columnHeaders: [
                 { header: "Source", key: "rowHeader" },
                 { header: "Sum of Squares", key: "sum_of_squares" },
@@ -1086,6 +1118,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 { header: "Observed Power", key: "observed_power" },
             ],
             rows: [],
+            note: lof.note,
+            interpretation: lof.interpretation,
         };
 
         if (lofData) {
@@ -1156,6 +1190,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 },
             ],
             rows: [],
+            note: plots.note,
+            interpretation: plots.interpretation,
         };
 
         // Process each point
@@ -1175,7 +1211,10 @@ export function transformUnivariateResult(data: any): ResultJson {
     // 10. Post Hoc Tests
     if (data.posthoc_tests) {
         const posthoc = data.posthoc_tests;
-        const factorName = posthoc.factor_names[0] || "Factor";
+        const factorName =
+            posthoc.factor_names && posthoc.factor_names.length > 0
+                ? posthoc.factor_names[0]
+                : "Factor";
 
         // Multiple Comparisons Table
         if (posthoc.comparison && posthoc.comparison.length > 0) {
@@ -1184,7 +1223,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 key: "multiple_comparisons",
                 title: "Multiple Comparisons",
                 subtitle: `Dependent Variable: ${
-                    data.descriptive_statistics
+                    data.descriptive_statistics &&
+                    Object.values(data.descriptive_statistics).length > 0
                         ? (Object.values(data.descriptive_statistics)[0] as any)
                               .dependent_variable
                         : ""
@@ -1201,6 +1241,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     },
                 ],
                 rows: [],
+                note: comparisonData.note,
+                interpretation: comparisonData.interpretation,
             };
 
             // Sub-headers for CI
@@ -1287,6 +1329,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 title: "Homogeneous Subsets",
                 columnHeaders: columnHeaders,
                 rows: [],
+                note: homogeneousData.note,
+                interpretation: homogeneousData.interpretation,
             };
 
             homogeneousData.entries.forEach((entry: any) => {
@@ -1395,6 +1439,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     subtitle: `Dependent Variable: ${depVarName}`,
                     columnHeaders,
                     rows: [],
+                    note: estimates.note,
+                    interpretation: estimates.interpretation,
                 };
 
                 if (!isOverall) {
@@ -1524,6 +1570,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     title: title,
                     columnHeaders: lMatrixHeaders,
                     rows: [],
+                    note: contrastCoeffs.note,
+                    interpretation: contrastCoeffs.interpretation,
                 };
 
                 contrastCoeffs.parameter.forEach(
@@ -1550,7 +1598,7 @@ export function transformUnivariateResult(data: any): ResultJson {
                 if (!comparison.entries || comparison.entries.length === 0)
                     return;
 
-                const notes = comparison.notes[0] || "";
+                const notes = comparison.note || "";
                 const factorMatch = notes.match(
                     /Pairwise comparisons for (.*?)\./
                 );
@@ -1580,6 +1628,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                         },
                     ],
                     rows: [],
+                    note: comparison.note,
+                    interpretation: comparison.interpretation,
                 };
 
                 const groupedRows: { [key: string]: Row[] } = {};
@@ -1666,11 +1716,20 @@ export function transformUnivariateResult(data: any): ResultJson {
                         { header: "Observed Powerᵃ", key: "observed_power" },
                     ],
                     rows: [],
+                    note: test.note,
+                    interpretation: test.interpretation,
                 };
 
-                const sigLevelMatch = test.notes.find((n: string) =>
+                const notesArray = Array.isArray(test.notes)
+                    ? test.notes
+                    : typeof test.note === "string"
+                    ? test.note.split("\n")
+                    : [];
+
+                const sigLevelMatch = notesArray.find((n: string) =>
                     n.includes("alpha =")
                 );
+
                 const sigLevel = sigLevelMatch
                     ? sigLevelMatch.split("=")[1].trim()
                     : "0.05";
@@ -1708,7 +1767,7 @@ export function transformUnivariateResult(data: any): ResultJson {
                     noncent_parameter: null,
                     observed_power: null,
                 };
-                const effectNote = test.notes.find((n: string) =>
+                const effectNote = notesArray.find((n: string) =>
                     n.startsWith("The F tests")
                 );
                 if (effectNote) {
@@ -1745,6 +1804,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                             { header: "Label", key: "label" },
                         ],
                         rows: [],
+                        note: plotData.note,
+                        interpretation: plotData.interpretation,
                     };
 
                     // Process each series and its points
@@ -1810,6 +1871,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                 title: "Case Diagnostics",
                 columnHeaders: columnHeaders,
                 rows: [],
+                note: data.saved_variables.note,
+                interpretation: data.saved_variables.interpretation,
             };
 
             const numRows = vars[varKeys[0]].length;
@@ -1842,6 +1905,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                     { header: "", key: "description" },
                 ],
                 rows: [],
+                note: custom_tests.note,
+                interpretation: custom_tests.interpretation,
             };
 
             custom_tests.information.forEach((info: any, index: number) => {
@@ -1901,6 +1966,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                             { header: "Sig.", key: "sig" },
                         ],
                         rows: [],
+                        note: test_result.note,
+                        interpretation: test_result.interpretation,
                     };
 
                     test_result.contrast_result.forEach((res: any) => {
@@ -1939,6 +2006,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                             },
                         ],
                         rows: [],
+                        note: contrast_k_result.note,
+                        interpretation: contrast_k_result.interpretation,
                     };
 
                     contrast_k_result.parameter.forEach(
@@ -2039,6 +2108,8 @@ export function transformUnivariateResult(data: any): ResultJson {
                             },
                         ],
                         rows: [],
+                        note: contrast_def.note,
+                        interpretation: contrast_def.interpretation,
                     };
 
                     contrast_def.parameter.forEach(
@@ -2084,6 +2155,59 @@ export function transformUnivariateResult(data: any): ResultJson {
                 }
             }
         );
+    }
+
+    if (errors && errors.length > 0) {
+        if (errors.length === 1 && errors[0] === "No errors occurred.") {
+            const table: Table = {
+                key: "error_table",
+                title: "Errors Logs",
+                columnHeaders: [{ header: "Message", key: "message" }],
+                rows: [
+                    {
+                        rowHeader: [],
+                        message: "No errors occurred.",
+                    },
+                ],
+            };
+            resultJson.tables.push(table);
+        } else {
+            const table: Table = {
+                key: "error_table",
+                title: "Errors Logs",
+                columnHeaders: [
+                    { header: "Context", key: "context" },
+                    { header: "Message", key: "message" },
+                ],
+                rows: [],
+            };
+
+            let currentContext = "";
+            let isFirstRowForContext = true;
+
+            const errorLines =
+                errors[0] === "Error Summary:" ? errors.slice(1) : errors;
+
+            errorLines.forEach((line: string) => {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith("Context: ")) {
+                    currentContext = trimmedLine
+                        .replace("Context: ", "")
+                        .trim();
+                    isFirstRowForContext = true;
+                } else if (trimmedLine) {
+                    const message = trimmedLine.replace(/^\d+\.\s*/, "");
+                    table.rows.push({
+                        rowHeader: [],
+                        context: isFirstRowForContext ? currentContext : "",
+                        message: message,
+                    });
+                    isFirstRowForContext = false;
+                }
+            });
+
+            resultJson.tables.push(table);
+        }
     }
 
     return resultJson;

@@ -5,11 +5,7 @@ use crate::models::{
     data::{ AnalysisData, DataRecord, VariableDefinition },
     result::ClusteringResult,
 };
-use crate::utils::{
-    converter::string_to_js_error,
-    error::ErrorCollector,
-    log::FunctionLogger,
-};
+use crate::utils::{ converter::string_to_js_error, error::ErrorCollector, log::FunctionLogger };
 use crate::wasm::function;
 
 #[wasm_bindgen]
@@ -42,7 +38,7 @@ impl KMeansClusterAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse target data: {}", e);
-                error_collector.add_error("constructor.target_data", &msg);
+                error_collector.add_error("Constructor : Target Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -51,7 +47,7 @@ impl KMeansClusterAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse case data: {}", e);
-                error_collector.add_error("constructor.case_data", &msg);
+                error_collector.add_error("Constructor : Case Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -62,7 +58,7 @@ impl KMeansClusterAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse target data definitions: {}", e);
-                error_collector.add_error("constructor.target_data_defs", &msg);
+                error_collector.add_error("Constructor : Target Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -73,23 +69,29 @@ impl KMeansClusterAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse case data definitions: {}", e);
-                error_collector.add_error("constructor.case_data_defs", &msg);
+                error_collector.add_error("Constructor : Case Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
+
+        if target_data.is_empty() {
+            let msg = "Target data cannot be empty".to_string();
+            error_collector.add_error("Constructor : Target Data Validation", &msg);
+            return Err(string_to_js_error(msg));
+        }
 
         let config: ClusterConfig = match serde_wasm_bindgen::from_value(config_data.clone()) {
             Ok(data) => data,
             Err(e) => {
                 let msg =
                     format!("Failed to parse configuration: {}. Ensure field names match the expected format.", e);
-                error_collector.add_error("constructor.config", &msg);
+                error_collector.add_error("Constructor : Config", &msg);
 
                 // Try to get a more detailed error by inspecting the config data
                 if let Ok(config_json) = js_sys::JSON::stringify(&config_data) {
                     let config_str = config_json.as_string().unwrap_or_default();
                     error_collector.add_error(
-                        "constructor.config.raw",
+                        "Constructor : Config : Raw",
                         &format!("Raw config: {}", config_str)
                     );
                 }
@@ -101,7 +103,7 @@ impl KMeansClusterAnalysis {
         // Validate important configuration
         if config.main.cluster <= 0 {
             let msg = "Number of clusters must be positive".to_string();
-            error_collector.add_error("config.validation.clusters", &msg);
+            error_collector.add_error("Config : Validation : Clusters", &msg);
             return Err(string_to_js_error(msg));
         }
 

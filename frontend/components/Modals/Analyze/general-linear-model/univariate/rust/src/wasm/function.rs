@@ -1,10 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-use crate::models::{
-    config::UnivariateConfig,
-    data::AnalysisData,
-    result::UnivariateResult,
-};
+use crate::models::{ config::UnivariateConfig, data::AnalysisData, result::UnivariateResult };
 use crate::stats::core;
 use crate::utils::{
     converter::{ format_result, string_to_js_error },
@@ -33,7 +29,7 @@ pub fn run_analysis(
             processing_summary = Some(summary);
         }
         Err(e) => {
-            error_collector.add_error("basic_processing_summary", &e);
+            error_collector.add_error("Run Analysis : Basic Processing Summary", &e);
         }
     }
 
@@ -48,7 +44,7 @@ pub fn run_analysis(
                 descriptive_statistics = Some(stats);
             }
             Err(e) => {
-                error_collector.add_error("calculate_descriptive_statistics", &e);
+                error_collector.add_error("Run Analysis : Descriptive Statistics", &e);
             }
         }
     }
@@ -65,7 +61,7 @@ pub fn run_analysis(
                 levene_test = Some(test);
             }
             Err(e) => {
-                error_collector.add_error("calculate_levene_test", &e);
+                error_collector.add_error("Run Analysis : Levene's Test", &e);
             }
         }
     }
@@ -87,7 +83,7 @@ pub fn run_analysis(
                 heteroscedasticity_tests = Some(tests);
             }
             Err(e) => {
-                error_collector.add_error("calculate_heteroscedasticity_tests", &e);
+                error_collector.add_error("Run Analysis : Heteroscedasticity Tests", &e);
             }
         }
     }
@@ -102,7 +98,7 @@ pub fn run_analysis(
             tests_of_between_subjects_effects = Some(tests);
         }
         Err(e) => {
-            error_collector.add_error("calculate_tests_between_subjects_effects", &e);
+            error_collector.add_error("Run Analysis : Tests of Between-Subjects Effects", &e);
         }
     }
 
@@ -117,7 +113,7 @@ pub fn run_analysis(
                 parameter_estimates = Some(estimates);
             }
             Err(e) => {
-                error_collector.add_error("calculate_parameter_estimates", &e);
+                error_collector.add_error("Run Analysis : Parameter Estimates", &e);
             }
         }
     }
@@ -134,7 +130,7 @@ pub fn run_analysis(
                     contrast_coefficients = Some(coefficients);
                 }
                 Err(e) => {
-                    error_collector.add_error("calculate_contrast_coefficients", &e);
+                    error_collector.add_error("Run Analysis : Contrast Coefficients", &e);
                 }
             }
         }
@@ -151,7 +147,7 @@ pub fn run_analysis(
                 hypothesis_l_matrices = Some(matrices);
             }
             Err(e) => {
-                error_collector.add_error("calculate_hypothesis_l_matrices", &e);
+                error_collector.add_error("Run Analysis : Hypothesis L-Matrices", &e);
             }
         }
     }
@@ -167,7 +163,7 @@ pub fn run_analysis(
                 lack_of_fit_tests = Some(tests);
             }
             Err(e) => {
-                error_collector.add_error("calculate_lack_of_fit_tests", &e);
+                error_collector.add_error("Run Analysis : Lack of Fit Tests", &e);
             }
         }
     }
@@ -183,7 +179,7 @@ pub fn run_analysis(
                 spread_vs_level_plots = Some(plots);
             }
             Err(e) => {
-                error_collector.add_error("calculate_spread_vs_level_plots", &e);
+                error_collector.add_error("Run Analysis : Spread-vs-Level Plots", &e);
             }
         }
     }
@@ -196,7 +192,7 @@ pub fn run_analysis(
         match core::perform_bootstrap_analysis(&data, config) {
             Ok(_) => {}
             Err(e) => {
-                error_collector.add_error("perform_bootstrap_analysis", &e);
+                error_collector.add_error("Run Analysis : Bootstrap Analysis", &e);
             }
         }
     }
@@ -215,7 +211,7 @@ pub fn run_analysis(
                 posthoc_tests = Some(tests);
             }
             Err(e) => {
-                error_collector.add_error("calculate_posthoc_tests", &e);
+                error_collector.add_error("Run Analysis : Post-Hoc Tests", &e);
             }
         }
     }
@@ -231,7 +227,7 @@ pub fn run_analysis(
                 emmeans = Some(means);
             }
             Err(e) => {
-                error_collector.add_error("calculate_emmeans", &e);
+                error_collector.add_error("Run Analysis : EMMeans", &e);
             }
         }
     }
@@ -246,7 +242,7 @@ pub fn run_analysis(
                 robust_parameter_estimates = Some(estimates);
             }
             Err(e) => {
-                error_collector.add_error("calculate_robust_parameter_estimates", &e);
+                error_collector.add_error("Run Analysis : Robust Parameter Estimates", &e);
             }
         }
     }
@@ -262,7 +258,7 @@ pub fn run_analysis(
                 plots = Some(plot_data);
             }
             Err(e) => {
-                error_collector.add_error("generate_plots", &e);
+                error_collector.add_error("Run Analysis : Plots", &e);
             }
         }
     }
@@ -288,7 +284,7 @@ pub fn run_analysis(
                 saved_variables = Some(vars);
             }
             Err(e) => {
-                error_collector.add_error("save_variables", &e);
+                error_collector.add_error("Run Analysis : Save Variables", &e);
             }
         }
     }
@@ -303,7 +299,7 @@ pub fn run_analysis(
                 general_estimable_function = Some(gef);
             }
             Err(e) => {
-                error_collector.add_error("calculate_general_estimable_function", &e);
+                error_collector.add_error("Run Analysis : General Estimable Function", &e);
             }
         }
     }

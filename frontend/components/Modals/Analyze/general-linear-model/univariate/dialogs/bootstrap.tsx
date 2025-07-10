@@ -294,6 +294,8 @@ export const UnivariateBootstrap = ({
                                             type="number"
                                             placeholder=""
                                             value={bootstrapState.Level ?? ""}
+                                            min={0}
+                                            max={100}
                                             disabled={
                                                 !bootstrapState.PerformBootStrapping
                                             }

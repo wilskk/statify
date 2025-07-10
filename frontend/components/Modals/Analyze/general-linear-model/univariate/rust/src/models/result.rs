@@ -51,6 +51,8 @@ pub struct SweptMatrixInfo {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BetweenSubjectFactors {
     pub factors: BTreeMap<String, usize>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -58,6 +60,8 @@ pub struct DescriptiveStatistics {
     pub dependent_variable: String,
     pub groups: Vec<DescriptiveStatGroup>,
     pub factor_names: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -88,6 +92,8 @@ pub struct LeveneTest {
     pub dependent_variable: String,
     pub entries: Vec<LeveneTestEntry>,
     pub design: String,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -104,7 +110,8 @@ pub struct TestsBetweenSubjectsEffects {
     pub source: HashMap<String, TestEffectEntry>,
     pub r_squared: f64,
     pub adjusted_r_squared: f64,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -146,7 +153,8 @@ pub struct EMMeansResult {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EMMeansEstimates {
     pub entries: Vec<EMMeansEstimatesEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -167,7 +175,8 @@ pub struct PostHoc {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PostHocComparison {
     pub entries: Vec<PostHocComparisonEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -183,7 +192,8 @@ pub struct PostHocComparisonEntry {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PostHocHomogoneous {
     pub entries: Vec<PostHocHomogoneousEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -204,7 +214,8 @@ pub struct Subset {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PairwiseComparisons {
     pub entries: Vec<PairwiseComparisonsEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -219,7 +230,8 @@ pub struct PairwiseComparisonsEntry {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnivariateTests {
     pub entries: Vec<UnivariateTestsEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -238,7 +250,8 @@ pub struct UnivariateTestsEntry {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ParameterEstimates {
     pub estimates: Vec<ParameterEstimateEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -258,7 +271,8 @@ pub struct ParameterEstimateEntry {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RobustParameterEstimates {
     pub estimates: Vec<RobustParameterEstimateEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -289,12 +303,15 @@ pub struct FactorDetail {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeneralEstimableFunction {
     pub estimable_function: GeneralEstimableFunctionEntry,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HypothesisLMatrices {
     pub matrices: Vec<TermMatrix>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -303,7 +320,8 @@ pub struct TermMatrix {
     pub parameter_names: Vec<String>,
     pub contrast_names: Vec<String>,
     pub matrix: Vec<Vec<f64>>,
-    pub note: String,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -344,14 +362,16 @@ pub struct ContrastCoefficientsEntry {
     pub l_label: Vec<String>,
     pub l_matrix: Vec<Vec<f64>>,
     pub contrast_information: Vec<String>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContrastResult {
     pub parameter: Vec<String>,
     pub contrast_result: Vec<ContrastResultEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -368,7 +388,8 @@ pub struct ContrastResultEntry {
 pub struct ContrastTestResult {
     pub source: Vec<String>,
     pub contrast_result: Vec<ContrastTestResultEntry>,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -385,7 +406,8 @@ pub struct ContrastTestResultEntry {
 pub struct LackOfFitTests {
     pub lack_of_fit: LackOfFitTestsEntries,
     pub pure_error: LackOfFitTestsEntries,
-    pub notes: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -403,6 +425,8 @@ pub struct LackOfFitTestsEntries {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SpreadVsLevelPlots {
     pub points: Vec<SpreadVsLevelPoint>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -424,7 +448,8 @@ pub struct WhiteTest {
     pub statistic: f64,
     pub df: usize,
     pub p_value: f64,
-    pub note: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -432,7 +457,8 @@ pub struct BPTest {
     pub statistic: f64,
     pub df: usize,
     pub p_value: f64,
-    pub note: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -440,7 +466,8 @@ pub struct ModifiedBPTest {
     pub statistic: f64,
     pub df: usize,
     pub p_value: f64,
-    pub note: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -449,7 +476,8 @@ pub struct FTest {
     pub df1: usize,
     pub df2: usize,
     pub p_value: f64,
-    pub note: Vec<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 // Añadir estas nuevas estructuras
@@ -462,6 +490,8 @@ pub struct PlotData {
     pub y_axis_starts_at_zero: bool,
     pub includes_reference_line: bool,
     pub reference_line: Option<f64>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
