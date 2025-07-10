@@ -51,7 +51,7 @@ sequenceDiagram
 
 ### 2. Alur Proses Agregasi Data
 
-Diagram ini merinci proses yang terjadi setelah pengguna mengklik "OK". Ini mencakup pengelompokan data, penghitungan nilai agregat, pembuatan variabel baru, dan pembaruan data di grid.
+Diagram ini merinci proses yang terjadi setelah pengguna mengklik "OK". Ini mencakup pengelompokan data, penghitungan nilai agregat, pembuatan variabel baru, dan pembaruan data di grid dalam satu operasi batch.
 
 ```mermaid
 sequenceDiagram
@@ -61,12 +61,11 @@ sequenceDiagram
     box "Frontend Components"
         participant View as "AggregateModal<br>.../Aggregate/index.tsx"
         participant Hook as "useAggregateData<br>.../hooks/useAggregateData.ts"
-        participant Utils as "Utils.ts<br>.../Aggregate/Utils.ts"
+        participant Utils as "aggregateUtils.ts"
     end
 
     box "Zustand Stores"
         participant VarStore as "useVariableStore"
-        participant DataStore as "useDataStore"
         participant ModalStore as "useModalStore"
     end
 
@@ -75,23 +74,23 @@ sequenceDiagram
     Hook->>+ModalStore: setStatisticProgress(true)
     deactivate ModalStore
     
-    Hook->>Hook: Mengelompokkan data dari DataStore
+    Hook->>Hook: Mengelompokkan data & menyiapkan array `newVariables` & `bulkUpdates`
     
-    loop untuk setiap aggregatedVariable
-        Hook->>+Utils: calculateAggregateValue(func, values, opts)
+    loop untuk setiap aggregatedVariable & grup
+        Hook->>+Utils: calculateAggregateValue(...)
         Utils-->>-Hook: aggregatedValue
-        
-        Hook->>+VarStore: addVariable(newAggregatedVariable)
-        deactivate VarStore
+        Hook->>Hook: Mengisi array `newVariables` & `bulkUpdates`
     end
 
     alt jika "Number of cases" dicentang
-        Hook->>+VarStore: addVariable(nCasesVariable)
-        deactivate VarStore
+        Hook->>Hook: Menambahkan variabel N_BREAK ke `newVariables` & `bulkUpdates`
     end
 
-    Hook->>+DataStore: updateCells(bulkUpdates)
-    deactivate DataStore
+    note right of Hook: Semua definisi variabel baru & pembaruan sel dikumpulkan.
+
+    Hook->>+VarStore: addVariables(newVariables, bulkUpdates)
+    note right of VarStore: Operasi batch untuk menambah variabel<br>dan memperbarui semua sel terkait.
+    deactivate VarStore
     
     Hook->>+ModalStore: setStatisticProgress(false)
     deactivate ModalStore

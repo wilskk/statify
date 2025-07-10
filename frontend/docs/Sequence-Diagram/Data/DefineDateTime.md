@@ -55,13 +55,9 @@ sequenceDiagram
         Service-->>-Hook: Mengembalikan { variablesToCreate, cellUpdates }
         deactivate Service
 
-        loop untuk setiap variabel baru
-            Hook->>+VarStore: addVariable(variable)
-            deactivate VarStore
-        end
-
-        Hook->>+DataStore: updateCells(cellUpdates)
-        deactivate DataStore
+        Hook->>+VarStore: addVariables(variablesToCreate, cellUpdates)
+        note left of VarStore: Operasi batch untuk menambah variabel<br>dan memperbarui semua sel terkait.
+        deactivate VarStore
     end
 
     Hook->>Modal: onClose()

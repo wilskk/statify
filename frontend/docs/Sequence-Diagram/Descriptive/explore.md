@@ -62,17 +62,17 @@ sequenceDiagram
     Hook->>Hook: `isCalculating = true`
     Hook->>Store: `addLog()` & `addAnalytic()`
     Hook->>Hook: Mengelompokkan data berdasarkan `factorVariables` (`groupDataByFactors`)
+    Hook->>+Worker: Membuat satu instance Worker
 
     loop untuk setiap kelompok data (faktor) DAN setiap variabel dependen
-        Hook->>+Worker: Membuat instance Worker baru
         Hook->>Worker: `postMessage({ analysisType: 'examine', ... })`
     end
 
-    Note right of Hook: Worker dibuat untuk setiap<br/>tugas komputasi unik.
+    Note right of Hook: Semua tugas dikirim ke<br/>satu worker yang sama.
 
     rect rgb(211, 211, 211)
-    note over Hook, Worker: Menunggu dan Mengumpulkan Hasil (`Promise.allSettled`)
-    loop untuk setiap pesan hasil dari semua worker
+    note over Hook, Worker: Mengumpulkan Hasil
+    loop untuk setiap pesan dari worker
         Worker-->>Hook: `onmessage = { results, ... }`
         Hook->>Hook: Menyimpan hasil dalam `aggregatedResults`
     end
@@ -89,6 +89,7 @@ sequenceDiagram
         end
     
         Hook->>Hook: `isCalculating = false`
+        Hook->>Worker: `terminate()`
         Hook->>View: `onClose()`
     end
     deactivate Hook
