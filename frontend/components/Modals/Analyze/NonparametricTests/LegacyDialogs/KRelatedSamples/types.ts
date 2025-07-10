@@ -1,163 +1,187 @@
-import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
-import { Dispatch, SetStateAction } from "react";
+import { Variable } from '@/types/Variable';
+import { Dispatch, SetStateAction } from 'react';
+import { TourStep as BaseTourStep } from '@/types/tourTypes';
+import { BaseModalProps } from '@/types/modalTypes';
 
 // ---------------------------------
-// Test Settings Types
+// Constants
 // ---------------------------------
-export interface KRelatedSamplesOptions {
-    testType: {
-        friedman: boolean;
-        kendallsW: boolean;
-        cochransQ: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartile: boolean;
-    };
-}
 
-// ---------------------------------
-// Variable Selection Types
-// ---------------------------------
-export type HighlightedVariable = {
-    tempId: string;
-    source: 'available' | 'selected';
+// Tab Constants
+export const TABS = {
+  VARIABLES: 'variables' as const,
+  OPTIONS: 'options' as const,
 };
 
+// ---------------------------------
+// Type
+// ---------------------------------
+
+// Tab Type
+export type TabType = typeof TABS.VARIABLES | typeof TABS.OPTIONS;
+
+// TourStep Type
+export type TourStep = BaseTourStep & {
+  requiredTab?: TabType | string;
+  forceChangeTab?: boolean;
+};
+
+// Highlighted Variable
+export type HighlightedVariable = {
+  tempId: string;
+  source: 'available' | 'test';
+};
+
+// Test Type Options
+export interface TestTypeOptions {
+  friedman: boolean;
+  kendallsW: boolean;
+  cochransQ: boolean;
+}
+
+// Display Statistics Options
+export interface DisplayStatisticsOptions {
+  descriptive: boolean;
+  quartiles: boolean;
+}
+
+// ---------------------------------
+// Props
+// ---------------------------------
+
+// TabControl Props
+export interface TabControlProps {
+  setActiveTab: (tab: 'variables' | 'options') => void;
+  currentActiveTab: string;
+}
+
+// VariablesTab Props
 export interface VariablesTabProps {
-    availableVariables: Variable[];
-    testVariables: Variable[];
-    highlightedVariable: HighlightedVariable | null;
-    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-    testType: {
-        friedman: boolean;
-        kendallsW: boolean;
-        cochransQ: boolean;
-    };
-    setTestType: Dispatch<SetStateAction<{
-        friedman: boolean;
-        kendallsW: boolean;
-        cochransQ: boolean;
-    }>>;
-    handleVariableSelect: (variable: Variable, source: 'available' | 'selected') => void;
-    handleVariableDoubleClick: (variable: Variable, source: 'available' | 'selected') => void;
-    moveToAvailableVariables: (variable: Variable, source: 'selected', targetIndex?: number) => void;
-    moveToTestVariable: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables: (source: 'selected', variables: Variable[]) => void;
-    errorMsg: string | null;
-    containerType?: "dialog" | "sidebar";
+  availableVariables: Variable[];
+  testVariables: Variable[];
+  highlightedVariable: HighlightedVariable | null;
+  setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
+  moveToTestVariables: (variable: Variable, targetIndex?: number) => void;
+  moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
+  reorderVariables: (source: 'available' | 'test', variables: Variable[]) => void;
+  tourActive?: boolean;
+  currentStep?: number;
+  tourSteps?: TourStep[];
 }
 
-// ---------------------------------
-// Options Tab Props
-// ---------------------------------
+// OptionsTab Props
 export interface OptionsTabProps {
-    displayStatistics: {
-        descriptive: boolean;
-        quartile: boolean;
-    };
-    setDisplayStatistics: Dispatch<SetStateAction<{
-        descriptive: boolean;
-        quartile: boolean;
-    }>>;
+  testType: TestTypeOptions;
+  setTestType: Dispatch<SetStateAction<TestTypeOptions>>;
+  displayStatistics: DisplayStatisticsOptions;
+  setDisplayStatistics: Dispatch<SetStateAction<DisplayStatisticsOptions>>;
+  tourActive?: boolean;
+  currentStep?: number;
+  tourSteps?: TourStep[];
 }
 
-// === Analysis Params ===
-export interface KRelatedSamplesAnalysisParams extends Pick<BaseModalProps, 'onClose'> {
-    testVariables: Variable[];
-    testType: {
-        friedman: boolean;
-        kendallsW: boolean;
-        cochransQ: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartile: boolean;
-    };
+// TestSettings Props
+export interface TestSettingsProps {
+  initialTestType?: TestTypeOptions;
+  initialDisplayStatistics?: DisplayStatisticsOptions;
 }
 
-// === Results Types ===
-export interface KRelatedSamplesResults {
-    descriptives?: any;
-    ranks?: any;
-    friedmanTest?: any;
-}
-
-// === Worker Types ===
-export interface WorkerInput {
-    variableData: {
-        variable: import('@/types/Variable').Variable;
-        data: any[];
-    }[];
-    testType: {
-        friedman: boolean;
-        kendallsW: boolean;
-        cochransQ: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartile: boolean;
-    };
-}
-
-export interface WorkerCalculationPromise {
-    resolve: (result: KRelatedSamplesResults) => void;
-    reject: (reason: any) => void;
-}
-
-export interface KRelatedSamplesWorkerResult {
-    success: boolean;
-    descriptives?: any;
-    ranks?: any;
-    friedmanTest?: any;
-    error?: string;
-    testType: {
-        friedman: boolean;
-        kendallsW: boolean;
-        cochransQ: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartile: boolean;
-    };
-}
-
-// ---------------------------------
-// Hook Props and Results
-// ---------------------------------
+// VariableSelection Props
 export interface VariableSelectionProps {
-    initialVariables?: Variable[];
+  initialVariables?: Variable[];
 }
 
-export interface VariableSelectionResult {
-    availableVariables: Variable[];
-    testVariables: Variable[];
-    highlightedVariable: HighlightedVariable | null;
-    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-    moveToTestVariable: (variable: Variable, targetIndex?: number) => void;
-    moveToAvailableVariables: (variable: Variable, source: 'selected', targetIndex?: number) => void;
-    reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
-    resetVariableSelection: () => void;
+// KRelatedSamplesAnalysis Props
+export interface KRelatedSamplesAnalysisProps extends Pick<BaseModalProps, 'onClose' | 'containerType'> {
+  testVariables: Variable[];
+  testType: TestTypeOptions;
+  displayStatistics: DisplayStatisticsOptions;
 }
 
-// For data fetching hook
-export interface DataFetchingResult {
-    fetchData: (testVariables: Variable[]) => Promise<{
-        variableData: {
-            variable: Variable;
-            data: any;
-        }[];
-    }>;
-    isLoading: boolean;
-    error?: string;
-    clearError: () => void;
+// ---------------------------------
+// Result
+// ---------------------------------
+
+// UseTourGuide Result
+export interface UseTourGuideResult {
+  tourActive: boolean;
+  currentStep: number;
+  tourSteps: TourStep[];
+  currentTargetElement: HTMLElement | null;
+  startTour: () => void;
+  nextStep: () => void;
+  prevStep: () => void;
+  endTour: () => void;
 }
 
-// For worker communication
-export interface KRelatedSamplesWorkerInterface {
-    calculate: (data: WorkerInput) => Promise<KRelatedSamplesResults>;
-    isCalculating: boolean;
-    error?: string;
-    cancelCalculation: () => void;
-} 
+// Ranks Result
+export interface RanksResult {
+  groups: {
+    label: string;
+    meanRank: number;
+  }[];
+}
+
+// Test Statistics
+export interface TestStatistics {
+  TestType: String;
+  N: number;
+  W?: number;
+  TestValue: number;
+  PValue: number;
+  df: number;
+}
+
+// Descriptive Statistics
+export interface DescriptiveStatistics {
+  N: number;
+  Mean?: number;
+  StdDev?: number;
+  Min?: number;
+  Max?: number;
+  Percentile25?: number;
+  Percentile50?: number;
+  Percentile75?: number;
+}
+
+// KRelatedSamples Test Result
+export interface KRelatedSamplesResult {
+    variable: Variable | string;
+    ranks?: RanksResult;
+    frequencies?: {
+        groups: Array<{
+            label: string;
+            count: number;
+        }>;
+    };
+  testStatistics?: TestStatistics;
+  descriptiveStatistics?: DescriptiveStatistics;
+}
+
+// KRelatedSamples Test Results Collection
+export interface KRelatedSamplesResults {
+  ranks?: KRelatedSamplesResult[];
+  frequencies?: KRelatedSamplesResult[];
+  testStatistics?: KRelatedSamplesResult[];
+  descriptiveStatistics?: KRelatedSamplesResult[];
+}
+
+// ---------------------------------
+// Table Types
+// ---------------------------------
+export interface TableColumnHeader {
+  header: string;
+  key: string;
+  children?: TableColumnHeader[];
+}
+
+export interface TableRow {
+  [key: string]: any;
+  rowHeader?: any[];
+}
+
+export interface KRelatedSamplesTable {
+  title: string;
+  columnHeaders: TableColumnHeader[];
+  rows: TableRow[];
+}

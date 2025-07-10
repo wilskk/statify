@@ -17,7 +17,7 @@ import './libs/runs.js';
 import './libs/twoIndependentSamples.js';
 // import './libs/twoRelatedSamples.js';
 import './libs/kIndependentSamples.js';
-// import './libs/kRelatedSamples.js';
+import './libs/kRelatedSamples.js';
 import './libs/descriptiveStatistics.js';
 
 // Definisikan global calculator map
@@ -27,7 +27,7 @@ const calculators = {
     twoIndependentSamples: TwoIndependentSamplesCalculator,
     // twoRelatedSamples: TwoRelatedSamplesCalculator,
     kIndependentSamples: KIndependentSamplesCalculator,
-    // kRelatedSamples: KRelatedSamplesCalculator,
+    kRelatedSamples: KRelatedSamplesCalculator,
     descriptiveStatistics: DescriptiveStatisticsCalculator
 };
 
@@ -36,11 +36,13 @@ const calculators = {
  * @param {MessageEvent} event - Event pesan yang diterima.
  */
 onmessage = (event) => {
-    const { analysisType, variable, data, groupingVariable, groupingData, options } = event.data;
-
+    const { analysisType, variable, batchVariable, data, batchData, groupingVariable, groupingData, options } = event.data;
+    const variableName = typeof variable === 'string' ? variable : variable.name || 'unknown';
     // --- Start of Debugging ---
     console.log('[Worker] Received analysis request:', JSON.stringify(analysisType));
     console.log('[Worker] Received variable:', JSON.stringify(variable));
+    console.log('[Worker] Received batch variable:', JSON.stringify(batchVariable));
+    console.log('[Worker] Received batch data:', JSON.stringify(batchData));
     console.log('[Worker] Received data (first 5 rows):', data ? JSON.stringify(data.slice(0, 5)) : 'No data');
     console.log('[Worker] Received grouping variable:', JSON.stringify(groupingVariable));
     console.log('[Worker] Received grouping data:', JSON.stringify(groupingData));
@@ -120,7 +122,7 @@ onmessage = (event) => {
 
                 console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
                 console.log('[Worker] Ranks Results:', JSON.stringify(calculator.getOutput().ranks));
-                console.log('[Worker] Kruskal Wallis H Results:', JSON.stringify(calculator.getOutput().testStatisticsKruskalWallisH));
+                console.log('[Worker] Kruskal Wallis H Results:', JSON.stringify(calculator.getOutput().testStatistics));
                 console.log('[Worker] Frequencies Results:', JSON.stringify(calculator.getOutput().frequencies));
                 console.log('[Worker] Median Results:', JSON.stringify(calculator.getOutput().testStatisticsMedian));
                 console.log('[Worker] Jonckheere Terpstra Results:', JSON.stringify(calculator.getOutput().testStatisticsJonckheereTerpstra));
@@ -129,46 +131,47 @@ onmessage = (event) => {
                 results.frequencies = calculator.getOutput().frequencies;
                 results.testStatisticsMedian = calculator.getOutput().testStatisticsMedian;
                 results.testStatisticsJonckheereTerpstra = calculator.getOutput().testStatisticsJonckheereTerpstra;
-            // } else if (['twoIndependentSamples', 'kIndependentSamples'].includes(analysisType)) {
-            //     calculator = new CalculatorClass({ 
-            //         variable, 
-            //         data, 
-            //         groupingVariable, 
-            //         groupingData, 
-            //         weights, 
-            //         options 
-            //     });
-            // } else if (['twoRelatedSamples', 'kRelatedSamples'].includes(analysisType)) {
-            //     calculator = new CalculatorClass({ 
-            //         variable, 
-            //         data, 
-            //         weights, 
-            //         options 
-            //     });
+            } else if (type === 'kRelatedSamples') {
+                calculator = new CalculatorClass({ 
+                    batchVariable,
+                    variable,
+                    batchData,
+                    data,
+                    options 
+                });
+
+                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Ranks Results:', JSON.stringify(calculator.getOutput().ranks));
+                console.log('[Worker] Frequencies Results:', JSON.stringify(calculator.getOutput().frequencies));
+                console.log('[Worker] Test Statistics Results:', JSON.stringify(calculator.getOutput().testStatistics));
+                results.ranks = calculator.getOutput().ranks;
+                results.frequencies = calculator.getOutput().frequencies;
+                results.testStatistics = calculator.getOutput().testStatistics;
             } else {
                 calculator = new CalculatorClass({ 
                     variable, 
                     data, 
                     options 
                 });
+            
+                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Results:', JSON.stringify(results));
             }
-            console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
-            console.log('[Worker] Results:', JSON.stringify(results));
         });
 
         console.log('[Worker] Final results:', JSON.stringify(results));
 
         postMessage({
             status: 'success',
-            variableName: variable.name || 'unknown',
+            variableName: variableName,
             results: results,
         });
 
     } catch (error) {
-        console.error(`[Worker] Error dalam worker untuk variabel ${variable?.name || 'unknown'}:`, error);
+        console.error(`[Worker] Error dalam worker untuk variabel ${variableName}:`, error);
         postMessage({
             status: 'error',
-            variableName: variable?.name || 'unknown',
+            variableName: variableName,
             error: error.message,
         });
     }

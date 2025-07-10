@@ -1,13 +1,13 @@
 "use client";
 
-import React, { FC, useState, useEffect, useCallback } from "react";
+import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { HelpCircle, Loader2 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
-    Dialog
 } from "@/components/ui/dialog";
 import {
     Tabs,
@@ -15,136 +15,135 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import type { Variable } from "@/types/Variable";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useVariableStore } from "@/stores/useVariableStore";
 import { BaseModalProps } from "@/types/modalTypes";
-
-import VariablesTab from "./VariablesTab";
-import OptionsTab from "./OptionsTab";
-import { 
+import {
     useVariableSelection,
-    useKRelatedSamplesAnalysis
+    useTestSettings,
+    useKRelatedSamplesAnalysis,
+    useTourGuide,
+    baseTourSteps,
 } from "./hooks";
-import { HighlightedVariable } from "./types";
+import {
+    TabControlProps,
+    TabType,
+} from "./types";
 
-// Komponen konten yang digunakan baik untuk sidebar maupun dialog
-const KRelatedSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
+import VariablesTab from "./components/VariablesTab";
+import OptionsTab from "./components/OptionsTab";
+
+const KRelatedSamplesContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState<"variables" | "options">("variables");
-
+    const isVariablesLoading = useVariableStore((state: any) => state.isLoading);
+    const variablesError = useVariableStore((state: any) => state.error);
+    
     const {
         availableVariables,
         testVariables,
         highlightedVariable,
         setHighlightedVariable,
-        moveToTestVariable,
+        moveToTestVariables,
         moveToAvailableVariables,
         reorderVariables,
         resetVariableSelection
     } = useVariableSelection();
-    
-    const [testType, setTestType] = useState({
-        friedman: true,
-        kendallsW: false,
-        cochransQ: false
-    });
 
-    const [displayStatistics, setDisplayStatistics] = useState({
-        descriptive: false,
-        quartile: false,
-    });
+    const {
+        testType,
+        setTestType,
+        displayStatistics,
+        setDisplayStatistics,
+        resetTestSettings
+    } = useTestSettings();
 
-    // Handle variable selection
-    const handleVariableSelect = useCallback((variable: Variable, source: 'available' | 'selected') => {
-        if (!variable) return;
-        setHighlightedVariable(variable.columnIndex ? { tempId: variable.columnIndex.toString(), source } : null);
-    }, [setHighlightedVariable]);
-
-    // Handle variable movement between lists
-    const handleVariableDoubleClick = useCallback((variable: Variable, source: 'available' | 'selected') => {
-        if (!variable) return;
-
-        // Different handling based on source
-        switch (source) {
-            case 'available':
-                // Move from available to test variables
-                moveToTestVariable(variable);
-                break;
-                
-            case 'selected':
-                // Move from test variables to available
-                moveToAvailableVariables(variable, 'selected');
-                break;
-        }
-    }, [moveToTestVariable, moveToAvailableVariables]);
-
-    const { isLoading, errorMsg, runAnalysis, cancelAnalysis } = useKRelatedSamplesAnalysis({
+    const { 
+        isCalculating,
+        errorMsg, 
+        runAnalysis,
+        cancelCalculation
+    } = useKRelatedSamplesAnalysis({
         testVariables,
         testType,
         displayStatistics,
         onClose
     });
 
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (cancelAnalysis) {
-                cancelAnalysis();
-            }
-        };
-    }, [cancelAnalysis]);
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab: (tab: string) => {
+            setActiveTab(tab as TabType);
+        },
+        currentActiveTab: activeTab
+    }), [activeTab]);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour
+    } = useTourGuide(baseTourSteps, containerType, tabControl);
+
+    const handleReset = useCallback(() => {
+        resetVariableSelection();
+        resetTestSettings();
+        cancelCalculation();
+    }, [resetVariableSelection, resetTestSettings, cancelCalculation]);
 
     const handleTabChange = useCallback((value: string) => {
         if (value === 'variables' || value === 'options') {
-            setActiveTab(value as "variables" | "options");
+            setActiveTab(value);
         }
     }, [setActiveTab]);
 
-    const handleReset = () => {
-        resetVariableSelection();
-        setTestType({
-            friedman: true,
-            kendallsW: false,
-            cochransQ: false
-        });
-        setDisplayStatistics({
-            descriptive: false,
-            quartile: false,
-        });
-    };
+    useEffect(() => {
+        return () => {
+            cancelCalculation();
+        };
+    }, [cancelCalculation]);
 
-    return (
-        <>
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="options"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Options
-                        </TabsTrigger>
-                    </TabsList>
+    const renderContent = () => {
+        if (isVariablesLoading) {
+            return (
+                <div className="flex items-center justify-center p-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Loading variables...</span>
                 </div>
+            );
+        }
 
+        if (variablesError) {
+            return (
+                <div className="p-10 text-destructive text-center">
+                    <p>Error loading variables:</p>
+                    <p className="text-sm">{variablesError.message}</p>
+                </div>
+            )
+        }
+
+        return (
+            <>
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
                         availableVariables={availableVariables}
                         testVariables={testVariables}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
-                        testType={testType}
-                        setTestType={setTestType}
-                        handleVariableSelect={handleVariableSelect}
-                        handleVariableDoubleClick={handleVariableDoubleClick}
+                        moveToTestVariables={moveToTestVariables}
                         moveToAvailableVariables={moveToAvailableVariables}
-                        moveToTestVariable={moveToTestVariable}
                         reorderVariables={reorderVariables}
-                        errorMsg={errorMsg}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -152,18 +151,100 @@ const KRelatedSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
                     <OptionsTab
                         displayStatistics={displayStatistics}
                         setDisplayStatistics={setDisplayStatistics}
+                        testType={testType}
+                        setTestType={setTestType}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
+            </>
+        );
+    }
+
+    return (
+        <>
+            <AnimatePresence>
+                {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
+
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList>
+                        <TabsTrigger
+                            id="variables-tab-trigger"
+                            value="variables"
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            id="options-tab-trigger"
+                            value="options"
+                        >
+                            Options
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                {renderContent()}
             </Tabs>
-            
-            <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-                <div className="flex justify-end space-x-3">
+
+            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
+
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div className="flex items-center text-muted-foreground">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+
+                <div>
                     <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                        variant="outline"
+                        className="mr-2"
+                        onClick={handleReset}
+                        disabled={isCalculating}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={handleReset}
+                        disabled={isCalculating}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        id="k-related-samples-ok-button"
                         onClick={runAnalysis}
                         disabled={
-                            isLoading ||
-                            testVariables.length < 2 ||
+                            isCalculating ||
+                            testVariables.length === 0 ||
                             (
                                 testType.friedman === false &&
                                 testType.kendallsW === false &&
@@ -171,23 +252,7 @@ const KRelatedSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
                             )
                         }
                     >
-                        {isLoading ? "Calculating..." : "OK"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        onClick={handleReset}
-                        disabled={isLoading}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        onClick={onClose}
-                        disabled={isLoading}
-                    >
-                        Cancel
+                        {isCalculating ? "Processing..." : "OK"}
                     </Button>
                 </div>
             </div>
@@ -195,32 +260,29 @@ const KRelatedSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
     );
 };
 
-// Main component that handles rendering based on containerType
-const Index: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
-    // If sidebar mode, use div container without header
+const KRelatedSamples: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <KRelatedSamplesContent onClose={onClose} />
+                    <KRelatedSamplesContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
     }
 
-    // For dialog mode, use Dialog and DialogContent
     return (
-        <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[800px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Tests for Several Related Samples</DialogTitle>
-                </DialogHeader>
-                <div className="flex-grow flex flex-col overflow-hidden">
-                    <KRelatedSamplesContent onClose={onClose} />
-                </div>
-            </DialogContent>
-        </Dialog>
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">K Related Samples</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <KRelatedSamplesContent onClose={onClose} containerType={containerType} {...props} />
+            </div>
+        </DialogContent>
     );
 };
 
-export default Index;
+export default KRelatedSamples;
+export { KRelatedSamplesContent };

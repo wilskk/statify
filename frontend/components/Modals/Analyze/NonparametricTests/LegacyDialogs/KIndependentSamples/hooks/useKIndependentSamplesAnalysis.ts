@@ -236,8 +236,9 @@ export const useKIndependentSamplesAnalysis = ({
                 setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
                 errorCountRef.current += 1;
             }
-
+            console.log('[Results before] processedCountRef.current:', processedCountRef.current);
             processedCountRef.current += 1;
+            console.log('[Results after] processedCountRef.current:', processedCountRef.current);
 
             if (processedCountRef.current === testVariables.length) {
                 if (resultsRef.current.length > 0) {
