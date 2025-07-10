@@ -1,187 +1,236 @@
-import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
+import { Variable } from "@/types/Variable";
 import { Dispatch, SetStateAction } from "react";
+import { TourStep as BaseTourStep } from '@/types/tourTypes';
+import { BaseModalProps } from "@/types/modalTypes";
 
 // ---------------------------------
-// Variable Selection Types
+// Constants
 // ---------------------------------
-export type HighlightedVariable = {
-    tempId: string;
-    source: 'available' | 'selected' | 'grouping';
+
+// Tab Constants
+export const TABS = {
+    VARIABLES: 'variables' as const,
+    OPTIONS: 'options' as const,
 };
 
 // ---------------------------------
-// Test Settings Types
+// Type
 // ---------------------------------
-export interface KIndependentSamplesOptions {
-    group1: number | null;
-    group2: number | null;
-    testType: {
-        kruskalWallisH: boolean;
-        median: boolean;
-        jonckheereTerpstra: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
+
+// Tab Type
+export type TabType = typeof TABS.VARIABLES | typeof TABS.OPTIONS;
+
+// TourStep Type
+export type TourStep = BaseTourStep & {
+    requiredTab?: TabType | string;
+    forceChangeTab?: boolean;
+};
+
+// Highlighted Variable
+export type HighlightedVariable = {
+  tempId: string;
+  source: 'available' | 'test' | 'grouping';
+};
+
+// Test Type
+export type TestType = {
+    kruskalWallisH: boolean;
+    median: boolean;
+    jonckheereTerpstra: boolean;
+};
+
+// Display Statistics Options
+export interface DisplayStatisticsOptions {
+    descriptive: boolean;
+    quartiles: boolean;
 }
 
+// ---------------------------------
+// Props
+// ---------------------------------
+
+// TabControl Props
+export interface TabControlProps {
+    setActiveTab: (tab: 'variables' | 'options') => void;
+    currentActiveTab: string;
+}
+
+// VariablesTab Props
 export interface VariablesTabProps {
     availableVariables: Variable[];
     testVariables: Variable[];
     groupingVariable: Variable | null;
-    group1: number | null;
-    group2: number | null;
+    minimum: number | null;
+    setMinimum: Dispatch<SetStateAction<number | null>>;
+    maximum: number | null;
+    setMaximum: Dispatch<SetStateAction<number | null>>;
     highlightedVariable: HighlightedVariable | null;
     setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-    testType: {
-        kruskalWallisH: boolean;
-        median: boolean;
-        jonckheereTerpstra: boolean;
-    };
-    setTestType: Dispatch<SetStateAction<{
-        kruskalWallisH: boolean;
-        median: boolean;
-        jonckheereTerpstra: boolean;
-    }>>;
-    handleVariableSelect: (variable: Variable, source: 'available' | 'selected' | 'grouping') => void;
-    handleVariableDoubleClick: (variable: Variable, source: 'available' | 'selected' | 'grouping') => void;
-    handleDefineGroupsClick: () => void;
-    moveToAvailableVariables: (variable: Variable, source: 'selected' | 'grouping', targetIndex?: number) => void;
-    moveToTestVariable: (variable: Variable, targetIndex?: number) => void;
-    moveToGroupingVariable: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables: (source: 'selected', variables: Variable[]) => void;
-    errorMsg: string | null;
+    moveToAvailableVariables: (variable: Variable) => void;
+    moveToTestVariables: (variable: Variable, targetIndex?: number) => void;
+    moveToGroupingVariable: (variable: Variable) => void;
+    reorderVariables: (source: 'available' | 'test', variables: Variable[]) => void;
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
+// OptionsTab Props
 export interface OptionsTabProps {
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
-    setDisplayStatistics: Dispatch<SetStateAction<{
-        descriptive: boolean;
-        quartiles: boolean;
-    }>>;
+    testType: TestType;
+    setTestType: Dispatch<SetStateAction<TestType>>;
+    displayStatistics: DisplayStatisticsOptions;
+    setDisplayStatistics: Dispatch<SetStateAction<DisplayStatisticsOptions>>;
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
-// === Analysis Params ===
-export interface KIndependentSamplesAnalysisParams extends Pick<BaseModalProps, 'onClose'> {
-    testVariables: Variable[];
-    groupingVariable: Variable | null;
-    group1: number | null;
-    group2: number | null;
-    testType: {
-        kruskalWallisH: boolean;
-        median: boolean;
-        jonckheereTerpstra: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
+// TestSettings Props
+export interface TestSettingsProps {
+    initialMinimum?: number | null;
+    initialMaximum?: number | null;
+    initialTestType?: TestType;
+    initialDisplayStatistics?: DisplayStatisticsOptions;
 }
 
-// === Results Types ===
-export interface KIndependentSamplesResults {
-    descriptives?: any;
-    ranks?: any;
-    kruskalWallisH?: any;
-    medianFrequencies?: any;
-    medianTest?: any;
-    jonckheereTerpstraTest?: any;
-}
-
-// === Worker Types ===
-export interface WorkerInput {
-    variableData: {
-        variable: import('@/types/Variable').Variable;
-        data: any[];
-    }[];
-    groupData: {
-        variable: import('@/types/Variable').Variable;
-        data: any[];
-    };
-    group1: number | null;
-    group2: number | null;
-    testType: {
-        kruskalWallisH: boolean;
-        median: boolean;
-        jonckheereTerpstra: boolean;
-    };
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
-}
-
-export interface WorkerCalculationPromise {
-    resolve: (result: KIndependentSamplesResults) => void;
-    reject: (reason: any) => void;
-}
-
-export interface KIndependentSamplesWorkerResult {
-    success: boolean;
-    descriptives?: any;
-    ranks?: any;
-    kruskalWallisH?: any;
-    medianFrequencies?: any;
-    medianTest?: any;
-    jonckheereTerpstraTest?: any;
-    testType?: {
-        kruskalWallisH: boolean;
-        median: boolean;
-        jonckheereTerpstra: boolean;
-    };
-    displayStatistics?: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
-    error?: string;
-}
-
-// ---------------------------------
-// Hook Props and Results
-// ---------------------------------
+// VariableSelection Props
 export interface VariableSelectionProps {
     initialVariables?: Variable[];
 }
 
-export interface VariableSelectionResult {
-    availableVariables: Variable[];
+// KIndependentSamplesTestAnalysis Props
+export interface KIndependentSamplesTestAnalysisProps extends Pick<BaseModalProps, 'onClose'> {
     testVariables: Variable[];
     groupingVariable: Variable | null;
-    highlightedVariable: HighlightedVariable | null;
-    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-    moveToTestVariable: (variable: Variable, targetIndex?: number) => void;
-    moveToGroupingVariable: (variable: Variable) => void;
-    moveToAvailableVariables: (variable: Variable, source: 'selected' | 'grouping', targetIndex?: number) => void;
-    reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
-    resetVariableSelection: () => void;
+    minimum: number | null;
+    maximum: number | null;
+    testType: TestType;
+    displayStatistics: DisplayStatisticsOptions;
 }
 
-// For data fetching hook
-export interface DataFetchingResult {
-    fetchData: (testVariables: Variable[], groupingVariable: Variable) => Promise<{
-        variableData: {
-            variable: Variable;
-            data: any[];
-        }[];
-        groupData: {
-            variable: Variable;
-            data: any[];
-        };
-    }>;
-    isLoading: boolean;
-    error: string | null;
-    clearError: () => void;
+// ---------------------------------
+// Result
+// ---------------------------------
+
+// UseTourGuide Result
+export interface UseTourGuideResult {
+    tourActive: boolean;
+    currentStep: number;
+    tourSteps: TourStep[];
+    currentTargetElement: HTMLElement | null;
+    startTour: () => void;
+    nextStep: () => void;
+    prevStep: () => void;
+    endTour: () => void;
 }
 
-// For worker communication
-export interface KIndependentSamplesWorkerHookResult {
-    calculate: (data: WorkerInput) => Promise<KIndependentSamplesResults>;
-    isCalculating: boolean;
-    error: string | null;
-    cancelCalculation: () => void;
-} 
+// Ranks
+export interface Ranks {
+    groups: {
+        value: number;
+        label: string;
+        N: number;
+        meanRank: number;
+        sumRanks: number;
+    }[];
+}
+
+// KruskalWallisH Test Statistics
+export interface KruskalWallisHTestStatistics {
+    H: number;
+    df: number;
+    pValue: number;
+}
+
+// Frequencies
+export interface Frequencies {
+    group1: {
+        label: string;
+        N: number;
+    };
+    group2: {
+        label: string;
+        N: number;
+    };
+}
+
+// Median Test Statistics
+export interface MedianTestStatistics {
+    N: number;
+    Median: number;
+    ChiSquare: number;
+    df: number;
+    pValue: number;
+}
+
+// JonckheereTerpstra Test
+export interface JonckheereTerpstraTest {
+    Levels: number;
+    N: number;
+    Observed: number;
+    Mean: number;
+    StdDev: number;
+    Std: number;
+    pValue: number;
+}
+  
+// Test Statistics
+export interface TestStatistics {
+    KruskalWallisH?: KruskalWallisHTestStatistics;
+    Median?: MedianTestStatistics;
+    JonckheereTerpstra?: JonckheereTerpstraTest;
+}
+  
+// Descriptive Statistics
+export interface DescriptiveStatistics {
+    N: number;
+    Mean?: number;
+    StdDev?: number;
+    Min?: number;
+    Max?: number;
+    Percentile25?: number;
+    Percentile50?: number;
+    Percentile75?: number;
+  }
+  
+// K Independent Samples Test Result
+export interface KIndependentSamplesTestResult {
+    variable: Variable;
+    descriptiveStatistics?: DescriptiveStatistics;
+    ranks?: Ranks;  // Changed from Ranks[] to Ranks
+    testStatisticsKruskalWallisH?: KruskalWallisHTestStatistics;
+    frequencies?: Frequencies;
+    testStatisticsMedian?: MedianTestStatistics;
+    jonckheereTerpstraTest?: JonckheereTerpstraTest;
+}
+  
+  // K Independent Samples Test Results Collection
+  export interface KIndependentSamplesTestResults {
+    ranks?: KIndependentSamplesTestResult[];
+    testStatisticsKruskalWallisH?: KIndependentSamplesTestResult[];
+    frequencies?: KIndependentSamplesTestResult[];
+    testStatisticsMedian?: KIndependentSamplesTestResult[];
+    jonckheereTerpstraTest?: KIndependentSamplesTestResult[];
+    descriptiveStatistics?: KIndependentSamplesTestResult[];
+  }
+  
+  // ---------------------------------
+  // Table Types
+  // ---------------------------------
+  export interface TableColumnHeader {
+    header: string;
+    key: string;
+    children?: TableColumnHeader[];
+  }
+  
+  export interface TableRow {
+    [key: string]: any;
+    rowHeader?: any[];
+  }
+  
+  export interface KIndependentSamplesTestTable {
+    title: string;
+    columnHeaders: TableColumnHeader[];
+    rows: TableRow[];
+  }

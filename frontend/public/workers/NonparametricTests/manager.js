@@ -16,7 +16,7 @@ import './libs/chiSquare.js';
 import './libs/runs.js';
 import './libs/twoIndependentSamples.js';
 // import './libs/twoRelatedSamples.js';
-// import './libs/kIndependentSamples.js';
+import './libs/kIndependentSamples.js';
 // import './libs/kRelatedSamples.js';
 import './libs/descriptiveStatistics.js';
 
@@ -26,7 +26,7 @@ const calculators = {
     runs: RunsCalculator,
     twoIndependentSamples: TwoIndependentSamplesCalculator,
     // twoRelatedSamples: TwoRelatedSamplesCalculator,
-    // kIndependentSamples: KIndependentSamplesCalculator,
+    kIndependentSamples: KIndependentSamplesCalculator,
     // kRelatedSamples: KRelatedSamplesCalculator,
     descriptiveStatistics: DescriptiveStatisticsCalculator
 };
@@ -103,12 +103,32 @@ onmessage = (event) => {
                 });
 
                 console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
-                console.log('[Worker] Two Independent Samples Results:', JSON.stringify(calculator.getOutput().frequenciesRanks));
-                console.log('[Worker] Two Independent Samples Results:', JSON.stringify(calculator.getOutput().testStatisticsMannWhitneyU));
-                console.log('[Worker] Two Independent Samples Results:', JSON.stringify(calculator.getOutput().testStatisticsKolmogorovSmirnovZ));
+                console.log('[Worker] Frequencies Ranks Results:', JSON.stringify(calculator.getOutput().frequenciesRanks));
+                console.log('[Worker] Mann Whitney U Results:', JSON.stringify(calculator.getOutput().testStatisticsMannWhitneyU));
+                console.log('[Worker] Kolmogorov Smirnov Z Results:', JSON.stringify(calculator.getOutput().testStatisticsKolmogorovSmirnovZ));
                 results.frequenciesRanks = calculator.getOutput().frequenciesRanks;
                 results.testStatisticsMannWhitneyU = calculator.getOutput().testStatisticsMannWhitneyU;
                 results.testStatisticsKolmogorovSmirnovZ = calculator.getOutput().testStatisticsKolmogorovSmirnovZ;
+            } else if (type === 'kIndependentSamples') {
+                calculator = new CalculatorClass({ 
+                    variable, 
+                    data, 
+                    groupingVariable, 
+                    groupingData, 
+                    options 
+                });
+
+                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Ranks Results:', JSON.stringify(calculator.getOutput().ranks));
+                console.log('[Worker] Kruskal Wallis H Results:', JSON.stringify(calculator.getOutput().testStatisticsKruskalWallisH));
+                console.log('[Worker] Frequencies Results:', JSON.stringify(calculator.getOutput().frequencies));
+                console.log('[Worker] Median Results:', JSON.stringify(calculator.getOutput().testStatisticsMedian));
+                console.log('[Worker] Jonckheere Terpstra Results:', JSON.stringify(calculator.getOutput().testStatisticsJonckheereTerpstra));
+                results.ranks = calculator.getOutput().ranks;
+                results.testStatisticsKruskalWallisH = calculator.getOutput().testStatisticsKruskalWallisH;
+                results.frequencies = calculator.getOutput().frequencies;
+                results.testStatisticsMedian = calculator.getOutput().testStatisticsMedian;
+                results.testStatisticsJonckheereTerpstra = calculator.getOutput().testStatisticsJonckheereTerpstra;
             // } else if (['twoIndependentSamples', 'kIndependentSamples'].includes(analysisType)) {
             //     calculator = new CalculatorClass({ 
             //         variable, 
