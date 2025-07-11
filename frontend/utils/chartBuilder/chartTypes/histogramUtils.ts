@@ -1,4 +1,24 @@
 import * as d3 from "d3";
+import {
+  ChartTitleOptions,
+  addChartTitle,
+  addStandardAxes,
+  formatAxisNumber,
+  truncateText,
+} from "./chartUtils";
+import {
+  createStandardSVG,
+  addAxisLabels,
+  AxisLabelOptions,
+  getMajorTicks,
+  addLegend,
+  calculateLegendPosition,
+  SVGCreationOptions,
+  LegendOptions,
+  LegendPositionOptions,
+} from "../chartUtils";
+import { calculateResponsiveMargin } from "../responsiveMarginUtils";
+import { defaultChartColors } from "../defaultStyles/defaultColors";
 
 interface ChartData {
   category: string;
@@ -12,19 +32,37 @@ interface FormattedData {
   [key: string]: number | string;
 }
 
+interface AxisLabels {
+  x?: string;
+  y?: string;
+}
+
+interface AxisScaleOptions {
+  x?: {
+    min?: string;
+    max?: string;
+    majorIncrement?: string;
+    origin?: string;
+  };
+  y?: {
+    min?: string;
+    max?: string;
+    majorIncrement?: string;
+    origin?: string;
+  };
+}
+
 export const createHistogram = (
   data: number[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: AxisLabels,
+  axisScaleOptions?: AxisScaleOptions,
+  chartColors?: string[]
 ) => {
   console.log("Creating histogram with data:", data);
-
-  // Menentukan margin
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 30 : 0;
 
   // Filter data
   const validData = data.filter(
@@ -33,8 +71,9 @@ export const createHistogram = (
 
   console.log("Creating histogram with valid data:", validData);
 
-  // Menentukan jumlah bins secara dinamis berdasarkan ukuran data dan rentang nilai
-  const thresholds = Math.max(5, Math.ceil(validData.length / 5));
+  // Menentukan jumlah bins
+  const thresholds = Math.ceil(1 + 3.3 * Math.log10(validData.length));
+
   // Membuat bins dari data yang valid
   const bins = d3
     .bin()
@@ -52,34 +91,100 @@ export const createHistogram = (
       : d3.max(validData);
 
   // Pastikan x0 dan x1 adalah tipe number
-  const x0Value: number = typeof x0 === "number" ? x0 : 0;
-  const x1Value: number =
+  let x0Value: number = typeof x0 === "number" ? x0 : 0;
+  let x1Value: number =
     typeof x1 === "number" ? x1 : Math.max(d3.max(validData) as number, 10);
+
+  // Apply axis scale options if provided
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      x0Value = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      x1Value = Number(axisScaleOptions.x.max);
+  }
+
+  // Calculate label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Calculate Y domain with nice values
+  let yMin = 0;
+  let yMax = d3.max(bins, (d) => d.length) || 0;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  // Calculate nice tick values
+  const tickCount = Math.min(10, Math.floor(height / 50));
+  const yTicks = d3.scaleLinear().domain([yMin, yMax]).nice().ticks(tickCount);
+
+  // Calculate max label widths for margin
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+  const maxXLabelWidth =
+    d3.max(
+      bins,
+      (d) => ctx.measureText((d.x0 ?? 0).toFixed(1).toString()).width
+    ) ?? 0;
+
+  // Use responsive margin utility with label measurements
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+  });
 
   // Menentukan skala untuk sumbu X
   const x = d3
     .scaleLinear()
     .domain([x0Value, x1Value])
-    .range([marginLeft, width - marginRight]);
+    .range([margin.left, width - margin.right]);
 
-  // Menentukan skala untuk sumbu Y
+  // Y scale with nice values
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(bins, (d) => d.length) || 0])
-    .range([height - marginBottom, marginTop]);
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  // Membuat elemen SVG baru di dalam DOM
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
+
+  // Add title with responsive positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
 
   // Menambahkan rectangle untuk setiap bin
   svg
     .append("g")
-    .attr("fill", "steelblue")
+    .attr(
+      "fill",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : "steelblue"
+    )
     .selectAll("rect")
     .data(bins)
     .join("rect")
@@ -88,47 +193,49 @@ export const createHistogram = (
     .attr("y", (d) => y(d.length))
     .attr("height", (d) => y(0) - y(d.length));
 
-  // Menambahkan X axis
+  // Add standardized axes
   if (useAxis) {
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .ticks(width / 80)
-          .tickSizeOuter(0)
-      )
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ Data")
-      );
+    // Generate tick values based on majorIncrement or calculated tick count
+    const tickValues = axisScaleOptions?.y?.majorIncrement
+      ? getMajorTicks(yMin, yMax, Number(axisScaleOptions.y.majorIncrement))
+      : yTicks;
+
+    // Generate categories from bin boundaries
+    const categories = bins.map((d) => (d.x0?.toFixed(1) || "0").toString());
+
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 8,
+        tickFormat: (d: any) => formatAxisNumber(d),
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+        maxValueLength: 6,
+        tickValues,
+        showAxis: true,
+        showTicks: true,
+        showValues: true,
+        showAxisLabel: true,
+      },
+    });
   }
 
-  // Menambahkan Y axis
-  if (useAxis) {
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).ticks(height / 40))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Frequency")
-      );
-  }
-
-  // Mengembalikan node SVG
   return svg.node();
 };
 
@@ -136,297 +243,438 @@ export const createPopulationPyramid = (
   data: ChartData[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: AxisLabels,
+  axisScaleOptions?: AxisScaleOptions,
+  chartColors?: string[]
 ) => {
-  const margin = {
-    top: 20,
-    right: 50,
-    bottom: useAxis ? 40 : 10,
-    left: useAxis ? 50 : 10,
-  };
-  console.log("Data", data);
-  const svgWidth = width + margin.left + margin.right;
-  const svgHeight = height + margin.top + margin.bottom;
+  // Validasi data
+  if (!data || data.length === 0) {
+    console.error("No data available for the population pyramid");
+    return null;
+  }
 
-  // Skala untuk sumbu X (populasi)
-  const maxPopulation = d3.max(data, (d: ChartData) => d.value) || 0;
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Dapatkan unique subcategories dari data
+  const subcategories = Array.from(new Set(data.map((d) => d.subcategory)));
+
+  // Gunakan subcategories yang ada untuk menentukan sisi
+  const leftCategory = subcategories[0];
+  const rightCategory = subcategories[1];
+
+  // Persiapkan data untuk label sumbu Y
+  const categories = Array.from(new Set(data.map((d) => d.category)));
+  const yTicks = categories;
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick).width)) ?? 0;
+
+  // Hitung margin responsif
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth: maxYLabelWidth,
+    hasLegend: true,
+    legendPosition: "right",
+    isHorizontalChart: false, // Menggunakan vertical layout
+  });
+
+  // Hitung maxPopulation berdasarkan kategori yang ada
+  let maxPopulation = 0;
+  if (leftCategory) {
+    const leftMax =
+      d3.max(
+        data.filter((d) => d.subcategory === leftCategory),
+        (d) => d.value
+      ) || 0;
+    maxPopulation = Math.max(maxPopulation, leftMax);
+  }
+  if (rightCategory) {
+    const rightMax =
+      d3.max(
+        data.filter((d) => d.subcategory === rightCategory),
+        (d) => d.value
+      ) || 0;
+    maxPopulation = Math.max(maxPopulation, rightMax);
+  }
+
+  // Update xMin dan xMax berdasarkan data yang ada
+  let xMin = leftCategory ? -maxPopulation : 0;
+  let xMax = rightCategory ? maxPopulation : 0;
+
+  // Apply axis scale options if provided
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
+  }
+
+  // Buat skala
   const x = d3
     .scaleLinear()
-    .domain([-maxPopulation, maxPopulation])
-    .range([0, width]);
+    .domain([xMin, xMax])
+    .range([margin.left, width - margin.right]);
 
-  // Skala untuk sumbu Y (kategori usia)
   const y = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
-    .range([height, 0])
+    .domain(categories)
+    .range([height - margin.bottom, margin.top])
     .padding(0.1);
 
-  // Membuat elemen SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", svgWidth)
-    .attr("height", svgHeight)
-    .attr("viewBox", [0, 0, svgWidth, svgHeight])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Buat SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
 
-  const g = svg
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+  // Tambahkan judul
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
 
-  // Menambahkan bar 1
-  g.selectAll(".bar-male")
-    .data(data.filter((d) => d.subcategory === "M"))
-    .join("rect")
-    .attr("class", "bar-male")
-    .attr("x", (d) => x(-d.value))
-    .attr("y", (d) => y(d.category) || 0)
-    .attr("width", (d) => x(0) - x(-d.value))
-    .attr("height", y.bandwidth())
-    .attr("fill", "#3498db");
+  // Warna bar default atau dari chartColors
+  let leftColor = defaultChartColors[0]; // E69F00 (orange)
+  let rightColor = defaultChartColors[1]; // 56B4E9 (blue)
+  if (chartColors && chartColors.length === 1) {
+    leftColor = chartColors[0];
+    rightColor = chartColors[0];
+  } else if (chartColors && chartColors.length > 1) {
+    leftColor = chartColors[0];
+    rightColor = chartColors[1];
+  }
 
-  // Menambahkan bar 2
-  g.selectAll(".bar-female")
-    .data(data.filter((d) => d.subcategory === "F"))
-    .join("rect")
-    .attr("class", "bar-female")
-    .attr("x", x(0))
-    .attr("y", (d) => y(d.category) || 0)
-    .attr("width", (d) => x(d.value) - x(0))
-    .attr("height", y.bandwidth())
-    .attr("fill", "#e74c3c");
-
-  // Menambahkan X axis
+  // Grid lines
   if (useAxis) {
-    g.append("g")
-      .attr("transform", `translate(0,${height})`)
+    svg
+      .append("g")
+      .attr("class", "grid")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(
         d3
           .axisBottom(x)
-          .ticks(5)
-          .tickFormat((d) => Math.abs(Number(d)) + "")
+          .tickSize(-(height - margin.top - margin.bottom))
+          .tickFormat(() => "")
       )
-      .call((g) => g.select(".domain").remove());
+      .call((g) => {
+        g.select(".domain").remove();
+        g.selectAll(".tick line")
+          .attr("stroke", "rgba(0,0,0,0.1)")
+          .attr("stroke-dasharray", "2,2");
+      });
   }
 
-  // Menambahkan sumbu Y (kelompok usia) jika useAxis true
+  if (leftCategory) {
+    // Bar sisi kiri (nilai negatif)
+    svg
+      .append("g")
+      .selectAll(".bar-left")
+      .data(data.filter((d) => d.subcategory === leftCategory))
+      .join("rect")
+      .attr("class", "bar-left")
+      .attr("x", (d) => x(Math.min(0, -d.value)))
+      .attr("y", (d) => y(d.category) || 0)
+      .attr("width", (d) => Math.abs(x(-d.value) - x(0)))
+      .attr("height", y.bandwidth())
+      .attr("fill", leftColor);
+  }
+
+  if (rightCategory) {
+    // Bar sisi kanan (nilai positif)
+    svg
+      .append("g")
+      .selectAll(".bar-right")
+      .data(data.filter((d) => d.subcategory === rightCategory))
+      .join("rect")
+      .attr("class", "bar-right")
+      .attr("x", x(0))
+      .attr("y", (d) => y(d.category) || 0)
+      .attr("width", (d) => Math.abs(x(d.value) - x(0)))
+      .attr("height", y.bandwidth())
+      .attr("fill", rightColor);
+  }
+
+  // Tambahkan axis jika diperlukan
   if (useAxis) {
-    g.append("g")
-      .call(d3.axisLeft(y))
-      .call((g) => g.select(".domain").remove());
+    const xTickValues = axisScaleOptions?.x?.majorIncrement
+      ? getMajorTicks(xMin, xMax, Number(axisScaleOptions.x.majorIncrement))
+      : undefined;
+
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories: [], // Set empty categories to prevent rotation
+      axisLabels,
+      xMin,
+      xMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 8,
+        tickFormat: (d: any) => {
+          const absValue = Math.abs(Number(d));
+          return d < 0
+            ? `-${formatAxisNumber(absValue)}`
+            : formatAxisNumber(absValue);
+        },
+        showGridLines: false,
+        tickValues: xTickValues,
+        axisPosition: "bottom",
+      },
+      yAxisOptions: {
+        showGridLines: false,
+      },
+    });
+  }
+
+  // Tambahkan legenda
+  const legendPosition = calculateLegendPosition({
+    width,
+    height,
+    marginLeft: margin.left,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginTop: margin.top,
+    legendPosition: "right",
+    itemCount: 2,
+  });
+
+  // Buat color scale untuk legenda dengan nama variabel yang ada
+  const legendDomain = subcategories.filter(Boolean);
+  const legendColors = [leftColor, rightColor].slice(0, legendDomain.length);
+
+  const colorScale = d3
+    .scaleOrdinal<string>()
+    .domain(legendDomain)
+    .range(legendColors);
+
+  // Tambahkan legenda hanya jika ada data
+  if (legendDomain.length > 0) {
+    addLegend({
+      svg,
+      colorScale: (d: string) => colorScale(d),
+      position: legendPosition,
+      domain: legendDomain,
+      itemWidth: 15,
+      itemHeight: 15,
+      fontSize: 12,
+      legendPosition: "right",
+      title: "Keterangan:",
+    });
   }
 
   return svg.node();
 };
 
-// export const createPopulationPyramid = (
-//   data: { ageGroup: string; male: number; female: number }[], // Data harus memiliki tipe eksplisit
-//   width: number,
-//   height: number
-// ) => {
-//   const margin = { top: 20, right: 50, bottom: 30, left: 50 };
-//   const svgWidth = width + margin.left + margin.right;
-//   const svgHeight = height + margin.top + margin.bottom;
-
-//   // Skala untuk sumbu X (populasi)
-//   const x = d3
-//     .scaleLinear()
-//     .domain([
-//       0,
-//       d3.max(data, (d: { male: number; female: number }) =>
-//         Math.max(d.male, d.female)
-//       ) || 0,
-//     ])
-//     .range([0, width / 2]);
-
-//   // Skala untuk sumbu Y (kategori usia)
-//   const y = d3
-//     .scaleBand()
-//     .domain(data.map((d: { ageGroup: string }) => d.ageGroup))
-//     .range([height, 0])
-//     .padding(0.1);
-
-//   // Membuat elemen SVG
-//   const svg = d3
-//     .create("svg")
-//     .attr("width", svgWidth)
-//     .attr("height", svgHeight)
-//     .attr("viewBox", [0, 0, svgWidth, svgHeight])
-//     .attr("style", "max-width: 100%; height: auto;");
-
-//   const g = svg
-//     .append("g")
-//     .attr("transform", `translate(${margin.left},${margin.top})`);
-
-//   // Menambahkan bar untuk pria (male) di sisi kiri
-//   g.selectAll(".bar-male")
-//     .data(data)
-//     .join("rect")
-//     .attr("class", "bar-male")
-//     .attr("x", (d) => width / 2 - x(d.male))
-//     .attr("y", (d) => y(d.ageGroup) || 0)
-//     .attr("width", (d) => x(d.male))
-//     .attr("height", y.bandwidth())
-//     .attr("fill", "#3498db"); // Warna biru untuk pria
-
-//   // Menambahkan bar untuk wanita (female) di sisi kanan
-//   g.selectAll(".bar-female")
-//     .data(data)
-//     .join("rect")
-//     .attr("class", "bar-female")
-//     .attr("x", width / 2)
-//     .attr("y", (d) => y(d.ageGroup) || 0)
-//     .attr("width", (d) => x(d.female))
-//     .attr("height", y.bandwidth())
-//     .attr("fill", "#e74c3c"); // Warna merah untuk wanita
-
-//   // Menambahkan sumbu X untuk pria di kiri
-//   g.append("g")
-//     .attr("transform", `translate(${width / 2},${height})`)
-//     .call(
-//       d3
-//         .axisBottom(x)
-//         .ticks(5)
-//         .tickFormat((d) => d + "M")
-//     )
-//     .call((g) => g.select(".domain").remove());
-
-//   // Menambahkan sumbu X untuk wanita di kanan
-//   g.append("g")
-//     .attr("transform", `translate(${width / 2},${height})`)
-//     .call(
-//       d3
-//         .axisBottom(x)
-//         .ticks(5)
-//         .tickFormat((d) => d + "M")
-//     )
-//     .call((g) => g.select(".domain").remove());
-
-//   // Menambahkan sumbu Y (kelompok usia)
-//   g.append("g")
-//     .call(d3.axisLeft(y))
-//     .call((g) => g.select(".domain").remove());
-
-//   return svg.node();
-// };
-
 export const createFrequencyPolygon = (
-  data: { category: string; value: number }[],
+  data: number[], // Ubah tipe data untuk konsisten dengan histogram
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: AxisLabels,
+  axisScaleOptions?: AxisScaleOptions,
+  chartColors?: string[]
 ) => {
-  console.log("Creating frequency polygon with data:", data);
-
   // Filter data
   const validData = data.filter(
-    (d) =>
-      d.category &&
-      d.value !== undefined &&
-      d.value !== null &&
-      !Number.isNaN(d.value)
+    (d) => d !== null && d !== undefined && !Number.isNaN(d) && d !== 0
   );
 
-  if (validData.length === 0) {
-    console.warn("No valid data available for creating the chart.");
-    return null;
+  // Hitung bins seperti di histogram
+  const thresholds = Math.ceil(1 + 3.3 * Math.log10(validData.length));
+  const bins = d3
+    .bin()
+    .thresholds(thresholds)
+    .value((d: any) => d)(validData);
+
+  // Pastikan x0 dan x1 memiliki nilai fallback jika undefined
+  const x0 =
+    bins.length > 0 && bins[0].x0 !== undefined
+      ? bins[0].x0
+      : d3.min(validData) || 0;
+  const x1 =
+    bins.length > 0 && bins[bins.length - 1].x1 !== undefined
+      ? bins[bins.length - 1].x1
+      : d3.max(validData);
+
+  // Pastikan x0 dan x1 adalah tipe number
+  let x0Value: number = typeof x0 === "number" ? x0 : 0;
+  let x1Value: number =
+    typeof x1 === "number" ? x1 : Math.max(d3.max(validData) as number, 10);
+
+  // Apply axis scale options if provided
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      x0Value = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      x1Value = Number(axisScaleOptions.x.max);
   }
 
-  console.log("Filtered valid data:", validData);
+  // Calculate Y domain with nice values
+  let yMin = 0;
+  let yMax = d3.max(bins, (d) => d.length) || 0;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
 
-  // Extend data with zero values to create boundary points
-  const firstCategory = validData[0].category || "No Category";
-  const lastCategory =
-    validData[validData.length - 1].category || "No Category";
-  const extendedData = [
-    { category: "start", value: 0 },
-    ...validData,
-    { category: "end", value: 0 },
-  ];
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
 
-  console.log("Extended data with zero boundaries:", extendedData);
+  // Calculate nice tick values
+  const tickCount = Math.min(10, Math.floor(height / 50));
+  const yTicks = d3.scaleLinear().domain([yMin, yMax]).nice().ticks(tickCount);
 
-  // Set margins based on whether axes are enabled
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 40 : 0;
+  // Calculate max label widths for margin
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+  const maxXLabelWidth =
+    d3.max(
+      bins,
+      (d) => ctx.measureText((d.x0 ?? 0).toFixed(1).toString()).width
+    ) ?? 0;
 
-  // Set scales for X and Y axes
+  // Use responsive margin utility with label measurements
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+  });
+
+  // Buat skala
   const x = d3
-    .scalePoint()
-    .domain(extendedData.map((d) => d.category))
-    .range([marginLeft, width - marginRight]);
+    .scaleLinear()
+    .domain([x0Value, x1Value])
+    .range([margin.left, width - margin.right]);
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(extendedData, (d) => d.value) as number])
-    .range([height - marginBottom, marginTop]);
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  // Define line generator for frequency polygon
-  const line = d3
-    .line<{ category: string; value: number }>()
-    .x((d) => x(d.category)!)
-    .y((d) => y(d.value))
-    .curve(d3.curveMonotoneX);
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
 
-  // Create SVG element
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Add title with responsive positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
 
-  // Append frequency polygon line to the SVG
+  // Warna garis/titik dari chartColors atau default
+  const mainColor =
+    chartColors && chartColors[0] ? chartColors[0] : defaultChartColors[0];
+
+  // Buat data points dari titik tengah setiap bin
+  const plotData = bins.map((bin) => ({
+    x: (bin.x0! + bin.x1!) / 2, // Titik tengah bin
+    y: bin.length, // Frekuensi
+  }));
+
+  // Tambahkan titik awal dan akhir dengan y=0 untuk polygon yang lengkap
+  plotData.unshift({ x: x0Value, y: 0 });
+  plotData.push({ x: x1Value, y: 0 });
+
+  // Append frequency polygon line
   svg
     .append("path")
-    .datum(extendedData)
+    .datum(plotData)
     .attr("fill", "none")
-    .attr("stroke", "steelblue")
+    .attr("stroke", mainColor)
     .attr("stroke-width", 2)
-    .attr("d", line);
+    .attr(
+      "d",
+      d3
+        .line<(typeof plotData)[0]>()
+        .x((d) => x(d.x))
+        .y((d) => y(d.y))
+        .curve(d3.curveLinear) // Gunakan linear untuk polygon yang tepat
+    );
 
-  // Append data points to the SVG
+  // Append data points (hanya untuk titik tengah bin, bukan titik awal/akhir)
   svg
     .append("g")
     .selectAll("circle")
-    .data(extendedData)
+    .data(plotData.slice(1, -1)) // Exclude titik awal dan akhir
     .join("circle")
-    .attr("cx", (d) => x(d.category)!)
-    .attr("cy", (d) => y(d.value))
+    .attr("cx", (d) => x(d.x))
+    .attr("cy", (d) => y(d.y))
     .attr("r", 4)
-    .attr("fill", "steelblue");
+    .attr("fill", mainColor);
 
-  // If axis is enabled, append X and Y axes
+  // Add standardized axes
   if (useAxis) {
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0));
+    // Generate tick values based on majorIncrement or calculated tick count
+    const tickValues = axisScaleOptions?.y?.majorIncrement
+      ? getMajorTicks(yMin, yMax, Number(axisScaleOptions.y.majorIncrement))
+      : yTicks;
 
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).ticks(height / 40))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Frequency")
-      );
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories: [],
+      axisLabels,
+      xMin: x0Value,
+      xMax: x1Value,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        showGridLines: true,
+        tickValues,
+      },
+    });
   }
 
-  // Return the SVG node
   return svg.node();
 };
 
@@ -434,14 +682,12 @@ export const createStackedHistogram = (
   data: { value: number; category: string }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  chartColors?: string[]
 ) => {
   console.log("Creating stacked histogram with data:", data);
-
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 30 : 0;
 
   // Filter data untuk menghilangkan nilai yang tidak valid
   const validData = data.filter(
@@ -452,8 +698,19 @@ export const createStackedHistogram = (
       d.value !== 0
   );
 
+  if (validData.length === 0) {
+    console.error("No valid data available for the stacked histogram");
+    return null;
+  }
+
   // Kelompokkan data berdasarkan kategori
   const categories = Array.from(new Set(validData.map((d) => d.category)));
+
+  // Handle case when no categories are found (should not happen with our fix, but safety check)
+  if (categories.length === 0) {
+    console.error("No categories found in stacked histogram data");
+    return null;
+  }
 
   // Menentukan bins
   const thresholds = Math.max(5, Math.ceil(validData.length / 5));
@@ -477,122 +734,156 @@ export const createStackedHistogram = (
     return { x0: bin.x0 ?? 0, x1: bin.x1 ?? 0, ...counts };
   });
 
+  // Create canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Calculate max Y value for ticks
+  const maxValue =
+    d3.max(stackedData, (d) => d3.sum(categories, (c) => (d as any)[c])) ?? 0;
+  const yTicks = d3.scaleLinear().domain([0, maxValue]).nice().ticks(5);
+
+  // Calculate max label width for margin calculation
+  const maxLabelWidth = Math.max(
+    ...yTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
+  );
+
+  // Calculate max legend text width
+  const maxLegendWidth = Math.max(
+    ...categories.map((category) => ctx.measureText(category).width)
+  );
+
+  // Use responsive margin utility with legend consideration
+  // Only show legend if there are multiple categories
+  const showLegend = categories.length > 1;
+
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth,
+    hasLegend: showLegend,
+    legendPosition: "right",
+  });
+
   // Skala X
   const x = d3
     .scaleLinear()
     .domain([x0Value, x1Value])
-    .range([marginLeft, width - marginRight]);
+    .range([margin.left, width - margin.right]);
 
   // Skala Y
   const y = d3
     .scaleLinear()
-    .domain([
-      0,
-      d3.max(stackedData, (d) => d3.sum(categories, (c) => (d as any)[c])) ?? 0,
-    ])
-    .range([height - marginBottom, marginTop]);
+    .domain([0, maxValue])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  // Skala warna untuk kategori
-  const color = d3.scaleOrdinal().domain(categories).range(d3.schemeCategory10);
+  // Color scale using default colors
+  const color = d3
+    .scaleOrdinal<string>()
+    .domain(categories)
+    .range(chartColors || defaultChartColors);
 
   // Data untuk d3.stack()
   const stack = d3.stack<{ [key: string]: number }>().keys(categories);
   const series = stack(stackedData);
 
-  // Buat elemen SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
-  // Buat kelompok bar
-  const groups = svg
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Draw bars
+  svg
     .append("g")
     .selectAll("g")
     .data(series)
     .join("g")
-    .attr("fill", (d) => color(d.key) as string);
-
-  // Tambahkan rect untuk setiap kategori dalam bin
-  groups
+    .attr("fill", (d) => color(d.key))
     .selectAll("rect")
-    .data((d) => d)
+    .data((d) => d.map((item) => ({ ...item, key: d.key })))
     .join("rect")
     .attr("x", (d) => x(d.data.x0))
     .attr("width", (d) => Math.max(1, x(d.data.x1) - x(d.data.x0) - 2))
     .attr("y", (d) => y(d[1]))
-    .attr("height", (d) => Math.max(0, y(d[0]) - y(d[1])));
+    .attr("height", (d) => Math.max(0, y(d[0]) - y(d[1])))
+    .append("title")
+    .text((d) => `${d.key}: ${d[1] - d[0]}`);
 
-  // Tambahkan sumbu X
+  // Add axes if needed
   if (useAxis) {
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .ticks(width / 80)
-          .tickSizeOuter(0)
-      )
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ Data")
-      );
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories: stackedData.map((d) => d.x0.toString()),
+      axisLabels,
+      xMin: x0Value,
+      xMax: x1Value,
+      yMin: 0,
+      yMax: maxValue,
+      chartType: "vertical",
+      xAxisOptions: {
+        showGridLines: true,
+        tickFormat: formatAxisNumber,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+      },
+    });
+
+    // Add legend only if there are multiple categories
+    if (showLegend) {
+      const legendPosition = calculateLegendPosition({
+        width,
+        height,
+        marginLeft: margin.left,
+        marginRight: margin.right,
+        marginBottom: margin.bottom,
+        marginTop: margin.top,
+        legendPosition: "right",
+        itemCount: categories.length,
+      });
+
+      addLegend({
+        svg,
+        colorScale: color,
+        position: legendPosition,
+        legendPosition: "right",
+        domain: categories,
+        itemWidth: 15,
+        itemHeight: 15,
+        fontSize: 12,
+      });
+    }
   }
 
-  // Tambahkan sumbu Y
-  if (useAxis) {
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).ticks(height / 40))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Frequency")
-      );
-
-    // Tambahkan legenda
-    const legend = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 10)
-      .attr("text-anchor", "start")
-      .selectAll("g")
-      .data(categories)
-      .join("g")
-      .attr("transform", (d, i) => `translate(${width - 100},${i * 20})`);
-
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-
-    legend
-      .append("rect")
-      .attr("width", legendItemWidth)
-      .attr("height", legendItemHeight)
-      .attr("fill", (d) => color(d) as string);
-
-    legend
-      .append("text")
-      .attr("x", legendItemWidth + labelOffset)
-      .attr("y", legendItemHeight / 2)
-      .attr("dy", "0.35em")
-      .text((d) => d);
-  }
-
-  // Kembalikan node SVG
+  // Return the SVG node
   return svg.node();
 };

@@ -11,117 +11,118 @@ import React from "react";
  * 3. Memudahkan autocomplete saat pengembangan
  */
 export enum ModalType {
-    // File modals - Operasi file seperti import, export, print
-    ImportCSV = "ImportCSV",
-    ReadCSVFile = "ReadCSVFile",
-    ImportExcel = "ImportExcel",
-    ReadExcelFile = "ReadExcelFile",
-    OpenData = "OpenData",
-    OpenOutput = "OpenOutput",
-    PrintPreview = "PrintPreview",
-    Print = "Print",
-    ExportCSV = "ExportCSV",
-    ExportExcel = "ExportExcel",
-    Exit = "Exit",
-    ImportClipboard = "ImportClipboard",
+  // File modals - Operasi file seperti import, export, print
+  ImportCSV = "ImportCSV",
+  ReadCSVFile = "ReadCSVFile",
+  ImportExcel = "ImportExcel",
+  ReadExcelFile = "ReadExcelFile",
+  OpenData = "OpenData",
+  OpenOutput = "OpenOutput",
+  PrintPreview = "PrintPreview",
+  Print = "Print",
+  ExportCSV = "ExportCSV",
+  ExportExcel = "ExportExcel",
+  Exit = "Exit",
+  ImportClipboard = "ImportClipboard",
 
-    // Edit modals - Operasi pencarian dan navigasi
-    FindAndReplace = "FindAndReplace",
-    GoTo = "GoTo",
-    Find = "Find",
-    Replace = "Replace",
-    GoToCase = "GoToCase",
-    GoToVariable = "GoToVariable",
+  // Edit modals - Operasi pencarian dan navigasi
+  FindAndReplace = "FindAndReplace",
+  GoTo = "GoTo",
+  Find = "Find",
+  Replace = "Replace",
+  GoToCase = "GoToCase",
+  GoToVariable = "GoToVariable",
 
-    // Data modals - Operasi manipulasi dan pengaturan data
-    DefineVarProps = "DefineVarProps",
-    VarPropsEditor = "VarPropsEditor",
-    SetMeasurementLevel = "SetMeasurementLevel",
-    DefineDateTime = "DefineDateTime",
-    DuplicateCases = "DuplicateCases",
-    UnusualCases = "UnusualCases",
-    SortCases = "SortCases",
-    SortVars = "SortVars",
-    Transpose = "Transpose",
-    Restructure = "Restructure",
-    Aggregate = "Aggregate",
-    MergeFiles = "MergeFiles",
-    SplitFile = "SplitFile",
-    WeightCases = "WeightCases",
-    MultipleResponse = "MultipleResponse",
-    NewCustomAttr = "NewCustomAttr",
-    SelectCases = "SelectCases",
-    DefineValidationRules = "DefineValidationRules",
-    Validate = "Validate",
-    ExampleDataset = "ExampleDataset",
+  // Data modals - Operasi manipulasi dan pengaturan data
+  DefineVarProps = "DefineVarProps",
+  VarPropsEditor = "VarPropsEditor",
+  SetMeasurementLevel = "SetMeasurementLevel",
+  DefineDateTime = "DefineDateTime",
+  DuplicateCases = "DuplicateCases",
+  UnusualCases = "UnusualCases",
+  SortCases = "SortCases",
+  SortVars = "SortVars",
+  Transpose = "Transpose",
+  Restructure = "Restructure",
+  Aggregate = "Aggregate",
+  MergeFiles = "MergeFiles",
+  SplitFile = "SplitFile",
+  WeightCases = "WeightCases",
+  MultipleResponse = "MultipleResponse",
+  NewCustomAttr = "NewCustomAttr",
+  SelectCases = "SelectCases",
+  DefineValidationRules = "DefineValidationRules",
+  Validate = "Validate",
+  ExampleDataset = "ExampleDataset",
 
-    // Transform modals - Transformasi variabel dan data
-    ComputeVariable = "ComputeVariable",
-    RecodeSameVariables = "RecodeSameVariables",
+  // Transform modals - Transformasi variabel dan data
+  ComputeVariable = "ComputeVariable",
+  RecodeSameVariables = "RecodeSameVariables",
+  RecodeDifferentVariables = "RecodeDifferentVariables",
 
-    // Regression modals - Analisis regresi dan model terkait
-    ModalAutomaticLinearModeling = "ModalAutomaticLinearModeling",
-    ModalLinear = "ModalLinear",
-    Statistics = "Statistics",
-    SaveLinear = "SaveLinear",
-    OptionsLinear = "OptionsLinear",
-    PlotsLinear = "PlotsLinear",
-    ModalCurveEstimation = "ModalCurveEstimation",
-    ModalPartialLeastSquares = "ModalPartialLeastSquares",
-    ModalBinaryLogistic = "ModalBinaryLogistic",
-    ModalMultinomialLogistic = "ModalMultinomialLogistic",
-    ModalOrdinal = "ModalOrdinal",
-    ModalProbit = "ModalProbit",
-    ModalNonlinear = "ModalNonlinear",
-    ModalWeightEstimation = "ModalWeightEstimation",
-    ModalTwoStageLeastSquares = "ModalTwoStageLeastSquares",
-    ModalQuantiles = "ModalQuantiles",
-    ModalOptimalScaling = "ModalOptimalScaling",
+  // Regression modals - Analisis regresi dan model terkait
+  ModalAutomaticLinearModeling = "ModalAutomaticLinearModeling",
+  ModalLinear = "ModalLinear",
+  Statistics = "Statistics",
+  SaveLinear = "SaveLinear",
+  OptionsLinear = "OptionsLinear",
+  PlotsLinear = "PlotsLinear",
+  ModalCurveEstimation = "ModalCurveEstimation",
+  ModalPartialLeastSquares = "ModalPartialLeastSquares",
+  ModalBinaryLogistic = "ModalBinaryLogistic",
+  ModalMultinomialLogistic = "ModalMultinomialLogistic",
+  ModalOrdinal = "ModalOrdinal",
+  ModalProbit = "ModalProbit",
+  ModalNonlinear = "ModalNonlinear",
+  ModalWeightEstimation = "ModalWeightEstimation",
+  ModalTwoStageLeastSquares = "ModalTwoStageLeastSquares",
+  ModalQuantiles = "ModalQuantiles",
+  ModalOptimalScaling = "ModalOptimalScaling",
 
-    // Chart modals - Pembuatan dan konfigurasi grafik
-    ChartBuilderModal = "ChartBuilderModal",
-    SimpleBarModal = "SimpleBarModal",
+  // Chart modals - Pembuatan dan konfigurasi grafik
+  ChartBuilderModal = "ChartBuilderModal",
+  SimpleBarModal = "SimpleBarModal",
 
-    // Time series modals - Analisis deret waktu
-    Smoothing = "Smoothing",
-    Decomposition = "Decomposition",
-    Autocorrelation = "Autocorrelation",
-    UnitRootTest = "UnitRootTest",
-    BoxJenkinsModel = "BoxJenkinsModel",
+  // Time series modals - Analisis deret waktu
+  Smoothing = "Smoothing",
+  Decomposition = "Decomposition",
+  Autocorrelation = "Autocorrelation",
+  UnitRootTest = "UnitRootTest",
+  BoxJenkinsModel = "BoxJenkinsModel",
 
-    // Descriptive statistics modals
-    Descriptives = "Descriptives",
-    Explore = "Explore",
-    Frequencies = "Frequencies",
-    Crosstabs = "Crosstabs",
-    Ratio = "Ratio",
-    PPPlots = "PPPlots",
-    QQPlots = "QQPlots",
+  // Descriptive statistics modals
+  Descriptives = "Descriptives",
+  Explore = "Explore",
+  Frequencies = "Frequencies",
+  Crosstabs = "Crosstabs",
+  Ratio = "Ratio",
+  PPPlots = "PPPlots",
+  QQPlots = "QQPlots",
 
-    // General Linear Model modals
-    ModalUnivariate = "ModalUnivariate",
-    ModalMultivariate = "ModalMultivariate",
-    ModalRepeatedMeasures = "ModalRepeatedMeasures",
-    ModalVarianceComponents = "ModalVarianceComponents",
+  // General Linear Model modals
+  ModalUnivariate = "ModalUnivariate",
+  ModalMultivariate = "ModalMultivariate",
+  ModalRepeatedMeasures = "ModalRepeatedMeasures",
+  ModalVarianceComponents = "ModalVarianceComponents",
 
-    // Classify modals
-    ModalTwoStepCluster = "ModalTwoStepCluster",
-    ModalKMeansCluster = "ModalKMeansCluster",
-    ModalHierarchicalCluster = "ModalHierarchicalCluster",
-    ModalClusterSilhouettes = "ModalClusterSilhouettes",
-    ModalTree = "ModalTree",
-    ModalDiscriminant = "ModalDiscriminant",
-    ModalNearestNeighbor = "ModalNearestNeighbor",
-    ModalROCCurve = "ModalROCCurve",
-    ModalROCAnalysis = "ModalROCAnalysis",
+  // Classify modals
+  ModalTwoStepCluster = "ModalTwoStepCluster",
+  ModalKMeansCluster = "ModalKMeansCluster",
+  ModalHierarchicalCluster = "ModalHierarchicalCluster",
+  ModalClusterSilhouettes = "ModalClusterSilhouettes",
+  ModalTree = "ModalTree",
+  ModalDiscriminant = "ModalDiscriminant",
+  ModalNearestNeighbor = "ModalNearestNeighbor",
+  ModalROCCurve = "ModalROCCurve",
+  ModalROCAnalysis = "ModalROCAnalysis",
 
-    // Dimension Reduction modals
-    ModalFactor = "ModalFactor",
-    ModalCorrespondenceAnalysis = "ModalCorrespondenceAnalysis",
-    ModalDROptimalScaling = "ModalDROptimalScaling",
-    ModalOptimalScalingCATPCA = "ModalOptimalScalingCATPCA",
-    ModalOptimalScalingOVERALS = "ModalOptimalScalingOVERALS",
-    ModalOptimalScalingMCA = "ModalOptimalScalingMCA",
+  // Dimension Reduction modals
+  ModalFactor = "ModalFactor",
+  ModalCorrespondenceAnalysis = "ModalCorrespondenceAnalysis",
+  ModalDROptimalScaling = "ModalDROptimalScaling",
+  ModalOptimalScalingCATPCA = "ModalOptimalScalingCATPCA",
+  ModalOptimalScalingOVERALS = "ModalOptimalScalingOVERALS",
+  ModalOptimalScalingMCA = "ModalOptimalScalingMCA",
 }
 
 /**
@@ -131,14 +132,14 @@ export enum ModalType {
  * dan menempatkannya dalam menu yang sesuai.
  */
 export enum ModalCategory {
-    File = "File",
-    Data = "Data",
-    Edit = "Edit",
-    Transform = "Transform",
-    Analyze = "Analyze",
-    Regression = "Regression",
-    Graphs = "Graphs",
-    TimeSeries = "TimeSeries",
+  File = "File",
+  Data = "Data",
+  Edit = "Edit",
+  Transform = "Transform",
+  Analyze = "Analyze",
+  Regression = "Regression",
+  Graphs = "Graphs",
+  TimeSeries = "TimeSeries",
 }
 
 /**
@@ -149,21 +150,21 @@ export enum ModalCategory {
  * komponen modal tertentu dibuat opsional dengan tanda tanya (?)
  */
 export interface BaseModalProps {
-    // Props wajib untuk semua modal
-    onClose: () => void;
-    containerType?: "dialog" | "sidebar";
+  // Props wajib untuk semua modal
+  onClose: () => void;
+  containerType?: "dialog" | "sidebar";
 
-    // Container override untuk memaksa tipe container tertentu
-    containerOverride?: "dialog" | "sidebar";
+  // Container override untuk memaksa tipe container tertentu
+  containerOverride?: "dialog" | "sidebar";
 
-    // Props opsional untuk modal tertentu
-    isOpen?: boolean; // Untuk file modals
-    params?: any; // Untuk regression modals
-    onChange?: (params: any) => void; // Untuk regression modals
-    availablePlotVariables?: any[]; // Untuk PlotsLinear
+  // Props opsional untuk modal tertentu
+  isOpen?: boolean; // Untuk file modals
+  params?: any; // Untuk regression modals
+  onChange?: (params: any) => void; // Untuk regression modals
+  availablePlotVariables?: any[]; // Untuk PlotsLinear
 
-    // Mendukung props tambahan lainnya
-    [key: string]: any;
+  // Mendukung props tambahan lainnya
+  [key: string]: any;
 }
 
 /**
@@ -173,11 +174,11 @@ export interface BaseModalProps {
  * digunakan untuk UI atau logika khusus.
  */
 export interface ModalMetadata {
-    type: ModalType;
-    category: ModalCategory;
-    title: string;
-    description?: string;
-    preferredContainer?: "dialog" | "sidebar";
+  type: ModalType;
+  category: ModalCategory;
+  title: string;
+  description?: string;
+  preferredContainer?: "dialog" | "sidebar";
 }
 
 /**
@@ -186,117 +187,118 @@ export interface ModalMetadata {
  * Setiap ModalType dipetakan ke ModalCategory yang sesuai.
  */
 export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
-    // File modals
-    [ModalType.ImportCSV]: ModalCategory.File,
-    [ModalType.ReadCSVFile]: ModalCategory.File,
-    [ModalType.ImportExcel]: ModalCategory.File,
-    [ModalType.ReadExcelFile]: ModalCategory.File,
-    [ModalType.OpenData]: ModalCategory.File,
-    [ModalType.OpenOutput]: ModalCategory.File,
-    [ModalType.PrintPreview]: ModalCategory.File,
-    [ModalType.Print]: ModalCategory.File,
-    [ModalType.ExportCSV]: ModalCategory.File,
-    [ModalType.ExportExcel]: ModalCategory.File,
-    [ModalType.Exit]: ModalCategory.File,
-    [ModalType.ImportClipboard]: ModalCategory.File,
+  // File modals
+  [ModalType.ImportCSV]: ModalCategory.File,
+  [ModalType.ReadCSVFile]: ModalCategory.File,
+  [ModalType.ImportExcel]: ModalCategory.File,
+  [ModalType.ReadExcelFile]: ModalCategory.File,
+  [ModalType.OpenData]: ModalCategory.File,
+  [ModalType.OpenOutput]: ModalCategory.File,
+  [ModalType.PrintPreview]: ModalCategory.File,
+  [ModalType.Print]: ModalCategory.File,
+  [ModalType.ExportCSV]: ModalCategory.File,
+  [ModalType.ExportExcel]: ModalCategory.File,
+  [ModalType.Exit]: ModalCategory.File,
+  [ModalType.ImportClipboard]: ModalCategory.File,
 
-    // Edit modals
-    [ModalType.FindAndReplace]: ModalCategory.Edit,
-    [ModalType.GoTo]: ModalCategory.Edit,
-    [ModalType.Find]: ModalCategory.Edit,
-    [ModalType.Replace]: ModalCategory.Edit,
-    [ModalType.GoToCase]: ModalCategory.Edit,
-    [ModalType.GoToVariable]: ModalCategory.Edit,
+  // Edit modals
+  [ModalType.FindAndReplace]: ModalCategory.Edit,
+  [ModalType.GoTo]: ModalCategory.Edit,
+  [ModalType.Find]: ModalCategory.Edit,
+  [ModalType.Replace]: ModalCategory.Edit,
+  [ModalType.GoToCase]: ModalCategory.Edit,
+  [ModalType.GoToVariable]: ModalCategory.Edit,
 
-    // Data modals
-    [ModalType.DefineVarProps]: ModalCategory.Data,
-    [ModalType.VarPropsEditor]: ModalCategory.Data,
-    [ModalType.SetMeasurementLevel]: ModalCategory.Data,
-    [ModalType.DefineDateTime]: ModalCategory.Data,
-    [ModalType.DuplicateCases]: ModalCategory.Data,
-    [ModalType.UnusualCases]: ModalCategory.Data,
-    [ModalType.SortCases]: ModalCategory.Data,
-    [ModalType.SortVars]: ModalCategory.Data,
-    [ModalType.Transpose]: ModalCategory.Data,
-    [ModalType.Restructure]: ModalCategory.Data,
-    [ModalType.Aggregate]: ModalCategory.Data,
-    [ModalType.MergeFiles]: ModalCategory.Data,
-    [ModalType.SplitFile]: ModalCategory.Data,
-    [ModalType.WeightCases]: ModalCategory.Data,
-    [ModalType.MultipleResponse]: ModalCategory.Data,
-    [ModalType.NewCustomAttr]: ModalCategory.Data,
-    [ModalType.SelectCases]: ModalCategory.Data,
-    [ModalType.DefineValidationRules]: ModalCategory.Data,
-    [ModalType.Validate]: ModalCategory.Data,
-    [ModalType.ExampleDataset]: ModalCategory.Data,
+  // Data modals
+  [ModalType.DefineVarProps]: ModalCategory.Data,
+  [ModalType.VarPropsEditor]: ModalCategory.Data,
+  [ModalType.SetMeasurementLevel]: ModalCategory.Data,
+  [ModalType.DefineDateTime]: ModalCategory.Data,
+  [ModalType.DuplicateCases]: ModalCategory.Data,
+  [ModalType.UnusualCases]: ModalCategory.Data,
+  [ModalType.SortCases]: ModalCategory.Data,
+  [ModalType.SortVars]: ModalCategory.Data,
+  [ModalType.Transpose]: ModalCategory.Data,
+  [ModalType.Restructure]: ModalCategory.Data,
+  [ModalType.Aggregate]: ModalCategory.Data,
+  [ModalType.MergeFiles]: ModalCategory.Data,
+  [ModalType.SplitFile]: ModalCategory.Data,
+  [ModalType.WeightCases]: ModalCategory.Data,
+  [ModalType.MultipleResponse]: ModalCategory.Data,
+  [ModalType.NewCustomAttr]: ModalCategory.Data,
+  [ModalType.SelectCases]: ModalCategory.Data,
+  [ModalType.DefineValidationRules]: ModalCategory.Data,
+  [ModalType.Validate]: ModalCategory.Data,
+  [ModalType.ExampleDataset]: ModalCategory.Data,
 
-    // Transform modals
-    [ModalType.ComputeVariable]: ModalCategory.Transform,
-    [ModalType.RecodeSameVariables]: ModalCategory.Transform,
+  // Transform modals
+  [ModalType.ComputeVariable]: ModalCategory.Transform,
+  [ModalType.RecodeSameVariables]: ModalCategory.Transform,
+  [ModalType.RecodeDifferentVariables]: ModalCategory.Transform,
 
-    // Regression modals
-    [ModalType.ModalAutomaticLinearModeling]: ModalCategory.Regression,
-    [ModalType.ModalLinear]: ModalCategory.Regression,
-    [ModalType.Statistics]: ModalCategory.Regression,
-    [ModalType.SaveLinear]: ModalCategory.Regression,
-    [ModalType.OptionsLinear]: ModalCategory.Regression,
-    [ModalType.PlotsLinear]: ModalCategory.Regression,
-    [ModalType.ModalCurveEstimation]: ModalCategory.Regression,
-    [ModalType.ModalPartialLeastSquares]: ModalCategory.Regression,
-    [ModalType.ModalBinaryLogistic]: ModalCategory.Regression,
-    [ModalType.ModalMultinomialLogistic]: ModalCategory.Regression,
-    [ModalType.ModalOrdinal]: ModalCategory.Regression,
-    [ModalType.ModalProbit]: ModalCategory.Regression,
-    [ModalType.ModalNonlinear]: ModalCategory.Regression,
-    [ModalType.ModalWeightEstimation]: ModalCategory.Regression,
-    [ModalType.ModalTwoStageLeastSquares]: ModalCategory.Regression,
-    [ModalType.ModalQuantiles]: ModalCategory.Regression,
-    [ModalType.ModalOptimalScaling]: ModalCategory.Regression,
+  // Regression modals
+  [ModalType.ModalAutomaticLinearModeling]: ModalCategory.Regression,
+  [ModalType.ModalLinear]: ModalCategory.Regression,
+  [ModalType.Statistics]: ModalCategory.Regression,
+  [ModalType.SaveLinear]: ModalCategory.Regression,
+  [ModalType.OptionsLinear]: ModalCategory.Regression,
+  [ModalType.PlotsLinear]: ModalCategory.Regression,
+  [ModalType.ModalCurveEstimation]: ModalCategory.Regression,
+  [ModalType.ModalPartialLeastSquares]: ModalCategory.Regression,
+  [ModalType.ModalBinaryLogistic]: ModalCategory.Regression,
+  [ModalType.ModalMultinomialLogistic]: ModalCategory.Regression,
+  [ModalType.ModalOrdinal]: ModalCategory.Regression,
+  [ModalType.ModalProbit]: ModalCategory.Regression,
+  [ModalType.ModalNonlinear]: ModalCategory.Regression,
+  [ModalType.ModalWeightEstimation]: ModalCategory.Regression,
+  [ModalType.ModalTwoStageLeastSquares]: ModalCategory.Regression,
+  [ModalType.ModalQuantiles]: ModalCategory.Regression,
+  [ModalType.ModalOptimalScaling]: ModalCategory.Regression,
 
-    // Chart modals
-    [ModalType.ChartBuilderModal]: ModalCategory.Graphs,
-    [ModalType.SimpleBarModal]: ModalCategory.Graphs,
+  // Chart modals
+  [ModalType.ChartBuilderModal]: ModalCategory.Graphs,
+  [ModalType.SimpleBarModal]: ModalCategory.Graphs,
 
-    // Time series modals
-    [ModalType.Smoothing]: ModalCategory.TimeSeries,
-    [ModalType.Decomposition]: ModalCategory.TimeSeries,
-    [ModalType.Autocorrelation]: ModalCategory.TimeSeries,
-    [ModalType.UnitRootTest]: ModalCategory.TimeSeries,
-    [ModalType.BoxJenkinsModel]: ModalCategory.TimeSeries,
+  // Time series modals
+  [ModalType.Smoothing]: ModalCategory.TimeSeries,
+  [ModalType.Decomposition]: ModalCategory.TimeSeries,
+  [ModalType.Autocorrelation]: ModalCategory.TimeSeries,
+  [ModalType.UnitRootTest]: ModalCategory.TimeSeries,
+  [ModalType.BoxJenkinsModel]: ModalCategory.TimeSeries,
 
-    // Descriptive statistics modals
-    [ModalType.Descriptives]: ModalCategory.Analyze,
-    [ModalType.Explore]: ModalCategory.Analyze,
-    [ModalType.Frequencies]: ModalCategory.Analyze,
-    [ModalType.Crosstabs]: ModalCategory.Analyze,
-    [ModalType.Ratio]: ModalCategory.Analyze,
-    [ModalType.PPPlots]: ModalCategory.Analyze,
-    [ModalType.QQPlots]: ModalCategory.Analyze,
+  // Descriptive statistics modals
+  [ModalType.Descriptives]: ModalCategory.Analyze,
+  [ModalType.Explore]: ModalCategory.Analyze,
+  [ModalType.Frequencies]: ModalCategory.Analyze,
+  [ModalType.Crosstabs]: ModalCategory.Analyze,
+  [ModalType.Ratio]: ModalCategory.Analyze,
+  [ModalType.PPPlots]: ModalCategory.Analyze,
+  [ModalType.QQPlots]: ModalCategory.Analyze,
 
-    // General Linear Model modals
-    [ModalType.ModalUnivariate]: ModalCategory.Analyze,
-    [ModalType.ModalMultivariate]: ModalCategory.Analyze,
-    [ModalType.ModalRepeatedMeasures]: ModalCategory.Analyze,
-    [ModalType.ModalVarianceComponents]: ModalCategory.Analyze,
+  // General Linear Model modals
+  [ModalType.ModalUnivariate]: ModalCategory.Analyze,
+  [ModalType.ModalMultivariate]: ModalCategory.Analyze,
+  [ModalType.ModalRepeatedMeasures]: ModalCategory.Analyze,
+  [ModalType.ModalVarianceComponents]: ModalCategory.Analyze,
 
-    // Classify modals
-    [ModalType.ModalTwoStepCluster]: ModalCategory.Analyze,
-    [ModalType.ModalKMeansCluster]: ModalCategory.Analyze,
-    [ModalType.ModalHierarchicalCluster]: ModalCategory.Analyze,
-    [ModalType.ModalClusterSilhouettes]: ModalCategory.Analyze,
-    [ModalType.ModalTree]: ModalCategory.Analyze,
-    [ModalType.ModalDiscriminant]: ModalCategory.Analyze,
-    [ModalType.ModalNearestNeighbor]: ModalCategory.Analyze,
-    [ModalType.ModalROCCurve]: ModalCategory.Analyze,
-    [ModalType.ModalROCAnalysis]: ModalCategory.Analyze,
+  // Classify modals
+  [ModalType.ModalTwoStepCluster]: ModalCategory.Analyze,
+  [ModalType.ModalKMeansCluster]: ModalCategory.Analyze,
+  [ModalType.ModalHierarchicalCluster]: ModalCategory.Analyze,
+  [ModalType.ModalClusterSilhouettes]: ModalCategory.Analyze,
+  [ModalType.ModalTree]: ModalCategory.Analyze,
+  [ModalType.ModalDiscriminant]: ModalCategory.Analyze,
+  [ModalType.ModalNearestNeighbor]: ModalCategory.Analyze,
+  [ModalType.ModalROCCurve]: ModalCategory.Analyze,
+  [ModalType.ModalROCAnalysis]: ModalCategory.Analyze,
 
-    // Dimension Reduction modals
-    [ModalType.ModalFactor]: ModalCategory.Analyze,
-    [ModalType.ModalCorrespondenceAnalysis]: ModalCategory.Analyze,
-    [ModalType.ModalDROptimalScaling]: ModalCategory.Analyze,
-    [ModalType.ModalOptimalScalingCATPCA]: ModalCategory.Analyze,
-    [ModalType.ModalOptimalScalingOVERALS]: ModalCategory.Analyze,
-    [ModalType.ModalOptimalScalingMCA]: ModalCategory.Analyze,
+  // Dimension Reduction modals
+  [ModalType.ModalFactor]: ModalCategory.Analyze,
+  [ModalType.ModalCorrespondenceAnalysis]: ModalCategory.Analyze,
+  [ModalType.ModalDROptimalScaling]: ModalCategory.Analyze,
+  [ModalType.ModalOptimalScalingCATPCA]: ModalCategory.Analyze,
+  [ModalType.ModalOptimalScalingOVERALS]: ModalCategory.Analyze,
+  [ModalType.ModalOptimalScalingMCA]: ModalCategory.Analyze,
 };
 
 /**
@@ -307,8 +309,8 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
  * @returns true jika modal ada dalam kategori tersebut
  */
 export const isModalInCategory = (
-    type: ModalType,
-    category: ModalCategory
+  type: ModalType,
+  category: ModalCategory
 ): boolean => MODAL_CATEGORIES[type] === category;
 
 /**
@@ -318,7 +320,7 @@ export const isModalInCategory = (
  * @returns true jika modal adalah tipe File
  */
 export const isFileModal = (type: ModalType): boolean =>
-    isModalInCategory(type, ModalCategory.File);
+  isModalInCategory(type, ModalCategory.File);
 
 /**
  * isDataModal - Memeriksa apakah modal adalah tipe Data
@@ -327,7 +329,7 @@ export const isFileModal = (type: ModalType): boolean =>
  * @returns true jika modal adalah tipe Data
  */
 export const isDataModal = (type: ModalType): boolean =>
-    isModalInCategory(type, ModalCategory.Data);
+  isModalInCategory(type, ModalCategory.Data);
 
 /**
  * isEditModal - Memeriksa apakah modal adalah tipe Edit
@@ -336,7 +338,7 @@ export const isDataModal = (type: ModalType): boolean =>
  * @returns true jika modal adalah tipe Edit
  */
 export const isEditModal = (type: ModalType): boolean =>
-    isModalInCategory(type, ModalCategory.Edit);
+  isModalInCategory(type, ModalCategory.Edit);
 
 /**
  * getModalTitle - Mendapatkan judul yang sesuai untuk modal
@@ -345,93 +347,95 @@ export const isEditModal = (type: ModalType): boolean =>
  * @returns Judul yang sesuai untuk modal tersebut
  */
 export function getModalTitle(type: ModalType): string {
-    // Konversi dari enum ke format title case yang user-friendly
-    const rawTitle = type
-        .toString()
-        .replace(/([A-Z])/g, " $1") // Add space before capital letters
-        .replace(/^./, (str) => str.toUpperCase()); // Capitalize first letter
+  // Konversi dari enum ke format title case yang user-friendly
+  const rawTitle = type
+    .toString()
+    .replace(/([A-Z])/g, " $1") // Add space before capital letters
+    .replace(/^./, (str) => str.toUpperCase()); // Capitalize first letter
 
-    // Handle special cases
-    switch (type) {
-        case ModalType.ImportCSV:
-            return "Import CSV";
-        case ModalType.ExportCSV:
-            return "Export CSV";
-        case ModalType.ImportExcel:
-            return "Import Excel";
-        case ModalType.ExportExcel:
-            return "Export Excel";
-        case ModalType.FindAndReplace:
-            return "Find and Replace";
-        case ModalType.GoTo:
-            return "Go To";
-        case ModalType.DefineVarProps:
-            return "Define Variable Properties";
-        case ModalType.VarPropsEditor:
-            return "Variable Properties Editor";
-        case ModalType.SortVars:
-            return "Sort Variables";
-        case ModalType.ChartBuilderModal:
-            return "Chart Builder";
-        case ModalType.SimpleBarModal:
-            return "Bar Chart";
-        case ModalType.ModalAutomaticLinearModeling:
-            return "Automatic Linear Modeling";
-        case ModalType.ModalLinear:
-            return "Linear Regression";
-        case ModalType.ModalCurveEstimation:
-            return "Curve Estimation";
-        case ModalType.ModalBinaryLogistic:
-            return "Binary Logistic Regression";
-        case ModalType.ModalMultinomialLogistic:
-            return "Multinomial Logistic Regression";
-        case ModalType.ModalOrdinal:
-            return "Ordinal Regression";
-        case ModalType.ModalProbit:
-            return "Probit Analysis";
-        case ModalType.ModalNonlinear:
-            return "Nonlinear Regression";
-        case ModalType.ModalWeightEstimation:
-            return "Weight Estimation";
-        case ModalType.ModalTwoStageLeastSquares:
-            return "Two-Stage Least Squares";
-        case ModalType.ModalPartialLeastSquares:
-            return "Partial Least Squares";
-        case ModalType.ModalQuantiles:
-            return "Quantile Regression";
-        case ModalType.ModalOptimalScaling:
-            return "Optimal Scaling";
-        case ModalType.SetMeasurementLevel:
-            return "Set Measurement Level";
-        case ModalType.DefineDateTime:
-            return "Define Date and Time";
-        case ModalType.DuplicateCases:
-            return "Identify Duplicate Cases";
-        case ModalType.UnusualCases:
-            return "Identify Unusual Cases";
-        case ModalType.Restructure:
-            return "Restructure Data";
-        case ModalType.Aggregate:
-            return "Aggregate Data";
-        case ModalType.MergeFiles:
-            return "Merge Files";
-        case ModalType.SplitFile:
-            return "Split File";
-        case ModalType.WeightCases:
-            return "Weight Cases";
-        case ModalType.MultipleResponse:
-            return "Multiple Response Sets";
-        case ModalType.NewCustomAttr:
-            return "New Custom Attribute";
-        case ModalType.SelectCases:
-            return "Select Cases";
-        case ModalType.ExampleDataset:
-            return "Example Dataset";
-        case ModalType.GoToCase:
-            return "Go To Case";
-        case ModalType.GoToVariable:
-            return "Go To Variable";
-        default:
-            return rawTitle.trim();
-    }
+  // Handle special cases
+  switch (type) {
+    case ModalType.ImportCSV:
+      return "Import CSV";
+    case ModalType.ExportCSV:
+      return "Export CSV";
+    case ModalType.ImportExcel:
+      return "Import Excel";
+    case ModalType.ExportExcel:
+      return "Export Excel";
+    case ModalType.FindAndReplace:
+      return "Find and Replace";
+    case ModalType.GoTo:
+      return "Go To";
+    case ModalType.DefineVarProps:
+      return "Define Variable Properties";
+    case ModalType.VarPropsEditor:
+      return "Variable Properties Editor";
+    case ModalType.SortVars:
+      return "Sort Variables";
+    case ModalType.ChartBuilderModal:
+      return "Chart Builder";
+    case ModalType.SimpleBarModal:
+      return "Bar Chart";
+    case ModalType.ModalAutomaticLinearModeling:
+      return "Automatic Linear Modeling";
+    case ModalType.ModalLinear:
+      return "Linear Regression";
+    case ModalType.ModalCurveEstimation:
+      return "Curve Estimation";
+    case ModalType.ModalBinaryLogistic:
+      return "Binary Logistic Regression";
+    case ModalType.ModalMultinomialLogistic:
+      return "Multinomial Logistic Regression";
+    case ModalType.ModalOrdinal:
+      return "Ordinal Regression";
+    case ModalType.ModalProbit:
+      return "Probit Analysis";
+    case ModalType.ModalNonlinear:
+      return "Nonlinear Regression";
+    case ModalType.ModalWeightEstimation:
+      return "Weight Estimation";
+    case ModalType.ModalTwoStageLeastSquares:
+      return "Two-Stage Least Squares";
+    case ModalType.ModalPartialLeastSquares:
+      return "Partial Least Squares";
+    case ModalType.ModalQuantiles:
+      return "Quantile Regression";
+    case ModalType.ModalOptimalScaling:
+      return "Optimal Scaling";
+    case ModalType.SetMeasurementLevel:
+      return "Set Measurement Level";
+    case ModalType.DefineDateTime:
+      return "Define Date and Time";
+    case ModalType.DuplicateCases:
+      return "Identify Duplicate Cases";
+    case ModalType.UnusualCases:
+      return "Identify Unusual Cases";
+    case ModalType.Restructure:
+      return "Restructure Data";
+    case ModalType.Aggregate:
+      return "Aggregate Data";
+    case ModalType.MergeFiles:
+      return "Merge Files";
+    case ModalType.SplitFile:
+      return "Split File";
+    case ModalType.WeightCases:
+      return "Weight Cases";
+    case ModalType.MultipleResponse:
+      return "Multiple Response Sets";
+    case ModalType.NewCustomAttr:
+      return "New Custom Attribute";
+    case ModalType.SelectCases:
+      return "Select Cases";
+    case ModalType.ExampleDataset:
+      return "Example Dataset";
+    case ModalType.GoToCase:
+      return "Go To Case";
+    case ModalType.GoToVariable:
+      return "Go To Variable";
+    case ModalType.RecodeDifferentVariables:
+      return "Recode into Different Variables";
+    default:
+      return rawTitle.trim();
+  }
 }
