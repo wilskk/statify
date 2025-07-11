@@ -10,4 +10,4 @@ export {
 
 // Export transform modal components for direct usage
 export { default as ComputeVariableModal } from "./ComputeVariable/ComputeVariableModal";
-export { RecodeSameVariablesModal } from "./recodeSameVariables";
+export { RecodeSameVariablesModal } from "./recodeSameVariables/index";
