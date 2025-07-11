@@ -190,9 +190,6 @@ pub fn calculate_tests_between_subjects_effects(
     if let Some(dep_var) = &config.main.dep_var {
         notes.push(format!("Dependent Variable: {}", dep_var));
     }
-    if config.model.sum_of_square_method == SumOfSquaresMethod::TypeI {
-        notes.push("Type I SS placeholder due to missing incremental SWEEP.".to_string());
-    }
     notes.push(format!("Computed using alpha = {}", config.options.sig_level));
     notes.push(format!("Sum of Squares Method: {:?}", config.model.sum_of_square_method));
 
