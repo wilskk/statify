@@ -83,13 +83,13 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
             // Metode bukan Deviation atau Simple - abaikan pengaturan Ref
             if settings_details.len() > 1 {
                 let ref_from_spec_ignored = settings_details[1].trim();
-                web_sys::console::warn_1(
-                    &format!(
+                return Err(
+                    format!(
                         "Warning: 'Ref: {}' setting is ignored for contrast method '{}' on factor '{}'.",
                         ref_from_spec_ignored,
                         method_str, // Use original method_str in warning
                         factor_name
-                    ).into()
+                    )
                 );
             }
             // actual_ref_setting remains "N/A"
@@ -149,7 +149,6 @@ fn generate_l_matrix_and_descriptions(
 
     if num_contrasts == 0 {
         // Ini juga menangani kasus dimana level_count < 2 untuk metode yang membutuhkannya (kecuali None/Poly ditangani di atas)
-        // web_sys::console::warn_1(&format!("Factor '{}' with {} levels results in 0 contrasts for method {:?}. Skipping.", factor_to_contrast_name, level_count_of_contrasted_factor, parsed_spec.method).into());
         return Ok((Vec::new(), Vec::new(), Vec::new()));
     }
 
@@ -432,7 +431,8 @@ fn create_contrast_result(
         return ContrastResult {
             parameter: k_matrix_row_descriptions.clone(),
             contrast_result: Vec::new(),
-            notes: vec![format!("No contrasts to calculate for: {}", factor_spec_str)],
+            note: Some(format!("No contrasts to calculate for: {}", factor_spec_str)),
+            interpretation: None,
         };
     }
 
@@ -451,7 +451,8 @@ fn create_contrast_result(
                     upper_bound: f64::NAN,
                 },
             }; num_contrasts_for_factor],
-            notes: vec![format!("No model parameters for contrast: {}", factor_spec_str)],
+            note: Some(format!("No model parameters for contrast: {}", factor_spec_str)),
+            interpretation: None,
         };
     }
 
@@ -536,7 +537,10 @@ fn create_contrast_result(
     ContrastResult {
         parameter: k_matrix_row_descriptions.clone(),
         contrast_result: result_entries,
-        notes: vec![format!("Calculated results for factor spec: {}", factor_spec_str)],
+        note: Some(format!("Calculated results for factor spec: {}", factor_spec_str)),
+        interpretation: Some(
+            "This table provides the results for each contrast. It shows the estimated value of the contrast (the 'Contrast Estimate'), its standard error, and a t-test for the hypothesis that the contrast value is zero. The confidence interval provides a range for the true contrast value.".to_string()
+        ),
     }
 }
 
@@ -582,7 +586,8 @@ fn create_contrast_test_result(
         return ContrastTestResult {
             source: vec![format!("Overall test for {}", factor_spec_str)],
             contrast_result: vec![contrast_entry, error_entry],
-            notes: vec![format!("No hypothesis to test for: {}", factor_spec_str)],
+            note: Some(format!("No hypothesis to test for: {}", factor_spec_str)),
+            interpretation: None,
         };
     }
 
@@ -615,7 +620,8 @@ fn create_contrast_test_result(
         return ContrastTestResult {
             source: vec![format!("Overall test for {}", factor_spec_str)],
             contrast_result: vec![contrast_entry, error_entry],
-            notes: vec![format!("No model parameters for contrast test: {}", factor_spec_str)],
+            note: Some(format!("No model parameters for contrast test: {}", factor_spec_str)),
+            interpretation: None,
         };
     }
 
@@ -720,7 +726,10 @@ fn create_contrast_test_result(
     ContrastTestResult {
         source: vec![format!("Overall test for {}", factor_spec_str)],
         contrast_result: vec![contrast_entry, error_entry],
-        notes,
+        note: Some(notes.join("\n")),
+        interpretation: Some(
+            "This table provides an overall F-test for the set of contrasts associated with the factor. A significant F-value indicates that there is a statistically significant difference among the levels of the factor, based on the specified contrast type.".to_string()
+        ),
     }
 }
 
@@ -892,7 +901,10 @@ pub fn calculate_contrast_coefficients(
                 l_label: l_labels,
                 l_matrix: l_matrix.clone(),
                 contrast_information: vec![format!("L-Matrix for: {}", spec_str)],
-                notes: cce_notes,
+                note: Some(cce_notes.join("\n")),
+                interpretation: Some(
+                    "This table provides the contrast coefficients (L' Matrix) for the specified factor. Each row represents a contrast, and each column represents a model parameter. The coefficients indicate the contribution of each parameter to the contrast.".to_string()
+                ),
             };
 
             let contrast_result_struct = create_contrast_result(
@@ -985,11 +997,11 @@ pub fn calculate_contrast_coefficients(
         final_factor_names_list.is_empty() &&
         !config.contrast.factor_list.as_ref().map_or(true, |f| f.is_empty())
     {
-        web_sys::console::warn_1(
-            &format!(
+        return Err(
+            format!(
                 "No contrast entries generated despite having processing specs. Factors processed: {:?}. Check L-matrix generation for each.",
                 config.contrast.factor_list.as_ref().unwrap()
-            ).into()
+            )
         );
     }
 
@@ -1012,12 +1024,11 @@ pub fn generate_polynomial_contrast(level_count: usize, degree: usize) -> Vec<f6
 
     // For this project, Polynomial is always Linear (degree 1)
     if degree != 1 {
-        // web_sys::console::warn_1(&format!("Polynomial contrast called with degree {}, but only Linear (degree 1) is supported. Proceeding with degree 1.", degree).into());
+        // Only Linear (degree 1) is supported
     }
 
     if level_count < 2 {
         // Linear contrast needs at least 2 levels
-        // web_sys::console::warn_1(&format!("Polynomial (Linear) contrast needs at least 2 levels, got {}. Returning zeros.", level_count).into());
         return contrasts;
     }
 

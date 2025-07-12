@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub struct ClusteringResult {
     pub initial_centers: Option<InitialClusterCenters>,
     pub iteration_history: Option<IterationHistory>,
-    pub cluster_membership: Option<Vec<ClusterMembership>>,
+    pub cluster_membership: Option<ClusterMembership>,
     pub final_cluster_centers: Option<FinalClusterCenters>,
     pub distances_between_centers: Option<DistancesBetweenCenters>,
     pub anova: Option<ANOVATable>,
@@ -17,6 +17,7 @@ pub struct ClusteringResult {
 pub struct ANOVATable {
     pub clusters: HashMap<String, ANOVACluster>,
     pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -34,17 +35,22 @@ pub struct CaseCountTable {
     pub valid: usize,
     pub missing: usize,
     pub clusters: HashMap<String, usize>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InitialClusterCenters {
     pub centers: HashMap<String, Vec<f64>>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IterationHistory {
     pub iterations: Vec<IterationStep>,
-    pub convergence_note: Option<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -55,6 +61,13 @@ pub struct IterationStep {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClusterMembership {
+    pub data: Vec<ClusterMembershipData>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ClusterMembershipData {
     pub case_number: i32,
     pub case_name: Option<String>,
     pub cluster: i32,
@@ -64,11 +77,15 @@ pub struct ClusterMembership {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FinalClusterCenters {
     pub centers: HashMap<String, Vec<f64>>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DistancesBetweenCenters {
     pub distances: Vec<Vec<f64>>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -77,6 +94,8 @@ pub struct ProcessedData {
     pub data_matrix: Vec<Vec<f64>>,
     pub case_numbers: Vec<i32>,
     pub case_names: Option<Vec<String>>,
+    pub total_cases: usize,
+    pub missing_cases: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -88,4 +107,6 @@ pub struct ClusterPlot {
     pub cluster: Vec<i32>,
     pub cluster_label: Vec<String>,
     pub cluster_center: Vec<bool>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }

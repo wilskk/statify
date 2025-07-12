@@ -1,5 +1,25 @@
 import * as d3 from "d3";
 import * as ss from "simple-statistics";
+import {
+  addChartTitle,
+  addStandardAxes,
+  truncateText,
+  formatAxisNumber,
+  generateAxisTicks,
+  YAxisOptions,
+  ChartTitleOptions,
+} from "./chartUtils";
+import {
+  createStandardSVG,
+  getMajorTicks,
+  AxisLabelOptions,
+  addAxisLabels,
+  addLegend,
+  calculateLegendPosition,
+} from "../chartUtils";
+import { calculateResponsiveMargin } from "../responsiveMarginUtils";
+import { defaultChartColors } from "../defaultStyles/defaultColors";
+import { max } from "lodash";
 
 interface GroupedScatterPlotData {
   category: string;
@@ -11,7 +31,24 @@ export const createScatterPlot = (
   data: { x: number; y: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   const validData = data.filter(
     (d) =>
@@ -30,58 +67,96 @@ export const createScatterPlot = (
     return null;
   }
 
-  const marginTop = useAxis ? 30 : 10;
-  const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 40 : 10;
-  const marginLeft = useAxis ? 40 : 10;
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  let xMin = d3.min(validData, (d) => d.x) as number;
+  let xMax = d3.max(validData, (d) => d.x) as number;
+  let yMin = d3.min(validData, (d) => d.y) as number;
+  let yMax = d3.max(validData, (d) => d.y) as number;
+
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
+  }
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  const xTickCount = Math.min(10, Math.floor(width / 80));
+  const yTickCount = Math.min(10, Math.floor(height / 50));
+
+  const xTicks = d3.scaleLinear().domain([xMin, xMax]).nice().ticks(xTickCount);
+
+  const yTicks = d3.scaleLinear().domain([yMin, yMax]).nice().ticks(yTickCount);
+
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+  const maxXLabelWidth =
+    d3.max(xTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+  });
 
   const x = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.x) as [number, number])
+    .domain([xMin, xMax])
     .nice()
-    .range([marginLeft, width - marginRight]);
+    .range([margin.left, width - margin.right]);
 
   const y = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.y) as [number, number])
+    .domain([yMin, yMax])
     .nice()
-    .range([height - marginBottom, marginTop]);
+    .range([height - margin.bottom, margin.top]);
 
-  const svg = d3
-    .create("svg")
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
 
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Add points
   svg
     .append("g")
-    .call((g) =>
-      g
-        .append("g")
-        .selectAll("line")
-        .data(x.ticks())
-        .join("line")
-        .attr("x1", (d) => 0.5 + x(d))
-        .attr("x2", (d) => 0.5 + x(d))
-        .attr("y1", marginTop)
-        .attr("y2", height - marginBottom)
+    .attr(
+      "stroke",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : defaultChartColors[0]
     )
-    .call((g) =>
-      g
-        .append("g")
-        .selectAll("line")
-        .data(y.ticks())
-        .join("line")
-        .attr("y1", (d) => 0.5 + y(d))
-        .attr("y2", (d) => 0.5 + y(d))
-        .attr("x1", marginLeft)
-        .attr("x2", width - marginRight)
-    );
-
-  svg
-    .append("g")
-    .attr("stroke", "steelblue")
     .attr("stroke-width", 1.5)
-    .attr("fill", "none")
+    .attr(
+      "fill",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : defaultChartColors[0]
+    )
     .selectAll("circle")
     .data(validData)
     .join("circle")
@@ -89,68 +164,45 @@ export const createScatterPlot = (
     .attr("cy", (d) => y(d.y))
     .attr("r", 3);
 
+  // Add standardized axes
   if (useAxis) {
-    svg
-      .append("g")
-      .attr("stroke", "currentColor")
-      .attr("stroke-opacity", 0.1)
-      .call((g) =>
-        g
-          .append("g")
-          .selectAll("line")
-          .data(x.ticks())
-          .join("line")
-          .attr("x1", (d) => 0.5 + x(d))
-          .attr("x2", (d) => 0.5 + x(d))
-          .attr("y1", marginTop)
-          .attr("y2", height - marginBottom)
-      );
+    const xTickValues = axisScaleOptions?.x?.majorIncrement
+      ? getMajorTicks(xMin, xMax, Number(axisScaleOptions.x.majorIncrement))
+      : xTicks;
 
-    svg
-      .append("g")
-      .attr("stroke", "currentColor")
-      .attr("stroke-opacity", 0.1)
-      .call((g) =>
-        g
-          .append("g")
-          .selectAll("line")
-          .data(y.ticks())
-          .join("line")
-          .attr("y1", (d) => 0.5 + y(d))
-          .attr("y2", (d) => 0.5 + y(d))
-          .attr("x1", marginLeft)
-          .attr("x2", width - marginRight)
-      );
+    const yTickValues = axisScaleOptions?.y?.majorIncrement
+      ? getMajorTicks(yMin, yMax, Number(axisScaleOptions.y.majorIncrement))
+      : yTicks;
 
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x).ticks(width / 80))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ X Axis Label")
-      );
-
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Y Axis Label")
-      );
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories: xTicks.map((d) => d.toString()),
+      axisLabels,
+      xMin,
+      xMax,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 8,
+        tickFormat: (d: any) => formatAxisNumber(d),
+        showGridLines: true,
+        tickValues: xTickValues,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: true,
+        maxValueLength: 6,
+        tickValues: yTickValues,
+      },
+    });
   }
 
   return svg.node();
@@ -161,9 +213,25 @@ export const createScatterPlotWithFitLine = (
   width: number,
   height: number,
   useAxis: boolean = true,
-  showEquation: boolean = true
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  // Menyaring data yang valid
+  // Filter valid data points
   const validData = data.filter(
     (d) =>
       d.x !== null &&
@@ -174,74 +242,139 @@ export const createScatterPlotWithFitLine = (
       !isNaN(d.y)
   );
 
-  console.log("Creating scatter plot with valid data:", validData);
+  console.log("Creating scatter plot with fitline, valid data:", validData);
 
-  // Pesan eror jika tidak ada data valid
   if (validData.length === 0) {
-    console.error("No valid data available for the scatter plot");
+    console.error("No valid data available for the scatter plot with fitline");
     return null;
   }
 
-  // Margin
-  const marginTop = useAxis ? 30 : 10;
-  const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 40 : 10;
-  const marginLeft = useAxis ? 40 : 10;
+  // Calculate label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
 
-  // Menentukan skala untuk sumbu X dan Y
+  // Calculate domains with nice values
+  let xMin = d3.min(validData, (d) => d.x) as number;
+  let xMax = d3.max(validData, (d) => d.x) as number;
+  let yMin = d3.min(validData, (d) => d.y) as number;
+  let yMax = d3.max(validData, (d) => d.y) as number;
+
+  // Apply axis scale options if provided
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
+  }
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  // Calculate nice tick values
+  const xTickCount = Math.min(10, Math.floor(width / 80));
+  const yTickCount = Math.min(10, Math.floor(height / 50));
+
+  const xTicks = d3.scaleLinear().domain([xMin, xMax]).nice().ticks(xTickCount);
+
+  const yTicks = d3.scaleLinear().domain([yMin, yMax]).nice().ticks(yTickCount);
+
+  // Calculate max label widths for margin
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+  const maxXLabelWidth =
+    d3.max(xTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+
+  // Use responsive margin utility with label measurements
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+  });
+
+  // Create scales with nice values
   const x = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.x) as [number, number])
+    .domain([xMin, xMax])
     .nice()
-    .range([marginLeft, width - marginRight]);
+    .range([margin.left, width - margin.right]);
 
   const y = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.y) as [number, number])
+    .domain([yMin, yMax])
     .nice()
-    .range([height - marginBottom, marginTop]);
+    .range([height - margin.bottom, margin.top]);
 
-  // Membuat elemen SVG baru di dalam DOM
-  const svg = d3
-    .create("svg")
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
 
-  // Membuat grid berdasarkan skala X dan Y
-  if (useAxis) {
-    // Grid Lines X
-    svg
-      .append("g")
-      .selectAll("line")
-      .data(x.ticks())
-      .join("line")
-      .attr("x1", (d) => 0.5 + x(d))
-      .attr("x2", (d) => 0.5 + x(d))
-      .attr("y1", marginTop)
-      .attr("y2", height - marginBottom)
-      .attr("stroke", "currentColor")
-      .attr("stroke-opacity", 0.1);
-
-    // Grid Lines Y
-    svg
-      .append("g")
-      .selectAll("line")
-      .data(y.ticks())
-      .join("line")
-      .attr("y1", (d) => 0.5 + y(d))
-      .attr("y2", (d) => 0.5 + y(d))
-      .attr("x1", marginLeft)
-      .attr("x2", width - marginRight)
-      .attr("stroke", "currentColor")
-      .attr("stroke-opacity", 0.1);
+  // Add title with responsive positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
   }
 
-  // Menambahkan titik-titik (scatter points)
+  // Calculate regression line
+  const xSeries = validData.map((d) => d.x);
+  const ySeries = validData.map((d) => d.y);
+  const n = validData.length;
+  const xMean = xSeries.reduce((a, b) => a + b) / n;
+  const yMean = ySeries.reduce((a, b) => a + b) / n;
+  const ssxx = xSeries.reduce((a, b) => a + Math.pow(b - xMean, 2), 0);
+  const ssxy = xSeries.reduce(
+    (a, b, i) => a + (b - xMean) * (ySeries[i] - yMean),
+    0
+  );
+  const slope = ssxy / ssxx;
+  const intercept = yMean - slope * xMean;
+
+  // Add regression line
+  const lineColor =
+    Array.isArray(chartColors) && chartColors.length > 1
+      ? chartColors[1]
+      : defaultChartColors[1];
+
+  svg
+    .append("line")
+    .attr("x1", x(xMin))
+    .attr("y1", y(slope * xMin + intercept))
+    .attr("x2", x(xMax))
+    .attr("y2", y(slope * xMax + intercept))
+    .attr("stroke", lineColor)
+    .attr("stroke-width", 2);
+
+  // Add points
   svg
     .append("g")
-    .attr("stroke", "steelblue")
+    .attr(
+      "stroke",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : defaultChartColors[0]
+    )
     .attr("stroke-width", 1.5)
-    .attr("fill", "none")
+    .attr(
+      "fill",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : defaultChartColors[0]
+    )
     .selectAll("circle")
     .data(validData)
     .join("circle")
@@ -249,86 +382,79 @@ export const createScatterPlotWithFitLine = (
     .attr("cy", (d) => y(d.y))
     .attr("r", 3);
 
-  // Menambahkan sumbu X dan Y jika diperlukan
+  // Add standardized axes
   if (useAxis) {
-    // Sumbu X
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x).ticks(width / 80))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ X Axis Label")
-      );
+    const xTickValues = axisScaleOptions?.x?.majorIncrement
+      ? getMajorTicks(xMin, xMax, Number(axisScaleOptions.x.majorIncrement))
+      : xTicks;
 
-    // Sumbu Y
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Y Axis Label")
-      );
-  }
+    const yTickValues = axisScaleOptions?.y?.majorIncrement
+      ? getMajorTicks(yMin, yMax, Number(axisScaleOptions.y.majorIncrement))
+      : yTicks;
 
-  // Menghitung regresi linier menggunakan simple-statistics
-  const regression = ss.linearRegression(validData.map((d) => [d.x, d.y]));
-  const slope = regression.m;
-  const intercept = regression.b;
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories: xTicks.map((d) => d.toString()),
+      axisLabels,
+      xMin,
+      xMax,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 8,
+        tickFormat: (d: any) => formatAxisNumber(d),
+        tickValues: xTickValues,
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: true,
+        maxValueLength: 6,
+        tickValues: yTickValues,
+      },
+    });
+    // Add equation text with background
+    const equation = `Y = ${slope.toFixed(2)}X + ${intercept.toFixed(2)}`;
 
-  // Cetak objek regression langsung
-  console.log("Regression Object:", regression);
-  console.log(`Regresi Linier: y = ${slope}x + ${intercept}`);
+    // Add background rect for equation
+    const eqnPadding = { x: 8, y: 4 }; // Padding around text
+    const eqnGroup = svg.append("g");
 
-  // Menentukan dua titik untuk garis regresi
-  const xMin = d3.min(validData, (d) => d.x) as number;
-  const xMax = d3.max(validData, (d) => d.x) as number;
-  const regressionData = [
-    { x: xMin, y: slope * xMin + intercept },
-    { x: xMax, y: slope * xMax + intercept },
-  ];
-
-  // Membuat generator garis regresi
-  const regressionLine = d3
-    .line<{ x: number; y: number }>()
-    .x((d) => x(d.x))
-    .y((d) => y(d.y));
-
-  // Menambahkan garis regresi ke SVG
-  svg
-    .append("path")
-    .datum(regressionData)
-    .attr("fill", "none")
-    .attr("stroke", "red")
-    .attr("stroke-width", 2)
-    .attr("d", regressionLine);
-
-  if (showEquation) {
-    // Menambahkan label persamaan regresi (opsional)
-    svg
+    // First add text to measure its size
+    const eqnText = eqnGroup
       .append("text")
-      .attr("x", width - marginRight)
-      .attr("y", marginTop)
-      .attr("fill", "black")
+      .attr("x", width - margin.right - eqnPadding.x)
+      .attr("y", margin.top - 0.1) // Adjusted position
       .attr("text-anchor", "end")
-      .attr("font-size", "12px")
-      .text(`y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)}`);
+      .attr("fill", "hsl(var(--foreground))")
+      .style("font-size", "12px")
+      .text(equation);
+
+    // Get text dimensions
+    const textBox = eqnText.node()?.getBBox();
+    if (textBox) {
+      // Add semi-transparent background
+      eqnGroup
+        .insert("rect", "text") // Insert before text
+        .attr("x", textBox.x - eqnPadding.x)
+        .attr("y", textBox.y - eqnPadding.y)
+        .attr("width", textBox.width + eqnPadding.x * 2)
+        .attr("height", textBox.height + eqnPadding.y * 2)
+        .attr("fill", "white")
+        .attr("fill-opacity", 0.8)
+        .attr("rx", 4) // Rounded corners
+        .attr("ry", 4);
+    }
   }
 
-  // Mengembalikan node SVG
   return svg.node();
 };
 
@@ -345,7 +471,24 @@ export const createGroupedScatterPlot = (
   data: GroupedScatterPlotData[],
   width: number = 600,
   height: number = 400,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ): SVGSVGElement | null => {
   const validData = data.filter(
     (d) =>
@@ -364,102 +507,135 @@ export const createGroupedScatterPlot = (
     return null;
   }
 
-  const margin = useAxis
-    ? { top: 30, right: 30, bottom: 120, left: 50 }
-    : { top: 10, right: 10, bottom: 10, left: 10 };
-
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-
   const categories = Array.from(new Set(validData.map((d) => d.category)));
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
 
-  const xScale = d3
+  // Calculate X scale
+  let xMin = d3.min(validData, (d) => d.x)!;
+  let xMax = d3.max(validData, (d) => d.x)!;
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
+  }
+
+  // Calculate Y scale
+  let yMin = d3.min(validData, (d) => d.y)!;
+  let yMax = d3.max(validData, (d) => d.y)!;
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  const xTickCount = Math.min(10, Math.floor(width / 80));
+  const yTickCount = Math.min(10, Math.floor(height / 50));
+
+  const xTicks = d3.scaleLinear().domain([xMin, xMax]).nice().ticks(xTickCount);
+  const yTicks = d3.scaleLinear().domain([yMin, yMax]).nice().ticks(yTickCount);
+
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+  const maxXLabelWidth =
+    d3.max(xTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+
+  // Calculate responsive margin
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+    hasLegend: true,
+    legendPosition: "right",
+  });
+
+  // Create scales
+  const x = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.x) as [number, number])
+    .domain([xMin, xMax])
     .nice()
-    .range([0, innerWidth]);
+    .range([margin.left, width - margin.right]);
 
-  const yScale = d3
+  const y = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.y) as [number, number])
+    .domain([yMin, yMax])
     .nice()
-    .range([innerHeight, 0]);
+    .range([height - margin.bottom, margin.top]);
 
+  // Create color scale with explicit domain
   const colorScale = d3
     .scaleOrdinal<string>()
     .domain(categories)
-    .range(d3.schemeCategory10);
+    .range(chartColors || defaultChartColors);
 
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", `0 0 ${width} ${height}`)
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  // Create SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
 
-  const chart = svg
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
-
-  if (useAxis) {
-    chart
-      .append("g")
-      .attr("stroke", "currentColor")
-      .attr("stroke-opacity", 0.1)
-      .selectAll("line.horizontal")
-      .data(yScale.ticks())
-      .join("line")
-      .attr("class", "horizontal")
-      .attr("x1", 0)
-      .attr("x2", innerWidth)
-      .attr("y1", (d) => yScale(d))
-      .attr("y2", (d) => yScale(d));
-
-    chart
-      .append("g")
-      .attr("stroke", "currentColor")
-      .attr("stroke-opacity", 0.1)
-      .selectAll("line.vertical")
-      .data(xScale.ticks())
-      .join("line")
-      .attr("class", "vertical")
-      .attr("y1", 0)
-      .attr("y2", innerHeight)
-      .attr("x1", (d) => xScale(d))
-      .attr("x2", (d) => xScale(d));
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
   }
 
+  // Add axes if needed
   if (useAxis) {
-    chart
-      .append("g")
-      .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(xScale).ticks(width / 80))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", innerWidth)
-          .attr("y", margin.bottom - 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("X Axis →")
-      );
+    const xTickValues = axisScaleOptions?.x?.majorIncrement
+      ? getMajorTicks(xMin, xMax, Number(axisScaleOptions.x.majorIncrement))
+      : xTicks;
 
-    chart
-      .append("g")
-      .call(d3.axisLeft(yScale))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -margin.left + 15)
-          .attr("y", -10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Y Axis")
-      );
+    const yTickValues = axisScaleOptions?.y?.majorIncrement
+      ? getMajorTicks(yMin, yMax, Number(axisScaleOptions.y.majorIncrement))
+      : yTicks;
+
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories: xTicks.map((d) => d.toString()),
+      axisLabels,
+      xMin,
+      xMax,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 8,
+        tickFormat: (d: any) => formatAxisNumber(d),
+        showGridLines: true,
+        tickValues: xTickValues,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: true,
+        maxValueLength: 6,
+        tickValues: yTickValues,
+      },
+    });
   }
 
+  // Add data points
   const tooltip = d3
     .select("body")
     .append("div")
@@ -474,7 +650,7 @@ export const createGroupedScatterPlot = (
     .style("font-size", "12px")
     .style("box-shadow", "0px 0px 6px #aaa");
 
-  chart
+  svg
     .append("g")
     .attr("stroke-width", 1.5)
     .attr("font-family", "sans-serif")
@@ -482,8 +658,8 @@ export const createGroupedScatterPlot = (
     .selectAll("circle")
     .data(validData)
     .join("circle")
-    .attr("cx", (d) => xScale(d.x))
-    .attr("cy", (d) => yScale(d.y))
+    .attr("cx", (d) => x(d.x))
+    .attr("cy", (d) => y(d.y))
     .attr("r", 5)
     .attr("fill", (d) => colorScale(d.category) as string)
     .on("mouseover", (event, d) => {
@@ -508,68 +684,30 @@ export const createGroupedScatterPlot = (
       tooltip.transition().duration(500).style("opacity", 0);
     });
 
-  if (useAxis) {
-    // Menambahkan legenda secara horizontal di bawah chart
-    const legendGroup = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 10)
-      .attr("text-anchor", "start")
-      .attr(
-        "transform",
-        `translate(${margin.left}, ${height - margin.bottom + 60})`
-      );
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-    const legendSpacingX = 130;
-    const legendSpacingY = 25;
-    const legendMaxWidth = width - margin.left - margin.right;
-    const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
+  // Add legend
+  const legendPosition = calculateLegendPosition({
+    width,
+    height,
+    marginLeft: margin.left,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginTop: margin.top,
+    legendPosition: "right",
+    itemCount: categories.length,
+    itemSpacing: 150, // Memberikan ruang lebih untuk teks kategori
+  });
 
-    categories.forEach((subcategory, index) => {
-      const row = Math.floor(index / itemsPerRow);
-      const col = index % itemsPerRow;
-      const xOffset = col * legendSpacingX;
-      const yOffset = row * legendSpacingY;
-
-      // Menambahkan swatch
-      legendGroup
-        .append("rect")
-        .attr("x", xOffset)
-        .attr("y", yOffset)
-        .attr("width", legendItemWidth)
-        .attr("height", legendItemHeight)
-        .attr("fill", colorScale(subcategory));
-
-      // Menambahkan label teks
-      legendGroup
-        .append("text")
-        .attr("x", xOffset + legendItemWidth + labelOffset)
-        .attr("y", yOffset + legendItemHeight / 2)
-        .attr("dy", "0.35em")
-        .text(subcategory);
-    });
-  }
-
-  if (useAxis) {
-    svg
-      .append("text")
-      .attr("x", margin.left + innerWidth / 2)
-      .attr("y", height - margin.bottom / 2 - 10)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text("X Axis Label");
-
-    svg
-      .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -(margin.top + innerHeight / 2))
-      .attr("y", margin.left / 2 - 10)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text("Y Axis Label");
-  }
+  addLegend({
+    svg,
+    colorScale: (d: string) => colorScale(d),
+    position: legendPosition,
+    domain: categories,
+    itemWidth: 15,
+    itemHeight: 15,
+    fontSize: 12,
+    legendPosition: "right",
+    title: "Keterangan:",
+  });
 
   return svg.node();
 };
@@ -578,90 +716,147 @@ export const createDotPlot = (
   data: { category: string; value: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: AxisLabelOptions,
+  axisScaleOptions?: {
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   console.log("Creating improved stacked dot plot with data:", data);
 
-  const marginTop = useAxis ? 30 : 10;
-  const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 30 : 10;
-  const marginLeft = useAxis ? 30 : 10;
-  const dotRadius = 7;
-  const dotSpacing = dotRadius * 1.8;
+  // Filter out invalid data and group by category
+  const validData = data.filter(
+    (d) => d.value !== null && d.value !== undefined && !Number.isNaN(d.value)
+  );
 
-  // Skala X: Kategori
+  // Group data by category
+  const groupedData = d3.group(validData, (d) => d.category);
+  const categories = Array.from(groupedData.keys());
+
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Calculate max label width for margin calculation
+  const maxLabelWidth = Math.max(
+    ...categories.map((cat) => ctx.measureText(cat).width)
+  );
+
+  // Calculate responsive margins
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth,
+    categories,
+  });
+
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
+
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, { ...titleOptions, marginTop: margin.top });
+  }
+
+  const dotRadius = 7;
+
+  // Skala X: satu band per kategori
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
-    .range([marginLeft, width - marginRight])
+    .domain(categories)
+    .range([margin.left, width - margin.right])
     .padding(0.5);
 
   // Skala Y: Nilai dari data
-  const maxValue = d3.max(data, (d) => d.value) || 0;
+  let yMin = 0;
+  let yMax = d3.max(validData, (d) => d.value) || 0;
+  let yAxisMajorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
   const y = d3
     .scaleLinear()
-    .domain([0, maxValue])
-    .range([height - marginBottom, marginTop]);
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  // Dynamic Y-axis
-  const tickCount = maxValue > 100 ? 10 : maxValue > 50 ? 7 : 5;
-
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", `0 0 ${width} ${height}`)
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
-  // .attr("style", "max-width: 100%; max-height:50%;");
+  // Add standard axes
+  if (useAxis) {
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        showGridLines: false,
+        tickValues: yAxisMajorIncrement
+          ? generateAxisTicks(yMin, yMax, yAxisMajorIncrement)
+          : undefined,
+      },
+    });
+  }
 
   // Draw the dots
-  svg
+  const dotGroup = svg
     .append("g")
-    .attr("fill", "steelblue")
-    .selectAll("g")
-    .data(data)
-    .join("g")
-    .attr("transform", (d) => {
-      const xPos = x(d.category) ?? 0;
-      return `translate(${xPos + x.bandwidth() / 2}, 0)`;
-    })
-    .selectAll("circle")
-    .data((d) => d3.range(d.value))
-    .join("circle")
-    .attr("cx", 0)
-    .attr("cy", (d, i) => y(i + 1))
-    .attr("r", dotRadius);
+    .attr(
+      "fill",
+      chartColors && chartColors.length > 0
+        ? chartColors[0]
+        : defaultChartColors[0]
+    );
 
-  // Menambahkan axis
-  if (useAxis) {
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0));
-
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).ticks(tickCount))
-      .call((g) => g.select(".domain").remove());
-
-    svg
-      .append("text")
-      .attr("text-anchor", "middle")
-      .attr("x", width / 2)
-      .attr("y", height - marginBottom + 40)
-      .style("font-size", "14px")
-      .text("Categories");
-
-    svg
-      .append("text")
-      .attr("text-anchor", "middle")
-      .attr("transform", `rotate(-10)`)
-      .attr("x", -height / 2)
-      .attr("y", marginLeft - 40)
-      .style("font-size", "14px")
-      .text("Count");
-  }
+  // Draw dots for each category
+  groupedData.forEach((values, category) => {
+    const xBase = x(category)! + x.bandwidth() / 2;
+    values.forEach((d) => {
+      for (let i = 0; i < d.value; i++) {
+        dotGroup
+          .append("circle")
+          .attr("cx", xBase)
+          .attr("cy", y(i + 1))
+          .attr("r", dotRadius);
+      }
+    });
+  });
 
   return svg.node();
 };
@@ -670,27 +865,92 @@ export const createScatterPlotMatrix = (
   data: { [key: string]: any }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  chartColors?: string[]
 ) => {
-  const padding = useAxis ? 20 : 5;
-  const columns: string[] = Object.keys(data[0]).filter(
-    (d) => typeof data[0][d] === "number"
+  console.log("Creating scatter plot matrix with data:", data);
+  // Validate data first
+  if (!data || data.length === 0 || !data[0]) {
+    console.error("No valid data available for the scatter plot matrix");
+    return null;
+  }
+
+  // Filter numeric columns and validate data
+  const columns: string[] = Object.keys(data[0]).filter((key) =>
+    data.some((d) => typeof d[key] === "number" && !isNaN(d[key]))
   );
 
-  const marginTop = useAxis ? 30 : 10;
-  const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 30 : 10;
-  const marginLeft = useAxis ? 30 : 10;
-  const matrixSize = Math.min(width, height);
+  if (columns.length === 0) {
+    console.error("No numeric columns available for the scatter plot matrix");
+    return null;
+  }
+
+  const validData = data.filter((d) =>
+    columns.every(
+      (col) => d[col] !== null && d[col] !== undefined && !isNaN(d[col])
+    )
+  );
+
+  if (validData.length === 0) {
+    console.error("No valid data points available for the scatter plot matrix");
+    return null;
+  }
+
+  const n = columns.length;
+  const padding = useAxis ? 20 : 5;
+
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "12px sans-serif";
+
+  // Estimate Y axis tick labels
+  const yTicks = d3
+    .scaleLinear()
+    .domain([0, 100]) // dummy domain, will be replaced per cell
+    .ticks(5)
+    .map((tick) => tick.toString());
+  const maxYTickWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick).width)) ?? 0;
+  const yLabelWidth = axisLabels?.y ? ctx.measureText(axisLabels.y).width : 0;
+  const marginLeft = useAxis
+    ? Math.max(maxYTickWidth + (axisLabels?.y ? 30 : 10), 40, yLabelWidth + 10)
+    : 10;
+
+  // Calculate responsive margin with custom bottom margin for scatter plot matrix
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth: maxYTickWidth,
+  });
+
+  margin.left -= 0.5 * margin.left;
+  margin.right -= 0.8 * margin.right;
+  margin.top -= 0.5 * margin.top;
+  margin.bottom -= 0.5 * margin.bottom;
+
+  const matrixWidth = width - margin.left - margin.right;
+  const matrixHeight = height - margin.top - margin.bottom;
   const size =
-    (matrixSize - (columns.length + 1) * padding) / columns.length + padding;
-  console.log("Computed size:", size);
-  console.log("data", data);
+    (Math.min(matrixWidth, matrixHeight) - (n + 1) * padding) / n + padding;
+  const offsetX = margin.left + (matrixWidth - size * n) / 2;
+  const offsetY = margin.top + (matrixHeight - size * n) / 2;
+
+  const color =
+    chartColors && chartColors.length > 0
+      ? chartColors[0]
+      : defaultChartColors[0];
 
   const x: d3.ScaleLinear<number, number>[] = columns.map((c) =>
     d3
       .scaleLinear()
-      .domain(d3.extent(data, (d) => d[c]) as [number, number])
+      .domain(d3.extent(validData, (d) => d[c]) as [number, number])
       .rangeRound([padding / 2, size - padding / 2])
   );
 
@@ -698,20 +958,20 @@ export const createScatterPlotMatrix = (
     xScale.copy().range([size - padding / 2, padding / 2])
   );
 
-  const color = d3
-    .scaleOrdinal<string, string>()
-    .domain(data.map((d) => d.species))
-    .range(d3.schemeCategory10);
+  // Responsive tick count based on chart size
+  const tickCount = Math.max(2, Math.min(4, Math.floor(size / 40)));
 
   const axisx = d3
     .axisBottom(d3.scaleLinear())
-    .ticks(4)
-    .tickSize(size * columns.length);
+    .ticks(tickCount)
+    .tickSize(size * columns.length)
+    .tickFormat(d3.format(".0f")); // Format numbers without decimals
 
   const axisy = d3
     .axisLeft(d3.scaleLinear())
-    .ticks(4)
-    .tickSize(-size * columns.length);
+    .ticks(tickCount)
+    .tickSize(-size * columns.length)
+    .tickFormat(d3.format(".0f"));
 
   const xAxis = (g: d3.Selection<SVGGElement, any, null, undefined>) => {
     g.selectAll<SVGGElement, d3.ScaleLinear<number, number>>("g")
@@ -722,7 +982,13 @@ export const createScatterPlotMatrix = (
         d3.select(this as SVGGElement).call(axisx.scale(d));
       })
       .call((g) => g.select(".domain").remove())
-      .call((g) => g.selectAll(".tick line").attr("stroke", "#ddd"));
+      .call((g) => g.selectAll(".tick line").attr("stroke", "#ddd"))
+      .call((g) =>
+        g
+          .selectAll(".tick text")
+          .style("font-size", `${Math.max(8, Math.min(12, size / 10))}px`)
+          .attr("fill", "#666")
+      );
   };
 
   const yAxis = (g: d3.Selection<SVGGElement, any, null, undefined>) => {
@@ -734,43 +1000,45 @@ export const createScatterPlotMatrix = (
         d3.select(this as SVGGElement).call(axisy.scale(d));
       })
       .call((g) => g.select(".domain").remove())
-      .call((g) => g.selectAll(".tick line").attr("stroke", "#ddd"));
+      .call((g) => g.selectAll(".tick line").attr("stroke", "#ddd"))
+      .call((g) =>
+        g
+          .selectAll(".tick text")
+          .style("font-size", `${Math.max(8, Math.min(12, size / 10))}px`)
+          .attr("fill", "#666")
+      );
   };
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ]);
 
-  svg
-    .append("style")
-    .text(`circle.hidden { fill: #000; fill-opacity: 1; r: 1px; }`);
-  if (useAxis) {
-    svg.append("g").call(xAxis);
-    svg.append("g").call(yAxis);
+  // Create standard SVG with calculated margins
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
+
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
   }
 
+  // Matrix group di-offset sesuai margin dan di-center-kan di area matrix
+  const matrixGroup = svg
+    .append("g")
+    .attr("transform", `translate(${offsetX},${offsetY})`);
+
   if (useAxis) {
-    svg
-      .append("g")
-      .style("font", "bold 10px sans-serif")
-      .style("pointer-events", "none")
-      .selectAll("text")
-      .data(columns)
-      .join("text")
-      .attr("transform", (d, i) => `translate(${i * size},${i * size})`)
-      .attr("x", padding)
-      .attr("y", padding)
-      .attr("dy", ".71em")
-      .text((d) => d);
+    matrixGroup.append("g").call(xAxis);
+    matrixGroup.append("g").call(yAxis);
   }
 
-  const cell = svg
+  const cell = matrixGroup
     .append("g")
     .selectAll("g")
     .data(d3.cross(d3.range(columns.length), d3.range(columns.length)))
@@ -787,40 +1055,94 @@ export const createScatterPlotMatrix = (
     .attr("height", size - padding);
 
   cell.each(function ([i, j]: [number, number]) {
+    // Responsive circle size based on cell size
+    const circleRadius = Math.max(1.5, Math.min(3.5, size / 25));
+
     d3.select(this)
       .selectAll<SVGCircleElement, { [key: string]: number }>("circle")
-      .data(data.filter((d) => !isNaN(d[columns[i]]) && !isNaN(d[columns[j]])))
+      .data(
+        validData.filter((d) => !isNaN(d[columns[i]]) && !isNaN(d[columns[j]]))
+      )
       .join("circle")
       .attr("cx", (d) => x[i](d[columns[i]]))
       .attr("cy", (d) => y[j](d[columns[j]]))
-      .attr("r", 3.5)
+      .attr("r", circleRadius)
       .attr("fill-opacity", 0.7)
-      .attr("fill", (d) => color(d.species));
+      .attr("fill", color);
   });
 
   if (useAxis) {
-    svg
-      .append("g")
-      .style("font", "bold 10px sans-serif")
-      .style("pointer-events", "none")
-      .selectAll("text")
-      .data(columns)
-      .join("text")
-      .attr("transform", (d, i) => `translate(${i * size},${i * size})`)
-      .attr("x", padding)
-      .attr("y", padding)
-      .attr("dy", ".71em")
-      .text((d) => d);
+    // Add grid lines
+    for (let i = 0; i <= columns.length; i++) {
+      const xPos = i * size;
+      if (xPos <= size * columns.length) {
+        matrixGroup
+          .append("line")
+          .attr("x1", xPos)
+          .attr("x2", xPos)
+          .attr("y1", 0)
+          .attr("y2", size * columns.length)
+          .attr("stroke", "#ddd");
+      }
+    }
+    for (let j = 0; j <= columns.length; j++) {
+      const yPos = j * size;
+      if (yPos <= size * columns.length) {
+        matrixGroup
+          .append("line")
+          .attr("x1", 0)
+          .attr("x2", size * columns.length)
+          .attr("y1", yPos)
+          .attr("y2", yPos)
+          .attr("stroke", "#ddd");
+      }
+    }
+
+    // Add column labels with responsive font size
+    const labelFontSize = Math.max(8, Math.min(16, size / 8));
+    const labelOffset = Math.max(4, size / 20);
+
+    columns.forEach((col, i) => {
+      // Truncate long variable names
+      const truncatedName = col.length > 8 ? col.substring(0, 8) + "..." : col;
+
+      matrixGroup
+        .append("text")
+        .attr("x", i * size + labelOffset)
+        .attr("y", i * size + labelFontSize + labelOffset)
+        .attr("text-anchor", "start")
+        .attr("fill", "#222")
+        .style("font-size", `${labelFontSize}px`)
+        .style("font-weight", "bold")
+        .text(truncatedName);
+    });
   }
 
-  return Object.assign(svg.node()!, { scales: { color } });
+  return svg.node();
 };
 
 export const createDropLineChart = (
   data: { x: string; y: number; category: string }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   const validData = data.filter(
     (d) =>
@@ -840,68 +1162,127 @@ export const createDropLineChart = (
     return null;
   }
 
-  const marginTop = useAxis ? 30 : 10;
-  const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 40 : 10;
-  const marginLeft = useAxis ? 40 : 10;
+  // Calculate max label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+  const maxXLabelWidth =
+    d3.max(validData, (d) => ctx.measureText(d.x).width) ?? 0;
+  const yTicks = d3
+    .scaleLinear()
+    .domain([0, d3.max(validData, (d) => d.y) as number])
+    .ticks(5);
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(0)).width)) ?? 0;
 
+  // Get unique categories for legend
+  const uniqueCategories = Array.from(
+    new Set(validData.map((d) => d.category))
+  );
+
+  // Use responsive margin utility
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxYLabelWidth,
+    categories: validData.map((d) => d.x),
+    hasLegend: true,
+    legendPosition: "right",
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
+
+  // Skala untuk sumbu X (category)
   const x = d3
     .scaleBand()
     .domain(validData.map((d) => d.x))
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
+  // Apply axis scale options for Y if provided
+  let yMin = 0;
+  let yMax = d3.max(validData, (d) => d.y) as number;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(validData, (d) => d.y) as number])
+    .domain([yMin, yMax])
     .nice()
     .range([height - marginBottom, marginTop]);
 
-  const svg = d3
-    .create("svg")
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
-
-  if (useAxis) {
-    svg
-      .append("g")
-      .attr("stroke", "#ddd")
-      .attr("stroke-width", 0.5)
-      .call((g) =>
-        g
-          .append("g")
-          .selectAll("line")
-          .data(x.domain())
-          .join("line")
-          .attr("x1", (d) => x(d)!)
-          .attr("x2", (d) => x(d)!)
-          .attr("y1", marginTop)
-          .attr("y2", height - marginBottom)
-      );
+  // Add title if provided with margin-aware positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop,
+      useResponsivePositioning: true,
+    });
   }
 
+  // Create color scale - use chartColors if provided, otherwise default
+  const color =
+    chartColors && chartColors.length > 0
+      ? d3.scaleOrdinal(chartColors)
+      : d3.scaleOrdinal(defaultChartColors);
+
   if (useAxis) {
-    svg
-      .append("g")
-      .attr("stroke", "#ddd")
-      .attr("stroke-width", 0.8)
-      .call((g) =>
-        g
-          .append("g")
-          .selectAll("line")
-          .data(y.ticks())
-          .join("line")
-          .attr("y1", (d) => y(d))
-          .attr("y2", (d) => y(d))
-          .attr("x1", marginLeft)
-          .attr("x2", width - marginRight)
-      );
+    // Add standard axes with automatic formatting
+    const categories = validData.map((d) => d.x);
+
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        tickFormat: (d: any) => truncateText(d, 12),
+        maxValueLength: 12,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+      },
+    });
   }
 
   const groupedData = d3.groups(validData, (d) => d.x);
 
+  // Draw vertical lines for each group
   svg
     .append("g")
     .selectAll("line")
@@ -914,6 +1295,7 @@ export const createDropLineChart = (
     .attr("stroke", "black")
     .attr("stroke-width", 1.5);
 
+  // Draw horizontal lines connecting points within each group
   groupedData.forEach((categoryData) => {
     svg
       .append("g")
@@ -928,6 +1310,7 @@ export const createDropLineChart = (
       .attr("stroke-width", 1.5);
   });
 
+  // Add points
   svg
     .append("g")
     .selectAll("circle")
@@ -938,37 +1321,36 @@ export const createDropLineChart = (
     .attr("r", 6)
     .attr("fill", (d) => color(d.category));
 
-  if (useAxis) {
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ Kategori")
-      );
+  // Add legend
+  const legendItems = uniqueCategories.map((category) => ({
+    label: category,
+    color: color(category),
+  }));
 
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Nilai")
-      );
-  }
+  const legendPosition = calculateLegendPosition({
+    width,
+    height,
+    marginLeft: margin.left,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginTop: margin.top,
+    legendPosition: "right",
+    itemCount: legendItems.length,
+    dualAxes: false,
+  });
+
+  addLegend({
+    svg,
+    colorScale: d3
+      .scaleOrdinal<string>()
+      .domain(legendItems.map((item) => item.label))
+      .range(legendItems.map((item) => item.color)),
+    position: legendPosition,
+    legendPosition: "right",
+    itemWidth: 15,
+    itemHeight: 15,
+    fontSize: 12,
+  });
 
   return svg.node();
 };
@@ -978,19 +1360,44 @@ export const createSummaryPointPlot = (
   width: number,
   height: number,
   useAxis: boolean = true,
-  statistic: "mean" | "median" | "mode" | "min" | "max" = "mean" // Pilihan statistik
+  statistic: "mean" | "median" | "mode" | "min" | "max" = "mean",
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   // Mengelompokkan data berdasarkan category dan menghitung statistik per kategori
   const categoryValues = Array.from(
     d3.group(data, (d) => d.category),
-    ([key, value]) => ({
-      category: key,
-      value: calculateStat(value, statistic),
-    })
+    ([key, value]) => {
+      const calculatedValue = calculateStat(value, statistic);
+      console.log(
+        `📊 Category ${key}: ${statistic} = ${calculatedValue} (from values: ${value
+          .map((v) => v.value)
+          .join(", ")})`
+      );
+      return {
+        category: key,
+        value: calculatedValue,
+      };
+    }
   );
 
   console.log(
-    `Creating summary point plot with ${statistic} values:`,
+    `🎯 Creating Summary Point Plot with "${statistic}" statistic:`,
     categoryValues
   );
 
@@ -999,10 +1406,41 @@ export const createSummaryPointPlot = (
     return null;
   }
 
-  const marginTop = useAxis ? 30 : 10;
-  const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 70 : 10;
-  const marginLeft = useAxis ? 40 : 10;
+  // Calculate max label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+  const maxXLabelWidth =
+    d3.max(categoryValues, (d) => ctx.measureText(d.category).width) ?? 0;
+  const yTicks = d3
+    .scaleLinear()
+    .domain([0, d3.max(categoryValues, (d) => d.value) as number])
+    .ticks(5);
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(0)).width)) ?? 0;
+
+  // Use responsive margin utility
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxYLabelWidth,
+    categories: categoryValues.map((d) => d.category),
+    hasLegend: false,
+  });
+
+  // Adjust bottom margin to accommodate statistic label
+  const {
+    top: marginTop,
+    bottom: baseMarginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
+
+  // Add extra space for statistic label
+  const marginBottom =
+    baseMarginBottom + (useAxis ? Math.max(0.1 * height, 35) : 0);
 
   // Skala untuk sumbu X (category)
   const x = d3
@@ -1011,61 +1449,84 @@ export const createSummaryPointPlot = (
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
+  // Apply axis scale options for Y if provided
+  let yMin = 0;
+  let yMax = d3.max(categoryValues, (d) => d.value) as number;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
   // Skala untuk sumbu Y (statistik nilai)
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(categoryValues, (d) => d.value) as number])
+    .domain([yMin, yMax])
     .nice()
     .range([height - marginBottom, marginTop]);
 
-  // Membuat SVG
-  const svg = d3
-    .create("svg")
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
-  // Warna titik (default warna abu-abu untuk semua titik)
-  const color = "#4682B4";
-
-  if (useAxis) {
-    // Menambahkan gridline untuk sumbu X
-    svg
-      .append("g")
-      .attr("stroke", "#ddd")
-      .attr("stroke-width", 0.5)
-      .call((g) =>
-        g
-          .append("g")
-          .selectAll("line")
-          .data(x.domain())
-          .join("line")
-          .attr("x1", (d) => x(d)!)
-          .attr("x2", (d) => x(d)!)
-          .attr("y1", marginTop)
-          .attr("y2", height - marginBottom)
-      );
+  // Add title if provided with margin-aware positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop,
+      useResponsivePositioning: true,
+    });
   }
 
   if (useAxis) {
-    // Menambahkan gridline untuk sumbu Y
-    svg
-      .append("g")
-      .attr("stroke", "#ddd")
-      .attr("stroke-width", 0.8)
-      .call((g) =>
-        g
-          .append("g")
-          .selectAll("line")
-          .data(y.ticks())
-          .join("line")
-          .attr("y1", (d) => y(d))
-          .attr("y2", (d) => y(d))
-          .attr("x1", marginLeft)
-          .attr("x2", width - marginRight)
-      );
+    // Add standard axes with automatic formatting
+    const categories = categoryValues.map((d) => d.category);
+
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        tickFormat: (d: any) => truncateText(d, 12),
+        maxValueLength: 12,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+      },
+    });
   }
 
-  // Menambahkan titik data untuk setiap kategori berdasarkan statistik yang dihitung
+  // Get colors for points
+  const getPointColor = (index: number) => {
+    if (Array.isArray(chartColors) && chartColors.length > 0) {
+      return chartColors[index % chartColors.length];
+    }
+    return defaultChartColors[index % defaultChartColors.length];
+  };
+
+  // Add points for each category
   svg
     .append("g")
     .selectAll("circle")
@@ -1074,51 +1535,20 @@ export const createSummaryPointPlot = (
     .attr("cx", (d) => x(d.category)! + x.bandwidth() / 2)
     .attr("cy", (d) => y(d.value))
     .attr("r", 6)
-    .attr("fill", color);
-
-  // Menambahkan teks informasi statistik di bawah grafik
-  svg
-    .append("text")
-    .attr("x", width / 2)
-    .attr("y", height - marginBottom + 40)
-    .attr("text-anchor", "middle")
-    .attr("font-size", "14px")
-    .attr("font-weight", "bold")
-    .text(
-      `Statistik: ${statistic.charAt(0).toUpperCase() + statistic.slice(1)}`
-    );
+    .attr("fill", (d, i) => getPointColor(i));
 
   if (useAxis) {
-    // Menambahkan sumbu X
+    // Add statistic label below x-axis
     svg
-      .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ Kategori")
-      );
-
-    // Menambahkan sumbu Y
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Nilai")
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 0.03 * height) // Adjust position to be closer to bottom
+      .attr("text-anchor", "middle")
+      .attr("fill", "hsl(var(--foreground))")
+      .style("font-size", "16px")
+      .style("font-weight", "bold")
+      .text(
+        `Statistic: ${statistic.charAt(0).toUpperCase() + statistic.slice(1)}`
       );
   }
 

@@ -126,7 +126,7 @@ pub fn generate_plots(
             // --- Menyusun Data Plot ---
 
             let mut plot_data = PlotData {
-                title: format!("Rata-rata {} untuk Level dari {}", dep_var_name, factor),
+                title: format!("Mean of {} for Levels of {}", dep_var_name, factor),
                 x_label: factor.to_string(),
                 y_label: dep_var_name.clone(),
                 series: vec![PlotSeries {
@@ -146,6 +146,12 @@ pub fn generate_plots(
                 y_axis_starts_at_zero: config.plots.y_axis_start_0,
                 includes_reference_line: config.plots.include_ref_line_for_grand_mean,
                 reference_line: None,
+                note: Some(
+                    "This plot displays the mean of the dependent variable for each level of the factor.".to_string()
+                ),
+                interpretation: Some(
+                    "Each point on the plot represents the calculated mean for a specific factor level. Error bars, if included, show the confidence interval or standard error, indicating the precision of the mean estimate. A reference line, if present, shows the grand mean across all levels for comparison.".to_string()
+                ),
             };
 
             // Tambahkan garis referensi untuk grand mean (rata-rata keseluruhan) jika diminta.
@@ -266,6 +272,19 @@ pub fn generate_plots(
                 y_axis_starts_at_zero: config.plots.y_axis_start_0,
                 includes_reference_line: false, // Garis referensi grand mean tidak umum untuk plot interaksi.
                 reference_line: None,
+                note: Some(
+                    format!(
+                        "This plot displays the interaction between {} and {}. Each line represents a level of {}, showing how the mean of {} changes across the levels of {}.",
+                        factor1,
+                        factor2,
+                        factor2,
+                        dep_var_name,
+                        factor1
+                    )
+                ),
+                interpretation: Some(
+                    "This interaction plot helps visualize how the effect of one factor on the dependent variable depends on the level of another factor. Parallel lines suggest no interaction, while lines that are not parallel suggest a possible interaction effect.".to_string()
+                ),
             };
 
             result.insert(src.clone(), plot_data);

@@ -26,7 +26,7 @@ pub fn format_result(result: &Option<ClusteringResult>) -> Result<JsValue, JsVal
 struct FormatResult {
     initial_centers: Option<FormattedInitialClusterCenters>,
     iteration_history: Option<FormattedIterationHistory>,
-    cluster_membership: Option<Vec<ClusterMembership>>,
+    cluster_membership: Option<ClusterMembership>,
     final_cluster_centers: Option<FormattedFinalClusterCenters>,
     distances_between_centers: Option<DistancesBetweenCenters>,
     anova: Option<FormattedANOVATable>,
@@ -37,6 +37,8 @@ struct FormatResult {
 #[derive(Serialize)]
 struct FormattedInitialClusterCenters {
     centers: Vec<ClusterCenter>,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -48,7 +50,8 @@ struct ClusterCenter {
 #[derive(Serialize)]
 struct FormattedIterationHistory {
     iterations: Vec<FormattedIterationStep>,
-    convergence_note: Option<String>,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -66,11 +69,15 @@ struct VariableChange {
 #[derive(Serialize)]
 struct FormattedFinalClusterCenters {
     centers: Vec<ClusterCenter>,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
 struct FormattedANOVATable {
     clusters: Vec<ANOVAEntry>,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -89,6 +96,8 @@ struct FormattedCaseCountTable {
     valid: usize,
     missing: usize,
     clusters: Vec<ClusterCount>,
+    note: Option<String>,
+    interpretation: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -100,7 +109,7 @@ struct ClusterCount {
 impl FormatResult {
     fn from_clustering_result(result: &ClusteringResult) -> Self {
         let initial_centers = result.initial_centers.as_ref().map(|centers| {
-            let centers = centers.centers
+            let centers_vec = centers.centers
                 .iter()
                 .map(|(var_name, values)| {
                     ClusterCenter {
@@ -111,7 +120,9 @@ impl FormatResult {
                 .collect();
 
             FormattedInitialClusterCenters {
-                centers,
+                centers: centers_vec,
+                note: centers.note.clone(),
+                interpretation: centers.interpretation.clone(),
             }
         });
 
@@ -138,12 +149,13 @@ impl FormatResult {
 
             FormattedIterationHistory {
                 iterations,
-                convergence_note: history.convergence_note.clone(),
+                note: history.note.clone(),
+                interpretation: history.interpretation.clone(),
             }
         });
 
         let final_cluster_centers = result.final_cluster_centers.as_ref().map(|centers| {
-            let centers = centers.centers
+            let centers_vec = centers.centers
                 .iter()
                 .map(|(var_name, values)| {
                     ClusterCenter {
@@ -154,7 +166,9 @@ impl FormatResult {
                 .collect();
 
             FormattedFinalClusterCenters {
-                centers,
+                centers: centers_vec,
+                note: centers.note.clone(),
+                interpretation: centers.interpretation.clone(),
             }
         });
 
@@ -176,24 +190,30 @@ impl FormatResult {
 
             FormattedANOVATable {
                 clusters,
+                note: anova.note.clone(),
+                interpretation: anova.interpretation.clone(),
             }
         });
 
         let cases_count = result.cases_count.as_ref().map(|count| {
-            let clusters = count.clusters
+            let mut clusters: Vec<_> = count.clusters
                 .iter()
-                .map(|(cluster_name, count)| {
+                .map(|(cluster_name, count_val)| {
                     ClusterCount {
                         cluster: cluster_name.clone(),
-                        count: *count,
+                        count: *count_val,
                     }
                 })
                 .collect();
+
+            clusters.sort_by_key(|c| c.cluster.parse::<i32>().unwrap_or_default());
 
             FormattedCaseCountTable {
                 valid: count.valid,
                 missing: count.missing,
                 clusters,
+                note: count.note.clone(),
+                interpretation: count.interpretation.clone(),
             }
         });
 

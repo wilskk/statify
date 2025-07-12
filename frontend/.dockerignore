@@ -20,7 +20,7 @@ node_modules
 *.md
 
 # Example data (large SAV demo files)
-public/exampleData
+# public/exampleData
 
 # VCS
 .git 

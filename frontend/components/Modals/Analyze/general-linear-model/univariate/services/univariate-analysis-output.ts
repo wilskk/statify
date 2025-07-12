@@ -1,12 +1,10 @@
-import {
-    UnivariateFinalResultType
-} from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
-import {ColumnHeader, Table} from "@/types/Table";
-import {useResultStore} from "@/stores/useResultStore";
-import {UnivariateType} from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {Variable} from "@/types/Variable";
-import {useVariableStore} from "@/stores/useVariableStore";
-import {useDataStore} from "@/stores/useDataStore";
+import { UnivariateFinalResultType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
+import { ColumnHeader, Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
+import { UnivariateType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
+import { Variable } from "@/types/Variable";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useDataStore } from "@/stores/useDataStore";
 
 export async function resultUnivariateAnalysis({
     formattedResult,
@@ -16,11 +14,10 @@ export async function resultUnivariateAnalysis({
     try {
         const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
 
-        const findTable = (key: string) => {
-            const foundTable = formattedResult.tables.find(
+        const findTable = (key: string): Table | undefined => {
+            return formattedResult.tables.find(
                 (table: Table) => table.key === key
             );
-            return foundTable ? JSON.stringify({ tables: [foundTable] }) : null;
         };
 
         const univariateAnalysisResult = async () => {
@@ -29,7 +26,7 @@ export async function resultUnivariateAnalysis({
              * */
             const titleMessage = "Univariate Analysis";
             const logId = await addLog({ log: titleMessage });
-            const analyticId = await addAnalytic(logId, {
+            await addAnalytic(logId, {
                 title: `Univariate Analysis Result`,
                 note: "",
             });
@@ -41,16 +38,19 @@ export async function resultUnivariateAnalysis({
                 "between_subjects_factors"
             );
             if (betweenSubjectsFactors) {
-                const betweenSubjectsFactorsId = await addAnalytic(logId, {
-                    title: `Between-Subjects Factors`,
-                    note: "",
+                const analyticId = await addAnalytic(logId, {
+                    title: betweenSubjectsFactors.title,
+                    note: betweenSubjectsFactors.note || "",
                 });
-
-                await addStatistic(betweenSubjectsFactorsId, {
-                    title: `Between-Subjects Factors`,
-                    description: `Between-Subjects Factors`,
-                    output_data: betweenSubjectsFactors,
-                    components: `Between-Subjects Factors`,
+                await addStatistic(analyticId, {
+                    title: betweenSubjectsFactors.title,
+                    description:
+                        betweenSubjectsFactors.interpretation ||
+                        betweenSubjectsFactors.title,
+                    output_data: JSON.stringify({
+                        tables: [betweenSubjectsFactors],
+                    }),
+                    components: betweenSubjectsFactors.title,
                 });
             }
 
@@ -59,34 +59,38 @@ export async function resultUnivariateAnalysis({
              * */
             const descriptiveStatistics = findTable("descriptive_statistics");
             if (descriptiveStatistics) {
-                const descriptiveStatisticsId = await addAnalytic(logId, {
-                    title: `Descriptive Statistics`,
-                    note: "",
+                const analyticId = await addAnalytic(logId, {
+                    title: descriptiveStatistics.title,
+                    note: descriptiveStatistics.note || "",
                 });
-
-                await addStatistic(descriptiveStatisticsId, {
-                    title: `Descriptive Statistics`,
-                    description: `Descriptive Statistics`,
-                    output_data: descriptiveStatistics,
-                    components: `Descriptive Statistics`,
+                await addStatistic(analyticId, {
+                    title: descriptiveStatistics.title,
+                    description:
+                        descriptiveStatistics.interpretation ||
+                        descriptiveStatistics.title,
+                    output_data: JSON.stringify({
+                        tables: [descriptiveStatistics],
+                    }),
+                    components: descriptiveStatistics.title,
                 });
             }
 
             /*
              * ⚖️ Levene's Test Result ⚖️
              * */
-            const leveneTest = findTable("levene_test");
-            if (leveneTest) {
-                const leveneTestId = await addAnalytic(logId, {
-                    title: `Levene's Test of Equality of Error Variances`,
-                    note: "",
+            const leveneTables = formattedResult.tables.filter((table: Table) =>
+                table.key.startsWith("levene_test")
+            );
+            for (const table of leveneTables) {
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: table.note || "",
                 });
-
-                await addStatistic(leveneTestId, {
-                    title: `Levene's Test of Equality of Error Variances`,
-                    description: `Levene's Test of Equality of Error Variances`,
-                    output_data: leveneTest,
-                    components: `Levene's Test of Equality of Error Variances`,
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
+                    components: table.title,
                 });
             }
 
@@ -96,19 +100,16 @@ export async function resultUnivariateAnalysis({
             const heteroTables = formattedResult.tables.filter((table: Table) =>
                 table.key.startsWith("hetero_")
             );
-
-            for (const heteroTable of heteroTables) {
-                const heteroData = JSON.stringify({ tables: [heteroTable] });
-                const heteroId = await addAnalytic(logId, {
-                    title: heteroTable.title,
-                    note: "",
+            for (const table of heteroTables) {
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: table.note || "",
                 });
-
-                await addStatistic(heteroId, {
-                    title: heteroTable.title,
-                    description: heteroTable.title,
-                    output_data: heteroData,
-                    components: heteroTable.title,
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
+                    components: table.title,
                 });
             }
 
@@ -119,19 +120,19 @@ export async function resultUnivariateAnalysis({
                 "tests_of_between_subjects_effects"
             );
             if (testsOfBetweenSubjectsEffects) {
-                const testsOfBetweenSubjectsEffectsId = await addAnalytic(
-                    logId,
-                    {
-                        title: `Tests of Between-Subjects Effects`,
-                        note: "",
-                    }
-                );
-
-                await addStatistic(testsOfBetweenSubjectsEffectsId, {
-                    title: `Tests of Between-Subjects Effects`,
-                    description: `Tests of Between-Subjects Effects`,
-                    output_data: testsOfBetweenSubjectsEffects,
-                    components: `Tests of Between-Subjects Effects`,
+                const analyticId = await addAnalytic(logId, {
+                    title: testsOfBetweenSubjectsEffects.title,
+                    note: testsOfBetweenSubjectsEffects.note || "",
+                });
+                await addStatistic(analyticId, {
+                    title: testsOfBetweenSubjectsEffects.title,
+                    description:
+                        testsOfBetweenSubjectsEffects.interpretation ||
+                        testsOfBetweenSubjectsEffects.title,
+                    output_data: JSON.stringify({
+                        tables: [testsOfBetweenSubjectsEffects],
+                    }),
+                    components: testsOfBetweenSubjectsEffects.title,
                 });
             }
 
@@ -140,16 +141,19 @@ export async function resultUnivariateAnalysis({
              * */
             const parameterEstimates = findTable("parameter_estimates");
             if (parameterEstimates) {
-                const parameterEstimatesId = await addAnalytic(logId, {
-                    title: `Parameter Estimates`,
-                    note: "",
+                const analyticId = await addAnalytic(logId, {
+                    title: parameterEstimates.title,
+                    note: parameterEstimates.note || "",
                 });
-
-                await addStatistic(parameterEstimatesId, {
-                    title: `Parameter Estimates`,
-                    description: `Parameter Estimates`,
-                    output_data: parameterEstimates,
-                    components: `Parameter Estimates`,
+                await addStatistic(analyticId, {
+                    title: parameterEstimates.title,
+                    description:
+                        parameterEstimates.interpretation ||
+                        parameterEstimates.title,
+                    output_data: JSON.stringify({
+                        tables: [parameterEstimates],
+                    }),
+                    components: parameterEstimates.title,
                 });
             }
 
@@ -160,16 +164,19 @@ export async function resultUnivariateAnalysis({
                 "general_estimable_function"
             );
             if (generalEstimableFunction) {
-                const generalEstimableFunctionId = await addAnalytic(logId, {
-                    title: `General Estimable Function`,
-                    note: "",
+                const analyticId = await addAnalytic(logId, {
+                    title: generalEstimableFunction.title,
+                    note: generalEstimableFunction.note || "",
                 });
-
-                await addStatistic(generalEstimableFunctionId, {
-                    title: `General Estimable Function`,
-                    description: `General Estimable Function`,
-                    output_data: generalEstimableFunction,
-                    components: `General Estimable Function`,
+                await addStatistic(analyticId, {
+                    title: generalEstimableFunction.title,
+                    description:
+                        generalEstimableFunction.interpretation ||
+                        generalEstimableFunction.title,
+                    output_data: JSON.stringify({
+                        tables: [generalEstimableFunction],
+                    }),
+                    components: generalEstimableFunction.title,
                 });
             }
 
@@ -179,20 +186,16 @@ export async function resultUnivariateAnalysis({
             const lMatrixTables = formattedResult.tables.filter(
                 (table: Table) => table.key.startsWith("hypothesis_matrix_")
             );
-
-            for (const lMatrixTable of lMatrixTables) {
-                const lMatrixData = JSON.stringify({ tables: [lMatrixTable] });
-                const termName = lMatrixTable.title;
-                const lMatrixId = await addAnalytic(logId, {
-                    title: `Contrast Coefficients (L Matrix) - ${termName}`,
-                    note: "",
+            for (const table of lMatrixTables) {
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: table.note || "",
                 });
-
-                await addStatistic(lMatrixId, {
-                    title: lMatrixTable.title,
-                    description: `The default display of this matrix is the transpose of the corresponding L matrix.`,
-                    output_data: lMatrixData,
-                    components: `Hypothesis Matrix - ${termName}`,
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
+                    components: table.title,
                 });
             }
 
@@ -204,14 +207,18 @@ export async function resultUnivariateAnalysis({
             );
             if (customHypothesisIndexTable) {
                 const analyticId = await addAnalytic(logId, {
-                    title: `Custom Hypothesis Tests Index`,
-                    note: "",
+                    title: customHypothesisIndexTable.title,
+                    note: customHypothesisIndexTable.note || "",
                 });
                 await addStatistic(analyticId, {
-                    title: `Custom Hypothesis Tests Index`,
-                    description: `Index of all custom hypothesis tests performed.`,
-                    output_data: customHypothesisIndexTable,
-                    components: `Custom Hypothesis Tests Index`,
+                    title: customHypothesisIndexTable.title,
+                    description:
+                        customHypothesisIndexTable.interpretation ||
+                        customHypothesisIndexTable.title,
+                    output_data: JSON.stringify({
+                        tables: [customHypothesisIndexTable],
+                    }),
+                    components: customHypothesisIndexTable.title,
                 });
             }
 
@@ -219,15 +226,14 @@ export async function resultUnivariateAnalysis({
                 (table: Table) => table.key.startsWith("custom_test_results_")
             );
             for (const table of testResultTables) {
-                const tableData = JSON.stringify({ tables: [table] });
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
-                    note: "",
+                    note: table.note || "",
                 });
                 await addStatistic(analyticId, {
                     title: table.title,
-                    description: table.title,
-                    output_data: tableData,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
                     components: table.title,
                 });
             }
@@ -237,15 +243,14 @@ export async function resultUnivariateAnalysis({
                     table.key.startsWith("custom_contrast_results_k_matrix_")
             );
             for (const table of kMatrixTables) {
-                const tableData = JSON.stringify({ tables: [table] });
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
-                    note: "",
+                    note: table.note || "",
                 });
                 await addStatistic(analyticId, {
                     title: table.title,
-                    description: table.title,
-                    output_data: tableData,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
                     components: table.title,
                 });
             }
@@ -254,15 +259,14 @@ export async function resultUnivariateAnalysis({
                 (table: Table) => table.key.startsWith("contrast_coefficients_")
             );
             for (const table of lMatrixTablesCustom) {
-                const tableData = JSON.stringify({ tables: [table] });
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
-                    note: "",
+                    note: table.note || "",
                 });
                 await addStatistic(analyticId, {
                     title: table.title,
-                    description: table.title,
-                    output_data: tableData,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
                     components: table.title,
                 });
             }
@@ -272,16 +276,19 @@ export async function resultUnivariateAnalysis({
              * */
             const contrastCoefficients = findTable("contrast_coefficients");
             if (contrastCoefficients) {
-                const contrastCoefficientsId = await addAnalytic(logId, {
-                    title: `Contrast Coefficients`,
-                    note: "",
+                const analyticId = await addAnalytic(logId, {
+                    title: contrastCoefficients.title,
+                    note: contrastCoefficients.note || "",
                 });
-
-                await addStatistic(contrastCoefficientsId, {
-                    title: `Contrast Coefficients`,
-                    description: `Contrast Coefficients`,
-                    output_data: contrastCoefficients,
-                    components: `Contrast Coefficients`,
+                await addStatistic(analyticId, {
+                    title: contrastCoefficients.title,
+                    description:
+                        contrastCoefficients.interpretation ||
+                        contrastCoefficients.title,
+                    output_data: JSON.stringify({
+                        tables: [contrastCoefficients],
+                    }),
+                    components: contrastCoefficients.title,
                 });
             }
 
@@ -290,16 +297,16 @@ export async function resultUnivariateAnalysis({
              * */
             const lackOfFitTests = findTable("lack_of_fit_tests");
             if (lackOfFitTests) {
-                const lackOfFitTestsId = await addAnalytic(logId, {
-                    title: `Lack of Fit Tests`,
-                    note: "",
+                const analyticId = await addAnalytic(logId, {
+                    title: lackOfFitTests.title,
+                    note: lackOfFitTests.note || "",
                 });
-
-                await addStatistic(lackOfFitTestsId, {
-                    title: `Lack of Fit Tests`,
-                    description: `Lack of Fit Tests`,
-                    output_data: lackOfFitTests,
-                    components: `Lack of Fit Tests`,
+                await addStatistic(analyticId, {
+                    title: lackOfFitTests.title,
+                    description:
+                        lackOfFitTests.interpretation || lackOfFitTests.title,
+                    output_data: JSON.stringify({ tables: [lackOfFitTests] }),
+                    components: lackOfFitTests.title,
                 });
             }
 
@@ -308,116 +315,19 @@ export async function resultUnivariateAnalysis({
              * */
             const spreadVsLevelPlots = findTable("spread_vs_level_plots");
             if (spreadVsLevelPlots) {
-                const spreadVsLevelPlotsId = await addAnalytic(logId, {
-                    title: `Spread vs. Level Plots`,
-                    note: "",
-                });
-
-                await addStatistic(spreadVsLevelPlotsId, {
-                    title: `Spread vs. Level Plots`,
-                    description: `Spread vs. Level Plots`,
-                    output_data: spreadVsLevelPlots,
-                    components: `Spread vs. Level Plots`,
-                });
-            }
-
-            /*
-             * 📊 Post Hoc Tests Result 📊
-             * */
-            // Since post hoc tests can have dynamic keys, we need to find all tables with 'posthoc_' prefix
-            const postHocTables = formattedResult.tables.filter(
-                (table: Table) => table.key.startsWith("posthoc_")
-            );
-
-            for (const postHocTable of postHocTables) {
-                const testName = postHocTable.title.replace(
-                    "Post Hoc Tests - ",
-                    ""
-                );
-                const postHocData = JSON.stringify({ tables: [postHocTable] });
-
-                const postHocId = await addAnalytic(logId, {
-                    title: `Post Hoc Tests - ${testName}`,
-                    note: "",
-                });
-
-                await addStatistic(postHocId, {
-                    title: `Post Hoc Tests - ${testName}`,
-                    description: `Post Hoc Tests - ${testName}`,
-                    output_data: postHocData,
-                    components: `Post Hoc Tests - ${testName}`,
-                });
-            }
-
-            /*
-             * 📏 Estimated Marginal Means Result 📏
-             * */
-            const emmeansEstimatesTables = formattedResult.tables.filter(
-                (table: Table) => table.key.startsWith("emmeans_estimates_")
-            );
-            for (const table of emmeansEstimatesTables) {
-                const tableData = JSON.stringify({ tables: [table] });
                 const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: "",
+                    title: spreadVsLevelPlots.title,
+                    note: spreadVsLevelPlots.note || "",
                 });
                 await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.title,
-                    output_data: tableData,
-                    components: table.title,
-                });
-            }
-
-            const emmeansLMatrixTables = formattedResult.tables.filter(
-                (table: Table) =>
-                    table.key.startsWith("emmeans_contrast_coefficients_")
-            );
-            for (const table of emmeansLMatrixTables) {
-                const tableData = JSON.stringify({ tables: [table] });
-                const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: "",
-                });
-                await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.title,
-                    output_data: tableData,
-                    components: table.title,
-                });
-            }
-
-            const emmeansPairwiseTables = formattedResult.tables.filter(
-                (table: Table) => table.key.startsWith("emmeans_pairwise_")
-            );
-            for (const table of emmeansPairwiseTables) {
-                const tableData = JSON.stringify({ tables: [table] });
-                const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: "",
-                });
-                await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.title,
-                    output_data: tableData,
-                    components: table.title,
-                });
-            }
-
-            const emmeansUnivariateTables = formattedResult.tables.filter(
-                (table: Table) => table.key.startsWith("emmeans_univariate_")
-            );
-            for (const table of emmeansUnivariateTables) {
-                const tableData = JSON.stringify({ tables: [table] });
-                const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: "",
-                });
-                await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.title,
-                    output_data: tableData,
-                    components: table.title,
+                    title: spreadVsLevelPlots.title,
+                    description:
+                        spreadVsLevelPlots.interpretation ||
+                        spreadVsLevelPlots.title,
+                    output_data: JSON.stringify({
+                        tables: [spreadVsLevelPlots],
+                    }),
+                    components: spreadVsLevelPlots.title,
                 });
             }
 
@@ -427,55 +337,74 @@ export async function resultUnivariateAnalysis({
             const multipleComparisonsTable = findTable("multiple_comparisons");
             if (multipleComparisonsTable) {
                 const analyticId = await addAnalytic(logId, {
-                    title: `Multiple Comparisons`,
-                    note: "",
+                    title: multipleComparisonsTable.title,
+                    note: multipleComparisonsTable.note || "",
                 });
                 await addStatistic(analyticId, {
-                    title: `Multiple Comparisons`,
-                    description: `Pairwise comparisons for post-hoc tests.`,
-                    output_data: multipleComparisonsTable,
-                    components: `Multiple Comparisons`,
+                    title: multipleComparisonsTable.title,
+                    description:
+                        multipleComparisonsTable.interpretation ||
+                        multipleComparisonsTable.title,
+                    output_data: JSON.stringify({
+                        tables: [multipleComparisonsTable],
+                    }),
+                    components: multipleComparisonsTable.title,
                 });
             }
 
             const homogeneousSubsetsTable = findTable("homogeneous_subsets");
             if (homogeneousSubsetsTable) {
                 const analyticId = await addAnalytic(logId, {
-                    title: `Homogeneous Subsets`,
-                    note: "",
+                    title: homogeneousSubsetsTable.title,
+                    note: homogeneousSubsetsTable.note || "",
                 });
                 await addStatistic(analyticId, {
-                    title: `Homogeneous Subsets`,
-                    description: `Groups with no significant differences are clustered into homogeneous subsets.`,
-                    output_data: homogeneousSubsetsTable,
-                    components: `Homogeneous Subsets`,
+                    title: homogeneousSubsetsTable.title,
+                    description:
+                        homogeneousSubsetsTable.interpretation ||
+                        homogeneousSubsetsTable.title,
+                    output_data: JSON.stringify({
+                        tables: [homogeneousSubsetsTable],
+                    }),
+                    components: homogeneousSubsetsTable.title,
                 });
             }
 
             /*
              * 📈 Plots Result 📈
              * */
-            // Since plots can have dynamic keys, we need to find all tables with 'plot_' prefix
             const plotTables = formattedResult.tables.filter((table: Table) =>
                 table.key.startsWith("plot_")
             );
-
-            for (const plotTable of plotTables) {
-                const plotName = plotTable.title.startsWith("Plot - ")
-                    ? plotTable.title.replace("Plot - ", "")
-                    : plotTable.title;
-                const plotData = JSON.stringify({ tables: [plotTable] });
-
-                const plotId = await addAnalytic(logId, {
-                    title: plotName,
-                    note: "",
+            for (const table of plotTables) {
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: table.note || "",
                 });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
+                    components: table.title,
+                });
+            }
 
-                await addStatistic(plotId, {
-                    title: plotName,
-                    description: plotName,
-                    output_data: plotData,
-                    components: plotName,
+            /*
+             * ❗ Error Table Result ❗
+             * */
+            const errorTable = findTable("error_table");
+            if (errorTable) {
+                const analyticId = await addAnalytic(logId, {
+                    title: errorTable.title,
+                    note: errorTable.note || "",
+                });
+                await addStatistic(analyticId, {
+                    title: errorTable.title,
+                    description:
+                        errorTable.interpretation ||
+                        "Errors logs from the analysis.",
+                    output_data: JSON.stringify({ tables: [errorTable] }),
+                    components: "Errors Logs",
                 });
             }
 
@@ -483,9 +412,7 @@ export async function resultUnivariateAnalysis({
              * 💾 Saved Variables Result 💾
              * */
 
-            const savedVariablesTable = formattedResult.tables.find(
-                (table) => table.key === "saved_variables_table"
-            );
+            const savedVariablesTable = findTable("saved_variables_table");
 
             if (
                 savedVariablesTable &&

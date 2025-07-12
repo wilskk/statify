@@ -8,14 +8,14 @@ export function formatDisplayNumber(num: number | undefined | null): string {
     if (isNaN(num)) return "NaN";
     if (!isFinite(num)) return num > 0 ? "Infinity" : "-Infinity";
 
-    // Handle very small numbers that are essentially zero
-    if (Math.abs(num) < 1e-10) {
-        return "0";
+    // Treat values very close to zero as 0
+    if (Math.abs(num) < 1e-20) {
+        return "0.000";
     }
 
-    // Handle very small non-zero numbers with scientific notation
-    if (Math.abs(num) > 0 && Math.abs(num) < 1e-5) {
-        return num.toExponential(3);
+    // Show scientific notation for very small or very large numbers
+    if (Math.abs(num) < 1e-4 || Math.abs(num) >= 1e5) {
+        return num.toExponential(3).toUpperCase();
     }
 
     // Handle integers
@@ -27,9 +27,10 @@ export function formatDisplayNumber(num: number | undefined | null): string {
         return num.toString();
     }
 
-    // Handle all other decimal numbers consistently
-    return num.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    // For regular decimal numbers
+    return num.toFixed(4).replace(/\.?0+$/, "");
 }
+
 
 // Helper function to ensure columnHeaders are sufficient for all rows
 export function ensureEnoughHeaders(table: Table): Table {

@@ -1,11 +1,7 @@
 use std::collections::{ HashMap, HashSet };
 use itertools::Itertools;
 use nalgebra::{ DMatrix, DVector };
-use crate::models::{
-    config::UnivariateConfig,
-    data::AnalysisData,
-    result::DesignMatrixInfo,
-};
+use crate::models::{ config::UnivariateConfig, data::AnalysisData, result::DesignMatrixInfo };
 
 use super::core::*;
 
@@ -425,12 +421,12 @@ pub fn construct_type_iii_l_matrix(
             l_vec[param_idx] = 1.0;
             l_rows.push(l_vec);
         } else {
-            web_sys::console::warn_1(
-                &format!(
+            return Err(
+                format!(
                     "Hypothesis matrix (Type III): Covariate term '{}' from config was not found in the generated parameter names ({:?}). L-matrix for this term will be empty.",
                     term_of_interest,
                     all_model_param_names
-                ).into()
+                )
             );
         }
     } else if
