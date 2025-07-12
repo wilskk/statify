@@ -4,9 +4,18 @@ const path = require('path');
 // Helper to load worker scripts into the test environment.
 // This mimics the 'importScripts' behavior in a Web Worker.
 const loadScript = (scriptPath) => {
-  const absolutePath = path.resolve(__dirname, '../../', scriptPath);
+  // Normalize leading slashes that mimic absolute URLs used in Web Workers
+  const normalized = scriptPath.startsWith('/') ? scriptPath.slice(1) : scriptPath;
+
+  // Attempt resolution relative to the DescriptiveStatistics directory first
+  let absolutePath = path.resolve(__dirname, '../../', normalized);
+
+  // Fallback: treat the path as relative to the `frontend/public` directory
+  if (!fs.existsSync(absolutePath)) {
+    absolutePath = path.resolve(__dirname, '../../../../', normalized);
+  }
+
   const scriptContent = fs.readFileSync(absolutePath, 'utf8');
-  // Using new Function to avoid global scope pollution issues with 'eval'.
   new Function(scriptContent)();
 };
 

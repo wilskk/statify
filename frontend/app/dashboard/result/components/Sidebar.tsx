@@ -46,9 +46,27 @@ const SidebarMenuItem: React.FC<{
         if (!item.id) return;
         try {
             if (item.type === 'log' && item.id) {
+                // Delete the whole log entry
                 await deleteLog(item.id);
             } else if (item.type === 'analytic' && item.id) {
-                await deleteAnalytic(item.id);
+                /*
+                 * The UI no longer exposes the Log hierarchy, so an analytic represents
+                 * the entire log. When an analytic is deleted from the sidebar we also
+                 * need to remove its parent log. We locate the parent log from the
+                 * current store, then delete that log directly – this will cascade and
+                 * remove the analytic & statistics in a single call.
+                 */
+                const state = useResultStore.getState();
+                const parentLog = state.logs.find((l) =>
+                    l.analytics?.some((a) => a.id === item.id)
+                );
+
+                if (parentLog?.id) {
+                    await deleteLog(parentLog.id);
+                } else {
+                    // Fallback – if we cannot find the parent log for some reason, fallback to the original behaviour
+                    await deleteAnalytic(item.id);
+                }
             } else if (item.type === 'statistic' && item.id) {
                 await deleteStatistic(item.id);
             }

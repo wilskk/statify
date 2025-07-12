@@ -111,20 +111,29 @@ class FrequencyCalculator {
         const n = W; // Gunakan total bobot sebagai n
 
         switch (method.toLowerCase()) {
-            case 'waverage': { // Weighted Average
-                const tc = (n + 1) * (p / 100);
-                const k = Math.floor(tc);
-                const k_weight_sum = k > 0 ? cc[k - 1] : 0;
-                const i = cc.findIndex(sum => sum > k_weight_sum);
+            case 'waverage': { // Weighted Average (SPSS)
+                // SPSS defines the weighted-average percentile as:
+                // rank = 1 + p/100 * (n - 1)
+                // k    = floor(rank)
+                // g    = rank - k
+                // P    = y_k + g * (y_{k+1} - y_k)
 
-                if (i === -1) return null;
-                if (k === 0) return y[0];
+                const rank = 1 + (p / 100) * (n - 1);
+                const k = Math.floor(rank);
+                const g = rank - k;
+
+                // Boundary conditions
+                if (k <= 1) return y[0];
                 if (k >= n) return y[y.length - 1];
 
-                const g = tc - k;
-                const y_i = y[i];
-                const y_i_plus_1 = i + 1 < y.length ? y[i + 1] : y_i;
-                return y_i + g * (y_i_plus_1 - y_i);
+                // Locate y_k and y_{k+1} in cumulative counts (1-based ranks)
+                const idx_k = cc.findIndex(total => total >= k);
+                const idx_k1 = cc.findIndex(total => total >= k + 1);
+
+                const y_k = y[idx_k];
+                const y_k1 = idx_k1 !== -1 ? y[idx_k1] : y_k; // fallback if k+1 exceeds
+
+                return y_k + g * (y_k1 - y_k);
             }
             case 'haverage': { // Weighted Average (Harrell-Davis)
                 const rank = (n + 1) * (p / 100);
@@ -216,8 +225,9 @@ class FrequencyCalculator {
 
         const sortedData = this.getSortedData();
         const descStats = this.descCalc.getStatistics().stats;
-        const totalN = descStats.N + descStats.Missing;
-        const validN = descStats.N;
+        const totalN = descStats.N;            // Total cases
+        const validN = descStats.Valid;        // Valid (non-missing) cases
+        const missingN = descStats.Missing;
 
         if (!sortedData || validN === 0) return null;
 
@@ -226,9 +236,13 @@ class FrequencyCalculator {
 
         const rows = y.map((value, index) => {
             const frequency = c[index];
-            const percent = totalN > 0 ? (frequency / totalN) * 100 : 0;
-            const validPercent = validN > 0 ? (frequency / validN) * 100 : 0;
-            cumulativePercent += validPercent;
+            const rawPercent = totalN > 0 ? (frequency / totalN) * 100 : 0;
+            const rawValidPercent = validN > 0 ? (frequency / validN) * 100 : 0;
+
+            // SPSS rounds percentages to one decimal place in its output tables
+            const percent = parseFloat(rawPercent.toFixed(1));
+            const validPercent = parseFloat(rawValidPercent.toFixed(1));
+            cumulativePercent = parseFloat((cumulativePercent + validPercent).toFixed(1));
             return {
                 label: String(value), // Placeholder, can be enhanced with value labels
                 frequency,
@@ -243,7 +257,7 @@ class FrequencyCalculator {
             rows,
             summary: {
                 valid: validN,
-                missing: descStats.Missing,
+                missing: missingN,
                 total: totalN,
             }
         };

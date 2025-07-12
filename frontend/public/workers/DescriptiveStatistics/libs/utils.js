@@ -47,4 +47,12 @@ function checkIsMissing(value, definition, isNumericType) {
         }
     }
     return false;
+}
+
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+  module.exports = { isNumeric, checkIsMissing };
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.isNumeric = isNumeric;
+  globalThis.checkIsMissing = checkIsMissing;
 } 

@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 // https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util';
+import './public/workers/DescriptiveStatistics/libs/utils';
 
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder as any;
