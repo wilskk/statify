@@ -1,19 +1,94 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
 import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { 
     FrequenciesAnalysisParams, 
     WorkerInput, 
     WorkerResult, 
-    CombinedResults,
     StatisticsOptions,
     ChartOptions,
-    FrequencyTable,
-    DescriptiveStatistics,
     FrequenciesResult
 } from '../types';
 import { processAndAddCharts, formatStatisticsTable, formatFrequencyTable } from '../utils';
 import { Variable } from '@/types/Variable';
+
+// --- Helper to build SPSS-style log string ----------------------------------
+const buildFrequenciesLog = (
+    variables: Variable[],
+    statisticsOptions: StatisticsOptions | null,
+    chartOptions: ChartOptions | null,
+    showCharts: boolean,
+): string => {
+    // 1) VARIABLES section
+    let log = `FREQUENCIES VARIABLES=${variables.map(v => v.name).join(" ")}`;
+
+    // 2) NTILES section – derived from quartiles / cut points
+    if (statisticsOptions) {
+        const ntileValues: number[] = [];
+        const { percentileValues } = statisticsOptions;
+        if (percentileValues.quartiles) ntileValues.push(4);
+        if (percentileValues.cutPoints) {
+            const n = Number(percentileValues.cutPointsN);
+            if (!isNaN(n) && n > 0) ntileValues.push(n);
+        }
+        ntileValues.forEach(n => {
+            log += `\n  /NTILES=${n}`;
+        });
+
+        // 3) PERCENTILES section
+        if (percentileValues.enablePercentiles && percentileValues.percentilesList.length > 0) {
+            const pctList = percentileValues.percentilesList
+                .map(p => {
+                    const num = Number(p);
+                    return isNaN(num) ? p : num.toFixed(1);
+                })
+                .join(" ");
+            log += `\n  /PERCENTILES=${pctList}`;
+        }
+
+        // 4) STATISTICS section
+        const statsTokens: string[] = [];
+        const { centralTendency, dispersion, distribution } = statisticsOptions;
+
+        if (dispersion.stddev) statsTokens.push("STDDEV");
+        if (dispersion.variance) statsTokens.push("VARIANCE");
+        if (dispersion.range) statsTokens.push("RANGE");
+        if (dispersion.minimum) statsTokens.push("MINIMUM");
+        if (dispersion.maximum) statsTokens.push("MAXIMUM");
+        if (dispersion.stdErrorMean) statsTokens.push("SEMEAN");
+
+        if (centralTendency.mean) statsTokens.push("MEAN");
+        if (centralTendency.median) statsTokens.push("MEDIAN");
+        if (centralTendency.mode) statsTokens.push("MODE");
+        if (centralTendency.sum) statsTokens.push("SUM");
+
+        if (distribution.skewness) statsTokens.push("SKEWNESS");
+        if (distribution.stdErrorSkewness) statsTokens.push("SESKEW");
+        if (distribution.kurtosis) statsTokens.push("KURTOSIS");
+        if (distribution.stdErrorKurtosis) statsTokens.push("SEKURT");
+
+        if (statsTokens.length > 0) {
+            log += `\n  /STATISTICS=${statsTokens.join(" ")}`;
+        }
+    }
+
+    // 5) Chart section – currently support bar chart/histogram/pie
+    if (showCharts && chartOptions && chartOptions.type) {
+        if (chartOptions.type === "barCharts") {
+            log += `\n  /BARCHART ${chartOptions.values === "percentages" ? "PERC" : "FREQ"}`;
+        } else if (chartOptions.type === "pieCharts") {
+            log += `\n  /PIECHART ${chartOptions.values === "percentages" ? "PERC" : "FREQ"}`;
+        } else if (chartOptions.type === "histograms") {
+            log += `\n  /HISTOGRAM ${chartOptions.showNormalCurveOnHistogram ? "NORMAL" : "FREQ"}`;
+        }
+    }
+
+    // 6) ORDER section – default to ANALYSIS
+    log += "\n  /ORDER=ANALYSIS.";
+
+    return log;
+};
 
 /**
  * Defines the return structure for the useFrequenciesAnalysis hook.
@@ -41,16 +116,18 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
 
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const workerRef = useRef<Worker | null>(null);
+    const workerClientRef = useRef<WorkerClient<any, WorkerResult> | null>(null);
     const resultsRef = useRef<FrequenciesResult[]>([]);
-    const processedCountRef = useRef(0);
     
-    const handleWorkerMessage = useCallback(async (event: MessageEvent<WorkerResult>, analyticId: number) => {
-        workerRef.current?.terminate();
-        workerRef.current = null;
+    const handleWorkerResult = useCallback(async (result: WorkerResult, analyticId: number) => {
+        // Release the worker back to the pool and update UI state
+        if (workerClientRef.current) {
+            workerClientRef.current.terminate();
+            workerClientRef.current = null;
+        }
         setIsLoading(false);
 
-        const { success, results, error } = event.data;
+        const { success, results, error } = result;
 
         if (success && results) {
             if (showStatistics && results.statistics) {
@@ -65,7 +142,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                         await addStatistic(analyticId, {
                             title: statsTableObject.tables[0]?.title || 'Statistics',
                             output_data: JSON.stringify(statsTableObject),
-                            components: 'table',
+                            components: 'Descriptive Statistics',
                             description: ''
                         });
                     }
@@ -79,7 +156,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                         await addStatistic(analyticId, {
                             title: freqTableObject.tables[0]?.title || 'Frequency Table',
                             output_data: JSON.stringify(freqTableObject),
-                            components: 'table',
+                            components: 'Frequency Table',
                             description: ''
                         });
                     }
@@ -102,24 +179,30 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
 
         setIsLoading(true);
         setErrorMsg(null);
-        
-        const logId = await addLog({ log: 'Frequencies' });
+
+        // Compose SPSS-style log message based on current options
+        const logMessage = buildFrequenciesLog(selectedVariables, statisticsOptions, chartOptions, showCharts);
+
+        const logId = await addLog({ log: logMessage });
         const analyticId = await addAnalytic(logId, {
             title: 'Frequencies Analysis',
             note: selectedVariables.map(v => v.name).join(', '),
         });
 
-        workerRef.current = new Worker(new URL('@/public/workers/DescriptiveStatistics/manager.js', import.meta.url));
-        workerRef.current.onmessage = (event: MessageEvent<WorkerResult>) => handleWorkerMessage(event, analyticId);
-        workerRef.current.onerror = (e: ErrorEvent) => {
+        const workerClient = createPooledWorkerClient('frequencies');
+        workerClientRef.current = workerClient;
+
+        workerClient.onMessage((data: WorkerResult) => handleWorkerResult(data, analyticId));
+
+        workerClient.onError((e: ErrorEvent) => {
             console.error("Frequencies worker error:", e);
             setErrorMsg(`An unexpected error occurred in the Frequencies worker: ${e.message}`);
             setIsLoading(false);
-            if(workerRef.current) {
-                workerRef.current.terminate();
-                workerRef.current = null;
+            if (workerClientRef.current) {
+                workerClientRef.current.terminate();
+                workerClientRef.current = null;
             }
-        };
+        });
         
         const workerInput: WorkerInput = {
             variableData: selectedVariables.map(variable => ({
@@ -134,14 +217,14 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                 chartOptions
             }
         };
-        workerRef.current.postMessage(workerInput);
+        workerClient.post(workerInput);
 
-    }, [selectedVariables, allData, weights, showFrequencyTables, showStatistics, statisticsOptions, chartOptions, addLog, addAnalytic, handleWorkerMessage]);
+    }, [selectedVariables, allData, weights, showFrequencyTables, showStatistics, statisticsOptions, chartOptions, addLog, addAnalytic, handleWorkerResult]);
 
     const cancelAnalysis = useCallback(() => {
-        if (workerRef.current) {
-            workerRef.current.terminate();
-            workerRef.current = null;
+        if (workerClientRef.current) {
+            workerClientRef.current.terminate();
+            workerClientRef.current = null;
             setIsLoading(false);
             console.log("Frequencies analysis cancelled.");
         }

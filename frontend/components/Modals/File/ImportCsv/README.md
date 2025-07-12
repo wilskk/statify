@@ -43,7 +43,7 @@ The feature is architected with a clear separation of concerns, using a main orc
 -   **`services/services.ts`**:
     -   `parseCsvWithWorker`: Manages the Web Worker lifecycle. It creates the worker, sends it the file content and options, and returns a Promise that resolves with the parsed data or rejects with an error.
     -   `importCsvDataService`: An abstraction layer over the Zustand stores. Its `populateStores` method calls `overwriteAll` on the variable store, which atomically replaces the application's existing variables and data with the newly imported content.
--   **`public/workers/file-management/csvWorker.js`**: The **Web Worker** script. It receives the file content and parsing options, performs the intensive CSV parsing, and posts the structured result (variables and data rows) back to the main thread.
+-   **`public/workers/DataManagement/csvWorker.js`**: The **Web Worker** script. It receives the file content and parsing options, performs the intensive CSV parsing, and posts the structured result (variables and data rows) back to the main thread.
 
 ### 3.2. Data Flow
 

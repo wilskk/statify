@@ -1,14 +1,18 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { CrosstabsAnalysisParams } from '../types';
 import { formatCaseProcessingSummary, formatCrosstabulationTable } from '../utils/formatters';
+import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
 import type { Variable } from '@/types/Variable';
 
 export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: () => void) => {
     const [isCalculating, setIsCalculating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Keep reference to the pooled worker client so we can terminate / reuse
+    const workerClientRef = useRef<WorkerClient<any, any> | null>(null);
     
     const { data, weights } = useAnalysisData();
     const { variables } = useVariableStore();
@@ -24,7 +28,10 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
         setIsCalculating(true);
         setError(null);
 
-        const worker = new Worker('/workers/DescriptiveStatistics/manager.js');
+        // Acquire a pooled worker for crosstabs analyses
+        const workerClient = createPooledWorkerClient('crosstabs');
+        workerClientRef.current = workerClient;
+
         let resultCount = 0;
         let totalJobs = 0;
 
@@ -36,11 +43,11 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
         }
         totalJobs = variablePairs.length;
 
-        const handleWorkerMessage = async (variableName: string, event: MessageEvent) => {
-            resultCount++;
-            const { status, results, error: workerError } = event.data;
+        const handleWorkerMessage = async (eventData: any) => {
+            const { variableName, status, results, error: workerError } = eventData;
 
-            const [rowVarName, colVarName] = variableName.split(' * ');
+            resultCount++;
+            const [rowVarName, colVarName] = (variableName ?? '').split(' * ');
             const pair = variablePairs.find(p => p.rowVar.name === rowVarName && p.colVar.name === colVarName);
 
             if (status === 'error') {
@@ -108,7 +115,9 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
             if (resultCount === totalJobs) {
                 setIsCalculating(false);
                 if (!error) onClose();
-                worker.terminate();
+                // Release the worker back to the pool
+                workerClient.terminate();
+                workerClientRef.current = null;
             }
         };
 
@@ -116,11 +125,12 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
             console.error("Worker instantiation error:", err);
             setError(`Failed to load the analysis worker. ${err.message}`);
             setIsCalculating(false);
-            worker.terminate();
+            workerClient.terminate();
+            workerClientRef.current = null;
         };
 
-        worker.onmessage = (event) => handleWorkerMessage(event.data.variableName, event);
-        worker.onerror = handleWorkerError;
+        workerClient.onMessage(handleWorkerMessage);
+        workerClient.onError(handleWorkerError);
 
         variablePairs.forEach(({ rowVar, colVar }) => {
             const rowVariable = variables.find((v: Variable) => v.name === rowVar.name);
@@ -144,7 +154,7 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
                 return rowObject;
             });
             
-            worker.postMessage({
+            workerClient.post({
                 analysisType: 'crosstabs',
                 variable: { row: rowVariable, col: colVariable },
                 data: analysisData,
@@ -153,6 +163,16 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
             });
         });
     }, [params, data, weights, variables, addLog, addAnalytic, addStatistic, onClose, error]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (workerClientRef.current) {
+                workerClientRef.current.terminate();
+                workerClientRef.current = null;
+            }
+        };
+    }, []);
 
     return { runAnalysis, isCalculating, error };
 };

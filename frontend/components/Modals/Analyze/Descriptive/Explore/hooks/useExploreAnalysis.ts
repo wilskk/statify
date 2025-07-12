@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
 import type { Variable } from '@/types/Variable';
 import { ExploreAnalysisParams } from '../types';
+import { createPooledWorkerClient } from '@/utils/workerClient';
 import { formatCaseProcessingSummary, formatDescriptivesTable, formatMEstimatorsTable, formatPercentilesTable, formatExtremeValuesTable } from '../utils';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 
@@ -67,35 +68,25 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 const group = groupedData[groupKey];
                 for (const depVar of params.dependentVariables) {
                     const promise = new Promise((resolve, reject) => {
-                        const worker = new Worker('/workers/DescriptiveStatistics/manager.js');
+                        const workerClient = createPooledWorkerClient('examine');
 
-                        const handleMessage = (e: any) => {
-                            if (e.data.status === 'success') {
-                                resolve({ groupKey, result: { ...e.data.results, variable: depVar } });
+                        workerClient.onMessage((eventData: any) => {
+                            if (eventData.status === 'success') {
+                                resolve({ groupKey, result: { ...eventData.results, variable: depVar } });
                             } else {
-                                reject(new Error(e.data.error));
+                                reject(new Error(eventData.error));
                             }
-                            worker.terminate();
-                        };
+                            workerClient.terminate();
+                        });
 
-                        // Assign via setter
-                        // @ts-ignore
-                        worker.onmessage = handleMessage;
-                        // Ensure property is readable in unit tests that access instance.onmessage
-                        try {
-                            Object.defineProperty(worker, 'onmessage', { value: handleMessage, writable: true });
-                        } catch (err) {
-                            /* Ignore if property is non-configurable */
-                        }
-
-                        worker.onerror = (e) => {
-                            reject(new Error(`Worker error for ${depVar.name}: ${e.message}`));
-                            worker.terminate();
-                        };
+                        workerClient.onError((err: ErrorEvent) => {
+                            reject(new Error(`Worker error for ${depVar.name}: ${err.message}`));
+                            workerClient.terminate();
+                        });
 
                         const dataForVar = group.data.map((d: any) => d[depVar.columnIndex]);
-                        
-                        worker.postMessage({
+
+                        workerClient.post({
                             analysisType: 'examine',
                             variable: depVar,
                             data: dataForVar,
@@ -105,7 +96,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                                 showMEstimators: params.showMEstimators,
                                 showPercentiles: params.showPercentiles,
                                 showOutliers: params.showOutliers,
-                            }
+                            },
                         });
                     });
                     analysisPromises.push(promise);

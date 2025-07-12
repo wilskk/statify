@@ -10,6 +10,7 @@ import { formatDescriptiveTableOld } from '../utils/formatters';
 import { useZScoreProcessing } from './useZScoreProcessing';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
+import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
 
 export const useDescriptivesAnalysis = ({
     selectedVariables,
@@ -20,7 +21,7 @@ export const useDescriptivesAnalysis = ({
 }: DescriptivesAnalysisProps) => {
     const [isCalculating, setIsCalculating] = useState(false);
     const [error, setErrorMsg] = useState<string | null>(null);
-    const workerRef = useRef<Worker | null>(null);
+    const workerClientRef = useRef<WorkerClient<any, any> | null>(null);
 
     // Refs for accumulating results inside the worker callback
     const resultsRef = useRef<DescriptiveResult[]>([]);
@@ -50,9 +51,10 @@ export const useDescriptivesAnalysis = ({
         errorCountRef.current = 0;
         processedCountRef.current = 0;
         
-        const worker = new Worker('/workers/DescriptiveStatistics/manager.js');
-        workerRef.current = worker;
+        const workerClient = createPooledWorkerClient('descriptives');
+        workerClientRef.current = workerClient;
 
+        // Kirim payload untuk setiap variabel
         selectedVariables.forEach(variable => {
             const dataForVar = analysisData.map(row => row[variable.columnIndex]);
             const payload = {
@@ -62,11 +64,11 @@ export const useDescriptivesAnalysis = ({
                 weights,
                 options: { ...displayStatistics, saveStandardized }
             };
-            worker.postMessage(payload);
+            workerClient.post(payload);
         });
         
-        worker.onmessage = async (event) => {
-            const { variableName, results, status, error: workerError } = event.data;
+        workerClient.onMessage(async (eventData) => {
+            const { variableName, results, status, error: workerError } = eventData;
             const { variable, stats, zScores } = results || {};
             
             if (status === 'success' && variable && stats) {
@@ -100,7 +102,71 @@ export const useDescriptivesAnalysis = ({
 
                 if (resultsRef.current.length > 0) {
                     const formattedTable = formatDescriptiveTableOld(resultsRef.current, displayStatistics, displayOrder);
-                    const logId = await addLog({ log: `DESCRIPTIVES VARIABLES=${selectedVariables.map(v => v.name).join(" ")}` });
+
+                    // ----------------------------------------------------
+                    // Build SPSS-style command log that reflects parameters
+                    // ----------------------------------------------------
+                    const baseCmd = `DESCRIPTIVES VARIABLES=${selectedVariables.map(v => v.name).join(" ")}`;
+
+                    // Helper to prepend two spaces for continuation lines (SPSS style)
+                    const continuation = (text: string) => `  ${text}`;
+
+                    // 1) /SAVE clause (standardized values)
+                    const lines: string[] = [baseCmd];
+                    if (saveStandardized) {
+                        lines.push(continuation("/SAVE"));
+                    }
+
+                    // 2) /STATISTICS clause – map UI selections to SPSS keywords
+                    const statKeywordMap: Record<keyof typeof displayStatistics, string> = {
+                        mean: "MEAN",
+                        sum: "SUM",
+                        stdDev: "STDDEV",
+                        variance: "VARIANCE",
+                        range: "RANGE",
+                        minimum: "MIN",
+                        maximum: "MAX",
+                        standardError: "SEMEAN",
+                        median: "MEDIAN",
+                        skewness: "SKEWNESS",
+                        kurtosis: "KURTOSIS",
+                    };
+
+                    const requestedStats = (Object.keys(displayStatistics) as (keyof typeof displayStatistics)[])
+                        .filter(key => displayStatistics[key])
+                        .map(key => statKeywordMap[key]);
+
+                    if (requestedStats.length > 0) {
+                        lines.push(continuation(`/STATISTICS=${requestedStats.join(" ")}`));
+                    }
+
+                    // 3) /SORT clause – based on displayOrder selection
+                    let sortClause = "";
+                    switch (displayOrder) {
+                        case "alphabetic":
+                            sortClause = "NAME (A)"; // Ascending alphabetical
+                            break;
+                        case "mean":
+                        case "ascendingMeans":
+                            sortClause = "MEAN (A)";
+                            break;
+                        case "descendingMeans":
+                            sortClause = "MEAN (D)";
+                            break;
+                        default:
+                            // 'variableList' or undefined → no explicit sort clause
+                            break;
+                    }
+                    if (sortClause) {
+                        lines.push(continuation(`/SORT=${sortClause}`));
+                    }
+
+                    // Append terminating period to last line (SPSS syntax)
+                    if (lines.length > 0) {
+                        lines[lines.length - 1] = `${lines[lines.length - 1]}.`;
+                    }
+
+                    const logId = await addLog({ log: lines.join("\n") });
                     const analyticId = await addAnalytic(logId, { title: "Descriptives" });
                     await addStatistic(analyticId, {
                         title: "Descriptive Statistics",
@@ -111,30 +177,30 @@ export const useDescriptivesAnalysis = ({
                 }
                 
                 setIsCalculating(false);
-                worker.terminate();
-                workerRef.current = null;
+                workerClient.terminate();
+                workerClientRef.current = null;
                 if (errorCountRef.current === 0) {
                     onClose?.();
                 }
             }
-        };
+        });
 
-        worker.onerror = (err) => {
+        workerClient.onError((err) => {
             console.error("A critical worker error occurred:", err);
             setErrorMsg(`A critical worker error occurred: ${err.message}`);
             setIsCalculating(false);
-            if (workerRef.current) {
-                workerRef.current.terminate();
-                workerRef.current = null;
+            if (workerClientRef.current) {
+                workerClientRef.current.terminate();
+                workerClientRef.current = null;
             }
-        };
+        });
 
     }, [selectedVariables, displayStatistics, saveStandardized, displayOrder, onClose, addLog, addAnalytic, addStatistic, processZScoreData, analysisData, weights]);
 
     const cancelCalculation = useCallback(() => {
-        if (workerRef.current) {
-            workerRef.current.terminate();
-            workerRef.current = null;
+        if (workerClientRef.current) {
+            workerClientRef.current.terminate();
+            workerClientRef.current = null;
             setIsCalculating(false);
             console.log("Descriptives calculation cancelled.");
         }
