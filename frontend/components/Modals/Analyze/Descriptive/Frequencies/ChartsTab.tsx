@@ -89,22 +89,6 @@ const ChartsTab: FC<ChartsTabProps> = ({
                             Histograms
                         </Label>
                     </div>
-
-                    <div className="flex items-center ml-6">
-                        <Checkbox
-                            id="normalCurve"
-                            checked={showNormalCurve}
-                            onCheckedChange={(checked) => setShowNormalCurve(!!checked)}
-                            className="mr-2"
-                            disabled={!showCharts || chartType !== "histograms"}
-                        />
-                        <Label
-                            htmlFor="normalCurve"
-                            className={`text-sm cursor-pointer ${getTextClass(!showCharts || chartType !== "histograms")}`}
-                        >
-                            Show normal curve on histogram
-                        </Label>
-                    </div>
                 </RadioGroup>
                 <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("chart-type-section")} />
             </div>

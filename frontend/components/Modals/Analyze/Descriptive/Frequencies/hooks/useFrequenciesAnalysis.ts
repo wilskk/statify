@@ -80,7 +80,7 @@ const buildFrequenciesLog = (
         } else if (chartOptions.type === "pieCharts") {
             log += `\n  /PIECHART ${chartOptions.values === "percentages" ? "PERC" : "FREQ"}`;
         } else if (chartOptions.type === "histograms") {
-            log += `\n  /HISTOGRAM ${chartOptions.showNormalCurveOnHistogram ? "NORMAL" : "FREQ"}`;
+            log += `\n  /HISTOGRAM FREQ`;
         }
     }
 
