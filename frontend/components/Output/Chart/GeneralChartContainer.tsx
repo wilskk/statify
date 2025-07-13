@@ -61,9 +61,9 @@ interface GeneralChartContainerProps {
 const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   data,
 }) => {
-  const [copied, setCopied] = useState<{
-    [key: string]: { svg?: boolean; png?: boolean };
-  }>({});
+  const [copied, setCopied] = useState<Record<string, Record<string, boolean>>>(
+    {}
+  );
   const [chartNodes, setChartNodes] = useState<
     {
       id: string;
@@ -86,12 +86,13 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
     height: 600, // Default height
   });
 
-  const [actionsHidden, setActionsHidden] = useState<{
-    [key: string]: boolean;
-  }>({});
-  const actionTimers = useRef<{
-    [key: string]: NodeJS.Timeout | number | null;
-  }>({});
+  const [actionsHidden, setActionsHidden] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [loadingStates, setLoadingStates] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
+  const actionTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Parse data jika berbentuk string
   const parsedData = useMemo(
@@ -138,152 +139,650 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
     };
   };
 
+  // Fallback function for when canvas is not available
+  const fallbackToSvgExport = (
+    svgElement: SVGElement,
+    format: "svg" | "png"
+  ) => {
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+
+    if (format === "svg") {
+      return new Blob([svgData], { type: "image/svg+xml" });
+    } else {
+      // For PNG fallback, we'll create a simple data URL
+      // This is not ideal but works as fallback
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml" });
+      return svgBlob;
+    }
+  };
+
   const convertSvgToPng = async (svgElement: SVGElement): Promise<Blob> => {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const img = document.createElement("img");
+      try {
+        // Check if canvas is supported
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
 
-      img.onload = () => {
-        canvas.width = img.width * 2; // 2x for better quality
-        canvas.height = img.height * 2;
-
-        if (ctx) {
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.scale(2, 2); // Scale up for better quality
-          ctx.drawImage(img, 0, 0);
-          ctx.scale(0.5, 0.5); // Reset scale
-
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                resolve(blob);
-              } else {
-                reject(new Error("PNG conversion failed"));
-              }
-            },
-            "image/png",
-            1.0
-          );
-        } else {
-          reject(new Error("Canvas context not available"));
+        if (!ctx) {
+          console.warn("Canvas not supported, falling back to SVG");
+          resolve(fallbackToSvgExport(svgElement, "png"));
+          return;
         }
-      };
 
-      img.onerror = () => reject(new Error("Image loading failed"));
+        // Get SVG dimensions
+        const svgRect = svgElement.getBoundingClientRect();
+        const width = svgRect.width || 800;
+        const height = svgRect.height || 600;
 
-      const svgData = new XMLSerializer().serializeToString(svgElement);
-      const svgBlob = new Blob([svgData], {
-        type: "image/svg+xml;charset=utf-8",
-      });
-      img.src = URL.createObjectURL(svgBlob);
+        // Set canvas size (2x for better quality)
+        canvas.width = width * 2;
+        canvas.height = height * 2;
+        ctx.scale(2, 2);
+
+        // Create a new SVG element with proper dimensions
+        const clonedSvg = svgElement.cloneNode(true) as SVGElement;
+        clonedSvg.setAttribute("width", width.toString());
+        clonedSvg.setAttribute("height", height.toString());
+        clonedSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+        // Convert SVG to data URL
+        const svgData = new XMLSerializer().serializeToString(clonedSvg);
+        const svgBlob = new Blob([svgData], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        const url = URL.createObjectURL(svgBlob);
+
+        // Create image element
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+
+        img.onload = () => {
+          try {
+            // Fill white background
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw the image
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Convert to blob
+            canvas.toBlob(
+              (blob) => {
+                URL.revokeObjectURL(url);
+                if (blob) {
+                  resolve(blob);
+                } else {
+                  console.warn("PNG conversion failed, falling back to SVG");
+                  resolve(fallbackToSvgExport(svgElement, "png"));
+                }
+              },
+              "image/png",
+              1.0
+            );
+          } catch (error) {
+            URL.revokeObjectURL(url);
+            console.warn("Canvas error, falling back to SVG:", error);
+            resolve(fallbackToSvgExport(svgElement, "png"));
+          }
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          console.warn("Image loading failed, falling back to SVG");
+          resolve(fallbackToSvgExport(svgElement, "png"));
+        };
+
+        img.src = url;
+      } catch (error) {
+        console.warn(
+          "SVG to PNG conversion error, falling back to SVG:",
+          error
+        );
+        resolve(fallbackToSvgExport(svgElement, "png"));
+      }
     });
   };
 
-  // const handleCopyChart = async (
-  //   chartId: string,
-  //   format: "svg" | "png" = "svg"
-  // ) => {
-  //   const chartElement = document.getElementById(chartId);
-  //   if (!chartElement) return;
+  // Alternative PNG export using data URL (no canvas required)
+  const exportPngViaDataUrl = (svgElement: SVGElement): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create SVG data URL
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgDataUrl = `data:image/svg+xml;base64,${btoa(
+          unescape(encodeURIComponent(svgData))
+        )}`;
 
-  //   const svgElement = chartElement.querySelector("svg");
-  //   if (!svgElement) return;
+        // Create image element
+        const img = new Image();
+        img.crossOrigin = "anonymous";
 
-  //   try {
-  //     if (format === "svg") {
-  //       const svgData = new XMLSerializer().serializeToString(svgElement);
-  //       await navigator.clipboard.writeText(svgData);
-  //     } else {
-  //       try {
-  //         const pngBlob = await convertSvgToPng(svgElement);
-  //         await navigator.clipboard.write([
-  //           new ClipboardItem({
-  //             "image/png": pngBlob,
-  //           }),
-  //         ]);
-  //       } catch (clipboardErr) {
-  //         console.warn("PNG copy not supported, falling back to SVG");
-  //         const svgData = new XMLSerializer().serializeToString(svgElement);
-  //         await navigator.clipboard.writeText(svgData);
-  //       }
-  //     }
+        img.onload = () => {
+          try {
+            // Create canvas (this is minimal canvas usage)
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
 
-  //     setCopied((prev) => ({
-  //       ...prev,
-  //       [chartId]: {
-  //         ...prev[chartId],
-  //         [format]: true,
-  //       },
-  //     }));
+            if (!ctx) {
+              reject(new Error("Canvas not available"));
+              return;
+            }
 
-  //     setTimeout(() => {
-  //       setCopied((prev) => ({
-  //         ...prev,
-  //         [chartId]: {
-  //           ...prev[chartId],
-  //           [format]: false,
-  //         },
-  //       }));
-  //     }, 500);
-  //   } catch (err) {
-  //     console.warn("Copy failed:", err);
-  //   }
-  // };
+            // Set canvas size
+            canvas.width = img.width;
+            canvas.height = img.height;
 
-  // const handleDownloadChart = async (
-  //   chartId: string,
-  //   format: "svg" | "png"
-  // ) => {
-  //   const chartElement = document.getElementById(chartId);
-  //   if (!chartElement) return;
+            // Draw image
+            ctx.drawImage(img, 0, 0);
 
-  //   const svgElement = chartElement.querySelector("svg");
-  //   if (!svgElement) return;
+            // Convert to blob
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob);
+                } else {
+                  reject(new Error("PNG conversion failed"));
+                }
+              },
+              "image/png",
+              1.0
+            );
+          } catch (error) {
+            reject(error);
+          }
+        };
 
-  //   try {
-  //     if (format === "svg") {
-  //       const svgData = new XMLSerializer().serializeToString(svgElement);
-  //       const blob = new Blob([svgData], { type: "image/svg+xml" });
-  //       const url = URL.createObjectURL(blob);
-  //       const link = document.createElement("a");
-  //       link.href = url;
-  //       link.download = `${chartId}.svg`;
-  //       document.body.appendChild(link);
-  //       link.click();
-  //       document.body.removeChild(link);
-  //       URL.revokeObjectURL(url);
-  //     } else {
-  //       try {
-  //         const pngBlob = await convertSvgToPng(svgElement);
-  //         const url = URL.createObjectURL(pngBlob);
-  //         const link = document.createElement("a");
-  //         link.href = url;
-  //         link.download = `${chartId}.png`;
-  //         document.body.appendChild(link);
-  //         link.click();
-  //         document.body.removeChild(link);
-  //         URL.revokeObjectURL(url);
-  //       } catch (conversionErr) {
-  //         console.warn("PNG conversion failed, falling back to SVG");
-  //         // Fallback to SVG
-  //         const svgData = new XMLSerializer().serializeToString(svgElement);
-  //         const blob = new Blob([svgData], { type: "image/svg+xml" });
-  //         const url = URL.createObjectURL(blob);
-  //         const link = document.createElement("a");
-  //         link.href = url;
-  //         link.download = `${chartId}.svg`;
-  //         document.body.appendChild(link);
-  //         link.click();
-  //         document.body.removeChild(link);
-  //         URL.revokeObjectURL(url);
-  //       }
-  //     }
-  //   } catch (err) {
-  //     console.warn("Download failed:", err);
-  //   }
-  // };
+        img.onerror = () => reject(new Error("Image loading failed"));
+        img.src = svgDataUrl;
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+
+  // Pure SVG export without canvas - always works
+  const exportSvgOnly = (svgElement: SVGElement): Blob => {
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    return new Blob([svgData], { type: "image/svg+xml" });
+  };
+
+  // Special handling for 3D charts (WebGL/Canvas)
+  const is3DChart = (chartType: string): boolean => {
+    return chartType.includes("3D") || chartType.includes("3d");
+  };
+
+  // Enhanced copy function with 3D chart support
+  const handleCopyChart = async (
+    chartId: string,
+    format: "svg" | "png" = "svg"
+  ) => {
+    // Set loading state
+    setLoadingStates((prev) => ({
+      ...prev,
+      [chartId]: { ...prev[chartId], [format]: true },
+    }));
+
+    const chartElement = document.getElementById(chartId);
+    if (!chartElement) {
+      setLoadingStates((prev) => ({
+        ...prev,
+        [chartId]: { ...prev[chartId], [format]: false },
+      }));
+      return;
+    }
+
+    // Check if this is a 3D chart
+    const chartType =
+      chartNodes.find((node) => node.id === chartId)?.chartType || "";
+
+    if (is3DChart(chartType)) {
+      // Special handling for 3D charts
+      await handle3DChartCopy(chartElement, chartId, format);
+    } else {
+      // Regular 2D chart handling
+      const svgElement = chartElement.querySelector("svg");
+      if (!svgElement) {
+        setLoadingStates((prev) => ({
+          ...prev,
+          [chartId]: { ...prev[chartId], [format]: false },
+        }));
+        return;
+      }
+
+      try {
+        if (format === "svg") {
+          // SVG copy - always works
+          const svgData = new XMLSerializer().serializeToString(svgElement);
+          await navigator.clipboard.writeText(svgData);
+        } else {
+          // PNG copy - try multiple methods
+          let success = false;
+
+          // Method 1: Try original canvas method
+          try {
+            const pngBlob = await convertSvgToPng(svgElement);
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                "image/png": pngBlob,
+              }),
+            ]);
+            success = true;
+          } catch (err1) {
+            console.warn("Method 1 failed, trying method 2:", err1);
+          }
+
+          // Method 2: Try data URL method
+          if (!success) {
+            try {
+              const pngBlob = await exportPngViaDataUrl(svgElement);
+              await navigator.clipboard.write([
+                new ClipboardItem({
+                  "image/png": pngBlob,
+                }),
+              ]);
+              success = true;
+            } catch (err2) {
+              console.warn("Method 2 failed, falling back to SVG:", err2);
+            }
+          }
+
+          // Method 3: Fallback to SVG
+          if (!success) {
+            const svgData = new XMLSerializer().serializeToString(svgElement);
+            await navigator.clipboard.writeText(svgData);
+          }
+        }
+
+        setCopied((prev) => ({
+          ...prev,
+          [chartId]: {
+            ...prev[chartId],
+            [format]: true,
+          },
+        }));
+
+        setTimeout(() => {
+          setCopied((prev) => ({
+            ...prev,
+            [chartId]: {
+              ...prev[chartId],
+              [format]: false,
+            },
+          }));
+        }, 2000); // Show success for 2 seconds
+      } catch (err) {
+        console.warn("Copy failed:", err);
+      }
+    }
+
+    // Clear loading state
+    setLoadingStates((prev) => ({
+      ...prev,
+      [chartId]: { ...prev[chartId], [format]: false },
+    }));
+  };
+
+  // Special handling for 3D chart copy
+  const handle3DChartCopy = async (
+    chartElement: HTMLElement,
+    chartId: string,
+    format: "svg" | "png"
+  ) => {
+    try {
+      // Find canvas element in 3D chart
+      const canvas = chartElement.querySelector("canvas");
+      if (!canvas) {
+        throw new Error("No canvas found in 3D chart");
+      }
+
+      if (format === "png") {
+        // PNG: Copy canvas with white background
+        const tmpCanvas = document.createElement("canvas");
+        const paddingTop = 60;
+        const paddingRight = 80;
+        const paddingLeft = 40;
+        const paddingBottom = 40;
+        tmpCanvas.width = canvas.width + paddingLeft + paddingRight;
+        tmpCanvas.height = canvas.height + paddingTop + paddingBottom;
+        const ctx = tmpCanvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D context not available");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+        // Geser chart ke bawah dan ke kanan agar margin seimbang
+        ctx.drawImage(canvas, paddingLeft, paddingTop);
+        // --- Tambahkan Title, Subtitle, Legend, dan Color Scale (3D Chart Export) ---
+        const chartDataObj = parsedData.charts?.find(
+          (c: any, idx: any) => chartNodes[idx]?.id === chartId
+        ) as any;
+        if (chartDataObj) {
+          const { chartMetadata, chartConfig, chartData, chartType } =
+            chartDataObj;
+          // Title & Subtitle: hanya render manual jika chartType TIDAK mengandung 'ECharts'
+          if (!chartType?.includes("ECharts")) {
+            ctx.save();
+            ctx.font = "bold 20px Arial";
+            ctx.fillStyle = "#222";
+            ctx.textAlign = "center";
+            ctx.fillText(chartMetadata?.title || "", tmpCanvas.width / 2, 32);
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "#555";
+            ctx.fillText(
+              chartMetadata?.subtitle || "",
+              tmpCanvas.width / 2,
+              56
+            );
+            ctx.restore();
+          }
+
+          // Color Scale (color bar) jika ada
+          const canvases = chartElement.querySelectorAll("canvas");
+          let colorBarCanvas = null;
+          if (canvases.length > 1) {
+            colorBarCanvas = Array.from(canvases).find(
+              (c: any) => c !== canvas
+            );
+          }
+          if (colorBarCanvas) {
+            ctx.drawImage(
+              colorBarCanvas,
+              24,
+              tmpCanvas.height - colorBarCanvas.height - 24 - paddingBottom
+            );
+          }
+        }
+        tmpCanvas.toBlob(async (blob) => {
+          if (blob) {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                "image/png": blob,
+              }),
+            ]);
+            setCopied((prev) => ({
+              ...prev,
+              [chartId]: {
+                ...prev[chartId],
+                png: true,
+              },
+            }));
+            setTimeout(() => {
+              setCopied((prev) => ({
+                ...prev,
+                [chartId]: {
+                  ...prev[chartId],
+                  png: false,
+                },
+              }));
+            }, 2000);
+          }
+        }, "image/png");
+      } else {
+        // SVG: Bungkus PNG hasil tmpCanvas ke dalam SVG
+        const tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width = canvas.width;
+        tmpCanvas.height = canvas.height;
+        const ctx = tmpCanvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D context not available");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+        ctx.drawImage(canvas, 0, 0);
+        const dataUrl = tmpCanvas.toDataURL("image/png");
+        const svgData = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
+            <rect width="100%" height="100%" fill="#fff"/>
+            <image href="${dataUrl}" width="100%" height="100%"/>
+          </svg>
+        `;
+        await navigator.clipboard.writeText(svgData);
+        setCopied((prev) => ({
+          ...prev,
+          [chartId]: {
+            ...prev[chartId],
+            svg: true,
+          },
+        }));
+        setTimeout(() => {
+          setCopied((prev) => ({
+            ...prev,
+            [chartId]: {
+              ...prev[chartId],
+              svg: false,
+            },
+          }));
+        }, 2000);
+      }
+    } catch (err) {
+      console.warn("3D chart copy failed:", err);
+      alert(
+        "3D chart export is not supported in this format. Try PNG format instead."
+      );
+    }
+  };
+
+  // Enhanced download function with 3D chart support
+  const handleDownloadChart = async (
+    chartId: string,
+    format: "svg" | "png"
+  ) => {
+    // Set loading state
+    setLoadingStates((prev) => ({
+      ...prev,
+      [chartId]: { ...prev[chartId], [format]: true },
+    }));
+
+    const chartElement = document.getElementById(chartId);
+    if (!chartElement) {
+      setLoadingStates((prev) => ({
+        ...prev,
+        [chartId]: { ...prev[chartId], [format]: false },
+      }));
+      return;
+    }
+
+    // Check if this is a 3D chart
+    const chartType =
+      chartNodes.find((node) => node.id === chartId)?.chartType || "";
+
+    if (is3DChart(chartType)) {
+      // Special handling for 3D charts
+      await handle3DChartDownload(chartElement, chartId, format);
+    } else {
+      // Regular 2D chart handling
+      const svgElement = chartElement.querySelector("svg");
+      if (!svgElement) {
+        setLoadingStates((prev) => ({
+          ...prev,
+          [chartId]: { ...prev[chartId], [format]: false },
+        }));
+        return;
+      }
+
+      try {
+        if (format === "svg") {
+          // SVG download - always works
+          const svgBlob = exportSvgOnly(svgElement);
+          const url = URL.createObjectURL(svgBlob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `${chartId}.svg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } else {
+          // PNG download - try multiple methods
+          let success = false;
+
+          // Method 1: Try original canvas method
+          try {
+            const pngBlob = await convertSvgToPng(svgElement);
+            const url = URL.createObjectURL(pngBlob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${chartId}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            success = true;
+          } catch (err1) {
+            console.warn("Method 1 failed, trying method 2:", err1);
+          }
+
+          // Method 2: Try data URL method
+          if (!success) {
+            try {
+              const pngBlob = await exportPngViaDataUrl(svgElement);
+              const url = URL.createObjectURL(pngBlob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `${chartId}.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+              success = true;
+            } catch (err2) {
+              console.warn("Method 2 failed, falling back to SVG:", err2);
+            }
+          }
+
+          // Method 3: Fallback to SVG download
+          if (!success) {
+            const svgBlob = exportSvgOnly(svgElement);
+            const url = URL.createObjectURL(svgBlob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${chartId}.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }
+        }
+      } catch (err) {
+        console.warn("Download failed:", err);
+      }
+    }
+
+    // Clear loading state
+    setLoadingStates((prev) => ({
+      ...prev,
+      [chartId]: { ...prev[chartId], [format]: false },
+    }));
+  };
+
+  // Special handling for 3D chart download
+  const handle3DChartDownload = async (
+    chartElement: HTMLElement,
+    chartId: string,
+    format: "svg" | "png"
+  ) => {
+    try {
+      // Find canvas element in 3D chart
+      const canvas = chartElement.querySelector("canvas");
+      if (!canvas) {
+        throw new Error("No canvas found in 3D chart");
+      }
+
+      if (format === "png") {
+        // PNG: Download canvas with white background
+        const tmpCanvas = document.createElement("canvas");
+        const paddingTop = 60;
+        const paddingRight = 80;
+        const paddingLeft = 40;
+        const paddingBottom = 40;
+        tmpCanvas.width = canvas.width + paddingLeft + paddingRight;
+        tmpCanvas.height = canvas.height + paddingTop + paddingBottom;
+        const ctx = tmpCanvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D context not available");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+        // Geser chart ke bawah dan ke kanan agar margin seimbang
+        ctx.drawImage(canvas, paddingLeft, paddingTop);
+        // --- Tambahkan Title, Subtitle, Legend, dan Color Scale (3D Chart Export) ---
+        const chartDataObj = parsedData.charts?.find(
+          (c: any, idx: number) => chartNodes[idx]?.id === chartId
+        ) as any;
+        if (chartDataObj) {
+          const { chartMetadata, chartConfig, chartData, chartType } =
+            chartDataObj;
+          // Title & Subtitle: hanya render manual jika chartType TIDAK mengandung 'ECharts'
+          if (!chartType?.includes("ECharts")) {
+            ctx.save();
+            ctx.font = "bold 20px Arial";
+            ctx.fillStyle = "#222";
+            ctx.textAlign = "center";
+            ctx.fillText(chartMetadata?.title || "", tmpCanvas.width / 2, 32);
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "#555";
+            ctx.fillText(
+              chartMetadata?.subtitle || "",
+              tmpCanvas.width / 2,
+              56
+            );
+            ctx.restore();
+          }
+
+          // Color Scale (color bar) jika ada
+          const canvases = chartElement.querySelectorAll("canvas");
+          let colorBarCanvas = null;
+          if (canvases.length > 1) {
+            colorBarCanvas = Array.from(canvases).find(
+              (c: any) => c !== canvas
+            );
+          }
+          if (colorBarCanvas) {
+            ctx.drawImage(
+              colorBarCanvas,
+              24,
+              tmpCanvas.height - colorBarCanvas.height - 24 - paddingBottom
+            );
+          }
+        }
+        tmpCanvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${chartId}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }
+        }, "image/png");
+      } else {
+        // SVG: Bungkus PNG hasil tmpCanvas ke dalam SVG
+        const tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width = canvas.width;
+        tmpCanvas.height = canvas.height;
+        const ctx = tmpCanvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D context not available");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+        ctx.drawImage(canvas, 0, 0);
+        const dataUrl = tmpCanvas.toDataURL("image/png");
+        const svgData = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
+            <rect width="100%" height="100%" fill="#fff"/>
+            <image href="${dataUrl}" width="100%" height="100%"/>
+          </svg>
+        `;
+        const svgBlob = new Blob([svgData], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(svgBlob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${chartId}.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.warn("3D chart download failed:", err);
+      alert("3D chart download failed. Try PNG format instead.");
+    }
+  };
 
   useEffect(() => {
     console.log("data di kontainer", parsedData);
@@ -1088,12 +1587,19 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
                 copied[id]?.svg ? "text-green-600" : ""
               } ${
+                loadingStates[id]?.svg ? "opacity-50 cursor-not-allowed" : ""
+              } ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              // onClick={() => handleCopyChart(id, "svg")}
+              onClick={() =>
+                !loadingStates[id]?.svg && handleCopyChart(id, "svg")
+              }
+              disabled={loadingStates[id]?.svg}
               title="Copy as SVG"
             >
-              {copied[id]?.svg ? (
+              {loadingStates[id]?.svg ? (
+                <div className="w-4 h-4 inline-block mr-1 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+              ) : copied[id]?.svg ? (
                 <Check className="w-4 h-4 inline-block mr-1" />
               ) : (
                 <Copy className="w-4 h-4 inline-block mr-1" />
@@ -1105,12 +1611,19 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
                 copied[id]?.png ? "text-green-600" : ""
               } ${
+                loadingStates[id]?.png ? "opacity-50 cursor-not-allowed" : ""
+              } ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              // onClick={() => handleCopyChart(id, "png")}
+              onClick={() =>
+                !loadingStates[id]?.png && handleCopyChart(id, "png")
+              }
+              disabled={loadingStates[id]?.png}
               title="Copy as PNG"
             >
-              {copied[id]?.png ? (
+              {loadingStates[id]?.png ? (
+                <div className="w-4 h-4 inline-block mr-1 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+              ) : copied[id]?.png ? (
                 <Check className="w-4 h-4 inline-block mr-1" />
               ) : (
                 <Copy className="w-4 h-4 inline-block mr-1" />
@@ -1120,23 +1633,41 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
             </button>
             <button
               className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
+                loadingStates[id]?.svg ? "opacity-50 cursor-not-allowed" : ""
+              } ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              // onClick={() => handleDownloadChart(id, "svg")}
+              onClick={() =>
+                !loadingStates[id]?.svg && handleDownloadChart(id, "svg")
+              }
+              disabled={loadingStates[id]?.svg}
               title="Download as SVG"
             >
-              <Download className="w-4 h-4 inline-block mr-1" />
+              {loadingStates[id]?.svg ? (
+                <div className="w-4 h-4 inline-block mr-1 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+              ) : (
+                <Download className="w-4 h-4 inline-block mr-1" />
+              )}
               <FileType className="w-4 h-4 inline-block mr-1" />
               <span className="text-xs">SVG</span>
             </button>
             <button
               className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
+                loadingStates[id]?.png ? "opacity-50 cursor-not-allowed" : ""
+              } ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              // onClick={() => handleDownloadChart(id, "png")}
+              onClick={() =>
+                !loadingStates[id]?.png && handleDownloadChart(id, "png")
+              }
+              disabled={loadingStates[id]?.png}
               title="Download as PNG"
             >
-              <Download className="w-4 h-4 inline-block mr-1" />
+              {loadingStates[id]?.png ? (
+                <div className="w-4 h-4 inline-block mr-1 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+              ) : (
+                <Download className="w-4 h-4 inline-block mr-1" />
+              )}
               <LucideImage className="w-4 h-4 inline-block mr-1" />
               <span className="text-xs">PNG</span>
             </button>
