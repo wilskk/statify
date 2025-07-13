@@ -26,6 +26,11 @@ onmessage = function (event) {
     const calculator = new self.DescriptiveCalculator({ variable, data, weights, options });
     const results = calculator.getStatistics();
 
+    // Apply rounding before sending to main thread
+    if (results && results.stats && typeof variable?.decimals === 'number' && variable.decimals >= 0) {
+      results.stats = roundStatsObject(results.stats, variable.decimals);
+    }
+
     postMessage({
       status: 'success',
       variableName: variable?.name,

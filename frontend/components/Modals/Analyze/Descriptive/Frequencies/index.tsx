@@ -1,6 +1,7 @@
 "use client";
 import React, { FC, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import {
     Dialog,
     DialogContent,
@@ -31,10 +32,10 @@ import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 import ChartsTab from "./ChartsTab";
 
-const FrequenciesContent: FC<BaseModalProps> = ({
+const FrequenciesContent = ({
     onClose,
     containerType = "dialog",
-}) => {
+}: BaseModalProps) => {
     // State management via custom hooks
     const [activeTab, setActiveTab] = React.useState<'variables' | 'statistics' | 'charts'>("variables");
     
@@ -71,16 +72,113 @@ const FrequenciesContent: FC<BaseModalProps> = ({
         onClose
     });
 
+    // Load persisted form data on initial mount
+    React.useEffect(() => {
+        (async () => {
+            const saved = await getFormData("Frequencies");
+            if (!saved) return;
+
+            // Restore variable selection
+            variableSelection.resetVariableSelection();
+            if (Array.isArray(saved.selectedVariables)) {
+                saved.selectedVariables.forEach((v: any, idx: number) => {
+                    variableSelection.moveToSelectedVariables(v, idx);
+                });
+            }
+
+            // Display settings
+            if (typeof saved.showFrequencyTables === "boolean") {
+                displaySettings.setShowFrequencyTables(saved.showFrequencyTables);
+            }
+
+            // Statistics settings
+            if (typeof saved.showStatistics === "boolean") {
+                statisticsSettings.setShowStatistics(saved.showStatistics);
+            }
+            if (saved.statisticsOptions) {
+                const opts = saved.statisticsOptions;
+
+                // Percentiles
+                if (opts.percentileValues) {
+                    statisticsSettings.setQuartilesChecked(opts.percentileValues.quartiles);
+                    statisticsSettings.setCutPointsChecked(opts.percentileValues.cutPoints);
+                    statisticsSettings.setCutPointsValue(String(opts.percentileValues.cutPointsN));
+                    statisticsSettings.setEnablePercentiles(opts.percentileValues.enablePercentiles);
+                    statisticsSettings.setPercentileValues(opts.percentileValues.percentilesList);
+                }
+
+                // Central Tendency
+                if (opts.centralTendency) {
+                    statisticsSettings.setMeanChecked(opts.centralTendency.mean);
+                    statisticsSettings.setMedianChecked(opts.centralTendency.median);
+                    statisticsSettings.setModeChecked(opts.centralTendency.mode);
+                    statisticsSettings.setSumChecked(opts.centralTendency.sum);
+                }
+
+                // Dispersion
+                if (opts.dispersion) {
+                    statisticsSettings.setStdDevChecked(opts.dispersion.stddev);
+                    statisticsSettings.setVarianceChecked(opts.dispersion.variance);
+                    statisticsSettings.setRangeChecked(opts.dispersion.range);
+                    statisticsSettings.setMinChecked(opts.dispersion.minimum);
+                    statisticsSettings.setMaxChecked(opts.dispersion.maximum);
+                    statisticsSettings.setSeMeanChecked(opts.dispersion.stdErrorMean);
+                }
+
+                // Distribution
+                if (opts.distribution) {
+                    statisticsSettings.setSkewnessChecked(opts.distribution.skewness);
+                    statisticsSettings.setKurtosisChecked(opts.distribution.kurtosis);
+                }
+            }
+
+            // Charts settings
+            if (typeof saved.showCharts === "boolean") {
+                chartsSettings.setShowCharts(saved.showCharts);
+            }
+            if (saved.chartOptions) {
+                chartsSettings.setChartType(saved.chartOptions.type ?? "none");
+                chartsSettings.setChartValues(saved.chartOptions.values ?? "frequencies");
+                chartsSettings.setShowNormalCurve(saved.chartOptions.showNormalCurveOnHistogram ?? false);
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Reset all settings
     const handleReset = useCallback(() => {
         variableSelection.resetVariableSelection();
         statisticsSettings.resetStatisticsSettings();
         chartsSettings.resetChartsSettings();
         displaySettings.resetDisplaySettings();
+
+        // Clear persisted data for Frequencies
+        clearFormData("Frequencies").catch(console.error);
+
         if (cancelAnalysis) {
             cancelAnalysis();
         }
     }, [variableSelection, statisticsSettings, chartsSettings, displaySettings, cancelAnalysis]);
+
+    // Persist Frequencies form state whenever relevant settings change
+    React.useEffect(() => {
+        const stateToSave = {
+            selectedVariables: variableSelection.selectedVariables,
+            // Display Settings
+            showFrequencyTables: displaySettings.showFrequencyTables,
+            // Statistics settings
+            showStatistics: statisticsSettings.showStatistics,
+            statisticsOptions: statisticsSettings.getCurrentStatisticsOptions(),
+            // Chart settings
+            showCharts: chartsSettings.showCharts,
+            chartOptions: chartsSettings.getCurrentChartOptions(),
+        };
+
+        // Avoid saving when no variable selected to reduce noise
+        if (variableSelection.selectedVariables.length > 0) {
+            saveFormData("Frequencies", stateToSave).catch(console.error);
+        }
+    }, [variableSelection.selectedVariables, displaySettings.showFrequencyTables, statisticsSettings.showStatistics, statisticsSettings.getCurrentStatisticsOptions, chartsSettings.showCharts, chartsSettings.getCurrentChartOptions]);
 
     return (
         <>

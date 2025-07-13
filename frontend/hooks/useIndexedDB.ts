@@ -30,6 +30,11 @@ type AnalysisType =
     | "Autocorrelation"
     | "UnitRootTest"
     | "BoxJenkinsModel"
+    // Descriptive Statistics
+    | "Frequencies"
+    | "Descriptive"
+    | "Explore"
+    | "Crosstabs"
     ;
 
 const DB_NAME = "Statify";

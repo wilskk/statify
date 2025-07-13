@@ -49,10 +49,39 @@ function checkIsMissing(value, definition, isNumericType) {
     return false;
 }
 
+// Membulatkan angka ke jumlah desimal tertentu (SPSS-style)
+function roundToDecimals(number, decimals) {
+    if (typeof number !== 'number' || isNaN(number) || !isFinite(number)) return number;
+    return parseFloat(number.toFixed(decimals));
+}
+
+// Mendapatkan label teks untuk suatu nilai berdasarkan daftar value-label variabel.
+// Jika tidak ada label, kembalikan string dari value.
+function mapValueLabel(variable, value) {
+    if (variable && Array.isArray(variable.values)) {
+        const match = variable.values.find(vl => String(vl.value) === String(value));
+        if (match && match.label) return match.label;
+    }
+    return String(value);
+}
+
+// Menerapkan mapping label ke seluruh baris tabel frekuensi.
+function applyValueLabels(frequencyTable, variable) {
+    if (!frequencyTable || !variable) return frequencyTable;
+    const rows = (frequencyTable.rows || []).map(row => ({
+        ...row,
+        label: mapValueLabel(variable, row.label)
+    }));
+    return { ...frequencyTable, rows };
+}
+
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-  module.exports = { isNumeric, checkIsMissing };
+  module.exports = { isNumeric, checkIsMissing, roundToDecimals, mapValueLabel, applyValueLabels };
 }
 if (typeof globalThis !== 'undefined') {
   globalThis.isNumeric = isNumeric;
   globalThis.checkIsMissing = checkIsMissing;
+  globalThis.roundToDecimals = roundToDecimals;
+  globalThis.mapValueLabel = mapValueLabel;
+  globalThis.applyValueLabels = applyValueLabels;
 } 

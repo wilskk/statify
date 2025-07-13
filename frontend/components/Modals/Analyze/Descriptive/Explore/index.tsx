@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, FC, useMemo } from "react";
+import React, { useState, FC, useMemo, useEffect } from "react";
+import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
@@ -52,6 +53,62 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
         resetPlotsSettings: () => {},
     } as ReturnType<typeof usePlotsSettings>;
 
+    // Load persisted form data on mount
+    useEffect(() => {
+        (async () => {
+            const saved = await getFormData("Explore");
+            if (!saved) return;
+
+            // Restore variable selections
+            variableManager.resetVariableSelections?.();
+            if (Array.isArray(saved.dependentVariables)) {
+                saved.dependentVariables.forEach((v: any, idx: number) => {
+                    variableManager.moveToDependentVariables(v, idx);
+                });
+            }
+            if (Array.isArray(saved.factorVariables)) {
+                saved.factorVariables.forEach((v: any, idx: number) => {
+                    variableManager.moveToFactorVariables(v, idx);
+                });
+            }
+            if (saved.labelVariable) {
+                variableManager.moveToLabelVariable(saved.labelVariable);
+            }
+
+            // Restore statistics settings
+            if (typeof saved.showDescriptives === "boolean") {
+                statisticsSettings.setShowDescriptives(saved.showDescriptives);
+            }
+            if (typeof saved.confidenceInterval === "string") {
+                statisticsSettings.setConfidenceInterval(saved.confidenceInterval);
+            }
+            if (typeof saved.showMEstimators === "boolean") {
+                statisticsSettings.setShowMEstimators(saved.showMEstimators);
+            }
+            if (typeof saved.showOutliers === "boolean") {
+                statisticsSettings.setShowOutliers(saved.showOutliers);
+            }
+            if (typeof saved.showPercentiles === "boolean") {
+                statisticsSettings.setShowPercentiles(saved.showPercentiles);
+            }
+
+            // Restore plots settings
+            if (saved.boxplotType) {
+                plotsSettings.setBoxplotType(saved.boxplotType);
+            }
+            if (typeof saved.showStemAndLeaf === "boolean") {
+                plotsSettings.setShowStemAndLeaf(saved.showStemAndLeaf);
+            }
+            if (typeof saved.showHistogram === "boolean") {
+                plotsSettings.setShowHistogram(saved.showHistogram);
+            }
+            if (typeof saved.showNormalityPlots === "boolean") {
+                plotsSettings.setShowNormalityPlots(saved.showNormalityPlots);
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Analysis Hook
     const analysisParams = {
         dependentVariables: variableManager.dependentVariables,
@@ -93,9 +150,55 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
         variableManager.resetVariableSelections?.();
         statisticsSettings.resetStatisticsSettings?.();
         plotsSettings.resetPlotsSettings?.();
+
+        // Remove persisted data
+        clearFormData("Explore").catch(console.error);
+
         // error state is managed by analysis hook, might need a resetter there too
         setActiveTab("variables");
     };
+
+    // Persist Explore dialog state
+    useEffect(() => {
+        const stateToSave = {
+            dependentVariables: variableManager.dependentVariables,
+            factorVariables: variableManager.factorVariables,
+            labelVariable: variableManager.labelVariable,
+            // statistics settings
+            showDescriptives: statisticsSettings.showDescriptives,
+            confidenceInterval: statisticsSettings.confidenceInterval,
+            showMEstimators: statisticsSettings.showMEstimators,
+            showOutliers: statisticsSettings.showOutliers,
+            showPercentiles: statisticsSettings.showPercentiles,
+            // plots settings
+            boxplotType: plotsSettings.boxplotType,
+            showStemAndLeaf: plotsSettings.showStemAndLeaf,
+            showHistogram: plotsSettings.showHistogram,
+            showNormalityPlots: plotsSettings.showNormalityPlots,
+        };
+
+        // Only save if there is meaningful selection (e.g., at least one variable chosen)
+        if (
+            stateToSave.dependentVariables.length > 0 ||
+            stateToSave.factorVariables.length > 0 ||
+            stateToSave.labelVariable !== null
+        ) {
+            saveFormData("Explore", stateToSave).catch(console.error);
+        }
+    }, [
+        variableManager.dependentVariables,
+        variableManager.factorVariables,
+        variableManager.labelVariable,
+        statisticsSettings.showDescriptives,
+        statisticsSettings.confidenceInterval,
+        statisticsSettings.showMEstimators,
+        statisticsSettings.showOutliers,
+        statisticsSettings.showPercentiles,
+        plotsSettings.boxplotType,
+        plotsSettings.showStemAndLeaf,
+        plotsSettings.showHistogram,
+        plotsSettings.showNormalityPlots,
+    ]);
 
     const displayError = useMemo(() => {
         if (error) return error;

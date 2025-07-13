@@ -1,6 +1,7 @@
 "use client";
 
 import React, { FC, useState, useCallback, useEffect, useMemo } from "react";
+import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import {
     DialogContent,
     DialogHeader,
@@ -50,6 +51,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
 
     const {
         displayStatistics,
+        setDisplayStatistics,
         updateStatistic,
         displayOrder,
         setDisplayOrder,
@@ -94,7 +96,53 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         resetVariableSelection();
         resetStatisticsSettings();
         cancelCalculation();
+
+        // Clear persisted data in IndexedDB
+        clearFormData("Descriptive").catch(console.error);
     }, [resetVariableSelection, resetStatisticsSettings, cancelCalculation]);
+
+    // Load persisted form data on initial mount
+    useEffect(() => {
+        (async () => {
+            const saved = await getFormData("Descriptive");
+            if (!saved) return;
+
+            // Restore variable selection
+            resetVariableSelection();
+            if (Array.isArray(saved.selectedVariables)) {
+                saved.selectedVariables.forEach((v: any, idx: number) => {
+                    moveToSelectedVariables(v, idx);
+                });
+            }
+
+            // Restore statistics settings
+            if (saved.displayStatistics) {
+                setDisplayStatistics(saved.displayStatistics);
+            }
+            if (saved.displayOrder) {
+                setDisplayOrder(saved.displayOrder);
+            }
+            if (typeof saved.saveStandardized === "boolean") {
+                setSaveStandardized(saved.saveStandardized);
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Persist form state whenever relevant data changes
+    useEffect(() => {
+        const stateToSave = {
+            selectedVariables,
+            displayStatistics,
+            displayOrder,
+            saveStandardized,
+        };
+
+        // Save only if user has selected variables to minimize empty entries
+        if (selectedVariables.length > 0) {
+            saveFormData("Descriptive", stateToSave).catch(console.error);
+        }
+    }, [selectedVariables, displayStatistics, displayOrder, saveStandardized]);
 
     const handleTabChange = useCallback((value: string) => {
         if (value === 'variables' || value === 'statistics') {
