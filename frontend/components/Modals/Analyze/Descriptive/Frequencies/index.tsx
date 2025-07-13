@@ -174,9 +174,12 @@ const FrequenciesContent = ({
             chartOptions: chartsSettings.getCurrentChartOptions(),
         };
 
-        // Avoid saving when no variable selected to reduce noise
+        // Persist current state. If no variables are selected we remove any previously
+        // saved data to avoid showing stale selections the next time the form opens.
         if (variableSelection.selectedVariables.length > 0) {
             saveFormData("Frequencies", stateToSave).catch(console.error);
+        } else {
+            clearFormData("Frequencies").catch(console.error);
         }
     }, [variableSelection.selectedVariables, displaySettings.showFrequencyTables, statisticsSettings.showStatistics, statisticsSettings.getCurrentStatisticsOptions, chartsSettings.showCharts, chartsSettings.getCurrentChartOptions]);
 

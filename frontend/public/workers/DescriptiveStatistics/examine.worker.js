@@ -3,6 +3,8 @@
  * Dedicated Web Worker for the Examine/Explore dialog.
  */
 
+// Debug: signal worker script loaded
+console.log('[ExamineWorker] Script loaded');
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 // Utility to round numbers deeply in an object/array based on decimals
 function roundDeep(value, decimals) {
@@ -26,6 +28,7 @@ importScripts('/workers/DescriptiveStatistics/libs/frequency.js');
 importScripts('/workers/DescriptiveStatistics/libs/examine.js');
 
 onmessage = function (event) {
+  console.log('[ExamineWorker] Message received', event.data);
   const { variable, data, weights, options } = event.data || {};
 
   try {
@@ -45,6 +48,7 @@ onmessage = function (event) {
       }
     }
 
+    console.log('[ExamineWorker] Calculation success – posting results');
     postMessage({
       status: 'success',
       variableName: variable?.name,

@@ -117,34 +117,46 @@ const CellsTab: FC<CellsTabProps> = ({
                     <ActiveElementHighlight active={tourActive && currentStep === residualsStep} />
                 </div>
 
-                {isWeightActive && (
-                    <div id="crosstabs-noninteger-weights-section" className="bg-card border border-border rounded-md p-4 relative">
-                        <div className="text-sm font-medium mb-3">Noninteger Weights</div>
-                        <RadioGroup value={options.nonintegerWeights} onValueChange={handleWeightChange} className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="roundCase" id="roundCase" />
-                                <Label htmlFor="roundCase" className="font-normal cursor-pointer">Round case weights</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="roundCell" id="roundCell" />
-                                <Label htmlFor="roundCell" className="font-normal cursor-pointer">Round cell counts</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="truncateCase" id="truncateCase" />
-                                <Label htmlFor="truncateCase" className="font-normal cursor-pointer">Truncate case weights</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="truncateCell" id="truncateCell" />
-                                <Label htmlFor="truncateCell" className="font-normal cursor-pointer">Truncate cell counts</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="noAdjustment" id="noAdjustment" />
-                                <Label htmlFor="noAdjustment" className="font-normal cursor-pointer">No adjustments</Label>
-                            </div>
-                        </RadioGroup>
-                        <ActiveElementHighlight active={tourActive && currentStep === nonintegerWeightsStep} />
-                    </div>
-                )}
+                <div id="crosstabs-noninteger-weights-section" className="bg-card border border-border rounded-md p-4 relative">
+                    <div className="text-sm font-medium mb-3">Noninteger Weights</div>
+                    <RadioGroup
+                        value={options.nonintegerWeights}
+                        onValueChange={handleWeightChange}
+                        className="space-y-1"
+                    >
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="roundCell" id="roundCell" />
+                            <Label htmlFor="roundCell" className="font-normal cursor-pointer opacity-100 disabled:opacity-50">
+                                Round cell counts
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="roundCase" id="roundCase" />
+                            <Label htmlFor="roundCase" className="font-normal cursor-pointer opacity-100 disabled:opacity-50">
+                                Round case weights
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="truncateCell" id="truncateCell" />
+                            <Label htmlFor="truncateCell" className="font-normal cursor-pointer opacity-100 disabled:opacity-50">
+                                Truncate cell counts
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="truncateCase" id="truncateCase" />
+                            <Label htmlFor="truncateCase" className="font-normal cursor-pointer opacity-100 disabled:opacity-50">
+                                Truncate case weights
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="noAdjustment" id="noAdjustment" />
+                            <Label htmlFor="noAdjustment" className="font-normal cursor-pointer opacity-100 disabled:opacity-50">
+                                No adjustments
+                            </Label>
+                        </div>
+                    </RadioGroup>
+                    <ActiveElementHighlight active={tourActive && currentStep === nonintegerWeightsStep} />
+                </div>
             </div>
         </div>
     );

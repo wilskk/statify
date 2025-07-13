@@ -17,6 +17,7 @@ interface TableData {
     title: string;
     columnHeaders: ColumnHeader[];
     rows: TableRowData[];
+    footer?: string | string[]; // optional footer support
 }
 
 interface DataTableProps {
@@ -84,7 +85,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                             rowSpan={rowSpan}
                             className="border border-border bg-muted px-2 py-1 text-center text-sm font-medium"
                         >
-                            {col.header}
+                            {renderContent(col.header)}
                         </th>
                     );
                 })}
@@ -171,7 +172,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                     colSpan={2}
                     className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal"
                 >
-                    {current}
+                    {renderContent(current)}
                 </th>
             );
         }
@@ -195,10 +196,19 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                     rowSpan={rowSpan}
                     className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal"
                 >
-                    {current}
+                    {renderContent(current)}
                 </th>
             );
         });
+    };
+
+    // Helper to optionally render content that may include <sup>/<sub> tags
+    const renderContent = (value: any): React.ReactNode => {
+        if (value === null || value === undefined) return "";
+        if (typeof value === "string" && /<\/?(sup|sub)>/i.test(value)) {
+            return <span dangerouslySetInnerHTML={{ __html: value }} />;
+        }
+        return value as React.ReactNode;
     };
 
     return (
@@ -223,7 +233,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                                 colSpan={rowHeaderCount + leafCols.length}
                                 className="border border-border bg-muted px-2 py-2 text-center font-semibold"
                             >
-                                {title}
+                                {renderContent(title)}
                             </th>
                         </tr>
                         {levels.map((cols, lvlIndex) =>
@@ -242,13 +252,67 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                                             key={i}
                                             className="border border-border px-2 py-1 text-center text-sm"
                                         >
-                                            {row[colKey] ?? ""}
+                                            {renderContent(row[colKey] ?? "")}
                                         </td>
                                     ))}
                                 </tr>
                             );
                         })}
                         </tbody>
+                        {table.footer && (
+                            <tfoot>
+                                {(() => {
+                                    const totalColumns = rowHeaderCount + leafCols.length;
+                                    // If footer is a string, span the entire width
+                                    if (typeof table.footer === "string") {
+                                        return (
+                                            <tr>
+                                                <td
+                                                    colSpan={totalColumns}
+                                                    className="border border-border px-2 py-1 text-left text-sm"
+                                                >
+                                                    {renderContent(table.footer)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                    // If footer is an array of strings
+                                    if (Array.isArray(table.footer)) {
+                                        let cells: string[] = table.footer;
+                                        if (cells.length === leafCols.length) {
+                                            // prepend empty cells to align with row headers
+                                            cells = Array(rowHeaderCount).fill("").concat(cells);
+                                        }
+                                        if (cells.length !== totalColumns) {
+                                            // Fallback: merge cells into one if counts mismatch
+                                            return (
+                                                <tr>
+                                                    <td
+                                                        colSpan={totalColumns}
+                                                        className="border border-border px-2 py-1 text-left text-sm"
+                                                    >
+                                                        {renderContent(cells.join(" "))}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        }
+                                        return (
+                                            <tr>
+                                                {cells.map((c, idx) => (
+                                                    <td
+                                                        key={`footer-${idx}`}
+                                                        className="border border-border px-2 py-1 text-left text-sm"
+                                                    >
+                                                        {renderContent(c)}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                            </tfoot>
+                        )}
                     </table>
                 );
             })}

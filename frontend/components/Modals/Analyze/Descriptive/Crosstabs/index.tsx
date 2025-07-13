@@ -161,8 +161,12 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
             options,
         };
 
-        if (rowVariables.length > 0 || columnVariables.length > 0) {
+        const hasSelections = rowVariables.length > 0 || columnVariables.length > 0;
+
+        if (hasSelections) {
             saveFormData("Crosstabs", stateToSave).catch(console.error);
+        } else {
+            clearFormData("Crosstabs").catch(console.error);
         }
     }, [rowVariables, columnVariables, options]);
 

@@ -2,8 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
 import type { Variable } from '@/types/Variable';
 import { ExploreAnalysisParams } from '../types';
-import { createPooledWorkerClient } from '@/utils/workerClient';
+import { createWorkerClient } from '@/utils/workerClient';
 import { formatCaseProcessingSummary, formatDescriptivesTable, formatMEstimatorsTable, formatPercentilesTable, formatExtremeValuesTable } from '../utils';
+import { processAndAddPlots } from '../utils/plotProcessor';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 
 interface GroupedData {
@@ -55,6 +56,14 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
         setIsCalculating(true);
         setError(null);
 
+        // === Debug logging start ===
+        console.log("[Explore] Run analysis invoked with params:", params);
+        console.log("[Explore] analysisData rows:", analysisData.length);
+        console.log("[Explore] dependent vars:", params.dependentVariables.map(v => v.name));
+        console.log("[Explore] factor vars:", params.factorVariables.map(v => v.name));
+        console.log("[Explore] label var:", params.labelVariable?.name);
+        // === Debug logging end ===
+        
         let analyticId: number | null = null;
         try {
             const dependentNames = params.dependentVariables.map(v => v.name).join(' ');
@@ -62,13 +71,28 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
             const logMsg = `EXPLORE VARIABLES=${dependentNames}${factorNames ? ` BY ${factorNames}` : ''}`;
 
             const groupedData = groupDataByFactors(analysisData, params.factorVariables);
+
+            // Create log & analytic entry
+            try {
+                const logId = await addLog({ log: logMsg });
+                analyticId = await addAnalytic(logId, {
+                    title: "Explore Analysis",
+                    note: `Explore analysis for ${dependentNames}`,
+                });
+            } catch (logErr) {
+                console.error('[Explore] Failed to create log/analytic:', logErr);
+            }
+
+            console.log("[Explore] Grouped data keys:", Object.keys(groupedData));
             const analysisPromises: Promise<any>[] = [];
+
+            // Prepare promises
 
             for (const groupKey in groupedData) {
                 const group = groupedData[groupKey];
                 for (const depVar of params.dependentVariables) {
                     const promise = new Promise((resolve, reject) => {
-                        const workerClient = createPooledWorkerClient('examine');
+                        const workerClient = createWorkerClient('/workers/DescriptiveStatistics/examine.worker.js');
 
                         workerClient.onMessage((eventData: any) => {
                             if (eventData.status === 'success') {
@@ -103,13 +127,11 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 }
             }
 
-            const logId = await addLog({ log: logMsg });
-            analyticId = await addAnalytic(logId, {
-                title: "Explore Analysis",
-                note: `Explore analysis for ${dependentNames}`
-            });
+            console.log('[Explore] Number of analysis promises:', analysisPromises.length);
 
             const settledPromises = await Promise.allSettled(analysisPromises);
+
+            console.log("[Explore] Worker promises settled results:", settledPromises.map(p => p.status));
             
             const aggregatedResults: Record<string, { factorLevels: Record<string, any>, results: any[] }> = {};
             let taskFailed = false;
@@ -117,6 +139,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
             settledPromises.forEach(settled => {
                 if (settled.status === 'fulfilled') {
                     const { groupKey, result } = settled.value as { groupKey: string, result: any };
+                    console.log(`[Explore] Fulfilled result for group ${groupKey} variable ${result.variable?.name}`);
                     if (!aggregatedResults[groupKey]) {
                         aggregatedResults[groupKey] = {
                             factorLevels: groupedData[groupKey].factorLevels,
@@ -125,11 +148,17 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                     }
                     aggregatedResults[groupKey].results.push(result);
                 } else {
-                    console.error("A worker task failed:", settled.reason);
+                    console.error("[Explore] Worker task rejected:", settled.reason);
+                    // Log more details if Error object
+                    if (settled.reason instanceof Error) {
+                        console.error("[Explore] Error message:", settled.reason.message);
+                    }
                     taskFailed = true;
                     setError('An analysis task failed');
                 }
             });
+
+            console.log("[Explore] AggregatedResults keys:", Object.keys(aggregatedResults));
 
             if (Object.keys(aggregatedResults).length > 0) {
                 const dependentNames = params.dependentVariables.map(v => v.name).join(' ');
@@ -162,32 +191,27 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                     },
                 ];
 
-                const tablesToSend: any[] = [];
-                const components: string[] = [];
-                let description = `Explore analysis for ${dependentNames}.`;
-
-                outputSections.forEach(section => {
+                for (const section of outputSections) {
                     const formatted = section.formatter(aggregatedResults, params);
+                    console.log(`[Explore] Formatter ${section.componentName} returned`, formatted ? formatted.rows?.length : 'null');
                     if (formatted) {
-                        tablesToSend.push({ title: formatted.title, columnHeaders: formatted.columnHeaders, rows: formatted.rows });
-                        if (formatted.footnotes && formatted.footnotes.length > 0) {
-                            description += `\n\n${formatted.footnotes.join('\n')}`;
-                        }
-                        components.push(section.componentName);
+                        await addStatistic(analyticId!, {
+                            title: formatted.title,
+                            output_data: JSON.stringify({ tables: [formatted] }),
+                            components: section.componentName,
+                            description: formatted.footnotes ? formatted.footnotes.join('\n') : '',
+                        });
                     }
-                });
-
-                if (tablesToSend.length > 0) {
-                    await addStatistic(analyticId!, {
-                        title: `Explore Results: ${dependentNames}`,
-                        output_data: JSON.stringify({ tables: tablesToSend }),
-                        components: components.join(', '),
-                        description,
-                    });
-                    onClose();
-                } else {
-                    if (!taskFailed) setError("Analysis produced no displayable results.");
                 }
+
+                // Generate descriptive plots (histogram / stem-and-leaf)
+                try {
+                    await processAndAddPlots(analyticId!, groupedData as any, params);
+                } catch (plotErr) {
+                    console.error('Explore plot generation failed:', plotErr);
+                }
+
+                onClose();
 
             } else {
                 if (!taskFailed) setError("Analysis produced no results.");

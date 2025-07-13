@@ -42,7 +42,7 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
     const variableManager = useVariableManagement();
     const statisticsSettings = useStatisticsSettings();
     const plotsSettings = usePlotsSettings() || {
-        boxplotType: 'dependents-together',
+        boxplotType: 'none',
         setBoxplotType: () => {},
         showStemAndLeaf: false,
         setShowStemAndLeaf: () => {},
@@ -177,13 +177,16 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
             showNormalityPlots: plotsSettings.showNormalityPlots,
         };
 
-        // Only save if there is meaningful selection (e.g., at least one variable chosen)
-        if (
+        const hasSelections =
             stateToSave.dependentVariables.length > 0 ||
             stateToSave.factorVariables.length > 0 ||
-            stateToSave.labelVariable !== null
-        ) {
+            stateToSave.labelVariable !== null;
+
+        if (hasSelections) {
             saveFormData("Explore", stateToSave).catch(console.error);
+        } else {
+            // Clear stored state so removed variables don't linger.
+            clearFormData("Explore").catch(console.error);
         }
     }, [
         variableManager.dependentVariables,

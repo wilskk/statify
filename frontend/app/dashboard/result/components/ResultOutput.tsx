@@ -19,7 +19,6 @@ import TextRenderer from "@/components/Output/text/text-renderer";
 
 const ResultOutput: React.FC = () => {
   const { logs, updateStatistic } = useResultStore();
-  console.log("ResultOutput rendering with logs:", logs);
 
   const [editingDescriptionId, setEditingDescriptionId] = useState<
     number | null
@@ -34,7 +33,6 @@ const ResultOutput: React.FC = () => {
     const loadResults = async () => {
       try {
         await useResultStore.getState().loadResults();
-        console.log("Results loaded successfully");
       } catch (error) {
         console.error("Failed to load results:", error);
       }
@@ -162,7 +160,6 @@ const ResultOutput: React.FC = () => {
                                     typeof stat.output_data === "string"
                                       ? JSON.parse(stat.output_data)
                                       : stat.output_data;
-                                  console.log("ParsedData", parsedData);
                                 } catch (error) {
                                   console.error(
                                     "Failed to parse output_data:",

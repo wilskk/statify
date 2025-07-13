@@ -138,9 +138,12 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
             saveStandardized,
         };
 
-        // Save only if user has selected variables to minimize empty entries
+        // Persist current state. If no variables remain selected, clear any previously
+        // saved Descriptive form data so stale selections don't re-appear.
         if (selectedVariables.length > 0) {
             saveFormData("Descriptive", stateToSave).catch(console.error);
+        } else {
+            clearFormData("Descriptive").catch(console.error);
         }
     }, [selectedVariables, displayStatistics, displayOrder, saveStandardized]);
 

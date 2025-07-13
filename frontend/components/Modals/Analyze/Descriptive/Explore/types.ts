@@ -67,7 +67,7 @@ export interface ExploreAnalysisParams {
     showMEstimators: boolean;
     showOutliers: boolean;
     showPercentiles: boolean;
-    boxplotType: 'dependents-together' | 'factor-levels-together';
+    boxplotType: 'none' | 'dependents-together' | 'factor-levels-together';
     showStemAndLeaf: boolean;
     showHistogram: boolean;
     showNormalityPlots: boolean;
