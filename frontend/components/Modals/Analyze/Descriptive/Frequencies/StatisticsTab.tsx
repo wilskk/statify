@@ -226,21 +226,19 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 </div>
 
                 <div>
-                    <div className="flex items-center mb-2">
+                    <div className="flex items-start mb-2">
                         <Checkbox
                             id="percentiles"
-                            className="mr-2"
+                            className="mr-2 mt-1"
                             disabled={!showStatistics}
                             checked={enablePercentiles}
                             onCheckedChange={(checked) => setEnablePercentiles(!!checked)}
                         />
-                        <Label htmlFor="percentiles" className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>
-                            Percentiles
-                        </Label>
-                    </div>
-                    {enablePercentiles && showStatistics && (
-                        <div className="space-y-2 pl-6">
-                            <div className="flex items-center space-x-2">
+                        <div className="flex flex-wrap items-center">
+                            <Label htmlFor="percentiles" className={`text-sm mr-2 cursor-pointer ${getTextClass(!showStatistics)}`}>
+                                Percentiles
+                            </Label>
+                            {enablePercentiles && showStatistics && (
                                 <Input
                                     type="number"
                                     placeholder="0-100"
@@ -248,12 +246,18 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                     onChange={(e) => setCurrentPercentileInput(e.target.value)}
                                     className="w-24 h-8"
                                 />
-                                <Button onClick={handleAddPercentile} size="sm" variant="outline" className="h-8">Add</Button>
-                                <Button onClick={handleChangePercentile} size="sm" variant="outline" className="h-8" disabled={!selectedPercentileItem}>Change</Button>
-                                <Button onClick={handleRemovePercentile} size="sm" variant="destructive" className="h-8" disabled={!selectedPercentileItem}>Remove</Button>
+                            )}
+                        </div>
+                    </div>
+                    {enablePercentiles && showStatistics && (
+                        <div className="flex space-x-4 pl-6">
+                            <div className="flex flex-col space-y-2 w-1/3">
+                                <Button onClick={handleAddPercentile} size="sm" variant="outline" className="h-8 w-full">Add</Button>
+                                <Button onClick={handleChangePercentile} size="sm" variant="outline" className="h-8 w-full" disabled={!selectedPercentileItem}>Change</Button>
+                                <Button onClick={handleRemovePercentile} size="sm" variant="destructive" className="h-8 w-full" disabled={!selectedPercentileItem}>Remove</Button>
                             </div>
-                            {percentileValues.length > 0 && (
-                                <div className="max-h-20 overflow-y-auto border border-border rounded-md p-2 space-y-1">
+                            <div className="w-2/3">
+                                <div className="h-full min-h-[70px] max-h-28 overflow-y-auto border border-border rounded-md p-2 space-y-1">
                                     {percentileValues.map((p) => (
                                         <div
                                             key={p}
@@ -268,7 +272,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                         </div>
                                     ))}
                                 </div>
-                            )}
+                            </div>
                         </div>
                     )}
                 </div>

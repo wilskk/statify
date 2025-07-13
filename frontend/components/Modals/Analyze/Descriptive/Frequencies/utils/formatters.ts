@@ -46,7 +46,8 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     
     const statRowsConfig = [
         { name: 'Mean', key: 'Mean', precision: 4 },
-        { name: 'Std. Error of Mean', key: 'StdErrMean', precision: 5 },
+        // Align key with worker output (SEMean)
+        { name: 'Std. Error of Mean', key: 'SEMean', precision: 5 },
         { name: 'Median', key: 'Median', precision: 4 },
     ];
 
@@ -75,9 +76,10 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         { name: 'Std. Deviation', key: 'StdDev', precision: 5 },
         { name: 'Variance', key: 'Variance', precision: 3 },
         { name: 'Skewness', key: 'Skewness', precision: 3 },
-        { name: 'Std. Error of Skewness', key: 'StdErrSkewness', precision: 3 },
+        // Align keys with worker output (SESkewness, SEKurtosis)
+        { name: 'Std. Error of Skewness', key: 'SESkewness', precision: 3 },
         { name: 'Kurtosis', key: 'Kurtosis', precision: 3 },
-        { name: 'Std. Error of Kurtosis', key: 'StdErrKurtosis', precision: 3 },
+        { name: 'Std. Error of Kurtosis', key: 'SEKurtosis', precision: 3 },
         { name: 'Range', key: 'Range', precision: 2 },
         { name: 'Minimum', key: 'Minimum', precision: 2 },
         { name: 'Maximum', key: 'Maximum', precision: 2 },

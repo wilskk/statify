@@ -2,6 +2,7 @@ import React, { FC, useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+// Axis label inputs removed
 import { TourStep } from "./hooks/useTourGuide";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { ChartsSettingsResult } from "./hooks";
@@ -30,6 +31,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
         setChartValues,
         showNormalCurve,
         setShowNormalCurve,
+        // axis labels removed
     } = settings;
 
     // Function to determine text styling based on disabled state
@@ -39,6 +41,8 @@ const ChartsTab: FC<ChartsTabProps> = ({
 
     const isChartValuesDisabled = !showCharts || chartType === "none" || chartType === "histograms";
     const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+
+    // axis labels removed
 
     return (
         <div className="grid grid-cols-1 gap-6">
@@ -133,6 +137,8 @@ const ChartsTab: FC<ChartsTabProps> = ({
                 </RadioGroup>
                 <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("chart-values-section")} />
             </div>
+
+            {/* Axis labels inputs removed */}
         </div>
     );
 };
