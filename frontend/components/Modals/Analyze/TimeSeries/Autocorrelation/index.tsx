@@ -273,8 +273,6 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
                 </TabsContent>
             </Tabs>
 
-            {combinedError && <div className="text-red-600 text-center mt-2">{combinedError}</div>}
-
             <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
