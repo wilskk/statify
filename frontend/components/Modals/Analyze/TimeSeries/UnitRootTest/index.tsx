@@ -12,6 +12,7 @@ import VariablesTab from "./VariablesTab";
 import OptionTab from "./OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 import { DataRow } from "@/types/Data";
+import { toast } from "sonner";
 
 interface UnitRootTestProps {
     onClose: () => void;
@@ -60,6 +61,12 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
     );
     const combinedError = errorMsg || analysisError;
     const [isLoaded, setIsLoaded] = useState(false);
+
+    useEffect(() => {
+        if (combinedError) {
+            toast.error("Error: " + String(combinedError));
+        }
+    }, [combinedError]);
 
     // Load saved state from IndexedDB on component mount
     useEffect(() => {
@@ -248,8 +255,6 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
                     />
                 </TabsContent>
             </Tabs>
-
-            {combinedError && <div className="text-red-600 text-center mt-2">{combinedError}</div>}
 
             <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">

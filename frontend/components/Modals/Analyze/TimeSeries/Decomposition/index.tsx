@@ -14,6 +14,7 @@ import OptionTab from "./OptionTab";
 import TimeTab from "../TimeSeriesTimeTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 import { DataRow } from "@/types/Data";
+import { toast } from "sonner";
 
 interface DecompositionProps {
     onClose: () => void;
@@ -67,6 +68,12 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
     );
     const combinedError = errorMsg || analysisError;
     const [isLoaded, setIsLoaded] = useState(false);
+
+    useEffect(() => {
+        if (combinedError) {
+            toast.error("Error: " + String(combinedError));
+        }
+    }, [combinedError]);
 
     // Load saved state from IndexedDB on component mount
     useEffect(() => {
@@ -269,8 +276,6 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                     />
                 </TabsContent>
             </Tabs>
-
-            {combinedError && <div className="text-red-600 text-center mt-2">{combinedError}</div>}
 
             <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">

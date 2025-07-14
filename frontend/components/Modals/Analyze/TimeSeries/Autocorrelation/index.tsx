@@ -14,6 +14,7 @@ import TimeTab from "../TimeSeriesTimeTab";
 import OptionTab from "./OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 import { DataRow } from "@/types/Data";
+import { toast } from "sonner";
 
 interface AutocorrelationProps {
     onClose: () => void;
@@ -71,7 +72,12 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
     console.log("Current data", data);
     console.log("Previous data", prevDataRef);
 
-    
+    useEffect(() => {
+        if (combinedError) {
+            toast.error("Error: " + String(combinedError));
+        }
+    }, [combinedError]);
+
     // Load saved state from IndexedDB on component mount
     useEffect(() => {
         const loadSavedState = async () => {

@@ -14,6 +14,7 @@ import TimeTab from "../TimeSeriesTimeTab";
 import OptionTab from "./OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 import { DataRow } from "@/types/Data";
+import { toast } from "sonner";
 
 interface BoxJenkinsModelProps {
     onClose: () => void;
@@ -68,6 +69,12 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
     );
     const combinedError = errorMsg || analysisError;
     const [isLoaded, setIsLoaded] = useState(false);
+
+    useEffect(() => {
+        if (combinedError) {
+            toast.error("Error: " + String(combinedError));
+        }
+    }, [combinedError]);
 
     // Load saved state from IndexedDB on component mount
     useEffect(() => {
