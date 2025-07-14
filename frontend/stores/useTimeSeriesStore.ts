@@ -65,7 +65,7 @@ export const useTimeSeriesStore = create<TimeSeriesStoreState>((set, get) => ({
     getDay: () => {
         let day = get().day
         if (day < 1 || day > get().getMaximumDay()) {
-            day = get().getMaximumDay(); // Reset to 1 if out of range
+            day = get().getMaximumDay(); // Reset to maximum day if out of range
         }
         return day;
     },

@@ -27,6 +27,10 @@ const periods: PeriodOption[] = [
 export function useTimeHook(
 ) {
     const { getTypeDate, getYear, getMonth, getDay, getHour, getMaximumDay, getDayName, setTypeDate, setYear, setMonth, setDay, setHour } = useTimeSeriesStore();
+    const [year, setYearState] = useState<number>(getYear());
+    const [month, setMonthState] = useState<number>(getMonth());
+    const [day, setDayState] = useState<number>(getDay());
+    const [hour, setHourState] = useState<number>(getHour());
 
     // Set default from store getter
     const initialType = getTypeDate();
@@ -58,10 +62,18 @@ export function useTimeHook(
                     }
                     
                     // Load other time values
-                    if (saved.year !== undefined) setYear(saved.year);
-                    if (saved.month !== undefined) setMonth(saved.month);
-                    if (saved.day !== undefined) setDay(saved.day);
-                    if (saved.hour !== undefined) setHour(saved.hour);
+                    if (saved.year !== undefined) {
+                        handleSetYear(saved.year);
+                    }
+                    if (saved.month !== undefined) {
+                        handleSetMonth(saved.month);
+                    }
+                    if (saved.day !== undefined) {
+                        handleSetDay(saved.day);
+                    }
+                    if (saved.hour !== undefined) {
+                        handleSetHour(saved.hour);
+                    }
                 } else {
                     // Use store defaults if no saved data
                     const initialType = getTypeDate();
@@ -85,14 +97,14 @@ export function useTimeHook(
 
         const dataToSave = {
             selectedPeriod,
-            year: getYear(),
-            month: getMonth(),
-            day: getDay(),
-            hour: getHour(),
+            year: year,
+            month: month,
+            day: day,
+            hour: hour,
         };
         
         saveFormData("TimeSeriesStore", dataToSave).catch(console.error);
-    }, [selectedPeriod, getYear, getMonth, getDay, getHour, isLoaded]);
+    }, [selectedPeriod, year, month, day, hour, isLoaded]);
 
     function handleSelectedPeriod(id: string) {
         const period = periods.find((p) => p.id === id);
@@ -111,6 +123,23 @@ export function useTimeHook(
     //     setSelectedPeriod(["0", "Not Dated"]);
     //     setTypeDate("nd");
     // }
+
+    const handleSetYear = (value: number) => {
+        setYear(value);
+        setYearState(value);
+    }
+    const handleSetMonth = (value: number) => {
+        setMonth(value);
+        setMonthState(value);
+    }
+    const handleSetDay = (value: number) => {
+        setDay(value);
+        setDayState(value);
+    }
+    const handleSetHour = (value: number) => {
+        setHour(value);
+        setHourState(value);
+    }
 
     function resetTime() {
         clearFormData("TimeSeriesStore")
@@ -136,7 +165,7 @@ export function useTimeHook(
                         min={'1900'} 
                         max={'2050'} 
                         step={'1'} 
-                        onChange={(value) => setYear(value)}
+                        onChange={(value) => handleSetYear(value)}
                     />
                 );
             case 'ym':
@@ -149,7 +178,7 @@ export function useTimeHook(
                             min={'1900'} 
                             max={'2050'} 
                             step={'1'} 
-                            onChange={(value) => setYear(value)}
+                            onChange={(value) => handleSetYear(value)}
                         />
                         <InputRow
                             label="month" 
@@ -158,7 +187,7 @@ export function useTimeHook(
                             min={'1'} 
                             max={'12'} 
                             step={'1'} 
-                            onChange={(value) => setMonth(value)}
+                            onChange={(value) => handleSetMonth(value)}
                         />
                     </div>
                 );
@@ -172,7 +201,7 @@ export function useTimeHook(
                             min={'1900'} 
                             max={'2050'} 
                             step={'1'} 
-                            onChange={(value) => setYear(value)}
+                            onChange={(value) => handleSetYear(value)}
                         />
                         <InputRow
                             label="month" 
@@ -181,7 +210,7 @@ export function useTimeHook(
                             min={'1'} 
                             max={'12'} 
                             step={'1'} 
-                            onChange={(value) => setMonth(value)}
+                            onChange={(value) => handleSetMonth(value)}
                         />
                         <InputRow
                             label="day" 
@@ -190,7 +219,7 @@ export function useTimeHook(
                             min={'1'} 
                             max={`${getMaximumDay()}`} 
                             step={'1'} 
-                            onChange={(value) => setDay(value)}
+                            onChange={(value) => handleSetDay(value)}
                         />
                     </div>
                 );
@@ -204,7 +233,7 @@ export function useTimeHook(
                             min={'1900'} 
                             max={'2050'} 
                             step={'1'} 
-                            onChange={(value) => setYear(value)}
+                            onChange={(value) => handleSetYear(value)}
                         />
                         <InputRow
                             label="month" 
@@ -213,7 +242,7 @@ export function useTimeHook(
                             min={'1'} 
                             max={'12'} 
                             step={'1'} 
-                            onChange={(value) => setMonth(value)}
+                            onChange={(value) => handleSetMonth(value)}
                         />
                         <InputRow
                             label="day" 
@@ -222,7 +251,7 @@ export function useTimeHook(
                             min={'1'} 
                             max={`${getMaximumDay()}`} 
                             step={'1'} 
-                            onChange={(value) => setDay(value)}
+                            onChange={(value) => handleSetDay(value)}
                         />
                         <InputRow
                             label="hour" 
@@ -231,7 +260,7 @@ export function useTimeHook(
                             min={'8'} 
                             max={'15'} 
                             step={'1'} 
-                            onChange={(value) => setHour(value)}
+                            onChange={(value) => handleSetHour(value)}
                         />
                     </div>
                 );
@@ -245,7 +274,7 @@ export function useTimeHook(
                             min={'1900'} 
                             max={'2050'} 
                             step={'1'} 
-                            onChange={(value) => setYear(value)}
+                            onChange={(value) => handleSetYear(value)}
                         />
                         <InputRow
                             label="month" 
@@ -254,7 +283,7 @@ export function useTimeHook(
                             min={'1'} 
                             max={'12'} 
                             step={'1'} 
-                            onChange={(value) => setMonth(value)}
+                            onChange={(value) => handleSetMonth(value)}
                         />
                         <InputRow
                             label="day" 
@@ -263,7 +292,7 @@ export function useTimeHook(
                             min={'1'} 
                             max={`${getMaximumDay()}`} 
                             step={'1'} 
-                            onChange={(value) => setDay(value)}
+                            onChange={(value) => handleSetDay(value)}
                         />
                         <InputRow
                             label="hour" 
@@ -272,7 +301,7 @@ export function useTimeHook(
                             min={'0'} 
                             max={'23'} 
                             step={'1'} 
-                            onChange={(value) => setHour(value)}
+                            onChange={(value) => handleSetHour(value)}
                         />
                     </div>
                 );
