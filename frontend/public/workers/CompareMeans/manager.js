@@ -14,7 +14,7 @@
 import './libs/utils.js';
 import './libs/oneSampleTTest.js';
 import './libs/independentSamplesTTest.js';
-// import './libs/pairedSamplesTTest.js';
+import './libs/pairedSamplesTTest.js';
 // import './libs/oneWayAnova.js';
 // import './libs/effectSize.js';
 
@@ -22,7 +22,7 @@ import './libs/independentSamplesTTest.js';
 const calculators = {
     oneSampleTTest: OneSampleTTestCalculator,
     independentSamplesTTest: IndependentSamplesTTestCalculator,
-    // pairedSamplesTTest: PairedSamplesTTestCalculator,
+    pairedSamplesTTest: PairedSamplesTTestCalculator,
     // oneWayAnova: OneWayAnovaCalculator,
     // effectSize: EffectSizeCalculator,
 };
@@ -32,13 +32,21 @@ const calculators = {
  * @param {MessageEvent} event - Event pesan yang diterima.
  */
 onmessage = (event) => {
-    const { analysisType, variable, data, groupingVariable, groupingData, options } = event.data;
-
+    const { analysisType, variable, variable1, variable2, data, data1, data2, groupingVariable, groupingData, options } = event.data;
+    
     // --- Start of Debugging ---
     console.log(`[Worker] Received analysis request: ${analysisType}`);
-    console.log('[Worker] Received variable:', JSON.parse(JSON.stringify(variable)));
-    console.log('[Worker] Received data (first 5 rows):', data ? data.slice(0, 5) : 'No data');
-    if (groupingVariable) {
+    if (variable && data) {
+        console.log('[Worker] Received variable:', JSON.parse(JSON.stringify(variable)));
+        console.log('[Worker] Received data (first 5 rows):', data ? data.slice(0, 5) : 'No data');
+    }
+    // if (variable1 && variable2 && data1 && data2) {
+        console.log('[Worker] Received variable1:', JSON.parse(JSON.stringify(variable1)));
+        console.log('[Worker] Received variable2:', JSON.parse(JSON.stringify(variable2)));
+        console.log('[Worker] Received data1 (first 5 rows):', data1 ? data1.slice(0, 5) : 'No data');
+        console.log('[Worker] Received data2 (first 5 rows):', data2 ? data2.slice(0, 5) : 'No data');
+    // }
+    if (groupingVariable && groupingData) {
         console.log('[Worker] Received grouping variable:', JSON.parse(JSON.stringify(groupingVariable)));
         console.log('[Worker] Received grouping data (first 5 rows):', groupingData ? groupingData.slice(0, 5) : 'No data');
     }
@@ -83,13 +91,20 @@ onmessage = (event) => {
                 results.independentSamplesTest = calculator.getOutput().independentSamplesTest;
             } else if (type === 'pairedSamplesTTest') {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data, 
-                    groupingVariable, 
-                    groupingData, 
-                    weights, 
+                    variable1, 
+                    variable2, 
+                    data1, 
+                    data2, 
                     options 
                 });
+
+                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Paired Samples Statistics Results:', JSON.stringify(calculator.getOutput().pairedSamplesStatistics));
+                console.log('[Worker] Paired Samples Correlation Results:', JSON.stringify(calculator.getOutput().pairedSamplesCorrelation));
+                console.log('[Worker] Paired Samples Test Results:', JSON.stringify(calculator.getOutput().pairedSamplesTest));
+                results.pairedSamplesStatistics = calculator.getOutput().pairedSamplesStatistics;
+                results.pairedSamplesCorrelation = calculator.getOutput().pairedSamplesCorrelation;
+                results.pairedSamplesTest = calculator.getOutput().pairedSamplesTest;
             } else if (type === 'oneWayAnova') {
                 calculator = new CalculatorClass({ 
                     variable, 
@@ -115,21 +130,33 @@ onmessage = (event) => {
         });
 
         console.log('[Worker] Final results:', JSON.stringify(results));
-
-        const postMessageBody = {
-            status: 'success',
-            variableName: variable.name || 'unknown',
-            results: results,
+        if (analysisType.includes('pairedSamplesTTest')) {
+            postMessage({
+                status: 'success',
+                variableName: `${variable1.label || variable1.name}-${variable2.label || variable2.name}` || 'unknown',
+                results: results,
+            });
+        } else {
+            postMessage({
+                status: 'success',
+                variableName: variable.name || 'unknown',
+                results: results,
+            });
         }
-
-        postMessage(postMessageBody);
-
     } catch (error) {
         console.error(`[Worker] Error dalam worker untuk variabel ${variable?.name || 'unknown'}:`, error);
+        if (analysisType.includes('pairedSamplesTTest')) {
         postMessage({
-            status: 'error',
-            variableName: variable?.name || 'unknown',
-            error: error.message,
-        });
+                status: 'error',
+                variableName: `${variable1.label || variable1.name}-${variable2.label || variable2.name}` || 'unknown',
+                error: error.message,
+            });
+        } else {
+            postMessage({
+                status: 'error',
+                variableName: variable.name || 'unknown',
+                error: error.message,
+            });
+        }
     }
 };

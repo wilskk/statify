@@ -40,10 +40,17 @@ export type HighlightedPair = {
 };
 
 // Test Type
-export type CalculateStandardizer = {
-  standardDeviation: boolean;
-  correctedStandardDeviation: boolean;
-  averageOfVariances: boolean;
+export type TestType = {
+  wilcoxon: boolean;
+  sign: boolean;
+  mcNemar: boolean;
+  marginalHomogeneity: boolean;
+};
+
+// Display Statistics
+export type DisplayStatistics = {
+  descriptive: boolean;
+  quartiles: boolean;
 };
 
 // ---------------------------------
@@ -79,10 +86,10 @@ export interface VariablesTabProps {
 
 // OptionsTab Props
 export interface OptionsTabProps {
-  estimateEffectSize: boolean;
-  setEstimateEffectSize: Dispatch<SetStateAction<boolean>>;
-  calculateStandardizer: CalculateStandardizer;
-  setCalculateStandardizer: Dispatch<SetStateAction<CalculateStandardizer>>;
+  testType: TestType;
+  setTestType: Dispatch<SetStateAction<TestType>>;
+  displayStatistics: DisplayStatistics;
+  setDisplayStatistics: Dispatch<SetStateAction<DisplayStatistics>>;
   tourActive?: boolean;
   currentStep?: number;
   tourSteps?: TourStep[];
@@ -90,8 +97,8 @@ export interface OptionsTabProps {
 
 // TestSettings Props
 export interface TestSettingsProps {
-  initialEstimateEffectSize?: boolean;
-  initialCalculateStandardizer?: CalculateStandardizer;
+  initialTestType?: TestType;
+  initialDisplayStatistics?: DisplayStatistics;
 }
 
 // VariableSelection Props
@@ -99,12 +106,12 @@ export interface VariableSelectionProps {
   initialVariables?: Variable[];
 }
 
-// PairedSamplesTTestAnalysis Props
-export interface PairedSamplesTTestAnalysisProps extends Pick<BaseModalProps, 'onClose'> {
+// TwoRelatedSamplesAnalysis Props
+export interface TwoRelatedSamplesAnalysisProps extends Pick<BaseModalProps, 'onClose'> {
   testVariables1: Variable[];
   testVariables2: Variable[];
-  calculateStandardizer: CalculateStandardizer;
-  estimateEffectSize: boolean;
+  testType: TestType;
+  displayStatistics: DisplayStatistics;
   areAllPairsValid: () => boolean;
   hasDuplicatePairs: () => boolean;
 }
@@ -125,59 +132,69 @@ export interface UseTourGuideResult {
   endTour: () => void;
 }
 
-// PairedSamplesStatistics
-export interface PairedSamplesStatistics {
-  group1: {
-    label: string;
-    Mean: number;
+// DescriptiveStatistics
+export interface DescriptiveStatistics {
+  N1: number;
+  Mean1?: number;
+  StdDev1?: number;
+  Min1?: number;
+  Max1?: number;
+  Percentile25_1?: number;
+  Percentile50_1?: number;
+  Percentile75_1?: number;
+  N2: number;
+  Mean2?: number;
+  StdDev2?: number;
+  Min2?: number;
+  Max2?: number;
+  Percentile25_2?: number;
+  Percentile50_2?: number;
+  Percentile75_2?: number;
+}
+
+// RanksFrequencies
+export interface RanksFrequencies {
+  negative: {
     N: number;
-    StdDev: number;
-    SEMean: number;
+    MeanRank: number;
+    SumOfRanks: number;
   };
-  group2: {
-    label: string;
-    Mean: number;
+  positive: {
     N: number;
-    StdDev: number;
-    SEMean: number;
+    MeanRank: number;
+    SumOfRanks: number;
+  };
+  ties: {
+    N: number;
+  };
+  total: {
+    N: number;
   };
 }
 
-// PairedSamplesCorrelation
-export interface PairedSamplesCorrelation {
-  Label: String;
-  N: number;
-  Correlation: number;
+// TestStatistics
+export interface TestStatistics {
+  Z: number;
   PValue: number;
 }
 
-// PairedSamplesTestStatistics
-export interface PairedSamplesTest {
-  label: String;
-  Mean: number;
-  StdDev: number;
-  SEMean: number;
-  LowerCI: number;
-  UpperCI: number;
-  t: number;
-  df: number;
-  pValue: number;
-}
-  
-// PairedSamplesTTestResult
-export interface PairedSamplesTTestResult {
+// TwoRelatedSamplesResult
+export interface TwoRelatedSamplesResult {
+  variable?: Variable;
   variable1: Variable;
   variable2: Variable;
-  pairedSamplesStatistics?: PairedSamplesStatistics;
-  pairedSamplesCorrelation?: PairedSamplesCorrelation;
-  pairedSamplesTest?: PairedSamplesTest;
+  descriptiveStatistics?: DescriptiveStatistics;
+  ranksFrequencies?: RanksFrequencies;
+  testStatisticsWilcoxon?: TestStatistics;
+  testStatisticsSign?: TestStatistics;
 }
   
-// PairedSamplesTTestResults
-export interface PairedSamplesTTestResults {
-  pairedSamplesStatistics?: PairedSamplesTTestResult[];
-  pairedSamplesCorrelation?: PairedSamplesTTestResult[];
-  pairedSamplesTest?: PairedSamplesTTestResult[];
+// TwoRelatedSamplesResults
+export interface TwoRelatedSamplesResults {
+  descriptiveStatistics?: TwoRelatedSamplesResult[];
+  ranksFrequencies?: TwoRelatedSamplesResult[];
+  testStatisticsWilcoxon?: TwoRelatedSamplesResult[];
+  testStatisticsSign?: TwoRelatedSamplesResult[];
 }
   
 // ---------------------------------
@@ -194,7 +211,7 @@ export interface TableRow {
   rowHeader?: any[];
 }
 
-export interface PairedSamplesTTestTable {
+export interface TwoRelatedSamplesTable {
   title: string;
   columnHeaders: TableColumnHeader[];
   rows: TableRow[];

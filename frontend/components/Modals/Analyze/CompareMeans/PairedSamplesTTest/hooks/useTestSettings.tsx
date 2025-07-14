@@ -1,46 +1,32 @@
-import { useState, useCallback, useEffect } from 'react';
-import { TestSettingsProps, TestSettingsResult, TestSettings } from '../types';
+import { useState, useCallback } from 'react';
+import {
+    TestSettingsProps,
+    CalculateStandardizer,
+} from '../types';
 
-export const useTestSettings = (props?: TestSettingsProps): TestSettingsResult => {
-  const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(false);
-  const [calculateStandardizer, setCalculateStandardizer] = useState<{
-    standardDeviation: boolean;
-    correctedStandardDeviation: boolean;
-    averageOfVariances: boolean;
-  }>({
-    standardDeviation: true,
-    correctedStandardDeviation: false,
-    averageOfVariances: false
-  });
-
-  // Reset function
-  const resetTestSettings = useCallback(() => {
-    setEstimateEffectSize(false);
-    setCalculateStandardizer({
-      standardDeviation: true,
-      correctedStandardDeviation: false,
-      averageOfVariances: false
-    });
-  }, []);
-
-  // Notify parent component of changes if onChange is provided
-  useEffect(() => {
-    if (props?.onChange) {
-      const settings: TestSettings = {
+export const useTestSettings = ({
+    initialEstimateEffectSize = false,
+    initialCalculateStandardizer = {
+        standardDeviation: true,
+        correctedStandardDeviation: false,
+        averageOfVariances: false
+    },
+}: Omit<TestSettingsProps, 'resetTestSettings'> = {}) => {
+    const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(initialEstimateEffectSize);
+    const [calculateStandardizer, setCalculateStandardizer] = useState<CalculateStandardizer>(initialCalculateStandardizer);
+    
+    const resetTestSettings = useCallback(() => {
+        setEstimateEffectSize(initialEstimateEffectSize);
+        setCalculateStandardizer(initialCalculateStandardizer);
+    }, [initialEstimateEffectSize, initialCalculateStandardizer]);
+    
+    return {
         estimateEffectSize,
-        calculateStandardizer
-      };
-      props.onChange(settings);
-    }
-  }, [props, estimateEffectSize, calculateStandardizer]);
-
-  return {
-    estimateEffectSize,
-    setEstimateEffectSize,
-    calculateStandardizer,
-    setCalculateStandardizer,
-    resetTestSettings
-  };
+        setEstimateEffectSize,
+        calculateStandardizer,
+        setCalculateStandardizer,
+        resetTestSettings
+    };
 };
 
-export default useTestSettings; 
+export default useTestSettings;
