@@ -1,7 +1,6 @@
-use crate::{
-    models::{ config::ClusterConfig, result::{ ClusterPlot, ProcessedData } },
-    stats::core::{ convert_map_to_matrix, find_nearest_cluster, generate_final_cluster_centers },
-};
+use crate::models::{ config::ClusterConfig, result::{ ClusterPlot, ProcessedData } };
+
+use crate::stats::core::*;
 
 pub fn create_cluster_plot(
     data: &ProcessedData,

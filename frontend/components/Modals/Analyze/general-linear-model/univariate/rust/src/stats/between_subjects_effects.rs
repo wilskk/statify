@@ -192,6 +192,8 @@ pub fn calculate_tests_between_subjects_effects(
     }
     notes.push(format!("Computed using alpha = {}", config.options.sig_level));
     notes.push(format!("Sum of Squares Method: {:?}", config.model.sum_of_square_method));
+    notes.push(format!("R Squared = {:.4}", current_r_squared));
+    notes.push(format!("Adjusted R Squared = {:.4}", current_adj_r_squared));
 
     Ok(TestsBetweenSubjectsEffects {
         source: current_source_map,

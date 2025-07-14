@@ -44,7 +44,7 @@ pub fn preprocess_data(
     for case_idx in 0..num_cases {
         let mut row = Vec::with_capacity(variables.len());
         let mut has_missing = false;
-        let mut complete_variables = Vec::new();
+        let mut non_missing_count = 0;
 
         // Untuk setiap variabel yang telah ditentukan, cari nilainya di semua dataset.
         for var in &variables {
@@ -54,19 +54,22 @@ pub fn preprocess_data(
                 if case_idx < dataset.len() {
                     if let Some(DataValue::Number(val)) = dataset[case_idx].values.get(var) {
                         row.push(*val);
-                        complete_variables.push(var.clone());
+                        non_missing_count += 1;
                         var_found = true;
                         break; // Lanjut ke variabel berikutnya setelah nilai ditemukan.
                     }
                 }
             }
 
-            // Jika variabel tidak ditemukan atau bukan numerik, tandai sebagai data hilang.
+            // Jika variabel tidak ditemukan atau bukan numerik, tangani sesuai metode.
             if !var_found {
                 has_missing = true;
                 if use_list_wise {
-                    // Jika menggunakan list-wise, hentikan pemrosesan baris ini dan lanjut ke kasus berikutnya.
+                    // Jika menggunakan list-wise, hentikan pemrosesan baris ini.
                     break;
+                } else if use_pair_wise {
+                    // Untuk pairwise, tambahkan NaN agar matriks tetap rectangular.
+                    row.push(f64::NAN);
                 }
             }
         }
@@ -74,14 +77,13 @@ pub fn preprocess_data(
         // --- Memasukkan Data ke Matriks Berdasarkan Metode Eksklusi ---
         if use_list_wise {
             // List-wise: Hanya kasus yang lengkap (tanpa data hilang) yang dimasukkan.
-            if !has_missing && row.len() == variables.len() {
+            if !has_missing {
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
             }
         } else if use_pair_wise {
-            // Pair-wise: Kasus dimasukkan jika memiliki setidaknya satu variabel yang valid.
-            // `row` hanya akan berisi nilai dari variabel yang tidak hilang.
-            if !complete_variables.is_empty() {
+            // Pair-wise: Kasus hanya dihapus jika semua variabelnya hilang.
+            if non_missing_count > 0 {
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
             }
