@@ -39,10 +39,10 @@ export function useAnalyzeHook(
             return "Hour must be between 0 and 23.";
         }
         if (maximumLag < 10) {
-            return "Maximum lag must be at least 10.";
+            return "Minimum lag must be at least 10.";
         }
-        if (maximumLag > 30) {
-            return "Maximum lag cannot exceed 30.";
+        if (maximumLag > 20) {
+            return "Maximum lag cannot exceed 20.";
         }
         return null;
     };
