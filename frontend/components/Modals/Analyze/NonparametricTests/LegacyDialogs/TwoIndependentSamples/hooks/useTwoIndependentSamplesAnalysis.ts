@@ -199,7 +199,7 @@ export const useTwoIndependentSamplesAnalysis = ({
             }
 
             processedCountRef.current += 1;
-
+            
             if (processedCountRef.current === testVariables.length) {
                 if (resultsRef.current.length > 0) {
                     try {

@@ -40,6 +40,13 @@ import {
     getNonparametricTestModalComponent
 } from './NonparametricTests';
 
+// Import from Correlate registry via index.ts
+import {
+    CORRELATE_MODAL_COMPONENTS,
+    CORRELATE_MODAL_CONTAINER_PREFERENCES,
+    getCorrelateModalComponent
+} from './Correlate';
+
 /**
  * ANALYZE_MODAL_COMPONENTS - Central registry for all Analyze modals
  *
@@ -61,6 +68,9 @@ export const ANALYZE_MODAL_COMPONENTS: Record<
     
     // Compare Means modals
     ...COMPARE_MEANS_MODAL_COMPONENTS,
+
+    // Correlate modals
+    ...CORRELATE_MODAL_COMPONENTS,
     
     // Nonparametric Tests modals
     ...NONPARAMETRIC_TEST_MODAL_COMPONENTS,
@@ -112,6 +122,9 @@ export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<
     
     // Nonparametric Tests modals
     ...NONPARAMETRIC_TEST_MODAL_CONTAINER_PREFERENCES,
+
+    // Correlate modals
+    ...CORRELATE_MODAL_CONTAINER_PREFERENCES,
     
     // Future categories will be added here
 };

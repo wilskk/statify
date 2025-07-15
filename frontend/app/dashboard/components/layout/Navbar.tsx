@@ -69,7 +69,7 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Correlate</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem disabled>Bivariate...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.Bivariate)}>Bivariate...</MenubarItem>
                         <MenubarItem disabled>Partial...</MenubarItem>
                         <MenubarItem disabled>Distances...</MenubarItem>
                         <MenubarItem disabled>Canonical Correlation...</MenubarItem>

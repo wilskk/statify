@@ -104,6 +104,9 @@ export enum ModalType {
     PairedSamplesTTest = "PairedSamplesTTest",
     OneWayANOVA = "OneWayANOVA",
 
+    // Correlate modals
+    Bivariate = "Bivariate",
+
     // General Linear Model modals
     ModalUnivariate = "ModalUnivariate",
     ModalMultivariate = "ModalMultivariate",
@@ -292,6 +295,9 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.OneSampleTTest]: ModalCategory.Analyze,
     [ModalType.PairedSamplesTTest]: ModalCategory.Analyze,
     [ModalType.OneWayANOVA]: ModalCategory.Analyze,
+
+    // Correlate modals
+    [ModalType.Bivariate]: ModalCategory.Analyze,
 
     // General Linear Model modals
     [ModalType.ModalUnivariate]: ModalCategory.Analyze,
