@@ -75,7 +75,7 @@ export const GettingStarted = () => {
           <div>
             <AlertTitle className="text-amber-800 text-sm font-medium mb-1">Pro Tip</AlertTitle>
             <AlertDescription className="text-amber-700">
-              Try our sample datasets to explore Statify's features before importing your own data.
+              Try our sample datasets to explore Statify&#39;s features before importing your own data.
             </AlertDescription>
           </div>
         </div>

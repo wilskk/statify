@@ -103,7 +103,7 @@ export const TestimonialsSection = () => {
                                 </CardHeader>
                                 <CardContent className="p-6 flex flex-col h-full">
                                     <blockquote className="text-muted-foreground text-base mb-6 flex-grow italic">
-                                        "{testimonial.quote}"
+                                        &ldquo;{testimonial.quote}&rdquo;
                                     </blockquote>
                                     <div className="pt-4 border-t border-border/30 flex items-center">
                                         <div className={`w-10 h-10 rounded-full ${testimonial.color} flex items-center justify-center mr-4`}>
