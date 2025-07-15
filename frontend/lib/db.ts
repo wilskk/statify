@@ -5,7 +5,7 @@ import { ValueLabel } from "@/types/Variable";
 import { Log } from "@/types/Result";
 import { Analytic } from "@/types/Result";
 import { Statistic } from "@/types/Result";
-import { Meta } from "@/stores/useMetaStore";
+import { Meta } from "@/types/Meta";
 
 class MyDatabase extends Dexie {
     dataRows!: Table<{ id: number, data: DataRow }, number>;
@@ -21,14 +21,14 @@ class MyDatabase extends Dexie {
     constructor() {
         super("Statify");
 
-        this.version(5).stores({
+        this.version(7).stores({
             dataRows: "++id",
             variables: "++id, &columnIndex, &name, type",
-            valueLabels: "++id, variableName, value",
+            valueLabels: "++id, variableId, value",
 
             logs: "++id",
-            analytics: "++id, log_id, title",
-            statistics: "++id, analytic_id",
+            analytics: "++id, logId, title",
+            statistics: "++id, analyticId",
 
             metadata: "&id"
         });
@@ -45,15 +45,29 @@ class MyDatabase extends Dexie {
     async getLogWithRelations(logId: number): Promise<Log | undefined> {
         const log = await this.logs.get(logId);
         if (!log) return undefined;
-
-        const analytics = await this.analytics.where('log_id').equals(logId).toArray();
-
-        for (const analytic of analytics) {
-            if (analytic.id) {
-                analytic.statistics = await this.statistics.where('analytic_id').equals(analytic.id).toArray();
+    
+        const analytics = await this.analytics.where('logId').equals(logId).toArray();
+        const analyticIds = analytics.map(a => a.id).filter((id): id is number => id !== undefined);
+    
+        if (analyticIds.length > 0) {
+            const statistics = await this.statistics.where('analyticId').anyOf(analyticIds).toArray();
+            const statisticMap = new Map<number, Statistic[]>();
+    
+            for (const statistic of statistics) {
+                if (!statistic.analyticId) continue;
+                if (!statisticMap.has(statistic.analyticId)) {
+                    statisticMap.set(statistic.analyticId, []);
+                }
+                statisticMap.get(statistic.analyticId)!.push(statistic);
+            }
+    
+            for (const analytic of analytics) {
+                if (analytic.id) {
+                    analytic.statistics = statisticMap.get(analytic.id) || [];
+                }
             }
         }
-
+    
         log.analytics = analytics;
         return log;
     }
@@ -67,23 +81,23 @@ class MyDatabase extends Dexie {
         const statisticMap = new Map<number, Statistic[]>();
 
         for (const statistic of statistics) {
-            if (!statistic.analytic_id) continue;
+            if (!statistic.analyticId) continue;
 
-            if (!statisticMap.has(statistic.analytic_id)) {
-                statisticMap.set(statistic.analytic_id, []);
+            if (!statisticMap.has(statistic.analyticId)) {
+                statisticMap.set(statistic.analyticId, []);
             }
-            statisticMap.get(statistic.analytic_id)!.push(statistic);
+            statisticMap.get(statistic.analyticId)!.push(statistic);
         }
 
         for (const analytic of analytics) {
             if (!analytic.id) continue;
             analytic.statistics = statisticMap.get(analytic.id) || [];
 
-            if (!analytic.log_id) continue;
-            if (!analyticMap.has(analytic.log_id)) {
-                analyticMap.set(analytic.log_id, []);
+            if (!analytic.logId) continue;
+            if (!analyticMap.has(analytic.logId)) {
+                analyticMap.set(analytic.logId, []);
             }
-            analyticMap.get(analytic.log_id)!.push(analytic);
+            analyticMap.get(analytic.logId)!.push(analytic);
         }
 
         for (const log of logs) {
@@ -92,6 +106,25 @@ class MyDatabase extends Dexie {
         }
 
         return logs;
+    }
+
+    async deleteLogAndRelations(logId: number): Promise<void> {
+        await this.transaction('rw', this.logs, this.analytics, this.statistics, async () => {
+            // Find all analytics related to the log
+            const analyticsToDelete = await this.analytics.where('logId').equals(logId).toArray();
+            const analyticIds = analyticsToDelete.map(a => a.id).filter((id): id is number => id !== undefined);
+
+            if (analyticIds.length > 0) {
+                // Delete all statistics that are children of the analytics to be deleted
+                await this.statistics.where('analyticId').anyOf(analyticIds).delete();
+            }
+
+            // Delete all analytics related to the log
+            await this.analytics.where('logId').equals(logId).delete();
+
+            // Finally, delete the log itself
+            await this.logs.delete(logId);
+        });
     }
 }
 

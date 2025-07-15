@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import type { Variable } from '@/types/Variable';
-import { spssDateTypes } from '@/types/Variable';
 
 export function useVariableData(variableName: string) {
   const variable = useVariableStore(state => state.variables.find(v => v.name === variableName));
@@ -22,17 +21,10 @@ export function useVariableData(variableName: string) {
         return;
       }
       try {
+        await useDataStore.getState().checkAndSave();
         const result = await getVariableData(variable);
         if (!cancelled) {
-          let processedData = result.data;
-          if (spssDateTypes.has(variable.type) && variable.width === 11) {
-            // Convert SPSS date format 'dd-mm-yyyy' to 'dd/mm/yyyy'
-            processedData = processedData.map(val =>
-              typeof val === 'string'
-                ? val.replace(/-/g, '/')
-                : val
-            );
-          }
+          const processedData = result.data.filter((v): v is string | number => v !== null && v !== undefined);
           setData(processedData);
         }
       } catch (err: any) {

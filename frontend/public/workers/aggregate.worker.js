@@ -238,7 +238,7 @@ const aggregateWorker = {
                     groupRows.forEach(item => {
                         aggregatedValues[item.rowIndex] = aggregatedValue;
 
-                        // Karena updateBulkCells tidak menerima null, gunakan string kosong sebagai pengganti
+                        // Karena updateCells tidak menerima null, gunakan string kosong sebagai pengganti
                         bulkUpdates.push({
                             row: item.rowIndex,
                             col: varIndex,  // Kolom relatif terhadap hasil agregasi

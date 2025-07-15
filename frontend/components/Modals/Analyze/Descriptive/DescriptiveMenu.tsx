@@ -32,19 +32,6 @@ const DescriptiveMenu: React.FC = () => {
                 {/* <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>
                     Crosstabs...
                 </MenubarItem> */}
-                {/* 
-                <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.Ratio)}>
-                    Ratio...
-                </MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.PPPlots)}>
-                    P-P Plots...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.QQPlots)}>
-                    Q-Q Plots...
-                </MenubarItem>
-                */}
             </MenubarContent>
         </MenubarMenu>
     );

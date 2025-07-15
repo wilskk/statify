@@ -7,11 +7,11 @@ import {
     excelStyleTextToColumns,
     getDelimiterCharacter,
     parsePreviewData
-} from "../utils/utils";
+} from "../importClipboard.utils";
 
 export const useImportClipboardProcessor = () => {
     const { setData } = useDataStore();
-    const { overwriteVariables } = useVariableStore();
+    const { overwriteAll } = useVariableStore();
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
     const processClipboardData = useCallback(async (
@@ -94,7 +94,7 @@ export const useImportClipboardProcessor = () => {
                     width: isNumeric ? 8 : Math.min(32767, Math.max(8, ...colData.map(v => v?.length || 0), variableName.length)),
                     decimals: isNumeric ? Math.min(maxDecimalPlaces, 16) : 0,
                     label: '',
-                    columns: 64,
+                    columns: 72,
                     align: isNumeric ? 'right' : 'left',
                     measure: isNumeric ? 'scale' : 'nominal',
                     role: 'input',
@@ -105,11 +105,7 @@ export const useImportClipboardProcessor = () => {
                 newVariables.push(newVar);
             }
             
-            // Bulk set data
-            setData(dataRows);
-
-            // Bulk set variables
-            overwriteVariables(newVariables);
+            await overwriteAll(newVariables, dataRows);
 
             return { headers, data: dataRows };
             
@@ -119,7 +115,7 @@ export const useImportClipboardProcessor = () => {
         } finally {
             setIsProcessing(false);
         }
-    }, [setData, overwriteVariables]);
+    }, [overwriteAll]);
 
     return {
         isProcessing,

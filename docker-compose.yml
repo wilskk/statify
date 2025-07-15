@@ -1,3 +1,4 @@
+version: "3.9"
 services:
   frontend:
     build:
@@ -16,6 +17,10 @@ services:
       - PORT=3001
       - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 10s
     depends_on:
       - backend
 

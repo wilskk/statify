@@ -66,6 +66,12 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
             column: false,
             total: false,
         },
+        residuals: {
+            unstandardized: false,
+            standardized: false,
+            adjustedStandardized: false,
+        },
+        nonintegerWeights: 'roundCell',
     });
     
     const { variables } = useVariableStore();
@@ -103,6 +109,12 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                 column: false,
                 total: false,
             },
+            residuals: {
+                unstandardized: false,
+                standardized: false,
+                adjustedStandardized: false,
+            },
+            nonintegerWeights: 'roundCell',
         });
     };
 
@@ -177,7 +189,7 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8">
+                    <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8" aria-label="help">
                         <HelpCircle size={18} />
                     </Button>
                 </div>

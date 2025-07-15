@@ -33,22 +33,17 @@ export function parseCsvWithWorker(
 
 export const importCsvDataService = {
     async resetStores(): Promise<void> {
-        // It's good practice to call getState() right when you need the action
-        // to ensure you're getting the latest state of the store if actions themselves
-        // don't directly cause re-renders in this non-React context.
+        // This function is now redundant as overwriteAll handles replacement.
+        // Kept for now to avoid breaking the hook, but will be removed from the call chain.
         await useDataStore.getState().resetData();
         await useVariableStore.getState().resetVariables();
     },
 
     async populateStores(processedData: ProcessedCsvData): Promise<void> {
         const { variables, data } = processedData;
-        const dataStore = useDataStore.getState();
         const variableStore = useVariableStore.getState();
 
-        // Bulk replace variables
-        await variableStore.overwriteVariables(variables);
-
-        // Bulk replace data
-        dataStore.setData(data);
+        // Atomically overwrite variables and data and persist them.
+        await variableStore.overwriteAll(variables, data);
     }
 }; 

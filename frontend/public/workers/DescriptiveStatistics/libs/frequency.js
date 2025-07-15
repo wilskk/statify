@@ -8,7 +8,7 @@
  * Menggunakan DescriptiveCalculator untuk beberapa statistik dasar (Komposisi).
  */
 /* global importScripts, isNumeric, DescriptiveCalculator */
-importScripts('./libs/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 
 class FrequencyCalculator {
     /**

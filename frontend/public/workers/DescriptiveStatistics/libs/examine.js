@@ -7,7 +7,7 @@
  * Menggunakan DescriptiveCalculator dan FrequencyCalculator secara internal (Komposisi).
  */
 /* global importScripts, isNumeric, DescriptiveCalculator, FrequencyCalculator */
-importScripts('./libs/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 // Calculator lain dimuat oleh manager.js
 
 // Fungsi bobot untuk M-Estimators didefinisikan di luar kelas untuk efisiensi

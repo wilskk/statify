@@ -1,164 +1,160 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
-import type { Variable } from '@/types/Variable';
-import type { 
-  FrequenciesAnalysisParams,
-  WorkerResult,
-  FrequencyTable,
-  DescriptiveStatistics
-} from '../types';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
-import { formatFrequencyTable, formatStatisticsTable } from '../utils';
+import { 
+    FrequenciesAnalysisParams, 
+    WorkerInput, 
+    WorkerResult, 
+    CombinedResults,
+    StatisticsOptions,
+    ChartOptions,
+    FrequencyTable,
+    DescriptiveStatistics,
+    FrequenciesResult
+} from '../types';
+import { processAndAddCharts, formatStatisticsTable, formatFrequencyTable } from '../utils';
+import { Variable } from '@/types/Variable';
 
-export interface FrequenciesAnalysisResult {
-  isLoading: boolean;
-  errorMsg: string | null;
-  runAnalysis: () => Promise<void>;
-  cancelAnalysis: () => void;
+/**
+ * Defines the return structure for the useFrequenciesAnalysis hook.
+ */
+interface FrequenciesAnalysisResult {
+    isLoading: boolean;
+    errorMsg: string | null;
+    runAnalysis: () => Promise<void>;
+    cancelAnalysis: () => void;
 }
 
-interface FrequenciesResult {
-  variable: Variable;
-  stats?: DescriptiveStatistics;
-  frequencyTable?: FrequencyTable;
-}
+/**
+ * A hook to perform frequency analysis.
+ * This hook encapsulates the logic for interacting with a web worker to calculate frequencies,
+ * handling state, processing results, and formatting them for display.
+ *
+ * @param params - The parameters for the analysis, including selected variables and options.
+ * @returns An object containing the analysis state and control functions.
+ */
+export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): FrequenciesAnalysisResult => {
+    const { selectedVariables, showFrequencyTables, showStatistics, statisticsOptions, showCharts, chartOptions, onClose } = params;
 
-export const useFrequenciesAnalysis = ({
-    selectedVariables,
-    statisticsOptions,
-    chartOptions,
-    onClose,
-    ...displayOptions
-}: FrequenciesAnalysisParams): FrequenciesAnalysisResult => {
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
+    const { data: allData, weights } = useAnalysisData();
+
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
-    const analysisData = useAnalysisData();
     const workerRef = useRef<Worker | null>(null);
     const resultsRef = useRef<FrequenciesResult[]>([]);
     const processedCountRef = useRef(0);
-
-    const cancelAnalysis = useCallback(() => {
-        if (workerRef.current) {
-            workerRef.current.terminate();
-            workerRef.current = null;
-        }
+    
+    const handleWorkerMessage = useCallback(async (event: MessageEvent<WorkerResult>, analyticId: number) => {
+        workerRef.current?.terminate();
+        workerRef.current = null;
         setIsLoading(false);
-    }, []);
 
-    useEffect(() => {
-        return () => cancelAnalysis();
-    }, [cancelAnalysis]);
+        const { success, results, error } = event.data;
+
+        if (success && results) {
+            if (showStatistics && results.statistics) {
+                const statsResults: FrequenciesResult[] = Object.entries(results.statistics).map(([varName, stats]) => ({
+                    variable: selectedVariables.find(v => v.name === varName)!,
+                    stats: stats
+                }));
+
+                if (statsResults.length > 0) {
+                    const statsTableObject = formatStatisticsTable(statsResults);
+                    if (statsTableObject && statsTableObject.tables) {
+                        await addStatistic(analyticId, {
+                            title: statsTableObject.tables[0]?.title || 'Statistics',
+                            output_data: JSON.stringify(statsTableObject),
+                            components: 'table',
+                            description: ''
+                        });
+                    }
+                }
+            }
+            if (showFrequencyTables && results.frequencyTables) {
+                for (const varName in results.frequencyTables) {
+                    const freqTableData = results.frequencyTables[varName];
+                    const freqTableObject = formatFrequencyTable(freqTableData);
+                    if (freqTableObject && freqTableObject.tables) {
+                        await addStatistic(analyticId, {
+                            title: freqTableObject.tables[0]?.title || 'Frequency Table',
+                            output_data: JSON.stringify(freqTableObject),
+                            components: 'table',
+                            description: ''
+                        });
+                    }
+                }
+            }
+            if (showCharts && chartOptions && results.frequencyTables) {
+                await processAndAddCharts(analyticId, results.frequencyTables, chartOptions);
+            }
+            onClose();
+        } else {
+            setErrorMsg(error || 'An unknown error occurred in the worker.');
+        }
+    }, [addStatistic, showFrequencyTables, showStatistics, onClose, selectedVariables, showCharts, chartOptions]);
 
     const runAnalysis = useCallback(async () => {
         if (selectedVariables.length === 0) {
             setErrorMsg("Please select at least one variable.");
             return;
         }
-        
-        if (!displayOptions.showFrequencyTables && !displayOptions.showStatistics) {
-            setErrorMsg("Please select at least one analysis option (Frequency Tables or Statistics).");
-            return;
-        }
 
         setIsLoading(true);
         setErrorMsg(null);
-
-        resultsRef.current = [];
-        processedCountRef.current = 0;
-        workerRef.current = new Worker('/workers/DescriptiveStatistics/manager.js');
-
-        selectedVariables.forEach(variable => {
-            workerRef.current?.postMessage({
-                analysisType: 'frequencies',
-                variable,
-                data: analysisData.data.map(row => row[variable.columnIndex]),
-                weights: analysisData.weights,
-                options: {
-                    displayFrequency: displayOptions.showFrequencyTables,
-                    displayDescriptive: displayOptions.showStatistics,
-                    statisticsOptions,
-                    chartOptions
-                }
-            });
+        
+        const logId = await addLog({ log: 'Frequencies' });
+        const analyticId = await addAnalytic(logId, {
+            title: 'Frequencies Analysis',
+            note: selectedVariables.map(v => v.name).join(', '),
         });
 
-        workerRef.current.onmessage = async (e: MessageEvent<any>) => {
-            const { status, results, error } = e.data;
-
-            if (status === 'success' && results) {
-                resultsRef.current.push(results);
-            } else {
-                setErrorMsg(prev => prev ? `${prev}\n${error}` : error);
-            }
-
-            processedCountRef.current++;
-            if (processedCountRef.current === selectedVariables.length) {
-                if (workerRef.current) {
-                    workerRef.current.terminate();
-                    workerRef.current = null;
-                }
-
-                if (resultsRef.current.length > 0) {
-                    const variableNameList = selectedVariables.map(v => v.name).join(", ");
-                    const logId = await addLog({ log: `FREQUENCIES VARIABLES=${variableNameList}` });
-                    const analyticId = await addAnalytic(logId, { title: "Frequencies" });
-
-                    if (displayOptions.showStatistics) {
-                        const statsTable = formatStatisticsTable(resultsRef.current);
-                        await addStatistic(analyticId, {
-                            title: "Statistics",
-                            output_data: JSON.stringify(statsTable),
-                            components: "Descriptive Statistics",
-                            description: "Descriptive statistics summary for the selected variables."
-                        });
-                    }
-
-                    if (displayOptions.showFrequencyTables) {
-                        for (const result of resultsRef.current) {
-                            if (result.frequencyTable) {
-                                const freqTable = formatFrequencyTable(result.frequencyTable);
-                                await addStatistic(analyticId, {
-                                    title: `Frequency Table: ${result.variable.label || result.variable.name}`,
-                                    output_data: JSON.stringify(freqTable),
-                                    components: "Frequency Table",
-                                    description: `Frequency distribution for ${result.variable.label || result.variable.name}.`
-                                });
-                            }
-                        }
-                    }
-                }
-                
-                setIsLoading(false);
-                onClose();
-            }
-        };
-
-        workerRef.current.onerror = (e) => {
-            setErrorMsg(e.message);
+        workerRef.current = new Worker(new URL('@/public/workers/DescriptiveStatistics/manager.js', import.meta.url));
+        workerRef.current.onmessage = (event: MessageEvent<WorkerResult>) => handleWorkerMessage(event, analyticId);
+        workerRef.current.onerror = (e: ErrorEvent) => {
+            console.error("Frequencies worker error:", e);
+            setErrorMsg(`An unexpected error occurred in the Frequencies worker: ${e.message}`);
             setIsLoading(false);
-            if (workerRef.current) {
+            if(workerRef.current) {
                 workerRef.current.terminate();
                 workerRef.current = null;
             }
         };
+        
+        const workerInput: WorkerInput = {
+            variableData: selectedVariables.map(variable => ({
+                variable,
+                data: allData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
+            })),
+            weightVariableData: weights,
+            options: {
+                displayFrequency: showFrequencyTables,
+                displayDescriptive: showStatistics,
+                statisticsOptions,
+                chartOptions
+            }
+        };
+        workerRef.current.postMessage(workerInput);
 
-    }, [
-        selectedVariables,
-        displayOptions,
-        statisticsOptions,
-        chartOptions,
-        analysisData,
-        addLog,
-        addAnalytic,
-        addStatistic,
-        onClose
-    ]);
+    }, [selectedVariables, allData, weights, showFrequencyTables, showStatistics, statisticsOptions, chartOptions, addLog, addAnalytic, handleWorkerMessage]);
 
-    return { 
-        isLoading, 
-        errorMsg, 
+    const cancelAnalysis = useCallback(() => {
+        if (workerRef.current) {
+            workerRef.current.terminate();
+            workerRef.current = null;
+            setIsLoading(false);
+            console.log("Frequencies analysis cancelled.");
+        }
+    }, []);
+
+    useEffect(() => {
+        return () => cancelAnalysis();
+    }, [cancelAnalysis]);
+
+    return {
+        isLoading,
+        errorMsg,
         runAnalysis,
-        cancelAnalysis
+        cancelAnalysis,
     };
 }; 

@@ -2,14 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
+import { transposeDataService } from "../services/transposeService";
 
 interface UseTransposeProps {
     onClose: () => void;
 }
 
 export const useTranspose = ({ onClose }: UseTransposeProps) => {
-    const { variables, overwriteVariables } = useVariableStore();
-    const { data, setData } = useDataStore();
+    const { variables, overwriteAll } = useVariableStore();
+    const { data } = useDataStore();
 
     const prepareVariablesWithTempId = useCallback((vars: Variable[]) => {
         return vars.map(v => ({
@@ -70,102 +71,26 @@ export const useTranspose = ({ onClose }: UseTransposeProps) => {
         }
     }, []);
 
-    const processVariableName = (name: string, existingVars: Variable[]): string => {
-        let processedName = name || "Var1";
-        if (!/^[a-zA-Z@#$]/.test(processedName)) {
-            processedName = 'var_' + processedName;
-        }
-        processedName = processedName
-            .replace(/[^a-zA-Z0-9@#$_.]/g, '_')
-            .replace(/\s+/g, '_')
-            .replace(/\.$/, '_');
-        if (processedName.length > 64) {
-            processedName = processedName.substring(0, 64);
-        }
-        const existingNames = existingVars.map(v => v.name.toLowerCase());
-        if (existingNames.includes(processedName.toLowerCase())) {
-            let counter = 1;
-            let uniqueName = processedName;
-            while (existingNames.includes(uniqueName.toLowerCase())) {
-                uniqueName = `${processedName.substring(0, Math.min(60, processedName.length))}_${counter}`;
-                counter++;
-            }
-            processedName = uniqueName;
-        }
-        return processedName;
-    };
-
     const handleOk = async () => {
         if (selectedVariables.length === 0) {
             onClose();
             return;
         }
+
         try {
-            const variablesToTranspose = selectedVariables;
             const nameVariable = nameVariables.length > 0 ? nameVariables[0] : null;
-            const transposedData: (string | number)[][] = [];
-            const newBaseVariables: Variable[] = [];
+            const sanitizedData = data.map(row => row.map(cell => cell ?? ""));
+            const { transposedData, finalTransposedVariables } = transposeDataService(sanitizedData, selectedVariables, nameVariable);
 
-            const caseLabelVariable: Variable = {
-                columnIndex: 0,
-                name: "case_lbl",
-                type: "STRING",
-                width: 64,
-                decimals: 0,
-                label: "Original Variable Name",
-                columns: 64,
-                align: "left",
-                measure: "nominal",
-                role: "input",
-                values: [],
-                missing: null
-            };
-            newBaseVariables.push(caseLabelVariable);
-
-            const caseCount = data.length;
-            const newColVariables: Variable[] = [];
-            for (let i = 0; i < caseCount; i++) {
-                let varName: string;
-                if (nameVariable && data[i] && data[i][nameVariable.columnIndex] !== undefined) {
-                    const nameValue = data[i][nameVariable.columnIndex];
-                    varName = (typeof nameValue === 'number') ? `V${nameValue}` : String(nameValue);
-                } else {
-                    varName = `Var${i + 1}`;
-                }
-                varName = processVariableName(varName, [...newBaseVariables, ...newColVariables]);
-                const newVar: Variable = {
-                    columnIndex: i + 1,
-                    name: varName,
-                    type: "NUMERIC",
-                    width: 8,
-                    decimals: 2,
-                    label: "",
-                    columns: 64,
-                    align: "right",
-                    measure: "scale",
-                    role: "input",
-                    values: [],
-                    missing: null
-                };
-                newColVariables.push(newVar);
+            if (transposedData.length > 0 || finalTransposedVariables.length > 0) {
+                await overwriteAll(finalTransposedVariables, transposedData);
             }
-            const finalTransposedVariables = [...newBaseVariables, ...newColVariables];
-
-            for (let varIdx = 0; varIdx < variablesToTranspose.length; varIdx++) {
-                const variable = variablesToTranspose[varIdx];
-                const newRow: (string | number)[] = [variable.name];
-                for (let caseIdx = 0; caseIdx < caseCount; caseIdx++) {
-                    newRow.push(data[caseIdx]?.[variable.columnIndex] ?? "");
-                }
-                transposedData.push(newRow);
-            }
-
-            await setData(transposedData);
-            await overwriteVariables(finalTransposedVariables);
+            
             onClose();
         } catch (error) {
             console.error("Transpose operation failed:", error);
-            onClose(); 
+            // Optionally, show an error message to the user
+            onClose();
         }
     };
 

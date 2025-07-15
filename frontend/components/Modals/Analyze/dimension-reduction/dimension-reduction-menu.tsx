@@ -8,7 +8,7 @@ import {
     MenubarSubContent,
     MenubarSubTrigger,
 } from "@/components/ui/menubar";
-import { ModalType, useModal } from "@/hooks/useModal";
+import {ModalType, useModal} from "@/hooks/useModal";
 
 const DimensionReductionMenu: React.FC = () => {
     const { openModal } = useModal();
@@ -17,14 +17,25 @@ const DimensionReductionMenu: React.FC = () => {
         <MenubarSub>
             <MenubarSubTrigger>Dimension Reduction</MenubarSubTrigger>
             <MenubarSubContent>
-                <MenubarItem disabled>
+                <MenubarItem
+                    disabled={true}
+                    onClick={() => openModal(ModalType.ModalFactor)}
+                >
                     Factor
                 </MenubarItem>
-                <MenubarItem disabled>
+                <MenubarItem
+                    disabled={true}
+                    onClick={() =>
+                        openModal(ModalType.ModalCorrespondenceAnalysis)
+                    }
+                >
                     Correspondence Analysis
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem disabled>
+                <MenubarItem
+                    disabled={true}
+                    onClick={() => openModal(ModalType.ModalDROptimalScaling)}
+                >
                     Optimal Scaling
                 </MenubarItem>
             </MenubarSubContent>

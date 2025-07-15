@@ -270,9 +270,9 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                     onDrop={handleDrop}
                 >
                     <FileSpreadsheet size={isMobile ? 28 : 32} className={`mb-3 text-muted-foreground ${error ? 'text-destructive/80' : ''}`} />
-                    <p className={`text-center font-medium mb-1 ${isMobile ? 'text-sm' : 'text-base'} text-foreground`}>
+                    <label htmlFor="excel-file-input-content-step" className={`text-center font-medium mb-1 ${isMobile ? 'text-sm' : 'text-base'} text-foreground cursor-pointer`}>
                         Click to select an Excel file
-                    </p>
+                    </label>
                     <p className={`text-xs text-muted-foreground ${error ? 'text-destructive/70' : ''}`}>
                         {selectedFile
                             ? `${(selectedFile.size / 1024).toFixed(1)} KB`
@@ -299,7 +299,7 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                                 </p>
                             </div>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => onFileSelect(null)} className="text-muted-foreground hover:text-destructive h-7 w-7 flex-shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => onFileSelect(null)} className="text-muted-foreground hover:text-destructive h-7 w-7 flex-shrink-0" aria-label="Remove file">
                             <X size={16} />
                         </Button>
                     </div>
@@ -345,7 +345,7 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                             className={cn(tourActive && currentStep === 1 && "focus:ring-primary")}
                             {...(isLoading ? { loading: true } : {})}
                         >
-                            {isLoading && <Loader2 className="mr-2 animate-spin" size={16} />}
+                            {isLoading && <Loader2 className="mr-2 animate-spin" size={16} data-testid="loader" />}
                             Continue
                         </Button>
                         <ActiveElementHighlight active={tourActive && currentStep === 1} />

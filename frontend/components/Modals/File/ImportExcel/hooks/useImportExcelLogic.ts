@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMobile } from "@/hooks/useMobile";
-import { ImportExcelStage, UseImportExcelLogicProps, UseImportExcelLogicOutput } from "../types";
+import { ImportExcelStage, UseImportExcelLogicProps, UseImportExcelLogicOutput, SheetData } from "../types";
 import { useExcelWorker } from "./useExcelWorker";
 
 export const useImportExcelLogic = ({
     onClose,
 }: UseImportExcelLogicProps): UseImportExcelLogicOutput => {
     const [file, setFile] = useState<File | null>(null);
-    const [parsedSheets, setParsedSheets] = useState<any[] | null>(null);
+    const [parsedSheets, setParsedSheets] = useState<SheetData[] | null>(null);
     const [fileName, setFileName] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -87,5 +87,6 @@ export const useImportExcelLogic = ({
         setIsLoading,
         setError,
         setStage,
+        setParsedSheets,
     };
 }; 

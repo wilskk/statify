@@ -1,0 +1,80 @@
+"use client";
+
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { File, Database, Loader2 } from 'lucide-react';
+import { useExampleDatasetLogic } from './hooks/useExampleDatasetLogic';
+import { exampleFiles } from './example-datasets';
+import { BaseModalProps } from '@/types/modalTypes';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+
+const renderFileList = (
+    files: { name: string; path: string }[],
+    handleFileClick: (path: string) => void,
+    isLoading: boolean
+) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+        {files.map((file) => (
+            <Button
+                key={file.path}
+                variant="outline"
+                className="w-full justify-start text-left h-auto py-3"
+                onClick={() => handleFileClick(file.path)}
+                disabled={isLoading}
+            >
+                <File className="mr-3 h-5 w-5 flex-shrink-0" />
+                <span className="truncate text-sm">{file.name}</span>
+            </Button>
+        ))}
+    </div>
+);
+
+export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
+    const { isLoading, error, loadDataset } = useExampleDatasetLogic({ onClose });
+
+    return (
+        <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
+                <Database size={18} className="mr-2.5 flex-shrink-0 text-primary" />
+                <div className="flex-grow overflow-hidden">
+                    <h3 className="font-semibold text-lg text-popover-foreground">
+                        Example Data
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        Select an example dataset (.sav) to get started with your analysis.
+                    </p>
+                </div>
+            </div>
+
+            {/* Content */}
+            <div className="relative p-6 flex-grow overflow-y-auto">
+                 {isLoading && (
+                    <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-10">
+                        <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+                    </div>
+                )}
+                {error && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
+                
+                <h4 className="text-base font-semibold text-popover-foreground mb-1">SPSS Datasets (.sav)</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                    Select one of the example datasets to start your analysis.
+                </p>
+                {renderFileList(exampleFiles.sav, loadDataset, isLoading)}
+            </div>
+
+            {/* Footer */}
+             <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
+                <Button variant="outline" onClick={onClose} disabled={isLoading}>
+                    Cancel
+                </Button>
+            </div>
+        </div>
+    );
+};
