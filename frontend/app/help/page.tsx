@@ -19,7 +19,7 @@ export default function HelpPage() {
 	);
 	const [mounted, setMounted] = useState(false);
 
-	// Untuk animasi mounting
+	// For mounting animation
 	useEffect(() => {
 		setMounted(true);
 	}, []);
@@ -27,17 +27,17 @@ export default function HelpPage() {
 	const sectionsData: SectionItem[] = [
 		{
 			key: "getting-started",
-			label: "Panduan Memulai",
+			label: "Getting Started",
 			content: <GettingStarted />
 		},
 		{
 			key: 'statistics-guide',
-			label: 'Panduan Statistik',
+			label: 'Statistics Guide',
 			content: <StatisticsGuide />,
 			children: [
 				{
 					key: 'descriptive-stats',
-					label: 'Statistik Deskriptif',
+					label: 'Descriptive Statistics',
 					parentKey: 'statistics-guide',
 					children: [
 						{ key: 'frequencies', label: 'Frequencies', parentKey: 'descriptive-stats', childContent: 'frequencies' },
@@ -50,12 +50,12 @@ export default function HelpPage() {
 		},
 		{
 			key: "faq",
-			label: "Pertanyaan Umum",
+			label: "FAQs",
 			content: <FAQ />
 		},
 		{
 			key: "feedback",
-			label: "Kirim Masukan",
+			label: "Send Feedback",
 			content: <Feedback />
 		},
 	];
@@ -125,15 +125,22 @@ export default function HelpPage() {
 			let parentKey = item.parentKey;
 			let topLevelKey = item.key; // Default to self if no parent
 			
-			while(parentKey) {
-				const parent = findItem(sectionsData, parentKey);
-				if (parent) {
-					topLevelKey = parent.key;
-					parentKey = parent.parentKey;
-				} else {
-					break; // Should not happen in well-formed data
+			// Make sure all parent sections are expanded
+			if (parentKey) {
+				const newExpandedKeys = new Set(expandedKeys);
+				while(parentKey) {
+					newExpandedKeys.add(parentKey);
+					const parent = findItem(sectionsData, parentKey);
+					if (parent) {
+						topLevelKey = parent.key;
+						parentKey = parent.parentKey;
+					} else {
+						break;
+					}
 				}
+				setExpandedKeys(newExpandedKeys);
 			}
+			
 			setSelected(topLevelKey);
 		}
 	};
@@ -141,7 +148,7 @@ export default function HelpPage() {
 	const sectionsToDisplayInSidebar = search ? filteredSectionsResult : sectionsData;
 
 	return (
-		<div className={`bg-background min-h-screen transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+		<div className={`bg-background h-screen overflow-hidden transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
 			<HelpContent
 				sections={sectionsData}
 				selectedSectionKey={selected}

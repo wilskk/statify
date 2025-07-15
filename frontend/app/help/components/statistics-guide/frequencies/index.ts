@@ -1,0 +1,1 @@
+export { Frequencies } from '../descriptive/Frequencies'; 
