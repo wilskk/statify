@@ -16,6 +16,8 @@ const createDefaultOptions = () => ({
     row: false,
     column: false,
     total: false,
+    hideSmallCounts: false,
+    hideSmallCountsThreshold: 5,
   },
   residuals: {
     unstandardized: false,
@@ -48,13 +50,7 @@ describe('CellsTab Component', () => {
     expect(screen.queryByText('Noninteger Weights')).not.toBeInTheDocument();
   });
 
-  it('renders the "Noninteger Weights" section when a weight variable is active', () => {
-    mockedUseMetaStore.mockReturnValue({ meta: { weight: { name: 'weightVar' } } });
-    const setOptions = jest.fn();
-    render(<CellsTab options={createDefaultOptions()} setOptions={setOptions} />);
-
-    expect(screen.getByText('Noninteger Weights')).toBeInTheDocument();
-  });
+  // Noninteger Weights section telah dihapus, sehingga tidak perlu diuji lagi
 
   it('calls setOptions when the "Observed" checkbox is toggled', async () => {
     mockedUseMetaStore.mockReturnValue({ meta: { weight: null } });

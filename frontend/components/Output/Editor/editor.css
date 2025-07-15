@@ -87,8 +87,17 @@
   margin: 2rem 0;
 }
 
-/* Scrollable wrapper around editor to limit height */
+/* Wrapper around EditorContent to limit dimensions while still ensuring a
+   comfortable minimum size. The scrollbars appear once content exceeds the
+   maximum height or width. */
 .tiptap-wrapper {
-  max-height: 24rem; /* 384px ~ 6rem x 4 */
-  overflow-y: auto;
+  min-height: 6rem;  /* ~96px so the box is visible when empty */
+  max-height: 24rem; /* 384px */
+  overflow: auto;    /* enables both horizontal & vertical scroll */
+}
+
+/* Remove native focus outline (black border) from the editable area; the
+   outer container already provides visual focus via its border. */
+.tiptap:focus {
+  outline: none;
 } 

@@ -66,13 +66,15 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
             row: false,
             column: false,
             total: false,
+            hideSmallCounts: false,
+            hideSmallCountsThreshold: 5,
         },
         residuals: {
             unstandardized: false,
             standardized: false,
             adjustedStandardized: false,
         },
-        nonintegerWeights: 'roundCell',
+        nonintegerWeights: 'noAdjustment',
     });
     
     const { variables } = useVariableStore();
@@ -140,13 +142,15 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                 row: false,
                 column: false,
                 total: false,
+                hideSmallCounts: false,
+                hideSmallCountsThreshold: 5,
             },
             residuals: {
                 unstandardized: false,
                 standardized: false,
                 adjustedStandardized: false,
             },
-            nonintegerWeights: 'roundCell',
+            nonintegerWeights: 'noAdjustment',
         });
 
         // Clear persisted data

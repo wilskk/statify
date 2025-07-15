@@ -151,18 +151,16 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
 
                 <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="w-full flex flex-col flex-grow overflow-hidden">
                     <div className="border-b border-border flex-shrink-0">
-                        <TabsList className="bg-muted rounded-none h-9 p-0">
+                        <TabsList>
                             <TabsTrigger
                                 id="variables-tab-trigger"
                                 value="variables"
-                                className="px-4 h-8 rounded-none text-sm"
                             >
                                 Variables
                             </TabsTrigger>
                             <TabsTrigger
                                 id="options-tab-trigger"
                                 value="options"
-                                className="px-4 h-8 rounded-none text-sm"
                             >
                                 Options
                             </TabsTrigger>

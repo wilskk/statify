@@ -15,14 +15,20 @@ const PlotsTab: FC<PlotsTabProps> = ({
     showNormalityPlots: _showNormalityPlots,
     setShowNormalityPlots: _setShowNormalityPlots,
     factorVariablesCount: _factorVariablesCount,
-    tourActive = false,
-    currentStep = 0,
-    tourSteps = [],
+    tourActive: _tourActive = false,
+    currentStep: _currentStep = 0,
+    tourSteps: _tourSteps = [],
 }) => {
     
-    // Boxplot options are always enabled; user can configure before selecting variables.
+    // Silence unused prop warnings
+    void _showNormalityPlots;
+    void _setShowNormalityPlots;
+    void _factorVariablesCount;
+    void _tourActive;
+    void _currentStep;
+    void _tourSteps;
 
-    void _factorVariablesCount; // intentional no-op to acknowledge unused prop
+    // Boxplot options are always enabled; user can configure before selecting variables.
 
     return (
         <div className="space-y-6">

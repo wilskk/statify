@@ -161,7 +161,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-xs h-7"
+                                className="h-7 text-sm"
                                 onClick={handleFunctionClick}
                     disabled={highlightedVariable?.source !== "aggregated"}
                     id="aggregate-function-button"
@@ -171,7 +171,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-xs h-7"
+                                className="h-7 text-sm"
                                 onClick={handleNameLabelClick}
                     disabled={highlightedVariable?.source !== "aggregated"}
                     id="aggregate-name-label-button"
@@ -189,18 +189,18 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         <div className="flex items-center gap-1">
                             <Checkbox 
                                 id="number-cases" 
-                                className="w-3 h-3"
+                                className="mr-2"
                                 checked={addNumberOfCases}
                                 onCheckedChange={(checked) => setAddNumberOfCases(!!checked)}
                             />
-                <Label htmlFor="number-cases" className="text-xs">Number of cases</Label>
+                <Label htmlFor="number-cases" className="text-sm">Number of cases</Label>
                         </div>
                         <div className="flex items-center gap-1">
-                <Label className={cn("text-xs", !addNumberOfCases && "text-muted-foreground/50")}>Name:</Label>
+                <Label className={cn("text-sm", !addNumberOfCases && "text-muted-foreground/50")}>Name:</Label>
                             <Input
                                 value={breakName}
                                 onChange={(e) => setBreakName(e.target.value)}
-                                className="h-6 text-xs w-24"
+                                className="h-6 text-sm w-24"
                                 disabled={!addNumberOfCases}
                             />
                         </div>

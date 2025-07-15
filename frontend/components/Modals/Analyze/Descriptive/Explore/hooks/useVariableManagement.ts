@@ -63,7 +63,13 @@ export const useVariableManagement = (): UseVariableManagementResult => {
     }, [allVariables, dependentVariables, factorVariables, labelVariable, getInitialAvailable]);
 
     const moveToDependentVariables = useCallback((variable: Variable, targetIndex?: number) => {
+        // Tambahkan filter: hanya tipe numerik yang diizinkan
+        const numericTypes: Variable['type'][] = ["NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "RESTRICTED_NUMERIC"];
         if (!variable.tempId) return;
+        if (variable.type && !numericTypes.includes(variable.type)) {
+            console.warn(`[Explore] Variable '${variable.name}' bertipe '${variable.type}' bukan numerik; abaikan.`);
+            return; // Tolak variabel non-numerik
+        }
         setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setDependentVariables(prev => {
             if (prev.some(v => v.tempId === variable.tempId)) return prev;

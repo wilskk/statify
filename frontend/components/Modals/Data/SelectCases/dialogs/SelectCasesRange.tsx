@@ -17,7 +17,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+// Help icon removed
 
 interface RangeResult {
     firstCase?: string;
@@ -84,34 +84,22 @@ const SelectCasesRange: FC<SelectCasesRangeProps> = ({
         >
             <div className="px-3 py-2 flex-shrink-0">
                 <DialogHeader className="p-0">
-                    <DialogTitle className="text-sm font-semibold flex items-center">
+                    <DialogTitle className="text-base font-semibold flex items-center">
                         <span>Select Cases: Range</span>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
-                                        <HelpCircle size={14} />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">
-                                    <p className="text-xs">Define a range of cases to select by specifying first and last case numbers.</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
                     </DialogTitle>
                 </DialogHeader>
             </div>
             <Separator className="flex-shrink-0" />
             <div className="p-3 flex-grow overflow-y-auto">
                 <div className="border rounded-md p-3 bg-card/50">
-                    <Label className="text-xs font-medium mb-2 block">Case Range</Label>
+                    <Label className="text-sm font-medium mb-2 block">Case Range</Label>
 
                     <div className="space-y-3 pl-1">
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="first-case" className="text-xs min-w-16">First Case:</Label>
+                            <Label htmlFor="first-case" className="text-sm min-w-16">First Case:</Label>
                             <Input
                                 id="first-case"
-                                className="w-24 h-7 text-xs"
+                                className="w-24 h-7 text-sm"
                                 value={firstCase}
                                 onChange={(e) => setFirstCase(e.target.value)}
                                 placeholder="1"
@@ -120,10 +108,10 @@ const SelectCasesRange: FC<SelectCasesRangeProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="last-case" className="text-xs min-w-16">Last Case:</Label>
+                            <Label htmlFor="last-case" className="text-sm min-w-16">Last Case:</Label>
                             <Input
                                 id="last-case"
-                                className="w-24 h-7 text-xs"
+                                className="w-24 h-7 text-sm"
                                 value={lastCase}
                                 onChange={(e) => setLastCase(e.target.value)}
                                 placeholder="Last"
@@ -137,12 +125,12 @@ const SelectCasesRange: FC<SelectCasesRangeProps> = ({
             <DialogFooter className="px-3 py-2 flex-shrink-0">
                 {validationError && (
                     <div className="w-full mb-1">
-                        <p className="text-xs text-destructive">{validationError}</p>
+                        <p className="text-sm text-destructive">{validationError}</p>
                     </div>
                 )}
                 <div className="flex gap-2 ml-auto">
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onClose}>Cancel</Button>
-                    <Button size="sm" className="h-7 text-xs" onClick={handleContinue}>Continue</Button>
+                    <Button variant="outline" size="sm" className="h-7 text-sm" onClick={onClose}>Cancel</Button>
+                    <Button size="sm" className="h-7 text-sm" onClick={handleContinue}>Continue</Button>
                 </div>
             </DialogFooter>
         </DialogContent>

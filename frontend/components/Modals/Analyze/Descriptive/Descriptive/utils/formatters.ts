@@ -1,6 +1,6 @@
 import { DescriptiveStatisticsOptions, DisplayOrderType, DescriptiveResult, DescriptiveStats } from '../types';
 import { spssDateTypes } from '@/types/Variable';
-import { spssSecondsToDateString } from '@/utils/spssDateConverter';
+import { spssSecondsToDateString } from '@/lib/spssDateConverter';
 import type { TableRow, TableColumnHeader } from '../types';
 
 export interface DescriptiveTable {

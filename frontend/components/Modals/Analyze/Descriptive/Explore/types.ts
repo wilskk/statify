@@ -1,6 +1,4 @@
-import { Dispatch, SetStateAction } from 'react';
 import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
 import { TourStep } from './hooks/useTourGuide';
 import { UseVariableManagementResult } from './hooks/useVariableManagement';
 import { UseStatisticsSettingsResult } from './hooks/useStatisticsSettings';

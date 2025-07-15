@@ -1,32 +1,12 @@
-import { ChartOptions, FrequencyTable } from '../types';
-import { useResultStore } from '@/stores/useResultStore';
+import { ChartOptions, FrequencyTable } from "../types";
+import { useResultStore } from "@/stores/useResultStore";
 import { ChartService } from "@/services/chart/ChartService";
 
-// Helper function to get the appropriate chart title
-const getChartTitle = (type: string | null, varName: string): string => {
-    switch(type) {
-        case 'barCharts': return `Bar Chart for ${varName}`;
-        case 'pieCharts': return `Pie Chart for ${varName}`;
-        case 'histograms': return `Histogram for ${varName}`;
-        default: return `Chart for ${varName}`;
-    }
-};
-
-// Helper function to get the chart component type name
-const getChartComponentType = (type: string | null): string => {
-    switch(type) {
-        case 'barCharts': return 'Bar';
-        case 'pieCharts': return 'Pie';
-        case 'histograms': return 'Histogram';
-        default: return 'Bar';
-    }
-};
-
-// Helper function to map Frequencies chart option type to ChartService chart type
-const chartTypeMap: Record<NonNullable<ChartOptions["type"]>, string> = {
-    barCharts: "Vertical Bar Chart",
-    pieCharts: "Pie Chart",
-    histograms: "Histogram", // Currently unused – falls back to legacy handling below
+// Map Frequencies modal chart type → (ChartService chart type, component name)
+const chartTypeMeta: Record<NonNullable<ChartOptions["type"]>, { chartServiceType: string; component: string }> = {
+  barCharts: { chartServiceType: "Vertical Bar Chart", component: "Bar" },
+  pieCharts: { chartServiceType: "Pie Chart", component: "Pie" },
+  histograms: { chartServiceType: "Histogram", component: "Histogram" },
 };
 
 /**
@@ -60,13 +40,15 @@ export const processAndAddCharts = async (
             ]
         };
 
-        const chartTitle = getChartTitle(chartOptions.type, table.title || varName);
-        const chartComponent = getChartComponentType(chartOptions.type);
+        // Re-use the table title (or variable name) for the chart title so it matches
+        // frequency table output (avoids redundancy like "Bar Chart for …").
+        const chartTitle = table.title || varName;
+        const chartComponent = chartOptions.type ? chartTypeMeta[chartOptions.type].component : "Bar";
 
         let outputData: any;
         try {
             if (chartOptions.type && chartOptions.type !== "histograms") {
-                const chartType = chartTypeMap[chartOptions.type];
+                const chartType = chartTypeMeta[chartOptions.type].chartServiceType;
                 const processedChartData = table.rows.map(row => ({
                     category: row.label,
                     value: chartOptions.values === 'percentages' ? (row.validPercent ?? row.percent ?? 0) : row.frequency,
@@ -92,7 +74,7 @@ export const processAndAddCharts = async (
             outputData = { data: chartData, options: {} };
         }
 
-        const key = chartOptions.type || 'barCharts';
+        const key = chartOptions.type || "barCharts";
         chartsByType[key] = chartsByType[key] || [];
         chartsByType[key].push({ title: chartTitle, output: outputData, component: chartComponent });
     }

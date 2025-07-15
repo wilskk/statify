@@ -1,3 +1,18 @@
+/* -------------------------------------------------------------------------------------------------
+ * Descriptive Modal
+ *
+ * Komponen ini menampilkan dialog/layar "Descriptives" untuk melakukan analisis statistik deskriptif.
+ * Pengguna dapat:
+ *   1. Memilih variabel yang akan dianalisis (tab "Variables").
+ *   2. Mengatur statistik apa saja yang ingin ditampilkan (tab "Statistics").
+ *   3. Menjalankan proses kalkulasi atau mereset pilihan.
+ *
+ * Catatan:
+ * - Komponen ini bersifat agnostik terhadap container, sehingga dapat dirender di dalam <Dialog />
+ *   maupun di sidebar. Lihat properti `containerType`.
+ * - State form disimpan di IndexedDB (lihat hooks/useIndexedDB) agar pilihan user bertahan
+ *   meskipun jendela modal ditutup.
+ * ------------------------------------------------------------------------------------------------- */
 "use client";
 
 import React, { FC, useState, useCallback, useEffect, useMemo } from "react";
@@ -73,7 +88,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         onClose
     });
 
-    // Add tour hook
+    // Memoized kontrol tab yang dipakai oleh tour guide untuk berpindah tab secara terprogram
     const tabControl = useMemo((): TabControlProps => ({
         setActiveTab: (tab: string) => {
             setActiveTab(tab as TabType);
@@ -148,7 +163,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
     }, [selectedVariables, displayStatistics, displayOrder, saveStandardized]);
 
     const handleTabChange = useCallback((value: string) => {
-        if (value === 'variables' || value === 'statistics') {
+        if (value === "variables" || value === "statistics") {
             setActiveTab(value);
         }
     }, [setActiveTab]);

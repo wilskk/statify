@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { ChevronRight, ChevronDown, Trash2 } from "lucide-react";
+import { ChevronRight, ChevronDown, Trash2, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useResultStore } from "@/stores/useResultStore";
@@ -119,6 +119,20 @@ const SidebarMenuItem: React.FC<{
         </AlertDialog>
     );
 
+    // For collapsed sidebar mode, render a simplified version
+    if (!isOpen) {
+        if (item.type === 'analytic') {
+            return (
+                <div className="flex justify-center py-2 hover:bg-accent rounded-md cursor-pointer">
+                    <a href={item.url || `#output-${item.id}`} title={item.title}>
+                        <BarChart2 size={20} />
+                    </a>
+                </div>
+            );
+        }
+        return null; // Don't render non-analytic items in collapsed mode
+    }
+
     return (
         <div className="flex flex-col group">
             {hasChildren ? (
@@ -136,7 +150,7 @@ const SidebarMenuItem: React.FC<{
                             {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         </span>
                     </button>
-                    {isDeletable && isOpen && (
+                    {isDeletable && (
                         <div className="flex-shrink-0 ml-1">
                             {renderDeleteButton()}
                         </div>
@@ -154,7 +168,7 @@ const SidebarMenuItem: React.FC<{
                     >
                         {item.title}
                     </a>
-                    {isDeletable && isOpen && (
+                    {isDeletable && (
                         <div className="flex-shrink-0 ml-1">
                             {renderDeleteButton()}
                         </div>
@@ -162,7 +176,7 @@ const SidebarMenuItem: React.FC<{
                 </div>
             )}
             {/* Nested items rendered outside the clickable area */}
-            {open && isOpen && (
+            {open && (
                 <div className="ml-2">
                     {item.items!.map((child, idx) => (
                         <SidebarMenuItem
@@ -194,12 +208,15 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
         log.analytics.forEach((analytic) => {
             if (!analytic.statistics || analytic.statistics.length === 0) return;
 
+            // Link the icon in collapsed mode to the first statistic of this analytic
+            const firstStatisticId = analytic.statistics[0]?.id;
             const analyticItem: SidebarItem = {
                 id: analytic.id,
                 analyticId: analytic.id,
                 title: analytic.title,
                 type: 'analytic',
-                items: []
+                url: firstStatisticId ? `#output-${analytic.id}-${firstStatisticId}` : undefined,
+                items: [],
             };
 
             const componentsMap = analytic.statistics.reduce((acc: Record<string, Statistic[]>, stat) => {
@@ -246,7 +263,8 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
 
 const Sidebar: React.FC = () => {
     const [isOpen, setIsOpen] = useState(true);
-    const { logs, deleteLog, deleteAnalytic, deleteStatistic } = useResultStore();
+    const { logs, deleteLog, deleteAnalytic, deleteStatistic, clearAll } = useResultStore();
+    const { toast } = useToast();
     const [sidebarData, setSidebarData] = useState<SidebarItem[]>([]);
 
     useEffect(() => {
@@ -257,13 +275,67 @@ const Sidebar: React.FC = () => {
     return (
         <div
             className={cn(
-                "bg-background border-r border-border transition-all duration-300 flex flex-col h-full",
-                isOpen ? "w-64" : "w-20"
+                "bg-background border-r border-border transition-all duration-300 flex flex-col h-full overflow-y-auto",
+                isOpen ? "w-64" : "w-14"
             )}
         >
-            <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
+            <div className="flex items-center p-3 border-b border-border flex-shrink-0">
                 {isOpen && <h1 className="text-md font-semibold truncate">Result</h1>}
-                <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => setIsOpen(!isOpen)}>
+
+                {/* Trash icon to clear all results (only visible when sidebar is expanded) */}
+                {isOpen && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn("flex-shrink-0 ml-2 text-muted-foreground hover:text-destructive")}
+                                disabled={logs.length === 0}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <Trash2 size={14} />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="sm:max-w-[425px] bg-popover text-popover-foreground border-border rounded-lg p-4 shadow-lg">
+                            <AlertDialogHeader className="pb-2">
+                                <AlertDialogTitle className="text-lg font-semibold text-popover-foreground">Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-sm text-muted-foreground pt-1">
+                                    This action cannot be undone. This will permanently delete all results including logs, analytics, and statistics.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="pt-3 sm:justify-end">
+                                <AlertDialogCancel className="border border-border hover:bg-accent text-accent-foreground h-8 px-3 text-sm">Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={async () => {
+                                        try {
+                                            await clearAll();
+                                            toast({
+                                                title: "All results deleted",
+                                                description: "All result logs, analytics, and statistics have been removed.",
+                                            });
+                                        } catch (error: any) {
+                                            toast({
+                                                variant: "destructive",
+                                                title: "Error deleting results",
+                                                description: error?.message || "Failed to delete results.",
+                                            });
+                                        }
+                                    }}
+                                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-8 px-3 text-sm"
+                                >
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+
+                {/* Sidebar collapse / expand toggle */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("flex-shrink-0", isOpen ? "ml-auto" : "mx-auto")}
+                    onClick={() => setIsOpen(!isOpen)}>
                     <ChevronRight
                         className={cn(
                             "w-4 h-4 transform transition-transform",
@@ -272,8 +344,8 @@ const Sidebar: React.FC = () => {
                     />
                 </Button>
             </div>
-            <div className="overflow-y-auto flex-grow">
-                <nav className="p-2">
+            <div className={cn("overflow-y-auto flex-grow", { "overflow-x-auto": isOpen })}>
+                <nav className={cn("p-2", { "flex flex-col items-center": !isOpen })}>
                     {sidebarData.map((item, index) => (
                         <SidebarMenuItem
                             key={generateKey(item, index)}

@@ -253,6 +253,13 @@ class FrequencyCalculator {
             Percentiles: percentileObj,
         };
 
+        // === Add Interquartile Range (IQR) ===
+        const q1 = percentileObj['25'];
+        const q3 = percentileObj['75'];
+        if (q1 !== undefined && q1 !== null && q3 !== undefined && q3 !== null) {
+            allStatistics.IQR = q3 - q1;
+        }
+
         // Display rounding now handled in worker.js files
 
         const finalResult = {

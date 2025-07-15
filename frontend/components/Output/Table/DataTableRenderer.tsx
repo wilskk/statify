@@ -223,9 +223,9 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 const allLeafCols = getLeafColumnKeys(columnHeaders);
                 const leafCols = allLeafCols.slice(rowHeaderCount);
                 return (
+                    <React.Fragment key={tableIndex}>
                     <table
-                        key={tableIndex}
-                        className="border-collapse border border-border text-sm mb-3"
+                        className="border-collapse border border-border text-sm mb-4 rounded-md"
                     >
                         <thead>
                         <tr>
@@ -259,61 +259,36 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                             );
                         })}
                         </tbody>
+
+                        {/* Footer rendered inside the table so it scrolls together */}
                         {table.footer && (
                             <tfoot>
                                 {(() => {
-                                    const totalColumns = rowHeaderCount + leafCols.length;
-                                    // If footer is a string, span the entire width
-                                    if (typeof table.footer === "string") {
-                                        return (
-                                            <tr>
-                                                <td
-                                                    colSpan={totalColumns}
-                                                    className="border border-border px-2 py-1 text-left text-sm"
-                                                >
-                                                    {renderContent(table.footer)}
-                                                </td>
-                                            </tr>
-                                        );
-                                    }
-                                    // If footer is an array of strings
-                                    if (Array.isArray(table.footer)) {
-                                        let cells: string[] = table.footer;
-                                        if (cells.length === leafCols.length) {
-                                            // prepend empty cells to align with row headers
-                                            cells = Array(rowHeaderCount).fill("").concat(cells);
-                                        }
-                                        if (cells.length !== totalColumns) {
-                                            // Fallback: merge cells into one if counts mismatch
-                                            return (
-                                                <tr>
-                                                    <td
-                                                        colSpan={totalColumns}
-                                                        className="border border-border px-2 py-1 text-left text-sm"
-                                                    >
-                                                        {renderContent(cells.join(" "))}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        }
-                                        return (
-                                            <tr>
-                                                {cells.map((c, idx) => (
-                                                    <td
-                                                        key={`footer-${idx}`}
-                                                        className="border border-border px-2 py-1 text-left text-sm"
-                                                    >
-                                                        {renderContent(c)}
-                                                    </td>
+                                    // Normalize footer lines
+                                    const lines: string[] =
+                                        typeof table.footer === "string"
+                                            ? table.footer.split("\n")
+                                            : Array.isArray(table.footer)
+                                            ? table.footer
+                                            : [];
+
+                                    return (
+                                        <tr>
+                                            <td
+                                                colSpan={rowHeaderCount + leafCols.length}
+                                                className="border-0 border-t border-border px-3 py-2 text-left text-xs text-muted-foreground leading-5"
+                                            >
+                                                {lines.map((line, idx) => (
+                                                    <p key={`footer-line-${idx}`}>{renderContent(line)}</p>
                                                 ))}
-                                            </tr>
-                                        );
-                                    }
-                                    return null;
+                                            </td>
+                                        </tr>
+                                    );
                                 })()}
                             </tfoot>
                         )}
                     </table>
+                    </React.Fragment>
                 );
             })}
         </div>

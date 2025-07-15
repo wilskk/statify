@@ -17,13 +17,7 @@ import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+// Help icon and tooltip imports removed
 
 interface MissingValuesDialogProps {
     open: boolean;
@@ -340,20 +334,8 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
             >
                 <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
                     <DialogHeader className="p-0">
-                        <DialogTitle className="text-sm font-semibold flex items-center">
-                            <span>Missing Values</span>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
-                                            <HelpCircle size={14} />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p className="text-xs">Specify which values should be treated as missing data.</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                        <DialogTitle className="text-base font-semibold">
+                            Missing Values
                         </DialogTitle>
                     </DialogHeader>
                 </div>
@@ -453,14 +435,14 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            className="h-7 text-xs" 
+                            className="h-7 text-sm" 
                             onClick={() => onOpenChange(false)}
                         >
                             Cancel
                         </Button>
                         <Button 
                             size="sm" 
-                            className="h-7 text-xs bg-primary hover:bg-primary/90" 
+                            className="h-7 text-sm bg-primary hover:bg-primary/90" 
                             onClick={handleSave}
                         >
                             OK

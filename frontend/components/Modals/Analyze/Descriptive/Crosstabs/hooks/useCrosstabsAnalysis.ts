@@ -6,6 +6,69 @@ import { CrosstabsAnalysisParams } from '../types';
 import { formatCaseProcessingSummary, formatCrosstabulationTable } from '../utils/formatters';
 import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
 import type { Variable } from '@/types/Variable';
+import type { NonintegerWeightsType } from '../types';
+
+// === Helper: Build SPSS-style command log =================================
+const buildCrosstabsLog = (
+  rowVar: Variable,
+  colVar: Variable,
+  opts: CrosstabsAnalysisParams['options'],
+): string => {
+  const lines: string[] = [];
+
+  // 1) Base command & table specification
+  lines.push('CROSSTABS');
+  lines.push(`  /TABLES=${rowVar.name} BY ${colVar.name}`);
+
+  // 2) FORMAT – saat ini default mengikuti SPSS (AVALUE TABLES)
+  lines.push('  /FORMAT=AVALUE TABLES');
+
+  // 3) CELLS – tentukan statistik yang dipilih
+  const cellTokens: string[] = [];
+  const { cells, residuals } = opts;
+
+  if (cells.observed) cellTokens.push('COUNT');
+  if (cells.expected) cellTokens.push('EXPECTED');
+  if (cells.row) cellTokens.push('ROW');
+  if (cells.column) cellTokens.push('COLUMN');
+  if (cells.total) cellTokens.push('TOTAL');
+
+  if (residuals.unstandardized) cellTokens.push('RESID');
+  if (residuals.standardized) cellTokens.push('SRESID');
+  if (residuals.adjustedStandardized) cellTokens.push('ASRESID');
+
+  if (cellTokens.length > 0) {
+    lines.push(`  /CELLS=${cellTokens.join(' ')}`);
+  }
+
+  // 4) COUNT – penyesuaian bobot non-integer
+  const countMapping: Record<NonintegerWeightsType, string> = {
+    roundCell: 'ROUND CELL',
+    roundCase: 'ROUND CASE',
+    truncateCell: 'TRUNCATE CELL',
+    truncateCase: 'TRUNCATE CASE',
+    noAdjustment: '',
+  };
+  const countToken = countMapping[opts.nonintegerWeights];
+  if (countToken) {
+    lines.push(`  /COUNT ${countToken}`);
+  }
+
+  // 5) Hidesmallcounts
+  if (cells.hideSmallCounts) {
+    const threshold = typeof cells.hideSmallCountsThreshold === 'number' && cells.hideSmallCountsThreshold > 0
+      ? cells.hideSmallCountsThreshold
+      : 2;
+    lines.push(`  /HIDESMALLCOUNTS COUNT=${threshold}`);
+  }
+
+  // Tambahkan titik pada baris terakhir sesuai konvensi sintaks SPSS
+  if (lines.length > 0) {
+    lines[lines.length - 1] = lines[lines.length - 1] + '.';
+  }
+
+  return lines.join('\n');
+};
 
 export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: () => void) => {
     const [isCalculating, setIsCalculating] = useState(false);
@@ -61,7 +124,7 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
                         rowVariables: [rowVar],
                         columnVariables: [colVar]
                     };
-                    const logMsg = `CROSSTABS TABLES=${rowVar.name} BY ${colVar.name}.`;
+                    const logMsg = buildCrosstabsLog(rowVar, colVar, options);
                     const logId = await addLog({ log: logMsg });
                     
                     const analyticId = await addAnalytic(logId, {
