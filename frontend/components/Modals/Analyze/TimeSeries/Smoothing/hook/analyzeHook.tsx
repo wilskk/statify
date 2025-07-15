@@ -111,14 +111,6 @@ export function useAnalyzeHook(
             if (selectedMethod[0] === "dma" && dataValues.length < parameters[0] * 3) {
                 throw new Error(`Data length is too short for ${parameters[0]} Double Moving Average.`);
             }
-            // Validate periodicity and data length
-            const periodicity = Number(selectedPeriod[0]);
-            if (selectedMethod[0] === "winter" && dataValues.length < 4 * periodicity) {
-                throw new Error("Data length is less than 4 times the periodicity.");
-            }
-            if (selectedMethod[0] === "winter" && dataValues.length % periodicity !== 0) {
-                throw new Error("Data length is not a multiple of the periodicity.");
-            }
             
             // Jalankan smoothing
             const [
