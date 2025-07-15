@@ -27,10 +27,11 @@ export interface StatisticsParams {
 interface StatisticsProps {
   params: StatisticsParams;
   onChange: (newParams: Partial<StatisticsParams>) => void;
+  showAlert: (title: string, description: string) => void;
 }
 
 
-const Statistics: React.FC<StatisticsProps> = ({ params, onChange }) => {
+const Statistics: React.FC<StatisticsProps> = ({ params, onChange, showAlert }) => {
   // Use passed params to initialize state
   const [estimates, setEstimates] = useState<boolean>(params.estimates);
   const [confidenceIntervals, setConfidenceIntervals] = useState<boolean>(params.confidenceIntervals);
@@ -93,6 +94,17 @@ const Statistics: React.FC<StatisticsProps> = ({ params, onChange }) => {
     }
     // Propagate change to parent if not handled by specific cases above
     onChange({ [field]: value });
+  };
+
+  const handleOutlierThresholdBlur = (value: string) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue <= 0) {
+      showAlert('Invalid Input', 'Outlier threshold must be a number greater than 0.');
+      // Revert to original valid value
+      setOutlierThreshold(params.outlierThreshold);
+    } else {
+      onChange({ outlierThreshold: value });
+    }
   };
 
   // Return the JSX content directly, without Dialog wrappers
@@ -234,6 +246,7 @@ const Statistics: React.FC<StatisticsProps> = ({ params, onChange }) => {
                 type="number"
                 value={outlierThreshold} // Controlled component
                 onChange={(e) => handleChange('outlierThreshold', e.target.value)}
+                onBlur={(e) => handleOutlierThresholdBlur(e.target.value)}
                 disabled={!casewiseDiagnostics || selectedResidualOption !== 'outliers'}
                 className="w-16 p-1 text-sm"
               />

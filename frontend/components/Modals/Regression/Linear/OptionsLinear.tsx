@@ -9,56 +9,57 @@ import React, { useState, useEffect } from 'react';
 // } from '@/components/ui/dialog';
 // import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 
 // Define and Export Params Type
 export interface OptionsLinearParams {
-  steppingMethod: 'probability' | 'fvalue';
+  steppingMethod: string;
   probEntry: string;
   probRemoval: string;
   fvalueEntry: string;
   fvalueRemoval: string;
   includeConstant: boolean;
-  missingValue: 'listwise' | 'pairwise' | 'mean';
+  missingValue: 'mean' | 'listwise';
 }
 
 // Update Props interface
 interface OptionsLinearProps {
   params: OptionsLinearParams;
   onChange: (newParams: Partial<OptionsLinearParams>) => void;
+  showAlert: (title: string, description: string) => void;
 }
 
 const OptionsLinear: React.FC<OptionsLinearProps> = ({ params, onChange }) => {
   // Local state initialized from props
   const [includeConstant, setIncludeConstant] = useState(params.includeConstant);
-  const [replaceMissingWithMean, setReplaceMissingWithMean] = useState(params.replaceMissingWithMean);
+  const [missingValue, setMissingValue] = useState<'mean' | 'listwise'>(params.missingValue);
 
   // Effect to sync local state with incoming params prop changes
   useEffect(() => {
     setIncludeConstant(params.includeConstant);
-    setReplaceMissingWithMean(params.replaceMissingWithMean);
+    setMissingValue(params.missingValue);
   }, [params]);
 
   // Generic handler to update local state and call onChange prop
   const handleChange = (field: keyof OptionsLinearParams, value: any) => {
-    // Update local state
-    switch(field) {
-      case 'includeConstant': setIncludeConstant(value); break;
-      case 'replaceMissingWithMean': setReplaceMissingWithMean(value); break;
+    switch (field) {
+        case 'includeConstant':
+            setIncludeConstant(value);
+            onChange({ [field]: value });
+            break;
+        case 'missingValue':
+            // Since there's only one option, this function might not even be called.
+            // If it is, ensure it sets to 'mean'.
+            setMissingValue('mean');
+            onChange({ [field]: 'mean' });
+            break;
     }
-    // Propagate change
-    onChange({ [field]: value });
   };
-
-  return (
+  
+    return (
     <div className="p-6 max-h-[70vh] overflow-y-auto">
-      <div className="bg-muted/30 rounded-lg p-6">
-        <h3 className="font-semibold text-lg mb-4">Regression Options</h3>
-        
         <div className="space-y-6">
           {/* Model Section */}
-          <div className="border rounded-lg p-4 bg-white">
+          <div className="border rounded-lg p-4 bg-background">
             <h4 className="font-medium mb-3 text-sm text-muted-foreground">Model Parameters</h4>
             <div className="flex items-center pl-2">
               <Checkbox
@@ -73,21 +74,41 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ params, onChange }) => {
           </div>
 
           {/* Missing Values Section */}
-          <div className="border rounded-lg p-4 bg-white">
+          <div className="border rounded-lg p-4 bg-background">
             <h4 className="font-medium mb-3 text-sm text-muted-foreground">Missing Values</h4>
-            <div className="flex items-center pl-2">
-              <Checkbox
-                checked={replaceMissingWithMean}
-                onCheckedChange={(checked) => handleChange('replaceMissingWithMean', !!checked)}
-                id="replaceMissingWithMean"
-              />
-              <label htmlFor="replaceMissingWithMean" className="ml-3 text-sm">
-                Replace missing values with mean
-              </label>
-            </div>
+             <div className="flex flex-col space-y-2 pl-2">
+                <div className="flex items-center">
+                    <input
+                        type="radio"
+                        id="mean"
+                        name="missingValue"
+                        value="mean"
+                        checked={missingValue === 'mean'}
+                        onChange={() => handleChange('missingValue', 'mean')}
+                        className="form-radio h-4 w-4 text-primary"
+                        disabled // Only one option, so disable changes.
+                    />
+                     <label htmlFor="mean" className="ml-3 text-sm">
+                        Replace with mean
+                    </label>
+                </div>
+                <div className="flex items-center">
+                    <input
+                        type="radio"
+                        id="listwise"
+                        name="missingValue"
+                        value="listwise"
+                        checked={missingValue === 'listwise'}
+                        onChange={() => handleChange('missingValue', 'listwise')}
+                        className="form-radio h-4 w-4 text-primary"
+                    />
+                     <label htmlFor="listwise" className="ml-3 text-sm">
+                        Exclude cases listwise
+                    </label>
+                </div>
+             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 };

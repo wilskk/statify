@@ -6,6 +6,15 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Tabs,
   TabsContent,
   TabsList,
@@ -47,6 +56,9 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
   const [upperBound, setUpperBound] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState({ title: "", description: "" });
+  const [inlineAlertMessage, setInlineAlertMessage] = useState<string | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
 
@@ -65,6 +77,15 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
     });
     setAvailableVariables(allVarsFiltered);
   }, [variables, selectedDependentVariable, selectedIndependentVariables, selectedCaseLabels]);
+
+  const showAlert = (title: string, description: string) => {
+    if (containerType === "sidebar") {
+        setInlineAlertMessage(`${title}: ${description}`);
+    } else {
+        setAlertMessage({ title, description });
+        setAlertOpen(true);
+    }
+  };
 
   // Handlers untuk VariablesTab (dari kode baru)
   const handleDependentDoubleClick = (variable: Variable) => {
@@ -172,9 +193,15 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
   // Menggunakan filtering data lama dan payload postMessage lama
   // ========================================================================
   const handleRunRegression = async () => {
+    setInlineAlertMessage(null);
     if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
-      setErrorMessage("Please select a dependent variable and at least one independent variable.");
+      showAlert("Missing Information", "Please select a dependent variable and at least one independent variable.");
       return;
+    }
+
+    if (selectedModels.includes('Logistic') && (upperBound === '' || isNaN(parseFloat(upperBound)))) {
+        showAlert("Invalid Input", "Please provide a valid numeric upper bound for the Logistic model.");
+        return;
     }
 
     setErrorMessage(null);
@@ -310,16 +337,31 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
   // Render function (JSX) modified to work with ModalRenderer
   return (
     <div className="flex flex-col h-full max-h-[85vh] overflow-hidden">
+      <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{alertMessage.title}</AlertDialogTitle>
+                <AlertDialogDescription>{alertMessage.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setAlertOpen(false)}>OK</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* Header section */}
       <div className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
         <h3 className="text-[22px] font-semibold">Curve Estimation</h3>
       </div>
 
-      {/* Error message section */}
+      {/* Error and Warning Messages */}
       {errorMessage && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mx-6 mt-2 rounded">
-          {errorMessage}
-        </div>
+        <div className="px-6 py-2 text-destructive">{errorMessage}</div>
+      )}
+      {containerType === "sidebar" && inlineAlertMessage && (
+          <div className="p-2 mb-2 mx-6 text-sm text-destructive-foreground bg-destructive rounded-md">
+              {inlineAlertMessage}
+              <Button variant="ghost" size="sm" onClick={() => setInlineAlertMessage(null)} className="ml-2 text-destructive-foreground hover:bg-destructive/80">Dismiss</Button>
+          </div>
       )}
 
       {/* Main content */}
