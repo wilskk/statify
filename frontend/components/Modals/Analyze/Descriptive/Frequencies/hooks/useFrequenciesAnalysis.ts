@@ -219,7 +219,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
         };
         workerClient.post(workerInput);
 
-    }, [selectedVariables, allData, weights, showFrequencyTables, showStatistics, statisticsOptions, chartOptions, addLog, addAnalytic, handleWorkerResult]);
+    }, [selectedVariables, allData, weights, showFrequencyTables, showStatistics, statisticsOptions, chartOptions, showCharts, addLog, addAnalytic, handleWorkerResult]);
 
     const cancelAnalysis = useCallback(() => {
         if (workerClientRef.current) {
