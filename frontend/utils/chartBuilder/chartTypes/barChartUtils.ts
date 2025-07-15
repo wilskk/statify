@@ -1,38 +1,23 @@
 import * as d3 from "d3";
-import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
 import {
-  CSS2DRenderer,
-  CSS2DObject,
-} from "three/examples/jsm/renderers/CSS2DRenderer.js";
-import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
-import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
-
-// import * as echarts from "echarts/core";
-// import { BarChart } from "echarts/charts";
-// import { CanvasRenderer } from "echarts/renderers";
-// import { Bar3DChart } from "echarts-gl/charts";
-// import { Grid3DComponent } from "echarts-gl/components";
-// import {
-//   TooltipComponent,
-//   GridComponent,
-//   VisualMapComponent,
-// } from "echarts/components";
-// import {
-//   TitleComponent, // 🔥 Tambahkan ini!
-// } from "echarts/components";
-
-// Registrasi komponen ke ECharts
-// echarts.use([
-//   Grid3DComponent,
-//   Bar3DChart,
-//   TitleComponent, // 🔥 Jangan lupa register ini juga!
-//   CanvasRenderer,
-//   BarChart,
-//   TooltipComponent,
-//   GridComponent,
-//   VisualMapComponent,
-// ]);
+  getMajorTicks,
+  createStandardSVG,
+  addAxisLabels,
+  addLegend,
+  calculateLegendPosition,
+} from "../chartUtils";
+import { filterDataByAxisRange } from "../dataFilter";
+import {
+  generateAxisTicks,
+  formatAxisNumber,
+  truncateText,
+  addStandardAxes,
+  ChartTitleOptions,
+  addChartTitle,
+} from "./chartUtils";
+import { calculateResponsiveMargin } from "../responsiveMarginUtils";
+import { defaultChartColors } from "../defaultStyles/defaultColors";
 
 // Definisikan interface untuk data chart
 interface ChartData {
@@ -48,89 +33,174 @@ interface FormattedData {
 }
 
 export const createVerticalBarChart2 = (
-  data: { category: string; value: number }[], // Data berupa array objek { category: string; value: number }
+  data: { category: string; value: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  console.log("Creating chart with data:", data);
+  // Filter data sesuai axis min/max
+  const filteredData = filterDataByAxisRange(
+    data,
+    {
+      x: { min: axisScaleOptions?.x?.min, max: axisScaleOptions?.x?.max },
+      y: { min: axisScaleOptions?.y?.min, max: axisScaleOptions?.y?.max },
+    },
+    { x: "category", y: "value" }
+  );
+  console.log("Creating chart with filtered data:", filteredData);
+  console.log("Creating chart with data:", axisLabels);
 
-  // Menentukan margin hanya jika axis digunakan
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 30 : 0;
+  // Handle duplicate categories by creating unique identifiers
+  const processedData = filteredData.map((d, index) => ({
+    ...d,
+    originalCategory: d.category,
+    uniqueId: `${d.category}_${index}`, // Create unique ID for positioning
+    displayLabel: d.category, // Keep original category name for display
+  }));
 
-  // Menentukan skala untuk sumbu X dan Y
+  const maxValue = d3.max(processedData, (d) => d.value) as number;
+
+  // Label X dinamis - use original category names for width calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+  const maxXLabelWidth =
+    d3.max(processedData, (d) => ctx.measureText(d.displayLabel).width) ?? 0;
+  const yTicks = d3.scaleLinear().domain([0, maxValue]).ticks(5);
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(0)).width)) ?? 0;
+
+  const needRotateX = maxXLabelWidth > width / processedData.length;
+
+  // Use responsive margin utility with categories for automatic rotation detection
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxYLabelWidth,
+    categories: processedData.map((d) => d.displayLabel),
+    hasLegend: false,
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
+
+  // Y scale
+  let yMin = 0;
+  let yMax = maxValue;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+  const y = d3
+    .scaleLinear()
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - marginBottom, marginTop]);
+
+  // X scale (band) - use unique IDs for positioning, but display original category names
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
+    .domain(processedData.map((d) => d.uniqueId))
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
-  const y = d3
-    .scaleLinear()
-    .domain([0, d3.max(data, (d) => d.value) as number])
-    .range([height - marginBottom, marginTop]);
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
-  // Membuat elemen SVG baru di dalam DOM
-  const svg = d3
-    .create("svg") // Membuat SVG baru
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto;");
-
-  // Menambahkan rectangle untuk setiap bar
-  svg
-    .append("g")
-    .attr("fill", "hsl(var(--primary))")
-    .selectAll("rect")
-    .data(data)
-    .join("rect")
-    .attr("x", (d: { category: string; value: number }) => x(d.category) || 0)
-    .attr("y", (d: { category: string; value: number }) => y(d.value))
-    .attr(
-      "height",
-      (d: { category: string; value: number }) =>
-        (y(0) as number) - (y(d.value) as number)
-    )
-    .attr("width", x.bandwidth());
-
-  // Jika axis digunakan, tambahkan sumbu X dan Y
-  if (useAxis) {
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0))
-      .call(g => g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))"))
-      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"));
-
-    // Y-Axis (Vertical)
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(0)))
-      .call((g: any) => g.select(".domain").remove()) // Domain is removed
-      .call(g => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
-      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"))
-      .call((g: any) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "hsl(var(--foreground))") // Changed from currentColor
-          .attr("text-anchor", "start")
-          .text("↑ Value")
-      );
+  // Add title if provided with margin-aware positioning
+  if (titleOptions) {
+    console.log("Adding title with options:", titleOptions);
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop,
+      useResponsivePositioning: true,
+    });
   }
 
-  // Mengembalikan node SVG
+  svg
+    .append("g")
+    .selectAll("rect")
+    .data(processedData)
+    .join("rect")
+    .attr("x", (d) => x(d.uniqueId) || 0)
+    .attr("y", (d) => y(d.value))
+    .attr("height", (d) => (y(yMin) as number) - (y(d.value) as number))
+    .attr("width", x.bandwidth())
+    .attr("fill", (d, i) =>
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[i % chartColors.length]
+        : defaultChartColors[i % defaultChartColors.length]
+    );
+
+  if (useAxis) {
+    // Use standardized axis functions with automatic formatting and rotation
+    const categories = processedData.map((d) => d.displayLabel);
+
+    const axisConfig = addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        tickFormat: (d: any) => {
+          const dataPoint = processedData.find((item) => item.uniqueId === d);
+          return dataPoint ? truncateText(dataPoint.displayLabel, 12) : d;
+        },
+        maxValueLength: 12,
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+        showTicks: true,
+      },
+    });
+  }
+
   return svg.node();
 };
 
@@ -139,125 +209,188 @@ export const createHorizontalBarChart = (
   width: number,
   height: number,
   useAxis: boolean = true,
-  barColor: string = "hsl(var(--primary))",
-  threshold: number = 0.007
+  barColor: string = "steelblue",
+  threshold: number = 0.007,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  // Menentukan margin
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 30 : 0;
+  // Filter data sesuai axis min/max
+  const filteredData = filterDataByAxisRange(
+    data,
+    {
+      x: { min: axisScaleOptions?.x?.min, max: axisScaleOptions?.x?.max },
+      y: { min: axisScaleOptions?.y?.min, max: axisScaleOptions?.y?.max },
+    },
+    { x: "category", y: "value" }
+  );
 
-  // Skala untuk sumbu X (horizontal) dan Y (vertikal)
+  // Handle duplicate categories by creating unique identifiers
+  const processedData = filteredData.map((d, index) => ({
+    ...d,
+    originalCategory: d.category,
+    uniqueId: `${d.category}_${index}`, // Create unique ID for positioning
+    displayLabel: d.category, // Keep original category name for display
+  }));
+
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  const maxCategoryWidth =
+    d3.max(processedData.map((d) => ctx.measureText(d.displayLabel).width)) ??
+    0;
+
+  // Responsive margin for horizontal bar chart
+  const xScaleTemp = d3
+    .scaleLinear()
+    .domain([0, d3.max(processedData, (d) => d.value) ?? 0]);
+  const xTicks = xScaleTemp.ticks(5).map((d) => d.toFixed(0) + "%");
+  const maxTickWidth = d3.max(xTicks.map((t) => ctx.measureText(t).width)) ?? 0;
+
+  // Use responsive margin utility for horizontal chart
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxCategoryWidth,
+    maxTickWidth,
+    isHorizontalChart: true,
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
+
+  // Use responsive margins directly - no need to override
+
+  // X scale
+  let xMin = 0;
+  let xMax = d3.max(processedData, (d) => d.value) as number;
+  let majorIncrement = axisScaleOptions?.x?.majorIncrement
+    ? Number(axisScaleOptions.x.majorIncrement)
+    : undefined;
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
+  }
   const x = d3
     .scaleLinear()
-    .domain([0, d3.max(data, (d) => d.value) as number])
+    .domain([xMin, xMax])
+    .nice()
     .range([marginLeft, width - marginRight]);
 
+  // Y scale (band) - use unique IDs for positioning, but display original category names
   const y = d3
     .scaleBand()
-    .domain(data.map((d) => d.category)) //
+    .domain(processedData.map((d) => d.uniqueId))
     .rangeRound([marginTop, height - marginBottom])
-    .padding(0.1);
+    .paddingInner(0.1)
+    .paddingOuter(0.02); // Lebih rapat ke tepi
 
-  // Format untuk nilai yang ditampilkan pada bar
   const format = x.tickFormat(20, "%");
 
-  // Membuat elemen SVG baru
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
-  // Menambahkan rect (bar) untuk setiap data
-  svg
-    .append("g")
-    .attr("fill", barColor)
-    .selectAll("rect")
-    .data(data)
-    .join("rect")
-    .attr("x", x(0))
-    .attr("y", (d) => y(d.category) || 0)
-    .attr("width", (d) => x(d.value) - x(0))
-    .attr("height", y.bandwidth());
-
-  // Menambahkan label pada bar
-  // svg
-  //   .append("g")
-  //   .attr("fill", "white")
-  //   .attr("text-anchor", "end")
-  //   .selectAll("text")
-  //   .data(data)
-  //   .join("text")
-  //   .attr("x", (d) => x(d.value)) // Posisi horizontal teks di akhir bar
-  //   .attr("y", (d) => {
-  //     // Pastikan kategori ada dalam domain y
-  //     const yPosition = y(d.category);
-  //     return yPosition ? yPosition + y.bandwidth() / 2 : 0; // Jika y(d.category) undefined, fallback ke 0
-  //   }) // Posisi vertikal di tengah bar
-  //   .attr("dy", "0.35em")
-  //   .attr("dx", -4)
-  //   .text((d) => format(d.value)) // Menampilkan nilai bar
-  //   .call(
-  //     (text) =>
-  //       text
-  //         .filter((d) => x(d.value) - x(0) < threshold) // Untuk bar yang pendek
-  //         .attr("dx", +4) // Menggeser teks ke kanan jika bar sangat pendek
-  //         .attr("fill", "black") // Warna teks hitam
-  //         .attr("text-anchor", "start") // Teks disusun ke kiri
-  //   );
-
-  // Menambahkan sumbu X jika useAxis true
-  if (useAxis) {
-    // Sumbu X (Horizontal)
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${marginTop})`)
-      .call(d3.axisTop(x).ticks(width / 80))
-      .call((g) => g.select(".domain").remove()) // Domain is removed
-      .call(g => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
-      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"));
-
-    // Sumbu Y (Vertical)
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).tickSizeOuter(0))
-      .call(g => g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))"))
-      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"));
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
   }
 
-  // Mengembalikan elemen SVG
-  return svg.node(); // Mengembalikan node SVG untuk ditambahkan ke DOM
-};
+  // Bars
+  svg
+    .append("g")
+    .attr("fill", (d, i) =>
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[i % chartColors.length]
+        : defaultChartColors[i % defaultChartColors.length]
+    )
+    .selectAll("rect")
+    .data(processedData)
+    .join("rect")
+    .attr("x", x(xMin))
+    .attr("y", (d) => y(d.uniqueId) ?? 0)
+    .attr("width", (d) => x(d.value) - x(xMin))
+    .attr("height", y.bandwidth());
 
-// export const createVerticalBarChart = (
-//   svg: any,
-//   data: number[],
-//   width: number,
-//   height: number
-// ) => {
-//   svg
-//     .attr("width", width)
-//     .attr("height", height)
-//     .selectAll("rect")
-//     .data(data)
-//     .enter()
-//     .append("rect")
-//     .attr("x", (d: number, i: number) => i * (width / data.length))
-//     .attr("y", (d: number) => height - d)
-//     .attr("width", width / data.length - 5)
-//     .attr("height", (d: number) => d)
-//     .attr("fill", "#69b3a2");
-// };
+  // Axis with standardized functions
+  if (useAxis) {
+    // Use standardized axis functions for horizontal chart
+    const categories = processedData.map((d) => d.displayLabel);
+
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      categories,
+      axisLabels,
+      majorIncrement,
+      xMin,
+      xMax,
+      chartType: "horizontal",
+      data: processedData, // Pass processed data for display label lookup
+      xAxisOptions: {
+        axisPosition: "top",
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+      },
+      yAxisOptions: {
+        maxValueLength: 6,
+        showGridLines: true,
+      },
+    });
+  }
+
+  return svg.node();
+};
 
 export const createVerticalStackedBarChart = (
   data: ChartData[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   // Validasi data
   console.log("Creating stacked bar plot with data", data);
@@ -274,13 +407,9 @@ export const createVerticalStackedBarChart = (
     return null;
   }
 
-  console.log("Creating stacked bar plot with valid data:", validData);
-
-  // Definisi margin
-  const marginTop = useAxis ? 20 : 0;
-  const marginRight = useAxis ? 20 : 0;
-  const marginBottom = useAxis ? 100 : 0;
-  const marginLeft = useAxis ? 50 : 0;
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
 
   // Kategori utama dan subkategori
   const categories = Array.from(new Set(validData.map((d) => d.category)));
@@ -300,151 +429,161 @@ export const createVerticalStackedBarChart = (
   });
 
   // Membuat stack generator
-  const stackGenerator = d3
-    .stack<FormattedData>()
-    .keys(subcategories as string[]);
+  const stackGenerator = d3.stack<FormattedData>().keys(subcategories);
   const series = stackGenerator(formattedData);
 
-  // Skala untuk sumbu X dan Y
-  const x = d3
-    .scaleBand<string>()
+  // Calculate max Y value for ticks
+  const maxValue = d3.max(series, (s) => d3.max(s, (d) => d[1]))!;
+  const yTicks = d3.scaleLinear().domain([0, maxValue]).nice().ticks(5);
+
+  // Calculate max label width for margin calculation
+  const maxLabelWidth = Math.max(
+    ...yTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
+  );
+
+  // Calculate max legend text width
+  const maxLegendWidth = Math.max(
+    ...subcategories.map((subcat) => ctx.measureText(subcat).width)
+  );
+
+  // Use responsive margin utility with legend consideration
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth,
+    categories,
+    hasLegend: true,
+    legendPosition: "right",
+  });
+
+  // Skala untuk sumbu X
+  const x0 = d3
+    .scaleBand()
     .domain(categories)
-    .range([marginLeft, width - marginRight])
-    .padding(0.1);
+    .range([margin.left, width - margin.right])
+    .paddingInner(0.1);
+
+  // Y scale with axis options
+  let yMin = 0;
+  let yMax = d3.max(series, (s) => d3.max(s, (d) => d[1]))!;
+  let yAxisMajorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(series, (s) => d3.max(s, (d) => d[1]))!])
+    .domain([yMin, yMax])
     .nice()
-    .range([height - marginBottom, marginTop]);
+    .range([height - margin.bottom, margin.top]);
 
-  // Warna
-  let colorScheme: readonly string[];
-  if (subcategories.length <= 3) {
-    // Gunakan skema minimum 3 warna jika subcategories <= 3 (dibalik)
-    colorScheme = d3.schemeBlues[3].slice().reverse();
-  } else if (subcategories.length <= 9) {
-    // Gunakan skema yang sesuai dengan jumlah subcategories (dibalik)
-    colorScheme = d3.schemeBlues[subcategories.length].slice().reverse();
-  } else {
-    // Jika lebih dari 9, gunakan skema maksimum dan dibalik
-    colorScheme = d3.schemeBlues[9].slice().reverse();
-  }
-
+  // Color scale
   const color = d3
     .scaleOrdinal<string>()
     .domain(subcategories)
-    .range(colorScheme);
+    .range(chartColors || defaultChartColors);
 
-  // Membuat elemen SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Draw bars
   svg
     .append("g")
     .selectAll("g")
     .data(series)
     .join("g")
-    .attr("fill", (d) => color(d.key) || "#ccc")
+    .attr("fill", (d) => color(d.key))
     .selectAll("rect")
-    .data((d) =>
-      d.map((item) => ({
-        ...item,
-        key: d.key,
-      }))
-    )
+    .data((d) => d.map((item) => ({ ...item, key: d.key })))
     .join("rect")
-    .attr("x", (d) => x(String(d.data.category))!)
-    .attr("y", (d) => y(d[1]))
-    .attr("height", (d) => y(d[0]) - y(d[1]))
-    .attr("width", x.bandwidth())
+    .attr("x", (d) => x0(d.data.category)!)
+    .attr("y", (d) => y(Math.min(Math.max(d[1], yMin), yMax)))
+    .attr("height", (d) => {
+      const y0 = Math.min(Math.max(d[0], yMin), yMax);
+      const y1 = Math.min(Math.max(d[1], yMin), yMax);
+      return Math.max(0, y(y0) - y(y1));
+    })
+    .attr("width", x0.bandwidth())
     .append("title")
     .text((d) => `${d.data.category}, ${d.key}: ${d[1] - d[0]}`);
 
-  // Menambahkan sumbu jika `useAxis` true
+  // Add axes if needed
   if (useAxis) {
-    // Sumbu X
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0))
-      .call((g) => g.select(".domain").remove());
+    addStandardAxes(svg, {
+      xScale: x0,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        tickValues: yAxisMajorIncrement
+          ? generateAxisTicks(yMin, yMax, yAxisMajorIncrement)
+          : undefined,
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+      },
+    });
 
-    // Sumbu Y
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).ticks(null, "s"))
-      .call((g) => g.select(".domain").remove());
+    // Add legend using the improved legend utility
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft: margin.left,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginTop: margin.top,
+      legendPosition: "right",
+      itemCount: subcategories.length,
+    });
 
-    // Menambahkan label sumbu X (opsional)
-    svg
-      .append("text")
-      .attr("x", (width - marginLeft - marginRight) / 2 + marginLeft)
-      .attr("y", height - marginBottom + 40)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text("Category");
-
-    // Menambahkan label sumbu Y (opsional)
-    svg
-      .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -(marginTop + (height - marginBottom - marginTop) / 2))
-      .attr("y", marginLeft - 40)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text("Value");
-
-    // Menambahkan legenda secara horizontal di bawah chart
-    const legendGroup = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 10)
-      .attr("text-anchor", "start")
-      .attr(
-        "transform",
-        `translate(${marginLeft}, ${height - marginBottom + 60})`
-      );
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-    const legendSpacingX = 130;
-    const legendSpacingY = 25;
-    const legendMaxWidth = width - marginLeft - marginRight;
-    const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
-
-    subcategories.forEach((subcategory, index) => {
-      const row = Math.floor(index / itemsPerRow);
-      const col = index % itemsPerRow;
-      const xOffset = col * legendSpacingX;
-      const yOffset = row * legendSpacingY;
-
-      // Menambahkan swatch
-      legendGroup
-        .append("rect")
-        .attr("x", xOffset)
-        .attr("y", yOffset)
-        .attr("width", legendItemWidth)
-        .attr("height", legendItemHeight)
-        .attr("fill", color(subcategory));
-
-      // Menambahkan label teks
-      legendGroup
-        .append("text")
-        .attr("x", xOffset + legendItemWidth + labelOffset)
-        .attr("y", yOffset + legendItemHeight / 2)
-        .attr("dy", "0.35em")
-        .text(subcategory);
+    addLegend({
+      svg,
+      colorScale: color,
+      position: legendPosition,
+      legendPosition: "right",
+      domain: subcategories,
+      itemWidth: 15,
+      itemHeight: 15,
+      fontSize: 12,
     });
   }
 
@@ -464,7 +603,17 @@ export const createHorizontalStackedBarChart = (
   data: ChartData[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+    };
+  },
+  chartColors?: string[]
 ): SVGElement | null => {
   // Validasi data
   const validData = data.filter(
@@ -482,16 +631,9 @@ export const createHorizontalStackedBarChart = (
     return null;
   }
 
-  console.log(
-    "Creating horizontal stacked bar chart with valid data:",
-    validData
-  );
-
-  // Definisi margin
-  const marginTop = useAxis ? 20 : 0;
-  const marginRight = useAxis ? 20 : 0;
-  const marginBottom = useAxis ? 100 : 0;
-  const marginLeft = useAxis ? 50 : 0;
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
 
   // Kategori utama dan subkategori
   const categories = Array.from(new Set(validData.map((d) => d.category)));
@@ -511,54 +653,89 @@ export const createHorizontalStackedBarChart = (
   });
 
   // Membuat stack generator
-  const stackGenerator = d3
-    .stack<FormattedData>()
-    .keys(subcategories)
-    .order(d3.stackOrderNone)
-    .offset(d3.stackOffsetNone);
+  const stackGenerator = d3.stack<FormattedData>().keys(subcategories);
   const series = stackGenerator(formattedData);
 
-  // Skala untuk sumbu X dan Y
-  const x = d3
-    .scaleLinear()
-    .domain([0, d3.max(series, (s) => d3.max(s, (d) => d[1]))!])
-    .nice()
-    .range([marginLeft, width - marginRight]);
+  // Calculate max X value for ticks
+  const maxValue = d3.max(series, (s) => d3.max(s, (d) => d[1]))!;
+  const xTicks = d3.scaleLinear().domain([0, maxValue]).nice().ticks(5);
 
-  const y = d3
-    .scaleBand<string>()
-    .domain(categories)
-    .range([marginTop, height - marginBottom])
-    .padding(0.1);
+  // Calculate max label width for margin calculation
+  const maxLabelWidth = Math.max(
+    ...xTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
+  );
 
-  // Skala warna dengan d3.schemeBlues
-  let colorScheme: readonly string[];
-  if (subcategories.length <= 3) {
-    // Gunakan skema minimum 3 warna jika subcategories <= 3 (dibalik)
-    colorScheme = d3.schemeBlues[3].slice().reverse();
-  } else if (subcategories.length <= 9) {
-    // Gunakan skema yang sesuai dengan jumlah subcategories (dibalik)
-    colorScheme = d3.schemeBlues[subcategories.length].slice().reverse();
-  } else {
-    // Jika lebih dari 9, gunakan skema maksimum dan dibalik
-    colorScheme = d3.schemeBlues[9].slice().reverse();
+  // Use responsive margin utility with legend consideration
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth,
+    categories,
+    hasLegend: true,
+    legendPosition: "right",
+    isHorizontalChart: true,
+  });
+
+  // X scale with axis options
+  let xMin = 0;
+  let xMax = d3.max(series, (s) => d3.max(s, (d) => d[1]))!;
+  let xAxisMajorIncrement = axisScaleOptions?.x?.majorIncrement
+    ? Number(axisScaleOptions.x.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
   }
 
+  // Skala untuk sumbu X
+  const x = d3
+    .scaleLinear()
+    .domain([xMin, xMax])
+    .nice()
+    .range([margin.left, width - margin.right]);
+
+  // Adjust Y scale to leave more space for title/subtitle at top
+  const y = d3
+    .scaleBand()
+    .domain(categories)
+    .range([margin.top, height - margin.bottom])
+    .padding(0.1);
+
+  // Color scale
   const color = d3
     .scaleOrdinal<string>()
     .domain(subcategories)
-    .range(colorScheme)
-    .unknown("#ccc");
+    .range(chartColors || defaultChartColors);
 
-  // Membuat elemen SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
-  // Append grup untuk setiap series
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Draw bars
   svg
     .append("g")
     .selectAll("g")
@@ -569,78 +746,73 @@ export const createHorizontalStackedBarChart = (
     .data((d) => d.map((item) => ({ ...item, key: d.key })))
     .join("rect")
     .attr("y", (d) => y(d.data.category)!)
-    .attr("x", (d) => x(d[0]))
+    .attr("x", (d) => x(Math.min(Math.max(d[0], 0), maxValue)))
     .attr("height", y.bandwidth())
-    .attr("width", (d) => x(d[1]) - x(d[0]))
+    .attr("width", (d) => {
+      const x0 = Math.min(Math.max(d[0], 0), maxValue);
+      const x1 = Math.min(Math.max(d[1], 0), maxValue);
+      return Math.max(0, x(x1) - x(x0));
+    })
     .append("title")
     .text((d) => `${d.data.category}, ${d.key}: ${d[1] - d[0]}`);
 
-  // Menambahkan sumbu dan legend jika `useAxis` true
+  // Add axes if needed
   if (useAxis) {
-    // Sumbu X
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${marginTop})`)
-      .call(d3.axisTop(x).ticks(width / 80, "s"))
-      .call((g) => g.selectAll(".domain").remove());
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      xMin: 0,
+      xMax: maxValue,
+      chartType: "horizontal",
+      xAxisOptions: {
+        tickValues: xAxisMajorIncrement
+          ? generateAxisTicks(0, maxValue, xAxisMajorIncrement)
+          : undefined,
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+      },
+      yAxisOptions: {
+        showGridLines: true,
+      },
+    });
 
-    // Sumbu Y
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).tickSizeOuter(0))
-      .call((g) => g.selectAll(".domain").remove());
+    // Add legend using the improved legend utility
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft: margin.left,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginTop: margin.top,
+      legendPosition: "right",
+      itemCount: subcategories.length,
+    });
 
-    // Menambahkan legenda
-    const legendGroup = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 10)
-      .attr("text-anchor", "start")
-      .attr(
-        "transform",
-        `translate(${marginLeft}, ${height - marginBottom + 30})`
-      );
-
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-    const legendSpacingX = 130;
-    const legendSpacingY = 25;
-    const legendMaxWidth = width - marginLeft - marginRight;
-    const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
-
-    subcategories.forEach((subcategory, index) => {
-      const row = Math.floor(index / itemsPerRow);
-      const col = index % itemsPerRow;
-      const xOffset = col * legendSpacingX;
-      const yOffset = row * legendSpacingY;
-
-      // Menambahkan swatch
-      legendGroup
-        .append("rect")
-        .attr("x", xOffset)
-        .attr("y", yOffset)
-        .attr("width", legendItemWidth)
-        .attr("height", legendItemHeight)
-        .attr("fill", color(subcategory));
-
-      // Menambahkan label teks
-      legendGroup
-        .append("text")
-        .attr("x", xOffset + legendItemWidth + labelOffset)
-        .attr("y", yOffset + legendItemHeight / 2)
-        .attr("dy", "0.35em")
-        .text(subcategory);
+    addLegend({
+      svg,
+      colorScale: color,
+      position: legendPosition,
+      legendPosition: "right",
+      domain: subcategories,
+      itemWidth: 15,
+      itemHeight: 15,
+      fontSize: 12,
     });
   }
 
-  // Mengembalikan elemen SVG
   return svg.node();
 };
 
 /**
- * Fungsi Grouped Bar Chart
+ * Fungsi Clustered Bar Chart
  *
  * @param data - Array dari objek ChartData
  * @param width - Lebar SVG
@@ -649,11 +821,21 @@ export const createHorizontalStackedBarChart = (
  * @returns SVGElement atau null jika data tidak valid
  */
 
-export const createGroupedBarChart = (
+export const createClusteredBarChart = (
   data: ChartData[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+    };
+  },
+  chartColors?: string[]
 ): SVGElement | null => {
   // Validasi data
   const validData = data.filter(
@@ -669,13 +851,9 @@ export const createGroupedBarChart = (
     return null;
   }
 
-  console.log("Creating grouped bar chart with valid data:", validData);
-
-  // Definisi margin
-  const marginTop = useAxis ? 20 : 0;
-  const marginRight = useAxis ? 20 : 0;
-  const marginBottom = useAxis ? 100 : 0;
-  const marginLeft = useAxis ? 50 : 0;
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
 
   // Kategori utama dan subkategori
   const categories = Array.from(new Set(validData.map((d) => d.category)));
@@ -694,147 +872,161 @@ export const createGroupedBarChart = (
     return entry;
   });
 
-  // Skala untuk sumbu X dan Y
+  // Calculate max Y value for ticks
+  const maxValue = d3.max(validData, (d) => d.value)!;
+  const yTicks = d3.scaleLinear().domain([0, maxValue]).nice().ticks(5);
+
+  // Calculate max label width for margin calculation
+  const maxLabelWidth = Math.max(
+    ...yTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
+  );
+
+  // Use responsive margin utility
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth,
+    categories,
+    hasLegend: true,
+    legendPosition: "right",
+  });
+
+  // Skala untuk sumbu X
   const x0 = d3
-    .scaleBand<string>()
+    .scaleBand()
     .domain(categories)
-    .range([marginLeft, width - marginRight])
+    .range([margin.left, width - margin.right])
     .paddingInner(0.1);
 
   const x1 = d3
-    .scaleBand<string>()
+    .scaleBand()
     .domain(subcategories)
     .range([0, x0.bandwidth()])
     .padding(0.05);
 
-  const y = d3
-    .scaleLinear()
-    .domain([0, d3.max(validData, (d) => d.value)!])
-    .nice()
-    .range([height - marginBottom, marginTop]);
+  // Y scale with axis options
+  let yMin = 0;
+  let yMax = maxValue;
+  let yAxisMajorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
 
-  // Skala warna
-  let colorScheme: readonly string[];
-  if (subcategories.length <= 3) {
-    colorScheme = d3.schemeBlues[3];
-  } else if (subcategories.length <= 9) {
-    colorScheme = d3.schemeBlues[subcategories.length];
-  } else {
-    colorScheme = d3.schemeBlues[9];
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
   }
 
+  const y = d3
+    .scaleLinear()
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+
+  // Color scale
   const color = d3
     .scaleOrdinal<string>()
     .domain(subcategories)
-    .range(colorScheme)
-    .unknown("#ccc");
+    .range(chartColors || defaultChartColors);
 
-  // Membuat elemen SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
-  // Append grup untuk setiap kategori
-  svg
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Draw bars
+  const barGroups = svg
     .append("g")
     .selectAll("g")
     .data(formattedData)
     .join("g")
-    .attr("transform", (d) => `translate(${x0(d.category)},0)`)
+    .attr("transform", (d) => `translate(${x0(d.category)},0)`);
+
+  barGroups
     .selectAll("rect")
     .data((d) => subcategories.map((key) => ({ key, value: d[key] as number })))
     .join("rect")
     .attr("x", (d) => x1(d.key)!)
-    .attr("y", (d) => y(d.value))
+    .attr("y", (d) => y(Math.min(d.value, yMax)))
+    .attr("height", (d) => y(yMin) - y(Math.min(d.value, yMax)))
     .attr("width", x1.bandwidth())
-    .attr("height", (d) => y(0) - y(d.value))
     .attr("fill", (d) => color(d.key))
     .append("title")
     .text((d) => `${d.key}: ${d.value}`);
 
-  // Menambahkan sumbu dan legend jika `useAxis` true
+  // Add axes if needed
   if (useAxis) {
-    // Sumbu X
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x0))
-      .call((g) => g.selectAll(".domain").remove());
+    addStandardAxes(svg, {
+      xScale: x0,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        tickValues: yAxisMajorIncrement
+          ? generateAxisTicks(yMin, yMax, yAxisMajorIncrement)
+          : undefined,
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+      },
+    });
 
-    // Sumbu Y
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).ticks(null, "s"))
-      .call((g) => g.selectAll(".domain").remove());
+    // Add legend using standard function
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft: margin.left,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginTop: margin.top,
+      legendPosition: "right",
+      itemCount: subcategories.length,
+    });
 
-    // Menambahkan label sumbu X (opsional)
-    svg
-      .append("text")
-      .attr("x", (width - marginLeft - marginRight) / 2 + marginLeft)
-      .attr("y", height - marginBottom + 30)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text("Category");
-
-    // Menambahkan label sumbu Y (opsional)
-    svg
-      .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -(marginTop + (height - marginBottom - marginTop) / 2))
-      .attr("y", marginLeft - 50)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text("Value");
-
-    // Menambahkan legenda secara horizontal di bawah chart dengan label di samping swatches
-    const legendGroup = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 10)
-      .attr("text-anchor", "start")
-      .attr(
-        "transform",
-        `translate(${marginLeft}, ${height - marginBottom + 50})`
-      );
-
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-    const legendSpacingX = 130;
-    const legendSpacingY = 25;
-    const legendMaxWidth = width - marginLeft - marginRight;
-    const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
-
-    subcategories.forEach((subcategory, index) => {
-      const row = Math.floor(index / itemsPerRow);
-      const col = index % itemsPerRow;
-      const xOffset = col * legendSpacingX;
-      const yOffset = row * legendSpacingY;
-
-      // Menambahkan swatch
-      legendGroup
-        .append("rect")
-        .attr("x", xOffset)
-        .attr("y", yOffset)
-        .attr("width", legendItemWidth)
-        .attr("height", legendItemHeight)
-        .attr("fill", color(subcategory));
-
-      // Menambahkan label teks
-      legendGroup
-        .append("text")
-        .attr("x", xOffset + legendItemWidth + labelOffset)
-        .attr("y", yOffset + legendItemHeight / 2)
-        .attr("dy", "0.35em")
-        .text(subcategory);
+    addLegend({
+      svg,
+      colorScale: color,
+      position: legendPosition,
+      domain: subcategories,
+      itemWidth: 15,
+      itemHeight: 15,
+      fontSize: 12,
+      legendPosition: "right",
     });
   }
 
-  // Mengembalikan elemen SVG
   return svg.node();
 };
 
@@ -842,138 +1034,228 @@ export const createErrorBarChart = (
   data: { category: string; value: number; error: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  console.log("Creating chart with data:", data);
+  // Validate data
+  const validData = data.filter(
+    (d) =>
+      typeof d.category === "string" &&
+      typeof d.value === "number" &&
+      typeof d.error === "number" &&
+      !isNaN(d.value) &&
+      !isNaN(d.error)
+  );
 
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 30 : 0;
+  if (validData.length === 0) {
+    console.error("No valid data available for the error bar chart");
+    return null;
+  }
 
+  // Filter data according to axis min/max
+  const filteredData = filterDataByAxisRange(
+    validData,
+    {
+      x: { min: axisScaleOptions?.x?.min, max: axisScaleOptions?.x?.max },
+      y: { min: axisScaleOptions?.y?.min, max: axisScaleOptions?.y?.max },
+    },
+    { x: "category", y: "value" }
+  );
+
+  // Handle duplicate categories by creating unique identifiers
+  const processedData = filteredData.map((d, index) => ({
+    ...d,
+    originalCategory: d.category,
+    uniqueId: `${d.category}_${index}`,
+    displayLabel: d.category,
+  }));
+
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Calculate max Y value for ticks and margin calculations
+  const maxValue = d3.max(processedData, (d) => d.value + d.error)!;
+  const yTicks = d3.scaleLinear().domain([0, maxValue]).nice().ticks(5);
+
+  // Calculate max label widths for margin calculation
+  const maxXLabelWidth = Math.max(
+    ...processedData.map((d) => ctx.measureText(d.displayLabel).width)
+  );
+  const maxYLabelWidth = Math.max(
+    ...yTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
+  );
+
+  // Use responsive margin utility
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+    categories: processedData.map((d) => d.displayLabel),
+    hasLegend: false,
+  });
+
+  // Y scale with axis options
+  let yMin = 0;
+  let yMax = maxValue;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  // Create scales
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
-    .range([marginLeft, width - marginRight])
+    .domain(processedData.map((d) => d.uniqueId))
+    .range([margin.left, width - margin.right])
     .padding(0.1);
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(data, (d) => d.value + d.error) as number])
-    .range([height - marginBottom, marginTop]);
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Create SVG using standardized function
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
-  // Menambahkan error bars
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Set default colors
+  const colors = chartColors || defaultChartColors;
+
+  // Add error bars
   svg
     .append("g")
-    .attr("stroke", "black")
+    .attr("stroke", "hsl(var(--foreground))")
+    .attr("stroke-width", 2)
     .selectAll("line")
-    .data(data)
+    .data(processedData)
     .join("line")
-    .attr(
-      "x1",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2
-    )
-    .attr(
-      "x2",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2
-    )
-    .attr("y1", (d: { value: number; error: number }) => y(d.value + d.error))
-    .attr("y2", (d: { value: number; error: number }) => y(d.value - d.error))
-    .attr("stroke-width", 2);
+    .attr("x1", (d) => x(d.uniqueId)! + x.bandwidth() / 2)
+    .attr("x2", (d) => x(d.uniqueId)! + x.bandwidth() / 2)
+    .attr("y1", (d) => y(Math.min(Math.max(d.value + d.error, yMin), yMax)))
+    .attr("y2", (d) => y(Math.min(Math.max(d.value - d.error, yMin), yMax)));
 
-  // Menambahkan titik pada setiap kategori untuk menunjukkan nilai
+  // Add error bar caps (top)
   svg
     .append("g")
-    .attr("fill", "steelblue")
-    .selectAll("circle")
-    .data(data)
-    .join("circle")
-    .attr(
-      "cx",
-      (d: { category: string; value: number }) =>
-        x(d.category)! + x.bandwidth() / 2
-    )
-    .attr("cy", (d: { value: number }) => y(d.value))
-    .attr("r", 5);
-
-  // Menambahkan garis horizontal di ujung atas dan bawah error bar
-  svg
-    .append("g")
-    .attr("stroke", "black")
+    .attr("stroke", "hsl(var(--foreground))")
+    .attr("stroke-width", 2)
     .selectAll(".error-cap-top")
-    .data(data)
+    .data(processedData)
     .join("line")
-    .attr(
-      "x1",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2 - 5 // Panjang garis horizontal
-    )
-    .attr(
-      "x2",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2 + 5
-    )
-    .attr("y1", (d: { value: number; error: number }) => y(d.value + d.error))
-    .attr("y2", (d: { value: number; error: number }) => y(d.value + d.error))
-    .attr("stroke-width", 2);
+    .attr("x1", (d) => x(d.uniqueId)! + x.bandwidth() / 2 - 5)
+    .attr("x2", (d) => x(d.uniqueId)! + x.bandwidth() / 2 + 5)
+    .attr("y1", (d) => y(Math.min(Math.max(d.value + d.error, yMin), yMax)))
+    .attr("y2", (d) => y(Math.min(Math.max(d.value + d.error, yMin), yMax)));
 
+  // Add error bar caps (bottom)
   svg
     .append("g")
-    .attr("stroke", "black")
+    .attr("stroke", "hsl(var(--foreground))")
+    .attr("stroke-width", 2)
     .selectAll(".error-cap-bottom")
-    .data(data)
+    .data(processedData)
     .join("line")
-    .attr(
-      "x1",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2 - 5
-    )
-    .attr(
-      "x2",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2 + 5
-    )
-    .attr("y1", (d: { value: number; error: number }) => y(d.value - d.error))
-    .attr("y2", (d: { value: number; error: number }) => y(d.value - d.error))
-    .attr("stroke-width", 2);
+    .attr("x1", (d) => x(d.uniqueId)! + x.bandwidth() / 2 - 5)
+    .attr("x2", (d) => x(d.uniqueId)! + x.bandwidth() / 2 + 5)
+    .attr("y1", (d) => y(Math.min(Math.max(d.value - d.error, yMin), yMax)))
+    .attr("y2", (d) => y(Math.min(Math.max(d.value - d.error, yMin), yMax)));
 
-  // Jika axis digunakan, tambahkan sumbu X dan Y
+  // Add data points
+  svg
+    .append("g")
+    .selectAll("circle")
+    .data(processedData)
+    .join("circle")
+    .attr("cx", (d) => x(d.uniqueId)! + x.bandwidth() / 2)
+    .attr("cy", (d) => y(Math.min(Math.max(d.value, yMin), yMax)))
+    .attr("r", 5)
+    .attr("fill", (d, i) => colors[i % colors.length])
+    .append("title")
+    .text((d) => `${d.displayLabel}: ${d.value} ± ${d.error}`);
+
+  // Add axes if needed
   if (useAxis) {
-    // X-Axis (Horizontal)
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0));
+    const categories = processedData.map((d) => d.displayLabel);
 
-    // Y-Axis (Vertical)
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(0)))
-      .call((g: any) => g.select(".domain").remove())
-      .call((g: any) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Value")
-      );
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      data: processedData,
+      xAxisOptions: {
+        maxValueLength: 8,
+        tickFormat: (d: any) => {
+          const dataPoint = processedData.find((item) => item.uniqueId === d);
+          const displayLabel = dataPoint ? dataPoint.displayLabel : d;
+          return truncateText(displayLabel, 8);
+        },
+        showGridLines: false,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: true,
+        maxValueLength: 6,
+        tickValues: majorIncrement
+          ? generateAxisTicks(yMin, yMax, majorIncrement)
+          : undefined,
+      },
+    });
   }
 
   return svg.node();
@@ -988,2293 +1270,240 @@ export const createClusteredErrorBarChart = (
   }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  console.log("Creating chart with data:", data);
+  // Validate data
+  const validData = data.filter(
+    (d) =>
+      typeof d.category === "string" &&
+      typeof d.subcategory === "string" &&
+      typeof d.value === "number" &&
+      typeof d.error === "number" &&
+      !isNaN(d.value) &&
+      !isNaN(d.error)
+  );
 
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 30 : 0;
+  if (validData.length === 0) {
+    console.error("No valid data available for the clustered error bar chart");
+    return null;
+  }
 
-  const categories = Array.from(new Set(data.map((d) => d.category)));
-  const subcategories = Array.from(new Set(data.map((d) => d.subcategory)));
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
 
+  // Extract categories and subcategories
+  const categories = Array.from(new Set(validData.map((d) => d.category)));
+  const subcategories = Array.from(
+    new Set(validData.map((d) => d.subcategory))
+  );
+
+  // Calculate max Y value for ticks and margin calculations
+  const maxValue = d3.max(validData, (d) => d.value + d.error)!;
+  const yTicks = d3.scaleLinear().domain([0, maxValue]).nice().ticks(5);
+
+  // Calculate max label widths for margin calculation
+  const maxYLabelWidth = Math.max(
+    ...yTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
+  );
+  const maxLegendWidth = Math.max(
+    ...subcategories.map((subcat) => ctx.measureText(subcat).width)
+  );
+
+  // Use responsive margin utility with legend consideration
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxLegendWidth),
+    categories,
+    hasLegend: true,
+    legendPosition: "right",
+  });
+
+  // Y scale with axis options
+  let yMin = 0;
+  let yMax = maxValue;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  // Create scales
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
-    .range([marginLeft, width - marginRight])
+    .domain(categories)
+    .range([margin.left, width - margin.right])
     .padding(0.1);
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(data, (d) => d.value + d.error) as number])
-    .range([height - marginBottom, marginTop]);
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  // Define a color scale for the subcategories
-  const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+  // Color scale with default colors
+  const colorScale = d3
+    .scaleOrdinal<string>()
+    .domain(subcategories)
+    .range(chartColors || defaultChartColors);
 
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Create SVG using standardized function
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
-  // Menambahkan error bars dengan warna berdasarkan subkategori
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Helper function to clamp values within Y range
+  const clampY = (val: number) => Math.max(yMin, Math.min(yMax, val));
+
+  // Add error bars
   svg
     .append("g")
-    .attr("stroke", "black")
-    .selectAll("line")
-    .data(data)
-    .join("line")
-    .attr(
-      "x1",
-      (d: {
-        category: string;
-        subcategory: string;
-        value: number;
-        error: number;
-      }) => x(d.category)! + x.bandwidth() / 2
-    )
-    .attr(
-      "x2",
-      (d: {
-        category: string;
-        subcategory: string;
-        value: number;
-        error: number;
-      }) => x(d.category)! + x.bandwidth() / 2
-    )
-    .attr("y1", (d: { value: number; error: number }) => y(d.value + d.error))
-    .attr("y2", (d: { value: number; error: number }) => y(d.value - d.error))
     .attr("stroke-width", 2)
-    .attr("stroke", (d: { subcategory: string }) => colorScale(d.subcategory));
+    .selectAll("line")
+    .data(validData)
+    .join("line")
+    .attr("x1", (d) => x(d.category)! + x.bandwidth() / 2)
+    .attr("x2", (d) => x(d.category)! + x.bandwidth() / 2)
+    .attr("y1", (d) => y(clampY(d.value + d.error)))
+    .attr("y2", (d) => y(clampY(d.value - d.error)))
+    .attr("stroke", (d) => colorScale(d.subcategory));
 
-  // Menambahkan titik pada setiap kategori untuk menunjukkan nilai dengan warna berdasarkan subkategori
+  // Add error bar caps (top)
+  svg
+    .append("g")
+    .attr("stroke-width", 2)
+    .selectAll(".error-cap-top")
+    .data(validData)
+    .join("line")
+    .attr("x1", (d) => x(d.category)! + x.bandwidth() / 2 - 5)
+    .attr("x2", (d) => x(d.category)! + x.bandwidth() / 2 + 5)
+    .attr("y1", (d) => y(clampY(d.value + d.error)))
+    .attr("y2", (d) => y(clampY(d.value + d.error)))
+    .attr("stroke", (d) => colorScale(d.subcategory));
+
+  // Add error bar caps (bottom)
+  svg
+    .append("g")
+    .attr("stroke-width", 2)
+    .selectAll(".error-cap-bottom")
+    .data(validData)
+    .join("line")
+    .attr("x1", (d) => x(d.category)! + x.bandwidth() / 2 - 5)
+    .attr("x2", (d) => x(d.category)! + x.bandwidth() / 2 + 5)
+    .attr("y1", (d) => y(clampY(d.value - d.error)))
+    .attr("y2", (d) => y(clampY(d.value - d.error)))
+    .attr("stroke", (d) => colorScale(d.subcategory));
+
+  // Add data points (only if within range)
   svg
     .append("g")
     .selectAll("circle")
-    .data(data)
+    .data(validData.filter((d) => d.value >= yMin && d.value <= yMax))
     .join("circle")
-    .attr(
-      "cx",
-      (d: { category: string; value: number }) =>
-        x(d.category)! + x.bandwidth() / 2
-    )
-    .attr("cy", (d: { value: number }) => y(d.value))
+    .attr("cx", (d) => x(d.category)! + x.bandwidth() / 2)
+    .attr("cy", (d) => y(d.value))
     .attr("r", 5)
-    .attr("fill", (d: { subcategory: string }) => colorScale(d.subcategory));
+    .attr("fill", (d) => colorScale(d.subcategory))
+    .append("title")
+    .text((d) => `${d.category}, ${d.subcategory}: ${d.value} ± ${d.error}`);
 
-  // Menambahkan garis horizontal di ujung atas dan bawah error bar
-  svg
-    .append("g")
-    .attr("stroke", "black")
-    .selectAll(".error-cap-top")
-    .data(data)
-    .join("line")
-    .attr(
-      "x1",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2 - 5
-    )
-    .attr(
-      "x2",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2 + 5
-    )
-    .attr("y1", (d: { value: number; error: number }) => y(d.value + d.error))
-    .attr("y2", (d: { value: number; error: number }) => y(d.value + d.error))
-    .attr("stroke-width", 2)
-    .attr("stroke", (d: { subcategory: string }) => colorScale(d.subcategory));
-
-  svg
-    .append("g")
-    .attr("stroke", "black")
-    .selectAll(".error-cap-bottom")
-    .data(data)
-    .join("line")
-    .attr(
-      "x1",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2 - 5 // Panjang garis horizontal
-    )
-    .attr(
-      "x2",
-      (d: { category: string; value: number; error: number }) =>
-        x(d.category)! + x.bandwidth() / 2 + 5
-    )
-    .attr("y1", (d: { value: number; error: number }) => y(d.value - d.error))
-    .attr("y2", (d: { value: number; error: number }) => y(d.value - d.error))
-    .attr("stroke-width", 2)
-    .attr("stroke", (d: { subcategory: string }) => colorScale(d.subcategory));
-
-  // Jika axis digunakan, tambahkan sumbu X dan Y
+  // Add axes if needed
   if (useAxis) {
-    // X-Axis (Horizontal)
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0))
-      .call(g => g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))"))
-      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"));
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        showGridLines: false,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: true,
+        tickValues: majorIncrement
+          ? generateAxisTicks(yMin, yMax, majorIncrement)
+          : undefined,
+      },
+    });
 
-    // Y-Axis (Vertical)
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(0)))
-      .call((g: any) => g.select(".domain").remove()) // Domain is removed
-      .call(g => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
-      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"))
-      .call((g: any) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "hsl(var(--foreground))") // Changed from currentColor
-          .attr("text-anchor", "start")
-          .text("↑ Value")
-      );
+    // Add legend using the improved legend utility
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft: margin.left,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginTop: margin.top,
+      legendPosition: "right",
+      itemCount: subcategories.length,
+    });
+
+    addLegend({
+      svg,
+      colorScale,
+      position: legendPosition,
+      legendPosition: "right",
+      domain: subcategories,
+      itemWidth: 15,
+      itemHeight: 15,
+      fontSize: 12,
+    });
   }
 
-  // Dynamic Legend
-  const legendGroup = svg
-    .append("g")
-    .attr("font-family", "sans-serif")
-    .attr("font-size", 10)
-    .attr("text-anchor", "start")
-    .attr(
-      "transform",
-      `translate(${marginLeft}, ${height - marginBottom + 60})`
-    );
-
-  const legendItemWidth = 19;
-  const legendItemHeight = 19;
-  const labelOffset = 5;
-  const legendSpacingX = 100;
-  const legendSpacingY = 25;
-  const legendMaxWidth = width - marginLeft - marginRight;
-  const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
-
-  subcategories.forEach((subcategory, index) => {
-    const row = Math.floor(index / itemsPerRow);
-    const col = index % itemsPerRow;
-    const xOffset = col * legendSpacingX;
-    const yOffset = row * legendSpacingY;
-
-    // Menambahkan swatch
-    legendGroup
-      .append("rect")
-      .attr("x", xOffset)
-      .attr("y", yOffset)
-      .attr("width", legendItemWidth)
-      .attr("height", legendItemHeight)
-      .attr("fill", colorScale(subcategory));
-
-    // Menambahkan label teks
-    legendGroup
-      .append("text")
-      .attr("x", xOffset + legendItemWidth + labelOffset)
-      .attr("y", yOffset + legendItemHeight / 2)
-      .attr("dy", "0.35em")
-      .text(subcategory);
-  });
-
   return svg.node();
-};
-
-// export const create3DBarChart = (
-//   data: { x: string; y: string; z: number }[],
-//   width: number,
-//   height: number,
-//   useAxis: boolean = true
-// ) => {
-//   // Bikin container div
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-
-//   console.log("✅ Container dibuat:", container); // Debugging
-
-//   if (!container) {
-//     console.error("❌ Container tidak ada!");
-//     return null; // Hindari error lebih lanjut
-//   }
-
-//   const chart = echarts.init(container, undefined, { width, height });
-
-//   const getUniqueValues = (arr: string[]) => {
-//     return arr.filter((value, index, self) => self.indexOf(value) === index);
-//   };
-
-//   const option = {
-//     title: { text: "3D Bar Chart", left: "center" },
-//     grid3D: { boxWidth: 100, boxDepth: 80 },
-//     xAxis3D: useAxis
-//       ? {
-//           type: "category",
-//           name: "X",
-//           data: getUniqueValues(data.map((d) => d.x)),
-//         }
-//       : undefined,
-//     yAxis3D: useAxis
-//       ? {
-//           type: "category",
-//           name: "Y",
-//           data: getUniqueValues(data.map((d) => d.y)),
-//         }
-//       : undefined,
-//     zAxis3D: useAxis
-//       ? {
-//           type: "value",
-//           name: "Z",
-//         }
-//       : undefined,
-//     series: [
-//       {
-//         type: "bar3D",
-//         data: data.map((d) => [d.x, d.y, d.z]),
-//         shading: "lambert",
-//         label: { show: true, formatter: "{c}" },
-//       },
-//     ],
-//   };
-
-//   chart.setOption(option);
-
-//   console.log("chartOption", option);
-
-//   // Return div container-nya, jadi sama kayak D3
-//   return container;
-// };
-
-// export const create3DBarChart = (
-//   containerId: string,
-//   data: { x: string; y: string; z: number }[],
-//   useAxis: boolean = true
-// ) => {
-//   const container = document.getElementById(containerId);
-
-//   if (!container) {
-//     console.error("❌ Container tidak ditemukan!");
-//     return null;
-//   }
-
-//   // Bersihkan kontainer sebelum inisialisasi ulang
-//   container.innerHTML = "";
-
-//   const chart = echarts.init(container);
-
-//   const getUniqueValues = (arr: string[]) => {
-//     return arr.filter((value, index, self) => self.indexOf(value) === index);
-//   };
-
-//   const option = {
-//     title: { text: "3D Bar Chart", left: "center" },
-//     grid3D: { boxWidth: 100, boxDepth: 80 },
-//     xAxis3D: useAxis
-//       ? {
-//           type: "category",
-//           name: "X",
-//           data: getUniqueValues(data.map((d) => d.x)),
-//         }
-//       : undefined,
-//     yAxis3D: useAxis
-//       ? {
-//           type: "category",
-//           name: "Y",
-//           data: getUniqueValues(data.map((d) => d.y)),
-//         }
-//       : undefined,
-//     zAxis3D: useAxis
-//       ? {
-//           type: "value",
-//           name: "Z",
-//         }
-//       : undefined,
-//     series: [
-//       {
-//         type: "bar3D",
-//         data: data.map((d) => [d.x, d.y, d.z]),
-//         shading: "lambert",
-//         label: { show: true, formatter: "{c}" },
-//       },
-//     ],
-//   };
-
-//   chart.setOption(option);
-//   console.log("chartOption", JSON.stringify(option, null, 2));
-
-//   console.log("✅ Chart berhasil dirender di", container);
-//   return chart;
-// };
-
-// export const createBarChart = (
-//   data: { category: string; value: number }[], // Data untuk bar chart
-//   width: number,
-//   height: number
-// ) => {
-//   // Membuat elemen container
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-
-//   // Inisialisasi chart dengan container
-//   const chart = echarts.init(container, undefined, {
-//     width,
-//     height,
-//   });
-
-//   // Definisi konfigurasi chart
-//   const option = {
-//     title: {
-//       text: "Bar Chart",
-//       left: "center",
-//     },
-//     tooltip: {
-//       trigger: "axis",
-//     },
-//     xAxis: {
-//       type: "category",
-//       data: data.map((item) => item.category), // Menentukan kategori pada sumbu X
-//     },
-//     yAxis: {
-//       type: "value",
-//     },
-//     series: [
-//       {
-//         type: "bar", // Jenis chart: bar
-//         data: data.map((item) => item.value), // Data yang akan digambarkan sebagai bar
-//         label: {
-//           show: true,
-//           position: "top", // Menampilkan nilai pada bagian atas bar
-//         },
-//       },
-//     ],
-//   };
-
-//   // Set konfigurasi chart
-//   chart.setOption(option);
-
-//   // Kembalikan container chart
-//   return container;
-// };
-
-// export const create3DBarChart2 = (
-//   data: { x: string; y: string; z: number }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Buat container div
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   // Scene & Camera
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff); // 🔥 Ubah background jadi putih
-
-//   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-//   camera.position.set(10, 15, 30);
-//   camera.lookAt(new THREE.Vector3(0, 5, 0)); // 🔥 Pastikan menghadap sedikit ke atas
-
-//   // Renderer
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   // Cahaya
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 🔥 Tambah ambient light
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Tambahkan Grid Helper
-//   const gridHelper = new THREE.GridHelper(20, 20);
-//   scene.add(gridHelper);
-
-//   // Orbit Controls
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala sumbu menggunakan D3.js
-//   const xScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.x))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const zScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.y))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const yScale = d3
-//     .scaleLinear()
-//     .domain([0, d3.max(data, (d) => d.z)!])
-//     .range([0, 10]);
-
-//   // Buat batang 3D
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(1.5, yScale(d.z), 1.5); // 🔥 Lebar batang sedikit dikurangi
-//     const material = new THREE.MeshStandardMaterial({
-//       color: 0x007bff, // 🔥 Warna lebih kontras
-//       metalness: 0.3,
-//       roughness: 0.7,
-//     });
-//     const bar = new THREE.Mesh(geometry, material);
-
-//     bar.position.set(xScale(d.x)!, yScale(d.z) / 2, zScale(d.y)!);
-//     scene.add(bar);
-//   });
-
-//   // Render loop
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// export const create3DBarChart2 = (
-//   data: { x: string; y: string; z: number }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Buat container div
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   // Scene & Camera
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xf0f0f0); // 🔥 Ubah latar belakang jadi putih
-
-//   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-//   camera.position.set(15, 20, 30);
-//   camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//   // Renderer untuk objek 3D
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   // Renderer untuk label teks
-//   const labelRenderer = new CSS2DRenderer();
-//   labelRenderer.setSize(width, height);
-//   labelRenderer.domElement.style.position = "absolute";
-//   labelRenderer.domElement.style.top = "0px";
-//   labelRenderer.domElement.style.pointerEvents = "none";
-//   container.appendChild(labelRenderer.domElement);
-
-//   // Cahaya
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 1); // 🔥 Tambahkan cahaya global
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Tambahkan Grid Helper
-//   const gridHelper = new THREE.GridHelper(20, 20);
-//   scene.add(gridHelper);
-
-//   // Tambahkan AxesHelper
-//   const axesHelper = new THREE.AxesHelper(10);
-//   scene.add(axesHelper);
-
-//   // Tambahkan Orbit Controls agar bisa digeser
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-//   controls.dampingFactor = 0.05;
-//   controls.screenSpacePanning = false;
-//   controls.minDistance = 5;
-//   controls.maxDistance = 100;
-
-//   // Skala sumbu menggunakan D3.js
-//   const xScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.x))
-//     .range([-10, 10])
-//     .padding(0.2);
-//   const zScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.y))
-//     .range([-10, 10])
-//     .padding(0.2);
-//   const yScale = d3
-//     .scaleLinear()
-//     .domain([0, d3.max(data, (d) => d.z)!])
-//     .range([0, 10]);
-
-//   // Fungsi untuk membuat label teks
-//   const createLabel = (text: string, position: THREE.Vector3) => {
-//     const div = document.createElement("div");
-//     div.className = "label";
-//     div.textContent = text;
-//     div.style.color = "black";
-//     div.style.fontSize = "14px";
-//     div.style.fontWeight = "bold";
-
-//     const label = new CSS2DObject(div);
-//     label.position.copy(position);
-//     scene.add(label);
-//   };
-
-//   // Tambahkan label di sumbu X, Y, Z
-//   createLabel("X", new THREE.Vector3(12, 0, 0)); // X
-//   createLabel("Y", new THREE.Vector3(0, 12, 0)); // Y
-//   createLabel("Z", new THREE.Vector3(0, 0, 12)); // Z
-
-//   // Buat batang 3D
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(2, yScale(d.z), 2);
-//     const material = new THREE.MeshStandardMaterial({ color: "steelblue" });
-//     const bar = new THREE.Mesh(geometry, material);
-
-//     bar.position.set(xScale(d.x)!, yScale(d.z) / 2, zScale(d.y)!);
-//     scene.add(bar);
-//   });
-
-//   // Render loop
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update(); // 🔥 Pastikan OrbitControls tetap diupdate
-//     renderer.render(scene, camera);
-//     labelRenderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// export const create3DBarChart2 = (
-//   data: { x: string; y: string; z: number }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Container
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   // Scene
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xf0f0f0);
-
-//   // Camera
-//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-//   camera.position.set(15, 20, 30);
-//   camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//   // Renderer
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   // Label Renderer
-//   const labelRenderer = new CSS2DRenderer();
-//   labelRenderer.setSize(width, height);
-//   labelRenderer.domElement.style.position = "absolute";
-//   labelRenderer.domElement.style.top = "0px";
-//   labelRenderer.domElement.style.pointerEvents = "none";
-//   container.appendChild(labelRenderer.domElement);
-
-//   // Cahaya
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Orbit Controls
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-//   controls.dampingFactor = 0.05;
-//   controls.screenSpacePanning = false;
-//   controls.minDistance = 5;
-//   controls.maxDistance = 100;
-
-//   // Skala sumbu menggunakan D3.js
-//   const xScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.x))
-//     .range([-10, 10])
-//     .padding(0.2);
-//   const zScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.y))
-//     .range([-10, 10])
-//     .padding(0.2);
-//   const yScale = d3
-//     .scaleLinear()
-//     .domain([0, d3.max(data, (d) => d.z)!])
-//     .range([0, 10]);
-
-//   // Fungsi untuk membuat label teks
-//   const createLabel = (text: string, position: THREE.Vector3) => {
-//     const div = document.createElement("div");
-//     div.className = "label";
-//     div.textContent = text;
-//     div.style.color = "black";
-//     div.style.fontSize = "14px";
-//     div.style.fontWeight = "bold";
-
-//     const label = new CSS2DObject(div);
-//     label.position.copy(position);
-//     scene.add(label);
-//   };
-
-//   // Tambahkan GridHelper
-//   const gridHelper = new THREE.GridHelper(20, 20);
-//   scene.add(gridHelper);
-
-//   // Tambahkan Label untuk Axis
-//   createLabel("X", new THREE.Vector3(12, -1, 0));
-//   createLabel("Y", new THREE.Vector3(0, 12, 0));
-//   createLabel("Z", new THREE.Vector3(0, -1, 12));
-
-//   // Tambahkan label kategori pada sumbu X & Z
-//   data.forEach((d) => {
-//     createLabel(d.x, new THREE.Vector3(xScale(d.x)!, -1, -11));
-//     createLabel(d.y, new THREE.Vector3(-11, -1, zScale(d.y)!));
-//   });
-
-//   // Tambahkan angka pada sumbu Y
-//   for (let i = 0; i <= 10; i += 2) {
-//     createLabel(`${i * 10}`, new THREE.Vector3(-12, i, 0));
-//   }
-
-//   // Buat batang 3D
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(2, yScale(d.z), 2);
-//     const material = new THREE.MeshStandardMaterial({ color: "orange" });
-//     const bar = new THREE.Mesh(geometry, material);
-
-//     bar.position.set(xScale(d.x)!, yScale(d.z) / 2, zScale(d.y)!);
-//     scene.add(bar);
-//   });
-
-//   // Render loop
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//     labelRenderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// export const create3DBarChart2 = (
-//   data: { x: string; y: string; z: number }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Buat container div
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   // Scene & Camera
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff); // 🔥 Ubah background jadi putih
-
-//   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-//   camera.position.set(10, 15, 30);
-//   camera.lookAt(new THREE.Vector3(0, 5, 0)); // 🔥 Pastikan menghadap sedikit ke atas
-
-//   // Renderer
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   // Cahaya
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 🔥 Tambah ambient light
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Grid Helper
-//   const gridHelper = new THREE.GridHelper(20, 20);
-//   scene.add(gridHelper);
-
-//   // Orbit Controls
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala sumbu menggunakan D3.js
-//   const xScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.x))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const yScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.y))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const zScale = d3
-//     .scaleLinear()
-//     .domain([0, d3.max(data, (d) => d.z)!])
-//     .range([0, 10]);
-
-//   // Buat batang 3D
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(1.5, zScale(d.z), 1.5); // 🔥 Tinggi batang diambil dari z
-//     const material = new THREE.MeshStandardMaterial({
-//       color: 0x007bff, // 🔥 Warna lebih kontras
-//       metalness: 0.3,
-//       roughness: 0.7,
-//     });
-//     const bar = new THREE.Mesh(geometry, material);
-
-//     bar.position.set(xScale(d.x)!, zScale(d.z) / 2, yScale(d.y)!);
-//     scene.add(bar);
-//   });
-
-//   // Render loop
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// export const create3DBarChart2 = (
-//   data: { x: string; y: string; z: number }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Buat container div
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   // Scene & Camera
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-//   camera.position.set(10, 15, 30);
-//   camera.lookAt(new THREE.Vector3(0, 5, 0));
-
-//   // Renderer
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   // Cahaya
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Grid Helper
-//   const gridHelper = new THREE.GridHelper(20, 20);
-//   scene.add(gridHelper);
-
-//   // Orbit Controls
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala sumbu menggunakan D3.js
-//   const xScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.x))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const yScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.y))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const zScale = d3
-//     .scaleLinear()
-//     .domain([0, d3.max(data, (d) => d.z)!])
-//     .range([0, 10]);
-
-//   // Buat batang 3D
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(1.5, zScale(d.z), 1.5);
-//     const material = new THREE.MeshStandardMaterial({
-//       color: 0x007bff,
-//       metalness: 0.3,
-//       roughness: 0.7,
-//     });
-//     const bar = new THREE.Mesh(geometry, material);
-//     bar.position.set(xScale(d.x)!, zScale(d.z) / 2, yScale(d.y)!);
-//     scene.add(bar);
-//   });
-
-//   // Tambahkan label sumbu
-//   const createLabel = (
-//     text: string,
-//     position: { x: number; y: number; z: number }
-//   ) => {
-//     const loader = new FontLoader();
-//     loader.load(
-//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-//       (font) => {
-//         const geometry = new TextGeometry(text, {
-//           font: font,
-//           size: 1,
-//           depth: 0.1, // ✅ Gunakan 'depth' sebagai pengganti 'height'
-//         });
-
-//         const material = new THREE.MeshBasicMaterial({ color: 0x000000 });
-//         const label = new THREE.Mesh(geometry, material);
-//         label.position.set(position.x, position.y, position.z);
-//         scene.add(label);
-//       }
-//     );
-//   };
-
-//   createLabel("X Axis", { x: 10, y: 0, z: 0 });
-//   createLabel("Y Axis", { x: 0, y: 0, z: 10 });
-//   createLabel("Z Axis", { x: 0, y: 10, z: 0 });
-
-//   // Render loop
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// export const create3DBarChart2 = (
-//   data: { x: string; y: string; z: number }[],
-//   width: number,
-//   height: number
-// ) => {
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-//   camera.position.set(10, 15, 30);
-//   camera.lookAt(new THREE.Vector3(0, 5, 0));
-
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   const gridHelper = new THREE.GridHelper(20, 20);
-//   scene.add(gridHelper);
-
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   const xDomain = data.map((d) => d.x);
-//   const yDomain = data.map((d) => d.y);
-
-//   const xScale = d3.scalePoint().domain(xDomain).range([-10, 10]);
-//   const yScale = d3.scalePoint().domain(yDomain).range([-10, 10]);
-//   const zScale = d3
-//     .scaleLinear()
-//     .domain([0, d3.max(data, (d) => d.z)!])
-//     .range([0, 10]);
-
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(1.5, zScale(d.z), 1.5);
-//     const material = new THREE.MeshStandardMaterial({
-//       color: 0x007bff,
-//       metalness: 0.3,
-//       roughness: 0.7,
-//     });
-//     const bar = new THREE.Mesh(geometry, material);
-
-//     bar.position.set(xScale(d.x)!, zScale(d.z) / 2, yScale(d.y)!);
-//     scene.add(bar);
-//   });
-
-//   const fontLoader = new FontLoader();
-//   fontLoader.load(
-//     "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-//     (font) => {
-//       data.forEach((d) => {
-//         const textGeo = new TextGeometry(d.z.toString(), {
-//           font: font,
-//           size: 0.8,
-//           depth: 0.1,
-//         });
-//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-//         const textMesh = new THREE.Mesh(textGeo, textMaterial);
-//         textMesh.position.set(xScale(d.x)!, zScale(d.z) + 0.5, yScale(d.y)!);
-//         textMesh.lookAt(camera.position);
-//         scene.add(textMesh);
-//       });
-
-//       ["X", "Y", "Z"].forEach((label) => {
-//         const axisTextGeo = new TextGeometry(label, {
-//           font: font,
-//           size: 1,
-//           depth: 0.1,
-//         });
-//         const axisTextMaterial = new THREE.MeshBasicMaterial({
-//           color: 0xff0000,
-//         });
-//         const axisTextMesh = new THREE.Mesh(axisTextGeo, axisTextMaterial);
-
-//         if (label === "X") axisTextMesh.position.set(11, 0, 0);
-//         if (label === "Y") axisTextMesh.position.set(0, 0, 11);
-//         if (label === "Z") axisTextMesh.position.set(0, 11, 0);
-
-//         axisTextMesh.lookAt(camera.position);
-//         scene.add(axisTextMesh);
-//       });
-
-//       data.forEach((d) => {
-//         const coordTextGeoX = new TextGeometry(d.x, {
-//           font: font,
-//           size: 0.5,
-//           depth: 0.1,
-//         });
-//         const coordTextMaterial = new THREE.MeshBasicMaterial({
-//           color: 0x000000,
-//         });
-//         const xText = new THREE.Mesh(coordTextGeoX, coordTextMaterial);
-//         xText.position.set(xScale(d.x)!, 0, -11);
-//         xText.lookAt(camera.position);
-//         scene.add(xText);
-
-//         const coordTextGeoY = new TextGeometry(d.y, {
-//           font: font,
-//           size: 0.5,
-//           depth: 0.1,
-//         });
-//         const yText = new THREE.Mesh(coordTextGeoY, coordTextMaterial);
-//         yText.position.set(-11, 0, yScale(d.y)!);
-//         yText.lookAt(camera.position);
-//         scene.add(yText);
-//       });
-//     }
-//   );
-
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-//y vertikal
-// export const create3DBarChart2 = (
-//   data: { x: string; y: number; z: string }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Buat container div
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   // Scene & Camera
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-//   camera.position.set(10, 15, 30);
-//   camera.lookAt(new THREE.Vector3(0, 5, 0));
-
-//   // Renderer
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   // Cahaya
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Grid Helper
-//   const gridHelper = new THREE.GridHelper(20, 20);
-//   scene.add(gridHelper);
-
-//   // Orbit Controls
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala sumbu menggunakan D3.js
-//   const xScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.x))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const zScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.z))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const yScale = d3
-//     .scaleLinear()
-//     .domain([0, d3.max(data, (d) => d.y)!])
-//     .range([0, 10]);
-
-//   // Buat batang 3D
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(1.5, yScale(d.y), 1.5);
-//     const material = new THREE.MeshStandardMaterial({
-//       color: 0x007bff,
-//       metalness: 0.3,
-//       roughness: 0.7,
-//     });
-//     const bar = new THREE.Mesh(geometry, material);
-
-//     bar.position.set(xScale(d.x)!, yScale(d.y) / 2, zScale(d.z)!);
-//     scene.add(bar);
-//   });
-
-//   // Render loop
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// export const create3DBarChart2 = (
-//   data: { x: string; y: number; z: string }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Fungsi untuk menambahkan teks label
-//   const addLabel = (text: string, position: THREE.Vector3) => {
-//     // Load font untuk label sumbu
-//     const loader = new FontLoader();
-//     loader.load(
-//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-//       (font) => {
-//         const textGeometry = new TextGeometry(text, {
-//           font: font,
-//           size: 1,
-//           depth: 0.1,
-//         });
-//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-//         textMesh.position.set(position.x, position.y, position.z); // Posisi label sumbu
-//         scene.add(textMesh);
-//       }
-//     );
-//   };
-
-//   // Buat container div
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   // Scene & Camera
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-//   camera.position.set(30, 30, 30); // Mengatur posisi kamera agar sesuai dengan orientasi
-//   camera.lookAt(new THREE.Vector3(0, 0, 0)); // Menyasar pusat scene
-
-//   // Renderer
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   // Cahaya
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Grid Helper (Sumbu X dan Y tetap datar)
-//   const gridHelper = new THREE.GridHelper(20, 20);
-//   scene.add(gridHelper);
-
-//   // Orbit Controls
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala sumbu menggunakan D3.js
-//   const xScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.x))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const zScale = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.z))
-//     .range([-10, 10])
-//     .padding(0.2);
-
-//   const yScale = d3
-//     .scaleLinear()
-//     .domain([0, d3.max(data, (d) => d.y)!])
-//     .range([0, 10]);
-
-//   // Buat batang 3D
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(1.5, yScale(d.y), 1.5);
-//     const material = new THREE.MeshStandardMaterial({
-//       color: 0x007bff,
-//       metalness: 0.3,
-//       roughness: 0.7,
-//     });
-//     const bar = new THREE.Mesh(geometry, material);
-
-//     // Posisi batang dan rotasi agar sumbu Z vertikal
-//     bar.position.set(xScale(d.x)!, yScale(d.y) / 2, zScale(d.z)!);
-//     scene.add(bar);
-
-//     // Tambahkan label untuk tinggi batang berdasarkan nilai z
-//     addLabel(
-//       d.z,
-//       new THREE.Vector3(xScale(d.x)!, yScale(d.y) + 1, zScale(d.z)!)
-//     ); // Label nilai Z
-//   });
-
-//   // Menambahkan label sumbu X, Y, dan Z
-//   addLabel("X", new THREE.Vector3(10, 0, 0)); // Label untuk sumbu X
-//   addLabel("Y", new THREE.Vector3(0, 0, 10)); // Label untuk sumbu Y
-//   addLabel("Z", new THREE.Vector3(0, 15, 0)); // Label untuk sumbu Z
-
-//   // Render loop
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-//FIX AXIS
-// export const create3DBarChart2 = (
-//   data: { x: number; y: number; z: number }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Fungsi untuk menambahkan teks label
-//   const addLabel = (text: string, position: THREE.Vector3) => {
-//     const loader = new FontLoader();
-//     loader.load(
-//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-//       (font) => {
-//         const textGeometry = new TextGeometry(text, {
-//           font: font,
-//           size: 1,
-//           depth: 0.1,
-//         });
-//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-//         textMesh.position.set(position.x, position.y, position.z);
-//         scene.add(textMesh);
-//       }
-//     );
-//   };
-
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-//   camera.position.set(20, 20, 30);
-//   camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Menentukan rentang data
-//   const xMax = d3.max(data, (d) => d.y)!;
-//   const yMax = d3.max(data, (d) => d.z)!;
-//   const zMax = d3.max(data, (d) => d.x)!;
-
-//   console.log("xmax", xMax);
-//   console.log("ymax", yMax);
-//   console.log("zmax", zMax);
-
-//   // Menentukan rentang koordinat
-//   const gridSizeX = 2.5 * yMax; // Rentang dari -xMax ke xMax
-//   const gridSizeZ = 2.5 * xMax; // Rentang dari -xMax ke xMax
-//   const gridSize = Math.max(gridSizeX, gridSizeZ);
-//   console.log("gridsize", gridSize);
-
-//   // Menentukan jumlah garis pada sumbu X dan Z
-//   const numLinesX = gridSizeX; // Setiap garis mewakili 1 unit
-//   const numLinesZ = gridSizeZ; // Setiap garis mewakili 1 unit
-
-//   // Membuat GridHelper dengan ukuran dan jumlah garis
-//   const gridHelper = new THREE.GridHelper(
-//     gridSize,
-//     Math.max(numLinesX, numLinesZ)
-//   );
-//   scene.add(gridHelper);
-
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala yang disesuaikan agar sesuai dengan rentang grid
-//   const xScale = d3
-//     .scaleLinear()
-//     .domain([-zMax, zMax]) // Rentang dari -xMax ke xMax
-//     .range([-zMax, zMax]);
-
-//   const zScale = d3
-//     .scaleLinear()
-//     .domain([-yMax, yMax]) // Rentang dari -zMax ke zMax
-//     .range([-yMax, yMax]);
-
-//   const yScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-//   data.forEach((d) => {
-//     const geometry = new THREE.BoxGeometry(1.5, yScale(d.z), 1.5);
-//     const material = new THREE.MeshStandardMaterial({
-//       color: 0x007bff,
-//       metalness: 0.3,
-//       roughness: 0.7,
-//     });
-//     const bar = new THREE.Mesh(geometry, material);
-
-//     bar.position.set(xScale(d.y)!, yScale(d.z) / 2, zScale(d.x)!);
-//     scene.add(bar);
-
-//     addLabel(
-//       d.z.toString(),
-//       new THREE.Vector3(
-//         xScale(d.y),
-//         yScale(d.z) + (yScale(d.z) >= 0 ? 1 : -1), // Menambahkan penyesuaian untuk nilai negatif
-//         zScale(d.x)
-//       )
-//     );
-//   });
-
-//   addLabel("X", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-//   addLabel("Y", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-//   addLabel("Z", new THREE.Vector3(0, yMax + 2, 0));
-
-//   // Menambahkan koordinat sepanjang setiap sumbu
-//   // const step = 2; // Langkah interval untuk koordinat
-//   // for (let i = 0; i <= zMax; i += step) {
-//   //   addLabel(i.toString(), new THREE.Vector3(i, 0, gridSize / 2 + 1)); // X-axis ticks
-//   //   addLabel((-i).toString(), new THREE.Vector3(-i, 0, gridSize / 2 + 1)); // Negative X-axis ticks
-//   // }
-
-//   // for (let i = 0; i <= xMax; i += step) {
-//   //   addLabel(i.toString(), new THREE.Vector3(gridSize / 2 + 1, 0, i)); // Y-axis ticks
-//   //   addLabel((-i).toString(), new THREE.Vector3(gridSize / 2 + 1, 0, -i)); // Negative Y-axis ticks
-//   // }
-
-//   // for (let i = 0; i <= yMax; i += step) {
-//   //   addLabel(i.toString(), new THREE.Vector3(0, i, 0)); // Z-axis ticks
-//   //   addLabel((-i).toString(), new THREE.Vector3(0, -i, 0)); // Negative Z-axis ticks
-//   // }
-
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// RIGHT-HAND RULE
-export const create3DBarChart2 = (
-  data: { x: number; y: number; z: number }[],
-  width: number,
-  height: number
-) => {
-  console.log("create 3d bar chart with data", data);
-  // Fungsi untuk menambahkan teks label
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 0.5, // Ukuran lebih kecil agar proporsional
-          depth: 0.05,
-        });
-        textGeometry.computeBoundingBox();
-        textGeometry.center(); // Pusatkan teks secara horizontal
-
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-  // scene.background = new THREE.Color(0xffffff);
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(20, 20, 30);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(10, 20, 30);
-  scene.add(pointLight);
-
-  // Menentukan rentang data
-  const xExtent = d3.extent(data, (d) => d.x)!;
-  const yExtent = d3.extent(data, (d) => d.y)!;
-  const zExtent = d3.extent(data, (d) => d.z)!;
-
-  const xMax = Math.max(Math.abs(xExtent[0]!), Math.abs(xExtent[1]!));
-  const yMax = Math.max(Math.abs(yExtent[0]!), Math.abs(yExtent[1]!));
-  const zMax = Math.max(Math.abs(zExtent[0]!), Math.abs(zExtent[1]!));
-
-  console.log("xMax", xMax);
-  console.log("yMax", yMax);
-  console.log("zMax", zMax);
-
-  // Menentukan rentang koordinat
-  const gridSizeX = 2 * xMax; // Rentang dari -xMax ke xMax
-  const gridSizeZ = 2 * zMax; // Rentang dari -xMax ke xMax
-  const gridSize = Math.max(gridSizeX, gridSizeZ);
-  console.log("gridSize", gridSize);
-
-  // Membuat GridHelper
-  const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1, // Panjang garis putus-putus
-      gapSize: 0.5, // Jarak antar garis putus-putus
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances(); // Penting agar efek putus-putus berfungsi
-
-    return line;
-  };
-
-  // Garis Sumbu X (Merah)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-gridSize, 0, 0),
-      new THREE.Vector3(gridSize, 0, 0),
-      0xff0000
-    )
-  );
-
-  // Garis Sumbu Y (Hijau)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, -gridSize, 0),
-      new THREE.Vector3(0, gridSize, 0),
-      0x00ff00
-    )
-  );
-
-  // Garis Sumbu Z (Biru)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -gridSize),
-      new THREE.Vector3(0, 0, gridSize),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Skala yang disesuaikan agar sesuai dengan rentang grid
-  const xScale = d3
-    .scaleLinear()
-    .domain([-xMax, xMax]) // Rentang dari -xMax ke xMax
-    .range([-xMax, xMax]);
-
-  const zScale = d3
-    .scaleLinear()
-    .domain([-zMax, zMax]) // Rentang dari -zMax ke zMax
-    .range([-zMax, zMax]);
-
-  const yScale = d3.scaleLinear().domain([-yMax, yMax]).range([-yMax, yMax]);
-
-  data.forEach((d) => {
-    const geometry = new THREE.BoxGeometry(1, yScale(d.y), 1);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x007bff,
-      metalness: 0.3,
-      roughness: 0.7,
-    });
-    const bar = new THREE.Mesh(geometry, material);
-
-    bar.position.set(xScale(d.x)!, yScale(d.y) / 2, zScale(d.z)!);
-    scene.add(bar);
-
-    addLabel(
-      d.y.toString(),
-      new THREE.Vector3(
-        xScale(d.x),
-        yScale(d.y) + (yScale(d.y) >= 0 ? 1 : -1), // Menambahkan penyesuaian untuk nilai negatif
-        zScale(d.z)
-      )
-    );
-  });
-
-  addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-  // Menambahkan koordinat sepanjang setiap sumbu
-  // const step = 2; // Langkah interval untuk koordinat
-  // for (let i = 0; i <= zMax; i += step) {
-  //   addLabel(i.toString(), new THREE.Vector3(i, 0, gridSize / 2 + 1)); // X-axis ticks
-  //   addLabel((-i).toString(), new THREE.Vector3(-i, 0, gridSize / 2 + 1)); // Negative X-axis ticks
-  // }
-
-  // for (let i = 0; i <= xMax; i += step) {
-  //   addLabel(i.toString(), new THREE.Vector3(gridSize / 2 + 1, 0, i)); // Y-axis ticks
-  //   addLabel((-i).toString(), new THREE.Vector3(gridSize / 2 + 1, 0, -i)); // Negative Y-axis ticks
-  // }
-
-  // for (let i = 0; i <= yMax; i += step) {
-  //   addLabel(i.toString(), new THREE.Vector3(0, i, 0)); // Z-axis ticks
-  //   addLabel((-i).toString(), new THREE.Vector3(0, -i, 0)); // Negative Z-axis ticks
-  // }
-
-  const animate = () => {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  return container;
-};
-
-export const create3DScatterPlot = (
-  data: { x: number; y: number; z: number }[],
-  width: number,
-  height: number
-) => {
-  console.log("create 3d scatter plot with data", data);
-  // Fungsi untuk menambahkan teks label
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 0.5, // Ukuran lebih kecil agar proporsional
-          depth: 0.05,
-        });
-        textGeometry.computeBoundingBox();
-        textGeometry.center(); // Pusatkan teks secara horizontal
-
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-  // scene.background = new THREE.Color(0xffffff);
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(20, 20, 30);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(10, 20, 30);
-  scene.add(pointLight);
-
-  // Menentukan rentang data
-  const xExtent = d3.extent(data, (d) => d.x)!;
-  const yExtent = d3.extent(data, (d) => d.y)!;
-  const zExtent = d3.extent(data, (d) => d.z)!;
-
-  const xMax = Math.max(Math.abs(xExtent[0]!), Math.abs(xExtent[1]!));
-  const yMax = Math.max(Math.abs(yExtent[0]!), Math.abs(yExtent[1]!));
-  const zMax = Math.max(Math.abs(zExtent[0]!), Math.abs(zExtent[1]!));
-
-  console.log("xMax", xMax);
-  console.log("yMax", yMax);
-  console.log("zMax", zMax);
-
-  // Menentukan rentang koordinat
-  const gridSizeX = 2 * xMax; // Rentang dari -xMax ke xMax
-  const gridSizeZ = 2 * zMax; // Rentang dari -xMax ke xMax
-  const gridSize = Math.max(gridSizeX, gridSizeZ);
-  console.log("gridSize", gridSize);
-
-  // Membuat GridHelper
-  const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1, // Panjang garis putus-putus
-      gapSize: 0.5, // Jarak antar garis putus-putus
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances(); // Penting agar efek putus-putus berfungsi
-
-    return line;
-  };
-
-  //Garis Sumbu X (Merah)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-gridSize, 0, 0),
-      new THREE.Vector3(gridSize, 0, 0),
-      0xff0000
-    )
-  );
-
-  // Garis Sumbu Y (Hijau)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, -gridSize, 0),
-      new THREE.Vector3(0, gridSize, 0),
-      0x00ff00
-    )
-  );
-
-  // Garis Sumbu Z (Biru)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -gridSize),
-      new THREE.Vector3(0, 0, gridSize),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Skala yang disesuaikan agar sesuai dengan rentang grid
-  const xScale = d3
-    .scaleLinear()
-    .domain([-xMax, xMax]) // Rentang dari -xMax ke xMax
-    .range([-xMax, xMax]);
-
-  const yScale = d3
-    .scaleLinear()
-    .domain([-yMax, yMax]) // Rentang dari -yMax ke yMax
-    .range([-yMax, yMax]);
-
-  const zScale = d3
-    .scaleLinear()
-    .domain([-zMax, zMax]) // Rentang dari -zMax ke zMax
-    .range([-zMax, zMax]);
-
-  // Menambahkan titik-titik (scatter) pada plot 3D
-  data.forEach((d) => {
-    const geometry = new THREE.SphereGeometry(0.5, 8, 8); // Membuat bola kecil untuk setiap titik
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x007bff,
-      metalness: 0.3,
-      roughness: 0.7,
-    });
-    const point = new THREE.Mesh(geometry, material);
-
-    // Posisi titik berdasarkan data dan skala
-    point.position.set(xScale(d.x)!, yScale(d.y), zScale(d.z)!);
-    scene.add(point);
-
-    addLabel(
-      ` ${d.y}`,
-      new THREE.Vector3(
-        xScale(d.x),
-        yScale(d.y) + (yScale(d.y) >= 0 ? 1 : -1),
-        zScale(d.z)
-      )
-    );
-  });
-
-  // Menambahkan label untuk sumbu
-  addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-  // Menambahkan koordinat sepanjang setiap sumbu
-  // const step = 2;
-  // for (let i = 0; i <= xMax; i += step) {
-  //   addLabel(i.toString(), new THREE.Vector3(i, 0, gridSize / 2 + 1));
-  //   addLabel((-i).toString(), new THREE.Vector3(-i, 0, gridSize / 2 + 1));
-  // }
-
-  // for (let i = 0; i <= yMax; i += step) {
-  //   addLabel(i.toString(), new THREE.Vector3(gridSize / 2 + 1, 0, i));
-  //   addLabel((-i).toString(), new THREE.Vector3(gridSize / 2 + 1, 0, -i));
-  // }
-
-  // for (let i = 0; i <= zMax; i += step) {
-  //   addLabel(i.toString(), new THREE.Vector3(0, i, gridSize / 2 + 1));
-  //   addLabel((-i).toString(), new THREE.Vector3(0, -i, gridSize / 2 + 1));
-  // }
-
-  const animate = () => {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  return container;
-};
-
-export const createGrouped3DScatterPlot = (
-  data: { x: number; y: number; z: number; category: string }[],
-  width: number,
-  height: number
-) => {
-  console.log("create 3d grouped scatter with data", data);
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-  // scene.background = new THREE.Color(0xffffff);
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(20, 20, 30);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(10, 20, 30);
-  scene.add(pointLight);
-
-  // Dapatkan kategori unik
-  const uniqueCategories = Array.from(new Set(data.map((d) => d.category)));
-
-  // Skema warna kategori
-  const colorScale = d3
-    .scaleOrdinal(d3.schemeCategory10)
-    .domain(uniqueCategories);
-
-  // Menentukan rentang data
-  const xExtent = d3.extent(data, (d) => d.x)!;
-  const yExtent = d3.extent(data, (d) => d.y)!;
-  const zExtent = d3.extent(data, (d) => d.z)!;
-
-  const xMax = Math.max(Math.abs(xExtent[0]!), Math.abs(xExtent[1]!));
-  const yMax = Math.max(Math.abs(yExtent[0]!), Math.abs(yExtent[1]!));
-  const zMax = Math.max(Math.abs(zExtent[0]!), Math.abs(zExtent[1]!));
-
-  const gridSizeX = 2 * xMax;
-  const gridSizeZ = 2 * zMax;
-  const gridSize = Math.max(gridSizeX, gridSizeZ);
-
-  // Membuat GridHelper
-  const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1,
-      gapSize: 0.5,
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-
-    return line;
-  };
-
-  // Garis sumbu
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-gridSize, 0, 0),
-      new THREE.Vector3(gridSize, 0, 0),
-      0xff0000
-    )
-  );
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, -gridSize, 0),
-      new THREE.Vector3(0, gridSize, 0),
-      0x00ff00
-    )
-  );
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -gridSize),
-      new THREE.Vector3(0, 0, gridSize),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Skala data
-  const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-  const yScale = d3.scaleLinear().domain([-yMax, yMax]).range([-yMax, yMax]);
-  const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-  // Fungsi menambahkan label teks
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 0.5,
-          depth: 0.05,
-        });
-        textGeometry.computeBoundingBox();
-        textGeometry.center();
-
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  // Menambahkan titik berdasarkan kategori
-  // Hitung jumlah titik di setiap posisi (x, z)
-  const pointMap = new Map<string, number>();
-  data.forEach((d) => {
-    const key = `${d.x},${d.y},${d.z}`; // Pakai xyz agar lebih akurat
-    pointMap.set(key, (pointMap.get(key) || 0) + 1);
-  });
-
-  // Skala ukuran titik berdasarkan jumlah titik di satu koordinat (x, z)
-  const sizeScale = d3.scaleLinear().domain([1, 5]).range([0.5, 0.2]);
-
-  const groupedData = d3.group(data, (d) => `${d.x},${d.y},${d.z}`);
-
-  groupedData.forEach((group, key) => {
-    const numPoints = group.length;
-    const baseSize = sizeScale(Math.min(numPoints, 5)); // Ukuran berdasarkan jumlah titik
-
-    group.forEach((d, index) => {
-      const size = baseSize;
-      const color = new THREE.Color(colorScale(d.category) as string);
-      const geometry = new THREE.SphereGeometry(size, 8, 8);
-      const material = new THREE.MeshStandardMaterial({
-        color: color,
-        // transparent: true,
-        // opacity: 0.8, // Bisa dikombinasikan dengan transparansi
-        metalness: 0.3,
-        roughness: 0.7,
-      });
-
-      const point = new THREE.Mesh(geometry, material);
-
-      // Offset posisi agar titik dalam satu (x, z) tidak tumpang tindih
-      const xOffset = (index - (numPoints - 1) / 2) * (size * 0.8);
-      const zOffset = (index % 2 === 0 ? 1 : -1) * (size * 0.8);
-
-      const xPos = xScale(d.x)! + xOffset;
-      const yPos = yScale(d.y);
-      const zPos = zScale(d.z)! + zOffset;
-
-      point.position.set(xPos, yPos, zPos);
-      scene.add(point);
-    });
-  });
-
-  // Menambahkan label untuk sumbu
-  addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-  const animate = () => {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  return container;
-};
-
-export const createClustered3DBarChart = (
-  data: { x: number; z: number; y: number; category: string }[],
-  width: number,
-  height: number
-) => {
-  console.log("create clustered 3d bar chart with data", data);
-  // Fungsi untuk menambahkan teks label
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 1,
-          depth: 0.1,
-        });
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-  // scene.background = new THREE.Color(0xffffff);
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(20, 20, 30);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(10, 20, 30);
-  scene.add(pointLight);
-
-  // Menentukan rentang koordinat
-  const xExtent = d3.extent(data, (d) => d.x) as [number, number];
-  const yExtent = d3.extent(data, (d) => d.y) as [number, number];
-  const zExtent = d3.extent(data, (d) => d.z) as [number, number];
-
-  const xMax = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]));
-  const yMax = Math.max(Math.abs(yExtent[0]), Math.abs(yExtent[1]));
-  const zMax = Math.max(Math.abs(zExtent[0]), Math.abs(zExtent[1]));
-
-  const gridSize = Math.max(2 * xMax, 2 * zMax);
-
-  // Membuat GridHelper
-  const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1, // Panjang garis putus-putus
-      gapSize: 0.5, // Jarak antar garis putus-putus
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances(); // Penting agar efek putus-putus berfungsi
-
-    return line;
-  };
-
-  //Garis Sumbu X (Merah)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-gridSize, 0, 0),
-      new THREE.Vector3(gridSize, 0, 0),
-      0xff0000
-    )
-  );
-
-  // Garis Sumbu Y (Hijau)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, -gridSize, 0),
-      new THREE.Vector3(0, gridSize, 0),
-      0x00ff00
-    )
-  );
-
-  // Garis Sumbu Z (Biru)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -gridSize),
-      new THREE.Vector3(0, 0, gridSize),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Skala koordinat
-  const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-  const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
-  const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-  // Kelompokkan berdasarkan koordinat (x, z)
-  const groupedData = d3.group(data, (d) => `${d.x},${d.z}`);
-
-  const colors = d3.scaleOrdinal(d3.schemeCategory10);
-
-  groupedData.forEach((group, key) => {
-    const numBars = group.length; // Jumlah kategori dalam satu (x, z)
-
-    const barSpacing = 0.005; // Jarak antar batang dalam cluster
-    const maxBarWidth = 0.95 - barSpacing * (numBars - 1); // Total area yang bisa dipakai dalam 1 unit
-    const barWidth = Math.min(0.95, maxBarWidth / numBars); // Lebar batang agar tetap dalam area 1 unit
-
-    group.forEach((d, index) => {
-      const geometry = new THREE.BoxGeometry(barWidth, yScale(d.y), 0.95);
-      const material = new THREE.MeshStandardMaterial({
-        color: colors(d.category),
-        metalness: 0.3,
-        roughness: 0.7,
-      });
-      const bar = new THREE.Mesh(geometry, material);
-
-      // Hitung posisi X agar sejajar dalam satu garis horizontal
-      const xOffset = (index - (numBars - 1) / 2) * (barWidth + barSpacing);
-      const xPos = xScale(d.x) + xOffset;
-      const yPos = yScale(d.y) / 2;
-      const zPos = zScale(d.z); // Tetap di tengah grid
-
-      bar.position.set(xPos, yPos, zPos);
-      scene.add(bar);
-    });
-  });
-
-  // Menambahkan label untuk sumbu
-  addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-  const animate = () => {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  return container;
-};
-
-export const createStacked3DBarChart = (
-  data: { x: number; z: number; y: number; category: string }[],
-  width: number,
-  height: number
-) => {
-  console.log("create stacked 3d bar chart with data", data);
-  // Fungsi untuk menambahkan teks label
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 0.5, // Ukuran lebih kecil agar proporsional
-          depth: 0.05,
-        });
-        textGeometry.computeBoundingBox();
-        textGeometry.center(); // Pusatkan teks secara horizontal
-
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-  // scene.background = new THREE.Color(0xffffff);
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(20, 20, 30);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(10, 20, 30);
-  scene.add(pointLight);
-
-  // Menentukan rentang koordinat
-  const xExtent = d3.extent(data, (d) => d.x) as [number, number];
-  const yExtent = d3.extent(data, (d) => d.y) as [number, number];
-  const zExtent = d3.extent(data, (d) => d.z) as [number, number];
-
-  const xMax = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]));
-  const yMax = Math.max(Math.abs(yExtent[0]), Math.abs(yExtent[1]));
-  const zMax = Math.max(Math.abs(zExtent[0]), Math.abs(zExtent[1]));
-
-  const gridSize = Math.max(2 * xMax, 2 * zMax);
-
-  // Membuat GridHelper
-  const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1, // Panjang garis putus-putus
-      gapSize: 0.5, // Jarak antar garis putus-putus
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances(); // Penting agar efek putus-putus berfungsi
-
-    return line;
-  };
-
-  //Garis Sumbu X (Merah)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-gridSize, 0, 0),
-      new THREE.Vector3(gridSize, 0, 0),
-      0xff0000
-    )
-  );
-
-  // Garis Sumbu Y (Hijau)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, -gridSize, 0),
-      new THREE.Vector3(0, gridSize, 0),
-      0x00ff00
-    )
-  );
-
-  // Garis Sumbu Z (Biru)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -gridSize),
-      new THREE.Vector3(0, 0, gridSize),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Skala koordinat
-  const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-  const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
-  const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-  // Kelompokkan berdasarkan koordinat (x, z)
-  const groupedData = d3.group(data, (d) => `${d.x},${d.z}`);
-
-  const colors = d3.scaleOrdinal(d3.schemeCategory10);
-
-  groupedData.forEach((group, key) => {
-    let accumulatedHeight = 0; // Untuk menumpuk batang dalam sumbu Y
-    let totalHeight = d3.sum(group, (d) => yScale(d.y)); // Total tinggi semua kategori
-
-    group.forEach((d) => {
-      const barWidth = 1; // Satu unit penuh
-      const barHeight = yScale(d.y);
-
-      const geometry = new THREE.BoxGeometry(barWidth, barHeight, barWidth);
-      const material = new THREE.MeshStandardMaterial({
-        color: colors(d.category),
-        metalness: 0.3,
-        roughness: 0.7,
-      });
-      const bar = new THREE.Mesh(geometry, material);
-
-      const xPos = xScale(d.x);
-      const yPos = accumulatedHeight + barHeight / 2; // Posisi di atas batang sebelumnya
-      const zPos = zScale(d.z);
-
-      bar.position.set(xPos, yPos, zPos);
-      scene.add(bar);
-
-      accumulatedHeight += barHeight; // Tambahkan tinggi untuk kategori berikutnya
-    });
-
-    // Tambahkan label total tinggi di atas batang terakhir
-    addLabel(
-      totalHeight.toFixed(1), // Tampilkan angka total tinggi
-      new THREE.Vector3(
-        xScale(group[0].x),
-        totalHeight + 0.5,
-        zScale(group[0].z)
-      )
-    );
-  });
-
-  // Menambahkan label untuk sumbu
-  addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-  const animate = () => {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  return container;
 };
 
 type ChartData2 = {
@@ -3288,22 +1517,57 @@ export const createBarAndLineChart2 = (
   width: number,
   height: number,
   useAxis: boolean = true,
-  barMode: "grouped" | "stacked" = "grouped"
+  barMode: "grouped" | "stacked" = "grouped",
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 40 : 0;
+  // Filter and validate data
+  const filteredData = data.filter(
+    (d) =>
+      d.bars != null &&
+      d.lines != null &&
+      d.category != " " &&
+      Object.values(d.bars).every((v) => v != null && !isNaN(v)) &&
+      Object.values(d.lines).every((v) => v != null && !isNaN(v))
+  );
 
-  const barKeys = Object.keys(data[0].bars);
-  const lineKeys = Object.keys(data[0].lines);
+  if (filteredData.length === 0) {
+    console.error("No valid data available for the bar and line chart");
+    return null;
+  }
 
-  const allBarValues = data.flatMap((d) => Object.values(d.bars));
-  const allLineValues = data.flatMap((d) => Object.values(d.lines));
+  // Create a canvas context for measuring text
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Extract keys for bars and lines
+  const barKeys = Object.keys(filteredData[0]?.bars || {});
+  const lineKeys = Object.keys(filteredData[0]?.lines || {});
+  const allKeys = [...barKeys, ...lineKeys];
+  const categories = filteredData.map((d) => d.category);
+
+  // Calculate value ranges
+  const allBarValues = filteredData.flatMap((d) => Object.values(d.bars));
+  const allLineValues = filteredData.flatMap((d) => Object.values(d.lines));
 
   let stackedBarSums: number[] = [];
   if (barMode === "stacked") {
-    stackedBarSums = data.map((d) => d3.sum(Object.values(d.bars)));
+    stackedBarSums = filteredData.map((d) => d3.sum(Object.values(d.bars)));
   }
 
   const allValues =
@@ -3311,37 +1575,106 @@ export const createBarAndLineChart2 = (
       ? [...stackedBarSums, ...allLineValues]
       : [...allBarValues, ...allLineValues];
 
-  const minY = Math.min(0, ...allValues);
-  const maxY = Math.max(...allValues);
+  // Calculate max Y value for ticks and margin calculations
+  const maxValue = d3.max(allValues) ?? 0;
+  const minValue = d3.min(allValues) ?? 0;
+  const yTicks = d3.scaleLinear().domain([minValue, maxValue]).nice().ticks(5);
 
+  // Calculate max label widths for margin calculation
+  const maxYLabelWidth = Math.max(
+    ...yTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
+  );
+
+  // Calculate max legend text width
+  const maxLegendWidth = Math.max(
+    ...allKeys.map((key) => ctx.measureText(key).width)
+  );
+
+  // Use responsive margin utility with legend consideration
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions: titleOptions
+      ? { title: titleOptions.title, subtitle: titleOptions.subtitle }
+      : undefined,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxLegendWidth),
+    categories,
+    hasLegend: true,
+    legendPosition: "right",
+  });
+
+  // Y scale with axis scale options
+  let yMin = Math.min(0, minValue);
+  let yMax = maxValue;
+  let yAxisMajorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  // Create scales
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
-    .range([marginLeft, width - marginRight])
+    .domain(categories)
+    .range([margin.left, width - margin.right])
     .padding(0.1);
 
   const y = d3
     .scaleLinear()
-    .domain([minY, maxY])
-    .range([height - marginBottom, marginTop]);
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Y2 scale for lines (independent domain)
+  const y2 = d3
+    .scaleLinear()
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
+  // Create color scales with default fallback
   const colorBar = d3
     .scaleOrdinal<string>()
     .domain(barKeys)
-    .range(d3.schemeCategory10);
+    .range(chartColors || defaultChartColors);
 
+  const colorLine = d3
+    .scaleOrdinal<string>()
+    .domain(lineKeys)
+    .range(
+      chartColors && chartColors.length > barKeys.length
+        ? chartColors.slice(barKeys.length)
+        : defaultChartColors.slice(barKeys.length)
+    );
+
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
+
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Draw bars
   if (barMode === "grouped") {
     const x1 = d3
       .scaleBand()
@@ -3352,25 +1685,24 @@ export const createBarAndLineChart2 = (
     svg
       .append("g")
       .selectAll("g")
-      .data(data)
+      .data(filteredData)
       .join("g")
       .attr("transform", (d) => `translate(${x(d.category)},0)`)
       .selectAll("rect")
       .data((d) => barKeys.map((key) => ({ key, value: d.bars[key] })))
       .join("rect")
       .attr("x", (d) => x1(d.key)!)
-      .attr("y", (d) => (d.value >= 0 ? y(d.value) : y(0)))
+      .attr("y", (d) => y(Math.max(0, d.value)))
       .attr("width", x1.bandwidth())
       .attr("height", (d) => Math.abs(y(d.value) - y(0)))
-      .attr("fill", (d) => colorBar(d.key)!)
-      .attr("opacity", 0.7); // Biar line keliatan
+      .attr("fill", (d) => colorBar(d.key)!);
   } else {
     const stack = d3
       .stack<ChartData2>()
       .keys(barKeys)
       .value((d, key) => d.bars[key]);
 
-    const series = stack(data);
+    const series = stack(filteredData);
 
     svg
       .append("g")
@@ -3378,86 +1710,653 @@ export const createBarAndLineChart2 = (
       .data(series)
       .join("g")
       .attr("fill", (d) => colorBar(d.key)!)
-      .attr("opacity", 0.7)
       .selectAll("rect")
-      .data((d) => d)
+      .data((d) => d.map((item) => ({ ...item, key: d.key })))
       .join("rect")
       .attr("x", (d) => x(d.data.category)!)
       .attr("y", (d) => y(Math.max(d[0], d[1])))
       .attr("height", (d) => Math.abs(y(d[0]) - y(d[1])))
-
       .attr("width", x.bandwidth());
   }
 
-  const colorLine = d3
-    .scaleOrdinal<string>()
-    .domain(lineKeys)
-    .range(d3.schemeTableau10);
-
+  // Draw lines
   lineKeys.forEach((key) => {
     const line = d3
       .line<ChartData2>()
       .x((d) => x(d.category)! + x.bandwidth() / 2)
-      .y((d) => y(d.lines[key]));
+      .y((d) => y2(d.lines[key]));
 
-    // Path Line
+    // Add line path
     svg
       .append("path")
-      .datum(data)
+      .datum(filteredData)
       .attr("fill", "none")
       .attr("stroke", colorLine(key)!)
-      .attr("stroke-width", 3)
-      .attr("stroke-linejoin", "round")
-      .attr("stroke-linecap", "round")
+      .attr("stroke-width", 1.5)
       .attr("d", line);
 
-    // Dots di titik Line
+    // Add line points
     svg
       .selectAll(`.dot-${key}`)
-      .data(data)
+      .data(filteredData)
       .join("circle")
+      .attr("class", `dot-${key}`)
       .attr("cx", (d) => x(d.category)! + x.bandwidth() / 2)
-      .attr("cy", (d) => y(d.lines[key]))
-      .attr("r", 3.5)
-      .attr("fill", colorLine(key))
-      .attr("stroke", "white")
-      .attr("stroke-width", 1.5);
+      .attr("cy", (d) => y2(d.lines[key]))
+      .attr("r", 4)
+      .attr("fill", colorLine(key)!);
   });
 
+  // Add axes if needed
   if (useAxis) {
-    const maxXTicks = 10; // atau berapa pun jumlah maksimal tick yang kamu mau
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 10,
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        tickValues: yAxisMajorIncrement
+          ? generateAxisTicks(yMin, yMax, yAxisMajorIncrement)
+          : undefined,
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+      },
+    });
 
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${y(0)})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .tickSizeOuter(0)
-          .tickValues(
-            x
-              .domain()
-              .filter(
-                (d, i) => i % Math.ceil(x.domain().length / maxXTicks) === 0
-              )
-          )
-      );
+    // Add legend using the improved legend utility
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft: margin.left,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginTop: margin.top,
+      legendPosition: "right",
+      itemCount: allKeys.length,
+    });
 
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).tickFormat((v) => (+v).toFixed(2)));
-    // .call((g) => g.select(".domain").remove());
+    // Create combined color scale for legend
+    const combinedColorScale = d3
+      .scaleOrdinal<string>()
+      .domain(allKeys)
+      .range([
+        ...barKeys.map((key) => colorBar(key)!),
+        ...lineKeys.map((key) => colorLine(key)!),
+      ]);
 
-    // const y2Axis = svg
-    //   .append("g")
-    //   .attr("transform", `translate(${width - marginRight}, 0)`)
-    //   .call(d3.axisRight(y).tickFormat((v) => (+v).toFixed(2)))
-    //   .call((g) => g.select(".domain").remove());
-
-    // y2Axis.selectAll(".tick text").attr("fill", "red");
-    // y2Axis.select(".domain").attr("stroke", "red");
+    addLegend({
+      svg,
+      colorScale: combinedColorScale,
+      position: legendPosition,
+      legendPosition: "right",
+      domain: allKeys,
+      itemWidth: 15,
+      itemHeight: 15,
+      fontSize: 12,
+    });
   }
 
   return svg.node();
 };
+
+export const createStemAndLeafPlot = (
+  data: Array<{ stem: string; leaves: number[] }>,
+  width: number,
+  height: number,
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
+) => {
+  // Calculate max label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+  const maxYLabelWidth = Math.max(
+    ...data.map((d) => ctx.measureText(d.stem).width)
+  );
+
+  // Calculate responsive margins
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxYLabelWidth,
+    categories: [],
+    hasLegend: false,
+  });
+
+  // Calculate dimensions
+  const bodyFontSize = useAxis
+    ? Math.max(12, Math.min(18, width / 30))
+    : Math.max(10, Math.min(14, width / 35));
+  const keyFontSize = useAxis ? Math.max(10, Math.min(16, width / 35)) : 0;
+  const lineHeight = bodyFontSize + (useAxis ? 12 : 8);
+
+  // Create SVG with standard settings
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
+
+  // Add title if provided with margin-aware positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Sort stems numerically
+  const sortedData = data
+    .slice()
+    .sort((a, b) => Number(a.stem) - Number(b.stem));
+
+  const rowGroup = svg
+    .append("g")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+  // Use default colors if not provided
+  const stemColor = chartColors?.[0] ?? defaultChartColors[0];
+  const leafBackgroundColor = chartColors?.[1] ?? defaultChartColors[1];
+
+  // Draw rows
+  sortedData.forEach((row, i) => {
+    const leaves = row.leaves.slice().sort((a, b) => a - b);
+    const leafText = leaves.map((v) => v.toString()).join(" ");
+
+    const group = rowGroup
+      .append("g")
+      .attr("transform", `translate(0, ${i * lineHeight})`);
+
+    // Stem column
+    group
+      .append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", 50)
+      .attr("height", lineHeight - 4)
+      .attr("fill", stemColor)
+      .attr("rx", 4)
+      .attr("stroke", "hsl(var(--border))")
+      .attr("stroke-width", 1);
+
+    group
+      .append("text")
+      .attr("x", 25)
+      .attr("y", (lineHeight - 4) / 2)
+      .attr("fill", "hsl(var(--primary-foreground))")
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .style("font-size", `${bodyFontSize}px`)
+      .style("font-weight", "bold")
+      .text(row.stem);
+
+    // Leaf area
+    group
+      .append("rect")
+      .attr("x", 60)
+      .attr("y", 0)
+      .attr("width", width - margin.left - margin.right - 60)
+      .attr("height", lineHeight - 4)
+      .attr("fill", leafBackgroundColor)
+      .attr("rx", 4)
+      .attr("stroke", "hsl(var(--border))")
+      .attr("stroke-width", 1);
+
+    group
+      .append("text")
+      .attr("x", 70)
+      .attr("y", (lineHeight - 4) / 2)
+      .attr("dominant-baseline", "middle")
+      .style("font-size", `${bodyFontSize}px`)
+      .style("fill", "hsl(var(--foreground))")
+      .text(leafText);
+  });
+
+  // Add key text if needed
+  if (useAxis && sortedData.length > 0 && sortedData[0].leaves.length > 0) {
+    const firstStem = sortedData[0].stem;
+    const firstLeaf = sortedData[0].leaves[0];
+    const defaultKeyText = `Key: ${firstStem} | ${firstLeaf} = ${firstStem}${firstLeaf}`;
+
+    svg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", margin.top + sortedData.length * lineHeight + 25)
+      .attr("text-anchor", "middle")
+      .style("font-size", `${keyFontSize}px`)
+      .style("font-style", "italic")
+      .style("fill", "hsl(var(--muted-foreground))")
+      .text(defaultKeyText);
+  }
+
+  return svg.node();
+};
+
+export const createViolinPlot = (
+  data: { category: string; value: number }[],
+  width: number,
+  height: number,
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
+) => {
+  const categories = Array.from(new Set(data.map((d) => d.category)));
+
+  // Calculate max label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+  const maxXLabelWidth =
+    d3.max(categories, (d) => ctx.measureText(d).width) ?? 0;
+  const yTicks = d3
+    .scaleLinear()
+    .domain([
+      d3.min(data, (d) => d.value) ?? 0,
+      d3.max(data, (d) => d.value) ?? 0,
+    ])
+    .ticks(5);
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(0)).width)) ?? 0;
+
+  // Use responsive margin utility
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxYLabelWidth,
+    categories,
+    hasLegend: false,
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
+
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
+
+  // Add title if provided with margin-aware positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Y scale with axis scale options
+  let yMin = d3.min(data, (d) => d.value) ?? 0;
+  let yMax = d3.max(data, (d) => d.value) ?? 0;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  const x = d3
+    .scaleBand()
+    .domain(categories)
+    .range([marginLeft, width - marginRight])
+    .padding(0.05);
+
+  const y = d3
+    .scaleLinear()
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - marginBottom, marginTop]);
+
+  const histogram = d3
+    .histogram()
+    .domain(y.domain() as [number, number])
+    .thresholds(y.ticks(20));
+
+  const sumstat = categories.map((category) => {
+    const values = data
+      .filter((d) => d.category === category)
+      .map((d) => d.value);
+    const bins = histogram(values);
+    return { category, bins };
+  });
+
+  const maxNum =
+    d3.max(sumstat.flatMap((s) => s.bins.map((b) => b.length))) ?? 0;
+
+  const xNum = d3
+    .scaleLinear()
+    .range([0, x.bandwidth()])
+    .domain([-maxNum, maxNum]);
+
+  // Use default colors if no custom colors provided
+  const colorScale = d3
+    .scaleOrdinal<string>()
+    .domain(categories)
+    .range(
+      chartColors && chartColors.length > 0 ? chartColors : defaultChartColors
+    );
+
+  // Add violin shapes
+  svg
+    .selectAll("myViolin")
+    .data(sumstat)
+    .enter()
+    .append("g")
+    .attr("transform", (d) => `translate(${x(d.category)},0)`)
+    .each(function (d) {
+      d3.select(this)
+        .append("path")
+        .datum(d.bins)
+        .style("fill", colorScale(d.category))
+        .style("stroke", "hsl(var(--border))")
+        .style("stroke-width", 1)
+        .style("opacity", 0.8)
+        .attr(
+          "d",
+          d3
+            .area<d3.Bin<number, number>>()
+            .x0((d) => xNum(-d.length))
+            .x1((d) => xNum(d.length))
+            .y((d) => y(d.x0 ?? 0))
+            .curve(d3.curveCatmullRom)
+        );
+    });
+
+  if (useAxis) {
+    // Add standard axes with automatic formatting
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        tickFormat: (d: any) => truncateText(d, 12),
+        maxValueLength: 12,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+      },
+    });
+  }
+
+  return svg.node();
+};
+
+export const createDensityChart = (
+  data: number[],
+  width: number,
+  height: number,
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
+) => {
+  // Filter data yang valid (bukan NaN)
+  const filteredData = data.filter((d) => !isNaN(d));
+
+  // Calculate max label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+  const yTicks = d3
+    .scaleLinear()
+    .domain([d3.min(filteredData) ?? 0, d3.max(filteredData) ?? 0])
+    .ticks(5);
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(3)).width)) ?? 0;
+
+  // Calculate responsive margins based on title and axis labels
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxYLabelWidth,
+    categories: [],
+    hasLegend: false,
+  });
+
+  // Create SVG with standard settings
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
+
+  // Add title if provided with margin-aware positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // X scale (value range) with axis scale options and padding
+  let xMin = d3.min(filteredData) ?? 0;
+  let xMax = d3.max(filteredData) ?? 0;
+
+  // Add padding to domain
+  const xRange = xMax - xMin;
+  xMin = xMin - xRange * 0.05;
+  xMax = xMax + xRange * 0.05;
+
+  let xMajorIncrement = axisScaleOptions?.x?.majorIncrement
+    ? Number(axisScaleOptions.x.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
+  }
+
+  const x = d3
+    .scaleLinear()
+    .domain([xMin, xMax])
+    .nice()
+    .range([margin.left, width - margin.right]);
+
+  // Calculate optimal bandwidth based on Silverman's rule of thumb
+  const n = filteredData.length;
+  const sigma = d3.deviation(filteredData) ?? 1;
+  const bandwidth =
+    0.9 *
+    Math.min(
+      sigma,
+      (d3.quantile(filteredData, 0.75) ?? 0) -
+        (d3.quantile(filteredData, 0.25) ?? 0) / 1.34
+    ) *
+    Math.pow(n, -0.2);
+
+  // Kernel Density Estimation with optimal bandwidth
+  const kde = kernelDensityEstimator(
+    kernelEpanechnikov(bandwidth),
+    x.ticks(50)
+  );
+  const density = kde(filteredData);
+
+  // Y scale (density value) with axis scale options and padding
+  let yMin = 0;
+  let yMax = d3.max(density, (d) => d[1]) ?? 0;
+
+  // Add padding to y domain
+  yMax = yMax * 1.05;
+
+  let yMajorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  const y = d3
+    .scaleLinear()
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+
+  // Create area generator
+  const area = d3
+    .area<[number, number]>()
+    .curve(d3.curveBasis)
+    .x((d) => x(d[0]))
+    .y0(height - margin.bottom)
+    .y1((d) => y(d[1]));
+
+  // Use default chart colors
+  const fillColor = chartColors?.[0] ?? defaultChartColors[0];
+
+  // Add density area
+  svg
+    .append("path")
+    .datum(density as [number, number][])
+    .attr("fill", fillColor)
+    .attr("opacity", 0.8)
+    .attr("stroke", "hsl(var(--border))")
+    .attr("stroke-width", 1)
+    .attr("stroke-linejoin", "round")
+    .attr("d", area(density as [number, number][])!);
+
+  // Add standard axes if needed
+  if (useAxis) {
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories: [],
+      axisLabels,
+      majorIncrement: xMajorIncrement,
+      yMin,
+      yMax,
+      xMin,
+      xMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        customFormat: (d: any) => d3.format(".1f")(d),
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        customFormat: (d: any) => d3.format(".4f")(d),
+        showGridLines: false,
+      },
+    });
+  }
+
+  return svg.node();
+};
+
+// Kernel density estimator
+function kernelDensityEstimator(kernel: (v: number) => number, X: number[]) {
+  return function (V: number[]) {
+    return X.map((x) => [x, d3.mean(V, (v) => kernel(x - v)) ?? 0]);
+  };
+}
+
+// Epanechnikov kernel
+function kernelEpanechnikov(k: number) {
+  return function (v: number) {
+    return Math.abs((v /= k)) <= 1 ? (0.75 * (1 - v * v)) / k : 0;
+  };
+}
