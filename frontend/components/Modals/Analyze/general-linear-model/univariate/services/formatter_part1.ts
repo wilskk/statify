@@ -585,44 +585,10 @@ export function formatPart1(data: any, resultJson: ResultJson) {
                 interpretation: effects.interpretation,
             };
 
-            const allSourceNames = effects.sources.map((s: any) => s.name);
+            effects.sources.forEach((source: any) => {
+                const sourceName = source.name;
+                const effectData = source.effect;
 
-            const sourceOrder = [
-                "Corrected Model",
-                "Model",
-                "Intercept",
-                ...allSourceNames
-                    .filter(
-                        (s: string) =>
-                            ![
-                                "Corrected Model",
-                                "Model",
-                                "Intercept",
-                                "Error",
-                                "Total",
-                                "Corrected Total",
-                            ].includes(s)
-                    )
-                    .sort((a: string, b: string) => {
-                        // Sort by interaction level, then alphabetically
-                        const aInteractions = (a.match(/\*/g) || []).length;
-                        const bInteractions = (b.match(/\*/g) || []).length;
-                        if (aInteractions !== bInteractions) {
-                            return aInteractions - bInteractions;
-                        }
-                        return a.localeCompare(b);
-                    }),
-                "Error",
-                "Total",
-                "Corrected Total",
-            ].filter((s: string) => allSourceNames.includes(s));
-
-            const sourcesMap = new Map(
-                effects.sources.map((s: any) => [s.name, s.effect])
-            );
-
-            sourceOrder.forEach((sourceName) => {
-                const effectData: any = sourcesMap.get(sourceName);
                 if (!effectData) return;
 
                 const sumOfSquares = formatDisplayNumber(

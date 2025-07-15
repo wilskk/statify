@@ -35,7 +35,6 @@ pub fn preprocess_data(
     // Menentukan metode eksklusi data yang hilang berdasarkan konfigurasi.
     // `exclude_list_wise`: Jika satu nilai saja hilang, seluruh kasus (baris) akan dihapus.
     // `exclude_pair_wise`: Kasus tetap disertakan, perhitungan hanya dilakukan pada variabel yang lengkap.
-    // Metode list-wise menjadi prioritas jika kedua opsi diaktifkan.
     let use_list_wise = config.options.exclude_list_wise;
     let use_pair_wise = config.options.exclude_pair_wise;
 

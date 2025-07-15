@@ -106,10 +106,14 @@ pub struct LeveneTestEntry {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SourceEntry {
+    pub name: String,
+    pub effect: TestEffectEntry,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TestsBetweenSubjectsEffects {
-    pub source: HashMap<String, TestEffectEntry>,
-    pub r_squared: f64,
-    pub adjusted_r_squared: f64,
+    pub sources: Vec<SourceEntry>,
     pub note: Option<String>,
     pub interpretation: Option<String>,
 }

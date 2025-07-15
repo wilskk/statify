@@ -1,23 +1,41 @@
-import React, {useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     UnivariateModelProps,
     UnivariateModelType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
-import {Label} from "@/components/ui/label";
-import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
-import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {
     BUILDTERMMETHOD,
     SUMSQUARESMETHOD,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/constants/univariate-method";
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";
-import {Checkbox} from "@/components/ui/checkbox";
-import {CheckedState} from "@radix-ui/react-checkbox";
-import {Badge} from "@/components/ui/badge";
-import {ScrollArea} from "@/components/ui/scroll-area";
-import {toast} from "sonner";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 export const UnivariateModel = ({
     isModelOpen,
@@ -405,6 +423,7 @@ export const UnivariateModel = ({
                                         <RadioGroupItem
                                             value="Custom"
                                             id="Custom"
+                                            disabled={true}
                                         />
                                         <Label htmlFor="Custom">
                                             Build Terms
@@ -414,6 +433,7 @@ export const UnivariateModel = ({
                                         <RadioGroupItem
                                             value="BuildCustomTerm"
                                             id="BuildCustomTerm"
+                                            disabled={true}
                                         />
                                         <Label htmlFor="BuildCustomTerm">
                                             Build Custom Terms
@@ -790,6 +810,7 @@ export const UnivariateModel = ({
                             onValueChange={(value) =>
                                 handleChange("SumOfSquareMethod", value)
                             }
+                            disabled={true}
                         >
                             <SelectTrigger>
                                 <SelectValue />
@@ -812,6 +833,7 @@ export const UnivariateModel = ({
                         <Checkbox
                             id="Intercept"
                             checked={modelState.Intercept}
+                            disabled={true}
                             onCheckedChange={(checked) =>
                                 handleChange("Intercept", checked)
                             }
