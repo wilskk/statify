@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import IdentifyUnusualCases from '..';
@@ -16,21 +16,6 @@ jest.mock('../OptionsTab', () => {
     MockOptionsTab.displayName = 'MockOptionsTab';
     return MockOptionsTab;
 });
-jest.mock('../OutputTab', () => {
-    const MockOutputTab = () => <div>OutputTabContent</div>;
-    MockOutputTab.displayName = 'MockOutputTab';
-    return MockOutputTab;
-});
-jest.mock('../SaveTab', () => {
-    const MockSaveTab = () => <div>SaveTabContent</div>;
-    MockSaveTab.displayName = 'MockSaveTab';
-    return MockSaveTab;
-});
-jest.mock('../MissingValuesTab', () => {
-    const MockMissingValuesTab = () => <div>MissingValuesTabContent</div>;
-    MockMissingValuesTab.displayName = 'MockMissingValuesTab';
-    return MockMissingValuesTab;
-});
 
 // Mock hooks
 jest.mock('../hooks/useUnusualCases');
@@ -44,13 +29,19 @@ describe('IdentifyUnusualCases Dialog', () => {
     const mockOnClose = jest.fn();
     const mockHandleReset = jest.fn();
 
-    beforeEach(() => {
-        jest.clearAllMocks();
-        // Provide a default implementation for the hook
+    const setupDefaultHookMock = () => {
+        const mockHandleConfirm = jest.fn(() => mockOnClose());
+
         mockedUseUnusualCases.mockReturnValue({
             handleReset: mockHandleReset,
-            // Add any other properties from the hook that the component might need
+            handleConfirm: mockHandleConfirm,
+            // Other properties used by IdentifyUnusualCases (only what's needed for these tests)
         });
+    };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        setupDefaultHookMock();
     });
 
     const renderComponent = () => {

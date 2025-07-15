@@ -66,7 +66,6 @@ export const useResultStore = create<ResultState>()(
       },
 
       loadResults: async () => {
-        console.log("Starting to load results...");
         set((draft) => {
           draft.isLoading = true;
           draft.error = null;
@@ -74,7 +73,6 @@ export const useResultStore = create<ResultState>()(
 
         try {
           const logs = await resultService.getAllResults();
-          console.log("Results loaded:", logs);
           set((draft) => {
             draft.logs = logs;
             draft.isLoading = false;

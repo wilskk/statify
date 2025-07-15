@@ -37,6 +37,9 @@ class CrosstabsCalculator {
         this.rowCategories = []; // Label untuk setiap baris
         this.colCategories = []; // Label untuk setiap kolom
         this.W = 0; // Total bobot/kasus (Grand Total)
+        // Tambahan: pelacakan jumlah kasus valid dan missing berbobot
+        this.validWeight = 0; // Sum of weights untuk kasus valid (digunakan pada Case Processing Summary)
+        this.missingWeight = 0; // Sum of weights untuk kasus yang memiliki missing pada setidaknya salah satu variabel
         this.R = 0; // Jumlah baris
         this.C = 0; // Jumlah kolom
     }
@@ -67,6 +70,11 @@ class CrosstabsCalculator {
             if (!isRowMissing && !isColMissing) {
                 rowCatSet.add(rowData[i]);
                 colCatSet.add(colData[i]);
+                // Hitung berat kasus valid
+                this.validWeight += weight;
+            } else {
+                // Kasus dengan missing pada setidaknya satu variabel
+                this.missingWeight += weight;
             }
         }
         
@@ -93,7 +101,7 @@ class CrosstabsCalculator {
                 this.table[rowIndex][colIndex] += weight;
                 this.rowTotals[rowIndex] += weight;
                 this.colTotals[colIndex] += weight;
-                this.W += weight;
+                this.W += weight; // Total bobot/kasus valid
             }
         }
 
@@ -504,9 +512,31 @@ class CrosstabsCalculator {
         for(let i=0; i<this.R; i++) {
             for(let j=0; j<this.C; j++) {
                 const f_ij = this.table[i][j];
+                const expected = this._getExpectedCount(i, j);
+                const residual = expected !== null ? f_ij - expected : null; // Unstandardized residual
+
+                let standardizedResidual = null;
+                let adjustedResidual = null;
+
+                if (expected && expected > 0) {
+                    standardizedResidual = residual / Math.sqrt(expected);
+
+                    if (this.W > 0) {
+                        const rowProp = this.rowTotals[i] / this.W;
+                        const colProp = this.colTotals[j] / this.W;
+                        const denom = Math.sqrt(expected * (1 - rowProp) * (1 - colProp));
+                        if (denom !== 0) {
+                            adjustedResidual = residual / denom;
+                        }
+                    }
+                }
+
                 cellStats[i][j] = {
                     count: f_ij,
-                    expected: this._getExpectedCount(i, j),
+                    expected,
+                    residual, // Unstandardized residual
+                    standardizedResidual,
+                    adjustedResidual,
                     rowPercent: this.rowTotals[i] > 0 ? 100 * (f_ij / this.rowTotals[i]) : 0,
                     colPercent: this.colTotals[j] > 0 ? 100 * (f_ij / this.colTotals[j]) : 0,
                     totalPercent: this.W > 0 ? 100 * (f_ij / this.W) : 0,
@@ -518,7 +548,9 @@ class CrosstabsCalculator {
             summary: {
                 rows: this.R,
                 cols: this.C,
-                totalCases: this.W,
+                totalCases: this.W, // Tetap disediakan untuk kompatibilitas existing UI
+                valid: this.validWeight,
+                missing: this.missingWeight,
                 rowCategories: this.rowCategories,
                 colCategories: this.colCategories,
                 rowTotals: this.rowTotals,

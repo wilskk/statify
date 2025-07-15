@@ -34,9 +34,12 @@ export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({
 
     return (
         <Dialog open={props.isOpen} onOpenChange={(isOpen) => !isOpen && onClose()}>
-            <DialogContent className="p-0 gap-0 flex flex-col max-w-md h-auto max-h-[calc(100vh-2rem)]">
+            <DialogContent
+                className="p-0 gap-0 flex flex-col max-w-md h-auto max-h-[calc(100vh-2rem)]"
+                aria-label="Find and Replace"
+            >
                 <DialogHeader className="p-6 pb-0">
-                    <DialogTitle className="flex items-center justify-between">
+                    <DialogTitle role="heading" aria-level={2} className="flex items-center justify-between">
                         Find and Replace
                         <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full w-8 h-8">
                             <X className="h-4 w-4" /><span className="sr-only">Close</span>

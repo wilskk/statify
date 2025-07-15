@@ -1,8 +1,8 @@
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CellsTabProps, NonintegerWeightsType } from "./types";
+import { Input } from "@/components/ui/input";
+import { CellsTabProps } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { useMetaStore } from "@/stores/useMetaStore";
 
@@ -21,7 +21,7 @@ const CellsTab: FC<CellsTabProps> = ({
     const countsStep = getStepIndex('crosstabs-counts-section');
     const percentagesStep = getStepIndex('crosstabs-percentages-section');
     const residualsStep = getStepIndex('crosstabs-residuals-section');
-    const nonintegerWeightsStep = getStepIndex('crosstabs-noninteger-weights-section');
+    // const nonintegerWeightsStep = getStepIndex('crosstabs-noninteger-weights-section'); // Removed as Noninteger Weights section is eliminated
 
     const handleCellChange = (key: keyof typeof options.cells, value: boolean) => {
         setOptions(prev => ({
@@ -30,6 +30,17 @@ const CellsTab: FC<CellsTabProps> = ({
                 ...prev.cells,
                 [key]: value,
             }
+        }));
+    };
+
+    const handleThresholdChange = (value: number) => {
+        if (isNaN(value)) return;
+        setOptions(prev => ({
+            ...prev,
+            cells: {
+                ...prev.cells,
+                hideSmallCountsThreshold: value,
+            },
         }));
     };
 
@@ -43,9 +54,7 @@ const CellsTab: FC<CellsTabProps> = ({
         }));
     };
 
-    const handleWeightChange = (value: NonintegerWeightsType) => {
-        setOptions(prev => ({ ...prev, nonintegerWeights: value }));
-    };
+    // Removed as Noninteger Weights section is eliminated
 
     return (
         <div className="p-6 space-y-6">
@@ -74,6 +83,27 @@ const CellsTab: FC<CellsTabProps> = ({
                             <Label htmlFor="expectedCounts" className="text-sm cursor-pointer">
                                 Expected
                             </Label>
+                        </div>
+                        <div className="flex items-start mt-2">
+                            <Checkbox
+                                id="hideSmallCounts"
+                                checked={options.cells.hideSmallCounts}
+                                onCheckedChange={(checked) => handleCellChange('hideSmallCounts', !!checked)}
+                                className="mr-2 mt-1"
+                            />
+                            <div className="flex flex-wrap items-center">
+                                <Label htmlFor="hideSmallCounts" className="text-sm mr-2 cursor-pointer">
+                                    Hide small counts &lt;
+                                </Label>
+                                <Input
+                                    type="number"
+                                    id="hideSmallCountsThreshold"
+                                    value={options.cells.hideSmallCountsThreshold}
+                                    onChange={(e) => handleThresholdChange(Number(e.target.value))}
+                                    className="w-16 h-8 mr-2 px-1 text-center"
+                                    disabled={!options.cells.hideSmallCounts}
+                                />
+                            </div>
                         </div>
                     </div>
                     <ActiveElementHighlight active={tourActive && currentStep === countsStep} />
@@ -117,34 +147,7 @@ const CellsTab: FC<CellsTabProps> = ({
                     <ActiveElementHighlight active={tourActive && currentStep === residualsStep} />
                 </div>
 
-                {isWeightActive && (
-                    <div id="crosstabs-noninteger-weights-section" className="bg-card border border-border rounded-md p-4 relative">
-                        <div className="text-sm font-medium mb-3">Noninteger Weights</div>
-                        <RadioGroup value={options.nonintegerWeights} onValueChange={handleWeightChange} className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="roundCase" id="roundCase" />
-                                <Label htmlFor="roundCase" className="font-normal cursor-pointer">Round case weights</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="roundCell" id="roundCell" />
-                                <Label htmlFor="roundCell" className="font-normal cursor-pointer">Round cell counts</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="truncateCase" id="truncateCase" />
-                                <Label htmlFor="truncateCase" className="font-normal cursor-pointer">Truncate case weights</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="truncateCell" id="truncateCell" />
-                                <Label htmlFor="truncateCell" className="font-normal cursor-pointer">Truncate cell counts</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="noAdjustment" id="noAdjustment" />
-                                <Label htmlFor="noAdjustment" className="font-normal cursor-pointer">No adjustments</Label>
-                            </div>
-                        </RadioGroup>
-                        <ActiveElementHighlight active={tourActive && currentStep === nonintegerWeightsStep} />
-                    </div>
-                )}
+                {/* Noninteger Weights section removed as per requirements */}
             </div>
         </div>
     );

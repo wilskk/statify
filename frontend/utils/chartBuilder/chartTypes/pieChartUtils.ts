@@ -31,8 +31,6 @@ export const createPieChart = (
   titleOptions?: ChartTitleOptions,
   chartColors?: string[]
 ) => {
-  console.log("Creating pie chart with data:", data);
-
   const validData = data.filter(
     (d) =>
       typeof d.category === "string" &&

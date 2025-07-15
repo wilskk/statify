@@ -9,6 +9,11 @@
  */
 /* global importScripts, isNumeric, DescriptiveCalculator */
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
+// Helper to round numbers based on variable.decimals
+function roundToDecimals(number, decimals) {
+    if (typeof number !== 'number' || isNaN(number) || !isFinite(number)) return number;
+    return parseFloat(number.toFixed(decimals));
+}
 
 class FrequencyCalculator {
     /**
@@ -111,20 +116,29 @@ class FrequencyCalculator {
         const n = W; // Gunakan total bobot sebagai n
 
         switch (method.toLowerCase()) {
-            case 'waverage': { // Weighted Average
-                const tc = (n + 1) * (p / 100);
-                const k = Math.floor(tc);
-                const k_weight_sum = k > 0 ? cc[k - 1] : 0;
-                const i = cc.findIndex(sum => sum > k_weight_sum);
+            case 'waverage': { // Weighted Average (SPSS)
+                // SPSS defines the weighted-average percentile as:
+                // rank = 1 + p/100 * (n - 1)
+                // k    = floor(rank)
+                // g    = rank - k
+                // P    = y_k + g * (y_{k+1} - y_k)
 
-                if (i === -1) return null;
-                if (k === 0) return y[0];
+                const rank = 1 + (p / 100) * (n - 1);
+                const k = Math.floor(rank);
+                const g = rank - k;
+
+                // Boundary conditions
+                if (k <= 1) return y[0];
                 if (k >= n) return y[y.length - 1];
 
-                const g = tc - k;
-                const y_i = y[i];
-                const y_i_plus_1 = i + 1 < y.length ? y[i + 1] : y_i;
-                return y_i + g * (y_i_plus_1 - y_i);
+                // Locate y_k and y_{k+1} in cumulative counts (1-based ranks)
+                const idx_k = cc.findIndex(total => total >= k);
+                const idx_k1 = cc.findIndex(total => total >= k + 1);
+
+                const y_k = y[idx_k];
+                const y_k1 = idx_k1 !== -1 ? y[idx_k1] : y_k; // fallback if k+1 exceeds
+
+                return y_k + g * (y_k1 - y_k);
             }
             case 'haverage': { // Weighted Average (Harrell-Davis)
                 const rank = (n + 1) * (p / 100);
@@ -186,16 +200,67 @@ class FrequencyCalculator {
         const descStatsResults = this.descCalc.getStatistics();
         const descStats = descStatsResults.stats;
 
-        // Gabungkan semua statistik deskriptif dengan statistik frekuensi
-        const allStatistics = {
-            ...descStats,
-            Mode: this.getMode(),
-            Percentiles: {
+        // === NEW: Build percentile list based on UI options ===
+        let percentileObj = {};
+        const statOpts = (this.options && this.options.statisticsOptions) ? this.options.statisticsOptions : null;
+        if (statOpts && statOpts.percentileValues) {
+            const { quartiles, cutPoints, cutPointsN, enablePercentiles, percentilesList } = statOpts.percentileValues;
+            let pctList = [];
+
+            // Quartiles → 25, 50, 75
+            if (quartiles) pctList.push(25, 50, 75);
+
+            // Cut points for N equal groups → (100 / N) * i  where i = 1..N-1
+            if (cutPoints) {
+                const n = parseInt(cutPointsN, 10);
+                if (!isNaN(n) && n > 1) {
+                    for (let i = 1; i < n; i++) {
+                        pctList.push((100 / n) * i);
+                    }
+                }
+            }
+
+            // Custom percentiles entered by user
+            if (enablePercentiles && Array.isArray(percentilesList)) {
+                percentilesList.forEach(pStr => {
+                    const p = parseFloat(pStr);
+                    if (!isNaN(p)) pctList.push(p);
+                });
+            }
+
+            // Sanitize: keep 0 < p < 100, unique, sorted
+            pctList = Array.from(new Set(pctList.filter(p => p >= 0 && p <= 100)));
+            pctList.sort((a, b) => a - b);
+
+            pctList.forEach(p => {
+                percentileObj[p] = this.getPercentile(p, 'waverage');
+            });
+        }
+
+        // Fallback to default quartiles if none requested / computed
+        if (Object.keys(percentileObj).length === 0) {
+            percentileObj = {
                 '25': this.getPercentile(25, 'waverage'),
                 '50': this.getPercentile(50, 'waverage'),
                 '75': this.getPercentile(75, 'waverage'),
-            }
+            };
+        }
+
+        // Combine descriptive statistics with frequency-specific statistics
+        const allStatistics = {
+            ...descStats,
+            Mode: this.getMode(),
+            Percentiles: percentileObj,
         };
+
+        // === Add Interquartile Range (IQR) ===
+        const q1 = percentileObj['25'];
+        const q3 = percentileObj['75'];
+        if (q1 !== undefined && q1 !== null && q3 !== undefined && q3 !== null) {
+            allStatistics.IQR = q3 - q1;
+        }
+
+        // Display rounding now handled in worker.js files
 
         const finalResult = {
             variable: this.variable,
@@ -216,8 +281,9 @@ class FrequencyCalculator {
 
         const sortedData = this.getSortedData();
         const descStats = this.descCalc.getStatistics().stats;
-        const totalN = descStats.N + descStats.Missing;
-        const validN = descStats.N;
+        const totalN = descStats.N;            // Total cases
+        const validN = descStats.Valid;        // Valid (non-missing) cases
+        const missingN = descStats.Missing;
 
         if (!sortedData || validN === 0) return null;
 
@@ -226,11 +292,16 @@ class FrequencyCalculator {
 
         const rows = y.map((value, index) => {
             const frequency = c[index];
-            const percent = totalN > 0 ? (frequency / totalN) * 100 : 0;
-            const validPercent = validN > 0 ? (frequency / validN) * 100 : 0;
-            cumulativePercent += validPercent;
+            const rawPercent = totalN > 0 ? (frequency / totalN) * 100 : 0;
+            const rawValidPercent = validN > 0 ? (frequency / validN) * 100 : 0;
+
+            // SPSS rounds percentages to one decimal place in its output tables
+            const percent = parseFloat(rawPercent.toFixed(1));
+            const validPercent = parseFloat(rawValidPercent.toFixed(1));
+            cumulativePercent = parseFloat((cumulativePercent + validPercent).toFixed(1));
+
             return {
-                label: String(value), // Placeholder, can be enhanced with value labels
+                label: String(value), // placeholder; worker may convert based on value-labels
                 frequency,
                 percent,
                 validPercent,
@@ -243,7 +314,7 @@ class FrequencyCalculator {
             rows,
             summary: {
                 valid: validN,
-                missing: descStats.Missing,
+                missing: missingN,
                 total: totalN,
             }
         };

@@ -16,7 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
-import { useMobile } from "@/hooks/useMobile";
 import { useFileMenuActions } from '@/components/Modals/File/hooks/useFileMenuActions';
 import { ModalType, useModal } from '@/hooks/useModal';
 // import { ModeToggle } from "@/components/mode-toggle";
@@ -25,7 +24,6 @@ import { usePathname } from 'next/navigation';
 
 export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
-    const { isMobile } = useMobile();
     const pathname = usePathname();
     const { handleAction: handleFileAction } = useFileMenuActions();
     const { openModal } = useModal();
@@ -79,7 +77,8 @@ export default function Toolbar() {
 
     return (
         <div className="bg-background px-4 py-1 border-b border-border flex justify-between items-center overflow-hidden shadow-md">
-            <div className={`flex ${isMobile ? 'w-full overflow-x-auto' : ''}`}>
+            {/* Always allow horizontal scroll on small screens, but keep normal on medium+ */}
+            <div className="flex w-full overflow-x-auto md:overflow-visible">
                 <div className="flex space-x-2 min-w-max">
                     <ToolGroup tools={fileTools} />
                     <Separator orientation="vertical" className="h-6 my-auto" />

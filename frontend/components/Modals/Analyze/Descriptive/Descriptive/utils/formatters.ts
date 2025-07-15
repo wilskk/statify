@@ -1,6 +1,6 @@
 import { DescriptiveStatisticsOptions, DisplayOrderType, DescriptiveResult, DescriptiveStats } from '../types';
 import { spssDateTypes } from '@/types/Variable';
-import { spssSecondsToDateString } from '@/utils/spssDateConverter';
+import { spssSecondsToDateString } from '@/lib/spssDateConverter';
 import type { TableRow, TableColumnHeader } from '../types';
 
 export interface DescriptiveTable {
@@ -94,31 +94,51 @@ export function formatDescriptiveTableOld(
   displayOrder: DisplayOrderType = 'variableList'
 ): DescriptiveTable {
   
-  // 1. Bangun Headers
+  // ------------------------------------------------------------------
+  // 1. Build Multi-level Column Headers (SPSS-style)
+  // ------------------------------------------------------------------
   const columnHeaders: TableColumnHeader[] = [{ header: "" }];
-  columnHeaders.push({ header: "N", key: "N" }, { header: "Missing", key: "Missing" });
 
-  if (displayStatistics.range) columnHeaders.push({ header: "Range", key: "Range" });
-  if (displayStatistics.minimum) columnHeaders.push({ header: "Minimum", key: "Minimum" });
-  if (displayStatistics.maximum) columnHeaders.push({ header: "Maximum", key: "Maximum" });
-  if (displayStatistics.sum) columnHeaders.push({ header: "Sum", key: "Sum" });
-  if (displayStatistics.mean) columnHeaders.push({ header: "Mean", key: "Mean" });
-  if (displayStatistics.standardError) columnHeaders.push({ header: "Std. Error", key: "SEMean" });
-  if (displayStatistics.median) columnHeaders.push({ header: "Median", key: "Median" });
-  if (displayStatistics.stdDev) columnHeaders.push({ header: "Std. Deviation", key: "StdDev" });
-  if (displayStatistics.variance) columnHeaders.push({ header: "Variance", key: "Variance" });
+  const addSingleStatHeader = (label: string, key: string) => {
+    columnHeaders.push({ header: label, children: [{ header: "Statistic", key }] });
+  };
 
-  if (displayStatistics.skewness) {
-    columnHeaders.push({
-      header: "Skewness",
-      children: [{ header: "Statistic", key: "Skewness" }, { header: "Std. Error", key: "SESkewness" }]
-    });
+  // Always include N and Missing
+  addSingleStatHeader("N", "N");
+  addSingleStatHeader("Missing", "Missing");
+
+  if (displayStatistics.range) addSingleStatHeader("Range", "Range");
+  if (displayStatistics.minimum) addSingleStatHeader("Minimum", "Minimum");
+  if (displayStatistics.maximum) addSingleStatHeader("Maximum", "Maximum");
+  if (displayStatistics.sum) addSingleStatHeader("Sum", "Sum");
+
+  // Mean (Statistic + Std. Error when requested)
+  if (displayStatistics.mean) {
+    const meanChildren: TableColumnHeader[] = [{ header: "Statistic", key: "Mean" }];
+    if (displayStatistics.standardError) {
+      meanChildren.push({ header: "Std. Error", key: "SEMean" });
+    }
+    columnHeaders.push({ header: "Mean", children: meanChildren });
   }
+
+  if (displayStatistics.stdDev) addSingleStatHeader("Std. Deviation", "StdDev");
+  if (displayStatistics.variance) addSingleStatHeader("Variance", "Variance");
+
+  // Skewness & Kurtosis (each may include Std. Error)
+  if (displayStatistics.skewness) {
+    const skewChildren: TableColumnHeader[] = [{ header: "Statistic", key: "Skewness" }];
+    if (displayStatistics.skewness) {
+      skewChildren.push({ header: "Std. Error", key: "SESkewness" });
+    }
+    columnHeaders.push({ header: "Skewness", children: skewChildren });
+  }
+
   if (displayStatistics.kurtosis) {
-    columnHeaders.push({
-      header: "Kurtosis",
-      children: [{ header: "Statistic", key: "Kurtosis" }, { header: "Std. Error", key: "SEKurtosis" }]
-    });
+    const kurtChildren: TableColumnHeader[] = [{ header: "Statistic", key: "Kurtosis" }];
+    if (displayStatistics.kurtosis) {
+      kurtChildren.push({ header: "Std. Error", key: "SEKurtosis" });
+    }
+    columnHeaders.push({ header: "Kurtosis", children: kurtChildren });
   }
 
   // 2. Urutkan Data

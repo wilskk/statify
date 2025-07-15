@@ -4,7 +4,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PlotsTabProps } from "./types";
-import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 const PlotsTab: FC<PlotsTabProps> = ({
     boxplotType,
@@ -13,15 +12,23 @@ const PlotsTab: FC<PlotsTabProps> = ({
     setShowStemAndLeaf,
     showHistogram,
     setShowHistogram,
-    showNormalityPlots,
-    setShowNormalityPlots,
-    factorVariablesCount,
-    tourActive = false,
-    currentStep = 0,
-    tourSteps = [],
+    showNormalityPlots: _showNormalityPlots,
+    setShowNormalityPlots: _setShowNormalityPlots,
+    factorVariablesCount: _factorVariablesCount,
+    tourActive: _tourActive = false,
+    currentStep: _currentStep = 0,
+    tourSteps: _tourSteps = [],
 }) => {
     
-    const boxplotDisabled = factorVariablesCount === 0;
+    // Silence unused prop warnings
+    void _showNormalityPlots;
+    void _setShowNormalityPlots;
+    void _factorVariablesCount;
+    void _tourActive;
+    void _currentStep;
+    void _tourSteps;
+
+    // Boxplot options are always enabled; user can configure before selecting variables.
 
     return (
         <div className="space-y-6">
@@ -31,23 +38,25 @@ const PlotsTab: FC<PlotsTabProps> = ({
                     value={boxplotType} 
                     onValueChange={setBoxplotType}
                     className="mt-2 space-y-1"
-                    disabled={boxplotDisabled}
                 >
-                    <div className={`flex items-center space-x-2 ${boxplotDisabled ? 'text-muted-foreground' : ''}`}>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="none" id="none" />
+                        <Label htmlFor="none" className="font-normal">None</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
                         <RadioGroupItem value="factor-levels-together" id="factor-levels" />
                         <Label htmlFor="factor-levels" className="font-normal">Factor levels together</Label>
                     </div>
-                    <div className={`flex items-center space-x-2 ${boxplotDisabled ? 'text-muted-foreground' : ''}`}>
+                    <div className="flex items-center space-x-2">
                         <RadioGroupItem value="dependents-together" id="dependents" />
                         <Label htmlFor="dependents" className="font-normal">Dependents together</Label>
                     </div>
                 </RadioGroup>
-                {boxplotDisabled && (
-                    <p className="text-xs text-muted-foreground mt-2">Boxplot options are available when one or more factor variables are selected.</p>
-                )}
+                {/* Info text removed so user can preconfigure before variable selection */}
             </div>
             
             <div className="p-4 border rounded-md space-y-3">
+                <Label className="text-base font-medium">Descriptives</Label>
                 <div className="flex items-center space-x-2">
                     <Checkbox
                         id="stem-and-leaf"
@@ -66,16 +75,7 @@ const PlotsTab: FC<PlotsTabProps> = ({
                 </div>
             </div>
 
-            <div className="p-4 border rounded-md">
-                 <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="normality-plots"
-                        checked={showNormalityPlots}
-                        onCheckedChange={(checked) => setShowNormalityPlots(checked as boolean)}
-                    />
-                    <Label htmlFor="normality-plots" className="font-normal">Normality plots with tests</Label>
-                </div>
-            </div>
+            {/* Normality plots with tests option removed as per requirement */}
         </div>
     );
 };

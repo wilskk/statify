@@ -10,7 +10,6 @@ export { default as DefineDateTime } from './DefineDateTime';
 // Case operations
 export { default as SortCases } from './SortCases';
 export { default as DuplicateCases } from './DuplicateCases';
-export { default as UnusualCases } from './UnusualCases';
 export { default as SelectCases } from './SelectCases';
 export { default as WeightCases } from './WeightCases';
 

@@ -68,7 +68,6 @@ export const useOpenSavFileLogic = ({
             onClose();
 
         } catch (err: any) {
-            console.error("Error opening .sav file:", err);
             setError(err.message || "An unexpected error occurred while opening the file.");
         } finally {
             setIsLoading(false);

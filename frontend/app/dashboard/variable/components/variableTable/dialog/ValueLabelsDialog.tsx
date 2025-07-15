@@ -16,13 +16,7 @@ import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+// Help icon and tooltip imports removed
 
 interface ValueLabelsDialogProps {
     open: boolean;
@@ -232,20 +226,8 @@ export const ValueLabelsDialog = ({
             >
                 <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
                     <DialogHeader className="p-0">
-                        <DialogTitle className="text-sm font-semibold flex items-center">
-                            <span>Value Labels</span>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
-                                            <HelpCircle size={14} />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p className="text-xs">Define value labels to display meaningful text instead of codes.</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                        <DialogTitle className="text-base font-semibold">
+                            Value Labels
                         </DialogTitle>
                     </DialogHeader>
                 </div>
@@ -290,7 +272,7 @@ export const ValueLabelsDialog = ({
                                 variant="default"
                                 onClick={selectedIndex === null ? handleAdd : handleChange}
                                 disabled={!currentValue.trim() && currentValue !== " "}
-                                className="h-7 text-xs bg-primary hover:bg-primary/90"
+                                className="h-7 text-sm bg-primary hover:bg-primary/90"
                             >
                                 {selectedIndex === null ? "Add" : (isValueChanged() ? "Change" : "Change")}
                             </Button>
@@ -299,7 +281,7 @@ export const ValueLabelsDialog = ({
                                 variant="destructive"
                                 onClick={handleRemove}
                                 disabled={selectedIndex === null}
-                                className="h-7 text-xs"
+                                className="h-7 text-sm"
                             >
                                 Remove
                             </Button>
@@ -351,14 +333,14 @@ export const ValueLabelsDialog = ({
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            className="h-7 text-xs" 
+                            className="h-7 text-sm" 
                             onClick={() => onOpenChange(false)}
                         >
                             Cancel
                         </Button>
                         <Button 
                             size="sm" 
-                            className="h-7 text-xs" 
+                            className="h-7 text-sm" 
                             onClick={handleSave}
                         >
                             OK

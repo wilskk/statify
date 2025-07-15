@@ -68,7 +68,7 @@ describe('useCrosstabsAnalysis', () => {
     rowVariables: [mockVariables[0]],
     columnVariables: [mockVariables[1]],
     options: {
-        cells: { observed: true, expected: false, row: false, column: false, total: false },
+        cells: { observed: true, expected: false, row: false, column: false, total: false, hideSmallCounts: false, hideSmallCountsThreshold: 5 },
         residuals: { unstandardized: false, standardized: false, adjustedStandardized: false },
         nonintegerWeights: 'roundCell',
     },
