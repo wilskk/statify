@@ -181,7 +181,7 @@ const FrequenciesContent = ({
         } else {
             clearFormData("Frequencies").catch(console.error);
         }
-    }, [variableSelection.selectedVariables, displaySettings.showFrequencyTables, statisticsSettings.showStatistics, statisticsSettings.getCurrentStatisticsOptions, chartsSettings.showCharts, chartsSettings.getCurrentChartOptions]);
+    }, [variableSelection.selectedVariables, displaySettings.showFrequencyTables, statisticsSettings, statisticsSettings.showStatistics, statisticsSettings.getCurrentStatisticsOptions, chartsSettings, chartsSettings.showCharts, chartsSettings.getCurrentChartOptions]);
 
     return (
         <>
