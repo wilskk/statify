@@ -14,8 +14,13 @@ import { Separator } from '@/components/ui/separator';
 
 // Define and Export Params Type
 export interface OptionsLinearParams {
+  steppingMethod: 'probability' | 'fvalue';
+  probEntry: string;
+  probRemoval: string;
+  fvalueEntry: string;
+  fvalueRemoval: string;
   includeConstant: boolean;
-  replaceMissingWithMean: boolean;
+  missingValue: 'listwise' | 'pairwise' | 'mean';
 }
 
 // Update Props interface
