@@ -17,12 +17,6 @@ pub fn initialize_clusters(
 ) -> Result<InitialClusterCenters, String> {
     let num_clusters = config.main.cluster as usize;
 
-    // --- Validasi Input ---
-    // Memastikan jumlah cluster yang diminta lebih dari nol.
-    if num_clusters == 0 {
-        return Err("Number of clusters must be positive".to_string());
-    }
-
     // Memastikan jumlah titik data cukup untuk jumlah cluster yang diminta.
     if data.data_matrix.len() < num_clusters {
         return Err(
@@ -37,12 +31,12 @@ pub fn initialize_clusters(
     let mut initial_centers: Vec<Vec<f64>>;
 
     // --- Inisialisasi Pusat Cluster ---
-    if config.main.read_initial {
-        // Strategi 1: Menggunakan 'k' titik data pertama sebagai pusat awal.
+    if !config.options.initial_cluster {
+        // Strategi 1: Menggunakan 'k' titik data pertama sebagai pusat awal (NOINITIAL).
         // Pendekatan ini sederhana dan cepat, cocok jika urutan data tidak memiliki bias.
         initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
     } else {
-        // Strategi 2: Heuristik untuk pemilihan pusat yang lebih baik.
+        // Strategi 2: Heuristik untuk pemilihan pusat yang lebih baik (default).
         // Dimulai dengan 'k' titik pertama, kemudian diperbaiki secara iteratif.
         initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
 

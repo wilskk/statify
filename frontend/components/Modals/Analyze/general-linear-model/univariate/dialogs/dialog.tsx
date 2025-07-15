@@ -306,6 +306,7 @@ export const UnivariateDialog = ({
                                 <Button
                                     className="w-full"
                                     variant="outline"
+                                    disabled={true}
                                     onClick={openDialog(setIsPlotsOpen)}
                                 >
                                     Plots
@@ -313,6 +314,7 @@ export const UnivariateDialog = ({
                                 <Button
                                     className="w-full"
                                     variant="outline"
+                                    disabled={true}
                                     onClick={openDialog(setIsPostHocOpen)}
                                 >
                                     Post Hoc
@@ -341,6 +343,7 @@ export const UnivariateDialog = ({
                                 <Button
                                     className="w-full"
                                     variant="outline"
+                                    disabled={true}
                                     onClick={openDialog(setIsBootstrapOpen)}
                                 >
                                     Bootstrap
@@ -352,7 +355,16 @@ export const UnivariateDialog = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button type="button" variant="ghost">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                            window.open(
+                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
+                                "_blank"
+                            );
+                        }}
+                    >
                         Help
                     </Button>
                 </div>

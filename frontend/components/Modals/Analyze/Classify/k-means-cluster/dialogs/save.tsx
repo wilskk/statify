@@ -1,11 +1,11 @@
-import React, {useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     KMeansClusterSaveProps,
     KMeansClusterSaveType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import {Checkbox} from "@/components/ui/checkbox";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckedState } from "@radix-ui/react-checkbox";
 
 export const KMeansClusterSave = ({
     isSaveOpen,
@@ -79,7 +79,16 @@ export const KMeansClusterSave = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button type="button" variant="ghost">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                            window.open(
+                                "https://drive.google.com/file/d/1IuU3ZTKbKavWCXiBM9i4B4EA4g-BvjU-/view?usp=drive_link",
+                                "_blank"
+                            );
+                        }}
+                    >
                         Help
                     </Button>
                 </div>

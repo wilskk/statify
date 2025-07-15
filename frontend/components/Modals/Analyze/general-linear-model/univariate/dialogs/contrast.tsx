@@ -1,18 +1,23 @@
-import React, {useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     UnivariateContrastProps,
     UnivariateContrastType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {Label} from "@/components/ui/label";
-import {ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
-import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import {
-    CONTRASTMETHOD
-} from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
-import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
-import {Badge} from "@/components/ui/badge";
-import {ScrollArea} from "@/components/ui/scroll-area";
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { CONTRASTMETHOD } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const UnivariateContrast = ({
     isContrastOpen,
@@ -270,7 +275,16 @@ export const UnivariateContrast = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button type="button" variant="ghost">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                            window.open(
+                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
+                                "_blank"
+                            );
+                        }}
+                    >
                         Help
                     </Button>
                 </div>

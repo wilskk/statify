@@ -156,6 +156,7 @@ export const KMeansClusterOptions = ({
                                         <RadioGroupItem
                                             value="ExcludePairWise"
                                             id="ExcludePairWise"
+                                            disabled={true}
                                         />
                                         <Label htmlFor="ExcludePairWise">
                                             Exclude Cases Pairwise
@@ -169,7 +170,16 @@ export const KMeansClusterOptions = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button type="button" variant="ghost">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                            window.open(
+                                "https://drive.google.com/file/d/1IuU3ZTKbKavWCXiBM9i4B4EA4g-BvjU-/view?usp=drive_link",
+                                "_blank"
+                            );
+                        }}
+                    >
                         Help
                     </Button>
                 </div>

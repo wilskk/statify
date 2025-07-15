@@ -158,6 +158,27 @@ export async function resultUnivariateAnalysis({
             }
 
             /*
+             * 🛡️ Robust Parameter Estimates Result 🛡️
+             * */
+            const robustParameterEstimates = findTable(
+                "robust_parameter_estimates"
+            );
+            if (robustParameterEstimates) {
+                const analyticId = await addAnalytic(logId, {
+                    title: robustParameterEstimates.title,
+                    note: robustParameterEstimates.note || "",
+                });
+                await addStatistic(analyticId, {
+                    title: robustParameterEstimates.title,
+                    description: robustParameterEstimates.interpretation || "",
+                    output_data: JSON.stringify({
+                        tables: [robustParameterEstimates],
+                    }),
+                    components: robustParameterEstimates.title,
+                });
+            }
+
+            /*
              * 🧮 General Estimable Function Result 🧮
              * */
             const generalEstimableFunction = findTable(
@@ -202,63 +223,15 @@ export async function resultUnivariateAnalysis({
             /*
              * 🔬 Custom Hypothesis Tests Result 🔬
              */
-            const customHypothesisIndexTable = findTable(
-                "custom_hypothesis_tests_index"
-            );
-            if (customHypothesisIndexTable) {
-                const analyticId = await addAnalytic(logId, {
-                    title: customHypothesisIndexTable.title,
-                    note: customHypothesisIndexTable.note || "",
-                });
-                await addStatistic(analyticId, {
-                    title: customHypothesisIndexTable.title,
-                    description:
-                        customHypothesisIndexTable.interpretation ||
-                        customHypothesisIndexTable.title,
-                    output_data: JSON.stringify({
-                        tables: [customHypothesisIndexTable],
-                    }),
-                    components: customHypothesisIndexTable.title,
-                });
-            }
-
-            const testResultTables = formattedResult.tables.filter(
-                (table: Table) => table.key.startsWith("custom_test_results_")
-            );
-            for (const table of testResultTables) {
-                const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: table.note || "",
-                });
-                await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.interpretation || table.title,
-                    output_data: JSON.stringify({ tables: [table] }),
-                    components: table.title,
-                });
-            }
-
-            const kMatrixTables = formattedResult.tables.filter(
+            const customHypothesisTables = formattedResult.tables.filter(
                 (table: Table) =>
-                    table.key.startsWith("custom_contrast_results_k_matrix_")
+                    table.key === "custom_hypothesis_tests_index" ||
+                    table.key.startsWith("contrast_coefficients_") ||
+                    table.key.startsWith("custom_contrast_results_k_matrix_") ||
+                    table.key.startsWith("custom_test_results_")
             );
-            for (const table of kMatrixTables) {
-                const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: table.note || "",
-                });
-                await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.interpretation || table.title,
-                    output_data: JSON.stringify({ tables: [table] }),
-                    components: table.title,
-                });
-            }
 
-            const lMatrixTablesCustom = formattedResult.tables.filter(
-                (table: Table) => table.key.startsWith("contrast_coefficients_")
-            );
-            for (const table of lMatrixTablesCustom) {
+            for (const table of customHypothesisTables) {
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
                     note: table.note || "",
@@ -371,7 +344,27 @@ export async function resultUnivariateAnalysis({
             }
 
             /*
-             * 📈 Plots Result 📈
+             * 📊 Estimated Marginal Means Result 📊
+             * */
+            const emmeansTables = formattedResult.tables.filter(
+                (table: Table) => table.key.startsWith("emmeans_")
+            );
+
+            for (const table of emmeansTables) {
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: table.note || "",
+                });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
+                    components: table.title,
+                });
+            }
+
+            /*
+             * 📈 Plots Result ��
              * */
             const plotTables = formattedResult.tables.filter((table: Table) =>
                 table.key.startsWith("plot_")

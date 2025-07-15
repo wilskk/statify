@@ -43,7 +43,7 @@ pub fn generate_final_cluster_centers(
             let old_centers_for_change_calc = new_centers.clone();
 
             for case in &data.data_matrix {
-                let closest = find_closest_cluster(case, &new_centers);
+                let closest = find_nearest_cluster(case, &new_centers).0;
                 cluster_counts[closest] += 1;
                 let count = cluster_counts[closest] as f64;
 
@@ -55,10 +55,7 @@ pub fn generate_final_cluster_centers(
 
             let mut max_change: f64 = 0.0;
             for i in 0..num_clusters {
-                let change = (0..data.variables.len())
-                    .map(|j| (new_centers[i][j] - old_centers_for_change_calc[i][j]).powi(2))
-                    .sum::<f64>()
-                    .sqrt();
+                let change = euclidean_distance(&new_centers[i], &old_centers_for_change_calc[i]);
                 max_change = max_change.max(change);
             }
 
@@ -73,7 +70,7 @@ pub fn generate_final_cluster_centers(
             let mut cluster_counts = vec![0; num_clusters];
 
             for case in &data.data_matrix {
-                let closest = find_closest_cluster(case, &current_centers);
+                let closest = find_nearest_cluster(case, &current_centers).0;
                 cluster_counts[closest] += 1;
 
                 for (j, &val) in case.iter().enumerate() {
@@ -97,10 +94,7 @@ pub fn generate_final_cluster_centers(
 
             let mut max_change: f64 = 0.0;
             for i in 0..num_clusters {
-                let change = (0..data.variables.len())
-                    .map(|j| (new_centers[i][j] - current_centers[i][j]).powi(2))
-                    .sum::<f64>()
-                    .sqrt();
+                let change = euclidean_distance(&new_centers[i], &current_centers[i]);
                 max_change = max_change.max(change);
             }
 
