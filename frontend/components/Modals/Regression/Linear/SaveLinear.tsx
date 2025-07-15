@@ -13,9 +13,6 @@ export interface SaveLinearParams {
   residualStudentized: boolean;
   residualDeleted: boolean;
   residualStudentizedDeleted: boolean;
-  distanceMahalanobis: boolean;
-  distanceCooks: boolean;
-  distanceLeverage: boolean;
 }
 
 interface SaveLinearProps {
@@ -33,9 +30,6 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ params, onChange }) => {
   const [residualStudentized, setResidualStudentized] = useState(params.residualStudentized);
   const [residualDeleted, setResidualDeleted] = useState(params.residualDeleted);
   const [residualStudentizedDeleted, setResidualStudentizedDeleted] = useState(params.residualStudentizedDeleted);
-  const [distanceMahalanobis, setDistanceMahalanobis] = useState(params.distanceMahalanobis);
-  const [distanceCooks, setDistanceCooks] = useState(params.distanceCooks);
-  const [distanceLeverage, setDistanceLeverage] = useState(params.distanceLeverage);
 
   useEffect(() => {
     setPredictedUnstandardized(params.predictedUnstandardized);
@@ -47,9 +41,6 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ params, onChange }) => {
     setResidualStudentized(params.residualStudentized);
     setResidualDeleted(params.residualDeleted);
     setResidualStudentizedDeleted(params.residualStudentizedDeleted);
-    setDistanceMahalanobis(params.distanceMahalanobis);
-    setDistanceCooks(params.distanceCooks);
-    setDistanceLeverage(params.distanceLeverage);
   }, [params]);
 
   const handleChange = (field: keyof SaveLinearParams, value: any) => {
@@ -63,9 +54,6 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ params, onChange }) => {
       case 'residualStudentized': setResidualStudentized(value); break;
       case 'residualDeleted': setResidualDeleted(value); break;
       case 'residualStudentizedDeleted': setResidualStudentizedDeleted(value); break;
-      case 'distanceMahalanobis': setDistanceMahalanobis(value); break;
-      case 'distanceCooks': setDistanceCooks(value); break;
-      case 'distanceLeverage': setDistanceLeverage(value); break;
     }
     onChange({ [field]: value });
   };
@@ -169,42 +157,6 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ params, onChange }) => {
               Studentized deleted
             </label>
           </div>
-        </div>
-      </div>
-
-      <Separator className="my-4" />
-
-      <div className="border rounded p-4">
-        <h3 className="font-semibold mb-2">Distances</h3>
-        <div className="flex items-center mb-2">
-          <Checkbox
-            checked={distanceMahalanobis}
-            onCheckedChange={(checked) => handleChange('distanceMahalanobis', !!checked)}
-            id="distanceMahalanobis"
-          />
-          <label htmlFor="distanceMahalanobis" className="ml-2 text-sm">
-            Mahalanobis
-          </label>
-        </div>
-        <div className="flex items-center mb-2">
-          <Checkbox
-            checked={distanceCooks}
-            onCheckedChange={(checked) => handleChange('distanceCooks', !!checked)}
-            id="distanceCooks"
-          />
-          <label htmlFor="distanceCooks" className="ml-2 text-sm">
-            Cook&apos;s
-          </label>
-        </div>
-        <div className="flex items-center">
-          <Checkbox
-            checked={distanceLeverage}
-            onCheckedChange={(checked) => handleChange('distanceLeverage', !!checked)}
-            id="distanceLeverage"
-          />
-          <label htmlFor="distanceLeverage" className="ml-2 text-sm">
-            Leverage values
-          </label>
         </div>
       </div>
     </div>

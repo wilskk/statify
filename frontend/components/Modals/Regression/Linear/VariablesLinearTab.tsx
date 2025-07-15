@@ -11,44 +11,26 @@ interface VariablesLinearTabProps {
   availableVariables: Variable[];
   selectedDependentVariable: Variable | null;
   selectedIndependentVariables: Variable[];
-  selectedSelectionVariable: Variable | null;
-  selectedCaseLabelsVariable: Variable | null;
-  selectedWLSWeightVariable: Variable | null;
   highlightedVariable: Variable | null;
   method: string;
   handleSelectAvailableVariable: (variable: Variable | null) => void;
   handleMoveToDependent: () => void;
   handleMoveToIndependent: () => void;
-  handleMoveToSelectionVariable: () => void;
-  handleMoveToCaseLabelsVariable: () => void;
-  handleMoveToWLSWeightVariable: () => void;
   handleRemoveFromDependent: () => void;
   handleRemoveFromIndependent: (variable: Variable) => void;
-  handleRemoveFromSelectionVariable: () => void;
-  handleRemoveFromCaseLabelsVariable: () => void;
-  handleRemoveFromWLSWeightVariable: () => void;
 }
 
 const VariablesLinearTab: React.FC<VariablesLinearTabProps> = ({
   availableVariables,
   selectedDependentVariable,
   selectedIndependentVariables,
-  selectedSelectionVariable,
-  selectedCaseLabelsVariable,
-  selectedWLSWeightVariable,
   highlightedVariable,
   method,
   handleSelectAvailableVariable,
   handleMoveToDependent,
   handleMoveToIndependent,
-  handleMoveToSelectionVariable,
-  handleMoveToCaseLabelsVariable,
-  handleMoveToWLSWeightVariable,
   handleRemoveFromDependent,
   handleRemoveFromIndependent,
-  handleRemoveFromSelectionVariable,
-  handleRemoveFromCaseLabelsVariable,
-  handleRemoveFromWLSWeightVariable,
 }) => {
 
   // Helper function to get display name (label or name)
@@ -219,96 +201,6 @@ const VariablesLinearTab: React.FC<VariablesLinearTabProps> = ({
               </div>
             </div>
          </div>
-
-        {/* Selection Variable */}
-        <div className="flex items-start">
-          <Button
-            variant="outline"
-            size="sm"
-            className="mr-2 p-0 h-8 w-8 flex items-center justify-center shrink-0 mt-[26px]"
-            onClick={handleMoveToSelectionVariable}
-            disabled={!highlightedVariable || (selectedSelectionVariable !== null) || !availableVariables.some(v => v.columnIndex === highlightedVariable?.columnIndex)}
-          >
-            <ChevronRight size={16} />
-          </Button>
-          <div className="flex-1">
-            <label className="font-semibold block mb-2">Selection Variable:</label>
-            <div
-              className="mt-1 p-2 border rounded-md min-h-[40px] cursor-pointer bg-white hover:border-red-500"
-              onClick={handleRemoveFromSelectionVariable}
-              title={selectedSelectionVariable ? `Click to remove ${getDisplayName(selectedSelectionVariable)}` : ""}
-            >
-              {selectedSelectionVariable ? (
-                <div className="flex items-center text-sm">
-                  {getVariableIcon(selectedSelectionVariable)}
-                  <span className="truncate">{getDisplayName(selectedSelectionVariable)}</span>
-                </div>
-              ) : (
-                <span className="text-gray-400 text-sm">[Select a variable]</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Case Labels Variable */}
-        <div className="flex items-start">
-          <Button
-            variant="outline"
-            size="sm"
-            className="mr-2 p-0 h-8 w-8 flex items-center justify-center shrink-0 mt-[26px]"
-            onClick={handleMoveToCaseLabelsVariable}
-            disabled={!highlightedVariable || (selectedCaseLabelsVariable !== null) || !availableVariables.some(v => v.columnIndex === highlightedVariable?.columnIndex)}
-          >
-            <ChevronRight size={16} />
-          </Button>
-          <div className="flex-1">
-            <label className="font-semibold block mb-2">Case Labels:</label>
-            <div
-              className="mt-1 p-2 border rounded-md min-h-[40px] cursor-pointer bg-white hover:border-red-500"
-              onClick={handleRemoveFromCaseLabelsVariable}
-              title={selectedCaseLabelsVariable ? `Click to remove ${getDisplayName(selectedCaseLabelsVariable)}` : ""}
-            >
-              {selectedCaseLabelsVariable ? (
-                <div className="flex items-center text-sm">
-                  {getVariableIcon(selectedCaseLabelsVariable)}
-                  <span className="truncate">{getDisplayName(selectedCaseLabelsVariable)}</span>
-                </div>
-              ) : (
-                <span className="text-gray-400 text-sm">[Select a variable]</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* WLS Weight Variable */}
-        <div className="flex items-start">
-          <Button
-            variant="outline"
-            size="sm"
-            className="mr-2 p-0 h-8 w-8 flex items-center justify-center shrink-0 mt-[26px]"
-            onClick={handleMoveToWLSWeightVariable}
-             disabled={!highlightedVariable || (selectedWLSWeightVariable !== null) || !availableVariables.some(v => v.columnIndex === highlightedVariable?.columnIndex)}
-          >
-            <ChevronRight size={16} />
-          </Button>
-          <div className="flex-1">
-            <label className="font-semibold block mb-2">WLS Weight:</label>
-            <div
-              className="mt-1 p-2 border rounded-md min-h-[40px] cursor-pointer bg-white hover:border-red-500"
-              onClick={handleRemoveFromWLSWeightVariable}
-              title={selectedWLSWeightVariable ? `Click to remove ${getDisplayName(selectedWLSWeightVariable)}` : ""}
-            >
-              {selectedWLSWeightVariable ? (
-                <div className="flex items-center text-sm">
-                  {getVariableIcon(selectedWLSWeightVariable)}
-                  <span className="truncate">{getDisplayName(selectedWLSWeightVariable)}</span>
-                </div>
-              ) : (
-                <span className="text-gray-400 text-sm">[Select a variable]</span>
-              )}
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>

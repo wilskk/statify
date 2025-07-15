@@ -100,7 +100,7 @@ const defaultOptionsParams: OptionsLinearParams = {
   fvalueEntry: '3.84',
   fvalueRemoval: '2.71',
   includeConstant: true,
-  missingValue: 'listwise',
+  replaceWithMean: false,
 };
 
 const defaultAssumptionTestParams: AssumptionTestParams = {
@@ -116,9 +116,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
   const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
-  const [selectedSelectionVariable, setSelectedSelectionVariable] = useState<Variable | null>(null);
-  const [selectedCaseLabelsVariable, setSelectedCaseLabelsVariable] = useState<Variable | null>(null);
-  const [selectedWLSWeightVariable, setSelectedWLSWeightVariable] = useState<Variable | null>(null);
   const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
   const method = "Enter";
   
@@ -181,9 +178,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
     const allSelectedIndices = [
       selectedDependentVariable?.columnIndex,
       ...selectedIndependentVariables.map(v => v.columnIndex),
-      selectedSelectionVariable?.columnIndex,
-      selectedCaseLabelsVariable?.columnIndex,
-      selectedWLSWeightVariable?.columnIndex
     ].filter(index => index !== undefined);
 
     const availableVars: Variable[] = variablesFromStore
@@ -204,7 +198,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
         role: v.role,
       }));
     setAvailableVariables(availableVars);
-  }, [variablesFromStore, selectedDependentVariable, selectedIndependentVariables, selectedSelectionVariable, selectedCaseLabelsVariable, selectedWLSWeightVariable]);
+  }, [variablesFromStore, selectedDependentVariable, selectedIndependentVariables]);
 
   // Prepare variables for the Plots tab - dari versi baru
   const availablePlotVariables = React.useMemo(() => {
@@ -254,42 +248,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       }
   };
 
-  const handleMoveToSelectionVariable = () => {
-      if (highlightedVariable && availableVariables.some(v => v.columnIndex === highlightedVariable.columnIndex)) {
-          const currentAvailable = availableVariables.filter(v => v.columnIndex !== highlightedVariable.columnIndex);
-          if (selectedSelectionVariable) {
-              currentAvailable.push(selectedSelectionVariable);
-          }
-          setAvailableVariables(currentAvailable.sort((a, b) => a.columnIndex - b.columnIndex));
-          setSelectedSelectionVariable(highlightedVariable);
-          setHighlightedVariable(null);
-      }
-  };
-
-  const handleMoveToCaseLabelsVariable = () => {
-      if (highlightedVariable && availableVariables.some(v => v.columnIndex === highlightedVariable.columnIndex)) {
-          const currentAvailable = availableVariables.filter(v => v.columnIndex !== highlightedVariable.columnIndex);
-          if (selectedCaseLabelsVariable) {
-              currentAvailable.push(selectedCaseLabelsVariable);
-          }
-          setAvailableVariables(currentAvailable.sort((a, b) => a.columnIndex - b.columnIndex));
-          setSelectedCaseLabelsVariable(highlightedVariable);
-          setHighlightedVariable(null);
-      }
-  };
-
-  const handleMoveToWLSWeightVariable = () => {
-      if (highlightedVariable && availableVariables.some(v => v.columnIndex === highlightedVariable.columnIndex)) {
-          const currentAvailable = availableVariables.filter(v => v.columnIndex !== highlightedVariable.columnIndex);
-          if (selectedWLSWeightVariable) {
-              currentAvailable.push(selectedWLSWeightVariable);
-          }
-          setAvailableVariables(currentAvailable.sort((a, b) => a.columnIndex - b.columnIndex));
-          setSelectedWLSWeightVariable(highlightedVariable);
-          setHighlightedVariable(null);
-      }
-  };
-
   const handleRemoveFromDependent = () => {
     if (selectedDependentVariable) {
       setAvailableVariables((prev) => [...prev, selectedDependentVariable].sort((a, b) => a.columnIndex - b.columnIndex));
@@ -300,27 +258,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   const handleRemoveFromIndependent = (variable: Variable) => {
     setAvailableVariables((prev) => [...prev, variable].sort((a, b) => a.columnIndex - b.columnIndex));
     setSelectedIndependentVariables((prev) => prev.filter((item) => item.columnIndex !== variable.columnIndex));
-  };
-
-  const handleRemoveFromSelectionVariable = () => {
-    if (selectedSelectionVariable) {
-      setAvailableVariables((prev) => [...prev, selectedSelectionVariable].sort((a, b) => a.columnIndex - b.columnIndex));
-      setSelectedSelectionVariable(null);
-    }
-  };
-
-  const handleRemoveFromCaseLabelsVariable = () => {
-    if (selectedCaseLabelsVariable) {
-      setAvailableVariables((prev) => [...prev, selectedCaseLabelsVariable].sort((a, b) => a.columnIndex - b.columnIndex));
-      setSelectedCaseLabelsVariable(null);
-    }
-  };
-
-  const handleRemoveFromWLSWeightVariable = () => {
-    if (selectedWLSWeightVariable) {
-      setAvailableVariables((prev) => [...prev, selectedWLSWeightVariable].sort((a, b) => a.columnIndex - b.columnIndex));
-      setSelectedWLSWeightVariable(null);
-    }
   };
 
   // Handlers for parameter tabs - dari versi baru
@@ -350,9 +287,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
      const allSelectedVars = [
         selectedDependentVariable,
         ...selectedIndependentVariables,
-        selectedSelectionVariable,
-        selectedCaseLabelsVariable,
-        selectedWLSWeightVariable
     ].filter(v => v !== null) as Variable[];
 
     // Reset available variables to the full list from the store
@@ -361,9 +295,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
     // Clear all selections
     setSelectedDependentVariable(null);
     setSelectedIndependentVariables([]);
-    setSelectedSelectionVariable(null);
-    setSelectedCaseLabelsVariable(null);
-    setSelectedWLSWeightVariable(null);
     setHighlightedVariable(null);
 
     // Reset parameters for other tabs to defaults
@@ -449,17 +380,40 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       const independentData = indepVarIndices.map(index => dataRows.map(row => parseFloat(String(row[index]))));
       console.log("[Analyze] Data awal - Dependent:", dependentData);
       console.log("[Analyze] Data awal - Independent (per variable):", independentData);
+
+      let filteredDependentData: number[];
+      let filteredIndependentData: number[][];
+
+      if (optionsParams.replaceWithMean) {
+        console.log("[Analyze] Missing value strategy: Replace with mean.");
+        const calculateMean = (arr: number[]) => {
+            const validNumbers = arr.filter(n => !isNaN(n));
+            if (validNumbers.length === 0) return 0;
+            const sum = validNumbers.reduce((acc, val) => acc + val, 0);
+            return sum / validNumbers.length;
+        };
+
+        const dependentMean = calculateMean(dependentData);
+        filteredDependentData = dependentData.map(val => isNaN(val) ? dependentMean : val);
+
+        filteredIndependentData = independentData.map(varData => {
+            const mean = calculateMean(varData);
+            return varData.map(val => isNaN(val) ? mean : val);
+        });
+      } else {
+        console.log("[Analyze] Missing value strategy: Listwise deletion.");
+        // Filter data yang valid (listwise deletion)
+        const validIndices = dependentData.map((value, idx) => {
+          if (isNaN(value) || independentData.some(indepData => isNaN(indepData[idx]))) {
+            return false;
+          }
+          return true;
+        });
+    
+        filteredDependentData = dependentData.filter((_, idx) => validIndices[idx]);
+        filteredIndependentData = independentData.map(indepData => indepData.filter((_, idx) => validIndices[idx]));
+      }
   
-      // Filter data yang valid (listwise deletion)
-      const validIndices = dependentData.map((value, idx) => {
-        if (isNaN(value) || independentData.some(indepData => isNaN(indepData[idx]))) {
-          return false;
-        }
-        return true;
-      });
-  
-      const filteredDependentData = dependentData.filter((_, idx) => validIndices[idx]);
-      const filteredIndependentData = independentData.map(indepData => indepData.filter((_, idx) => validIndices[idx]));
       console.log("[Analyze] Data valid - Dependent:", filteredDependentData);
       console.log("[Analyze] Data valid - Independent (per variable):", filteredIndependentData);
   
@@ -1566,22 +1520,13 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
               availableVariables={availableVariables}
               selectedDependentVariable={selectedDependentVariable}
               selectedIndependentVariables={selectedIndependentVariables}
-              selectedSelectionVariable={selectedSelectionVariable}
-              selectedCaseLabelsVariable={selectedCaseLabelsVariable}
-              selectedWLSWeightVariable={selectedWLSWeightVariable}
               highlightedVariable={highlightedVariable}
               method={method}
               handleSelectAvailableVariable={handleSelectAvailableVariable}
               handleMoveToDependent={handleMoveToDependent}
               handleMoveToIndependent={handleMoveToIndependent}
-              handleMoveToSelectionVariable={handleMoveToSelectionVariable}
-              handleMoveToCaseLabelsVariable={handleMoveToCaseLabelsVariable}
-              handleMoveToWLSWeightVariable={handleMoveToWLSWeightVariable}
               handleRemoveFromDependent={handleRemoveFromDependent}
               handleRemoveFromIndependent={handleRemoveFromIndependent}
-              handleRemoveFromSelectionVariable={handleRemoveFromSelectionVariable}
-              handleRemoveFromCaseLabelsVariable={handleRemoveFromCaseLabelsVariable}
-              handleRemoveFromWLSWeightVariable={handleRemoveFromWLSWeightVariable}
             />
           </TabsContent>
 

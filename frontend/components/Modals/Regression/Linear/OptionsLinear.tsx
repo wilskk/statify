@@ -18,7 +18,7 @@ export interface OptionsLinearParams {
   fvalueEntry: string;
   fvalueRemoval: string;
   includeConstant: boolean;
-  missingValue: 'mean' | 'listwise';
+  replaceWithMean: boolean;
 }
 
 // Update Props interface
@@ -31,12 +31,12 @@ interface OptionsLinearProps {
 const OptionsLinear: React.FC<OptionsLinearProps> = ({ params, onChange }) => {
   // Local state initialized from props
   const [includeConstant, setIncludeConstant] = useState(params.includeConstant);
-  const [missingValue, setMissingValue] = useState<'mean' | 'listwise'>(params.missingValue);
+  const [replaceWithMean, setReplaceWithMean] = useState(params.replaceWithMean);
 
   // Effect to sync local state with incoming params prop changes
   useEffect(() => {
     setIncludeConstant(params.includeConstant);
-    setMissingValue(params.missingValue);
+    setReplaceWithMean(params.replaceWithMean);
   }, [params]);
 
   // Generic handler to update local state and call onChange prop
@@ -46,11 +46,9 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ params, onChange }) => {
             setIncludeConstant(value);
             onChange({ [field]: value });
             break;
-        case 'missingValue':
-            // Since there's only one option, this function might not even be called.
-            // If it is, ensure it sets to 'mean'.
-            setMissingValue('mean');
-            onChange({ [field]: 'mean' });
+        case 'replaceWithMean':
+            setReplaceWithMean(value);
+            onChange({ [field]: value });
             break;
     }
   };
@@ -78,32 +76,13 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ params, onChange }) => {
             <h4 className="font-medium mb-3 text-sm text-muted-foreground">Missing Values</h4>
              <div className="flex flex-col space-y-2 pl-2">
                 <div className="flex items-center">
-                    <input
-                        type="radio"
-                        id="mean"
-                        name="missingValue"
-                        value="mean"
-                        checked={missingValue === 'mean'}
-                        onChange={() => handleChange('missingValue', 'mean')}
-                        className="form-radio h-4 w-4 text-primary"
-                        disabled // Only one option, so disable changes.
+                    <Checkbox
+                        id="replaceWithMean"
+                        checked={replaceWithMean}
+                        onCheckedChange={(checked) => handleChange('replaceWithMean', !!checked)}
                     />
-                     <label htmlFor="mean" className="ml-3 text-sm">
+                     <label htmlFor="replaceWithMean" className="ml-3 text-sm">
                         Replace with mean
-                    </label>
-                </div>
-                <div className="flex items-center">
-                    <input
-                        type="radio"
-                        id="listwise"
-                        name="missingValue"
-                        value="listwise"
-                        checked={missingValue === 'listwise'}
-                        onChange={() => handleChange('missingValue', 'listwise')}
-                        className="form-radio h-4 w-4 text-primary"
-                    />
-                     <label htmlFor="listwise" className="ml-3 text-sm">
-                        Exclude cases listwise
                     </label>
                 </div>
              </div>
