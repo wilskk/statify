@@ -38,11 +38,8 @@ export function useAnalyzeHook(
         if (getHour() < 0 || getHour() > 23) {
             return "Hour must be between 0 and 23.";
         }
-        if (maximumLag < 10) {
-            return "Minimum lag must be at least 10.";
-        }
-        if (maximumLag > 20) {
-            return "Maximum lag cannot exceed 20.";
+        if (maximumLag < 10 || maximumLag > 20) {
+            return "Lag length must be between 10 and 20.";
         }
         return null;
     };
@@ -170,16 +167,6 @@ export function useAnalyzeHook(
 
             if (dataValues.length < 20) {
                 throw new Error("Data length must be at least 20 observations.");
-            }
-
-            if (seasonally) {
-                const periodicity = Number(selectedPeriod[0]);
-                if (dataValues.length < 4 * periodicity) {
-                    throw new Error("Data length is less than 4 times the periodicity.");
-                }
-                if (dataValues.length % periodicity !== 0) {
-                    throw new Error("Data length is not a multiple of the periodicity.");
-                }
             }
 
             const results = await handleAutocorrelation(

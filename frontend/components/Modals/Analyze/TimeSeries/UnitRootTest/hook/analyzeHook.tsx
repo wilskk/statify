@@ -19,8 +19,7 @@ export function useAnalyzeHook(
 
     const validateInputs = () => {
         if (!storeVariables.length) return "Please select at least one variable.";
-        if (lengthLag < 1) return "Lag length minimum is 1.";
-        if (lengthLag > 10) return "Lag length maximum is 10.";
+        if (lengthLag < 1 || lengthLag > 10) return "Lag length must be between 1 and 10.";
         return null;
     };
 

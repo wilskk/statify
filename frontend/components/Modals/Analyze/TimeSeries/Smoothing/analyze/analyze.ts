@@ -1,4 +1,4 @@
-import init, {Smoothing} from '../../../../../../src/wasm/pkg/wasm.js';
+import init, {Smoothing} from '../../wasm/pkg/wasm.js';
 import {generateDate} from '../../timeSeriesGenerateDate';
 
 export async function handleSmoothing(

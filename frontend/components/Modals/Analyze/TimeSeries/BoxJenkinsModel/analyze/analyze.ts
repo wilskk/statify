@@ -1,4 +1,4 @@
-import init, {Arima} from '../../../../../../src/wasm/pkg/wasm.js';
+import init, {Arima} from '../../wasm/pkg/wasm.js';
 import {generateDate} from '../../timeSeriesGenerateDate';
 
 export async function handleBoxJenkinsModel(

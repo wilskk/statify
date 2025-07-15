@@ -80,9 +80,6 @@ export function useAnalyzeHook(
             if (dataValues.length === 0) {
                 throw new Error("No data available for the selected variable.");
             }
-            if (dataValues.length < 20) {
-                throw new Error("Data length must be at least 20 observations.");
-            }
             // Validate periodicity and data length
             const periodicity = Number(selectedPeriod[0]);
             if (dataValues.length < 4 * periodicity) {
