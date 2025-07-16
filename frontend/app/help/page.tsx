@@ -112,6 +112,17 @@ export default function HelpPage() {
 			]
 		},
 		{
+			key: "statistics-guide",
+			label: "Statistics Guide",
+			content: <StatisticsGuide section={activeChild || undefined} />,
+			children: [
+				{ key: 'frequencies', label: 'Frequencies', parentKey: 'statistics-guide', childContent: 'frequencies' },
+				{ key: 'descriptives', label: 'Descriptives', parentKey: 'statistics-guide', childContent: 'descriptives' },
+				{ key: 'explore', label: 'Explore', parentKey: 'statistics-guide', childContent: 'explore' },
+				{ key: 'crosstabs', label: 'Crosstabs', parentKey: 'statistics-guide', childContent: 'crosstabs' },
+			]
+		},
+		{
 			key: "faq",
 			label: "FAQs",
 			content: <FAQ />
