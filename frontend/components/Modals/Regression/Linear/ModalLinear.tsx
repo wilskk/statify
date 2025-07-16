@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useResultStore } from '@/stores/useResultStore';
 import { useLinear } from '@/hooks/useLinear';
 import { ChartService } from '@/services/chart/ChartService';
@@ -168,7 +169,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   const [assumptionTestParams, setAssumptionTestParams] = useState<AssumptionTestParams>(defaultAssumptionTestParams);
 
   const variablesFromStore = useVariableStore((state) => state.variables);
-  const data = useDataStore((state) => state.data);
+  const { data } = useAnalysisData();
   const { calculateLinearRegression } = useLinear();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 

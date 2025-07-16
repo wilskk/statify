@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Variable } from "@/types/Variable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useDataStore } from "@/stores/useDataStore";
+import { useAnalysisData } from "@/hooks/useAnalysisData";
 import { useResultStore } from "@/stores/useResultStore";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
@@ -69,7 +69,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
     const [nonautocorrelationTestSuccess, setNonautocorrelationTestSuccess] =
         useState(false);
 
-    const data = useDataStore((state) => state.data);
+    const { data } = useAnalysisData();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     const handleTestLinearityClick = async () => {

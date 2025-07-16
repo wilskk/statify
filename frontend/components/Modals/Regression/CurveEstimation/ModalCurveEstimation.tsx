@@ -23,7 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { useDataStore } from '@/stores/useDataStore';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useResultStore } from '@/stores/useResultStore';
 import { Variable, VariableType } from '@/types/Variable';
 import { Chart, registerables } from 'chart.js';
@@ -63,7 +63,7 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
   const workerRef = useRef<Worker | null>(null);
 
   const variables = useVariableStore((state) => state.variables);
-  const data = useDataStore((state) => state.data);
+  const { data } = useAnalysisData();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
   // useEffect untuk memfilter availableVariables (dari kode baru)
@@ -209,27 +209,35 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
 
     try {
       const depCol = selectedDependentVariable.columnIndex;
-      // Kode lama hanya benar-benar menggunakan kolom independen pertama untuk data X
+      // The component supports multiple selections, but the old logic only uses the first one.
+      // We'll stick to that to avoid changing the core analysis behavior.
       const indepColX = selectedIndependentVariables[0].columnIndex;
-      const independentVarNames = selectedIndependentVariables.map(iv => iv.name); // Tetap ambil semua nama untuk log
+      const independentVarNames = selectedIndependentVariables.map(iv => iv.name);
       const dependentVarName = selectedDependentVariable.name;
 
-      // Logika filtering data LAMA
-      const Y_temp = data.map(row => depCol < row.length ? Number(row[depCol]) : NaN)
-          .filter(val => !isNaN(val));
-      const X_temp = data.map(row => indepColX < row.length ? Number(row[indepColX]) : NaN)
-          .filter(val => !isNaN(val));
+      // New data filtering: Perform listwise deletion on the data from useAnalysisData
+      const X_data: number[] = [];
+      const Y_data: number[] = [];
 
-      const length = Math.min(X_temp.length, Y_temp.length);
-      const Xtrim = X_temp.slice(0, length); // Data X yang akan dikirim
-      const Ytrim = Y_temp.slice(0, length); // Data Y yang akan dikirim
+      data.forEach(row => {
+        // Ensure column indices are valid for the row
+        if (depCol < row.length && indepColX < row.length) {
+          const yVal = Number(row[depCol]);
+          const xVal = Number(row[indepColX]);
 
-      if (Xtrim.length === 0 || Ytrim.length === 0) {
-        setErrorMessage("No valid data pairs found after filtering (using old method).");
+          // Include row only if both values are valid numbers
+          if (!isNaN(yVal) && !isNaN(xVal)) {
+            Y_data.push(yVal);
+            X_data.push(xVal);
+          }
+        }
+      });
+
+      if (X_data.length === 0) {
+        setErrorMessage("No valid data pairs found after listwise deletion.");
         setIsProcessing(false);
         return;
       }
-      // Akhir logika filtering data LAMA
 
       const method = selectedModels.join(', ');
 
@@ -306,14 +314,14 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
         }
       };
 
-      console.log("[CurveEstimation OLD CALC] Sending data to worker:", { models: selectedModels, X_length: Xtrim.length, Y_length: Ytrim.length, upperBound: upperBound });
+      console.log("[CurveEstimation OLD CALC] Sending data to worker:", { models: selectedModels, X_length: X_data.length, Y_length: Y_data.length, upperBound: upperBound });
       // Payload postMessage LAMA (tidak mengirim includeConstant/displayANOVA)
       workerRef.current.postMessage({
         action: 'runRegression',
         data: {
           models: selectedModels,
-          X: Xtrim, // Data X dari metode lama
-          Y: Ytrim, // Data Y dari metode lama
+          X: X_data, // Data X dari metode baru
+          Y: Y_data, // Data Y dari metode baru
           dependentName: dependentVarName,
           independentNames: independentVarNames, // Nama tetap dikirim semua
           upperBound: selectedModels.includes('Logistic') ? parseFloat(upperBound) : undefined
