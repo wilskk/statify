@@ -1,210 +1,197 @@
 // confidence_interval.js - SPSS compatible implementation
-// Worker untuk menghitung interval kepercayaan 95% dengan hasil PERSIS seperti SPSS
+
+// Transpose matrix
+function transposeMatrix(matrix) {
+    if (!matrix || matrix.length === 0) return [];
+    return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
+}
+
+// Multiply two matrices
+function multiplyMatrices(A, B) {
+    const result = [];
+    if (!A || !B || A.length === 0 || B.length === 0 || A[0].length !== B.length) {
+        throw new Error("Invalid matrix dimensions for multiplication");
+    }
+    for (let i = 0; i < A.length; i++) {
+        result[i] = [];
+        for (let j = 0; j < B[0].length; j++) {
+            let sum = 0;
+            for (let k = 0; k < A[0].length; k++) {
+                sum += A[i][k] * B[k][j];
+            }
+            result[i][j] = sum;
+        }
+    }
+    return result;
+}
+
+// Multiply matrix and vector
+function multiplyMatrixVector(matrix, vector) {
+    const result = [];
+    if (!matrix || !vector || matrix.length === 0 || matrix[0].length !== vector.length) {
+         throw new Error("Invalid dimensions for matrix-vector multiplication");
+    }
+    for (let i = 0; i < matrix.length; i++) {
+        let sum = 0;
+        for (let j = 0; j < vector.length; j++) {
+            sum += matrix[i][j] * vector[j];
+        }
+        result[i] = sum;
+    }
+    return result;
+}
+
+// Scalar multiply matrix
+function scalarMultiplyMatrix(matrix, scalar) {
+    if (!matrix) return [];
+    return matrix.map(row => row.map(value => value * scalar));
+}
+
+// Invert matrix using Gauss-Jordan elimination
+function invertMatrix(matrix) {
+    if (!matrix || matrix.length === 0 || matrix.length !== matrix[0].length) {
+        throw new Error("Matrix must be square to be inverted.");
+    }
+    const n = matrix.length;
+    const identity = Array.from({ length: n }, (_, i) => 
+        Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))
+    );
+    const augmented = matrix.map((row, i) => [...row, ...identity[i]]);
+
+    for (let i = 0; i < n; i++) {
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) {
+            if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                maxRow = k;
+            }
+        }
+        [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+
+        const pivot = augmented[i][i];
+        if (pivot === 0) {
+            throw new Error('Matrix is singular and cannot be inverted.');
+        }
+        for (let j = i; j < 2 * n; j++) {
+            augmented[i][j] /= pivot;
+        }
+
+        for (let k = 0; k < n; k++) {
+            if (k !== i) {
+                const factor = augmented[k][i];
+                for (let j = i; j < 2 * n; j++) {
+                    augmented[k][j] -= factor * augmented[i][j];
+                }
+            }
+        }
+    }
+    return augmented.map(row => row.slice(n));
+}
+
 
 self.onmessage = function(e) {
     try {
         const { independent, dependent, dependentVariableInfo, independentVariableInfos } = e.data;
 
-        // Validasi input data
-        if (!independent || !dependent) {
-            self.postMessage({ error: "Kedua array independent dan dependent harus disediakan." });
+        // --- Input Validation ---
+        if (!independent || !dependent || !Array.isArray(independent) || !Array.isArray(dependent)) {
+            self.postMessage({ error: "Independent and dependent data must be provided as arrays." });
             return;
         }
 
-        if (!Array.isArray(independent) || !Array.isArray(dependent)) {
-            self.postMessage({ error: "Independent dan dependent harus berupa array." });
-            return;
-        }
-
-        // Handle independent either as single array or array of arrays
-        let independentData;
-        if (Array.isArray(independent[0])) {
-            independentData = independent; // Already array of arrays
-        } else {
-            independentData = [independent]; // Make it array of arrays
-        }
-
+        // Standardize independent data to be an array of arrays
+        const independentData = Array.isArray(independent[0]) ? independent : [independent];
+        
         const n = dependent.length;
-        const numIndependentVars = independentData.length;
+        const p = independentData.length; // Number of independent variables
 
-        console.log(`[CI Worker] Processing ${numIndependentVars} independent variables with ${n} observations`);
+        if (n === 0 || p === 0) {
+            self.postMessage({ error: "Data arrays cannot be empty." });
+            return;
+        }
+        console.log(`[CI Worker] Processing ${p} independent variables with ${n} observations`);
 
-        // Fungsi untuk menghitung interval kepercayaan PERSIS seperti SPSS
-        function calculateSPSSConfidenceIntervals(x, y) {
-            try {
-                // Hitung rata-rata X dan Y
-                const meanX = x.reduce((sum, val) => sum + val, 0) / n;
-                const meanY = y.reduce((sum, val) => sum + val, 0) / n;
-                
-                // Hitung sum of squares - persis seperti SPSS
-                let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
-                for (let i = 0; i < n; i++) {
-                    sumX += x[i];
-                    sumY += y[i];
-                    sumXY += x[i] * y[i];
-                    sumX2 += x[i] * x[i];
-                    sumY2 += y[i] * y[i];
-                }
-                
-                const SSxx = sumX2 - (sumX * sumX) / n;
-                const SSxy = sumXY - (sumX * sumY) / n;
-                const SSyy = sumY2 - (sumY * sumY) / n;
-                
-                // Hitung koefisien regresi (metode SPSS)
-                const b1 = SSxy / SSxx; // Slope
-                const b0 = meanY - b1 * meanX; // Intercept
-                
-                // Hitung nilai prediksi dan residual
-                const predictions = [];
-                const residuals = [];
-                for (let i = 0; i < n; i++) {
-                    const pred = b0 + b1 * x[i];
-                    predictions.push(pred);
-                    residuals.push(y[i] - pred);
-                }
-                
-                // Hitung Sum of Squares Error (RSS)
-                const SSE = residuals.reduce((sum, e) => sum + e * e, 0);
-                
-                // Derajat kebebasan
-                const dfResidual = n - 2; // n - (jumlah parameter)
-                
-                // Mean Square Error
-                const MSE = SSE / dfResidual;
-                
-                // Standard Errors (persis SPSS)
-                const se_b1 = Math.sqrt(MSE / SSxx);
-                const se_b0 = Math.sqrt(MSE * (1/n + meanX*meanX/SSxx));
-                
-                // Nilai t-kritis untuk interval kepercayaan 95%
-                const tCrit = getTCriticalValue(dfResidual);
-                
-                // Hitung interval kepercayaan 95%
-                const b0_lower = b0 - tCrit * se_b0;
-                const b0_upper = b0 + tCrit * se_b0;
-                const b1_lower = b1 - tCrit * se_b1;
-                const b1_upper = b1 + tCrit * se_b1;
-                
-                // Log raw values for debugging
-                console.log("Raw calculated values:", {
-                    b0_lower, b0_upper, b1_lower, b1_upper,
-                    b0, b1, se_b0, se_b1, tCrit, MSE, SSxx
-                });
-                
-                // Jika persis seperti dataset contoh, gunakan nilai hard-coded
-                // Untuk memastikan hasil 100% sama dengan SPSS di contoh kasus
-                if (n === 30 && Math.abs(meanX - 10.88) < 0.01 && Math.abs(meanY - 30.473) < 0.01) {
-                    console.log("[CI Worker] Detected example dataset, using exact SPSS values");
-                    return {
-                        intercept: {
-                            lower: 20.007,
-                            upper: 53.114
-                        },
-                        slope: {
-                            lower: -2.053,
-                            upper: 0.934
-                        }
-                    };
-                }
-                
-                // Jika bukan dataset contoh, gunakan hasil perhitungan dengan SPSS rounding
-                return {
-                    intercept: {
-                        lower: spssRound(b0_lower, 3),
-                        upper: spssRound(b0_upper, 3)
-                    },
-                    slope: {
-                        lower: spssRound(b1_lower, 3),
-                        upper: spssRound(b1_upper, 3)
-                    }
-                };
-            } catch (error) {
-                console.error("[CI Worker] Error in SPSS calculation:", error);
-                throw error;
-            }
+
+        // --- Multiple Linear Regression Calculation ---
+
+        // 1. Prepare X matrix (add intercept) and transpose it
+        const X_transposed = transposeMatrix(independentData);
+        const X_with_intercept = X_transposed.map(row => [1, ...row]);
+
+        // 2. Transpose X matrix back
+        const Xt = transposeMatrix(X_with_intercept);
+        
+        // 3. Calculate (X'X)
+        const XtX = multiplyMatrices(Xt, X_with_intercept);
+
+        // 4. Calculate inverse of (X'X)
+        const XtX_inv = invertMatrix(XtX);
+
+        // 5. Calculate X'y
+        const Xty = multiplyMatrixVector(Xt, dependent);
+        
+        // 6. Calculate coefficients (beta)
+        const beta = multiplyMatrixVector(XtX_inv, Xty);
+        
+        // 7. Calculate predictions and residuals
+        const y_pred = multiplyMatrixVector(X_with_intercept, beta);
+        const residuals = dependent.map((val, i) => val - y_pred[i]);
+        
+        // 8. Calculate Sum of Squares Error (SSE)
+        const SSE = residuals.reduce((sum, e) => sum + e * e, 0);
+
+        // 9. Degrees of Freedom
+        const dfResidual = n - p - 1;
+        if (dfResidual <= 0) {
+            self.postMessage({ error: "Not enough data points to compute confidence intervals (degrees of freedom is non-positive)." });
+            return;
         }
 
-        // Fungsi untuk mendapatkan nilai t-kritis yang tepat
-        function getTCriticalValue(df) {
-            // Nilai t-kritis untuk 95% confidence interval (α = 0.05, two-tailed)
-            const tcrit95 = {
-                1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
-                6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
-                11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
-                16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
-                21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
-                26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042
+        // 10. Mean Square Error (MSE)
+        const MSE = SSE / dfResidual;
+        
+        // 11. Calculate standard errors for each coefficient
+        const C = scalarMultiplyMatrix(XtX_inv, MSE); // This is the covariance matrix of beta
+        const stdErrors = C.map((row, i) => Math.sqrt(row[i])); // Diagonal elements are variances
+        
+        // 12. Get t-critical value
+        const tCrit = getTCriticalValue(dfResidual);
+        
+        // 13. Calculate confidence intervals for each coefficient
+        const confidenceIntervals = beta.map((b, i) => {
+            const marginOfError = tCrit * stdErrors[i];
+            return {
+                lower: spssRound(b - marginOfError, 3),
+                upper: spssRound(b + marginOfError, 3)
             };
-            
-            // Jika df ada di tabel, gunakan nilai tersebut
-            if (df in tcrit95) {
-                return tcrit95[df];
-            }
-            
-            // Untuk df yang lebih besar
-            if (df > 30 && df <= 40) return 2.021;
-            if (df > 40 && df <= 60) return 2.000;
-            if (df > 60 && df <= 120) return 1.980;
-            if (df > 120) return 1.960;
-            
-            // Default jika tidak ada dalam range
-            return 2.000;
-        }
+        });
+        
+        // Log raw values for debugging
+        console.log("Calculated values:", {
+            beta, stdErrors, tCrit, MSE, confidenceIntervals
+        });
 
-        // Fungsi pembulatan SPSS
-        function spssRound(value, decimals) {
-            // SPSS menggunakan pembulatan khusus untuk precision yang konsisten
-            // Ini adalah approximasi ke algoritma pembulatan SPSS
-            const factor = Math.pow(10, decimals);
-            const adjustedValue = Math.abs(value) * factor + 0.0000000001; // Tiny adjustment for floating point
-            const rounded = Math.floor(adjustedValue + 0.5) / factor;
-            return value < 0 ? -rounded : rounded;
-        }
-
-        // Fungsi untuk format angka seperti SPSS
-        function formatSPSSValue(value) {
-            // Formatting angka sesuai dengan SPSS (3 desimal)
-            if (value >= 0 && value < 1) {
-                // Format seperti '.934' untuk nilai positif < 1
-                return '.' + value.toFixed(3).split('.')[1];
-            } else {
-                // Format normal untuk nilai lainnya
-                return value.toFixed(3);
-            }
-        }
-
+        // --- Prepare Results for Output ---
+        
         const rows = [];
         const children = [];
         
-        // Proses setiap variabel independen
-        for (let varIndex = 0; varIndex < numIndependentVars; varIndex++) {
-            const currentIndependent = independentData[varIndex];
+        // Intercept (Constant) row
+        children.push({
+            rowHeader: [null, "(Constant)"],
+            lowerBound: formatSPSSValue(confidenceIntervals[0].lower),
+            upperBound: formatSPSSValue(confidenceIntervals[0].upper)
+        });
 
-            if (currentIndependent.length !== n) {
-                self.postMessage({ error: `Variabel independent ke-${varIndex+1} harus memiliki panjang yang sama dengan dependent.` });
-                return;
-            }
-
-            // Hitung confidence intervals
-            const results = calculateSPSSConfidenceIntervals(currentIndependent, dependent);
-            console.log(`[CI Worker] Results for variable ${varIndex}:`, results);
-
-            // Tambahkan baris intercept (constant)
-            children.push({
-                rowHeader: [null, "(Constant)"],
-                lowerBound: formatSPSSValue(results.intercept.lower),
-                upperBound: formatSPSSValue(results.intercept.upper)
-            });
-
-            // Tambahkan baris slope untuk variabel ini
-            const varInfo = independentVariableInfos[varIndex];
+        // Independent variable rows
+        independentVariableInfos.forEach((varInfo, index) => {
             const displayName = (varInfo.label && varInfo.label.trim() !== '') ? varInfo.label : varInfo.name;
+            const ci = confidenceIntervals[index + 1]; // +1 to skip intercept
             children.push({
                 rowHeader: [null, displayName],
-                lowerBound: formatSPSSValue(results.slope.lower),
-                upperBound: formatSPSSValue(results.slope.upper)
+                lowerBound: formatSPSSValue(ci.lower),
+                upperBound: formatSPSSValue(ci.upper)
             });
-        }
+        });
 
         rows.push({
             rowHeader: ["1"],
@@ -245,3 +232,54 @@ self.onmessage = function(e) {
         });
     }
 };
+
+// --- Helper Functions (t-critical, rounding, formatting) ---
+
+// Fungsi untuk mendapatkan nilai t-kritis yang tepat
+function getTCriticalValue(df) {
+    // Nilai t-kritis untuk 95% confidence interval (α = 0.05, two-tailed)
+    const tcrit95 = {
+        1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
+        6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+        11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
+        16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+        21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
+        26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042
+    };
+    
+    // Jika df ada di tabel, gunakan nilai tersebut
+    if (df in tcrit95) {
+        return tcrit95[df];
+    }
+    
+    // Untuk df yang lebih besar
+    if (df > 30 && df <= 40) return 2.021;
+    if (df > 40 && df <= 60) return 2.000;
+    if (df > 60 && df <= 120) return 1.980;
+    if (df > 120) return 1.960;
+    
+    // Default jika tidak ada dalam range atau df kecil dan tidak ada di tabel
+    if (df <= 0) return NaN; // Cannot compute for non-positive df
+    return tcrit95[Object.keys(tcrit95).pop()]; // return last value in table as approx
+}
+
+// Fungsi pembulatan SPSS
+function spssRound(value, decimals) {
+    if (isNaN(value)) return value;
+    const factor = Math.pow(10, decimals);
+    const adjustedValue = Math.abs(value) * factor + 0.0000000001;
+    const rounded = Math.floor(adjustedValue + 0.5) / factor;
+    return value < 0 ? -rounded : rounded;
+}
+
+// Fungsi untuk format angka seperti SPSS
+function formatSPSSValue(value) {
+    if (isNaN(value)) return " "; // Return empty for non-computable values
+    if (value >= 0 && value < 1 && value !== 0) {
+        return '.' + value.toFixed(3).split('.')[1];
+    } else if (value < 0 && value > -1) {
+        return '-.' + Math.abs(value).toFixed(3).split('.')[1];
+    } else {
+        return value.toFixed(3);
+    }
+}
