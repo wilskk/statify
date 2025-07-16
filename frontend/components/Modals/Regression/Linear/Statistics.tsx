@@ -11,6 +11,7 @@ import { TrendingUp } from 'lucide-react';
 export interface StatisticsParams {
   estimates: boolean;
   confidenceIntervals: boolean;
+  confidenceLevel: string; // Added for editable confidence level
   covarianceMatrix: boolean;
   modelFit: boolean;
   rSquaredChange: boolean;
@@ -35,6 +36,7 @@ const Statistics: React.FC<StatisticsProps> = ({ params, onChange, showAlert }) 
   // Use passed params to initialize state
   const [estimates, setEstimates] = useState<boolean>(params.estimates);
   const [confidenceIntervals, setConfidenceIntervals] = useState<boolean>(params.confidenceIntervals);
+  const [confidenceLevel, setConfidenceLevel] = useState<string>(params.confidenceLevel);
   const [covarianceMatrix, setCovarianceMatrix] = useState<boolean>(params.covarianceMatrix);
   const [modelFit, setModelFit] = useState<boolean>(params.modelFit);
   const [rSquaredChange, setRSquaredChange] = useState<boolean>(params.rSquaredChange);
@@ -50,6 +52,7 @@ const Statistics: React.FC<StatisticsProps> = ({ params, onChange, showAlert }) 
   useEffect(() => {
     setEstimates(params.estimates);
     setConfidenceIntervals(params.confidenceIntervals);
+    setConfidenceLevel(params.confidenceLevel);
     setCovarianceMatrix(params.covarianceMatrix);
     setModelFit(params.modelFit);
     setRSquaredChange(params.rSquaredChange);
@@ -68,6 +71,7 @@ const Statistics: React.FC<StatisticsProps> = ({ params, onChange, showAlert }) 
     switch(field) {
       case 'estimates': setEstimates(value); break;
       case 'confidenceIntervals': setConfidenceIntervals(value); break;
+      case 'confidenceLevel': setConfidenceLevel(value); break; // Added
       case 'covarianceMatrix': setCovarianceMatrix(value); break;
       case 'modelFit': setModelFit(value); break;
       case 'rSquaredChange': setRSquaredChange(value); break;
@@ -94,6 +98,18 @@ const Statistics: React.FC<StatisticsProps> = ({ params, onChange, showAlert }) 
     }
     // Propagate change to parent if not handled by specific cases above
     onChange({ [field]: value });
+  };
+
+  const handleConfidenceLevelBlur = (value: string) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < 1 || numValue >= 100) {
+        showAlert('Invalid Input', 'Confidence level must be a number between 1 and 99.999.');
+        // Revert to original valid value from props
+        setConfidenceLevel(params.confidenceLevel);
+    } else {
+        // Propagate the valid change to the parent
+        onChange({ confidenceLevel: value });
+    }
   };
 
   const handleOutlierThresholdBlur = (value: string) => {
@@ -140,9 +156,9 @@ const Statistics: React.FC<StatisticsProps> = ({ params, onChange, showAlert }) 
               <Input
                 id="level"
                 type="number"
-                defaultValue="95" // Keep default value display, but don't link to state/props directly
-                // value="95" // This input seems fixed at 95 currently
-                readOnly // Mark as readOnly if it's fixed
+                value={confidenceLevel}
+                onChange={(e) => handleChange('confidenceLevel', e.target.value)}
+                onBlur={(e) => handleConfidenceLevelBlur(e.target.value)}
                 disabled={!confidenceIntervals}
                 className="w-20 ml-2 p-1 text-sm"
               />

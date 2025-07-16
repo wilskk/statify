@@ -48,6 +48,7 @@ interface ModalLinearProps {
 const defaultStatsParams: StatisticsParams = {
   estimates: true,
   confidenceIntervals: false,
+  confidenceLevel: '95', // Default confidence level
   covarianceMatrix: false,
   modelFit: true,
   rSquaredChange: false,
@@ -936,12 +937,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependent: filteredDependentData,
             independent: filteredIndependentData,
             dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos: independentVariableInfos,
+            confidenceLevel: parseFloat(currentStatsParams.confidenceLevel) || 95, // Pass confidence level
           });
     
           confidenceWorker.onmessage = async (e: MessageEvent) => {
             const confidenceResults = e.data;
             console.log("[Analyze] Hasil Confidence Interval dari Worker:", confidenceResults);
+
+            if (confidenceResults.error) {
+                console.error("[Analyze] Worker Confidence Interval error:", confidenceResults.error);
+                reject(new Error(confidenceResults.error));
+                confidenceWorker.terminate();
+                return;
+            }
+
             const confidenceStat = {
               title: "Confidence Interval",
               output_data: JSON.stringify(confidenceResults),

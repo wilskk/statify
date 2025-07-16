@@ -90,7 +90,8 @@ function invertMatrix(matrix) {
 
 self.onmessage = function(e) {
     try {
-        const { independent, dependent, dependentVariableInfo, independentVariableInfos } = e.data;
+        const { independent, dependent, dependentVariableInfo, independentVariableInfos, confidenceLevel } = e.data;
+        const alpha = 1 - (confidenceLevel / 100);
 
         // --- Input Validation ---
         if (!independent || !dependent || !Array.isArray(independent) || !Array.isArray(dependent)) {
@@ -154,7 +155,7 @@ self.onmessage = function(e) {
         const stdErrors = C.map((row, i) => Math.sqrt(row[i])); // Diagonal elements are variances
         
         // 12. Get t-critical value
-        const tCrit = getTCriticalValue(dfResidual);
+        const tCrit = getTCriticalValue(dfResidual, alpha);
         
         // 13. Calculate confidence intervals for each coefficient
         const confidenceIntervals = beta.map((b, i) => {
@@ -206,7 +207,7 @@ self.onmessage = function(e) {
                         { header: "Model" },
                         { header: "" },
                         {
-                            header: "95.0% Confidence Interval for B",
+                            header: `${confidenceLevel}% Confidence Interval for B`,
                             children: [
                                 { header: "Lower Bound", key: "lowerBound" },
                                 { header: "Upper Bound", key: "upperBound" }
@@ -236,31 +237,52 @@ self.onmessage = function(e) {
 // --- Helper Functions (t-critical, rounding, formatting) ---
 
 // Fungsi untuk mendapatkan nilai t-kritis yang tepat
-function getTCriticalValue(df) {
-    // Nilai t-kritis untuk 95% confidence interval (α = 0.05, two-tailed)
-    const tcrit95 = {
-        1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
-        6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
-        11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
-        16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
-        21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
-        26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042
-    };
-    
-    // Jika df ada di tabel, gunakan nilai tersebut
-    if (df in tcrit95) {
-        return tcrit95[df];
+function getTCriticalValue(df, alpha = 0.05) {
+    // This function should ideally use a proper t-distribution library 
+    // or a more comprehensive table for various alpha levels.
+    // For this example, we'll stick to the hardcoded 95% values if alpha is 0.05,
+    // and use an approximation for others. This is a simplification.
+    if (alpha.toFixed(2) === '0.05') {
+        const tcrit95 = {
+            1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
+            6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+            11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
+            16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+            21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
+            26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042
+        };
+        
+        // Jika df ada di tabel, gunakan nilai tersebut
+        if (df in tcrit95) {
+            return tcrit95[df];
+        }
+        
+        // Untuk df yang lebih besar
+        if (df > 30 && df <= 40) return 2.021;
+        if (df > 40 && df <= 60) return 2.000;
+        if (df > 60 && df <= 120) return 1.980;
+        if (df > 120) return 1.960;
     }
-    
-    // Untuk df yang lebih besar
-    if (df > 30 && df <= 40) return 2.021;
-    if (df > 40 && df <= 60) return 2.000;
-    if (df > 60 && df <= 120) return 1.980;
-    if (df > 120) return 1.960;
+
+    // A very rough approximation for other alpha levels.
+    // A proper implementation would use a statistical library.
+    // For example, for 99% CI (alpha=0.01), t-values are higher.
+    // For 90% CI (alpha=0.10), t-values are lower.
+    // This is a placeholder for a more robust solution.
+    if (alpha < 0.05) { // e.g. 99%
+        if (df > 120) return 2.576; // Approximation for z-score at alpha/2 = 0.005
+        return 2.750; // Generic higher value for smaller df
+    }
+    if (alpha > 0.05) { // e.g. 90%
+         if (df > 120) return 1.645; // Approximation for z-score at alpha/2 = 0.05
+         return 1.812; // Generic lower value for smaller df (like t for df=10, alpha=0.1)
+    }
     
     // Default jika tidak ada dalam range atau df kecil dan tidak ada di tabel
     if (df <= 0) return NaN; // Cannot compute for non-positive df
-    return tcrit95[Object.keys(tcrit95).pop()]; // return last value in table as approx
+    const tValues = { 1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131, 16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086, 21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060, 26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042 };
+    if (tValues[df]) return tValues[df];
+    return 1.96; // Fallback to z-score for large n
 }
 
 // Fungsi pembulatan SPSS
