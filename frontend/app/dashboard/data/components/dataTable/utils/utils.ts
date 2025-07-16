@@ -76,7 +76,18 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
     const type = variable.type;
     let config: Handsontable.ColumnSettings = {};
 
-    // Custom renderer to handle viewMode for value labels
+    // Prevent matching empty string to numeric zero when searching for labels
+    const mapValueToLabel = (rawValue: any) => {
+        // Do not attempt to find a label for truly empty cells
+        if (rawValue === '' || rawValue === null || rawValue === undefined) {
+            return undefined;
+        }
+        // Loose comparison is useful for strings like '1' vs numeric 1, but we
+        // want to avoid JS quirk where '' == 0 is true. At this point rawValue
+        // is guaranteed not to be an empty string, so this comparison is safe.
+        return variable.values?.find(v => v.value == rawValue);
+    };
+
     const valueLabelRenderer = (baseRenderer: Function) => nullSafeRenderer((
         hotInstance: any,
         td: HTMLTableCellElement,
@@ -88,8 +99,7 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
     ) => {
         let displayValue: any = value;
         if (viewMode === 'label' && variable.values && variable.values.length > 0) {
-            // Use '==' for loose comparison to match string from table with number from store (e.g., '1' == 1)
-            const foundLabel = variable.values.find(v => v.value == value);
+            const foundLabel = mapValueToLabel(value);
             if (foundLabel) {
                 displayValue = foundLabel.label;
             }

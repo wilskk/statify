@@ -20,7 +20,6 @@ class MyDatabase extends Dexie {
 
   constructor() {
     super("Statify");
-    console.log("Initializing Statify database...");
 
     this.version(7).stores({
       dataRows: "++id",
@@ -33,7 +32,6 @@ class MyDatabase extends Dexie {
 
       metadata: "&id",
     });
-    console.log("Database schema initialized");
 
     this.dataRows = this.table("dataRows");
     this.variables = this.table("variables");
@@ -42,7 +40,6 @@ class MyDatabase extends Dexie {
     this.analytics = this.table("analytics");
     this.statistics = this.table("statistics");
     this.metadata = this.table("metadata");
-    console.log("Database tables initialized");
   }
 
   async getLogWithRelations(logId: number): Promise<Log | undefined> {
@@ -84,13 +81,9 @@ class MyDatabase extends Dexie {
   }
 
   async getAllLogsWithRelations(): Promise<Log[]> {
-    console.log("Fetching all logs with relations...");
     const logs = await this.logs.toArray();
-    console.log("Fetched logs:", logs);
     const analytics = await this.analytics.toArray();
-    console.log("Fetched analytics:", analytics);
     const statistics = await this.statistics.toArray();
-    console.log("Fetched statistics:", statistics);
 
     const analyticMap = new Map<number, Analytic[]>();
     const statisticMap = new Map<number, Statistic[]>();

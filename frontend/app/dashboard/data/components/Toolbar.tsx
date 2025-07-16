@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useEditMenuActions } from "@/components/Modals/Edit/hooks/useEditMenuActions";
+import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
+import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
 import {
     FolderOpen,
     Save,
@@ -16,7 +19,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
-import { useMobile } from "@/hooks/useMobile";
 import { useFileMenuActions } from '@/components/Modals/File/hooks/useFileMenuActions';
 import { ModalType, useModal } from '@/hooks/useModal';
 // import { ModeToggle } from "@/components/mode-toggle";
@@ -25,9 +27,9 @@ import { usePathname } from 'next/navigation';
 
 export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
-    const { isMobile } = useMobile();
     const pathname = usePathname();
     const { handleAction: handleFileAction } = useFileMenuActions();
+    const { handleAction: handleEditAction } = useEditMenuActions();
     const { openModal } = useModal();
     const { viewMode, toggleViewMode } = useTableRefStore();
 
@@ -37,12 +39,14 @@ export default function Toolbar() {
         { name: 'Open Data', icon: <FolderOpen size={16} />, onClick: () => openModal(ModalType.OpenData) },
         { name: 'Save Document', icon: <Save size={16} />, onClick: () => handleFileAction({ actionType: 'Save' }) },
         { name: 'Print', icon: <Printer size={16} />, onClick: () => openModal(ModalType.Print) },
+        { name: 'Undo', icon: <Undo size={16} />, onClick: () => handleEditAction("Undo") },
+        { name: 'Redo', icon: <Redo size={16} />, onClick: () => handleEditAction("Redo") },
     ];
 
     const dataTools = [
-        { name: 'Locate', icon: <Locate size={16} /> },
-        { name: 'Variable', icon: <Variable size={16} /> },
-        { name: 'Search', icon: <Search size={16} /> },
+        { name: 'Locate', icon: <Locate size={16} />, onClick: () => openModal(ModalType.GoTo, { initialMode: GoToMode.CASE }) },
+        { name: 'Variable', icon: <Variable size={16} />, onClick: () => openModal(ModalType.DefineVarProps) },
+        { name: 'Search', icon: <Search size={16} />, onClick: () => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.FIND }) },
         { name: 'Toggle View', icon: <ArrowRightLeft size={16} />, onClick: toggleViewMode },
     ];
 
@@ -79,7 +83,8 @@ export default function Toolbar() {
 
     return (
         <div className="bg-background px-4 py-1 border-b border-border flex justify-between items-center overflow-hidden shadow-md">
-            <div className={`flex ${isMobile ? 'w-full overflow-x-auto' : ''}`}>
+            {/* Always allow horizontal scroll on small screens, but keep normal on medium+ */}
+            <div className="flex w-full overflow-x-auto md:overflow-visible">
                 <div className="flex space-x-2 min-w-max">
                     <ToolGroup tools={fileTools} />
                     <Separator orientation="vertical" className="h-6 my-auto" />

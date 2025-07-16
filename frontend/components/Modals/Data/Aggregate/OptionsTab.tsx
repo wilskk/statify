@@ -44,19 +44,19 @@ const OptionsTab: FC<OptionsTabProps> = ({
 
     return (
         <div className="border border-border p-2 rounded-md bg-card">
-            <div className="text-xs font-semibold mb-2 text-foreground">Options for Very Large Datasets</div>
+            <div className="text-sm font-medium mb-2 text-foreground">Options for Very Large Datasets</div>
             <div className="space-y-3">
                 <div className="flex items-center space-x-2 relative" id="aggregate-option-sorted-wrapper">
                     <div className="relative mt-0.5">
                         <Checkbox
                             id="already-sorted"
-                            className="w-3 h-3"
+                            className="mr-2"
                             checked={isAlreadySorted}
                             onCheckedChange={(checked) => setIsAlreadySorted(!!checked)}
                         />
                          <ActiveElementHighlight active={isStepActive("aggregate-option-sorted-wrapper")} />
                     </div>
-                    <Label htmlFor="already-sorted" className={cn("text-xs cursor-pointer text-foreground", isStepActive("aggregate-option-sorted-wrapper") && "text-primary font-medium")}>
+                    <Label htmlFor="already-sorted" className={cn("text-sm cursor-pointer text-foreground", isStepActive("aggregate-option-sorted-wrapper") && "text-primary font-medium")}>
                         File is already sorted on break variable(s)
                     </Label>
                 </div>
@@ -65,18 +65,18 @@ const OptionsTab: FC<OptionsTabProps> = ({
                     <div className="relative mt-0.5">
                         <Checkbox
                             id="sort-before"
-                            className="w-3 h-3"
+                            className="mr-2"
                             checked={sortBeforeAggregating}
                             onCheckedChange={(checked) => setSortBeforeAggregating(!!checked)}
                         />
                         <ActiveElementHighlight active={isStepActive("aggregate-option-sort-before-wrapper")} />
                     </div>
-                    <Label htmlFor="sort-before" className={cn("text-xs cursor-pointer text-foreground", isStepActive("aggregate-option-sort-before-wrapper") && "text-primary font-medium")}>
+                    <Label htmlFor="sort-before" className={cn("text-sm cursor-pointer text-foreground", isStepActive("aggregate-option-sort-before-wrapper") && "text-primary font-medium")}>
                         Sort file before aggregating
                     </Label>
                 </div>
 
-                <div className="text-xs text-muted-foreground mt-2">
+                <div className="text-sm text-muted-foreground mt-2">
                     <p>For very large datasets, sorting can improve performance significantly.</p>
                     <p className="mt-1">
                         If your data is already sorted by the break variables, check the first option to skip the sorting step.

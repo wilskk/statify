@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useMemo } from "react";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 import { Button } from "@/components/ui/button";
 import {
@@ -95,7 +95,10 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
 
   // Parse data jika berbentuk string
   const parsedData = useMemo(
+    () => (useMemo(
     () => (typeof data === "string" ? JSON.parse(data) : data),
+    [data]
+  )),
     [data]
   );
 
@@ -287,7 +290,6 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   // };
 
   useEffect(() => {
-    console.log("data di kontainer", parsedData);
     if (parsedData && parsedData.charts && Array.isArray(parsedData.charts)) {
       const nodes = parsedData.charts.map(
         (chartData: ChartData, index: number) => {
@@ -1038,7 +1040,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
       );
       setChartNodes(nodes);
     }
-  }, [data, chartDimensions, parsedData]);
+  }, [chartDimensions, parsedData]);
 
   // Menentukan ukuran kontainer berdasarkan dimensi chart
   const containerStyle = {

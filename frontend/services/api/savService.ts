@@ -1,4 +1,4 @@
-import { API_BASE_URL, handleApiResponse, getApiUrl } from './config';
+import { handleApiResponse, getApiUrl, getUserId as _getUserId } from './config';
 
 interface SaveVariableDTO {
   name: string;
@@ -20,6 +20,12 @@ interface SaveSavFileDTO {
   variables: SaveVariableDTO[];
 }
 
+// getUserId may be undefined in test mocks – provide a safe accessor
+const safeGetUserId = (): string | undefined => {
+  // If the imported symbol is a function, call it; otherwise return undefined
+  return typeof _getUserId === 'function' ? _getUserId() : undefined;
+};
+
 /**
  * Upload an SAV file to the backend
  * Accepts either a File object or FormData with a file field
@@ -34,8 +40,20 @@ export async function uploadSavFile(fileOrFormData: File | FormData) {
     formData.append('file', fileOrFormData);
   }
 
+  // Client-side validation: file must be .sav and <= 10 MB
+  if (fileOrFormData instanceof File) {
+    if (!fileOrFormData.name.toLowerCase().endsWith('.sav') || fileOrFormData.size > 10 * 1024 * 1024) {
+      throw new Error('Berkas harus berformat .sav dan maksimal 10 MB');
+    }
+  }
+
+  const headers: Record<string, string> = {};
+  const userId = safeGetUserId();
+  if (userId) headers['X-User-Id'] = userId;
+
   const response = await fetch(getApiUrl('sav/upload'), {
     method: 'POST',
+    headers,
     body: formData,
   });
 
@@ -46,11 +64,15 @@ export async function uploadSavFile(fileOrFormData: File | FormData) {
  * Create and download an SAV file from data
  */
 export async function createSavFile(data: SaveSavFileDTO): Promise<Blob> {
+  const userId2 = safeGetUserId();
+  const headersCreate: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (userId2) headersCreate['X-User-Id'] = userId2;
+
   const response = await fetch(getApiUrl('sav/create'), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: headersCreate,
     body: JSON.stringify(data),
   });
 

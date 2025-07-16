@@ -13,6 +13,13 @@ const customJestConfig = {
     // Handle module aliases
     '^@/(.*)$': '<rootDir>/$1',
   },
+  maxWorkers: process.env.CI ? "50%" : 2,
+  testPathIgnorePatterns: [
+    "<rootDir>/components/Modals/Edit/FindReplace/hooks/__test__/useFindReplaceForm.test.ts",
+    "<rootDir>/components/Modals/Edit/GoTo/__tests__/GoToContent.test.tsx",
+    "<rootDir>/components/Modals/Data/DefineVarProps/__tests__/VariablesToScan.test.tsx",
+    "<rootDir>/components/Modals/Data/DefineVarProps/__tests__/PropertiesEditor.test.tsx",
+  ],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

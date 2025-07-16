@@ -1,22 +1,33 @@
-import React, {useCallback, useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     UnivariatePostHocProps,
     UnivariatePostHocType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
-import {Label} from "@/components/ui/label";
-import {Input} from "@/components/ui/input";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {
-    DUNNETMETHOD,
-} from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
-import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
-import {CheckedState} from "@radix-ui/react-checkbox";
-import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
-import type {Variable} from "@/types/Variable";
-import {toast} from "sonner";
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { DUNNETMETHOD } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
+import { toast } from "sonner";
 
 export const UnivariatePostHoc = ({
     isPostHocOpen,
@@ -660,7 +671,16 @@ export const UnivariatePostHoc = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button type="button" variant="ghost">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                            window.open(
+                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
+                                "_blank"
+                            );
+                        }}
+                    >
                         Help
                     </Button>
                 </div>

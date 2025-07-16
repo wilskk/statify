@@ -40,7 +40,7 @@ sequenceDiagram
     UI->>+Hook: handleSave()
 
     loop untuk setiap variabel di daftar Nominal, Ordinal, dan Scale
-        Hook->>+VarStore: updateVariable(columnIndex, "measure", newMeasure)
+        Hook->>+VarStore: updateMultipleFields(columnIndex, { measure: newMeasure })
         deactivate VarStore
     end
 

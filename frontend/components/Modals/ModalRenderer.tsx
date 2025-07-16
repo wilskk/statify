@@ -39,28 +39,13 @@ const ModalRenderer: React.FC<ModalRendererProps> = ({
   
   // Determine container type based on device, preference, and override
   useEffect(() => {
-    console.groupCollapsed(`[ModalRenderer] useEffect for ${modalType} - Determining Container`);
-    console.log(`Dependencies:`, { modalType, requestedContainer, containerOverride, isMobile });
-
     const determineContainerType = () => {
-      console.log(`Initial values: reqContainer=${requestedContainer}, override=${containerOverride}, mobile=${isMobile}`);
-      
-      // Special debug for ExportCSV modal
-      if (modalType === ModalType.ExportCSV) {
-        console.log(`ExportCSV Modal Debug - Processing with:`, {
-          requestedContainer,
-          containerOverride,
-          isMobile,
-        });
-      }
       
       if (isMobile) {
-        console.log('Decision: Mobile device, using "dialog".');
         return "dialog";
       }
       
       if (containerOverride) {
-        console.log(`Decision: Container override present ("${containerOverride}"), using it.`);
         return containerOverride;
       }
       
@@ -69,30 +54,12 @@ const ModalRenderer: React.FC<ModalRendererProps> = ({
         requestedContainer,
         false // isMobile is false at this point
       );
-      console.log(`Decision: No override, preferred from registry: "${preferred}" (based on requested: "${requestedContainer}")`);
       return preferred;
     };
 
     const newFinalContainerType = determineContainerType();
-    console.log(`New final container type: "${newFinalContainerType}"`);
     setFinalContainerType(newFinalContainerType);
     
-    console.groupEnd();
-
-    // Handle window resize for responsiveness
-    const handleResize = () => {
-      console.groupCollapsed(`[ModalRenderer] handleResize for ${modalType} - Re-determining Container`);
-      const resizedContainerType = determineContainerType();
-      console.log(`Resized final container type: "${resizedContainerType}"`);
-      setFinalContainerType(resizedContainerType);
-      console.groupEnd();
-    };
-    
-    window.addEventListener("resize", handleResize);
-    return () => {
-      console.log(`[ModalRenderer] useEffect cleanup for ${modalType} - Removing resize listener.`);
-      window.removeEventListener("resize", handleResize);
-    };
   }, [modalType, requestedContainer, containerOverride, isMobile]);
   
   // Render placeholder if no component is found

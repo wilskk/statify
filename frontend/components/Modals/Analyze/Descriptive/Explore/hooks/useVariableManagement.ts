@@ -24,7 +24,15 @@ export interface VariableManagementHandlers {
 export type UseVariableManagementResult = VariableManagementState & VariableManagementHandlers;
 
 export const useVariableManagement = (): UseVariableManagementResult => {
-    const allVariables = useVariableStore(state => state.variables);
+    // Some Jest mocks replace useVariableStore with a simple jest.fn() that does not
+    // support selector functions. Attempt selector first, then fall back to getState.
+    let allVariables = useVariableStore((state: any) => state.variables as Variable[]);
+    if (!Array.isArray(allVariables)) {
+        // Fallback for tests where the selector form isn't implemented
+        allVariables = (typeof (useVariableStore as any).getState === 'function')
+            ? (useVariableStore as any).getState().variables
+            : [];
+    }
 
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [dependentVariables, setDependentVariables] = useState<Variable[]>([]);
@@ -55,7 +63,13 @@ export const useVariableManagement = (): UseVariableManagementResult => {
     }, [allVariables, dependentVariables, factorVariables, labelVariable, getInitialAvailable]);
 
     const moveToDependentVariables = useCallback((variable: Variable, targetIndex?: number) => {
+        // Tambahkan filter: hanya tipe numerik yang diizinkan
+        const numericTypes: Variable['type'][] = ["NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "RESTRICTED_NUMERIC"];
         if (!variable.tempId) return;
+        if (variable.type && !numericTypes.includes(variable.type)) {
+            console.warn(`[Explore] Variable '${variable.name}' bertipe '${variable.type}' bukan numerik; abaikan.`);
+            return; // Tolak variabel non-numerik
+        }
         setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setDependentVariables(prev => {
             if (prev.some(v => v.tempId === variable.tempId)) return prev;

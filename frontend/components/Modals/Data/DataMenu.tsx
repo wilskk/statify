@@ -45,9 +45,6 @@ const DataMenu: React.FC = () => {
                 <MenubarItem onClick={() => openModal(ModalType.DuplicateCases)}>
                     Identify Duplicate Cases
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.UnusualCases)}>
-                    Identify Unusual Cases
-                </MenubarItem>
                 <MenubarSeparator />
                 <MenubarItem onClick={() => openModal(ModalType.SortCases)}>
                     Sort Cases

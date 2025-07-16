@@ -22,7 +22,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
-import math from "@/utils/math/mathUtils";
 
 interface ComputeVariableProps {
   onClose: () => void;

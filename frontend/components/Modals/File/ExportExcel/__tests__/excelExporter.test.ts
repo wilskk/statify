@@ -21,12 +21,12 @@ describe('generateExcelWorkbook', () => {
   });
 
   const mockVariables: Variable[] = [
-    { name: 'ID', columnIndex: 0, type: 'numeric', measure: 'nominal', values: [] },
-    { name: 'Name', columnIndex: 1, type: 'string', measure: 'nominal', values: [] },
+    { name: 'ID', columnIndex: 0, type: 'NUMERIC', measure: 'nominal', values: [], width: 8, decimals: 0, label: '', columns: 8, align: 'right', role: 'input', missing: null },
+    { name: 'Name', columnIndex: 1, type: 'STRING', measure: 'nominal', values: [{value: 1, label: 'One', variableId: 1}], width: 8, decimals: 0, label: 'The Name', columns: 8, align: 'left', role: 'input', missing: null },
   ];
   const mockData: DataRow[] = [
-    { 0: 1, 1: 'Alice' },
-    { 0: 2, 1: 'Bob' },
+    [1, 'Alice'],
+    [2, 'Bob'],
   ];
   const mockMeta = { project: 'Test Project' };
   const defaultOptions: ExcelUtilOptions = {
@@ -60,33 +60,67 @@ describe('generateExcelWorkbook', () => {
     ]);
   });
 
-  it('should create Variable Properties sheet if specified', () => {
+  it('should create Variable Properties sheet with correct data if specified', () => {
     generateExcelWorkbook(mockData, mockVariables, mockMeta, { ...defaultOptions, includeVariablePropertiesSheet: true });
+    
+    const varPropsCall = mockedXLSXUtils.aoa_to_sheet.mock.calls.find(call => {
+        const data = call[0] as any[][];
+        return data[0] && data[0][0] === 'Index' && data[0][1] === 'Name';
+    });
+
+    expect(varPropsCall).toBeDefined();
+    const varPropsData = varPropsCall![0];
+
+    expect(varPropsData[0]).toEqual(['Index', 'Name', 'Type', 'Label', 'Measure', 'Width', 'Decimals', 'Values', 'Missing']);
+    expect(varPropsData[1]).toEqual([0, 'ID', 'NUMERIC', '', 'nominal', 8, 0, '', '']);
+    expect(varPropsData[2]).toEqual([1, 'Name', 'STRING', 'The Name', 'nominal', 8, 0, '1=One', '']);
     expect(mockedXLSXUtils.book_append_sheet).toHaveBeenCalledWith(expect.any(Object), expect.any(Object), 'VariableProperties');
   });
 
   it('should not create Variable Properties sheet if not specified', () => {
     generateExcelWorkbook(mockData, mockVariables, mockMeta, { ...defaultOptions, includeVariablePropertiesSheet: false });
-    expect(mockedXLSXUtils.book_append_sheet).not.toHaveBeenCalledWith(expect.any(Object), expect.any(Object), 'VariableProperties');
+    const varPropsCall = mockedXLSXUtils.aoa_to_sheet.mock.calls.find(call => {
+        const data = call[0] as any[][];
+        return data[0] && data[0][0] === 'Index';
+    });
+    expect(varPropsCall).toBeUndefined();
   });
 
-  it('should create Metadata sheet if specified and meta is available', () => {
+  it('should create Metadata sheet with correct data if specified and meta is available', () => {
     generateExcelWorkbook(mockData, mockVariables, mockMeta, { ...defaultOptions, includeMetadataSheet: true });
+    
+    const metadataCall = mockedXLSXUtils.aoa_to_sheet.mock.calls.find(call => {
+        const data = call[0] as any[][];
+        return data[0] && data[0][0] === 'Property' && data[0][1] === 'Value';
+    });
+    
+    expect(metadataCall).toBeDefined();
+    const metadataSheetData = metadataCall![0];
+
+    expect(metadataSheetData).toEqual([['Property', 'Value'], ['project', 'Test Project']]);
     expect(mockedXLSXUtils.book_append_sheet).toHaveBeenCalledWith(expect.any(Object), expect.any(Object), 'Metadata');
   });
 
   it('should not create Metadata sheet if not specified', () => {
     generateExcelWorkbook(mockData, mockVariables, mockMeta, { ...defaultOptions, includeMetadataSheet: false });
-    expect(mockedXLSXUtils.book_append_sheet).not.toHaveBeenCalledWith(expect.any(Object), expect.any(Object), 'Metadata');
+    const metadataCall = mockedXLSXUtils.aoa_to_sheet.mock.calls.find(call => {
+        const data = call[0] as any[][];
+        return data[0] && data[0][0] === 'Property';
+    });
+    expect(metadataCall).toBeUndefined();
   });
 
   it('should not create Metadata sheet if meta is null', () => {
     generateExcelWorkbook(mockData, mockVariables, null, { ...defaultOptions, includeMetadataSheet: true });
-    expect(mockedXLSXUtils.book_append_sheet).not.toHaveBeenCalledWith(expect.any(Object), expect.any(Object), 'Metadata');
+    const metadataCall = mockedXLSXUtils.aoa_to_sheet.mock.calls.find(call => {
+        const data = call[0] as any[][];
+        return data[0] && data[0][0] === 'Property';
+    });
+    expect(metadataCall).toBeUndefined();
   });
 
   it('should represent missing data with SYSMIS text when option is true', () => {
-    const dataWithMissing: DataRow[] = [{ 0: 1, 1: undefined }];
+    const dataWithMissing: DataRow[] = [[1, null]];
     generateExcelWorkbook(dataWithMissing, mockVariables, null, { ...defaultOptions, includeDataLabels: true, includeHeaders: false });
     expect(mockedXLSXUtils.aoa_to_sheet).toHaveBeenCalledWith([
         [1, 'SYSMIS'],

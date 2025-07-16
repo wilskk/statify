@@ -1,18 +1,25 @@
-import React, {useCallback, useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     UnivariateEMMeansProps,
     UnivariateEMMeansType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {Label} from "@/components/ui/label";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-    CIADJUSTMENTMETHOD
-} from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
-import {CheckedState} from "@radix-ui/react-checkbox";
-import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
-import type {Variable} from "@/types/Variable";
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { CIADJUSTMENTMETHOD } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
 
 export const UnivariateEMMeans = ({
     isEMMeansOpen,
@@ -226,7 +233,16 @@ export const UnivariateEMMeans = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button type="button" variant="ghost">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                            window.open(
+                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
+                                "_blank"
+                            );
+                        }}
+                    >
                         Help
                     </Button>
                 </div>

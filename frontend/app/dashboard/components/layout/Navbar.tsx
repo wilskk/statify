@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Menubar,
   MenubarMenu,
@@ -24,6 +25,7 @@ import TransformMenu from "@/components/Modals/Transform/TransformMenu";
 
 const Navbar: React.FC = () => {
   const { openModal } = useModal();
+  const router = useRouter();
 
   const commonMenubarClasses = "ml-0 flex px-2 py-1 border-0";
 
@@ -188,7 +190,7 @@ const Navbar: React.FC = () => {
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger disabled>Help</MenubarTrigger>
+            <MenubarTrigger onClick={() => router.push("/help")}>Help</MenubarTrigger>
           </MenubarMenu>
         </Menubar>
         <div className="font-sans text-lg font-semibold text-foreground">

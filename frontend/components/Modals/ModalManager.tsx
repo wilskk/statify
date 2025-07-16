@@ -52,7 +52,6 @@ const ModalManager: React.FC<ModalManagerProps> = ({
   return (
     <>
       {visibleModals.map((modal) => {
-        console.log(`[ModalManager] Rendering modal: ${modal.type}, containerType: ${containerType}`);
         return (
           <ModalRenderer
             key={modal.id}

@@ -112,10 +112,6 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
         <div className="flex flex-col h-full">
             {/* Header */}
             <div className="border-b p-4">
-                <div className="flex items-center gap-2 mb-2">
-                    <Database className="w-5 h-5 text-blue-600" />
-                    <h2 className="text-lg font-semibold">Restructure Data</h2>
-                </div>
                 <p className="text-sm text-muted-foreground">
                     {stepConfig.stepTitle} (Step {currentStep} of 3)
                 </p>
@@ -166,110 +162,96 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
 
                     {/* Step 1: Method Selection */}
                     <TabsContent value="type" className="mt-4 space-y-4">
-                        <div className="space-y-4">
-                            <div className="space-y-3">
-                                <Label className="text-base font-medium">Select Restructure Method:</Label>
-                                
-                                <div className="space-y-3">
-                                    <div 
-                                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                                            method === RestructureMethod.VariablesToCases 
-                                                ? 'border-blue-500 bg-blue-50' 
-                                                : 'border-gray-200 hover:border-gray-300'
-                                        }`}
-                                        onClick={() => setMethod(RestructureMethod.VariablesToCases)}
-                                    >
-                                        <div className="flex items-start space-x-3">
-                                            <input
-                                                type="radio"
-                                                checked={method === RestructureMethod.VariablesToCases}
-                                                onChange={() => setMethod(RestructureMethod.VariablesToCases)}
-                                                className="mt-1 accent-primary"
-                                            />
-                                            <div className="flex-1">
-                                                <div className="font-medium">Variables to Cases</div>
-                                                <div className="text-sm text-muted-foreground mt-1">
-                                                    Convert multiple variables into cases. Each variable becomes a row with 
-                                                    an index variable identifying the original variable.
-                                                </div>
-                                                <div className="text-xs text-muted-foreground mt-2 italic">
-                                                    Example: Convert Test1, Test2, Test3 columns into a single Test column with values,
-                                                    and a TestType column indicating which test.
-                                                </div>
-                                            </div>
+                        <div className="space-y-3">
+                            <div 
+                                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                    method === RestructureMethod.VariablesToCases 
+                                        ? 'border-blue-500 bg-blue-50' 
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                                onClick={() => setMethod(RestructureMethod.VariablesToCases)}
+                            >
+                                <div className="flex items-start space-x-3">
+                                    <input
+                                        type="radio"
+                                        checked={method === RestructureMethod.VariablesToCases}
+                                        onChange={() => setMethod(RestructureMethod.VariablesToCases)}
+                                        className="mt-1 accent-primary"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="font-medium">Variables to Cases</div>
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            Convert multiple variables into cases. Each variable becomes a row with 
+                                            an index variable identifying the original variable.
                                         </div>
-                                    </div>
-
-                                    <div 
-                                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                                            method === RestructureMethod.CasesToVariables 
-                                                ? 'border-blue-500 bg-blue-50' 
-                                                : 'border-gray-200 hover:border-gray-300'
-                                        }`}
-                                        onClick={() => setMethod(RestructureMethod.CasesToVariables)}
-                                    >
-                                        <div className="flex items-start space-x-3">
-                                            <input
-                                                type="radio"
-                                                checked={method === RestructureMethod.CasesToVariables}
-                                                onChange={() => setMethod(RestructureMethod.CasesToVariables)}
-                                                className="mt-1 accent-primary"
-                                            />
-                                            <div className="flex-1">
-                                                <div className="font-medium">Cases to Variables</div>
-                                                <div className="text-sm text-muted-foreground mt-1">
-                                                    Convert multiple cases (rows) into variables (columns). Each unique value 
-                                                    in the identifier becomes a separate variable.
-                                                </div>
-                                                <div className="text-xs text-muted-foreground mt-2 italic">
-                                                    Example: Convert rows of Time1, Time2, Time3 into separate columns 
-                                                    Time1_Score, Time2_Score, Time3_Score.
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div 
-                                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                                            method === RestructureMethod.TransposeAllData 
-                                                ? 'border-blue-500 bg-blue-50' 
-                                                : 'border-gray-200 hover:border-gray-300'
-                                        }`}
-                                        onClick={() => setMethod(RestructureMethod.TransposeAllData)}
-                                    >
-                                        <div className="flex items-start space-x-3">
-                                            <input
-                                                type="radio"
-                                                checked={method === RestructureMethod.TransposeAllData}
-                                                onChange={() => setMethod(RestructureMethod.TransposeAllData)}
-                                                className="mt-1 accent-primary"
-                                            />
-                                            <div className="flex-1">
-                                                <div className="font-medium">Transpose All Data</div>
-                                                <div className="text-sm text-muted-foreground mt-1">
-                                                    Swap rows and columns for the entire dataset. Rows become columns 
-                                                    and columns become rows.
-                                                </div>
-                                                <div className="text-xs text-muted-foreground mt-2 italic">
-                                                    Example: A 10×5 dataset becomes a 5×10 dataset with all data rotated.
-                                                </div>
-                                            </div>
+                                        <div className="text-xs text-muted-foreground mt-2 italic">
+                                            Example: Convert Test1, Test2, Test3 columns into a single Test column with values,
+                                            and a TestType column indicating which test.
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <Alert>
-                                <InfoIcon className="h-4 w-4" />
-                                <AlertDescription>
-                                    Choose the restructuring method that best fits your analysis needs. 
-                                    Variables to Cases is most common for repeated measures analysis.
-                                </AlertDescription>
-                            </Alert>
+                            <div 
+                                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                    method === RestructureMethod.CasesToVariables 
+                                        ? 'border-blue-500 bg-blue-50' 
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                                onClick={() => setMethod(RestructureMethod.CasesToVariables)}
+                            >
+                                <div className="flex items-start space-x-3">
+                                    <input
+                                        type="radio"
+                                        checked={method === RestructureMethod.CasesToVariables}
+                                        onChange={() => setMethod(RestructureMethod.CasesToVariables)}
+                                        className="mt-1 accent-primary"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="font-medium">Cases to Variables</div>
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            Convert multiple cases (rows) into variables (columns). Each unique value 
+                                            in the identifier becomes a separate variable.
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-2 italic">
+                                            Example: Convert rows of Time1, Time2, Time3 into separate columns 
+                                            Time1_Score, Time2_Score, Time3_Score.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div 
+                                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                    method === RestructureMethod.TransposeAllData 
+                                        ? 'border-blue-500 bg-blue-50' 
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                                onClick={() => setMethod(RestructureMethod.TransposeAllData)}
+                            >
+                                <div className="flex items-start space-x-3">
+                                    <input
+                                        type="radio"
+                                        checked={method === RestructureMethod.TransposeAllData}
+                                        onChange={() => setMethod(RestructureMethod.TransposeAllData)}
+                                        className="mt-1 accent-primary"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="font-medium">Transpose All Data</div>
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            Swap rows and columns for the entire dataset. Rows become columns 
+                                            and columns become rows.
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-2 italic">
+                                            Example: Transpose a 10x5 dataset to a 5x10 dataset.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </TabsContent>
 
-                    {/* Step 2: Variable Selection */}
+                    {/* Step 2: Variable Configuration */}
                     <TabsContent value="variables" className="mt-4 h-[500px]">
                         <div className="h-full">
                             <div className="mb-4">

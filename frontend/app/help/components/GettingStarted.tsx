@@ -1,97 +1,106 @@
 import React from "react";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { FileVideo, User, Database, BarChart, Bell, LayoutDashboard, Lightbulb } from "lucide-react";
+import { FileVideo, Database, BarChart, Bell, LayoutDashboard, Lightbulb, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { HelpContentWrapper } from "./HelpContentWrapper";
 
 export const GettingStarted = () => {
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold mb-4">Memulai dengan Statify</h2>
-        <p className="text-muted-foreground mb-6">
-          Ikuti langkah-langkah berikut untuk mulai menggunakan alat analisis Statify yang canggih:
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-border">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 rounded-md bg-primary/10">
-                <User className="h-6 w-6 text-primary" />
+    <HelpContentWrapper
+      title="Getting Started with Statify"
+      description="Statify is a standalone SPSS-compatible statistical analysis tool that requires no account creation or online registration. Follow these steps to start using Statify's advanced analytics:"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+        <Card className="border-border hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 rounded-md bg-primary/10 flex-shrink-0">
+                <FileVideo className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="mb-2">Daftar Akun</CardTitle>
-                <CardDescription>Buat akun Statify baru atau masuk dengan kredensial yang ada.</CardDescription>
+                <CardTitle className="mb-1 text-base">Import Your Data</CardTitle>
+                <CardDescription className="text-sm">Start by importing your SPSS (.sav) files or other supported data formats directly into Statify.</CardDescription>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 rounded-md bg-primary/10">
-                <Database className="h-6 w-6 text-primary" />
+        <Card className="border-border hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 rounded-md bg-primary/10 flex-shrink-0">
+                <Database className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="mb-2">Hubungkan Data</CardTitle>
-                <CardDescription>Sambungkan sumber data Anda menggunakan wizard integrasi kami.</CardDescription>
+                <CardTitle className="mb-1 text-base">Connect Your Data</CardTitle>
+                <CardDescription className="text-sm">Connect your data sources using our integration wizard.</CardDescription>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 rounded-md bg-primary/10">
-                <LayoutDashboard className="h-6 w-6 text-primary" />
+        <Card className="border-border hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 rounded-md bg-primary/10 flex-shrink-0">
+                <LayoutDashboard className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="mb-2">Jelajahi Dashboard</CardTitle>
-                <CardDescription>Lihat wawasan dari dashboard yang dipersonalisasi untuk Anda.</CardDescription>
+                <CardTitle className="mb-1 text-base">Explore the Dashboard</CardTitle>
+                <CardDescription className="text-sm">View insights from your personalized dashboard.</CardDescription>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 rounded-md bg-primary/10">
-                <Bell className="h-6 w-6 text-primary" />
+        <Card className="border-border hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 rounded-md bg-primary/10 flex-shrink-0">
+                <Bell className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="mb-2">Atur Notifikasi</CardTitle>
-                <CardDescription>Konfigurasi peringatan dan notifikasi untuk metrik penting Anda.</CardDescription>
+                <CardTitle className="mb-1 text-base">Set Up Notifications</CardTitle>
+                <CardDescription className="text-sm">Configure alerts and notifications for your key metrics.</CardDescription>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-900">
-        <Lightbulb className="h-5 w-5 text-amber-600" />
-        <AlertTitle className="text-amber-800">Tips Profesional</AlertTitle>
-        <AlertDescription className="text-amber-700">
-          Coba kumpulan data sampel kami untuk menjelajahi fitur Statify sebelum menghubungkan data Anda sendiri.
-        </AlertDescription>
+      <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-900 py-3 px-4">
+        <div className="flex items-start">
+          <Lightbulb className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <AlertTitle className="text-amber-800 text-sm font-medium mb-1">Pro Tip</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              Try our sample datasets to explore Statify&#39;s features before importing your own data.
+            </AlertDescription>
+          </div>
+        </div>
       </Alert>
 
       <div className="mt-8 border-t pt-6">
-        <h3 className="text-xl font-semibold mb-4">Video Tutorial</h3>
-        <Card className="overflow-hidden">
-          <div className="aspect-video bg-muted/30 flex items-center justify-center">
-            <FileVideo className="h-12 w-12 text-muted" />
-          </div>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
-              Tonton video tutorial kami untuk membantu memulai dengan cepat. Video ini menjelaskan semua fitur dasar Statify.
-            </p>
-          </CardContent>
-        </Card>
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <CheckCircle2 className="h-5 w-5 mr-2 text-primary" />
+          Getting Started Checklist
+        </h3>
+        
+        <div className="space-y-2 pl-8 mb-6">
+          {['Import your first dataset', 'View data in the data editor', 'Run your first analysis', 'Create your first chart'].map((item, i) => (
+            <div key={i} className="flex items-center text-sm">
+              <span className="w-6 h-6 rounded-full bg-accent flex items-center justify-center mr-3 text-xs font-medium">{i+1}</span>
+              {item}
+            </div>
+          ))}
+        </div>
+        
+        <Button variant="default" className="mt-2">
+          <FileVideo className="h-4 w-4 mr-2" />
+          Watch Tutorial Video
+        </Button>
       </div>
-    </div>
+    </HelpContentWrapper>
   );
 }; 

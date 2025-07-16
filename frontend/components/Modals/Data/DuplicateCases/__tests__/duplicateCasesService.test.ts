@@ -110,10 +110,16 @@ describe('Duplicate Cases Service Logic', () => {
     
             expect(stats).toHaveLength(1);
             expect(stats[0].title).toBe('Frequency Table: PrimaryIndicator');
-            const rows = stats[0].output_data.rows;
-            expect(rows[0]).toMatchObject({ label: 'Duplicate case', count: 2, percent: '40.0' });
-            expect(rows[1]).toMatchObject({ label: 'Primary case', count: 3, percent: '60.0' });
-            expect(rows[2]).toMatchObject({ label: 'Total', count: 5, percent: '100.0' });
+            const rowsGroup = stats[0].output_data.tables[0].rows;
+            // First group contains valid rows with children.
+            const validChildren = rowsGroup[0].children as any[];
+            const duplicateRow = validChildren.find((r: any) => r.rowHeader && r.rowHeader[1] === 'Duplicate case');
+            const primaryRow = validChildren.find((r: any) => r.rowHeader && r.rowHeader[1] === 'Primary case');
+            const totalRow = rowsGroup.find((r: any) => r.rowHeader && r.rowHeader[0] === 'Total');
+
+            expect(duplicateRow).toMatchObject({ frequency: 2, percent: '40.0' });
+            expect(primaryRow).toMatchObject({ frequency: 3, percent: '60.0' });
+            expect(totalRow).toMatchObject({ frequency: 5, percent: '100.0' });
         });
     
         it('should also generate frequency table for sequence when enabled', () => {
@@ -127,12 +133,17 @@ describe('Duplicate Cases Service Logic', () => {
     
             expect(stats).toHaveLength(2);
             expect(stats[1].title).toBe('Frequency Table: MatchSeq');
-            const rows = stats[1].output_data.rows;
-            expect(rows).toHaveLength(4);
-            expect(rows[0]).toMatchObject({ label: 'Non-matching case', value: '0', count: 2 });
-            expect(rows[1]).toMatchObject({ label: 'Sequence 1', value: '1', count: 3 });
-            expect(rows[2]).toMatchObject({ label: 'Sequence 2', value: '2', count: 2 });
-            expect(rows[3]).toMatchObject({ label: 'Total', count: 7 });
+            const rowsGroup = stats[1].output_data.tables[0].rows;
+            const validChildren = rowsGroup[0].children as any[];
+            const nonMatchRow = validChildren.find((r: any) => r.rowHeader && r.rowHeader[1] === 'Non-matching case');
+            const seq1Row = validChildren.find((r: any) => r.rowHeader && r.rowHeader[1] === 'Sequence 1');
+            const seq2Row = validChildren.find((r: any) => r.rowHeader && r.rowHeader[1] === 'Sequence 2');
+            const totalRow = rowsGroup.find((r: any) => r.rowHeader && r.rowHeader[0] === 'Total');
+
+            expect(nonMatchRow).toMatchObject({ frequency: 2 });
+            expect(seq1Row).toMatchObject({ frequency: 3 });
+            expect(seq2Row).toMatchObject({ frequency: 2 });
+            expect(totalRow).toMatchObject({ frequency: 7 });
         });
     
         it('should not generate sequence table if disabled', () => {

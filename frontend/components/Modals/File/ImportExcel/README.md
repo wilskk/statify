@@ -63,7 +63,7 @@ Untuk menjaga antarmuka tetap responsif bahkan saat memproses file besar, operas
 -   **`utils/`**
     -   **`utils.ts`**: Berisi fungsi utilitas untuk memproses data yang telah diparsing oleh *worker*. Fungsi-fungsi ini digunakan oleh `ConfigurationStep` untuk membuat pratinjau dan mempersiapkan data final untuk diimpor ke *store*.
 
--   **`public/workers/file-management/`**
+-   **`public/workers/DataManagement/`**
     -   **`excelWorker.js`**: Skrip **Web Worker** yang bertanggung jawab untuk melakukan *parsing* file Excel menggunakan pustaka `xlsx` (SheetJS), mencegah pemblokiran *thread* utama.
 
 ## 6. Properti Komponen (`ImportExcelProps`)

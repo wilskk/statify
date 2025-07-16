@@ -6,6 +6,7 @@ use crate::models::result::{
     EMMeansResult,
     GeneralEstimableFunction,
     HeteroscedasticityTests,
+    HypothesisLMatrices,
     LackOfFitTests,
     LeveneTest,
     ParameterEstimates,
@@ -13,11 +14,10 @@ use crate::models::result::{
     PostHoc,
     RobustParameterEstimates,
     SavedVariables,
+    SourceEntry,
     SpreadVsLevelPoint,
-    TestEffectEntry,
     UnivariateResult,
     DescriptiveStatGroup,
-    HypothesisLMatrices,
 };
 
 pub fn string_to_js_error(error: String) -> JsValue {
@@ -80,16 +80,8 @@ struct FormattedDescriptiveStatistic {
 #[derive(Serialize)]
 struct FormattedTestsBetweenSubjectsEffects {
     sources: Vec<SourceEntry>,
-    r_squared: f64,
-    adjusted_r_squared: f64,
     note: Option<String>,
     interpretation: Option<String>,
-}
-
-#[derive(Serialize)]
-struct SourceEntry {
-    name: String,
-    effect: TestEffectEntry,
 }
 
 #[derive(Serialize)]
@@ -147,20 +139,8 @@ impl FormatResult {
         let tests_of_between_subjects_effects = result.tests_of_between_subjects_effects
             .as_ref()
             .map(|tests| {
-                let sources = tests.source
-                    .iter()
-                    .map(|(name, effect)| {
-                        SourceEntry {
-                            name: name.clone(),
-                            effect: effect.clone(),
-                        }
-                    })
-                    .collect();
-
                 FormattedTestsBetweenSubjectsEffects {
-                    sources,
-                    r_squared: tests.r_squared,
-                    adjusted_r_squared: tests.adjusted_r_squared,
+                    sources: tests.sources.clone(),
                     note: tests.note.clone(),
                     interpretation: tests.interpretation.clone(),
                 }
