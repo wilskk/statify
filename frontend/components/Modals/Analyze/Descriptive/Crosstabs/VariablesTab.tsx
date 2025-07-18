@@ -20,7 +20,7 @@ const CrosstabsVariablesTab: FC<VariablesTabProps> = ({
     tourSteps = [],
 }) => {
     // --- Configuration for VariableListManager ---
-    const variableIdKeyToUse: keyof Variable = 'tempId';
+    const variableIdKeyToUse: keyof Variable = 'id';
 
     const targetLists: TargetListConfig[] = [
         {
