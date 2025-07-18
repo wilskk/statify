@@ -69,13 +69,20 @@ describe('OptionsTab Component', () => {
     });
     
     it('disables inputs based on criteria selection', () => {
-        // Percentage input should be enabled, Fixed input disabled
-        renderComponent({ identificationCriteria: 'percentage' });
+        const { rerender } = renderComponent({ identificationCriteria: 'percentage' });
+
+        // First state: percentage selected
         expect(screen.getByLabelText('Percentage:')).toBeEnabled();
         expect(screen.getByLabelText('Number:')).toBeDisabled();
 
-        // Fixed input should be enabled, Percentage input disabled
-        renderComponent({ identificationCriteria: 'fixed' });
+        // Second state: switch to fixed
+        rerender(
+            <OptionsTab
+                {...defaultProps}
+                identificationCriteria="fixed"
+            />
+        );
+
         expect(screen.getByLabelText('Percentage:')).toBeDisabled();
         expect(screen.getByLabelText('Number:')).toBeEnabled();
     });

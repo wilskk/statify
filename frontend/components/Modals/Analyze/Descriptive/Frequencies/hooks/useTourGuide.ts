@@ -236,18 +236,17 @@ export const useTourGuide = (
 
   // Determine required tab for current step
   const getRequiredTabForStep = useCallback((stepIndex: number): TabType | undefined => {
-    // Special case handling
+    // When the tour reaches the "switch" trigger steps, we need to PRE-emptively
+    // change to the tab that will be required by the *next* step so the UI is
+    // ready when the user clicks "Next". Therefore:
     if (stepIndex === STEP_INDICES.SWITCH_TO_STATS_STEP) {
-      return TABS.VARIABLES;
-    } else if (stepIndex === STEP_INDICES.SWITCH_TO_STATS_STEP + 1) {
-      return TABS.STATISTICS;
-    } else if (stepIndex === STEP_INDICES.SWITCH_TO_CHARTS_STEP) {
-      return TABS.STATISTICS;
-    } else if (stepIndex === STEP_INDICES.SWITCH_TO_CHARTS_STEP + 1) {
-      return TABS.CHARTS;
+      return TABS.STATISTICS; // Step 3 triggers move to Statistics tab
     }
-    
-    // Regular case - use the step's required tab
+    if (stepIndex === STEP_INDICES.SWITCH_TO_CHARTS_STEP) {
+      return TABS.CHARTS;     // Step 8 triggers move to Charts tab
+    }
+
+    // In all other cases, rely on the step's own requiredTab value
     const step = tourSteps[stepIndex];
     return step?.requiredTab;
   }, [tourSteps]);

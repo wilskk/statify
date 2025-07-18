@@ -38,7 +38,7 @@ export interface SheetData { sheetName: string; data: any[][]; }
 
 export const parseExcelWithWorker = (file: File): Promise<SheetData[]> => {
   return new Promise((resolve, reject) => {
-    const worker = new Worker('/workers/file-management/excelWorker.js');
+    const worker = new Worker('/workers/DataManagement/excelWorker.js');
     const reader = new FileReader();
     reader.onload = (e) => {
       const binaryStr = e.target?.result as string;

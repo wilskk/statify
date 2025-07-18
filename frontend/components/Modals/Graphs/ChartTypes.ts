@@ -1,5 +1,3 @@
-// components/Modals/Graphs/ChartTypes.ts
-
 export const chartTypes = [
   "Vertical Bar Chart",
   "Horizontal Bar Chart",
@@ -12,7 +10,7 @@ export const chartTypes = [
   "Boxplot",
   "Vertical Stacked Bar Chart",
   "Horizontal Stacked Bar Chart",
-  "Grouped Bar Chart",
+  "Clustered Bar Chart",
   "Multiple Line Chart",
   "Error Bar Chart",
   "Stacked Area Chart",
@@ -31,7 +29,6 @@ export const chartTypes = [
   "High-Low-Close Chart",
   "Difference Area",
   "Vertical Bar & Line Chart",
-  "Vertical Bar & Line Chart2",
   "Dual Axes Scatter Plot",
   "Drop Line Chart",
   "Summary Point Plot",
@@ -42,8 +39,16 @@ export const chartTypes = [
   // "Bar2",
   "3D Scatter Plot",
   "Grouped 3D Scatter Plot",
-
   // "Word Cloud",
+  "Vertical Bar & Line Chart2",
+  "Stem And Leaf Plot",
+  "Violin Plot",
+  "Density Chart",
+  "3D Bar Chart (ECharts)",
+  "3D Scatter Plot (ECharts)",
+  "Clustered 3D Bar Chart (ECharts)",
+  "Stacked 3D Bar Chart (ECharts)",
+  "Grouped 3D Scatter Plot (ECharts)",
 ] as const;
 
 export type ChartType = (typeof chartTypes)[number];

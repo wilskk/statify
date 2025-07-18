@@ -1,14 +1,81 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { CrosstabsAnalysisParams } from '../types';
 import { formatCaseProcessingSummary, formatCrosstabulationTable } from '../utils/formatters';
+import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
 import type { Variable } from '@/types/Variable';
+import type { NonintegerWeightsType } from '../types';
+
+// === Helper: Build SPSS-style command log =================================
+const buildCrosstabsLog = (
+  rowVar: Variable,
+  colVar: Variable,
+  opts: CrosstabsAnalysisParams['options'],
+): string => {
+  const lines: string[] = [];
+
+  // 1) Base command & table specification
+  lines.push('CROSSTABS');
+  lines.push(`  /TABLES=${rowVar.name} BY ${colVar.name}`);
+
+  // 2) FORMAT – saat ini default mengikuti SPSS (AVALUE TABLES)
+  lines.push('  /FORMAT=AVALUE TABLES');
+
+  // 3) CELLS – tentukan statistik yang dipilih
+  const cellTokens: string[] = [];
+  const { cells, residuals } = opts;
+
+  if (cells.observed) cellTokens.push('COUNT');
+  if (cells.expected) cellTokens.push('EXPECTED');
+  if (cells.row) cellTokens.push('ROW');
+  if (cells.column) cellTokens.push('COLUMN');
+  if (cells.total) cellTokens.push('TOTAL');
+
+  if (residuals.unstandardized) cellTokens.push('RESID');
+  if (residuals.standardized) cellTokens.push('SRESID');
+  if (residuals.adjustedStandardized) cellTokens.push('ASRESID');
+
+  if (cellTokens.length > 0) {
+    lines.push(`  /CELLS=${cellTokens.join(' ')}`);
+  }
+
+  // 4) COUNT – penyesuaian bobot non-integer
+  const countMapping: Record<NonintegerWeightsType, string> = {
+    roundCell: 'ROUND CELL',
+    roundCase: 'ROUND CASE',
+    truncateCell: 'TRUNCATE CELL',
+    truncateCase: 'TRUNCATE CASE',
+    noAdjustment: '',
+  };
+  const countToken = countMapping[opts.nonintegerWeights];
+  if (countToken) {
+    lines.push(`  /COUNT ${countToken}`);
+  }
+
+  // 5) Hidesmallcounts
+  if (cells.hideSmallCounts) {
+    const threshold = typeof cells.hideSmallCountsThreshold === 'number' && cells.hideSmallCountsThreshold > 0
+      ? cells.hideSmallCountsThreshold
+      : 2;
+    lines.push(`  /HIDESMALLCOUNTS COUNT=${threshold}`);
+  }
+
+  // Tambahkan titik pada baris terakhir sesuai konvensi sintaks SPSS
+  if (lines.length > 0) {
+    lines[lines.length - 1] = lines[lines.length - 1] + '.';
+  }
+
+  return lines.join('\n');
+};
 
 export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: () => void) => {
     const [isCalculating, setIsCalculating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Keep reference to the pooled worker client so we can terminate / reuse
+    const workerClientRef = useRef<WorkerClient<any, any> | null>(null);
     
     const { data, weights } = useAnalysisData();
     const { variables } = useVariableStore();
@@ -24,7 +91,10 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
         setIsCalculating(true);
         setError(null);
 
-        const worker = new Worker('/workers/DescriptiveStatistics/manager.js');
+        // Acquire a pooled worker for crosstabs analyses
+        const workerClient = createPooledWorkerClient('crosstabs');
+        workerClientRef.current = workerClient;
+
         let resultCount = 0;
         let totalJobs = 0;
 
@@ -36,11 +106,11 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
         }
         totalJobs = variablePairs.length;
 
-        const handleWorkerMessage = async (variableName: string, event: MessageEvent) => {
-            resultCount++;
-            const { status, results, error: workerError } = event.data;
+        const handleWorkerMessage = async (eventData: any) => {
+            const { variableName, status, results, error: workerError } = eventData;
 
-            const [rowVarName, colVarName] = variableName.split(' * ');
+            resultCount++;
+            const [rowVarName, colVarName] = (variableName ?? '').split(' * ');
             const pair = variablePairs.find(p => p.rowVar.name === rowVarName && p.colVar.name === colVarName);
 
             if (status === 'error') {
@@ -54,7 +124,7 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
                         rowVariables: [rowVar],
                         columnVariables: [colVar]
                     };
-                    const logMsg = `CROSSTABS TABLES=${rowVar.name} BY ${colVar.name}.`;
+                    const logMsg = buildCrosstabsLog(rowVar, colVar, options);
                     const logId = await addLog({ log: logMsg });
                     
                     const analyticId = await addAnalytic(logId, {
@@ -108,7 +178,9 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
             if (resultCount === totalJobs) {
                 setIsCalculating(false);
                 if (!error) onClose();
-                worker.terminate();
+                // Release the worker back to the pool
+                workerClient.terminate();
+                workerClientRef.current = null;
             }
         };
 
@@ -116,11 +188,12 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
             console.error("Worker instantiation error:", err);
             setError(`Failed to load the analysis worker. ${err.message}`);
             setIsCalculating(false);
-            worker.terminate();
+            workerClient.terminate();
+            workerClientRef.current = null;
         };
 
-        worker.onmessage = (event) => handleWorkerMessage(event.data.variableName, event);
-        worker.onerror = handleWorkerError;
+        workerClient.onMessage(handleWorkerMessage);
+        workerClient.onError(handleWorkerError);
 
         variablePairs.forEach(({ rowVar, colVar }) => {
             const rowVariable = variables.find((v: Variable) => v.name === rowVar.name);
@@ -144,7 +217,7 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
                 return rowObject;
             });
             
-            worker.postMessage({
+            workerClient.post({
                 analysisType: 'crosstabs',
                 variable: { row: rowVariable, col: colVariable },
                 data: analysisData,
@@ -153,6 +226,16 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
             });
         });
     }, [params, data, weights, variables, addLog, addAnalytic, addStatistic, onClose, error]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (workerClientRef.current) {
+                workerClientRef.current.terminate();
+                workerClientRef.current = null;
+            }
+        };
+    }, []);
 
     return { runAnalysis, isCalculating, error };
 };

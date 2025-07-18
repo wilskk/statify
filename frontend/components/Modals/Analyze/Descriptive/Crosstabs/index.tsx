@@ -1,6 +1,7 @@
 // index.tsx
 "use client";
 import React, { useState, useEffect, FC, useMemo } from "react";
+import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
@@ -65,16 +66,49 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
             row: false,
             column: false,
             total: false,
+            hideSmallCounts: false,
+            hideSmallCountsThreshold: 5,
         },
         residuals: {
             unstandardized: false,
             standardized: false,
             adjustedStandardized: false,
         },
-        nonintegerWeights: 'roundCell',
+        nonintegerWeights: 'noAdjustment',
     });
     
     const { variables } = useVariableStore();
+
+    // Load saved Crosstabs data when variables are available
+    useEffect(() => {
+        (async () => {
+            if (!variables || variables.length === 0) return;
+            const saved = await getFormData("Crosstabs");
+            if (!saved) return;
+
+            const validVars = variables.filter(v => v.name !== "").map(v => ({
+                ...v,
+                tempId: v.tempId || `temp_${v.columnIndex}`
+            }));
+
+            const savedRow: Variable[] = Array.isArray(saved.rowVariables) ? saved.rowVariables : [];
+            const savedCol: Variable[] = Array.isArray(saved.columnVariables) ? saved.columnVariables : [];
+
+            setRowVariables(savedRow);
+            setColumnVariables(savedCol);
+
+            const selectedIds = new Set([...savedRow, ...savedCol].map(v => v.tempId));
+            const avail = validVars.filter(v => v.tempId && !selectedIds.has(v.tempId));
+            setAvailableVariables(avail);
+
+            if (saved.options) {
+                setOptions(saved.options);
+            }
+
+            setHighlightedVariable(null);
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [variables]);
 
     // Analysis Hook
     const { runAnalysis, isCalculating, error } = useCrosstabsAnalysis(
@@ -108,15 +142,37 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                 row: false,
                 column: false,
                 total: false,
+                hideSmallCounts: false,
+                hideSmallCountsThreshold: 5,
             },
             residuals: {
                 unstandardized: false,
                 standardized: false,
                 adjustedStandardized: false,
             },
-            nonintegerWeights: 'roundCell',
+            nonintegerWeights: 'noAdjustment',
         });
+
+        // Clear persisted data
+        clearFormData("Crosstabs").catch(console.error);
     };
+
+    // Persist Crosstabs state whenever variables or options change
+    useEffect(() => {
+        const stateToSave = {
+            rowVariables,
+            columnVariables,
+            options,
+        };
+
+        const hasSelections = rowVariables.length > 0 || columnVariables.length > 0;
+
+        if (hasSelections) {
+            saveFormData("Crosstabs", stateToSave).catch(console.error);
+        } else {
+            clearFormData("Crosstabs").catch(console.error);
+        }
+    }, [rowVariables, columnVariables, options]);
 
     // Variable list management functions
     const moveToRowVariables = (variable: Variable) => {

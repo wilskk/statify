@@ -46,6 +46,8 @@ export interface CrosstabsAnalysisParams {
             row: boolean;
             column: boolean;
             total: boolean;
+            hideSmallCounts: boolean;
+            hideSmallCountsThreshold: number;
         },
         residuals: {
             unstandardized: boolean;
@@ -67,4 +69,14 @@ export interface CrosstabsWorkerResult {
         totalCases: number;
     };
     contingencyTable: number[][];
+    cellStatistics?: {
+        count: number;
+        expected: number | null;
+        residual: number | null;
+        standardizedResidual: number | null;
+        adjustedResidual: number | null;
+        rowPercent: number;
+        colPercent: number;
+        totalPercent: number;
+    }[][];
 } 

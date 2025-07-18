@@ -1,10 +1,15 @@
-use std::collections::HashMap;
 use nalgebra::{ DMatrix, DVector };
 
 use crate::models::{
     config::{ SumOfSquaresMethod, UnivariateConfig },
     data::AnalysisData,
-    result::{ DesignMatrixInfo, SweptMatrixInfo, TestEffectEntry, TestsBetweenSubjectsEffects },
+    result::{
+        DesignMatrixInfo,
+        SourceEntry,
+        SweptMatrixInfo,
+        TestEffectEntry,
+        TestsBetweenSubjectsEffects,
+    },
 };
 
 use super::core::*;
@@ -24,13 +29,13 @@ pub fn calculate_tests_between_subjects_effects(
 
     // Penanganan kasus khusus: tidak ada data atau parameter
     if design_info.n_samples == 0 {
-        return create_empty_results(&design_info);
+        return create_empty_results(&design_info, config);
     }
     if
         design_info.p_parameters == 0 &&
         config.model.sum_of_square_method != SumOfSquaresMethod::TypeI
     {
-        return create_empty_results(&design_info);
+        return create_empty_results(&design_info, config);
     }
 
     // Membuat matriks cross-product (Z'WZ) untuk perhitungan statistik
@@ -60,8 +65,8 @@ pub fn calculate_tests_between_subjects_effects(
             )
         )?;
 
-    // HashMap untuk menyimpan hasil tes setiap efek
-    let mut current_source_map: HashMap<String, TestEffectEntry> = HashMap::new();
+    // Vec untuk menyimpan hasil tes setiap efek
+    let mut final_sources: Vec<SourceEntry> = Vec::new();
 
     // ===== PERHITUNGAN STATISTIK DASAR =====
 
@@ -151,7 +156,10 @@ pub fn calculate_tests_between_subjects_effects(
 
         // Jika degrees of freedom = 0, buat entry kosong
         if df_term == 0 {
-            current_source_map.insert(term_name.clone(), TestEffectEntry::empty_effect(0));
+            final_sources.push(SourceEntry {
+                name: term_name.clone(),
+                effect: TestEffectEntry::empty_effect(0),
+            });
             continue;
         }
 
@@ -165,14 +173,14 @@ pub fn calculate_tests_between_subjects_effects(
             config.options.est_effect_size,
             config.options.obs_power
         );
-        current_source_map.insert(term_name.clone(), effect_entry);
+        final_sources.push(SourceEntry { name: term_name.clone(), effect: effect_entry });
     }
 
     // ===== MENAMBAHKAN RINGKASAN MODEL =====
 
     // Menambahkan entry untuk model keseluruhan, error, dan total
     add_model_summary_entries(
-        &mut current_source_map,
+        &mut final_sources,
         ss_model_corrected,
         df_model_overall,
         ss_error,
@@ -186,25 +194,28 @@ pub fn calculate_tests_between_subjects_effects(
 
     // ===== MENYIAPKAN CATATAN DAN METADATA =====
 
-    let mut notes = if config.model.sum_of_square_method == SumOfSquaresMethod::TypeI {
-        vec!["Type I SS placeholder due to missing incremental SWEEP.".to_string()]
-    } else {
-        Vec::new()
-    };
-    notes.push(format!("__SIG_LEVEL:{}", config.options.sig_level));
-    notes.push(format!("__SS_METHOD:{:?}", config.model.sum_of_square_method));
+    let mut notes = Vec::new();
+    if let Some(dep_var) = &config.main.dep_var {
+        notes.push(format!("Dependent Variable: {}", dep_var));
+    }
+    notes.push(format!("Computed using alpha = {}", config.options.sig_level));
+    notes.push(format!("Sum of Squares Method: {:?}", config.model.sum_of_square_method));
+    notes.push(format!("R Squared = {:.4}", current_r_squared));
+    notes.push(format!("Adjusted R Squared = {:.4}", current_adj_r_squared));
 
     Ok(TestsBetweenSubjectsEffects {
-        source: current_source_map,
-        r_squared: current_r_squared,
-        adjusted_r_squared: current_adj_r_squared,
-        notes,
+        sources: final_sources,
+        note: Some(notes.join("\n")),
+        interpretation: Some(
+            "This table tests the hypothesis that each effect (e.g., factor or interaction) in the model is null. A significant F-value (Sig. < .05) suggests that the effect significantly contributes to explaining the variance in the dependent variable. The Partial Eta Squared indicates the proportion of variance uniquely explained by that effect.".to_string()
+        ),
     })
 }
 
 /// Membuat hasil kosong ketika tidak ada data atau parameter
 fn create_empty_results(
-    design_info: &DesignMatrixInfo
+    design_info: &DesignMatrixInfo,
+    config: &UnivariateConfig
 ) -> Result<TestsBetweenSubjectsEffects, String> {
     // Menghitung rata-rata dan total sum of squares untuk kasus kosong
     let y_mean = design_info.y.mean();
@@ -218,27 +229,30 @@ fn create_empty_results(
     };
 
     // Membuat entry untuk "Corrected Total" dengan nilai default
-    let mut source = HashMap::new();
-    source.insert("Corrected Total".to_string(), TestEffectEntry {
-        sum_of_squares: ss_total_corrected,
-        df: design_info.n_samples.saturating_sub(1),
-        mean_square: if design_info.n_samples > 1 {
-            ss_total_corrected / ((design_info.n_samples - 1) as f64)
-        } else {
-            0.0
+    let mut sources = Vec::new();
+    sources.push(SourceEntry {
+        name: "Corrected Total".to_string(),
+        effect: TestEffectEntry {
+            sum_of_squares: ss_total_corrected,
+            df: design_info.n_samples.saturating_sub(1),
+            mean_square: f64::NAN,
+            f_value: f64::NAN,
+            significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         },
-        f_value: f64::NAN,
-        significance: f64::NAN,
-        partial_eta_squared: f64::NAN,
-        noncent_parameter: f64::NAN,
-        observed_power: f64::NAN,
     });
 
     Ok(TestsBetweenSubjectsEffects {
-        source,
-        r_squared: 0.0,
-        adjusted_r_squared: 0.0,
-        notes: Vec::new(),
+        sources,
+        note: Some(
+            format!(
+                "No data or parameters to analyze for this model. Alpha = {}.",
+                config.options.sig_level
+            )
+        ),
+        interpretation: None,
     })
 }
 
@@ -323,7 +337,7 @@ fn calculate_r_squared_metrics(
 ///
 /// Entry ini memberikan gambaran keseluruhan performa model statistik
 fn add_model_summary_entries(
-    current_source_map: &mut HashMap<String, TestEffectEntry>,
+    final_sources: &mut Vec<SourceEntry>,
     ss_model_corrected: f64,
     df_model_overall: usize,
     ss_error: f64,
@@ -388,44 +402,49 @@ fn add_model_summary_entries(
             };
 
             // Entry "Corrected Model"
-            current_source_map.insert("Corrected Model".to_string(), TestEffectEntry {
-                sum_of_squares: ss_model_corrected,
-                df: df_model_overall,
-                mean_square: ms_model_corrected,
-                f_value: f_model_corrected,
-                significance: sig_model_corrected,
-                partial_eta_squared: pes_model_corrected,
-                noncent_parameter: ncp_model_corrected,
-                observed_power: power_model_corrected,
+            final_sources.push(SourceEntry {
+                name: "Corrected Model".to_string(),
+                effect: TestEffectEntry {
+                    sum_of_squares: ss_model_corrected,
+                    df: df_model_overall,
+                    mean_square: ms_model_corrected,
+                    f_value: f_model_corrected,
+                    significance: sig_model_corrected,
+                    partial_eta_squared: pes_model_corrected,
+                    noncent_parameter: ncp_model_corrected,
+                    observed_power: power_model_corrected,
+                },
             });
         }
 
         // Entry "Error" (residual)
-        current_source_map.insert("Error".to_string(), TestEffectEntry {
-            sum_of_squares: ss_error,
-            df: df_error,
-            mean_square: ms_error,
-            f_value: f64::NAN,
-            significance: f64::NAN,
-            partial_eta_squared: f64::NAN,
-            noncent_parameter: f64::NAN,
-            observed_power: f64::NAN,
+        final_sources.push(SourceEntry {
+            name: "Error".to_string(),
+            effect: TestEffectEntry {
+                sum_of_squares: ss_error,
+                df: df_error,
+                mean_square: ms_error,
+                f_value: f64::NAN,
+                significance: f64::NAN,
+                partial_eta_squared: f64::NAN,
+                noncent_parameter: f64::NAN,
+                observed_power: f64::NAN,
+            },
         });
 
         // Entry "Corrected Total" (total setelah dikoreksi rata-rata)
-        current_source_map.insert("Corrected Total".to_string(), TestEffectEntry {
-            sum_of_squares: ss_total_corrected,
-            df: df_total,
-            mean_square: if df_total > 0 {
-                ss_total_corrected / (df_total as f64)
-            } else {
-                0.0
+        final_sources.push(SourceEntry {
+            name: "Corrected Total".to_string(),
+            effect: TestEffectEntry {
+                sum_of_squares: ss_total_corrected,
+                df: df_total,
+                mean_square: f64::NAN,
+                f_value: f64::NAN,
+                significance: f64::NAN,
+                partial_eta_squared: f64::NAN,
+                noncent_parameter: f64::NAN,
+                observed_power: f64::NAN,
             },
-            f_value: f64::NAN,
-            significance: f64::NAN,
-            partial_eta_squared: f64::NAN,
-            noncent_parameter: f64::NAN,
-            observed_power: f64::NAN,
         });
 
         // Entry "Total" (total tanpa koreksi rata-rata)
@@ -434,19 +453,18 @@ fn add_model_summary_entries(
             .map(|val| val.powi(2))
             .sum::<f64>();
         let df_total_uncorrected = design_info.n_samples;
-        current_source_map.insert("Total".to_string(), TestEffectEntry {
-            sum_of_squares: ss_total_uncorrected,
-            df: df_total_uncorrected,
-            mean_square: if df_total_uncorrected > 0 {
-                ss_total_uncorrected / (df_total_uncorrected as f64)
-            } else {
-                0.0
+        final_sources.push(SourceEntry {
+            name: "Total".to_string(),
+            effect: TestEffectEntry {
+                sum_of_squares: ss_total_uncorrected,
+                df: df_total_uncorrected,
+                mean_square: f64::NAN,
+                f_value: f64::NAN,
+                significance: f64::NAN,
+                partial_eta_squared: f64::NAN,
+                noncent_parameter: f64::NAN,
+                observed_power: f64::NAN,
             },
-            f_value: f64::NAN,
-            significance: f64::NAN,
-            partial_eta_squared: f64::NAN,
-            noncent_parameter: f64::NAN,
-            observed_power: f64::NAN,
         });
     } else {
         // ===== MODEL TANPA INTERCEPT =====
@@ -493,44 +511,49 @@ fn add_model_summary_entries(
             };
 
             // Entry "Model"
-            current_source_map.insert("Model".to_string(), TestEffectEntry {
-                sum_of_squares: ss_model,
-                df: df_model,
-                mean_square: ms_model,
-                f_value: f_model,
-                significance: sig_model,
-                partial_eta_squared: pes_model,
-                noncent_parameter: ncp_model,
-                observed_power: power_model,
+            final_sources.push(SourceEntry {
+                name: "Model".to_string(),
+                effect: TestEffectEntry {
+                    sum_of_squares: ss_model,
+                    df: df_model,
+                    mean_square: ms_model,
+                    f_value: f_model,
+                    significance: sig_model,
+                    partial_eta_squared: pes_model,
+                    noncent_parameter: ncp_model,
+                    observed_power: power_model,
+                },
             });
         }
 
         // Entry "Error"
-        current_source_map.insert("Error".to_string(), TestEffectEntry {
-            sum_of_squares: ss_error,
-            df: df_error,
-            mean_square: ms_error,
-            f_value: f64::NAN,
-            significance: f64::NAN,
-            partial_eta_squared: f64::NAN,
-            noncent_parameter: f64::NAN,
-            observed_power: f64::NAN,
+        final_sources.push(SourceEntry {
+            name: "Error".to_string(),
+            effect: TestEffectEntry {
+                sum_of_squares: ss_error,
+                df: df_error,
+                mean_square: ms_error,
+                f_value: f64::NAN,
+                significance: f64::NAN,
+                partial_eta_squared: f64::NAN,
+                noncent_parameter: f64::NAN,
+                observed_power: f64::NAN,
+            },
         });
 
         // Entry "Total"
-        current_source_map.insert("Total".to_string(), TestEffectEntry {
-            sum_of_squares: ss_total,
-            df: df_total,
-            mean_square: if df_total > 0 {
-                ss_total / (df_total as f64)
-            } else {
-                0.0
+        final_sources.push(SourceEntry {
+            name: "Total".to_string(),
+            effect: TestEffectEntry {
+                sum_of_squares: ss_total,
+                df: df_total,
+                mean_square: f64::NAN,
+                f_value: f64::NAN,
+                significance: f64::NAN,
+                partial_eta_squared: f64::NAN,
+                noncent_parameter: f64::NAN,
+                observed_power: f64::NAN,
             },
-            f_value: f64::NAN,
-            significance: f64::NAN,
-            partial_eta_squared: f64::NAN,
-            noncent_parameter: f64::NAN,
-            observed_power: f64::NAN,
         });
     }
 }

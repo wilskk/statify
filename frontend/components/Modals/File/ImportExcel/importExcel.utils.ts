@@ -142,7 +142,7 @@ export const processSheetForImport = (
 
         // Use actualHeadersArray length or fallback
         const numFinalCols = actualHeadersArray.length;
-        const emptyValue = options.readEmptyCellsAs === 'empty' ? "" : "SYSMIS";
+        const emptyValue = options.readEmptyCellsAs === 'empty' ? "" : "";
         const missingValue = "SYSMIS";
 
         const processedData = fullDataForStore.map(row => {

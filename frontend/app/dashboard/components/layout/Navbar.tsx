@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Menubar,
   MenubarMenu,
@@ -24,6 +25,7 @@ import TransformMenu from "@/components/Modals/Transform/TransformMenu";
 
 const Navbar: React.FC = () => {
   const { openModal } = useModal();
+  const router = useRouter();
 
   const commonMenubarClasses = "ml-0 flex px-2 py-1 border-0";
 
@@ -39,15 +41,25 @@ const Navbar: React.FC = () => {
           <MenubarMenu>
             <MenubarTrigger>Analyze</MenubarTrigger>
             <MenubarContent>
-                <MenubarSub>
-                    <MenubarSubTrigger>Descriptive Statistics</MenubarSubTrigger>
-                    <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.Frequencies)}>Frequencies</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.Descriptives)}>Descriptives</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.Explore)}>Explore</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs</MenubarItem>
-                    </MenubarSubContent>
-                </MenubarSub>
+              <MenubarSub>
+                <MenubarSubTrigger>Descriptive Statistics</MenubarSubTrigger>
+                <MenubarSubContent>
+                  <MenubarItem onClick={() => openModal(ModalType.Frequencies)}>
+                    Frequencies
+                  </MenubarItem>
+                  <MenubarItem
+                    onClick={() => openModal(ModalType.Descriptives)}
+                  >
+                    Descriptives
+                  </MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.Explore)}>
+                    Explore
+                  </MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>
+                    Crosstabs
+                  </MenubarItem>
+                </MenubarSubContent>
+              </MenubarSub>
                 <MenubarSub>
                     <MenubarSubTrigger>Compare Means</MenubarSubTrigger>
                     <MenubarSubContent>
@@ -57,15 +69,15 @@ const Navbar: React.FC = () => {
                         <MenubarItem onClick={() => openModal(ModalType.OneWayANOVA)}>One-Way ANOVA...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
-                <MenubarSub>
-                    <GeneralLinearModelMenu />
-                </MenubarSub>
-                <MenubarSub>
-                    <ClassifyMenu />
-                </MenubarSub>
-                <MenubarSub>
-                    <DimensionReductionMenu />
-                </MenubarSub>
+              <MenubarSub>
+                <GeneralLinearModelMenu />
+              </MenubarSub>
+              <MenubarSub>
+                <ClassifyMenu />
+              </MenubarSub>
+              <MenubarSub>
+                <DimensionReductionMenu />
+              </MenubarSub>
                 <MenubarSub>
                     <MenubarSubTrigger>Correlate</MenubarSubTrigger>
                     <MenubarSubContent>
@@ -75,13 +87,19 @@ const Navbar: React.FC = () => {
                         <MenubarItem disabled>Canonical Correlation...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
-                <MenubarSub>
-                    <MenubarSubTrigger>Regression</MenubarSubTrigger>
-                    <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalLinear)}>Linear...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalCurveEstimation)}>Curve Estimation...</MenubarItem>
-                    </MenubarSubContent>
-                </MenubarSub>
+              <MenubarSub>
+                <MenubarSubTrigger>Regression</MenubarSubTrigger>
+                <MenubarSubContent>
+                  <MenubarItem onClick={() => openModal(ModalType.ModalLinear)}>
+                    Linear...
+                  </MenubarItem>
+                  <MenubarItem
+                    onClick={() => openModal(ModalType.ModalCurveEstimation)}
+                  >
+                    Curve Estimation...
+                  </MenubarItem>
+                </MenubarSubContent>
+              </MenubarSub>
                 <MenubarSub>
                     <MenubarSubTrigger>Nonparametric Test</MenubarSubTrigger>
                     <MenubarSubContent>
@@ -101,16 +119,43 @@ const Navbar: React.FC = () => {
                         </MenubarSub>
                     </MenubarSubContent>
                 </MenubarSub>
+              <MenubarSub>
+                <MenubarSubTrigger>Time Series</MenubarSubTrigger>
+                <MenubarSubContent>
+                  <MenubarItem onClick={() => openModal(ModalType.Smoothing)}>
+                    Smoothing
+                  </MenubarItem>
+                  <MenubarItem
+                    onClick={() => openModal(ModalType.Decomposition)}
+                  >
+                    Decomposition
+                  </MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem
+                    onClick={() => openModal(ModalType.Autocorrelation)}
+                  >
+                    Autocorrelation
+                  </MenubarItem>
+                  <MenubarItem
+                    onClick={() => openModal(ModalType.UnitRootTest)}
+                  >
+                    Unit Root Test
+                  </MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem
+                    onClick={() => openModal(ModalType.BoxJenkinsModel)}
+                  >
+                    Box-Jenkins Model
+                  </MenubarItem>
+                </MenubarSubContent>
+              </MenubarSub>
                 <MenubarSub>
-                    <MenubarSubTrigger>Time Series</MenubarSubTrigger>
+                    <MenubarSubTrigger>Correlate</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem onClick={()=>openModal(ModalType.Smoothing)}>Smoothing</MenubarItem>
-                        <MenubarItem onClick={()=>openModal(ModalType.Decomposition)}>Decomposition</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem onClick={()=>openModal(ModalType.Autocorrelation)}>Autocorrelation</MenubarItem>
-                        <MenubarItem onClick={()=>openModal(ModalType.UnitRootTest)}>Unit Root Test</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem onClick={()=>openModal(ModalType.BoxJenkinsModel)}>Box-Jenkins Model</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.Bivariate)}>Bivariate...</MenubarItem>
+                        <MenubarItem disabled>Partial...</MenubarItem>
+                        <MenubarItem disabled>Distances...</MenubarItem>
+                        <MenubarItem disabled>Canonical Correlation...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
             </MenubarContent>
@@ -118,34 +163,44 @@ const Navbar: React.FC = () => {
           <MenubarMenu>
             <MenubarTrigger>Graphs</MenubarTrigger>
             <MenubarContent>
-                <MenubarItem onClick={() => openModal(ModalType.ChartBuilderModal)}>Chart Builder...</MenubarItem>
-                <MenubarItem disabled>Graphboard Template Chooser...</MenubarItem>
-                <MenubarSeparator />
-                <MenubarSub>
-                    <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
-                    <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.SimpleBarModal)}>Bar...</MenubarItem>
-                        <MenubarItem disabled>3-D Bar...</MenubarItem>
-                        <MenubarItem disabled>Line</MenubarItem>
-                        <MenubarItem disabled>Area</MenubarItem>
-                        <MenubarItem disabled>Pie</MenubarItem>
-                        <MenubarItem disabled>High-Low</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem disabled>Box-Plot...</MenubarItem>
-                        <MenubarItem disabled>Error Bar...</MenubarItem>
-                        <MenubarItem disabled>Population Pyramid</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem disabled>Scatter/Dot...</MenubarItem>
-                        <MenubarItem disabled>Histogram...</MenubarItem>
-                    </MenubarSubContent>
-                </MenubarSub>
+              <MenubarItem
+                onClick={() => openModal(ModalType.ChartBuilderModal)}
+              >
+                Chart Builder...
+              </MenubarItem>
+              <MenubarItem disabled>Graphboard Template Chooser...</MenubarItem>
+              <MenubarSeparator />
+              <MenubarSub>
+                <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
+                <MenubarSubContent>
+                  <MenubarItem
+                    onClick={() => openModal(ModalType.SimpleBarModal)}
+                  >
+                    Bar...
+                  </MenubarItem>
+                  <MenubarItem disabled>3-D Bar...</MenubarItem>
+                  <MenubarItem disabled>Line</MenubarItem>
+                  <MenubarItem disabled>Area</MenubarItem>
+                  <MenubarItem disabled>Pie</MenubarItem>
+                  <MenubarItem disabled>High-Low</MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem disabled>Box-Plot...</MenubarItem>
+                  <MenubarItem disabled>Error Bar...</MenubarItem>
+                  <MenubarItem disabled>Population Pyramid</MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem disabled>Scatter/Dot...</MenubarItem>
+                  <MenubarItem disabled>Histogram...</MenubarItem>
+                </MenubarSubContent>
+              </MenubarSub>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger disabled>Help</MenubarTrigger>
+            <MenubarTrigger onClick={() => router.push("/help")}>Help</MenubarTrigger>
           </MenubarMenu>
         </Menubar>
-        <div className="font-sans text-lg font-semibold text-foreground">Statify</div>
+        <div className="font-sans text-lg font-semibold text-foreground">
+          Statify
+        </div>
       </div>
     </nav>
   );

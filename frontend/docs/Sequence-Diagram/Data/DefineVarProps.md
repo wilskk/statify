@@ -58,19 +58,19 @@ sequenceDiagram
     EditorHook-->>-EditorUI: Mengembalikan state awal
     EditorUI-->>User: Tampilkan editor properti
 
-    User->>EditorUI: Ubah properti (misal: Value Labels) & klik "Paste"
+    User->>EditorUI: Ubah properti & klik "OK"
     EditorUI->>+EditorHook: handleSave()
     EditorHook->>+Service: saveVariableProperties(modified, original)
     loop untuk setiap variabel yang diubah
-        Service->>+VarStore: updateVariable(variable)
+        Service->>+VarStore: updateMultipleFields(...)
         deactivate VarStore
     end
-    Service-->>-EditorHook
+    Service-->>-EditorHook: Returns success
     deactivate Service
 
-    EditorHook->>EditorUI: onSave()
+    note right of EditorHook: Hook memanggil prop 'onClose'
+    EditorHook-->>-Wrapper: onClose()
     deactivate EditorHook
-    EditorUI->>Wrapper: onClose()
     deactivate EditorUI
     deactivate Wrapper
     deactivate MainHook

@@ -1,13 +1,14 @@
-import React, {useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     KMeansClusterIterateProps,
     KMeansClusterIterateType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import {Label} from "@/components/ui/label";
-import {Input} from "@/components/ui/input";
-import {CheckedState} from "@radix-ui/react-checkbox";
-import {Checkbox} from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
 export const KMeansClusterIterate = ({
     isIterateOpen,
@@ -37,6 +38,24 @@ export const KMeansClusterIterate = ({
     };
 
     const handleContinue = () => {
+        if (
+            iterateState.MaximumIterations == null ||
+            iterateState.MaximumIterations < 1 ||
+            iterateState.MaximumIterations > 999
+        ) {
+            toast.warning("Maximum iterations must be between 1 and 1000.");
+            return;
+        }
+        if (
+            iterateState.ConvergenceCriterion == null ||
+            iterateState.ConvergenceCriterion < 0 ||
+            iterateState.ConvergenceCriterion > 1
+        ) {
+            toast.warning(
+                "Convergence criterion must be greater or equal than 0 and less than or equal to 1."
+            );
+            return;
+        }
         Object.entries(iterateState).forEach(([key, value]) => {
             updateFormData(key as keyof KMeansClusterIterateType, value);
         });
@@ -49,11 +68,13 @@ export const KMeansClusterIterate = ({
         <div className="flex flex-col h-full">
             <div className="flex flex-col items-start gap-2 p-4 flex-grow">
                 <div className="flex flex-row items-center gap-2">
-                    <Label className="w-[300px]">Maximum Iteration: </Label>
+                    <Label className="w-[290px]">Maximum Iteration: </Label>
                     <Input
                         id="MaximumIterations"
                         type="number"
-                        value={iterateState.MaximumIterations ?? ""}
+                        value={iterateState.MaximumIterations ?? 0}
+                        min={1}
+                        max={999}
                         onChange={(e) =>
                             handleChange(
                                 "MaximumIterations",
@@ -68,7 +89,9 @@ export const KMeansClusterIterate = ({
                     <Input
                         id="ConvergenceCriterion"
                         type="number"
-                        value={iterateState.ConvergenceCriterion ?? ""}
+                        value={iterateState.ConvergenceCriterion ?? 0}
+                        min={0}
+                        max={1}
                         onChange={(e) =>
                             handleChange(
                                 "ConvergenceCriterion",
@@ -96,7 +119,16 @@ export const KMeansClusterIterate = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button type="button" variant="ghost">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                            window.open(
+                                "https://drive.google.com/file/d/1IuU3ZTKbKavWCXiBM9i4B4EA4g-BvjU-/view?usp=drive_link",
+                                "_blank"
+                            );
+                        }}
+                    >
                         Help
                     </Button>
                 </div>

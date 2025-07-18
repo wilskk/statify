@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useState } from "react";
+import React, { FC, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -39,22 +39,15 @@ const VariablesTab: FC<VariablesTabProps> = ({
     tourSteps = [],
 }) => {
     const variableIdKeyToUse: keyof Variable = 'tempId';
-    const [allowUnknown, setAllowUnknown] = useState(false);
+    // Variabel hanya perlu bertipe NUMERIC untuk dapat dipilih – level pengukuran tidak lagi diperiksa
+    const isVariableDisabled = useCallback((variable: Variable): boolean => {
+        return variable.type !== 'NUMERIC';
+    }, []);
 
     const getDisplayName = (variable: Variable) => {
         if (!variable.label) return variable.name;
         return `${variable.label} [${variable.name}]`;
     };
-
-    const isVariableDisabled = useCallback((variable: Variable): boolean => {
-        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
-                                (variable.measure === 'scale' || variable.measure === 'ordinal');
-        
-        if (isNormallyValid) return false;
-        if (variable.measure === 'unknown') return !allowUnknown;
-        
-        return true;
-    }, [allowUnknown]);
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         // Prevent moving from available to selected if it's disabled
@@ -132,22 +125,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
         }
         return null;
     }, [saveStandardized, setSaveStandardized, tourActive, currentStep, tourSteps]);
-
-    const renderExtraInfo = () => (
-        <>
-            <div className="flex items-center mt-2 p-1.5">
-                <Checkbox
-                    id="allowUnknown"
-                    checked={allowUnknown}
-                    onCheckedChange={(checked: boolean) => setAllowUnknown(checked)}
-                    className="mr-2 h-4 w-4"
-                />
-                <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                    Treat &apos;unknown&apos; as Scale and allow selection
-                </Label>
-            </div>
-        </>
-    );
     
     return (
         <div className="space-y-4">
@@ -165,7 +142,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     isVariableDisabled={isVariableDisabled}
                     showArrowButtons={true}
                     renderListFooter={renderSelectedFooter}
-                    renderExtraInfoContent={renderExtraInfo}
                 />
                 <div id="descriptive-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
              <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'descriptive-available-variables')} />

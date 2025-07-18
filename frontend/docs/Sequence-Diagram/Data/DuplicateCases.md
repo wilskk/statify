@@ -1,12 +1,12 @@
 ### **Sequence Diagram: Identify Duplicate Cases**
 
-Dokumentasi ini berisi diagram sekuens yang merinci alur kerja fitur "Identify Duplicate Cases", yang menggunakan Web Worker untuk pemrosesan latar belakang.
+Dokumentasi ini berisi diagram sekuens yang merinci alur kerja fitur "Identify Duplicate Cases", yang memproses data secara sinkron untuk menemukan duplikat.
 
 ---
 
 ### 1. Alur Proses Identifikasi Kasus Duplikat
 
-Diagram ini menunjukkan bagaimana interaksi pengguna memicu proses di Web Worker dan bagaimana hasilnya digunakan untuk memodifikasi state aplikasi, seperti membuat variabel indikator baru, memfilter/mengurutkan data, dan menampilkan laporan.
+Diagram ini menunjukkan bagaimana interaksi pengguna memicu pemrosesan data oleh `duplicateCasesService`. Hasilnya kemudian digunakan untuk memodifikasi state aplikasi, seperti membuat variabel indikator baru dan menampilkan laporan.
 
 ```mermaid
 sequenceDiagram
@@ -16,7 +16,7 @@ sequenceDiagram
     box "Frontend"
         participant Modal as "DuplicateCasesModal<br>.../DuplicateCases/index.tsx"
         participant Hook as "useDuplicateCases<br>.../hooks/useDuplicateCases.ts"
-        participant Worker as "duplicateCases.worker.js"
+        participant Service as "duplicateCasesService.ts"
     end
 
     box "Zustand Stores"
@@ -29,32 +29,19 @@ sequenceDiagram
     User->>Modal: Klik tombol "OK"
 
     Modal->>+Hook: handleConfirm()
-    Hook->>+Worker: new Worker()
-    Hook->>Worker: postMessage({ data, configs })
+    Hook->>+Service: processDuplicates({ data, configs })
+    Service->>Service: Memproses data untuk mencari duplikat
+    Service-->>Hook: onmessage ({ result, statistics })
+    deactivate Service
 
-    Worker->>Worker: Memproses data untuk mencari duplikat
-    Worker-->>Hook: onmessage ({ result, statistics })
-    deactivate Worker
-
-    alt "moveMatchingToTop" diaktifkan
-        Hook->>+DataStore: setData(reorderedData)
-        deactivate DataStore
-    end
-
-    Hook->>Hook: createIndicatorVariables()
+    Hook->>Hook: createIndicatorVariables(result)
     note right of Hook: Membuat variabel indikator baru
-    Hook->>+VarStore: addVariable(...)
+    Hook->>+VarStore: addVariables(...)
+    note left of VarStore: Batch update untuk menambah<br>variabel & memperbarui sel.
     deactivate VarStore
-    Hook->>+DataStore: updateCells(...)
-    deactivate DataStore
-
-    alt "filterByIndicator" diaktifkan
-        Hook->>+DataStore: setData(filteredData)
-        deactivate DataStore
-    end
-
+    
     alt "displayFrequencies" diaktifkan
-        Hook->>Hook: createOutputLog()
+        Hook->>Hook: createOutputLog(statistics)
         Hook->>+ResultStore: addLog(), addAnalytic(), addStatistic()
         deactivate ResultStore
     end

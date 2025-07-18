@@ -26,7 +26,11 @@ pub fn calculate_hypothesis_l_matrices(
 
     // Jika tidak ada parameter dalam model, kembalikan hasil kosong
     if design_info.p_parameters == 0 {
-        return Ok(HypothesisLMatrices { matrices: vec![] });
+        return Ok(HypothesisLMatrices {
+            matrices: vec![],
+            note: Some("No parameters in the model to generate L-matrices for.".to_string()),
+            interpretation: None,
+        });
     }
 
     // Matriks cross-product (Z'WZ) diperlukan untuk Type I SS
@@ -85,10 +89,7 @@ pub fn calculate_hypothesis_l_matrices(
         if let Ok(l_matrix) = l_matrix_result {
             l_matrices_map.insert(term_name.clone(), l_matrix);
         } else if let Err(e) = l_matrix_result {
-            // Log warning jika matriks tidak dapat dibuat untuk suatu term
-            web_sys::console::warn_1(
-                &format!("Could not generate L-matrix for term '{}': {}", term_name, e).into()
-            );
+            return Err(format!("Could not generate L-matrix for term '{}': {}", term_name, e));
         }
     }
 
@@ -132,10 +133,21 @@ pub fn calculate_hypothesis_l_matrices(
                 parameter_names: all_param_names.clone(),
                 contrast_names,
                 matrix: matrix_data,
-                note: note.clone(),
+                note: Some(note.clone()),
+                interpretation: Some(
+                    "This matrix provides the coefficients for the linear combinations of parameters that form the basis for testing the hypothesis for the given term. Each row corresponds to a specific contrast (e.g., L1, L2).".to_string()
+                ),
             });
         }
     }
 
-    Ok(HypothesisLMatrices { matrices })
+    Ok(HypothesisLMatrices {
+        matrices,
+        note: Some(
+            "These matrices define the testable hypotheses for each term in the model.".to_string()
+        ),
+        interpretation: Some(
+            "Each matrix (L) specifies the linear combinations of parameters (β) that correspond to a particular hypothesis test (Lβ = 0). These are constructed based on the selected Sum of Squares type and are fundamental for calculating the F-statistics in the 'Tests of Between-Subjects Effects' table.".to_string()
+        ),
+    })
 }

@@ -46,7 +46,7 @@ sequenceDiagram
     Hook->>Hook: Mengurutkan array variabel berdasarkan kolom yang dipilih
     note right of Hook: Membuat `sortedVariables`
 
-    Hook->>+VarStore: overwriteVariables(sortedVariables)
+    Hook->>+VarStore: setVariables(sortedVariables)
     deactivate VarStore
 
     Hook->>+Service: sortDataColumns(data, originalVariables, sortedVariables)

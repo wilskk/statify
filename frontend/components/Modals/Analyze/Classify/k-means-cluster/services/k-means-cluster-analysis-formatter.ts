@@ -1,7 +1,10 @@
-import {formatDisplayNumber} from "@/hooks/useFormatter";
-import {ResultJson, Table} from "@/types/Table";
+import { formatDisplayNumber } from "@/hooks/useFormatter";
+import { ResultJson, Table } from "@/types/Table";
 
-export function transformKMeansResult(data: any): ResultJson {
+export function transformKMeansResult(
+    data: any,
+    errors: string[] = []
+): ResultJson {
     const resultJson: ResultJson = {
         tables: [],
         charts: [],
@@ -31,6 +34,8 @@ export function transformKMeansResult(data: any): ResultJson {
                 },
             ],
             rows: [],
+            note: data.initial_centers.note,
+            interpretation: data.initial_centers.interpretation,
         };
 
         // Fill data rows
@@ -73,6 +78,8 @@ export function transformKMeansResult(data: any): ResultJson {
                 },
             ],
             rows: [],
+            note: data.iteration_history.note,
+            interpretation: data.iteration_history.interpretation,
         };
 
         // Fill data rows
@@ -101,9 +108,11 @@ export function transformKMeansResult(data: any): ResultJson {
     }
 
     // 3. Cluster Membership
-    if (data.cluster_membership) {
+    if (data.cluster_membership && data.cluster_membership.data) {
+        const membershipData = data.cluster_membership.data;
+
         // Check if any case has a name
-        const hasCaseNames = data.cluster_membership.some(
+        const hasCaseNames = membershipData.some(
             (membership: any) =>
                 membership.case_name && membership.case_name.trim() !== ""
         );
@@ -123,10 +132,12 @@ export function transformKMeansResult(data: any): ResultJson {
             title: "Cluster Membership",
             columnHeaders,
             rows: [],
+            note: data.cluster_membership.note,
+            interpretation: data.cluster_membership.interpretation,
         };
 
         // Fill data rows
-        data.cluster_membership.forEach((membership: any) => {
+        membershipData.forEach((membership: any) => {
             const rowData: any = {
                 rowHeader: [membership.case_number.toString()],
                 cluster: membership.cluster.toString(),
@@ -168,6 +179,8 @@ export function transformKMeansResult(data: any): ResultJson {
                 },
             ],
             rows: [],
+            note: data.final_cluster_centers.note,
+            interpretation: data.final_cluster_centers.interpretation,
         };
 
         // Fill data rows
@@ -201,6 +214,8 @@ export function transformKMeansResult(data: any): ResultJson {
                 })),
             ],
             rows: [],
+            note: data.distances_between_centers.note,
+            interpretation: data.distances_between_centers.interpretation,
         };
 
         // Fill data rows
@@ -249,6 +264,8 @@ export function transformKMeansResult(data: any): ResultJson {
                 { header: "Sig.", key: "significance" },
             ],
             rows: [],
+            note: data.anova.note,
+            interpretation: data.anova.interpretation,
         };
 
         // Fill data rows
@@ -287,6 +304,8 @@ export function transformKMeansResult(data: any): ResultJson {
                 { header: "", key: "total" },
             ],
             rows: [],
+            note: data.cases_count.note,
+            interpretation: data.cases_count.interpretation,
         };
 
         data.cases_count.clusters.forEach((cluster: any, index: number) => {
@@ -336,8 +355,8 @@ export function transformKMeansResult(data: any): ResultJson {
                     y: plot.y_label,
                     category: "Cluster",
                 },
-                description: `Scatter plot of ${plot.y_label} vs ${plot.x_label}, grouped by cluster.`,
-                notes: null,
+                description: plot.interpretation,
+                notes: `Scatter plot of ${plot.y_label} vs ${plot.x_label}, grouped by cluster.`,
                 title: "Cluster Plot",
                 subtitle: `${plot.y_label} vs ${plot.x_label}`,
             },
@@ -358,6 +377,59 @@ export function transformKMeansResult(data: any): ResultJson {
             resultJson.charts = [];
         }
         resultJson.charts.push(chart);
+    }
+
+    if (errors && errors.length > 0) {
+        if (errors.length === 1 && errors[0] === "No errors occurred.") {
+            const table: Table = {
+                key: "error_table",
+                title: "Errors Logs",
+                columnHeaders: [{ header: "Message", key: "message" }],
+                rows: [
+                    {
+                        rowHeader: [],
+                        message: "No errors occurred.",
+                    },
+                ],
+            };
+            resultJson.tables.push(table);
+        } else {
+            const table: Table = {
+                key: "error_table",
+                title: "Errors Logs",
+                columnHeaders: [
+                    { header: "Context", key: "context" },
+                    { header: "Message", key: "message" },
+                ],
+                rows: [],
+            };
+
+            let currentContext = "";
+            let isFirstRowForContext = true;
+
+            const errorLines =
+                errors[0] === "Error Summary:" ? errors.slice(1) : errors;
+
+            errorLines.forEach((line: string) => {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith("Context: ")) {
+                    currentContext = trimmedLine
+                        .replace("Context: ", "")
+                        .trim();
+                    isFirstRowForContext = true;
+                } else if (trimmedLine) {
+                    const message = trimmedLine.replace(/^\d+\.\s*/, "");
+                    table.rows.push({
+                        rowHeader: [],
+                        context: isFirstRowForContext ? currentContext : "",
+                        message: message,
+                    });
+                    isFirstRowForContext = false;
+                }
+            });
+
+            resultJson.tables.push(table);
+        }
     }
 
     return resultJson;

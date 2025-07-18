@@ -32,19 +32,13 @@ sequenceDiagram
     User->>View: Klik tombol "Open"
     View->>+Hook: Panggil `handleSubmit()`
     
-    Hook->>+Stores: Reset state: panggil `resetData()`, `resetVariables()`, `resetMeta()`
-    Stores-->>-Hook: Selesai reset
-    
     Hook->>+API: Panggil `processSavFile(file)`
     API->>+Endpoint: POST request dengan FormData berisi file
     Endpoint->>Endpoint: Parse file .sav
     Endpoint-->>-API: Kembalikan data (variabel, baris, metadata) dalam format JSON
     API-->>-Hook: Kembalikan respons JSON
     
-    Hook->>Hook: Memetakan respons JSON ke struktur data frontend
-    Note right of Hook: - `sysvars` -> `Variable[]`<br>- `valueLabels` -> `Variable.values`<br>- `rows` -> `string[][]`
-    
-    Hook->>+Stores: Panggil `overwriteVariables(newVars)`, `setData(newData)`,<br>`setMeta(newMeta)`
+    Hook->>+Stores: Reset state LAMA dan perbarui dengan data BARU<br>Panggil `overwriteAll(newVars, newData)`<br>dan `setProjectMeta(newMeta)`
     Stores-->>-Hook: Selesai memperbarui state
     
     Hook->>View: Panggil `onClose()`

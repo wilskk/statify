@@ -1,6 +1,4 @@
-import { Dispatch, SetStateAction } from 'react';
 import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
 import { TourStep } from './hooks/useTourGuide';
 import { UseVariableManagementResult } from './hooks/useVariableManagement';
 import { UseStatisticsSettingsResult } from './hooks/useStatisticsSettings';
@@ -67,7 +65,7 @@ export interface ExploreAnalysisParams {
     showMEstimators: boolean;
     showOutliers: boolean;
     showPercentiles: boolean;
-    boxplotType: 'dependents-together' | 'factor-levels-together';
+    boxplotType: 'none' | 'dependents-together' | 'factor-levels-together';
     showStemAndLeaf: boolean;
     showHistogram: boolean;
     showNormalityPlots: boolean;

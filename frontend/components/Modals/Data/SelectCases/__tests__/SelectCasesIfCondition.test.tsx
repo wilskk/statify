@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import SelectCasesIfCondition from '../dialogs/SelectCasesIfCondition';
 import { Variable } from '@/types/Variable';
+import { Dialog } from '@/components/ui/dialog';
 
 const mockVariables: Variable[] = [
     { name: 'age', columnIndex: 0, type: 'NUMERIC', label: 'Age', measure: 'scale', role: 'input', values: [], missing: null, decimals: 0, width: 8, columns: 12, align: 'left' },
@@ -19,7 +20,7 @@ describe('SelectCasesIfCondition Dialog', () => {
     });
 
     it('renders correctly', () => {
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
         expect(screen.getByText('Select Cases: If Condition')).toBeInTheDocument();
         expect(screen.getByText('Variables:')).toBeInTheDocument();
         expect(screen.getByText('age')).toBeInTheDocument();
@@ -27,8 +28,8 @@ describe('SelectCasesIfCondition Dialog', () => {
 
     it('allows typing in the expression textarea', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
-        const textarea = screen.getByRole('textbox');
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
+        const textarea = screen.getByPlaceholderText('Enter condition expression...');
         
         await user.type(textarea, 'age > 25');
         
@@ -37,9 +38,9 @@ describe('SelectCasesIfCondition Dialog', () => {
 
     it('inserts variable name on double click', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
         const variableItem = screen.getByText('age');
-        const textarea = screen.getByRole('textbox');
+        const textarea = screen.getByPlaceholderText('Enter condition expression...');
 
         await user.dblClick(variableItem);
 
@@ -48,9 +49,9 @@ describe('SelectCasesIfCondition Dialog', () => {
 
     it('inserts operator on button click', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
         const greaterThanButton = screen.getByRole('button', { name: '>' });
-        const textarea = screen.getByRole('textbox');
+        const textarea = screen.getByPlaceholderText('Enter condition expression...');
 
         await user.click(greaterThanButton);
         
@@ -59,8 +60,8 @@ describe('SelectCasesIfCondition Dialog', () => {
 
     it('calls onContinue with the expression when Continue is clicked', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
-        const textarea = screen.getByRole('textbox');
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
+        const textarea = screen.getByPlaceholderText('Enter condition expression...');
         
         await user.type(textarea, 'age > 30');
         
@@ -72,7 +73,7 @@ describe('SelectCasesIfCondition Dialog', () => {
 
     it('shows validation error for empty expression', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
         const continueButton = screen.getByRole('button', { name: 'Continue' });
         await user.click(continueButton);
         
@@ -82,8 +83,8 @@ describe('SelectCasesIfCondition Dialog', () => {
 
     it('shows validation error for unbalanced parentheses', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
-        const textarea = screen.getByRole('textbox');
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
+        const textarea = screen.getByPlaceholderText('Enter condition expression...');
 
         await user.type(textarea, 'age > 30 & (gender == "M"');
         const continueButton = screen.getByRole('button', { name: 'Continue' });
@@ -94,8 +95,8 @@ describe('SelectCasesIfCondition Dialog', () => {
 
     it('shows validation error if no variable is used', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
-        const textarea = screen.getByRole('textbox');
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
+        const textarea = screen.getByPlaceholderText('Enter condition expression...');
 
         await user.type(textarea, '30 > 25');
         const continueButton = screen.getByRole('button', { name: 'Continue' });
@@ -106,7 +107,7 @@ describe('SelectCasesIfCondition Dialog', () => {
 
     it('calls onClose when Cancel is clicked', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} />);
+        render(<Dialog open={true}><SelectCasesIfCondition variables={mockVariables} onClose={onClose} onContinue={onContinue} /></Dialog>);
         const cancelButton = screen.getByRole('button', { name: 'Cancel' });
         
         await user.click(cancelButton);

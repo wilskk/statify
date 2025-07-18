@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::models::{
     config::ClusterConfig,
     data::{ AnalysisData, DataValue },
@@ -12,34 +10,9 @@ pub fn preprocess_data(
     data: &AnalysisData,
     config: &ClusterConfig
 ) -> Result<ProcessedData, String> {
-    // Memastikan ada data target yang disediakan untuk diproses.
-    if data.target_data.is_empty() {
-        return Err("No target data provided".to_string());
-    }
-
     // --- Penentuan Variabel ---
-    // Menentukan variabel yang akan digunakan untuk klastering.
-    // Jika `target_var` ditentukan dalam konfigurasi, maka variabel tersebut yang akan digunakan.
-    // Jika tidak, fungsi akan secara otomatis mengumpulkan semua variabel numerik dari dataset.
-    let variables = if let Some(target_var) = &config.main.target_var {
-        target_var.clone()
-    } else {
-        // Mengumpulkan semua variabel unik yang bertipe numerik dari seluruh dataset.
-        // `HashSet` digunakan untuk memastikan tidak ada duplikasi nama variabel.
-        data.target_data
-            .iter()
-            .flat_map(|dataset| {
-                dataset.iter().flat_map(|record| {
-                    record.values
-                        .iter()
-                        .filter(|(_, value)| matches!(value, DataValue::Number(_)))
-                        .map(|(key, _)| key.clone())
-                })
-            })
-            .collect::<HashSet<String>>()
-            .into_iter()
-            .collect()
-    };
+    // Menentukan variabel yang akan digunakan untuk klastering berdasarkan `target_var` dari konfigurasi.
+    let variables = config.main.target_var.as_ref().cloned().unwrap_or_default();
 
     // Memastikan ada variabel yang valid untuk klastering setelah proses seleksi.
     if variables.is_empty() {
@@ -62,16 +35,15 @@ pub fn preprocess_data(
     // Menentukan metode eksklusi data yang hilang berdasarkan konfigurasi.
     // `exclude_list_wise`: Jika satu nilai saja hilang, seluruh kasus (baris) akan dihapus.
     // `exclude_pair_wise`: Kasus tetap disertakan, perhitungan hanya dilakukan pada variabel yang lengkap.
-    // Metode list-wise menjadi prioritas jika kedua opsi diaktifkan.
     let use_list_wise = config.options.exclude_list_wise;
-    let use_pair_wise = config.options.exclude_pair_wise && !use_list_wise;
+    let use_pair_wise = config.options.exclude_pair_wise;
 
     // --- Iterasi dan Pengolahan Data ---
     // Memproses setiap kasus (baris) dalam data.
     for case_idx in 0..num_cases {
         let mut row = Vec::with_capacity(variables.len());
         let mut has_missing = false;
-        let mut complete_variables = Vec::new();
+        let mut non_missing_count = 0;
 
         // Untuk setiap variabel yang telah ditentukan, cari nilainya di semua dataset.
         for var in &variables {
@@ -81,44 +53,36 @@ pub fn preprocess_data(
                 if case_idx < dataset.len() {
                     if let Some(DataValue::Number(val)) = dataset[case_idx].values.get(var) {
                         row.push(*val);
-                        complete_variables.push(var.clone());
+                        non_missing_count += 1;
                         var_found = true;
                         break; // Lanjut ke variabel berikutnya setelah nilai ditemukan.
                     }
                 }
             }
 
-            // Jika variabel tidak ditemukan atau bukan numerik, tandai sebagai data hilang.
+            // Jika variabel tidak ditemukan atau bukan numerik, tangani sesuai metode.
             if !var_found {
                 has_missing = true;
                 if use_list_wise {
-                    // Jika menggunakan list-wise, hentikan pemrosesan baris ini dan lanjut ke kasus berikutnya.
+                    // Jika menggunakan list-wise, hentikan pemrosesan baris ini.
                     break;
-                } else if !use_pair_wise {
-                    // Jika tidak ada metode eksklusi, isi nilai yang hilang dengan 0.0.
-                    row.push(0.0);
+                } else if use_pair_wise {
+                    // Untuk pairwise, tambahkan NaN agar matriks tetap rectangular.
+                    row.push(f64::NAN);
                 }
-                // Untuk pair-wise, variabel yang hilang akan diabaikan dan tidak ditambahkan ke `row`.
             }
         }
 
         // --- Memasukkan Data ke Matriks Berdasarkan Metode Eksklusi ---
         if use_list_wise {
             // List-wise: Hanya kasus yang lengkap (tanpa data hilang) yang dimasukkan.
-            if !has_missing && row.len() == variables.len() {
+            if !has_missing {
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
             }
         } else if use_pair_wise {
-            // Pair-wise: Kasus dimasukkan jika memiliki setidaknya satu variabel yang valid.
-            // `row` hanya akan berisi nilai dari variabel yang tidak hilang.
-            if !complete_variables.is_empty() {
-                data_matrix.push(row);
-                case_numbers.push((case_idx + 1) as i32);
-            }
-        } else {
-            // Tanpa eksklusi: Semua kasus dimasukkan, nilai yang hilang diisi dengan default (0.0).
-            if row.len() == variables.len() {
+            // Pair-wise: Kasus hanya dihapus jika semua variabelnya hilang.
+            if non_missing_count > 0 {
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
             }
@@ -165,11 +129,15 @@ pub fn preprocess_data(
         None
     };
 
+    let missing_cases = num_cases - data_matrix.len();
+
     // Mengembalikan data yang sudah diproses dan siap untuk analisis klaster.
     Ok(ProcessedData {
         variables,
         data_matrix,
         case_numbers,
         case_names,
+        total_cases: num_cases,
+        missing_cases,
     })
 }

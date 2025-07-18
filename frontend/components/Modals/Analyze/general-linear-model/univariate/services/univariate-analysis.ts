@@ -1,10 +1,10 @@
-import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {
-    UnivariateAnalysisType
-} from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
-import {transformUnivariateResult} from "./univariate-analysis-formatter";
-import {resultUnivariateAnalysis} from "./univariate-analysis-output";
-import init, {UnivariateAnalysis} from "@/components/Modals/Analyze/general-linear-model/univariate/rust/pkg";
+import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
+import { UnivariateAnalysisType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
+import { transformUnivariateResult } from "./univariate-analysis-formatter";
+import { resultUnivariateAnalysis } from "./univariate-analysis-output";
+import init, {
+    UnivariateAnalysis,
+} from "@/components/Modals/Analyze/general-linear-model/univariate/rust/pkg";
 
 export async function analyzeUnivariate({
     configData,
@@ -73,12 +73,19 @@ export async function analyzeUnivariate({
     );
 
     const results = univariate.get_formatted_results();
-    const error = univariate.get_all_errors();
+    const errorsString = univariate.get_all_errors();
 
     console.log("Results", results);
-    console.log(error);
+    console.log("Univariate errors", errorsString);
 
-    const formattedResults = transformUnivariateResult(results);
+    let errors: string[] = [];
+    if (errorsString) {
+        errors = errorsString
+            .split("\n")
+            .filter((line: string) => line.trim() !== "");
+    }
+
+    const formattedResults = transformUnivariateResult(results, errors);
     console.log("formattedResults", formattedResults);
 
     /*

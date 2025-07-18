@@ -48,7 +48,7 @@ sequenceDiagram
     Hook->>+DataStore: setData(transposedData)
     deactivate DataStore
 
-    Hook->>+VarStore: overwriteVariables(finalTransposedVariables)
+    Hook->>+VarStore: setVariables(finalTransposedVariables)
     deactivate VarStore
 
     Hook->>UI: onClose()

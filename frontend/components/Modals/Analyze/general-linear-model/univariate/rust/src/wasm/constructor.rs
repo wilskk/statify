@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::models::{
     config::UnivariateConfig,
-    data::{ AnalysisData, DataRecord, VariableDefinition },
+    data::{ AnalysisData, DataRecord, VariableDefinition, DataValue },
     result::UnivariateResult,
 };
 use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
@@ -40,12 +40,23 @@ impl UnivariateAnalysis {
         // Initialize function logger
         let logger = FunctionLogger::default();
 
+        let is_all_null = |data: &Vec<Vec<DataRecord>>| -> bool {
+            if data.is_empty() || data[0].is_empty() {
+                return false; // Not all null if empty, handled by other validation
+            }
+            data.iter().all(|row| {
+                row.iter().all(|record| {
+                    record.values.values().all(|value| matches!(value, DataValue::Null))
+                })
+            })
+        };
+
         // Parse input data using serde_wasm_bindgen
         let dependent_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(dep_data) {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse dependent data: {}", e);
-                error_collector.add_error("constructor.dependent_data", &msg);
+                error_collector.add_error("Constructor : Dependent Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -56,7 +67,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse fixed factor data: {}", e);
-                error_collector.add_error("constructor.fix_factor_data", &msg);
+                error_collector.add_error("Constructor : Fix Factor Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -67,7 +78,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse random factor data: {}", e);
-                error_collector.add_error("constructor.random_factor_data", &msg);
+                error_collector.add_error("Constructor : Random Factor Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -78,7 +89,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse covariate data: {}", e);
-                error_collector.add_error("constructor.covariate_data", &msg);
+                error_collector.add_error("Constructor : Covariate Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -87,7 +98,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse WLS weight data: {}", e);
-                error_collector.add_error("constructor.wls_data", &msg);
+                error_collector.add_error("Constructor : WLS Data", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -98,7 +109,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse dependent data definitions: {}", e);
-                error_collector.add_error("constructor.dependent_data_defs", &msg);
+                error_collector.add_error("Constructor : Dependent Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -109,7 +120,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse fixed factor data definitions: {}", e);
-                error_collector.add_error("constructor.fix_factor_data_defs", &msg);
+                error_collector.add_error("Constructor : Fix Factor Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -120,7 +131,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse random factor data definitions: {}", e);
-                error_collector.add_error("constructor.random_factor_data_defs", &msg);
+                error_collector.add_error("Constructor : Random Factor Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -131,7 +142,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse covariate data definitions: {}", e);
-                error_collector.add_error("constructor.covariate_data_defs", &msg);
+                error_collector.add_error("Constructor : Covariate Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -142,7 +153,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse WLS weight data definitions: {}", e);
-                error_collector.add_error("constructor.wls_data_defs", &msg);
+                error_collector.add_error("Constructor : WLS Data Definitions", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -151,7 +162,7 @@ impl UnivariateAnalysis {
             Ok(data) => data,
             Err(e) => {
                 let msg = format!("Failed to parse configuration: {}", e);
-                error_collector.add_error("constructor.config", &msg);
+                error_collector.add_error("Constructor : Config", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -159,8 +170,55 @@ impl UnivariateAnalysis {
         // Validate important configuration
         if config.main.dep_var.is_none() {
             let msg = "Dependent variable must be selected for univariate analysis".to_string();
-            error_collector.add_error("config.validation.dep_var", &msg);
+            error_collector.add_error("Config : Validation : Dependent Variable", &msg);
             return Err(string_to_js_error(msg));
+        }
+
+        if
+            fix_factor_data.is_empty() &&
+            random_factor_data.as_deref().map_or(true, |v| v.is_empty()) &&
+            covariate_data.as_deref().map_or(true, |v| v.is_empty())
+        {
+            let msg =
+                "At least one fixed factor, random factor, or covariate must be provided".to_string();
+            error_collector.add_error("Config : Validation : Independent Variables", &msg);
+            return Err(string_to_js_error(msg));
+        }
+
+        if is_all_null(&dependent_data) {
+            let msg = "Dependent data contains all null values".to_string();
+            error_collector.add_error("Data : Validation : Dependent Data", &msg);
+            return Err(string_to_js_error(msg));
+        }
+
+        if is_all_null(&fix_factor_data) {
+            let msg = "Fixed factor data contains all null values".to_string();
+            error_collector.add_error("Data : Validation : Fixed Factor Data", &msg);
+            return Err(string_to_js_error(msg));
+        }
+
+        if let Some(data) = &random_factor_data {
+            if is_all_null(data) {
+                let msg = "Random factor data contains all null values".to_string();
+                error_collector.add_error("Data : Validation : Random Factor Data", &msg);
+                return Err(string_to_js_error(msg));
+            }
+        }
+
+        if let Some(data) = &covariate_data {
+            if is_all_null(data) {
+                let msg = "Covariate data contains all null values".to_string();
+                error_collector.add_error("Data : Validation : Covariate Data", &msg);
+                return Err(string_to_js_error(msg));
+            }
+        }
+
+        if let Some(data) = &wls_data {
+            if is_all_null(data) {
+                let msg = "WLS data contains all null values".to_string();
+                error_collector.add_error("Data : Validation : WLS Data", &msg);
+                return Err(string_to_js_error(msg));
+            }
         }
 
         // Store data

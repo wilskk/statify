@@ -46,8 +46,8 @@ RUN apk add --no-cache cairo pango libjpeg-turbo giflib pixman libpng
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install ALL dependencies untuk memastikan CSS plugins tersedia
-RUN NODE_ENV=development npm install --include=dev
+# Install ONLY runtime dependencies for a slimmer image
+RUN npm install --omit=dev
 
 # Copy next.config.js dan other necessary files
 COPY next.config.js ./

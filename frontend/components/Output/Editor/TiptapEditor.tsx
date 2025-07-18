@@ -44,7 +44,7 @@ const MenuBar = memo(({ editor, editorState }: { editor: Editor | null; editorSt
     );
 
   return (
-    <div className="flex flex-wrap gap-1 border rounded mb-2 p-1 bg-muted/50">
+    <div className="flex flex-wrap gap-1 rounded mb-2 p-1 bg-muted/50">
       {/* Bold */}
       <button
         type="button"
@@ -256,10 +256,17 @@ const TiptapEditableView: React.FC<Omit<SimpleRichTextEditorProps, 'editable'>> 
   }
 
   return (
-    <div id={id} className={cn("space-y-2", className)}>
+    <div
+      id={id}
+      className={cn("space-y-2 border rounded-md p-2 bg-background", className)}
+    >
+      {/* Menu bar */}
       <MenuBar editor={editor} editorState={editorState} />
-      <div className="tiptap-wrapper border rounded-md bg-background">
-        <EditorContent editor={editor} className="prose max-w-none tiptap p-2" />
+      <div className="tiptap-wrapper">
+        <EditorContent
+          editor={editor}
+          className="prose max-w-none tiptap px-4 py-2"
+        />
       </div>
       {onSave && <SaveButton onSave={onSave} />}
     </div>
@@ -276,16 +283,20 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = memo((props) =
     className,
   } = props;
 
+  // Read-only view
   if (!editable) {
     return (
       <div
         id={id}
-        className={cn("prose max-w-none", className)}
+        className={cn(
+          "border rounded-md px-4 py-2 bg-background prose max-w-none max-h-96 overflow-auto",
+          className
+        )}
         dangerouslySetInnerHTML={{
           __html:
             value && value.trim() !== ""
               ? value
-              : '<p class="text-muted-foreground">Tidak ada deskripsi.</p>',
+              : '<p class="text-muted-foreground">No description.</p>',
         }}
       />
     );

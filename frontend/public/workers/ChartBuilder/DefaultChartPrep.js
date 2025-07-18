@@ -49,11 +49,23 @@ self.onmessage = function (event) {
             chartType: chartType,
             chartMetadata: {
               axisInfo: {
-                category: xVariable,
-                value: yVariable,
+                category: chartMetadata.axisInfo?.category || xVariable,
+                value: chartMetadata.axisInfo?.value || yVariable,
               },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              description: `Total ${
+                chartMetadata.axisInfo?.value || yVariable
+              } per ${
+                chartMetadata.axisInfo?.category || xVariable
+              } in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Vertical Bar Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${
+                  chartMetadata.axisInfo?.value || yVariable || ""
+                } across ${
+                  chartMetadata.axisInfo?.category || xVariable || ""
+                } categories`,
             },
             chartData: Object.keys(frequencyMap).map((key) => ({
               category: key,
@@ -62,10 +74,11 @@ self.onmessage = function (event) {
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
-              chartColor: chartConfig.chartColor || ["#4682B4"],
+              chartColor: chartConfig.chartColor || ["#dddddd"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title ?? "Title",
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -100,11 +113,23 @@ self.onmessage = function (event) {
             chartType: chartType,
             chartMetadata: {
               axisInfo: {
-                category: xVariable,
-                value: yVariable,
+                category: chartMetadata.axisInfo?.category || xVariable,
+                value: chartMetadata.axisInfo?.value || yVariable,
               },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              description: `Total ${
+                chartMetadata.axisInfo?.value || yVariable
+              } per ${
+                chartMetadata.axisInfo?.category || xVariable
+              } in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Horizontal Bar Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${
+                  chartMetadata.axisInfo?.value || yVariable || ""
+                } across ${
+                  chartMetadata.axisInfo?.category || xVariable || ""
+                } categories`,
             },
             chartData: Object.keys(frequencyMap).map((key) => ({
               category: key,
@@ -116,7 +141,8 @@ self.onmessage = function (event) {
               chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title || `${yVariable} Distribution`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -148,15 +174,7 @@ self.onmessage = function (event) {
       const chartJSON = {
         charts: [
           {
-            chartType: chartType,
-            chartMetadata: {
-              axisInfo: {
-                category: xVariable,
-                value: yVariable,
-              },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
-              notes: chartMetadata.note || null,
-            },
+            chartType: "Pie Chart",
             chartData: Object.keys(frequencyMap).map((key) => ({
               category: key,
               value: frequencyMap[key],
@@ -164,10 +182,15 @@ self.onmessage = function (event) {
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
-              chartColor: chartConfig.chartColor || ["#4682B4"],
+              chartColor: chartConfig?.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title || `${yVariable} Distribution`,
+            },
+            chartMetadata: {
+              title: chartMetadata?.title || "Pie Chart",
+              subtitle: chartMetadata?.subtitle || "",
+              titleFontSize: chartMetadata?.titleFontSize || 16,
+              subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
             },
           },
         ],
@@ -185,16 +208,12 @@ self.onmessage = function (event) {
         throw new Error("Salah satu variabel tidak ditemukan.");
       }
 
-      const frequencyMap = data.reduce((acc, row) => {
-        const key = row[xIndex];
-        const yValue = parseFloat(row[yIndex]);
-
-        if (!isNaN(yValue)) {
-          acc[key] = (acc[key] || 0) + yValue;
-        }
-
-        return acc;
-      }, {});
+      const chartData = data
+        .filter((row) => !isNaN(parseFloat(row[yIndex])))
+        .map((row) => ({
+          x: Number(row[xIndex]),
+          y: parseFloat(row[yIndex]),
+        }));
 
       const chartJSON = {
         charts: [
@@ -205,20 +224,24 @@ self.onmessage = function (event) {
                 x: xVariable,
                 y: yVariable,
               },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              description: `Scatter plot showing relationship between ${xVariable} and ${yVariable}`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Scatter Plot",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Relationship between ${xVariable} and ${yVariable}`,
+              titleFontSize: chartMetadata.titleFontSize || 16,
+              subtitleFontSize: chartMetadata.subtitleFontSize || 12,
             },
-            chartData: Object.keys(frequencyMap).map((key) => ({
-              x: Number(key),
-              y: frequencyMap[key],
-            })),
+            chartData: chartData,
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
-              useLegend: chartConfig.useLegend ?? true,
               useAxis: chartConfig.useAxis ?? true,
-              title: chartConfig.title || `${yVariable} Distribution`,
+              useLegend: chartConfig.useLegend ?? true,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -236,16 +259,12 @@ self.onmessage = function (event) {
         throw new Error("Salah satu variabel tidak ditemukan.");
       }
 
-      const frequencyMap = data.reduce((acc, row) => {
-        const key = row[xIndex];
-        const yValue = parseFloat(row[yIndex]);
-
-        if (!isNaN(yValue)) {
-          acc[key] = (acc[key] || 0) + yValue;
-        }
-
-        return acc;
-      }, {});
+      const chartData = data
+        .filter((row) => !isNaN(parseFloat(row[yIndex])))
+        .map((row) => ({
+          x: Number(row[xIndex]),
+          y: parseFloat(row[yIndex]),
+        }));
 
       const chartJSON = {
         charts: [
@@ -256,20 +275,24 @@ self.onmessage = function (event) {
                 x: xVariable,
                 y: yVariable,
               },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              description: `Scatter plot with fit line showing relationship between ${xVariable} and ${yVariable}`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Scatter Plot With Fit Line",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Relationship between ${xVariable} and ${yVariable}`,
+              titleFontSize: chartMetadata.titleFontSize || 16,
+              subtitleFontSize: chartMetadata.subtitleFontSize || 12,
             },
-            chartData: Object.keys(frequencyMap).map((key) => ({
-              x: Number(key),
-              y: frequencyMap[key],
-            })),
+            chartData: chartData,
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title ?? `${yVariable} Distribution`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -304,11 +327,17 @@ self.onmessage = function (event) {
             chartType: chartType,
             chartMetadata: {
               axisInfo: {
-                category: xVariable,
-                value: yVariable,
+                category: chartMetadata.axisInfo?.category || xVariable,
+                value: chartMetadata.axisInfo?.value || yVariable,
               },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              description: chartMetadata.description || null,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Line Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing trend of ${
+                  chartMetadata.axisInfo?.value || yVariable || ""
+                } over ${chartMetadata.axisInfo?.category || xVariable || ""}`,
             },
             chartData: Object.keys(frequencyMap).map((key) => ({
               category: key,
@@ -318,9 +347,10 @@ self.onmessage = function (event) {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
-              useLegend: chartConfig.useLegend ?? true,
               useAxis: chartConfig.useAxis ?? true,
-              title: chartConfig.title ?? `${yVariable} Distribution`,
+              useLegend: chartConfig.useLegend ?? true,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -360,6 +390,10 @@ self.onmessage = function (event) {
               },
               description: `Total ${yVariable} per ${xVariable} in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata?.title || "Area Chart",
+              subtitle: chartMetadata?.subtitle || "",
+              titleFontSize: chartMetadata?.titleFontSize || 16,
+              subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
             },
             chartData: Object.keys(frequencyMap).map((key) => ({
               category: key,
@@ -369,9 +403,10 @@ self.onmessage = function (event) {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
-              useLegend: chartConfig.useLegend ?? true,
               useAxis: chartConfig.useAxis ?? true,
-              title: chartConfig.title ?? `${yVariable} Distribution`,
+              useLegend: chartConfig.useLegend ?? true,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -445,6 +480,12 @@ self.onmessage = function (event) {
                 ", "
               )}.`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Vertical Stacked Bar Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing counts of ${yVariablesList.join(
+                  ", "
+                )} across ${xVariable} categories`,
             },
             chartData: Object.keys(frequencyMap)
               .map((key) => {
@@ -458,12 +499,11 @@ self.onmessage = function (event) {
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
-              chartColor: chartConfig.color || ["#4682B4"],
+              chartColor: chartConfig?.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title:
-                chartConfig.title ??
-                `Distribution of ${yVariablesList.join(", ")} by ${xVariable}`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -537,6 +577,12 @@ self.onmessage = function (event) {
                 ", "
               )}.`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Horizontal Stacked Bar Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing counts of ${yVariablesList.join(
+                  ", "
+                )} across ${xVariable} categories`,
             },
             chartData: Object.keys(frequencyMap)
               .map((key) => {
@@ -553,16 +599,15 @@ self.onmessage = function (event) {
               chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title:
-                chartConfig.title ??
-                `Distribution of ${yVariablesList.join(", ")} by ${xVariable}`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
       };
 
       self.postMessage({ success: true, chartJSON });
-    } else if (chartType === "Grouped Bar Chart") {
+    } else if (chartType === "Clustered Bar Chart") {
       // Debugging output untuk memeriksa nama-nama variabel yang dicari
       console.log(
         "Variables in dataset:",
@@ -629,6 +674,12 @@ self.onmessage = function (event) {
                 ", "
               )}.`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || `Clustered Bar Chart`,
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${yVariablesList.join(
+                  ", "
+                )} across ${xVariable} categories`,
             },
             chartData: Object.keys(frequencyMap)
               .map((key) => {
@@ -643,10 +694,10 @@ self.onmessage = function (event) {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title:
-                chartConfig.title ??
-                `Distribution of ${yVariablesList.join(", ")} by ${xVariable}`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -676,6 +727,12 @@ self.onmessage = function (event) {
       }, []);
 
       // Output data untuk histogram
+      // (hapus axisScaleOptions.y)
+      let axisScaleOptions = chartConfig.axisScaleOptions
+        ? { ...chartConfig.axisScaleOptions }
+        : {};
+      if (axisScaleOptions.y) delete axisScaleOptions.y;
+
       const chartJSON = {
         charts: [
           {
@@ -686,15 +743,22 @@ self.onmessage = function (event) {
               },
               description: `Histogram for ${yVariable} values in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Histogram",
+              subtitle:
+                chartMetadata.subtitle ||
+                "Showing frequency distribution of ${yVariable}",
             },
             chartData: validData, // Data valid yang akan digunakan untuk histogram
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
-              uselegend: chartConfig.legend ?? true,
               useAxis: chartConfig.useAxis ?? true,
-              title: chartConfig.title ?? `${yVariable} Distribution`,
+              axisLabels: chartConfig.axisLabels || {
+                x: "Value",
+                y: "Frequency",
+              },
+              axisScaleOptions: axisScaleOptions,
             },
           },
         ],
@@ -769,6 +833,12 @@ self.onmessage = function (event) {
                 ", "
               )}.`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || `Multiple Line Chart`,
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing trends of ${yVariablesList.join(
+                  ", "
+                )} across ${xVariable} categories`,
             },
             chartData: Object.keys(frequencyMap)
               .map((key) => {
@@ -783,10 +853,10 @@ self.onmessage = function (event) {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
-              legend: chartConfig.legend ?? true,
-              title:
-                chartConfig.title ??
-                `Distribution of ${yVariablesList.join(", ")} by ${xVariable}`,
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -826,11 +896,23 @@ self.onmessage = function (event) {
             chartType: chartType,
             chartMetadata: {
               axisInfo: {
-                category: xVariable,
-                value: yVariable,
+                category: chartMetadata.axisInfo?.category || xVariable,
+                value: chartMetadata.axisInfo?.value || yVariable,
               },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              description: `Distribution of ${
+                chartMetadata.axisInfo?.value || yVariable
+              } per ${
+                chartMetadata.axisInfo?.category || xVariable
+              } in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Boxplot Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${
+                  chartMetadata.axisInfo?.value || yVariable || ""
+                } across ${
+                  chartMetadata.axisInfo?.category || xVariable || ""
+                } categories`,
             },
             chartData: frequencyMap,
             chartConfig: {
@@ -839,7 +921,8 @@ self.onmessage = function (event) {
               chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title || `${yVariable} Distribution`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -886,6 +969,10 @@ self.onmessage = function (event) {
               },
               description: `Total ${yVariable} per ${xVariable} with error calculated from all data points`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Error Bar Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${yVariable} across ${xVariable} categories with error bars`,
             },
             chartData: data.map((row) => {
               const yValue = parseFloat(row[yIndex]); // Nilai untuk titik tersebut
@@ -900,10 +987,11 @@ self.onmessage = function (event) {
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
-              chartColor: chartConfig.color || ["#4682B4"], // Warna untuk tiap variabel di `side`
+              chartColor: chartConfig.chartColor || ["#4682B4"],
               useLegend: chartConfig.useLegend ?? true,
               useAxis: chartConfig.useAxis ?? true,
-              title: chartConfig.title || `${yVariable} Distribution`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -975,8 +1063,14 @@ self.onmessage = function (event) {
               },
               description: `Total per ${xVariable} for each variable in ${yVariablesList.join(
                 ", "
-              )}.`,
+              )}.`, // Keep current description or adapt
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Stacked Area Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${yVariablesList.join(
+                  ", "
+                )} by ${xVariable}`,
             },
             chartData: Object.keys(frequencyMap)
               .map((key) => {
@@ -991,10 +1085,10 @@ self.onmessage = function (event) {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
-              legend: chartConfig.legend ?? true,
-              title:
-                chartConfig.title ??
-                `Distribution of ${yVariablesList.join(", ")} by ${xVariable}`,
+              useAxis: chartConfig.useAxis ?? true, // Add useAxis
+              useLegend: chartConfig.useLegend ?? true, // Change from 'legend' to 'useLegend'
+              axisLabels: chartConfig.axisLabels, // Add axisLabels
+              axisScaleOptions: chartConfig.axisScaleOptions, // Add axisScaleOptions
             },
           },
         ],
@@ -1066,17 +1160,20 @@ self.onmessage = function (event) {
               },
               description: `Distribution of ${xVariable} and ${yVariable} based on ${groupByVariable}.`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || `Grouped Scatter Plot`,
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing relationship between ${xVariable}, ${yVariable}, and ${groupByVariable}`,
             },
             chartData: chartData,
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
-              chartColor: chartConfig.color || ["#4682B4"],
+              chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title:
-                chartConfig.title ??
-                `Distribution of ${yVariable} by ${xVariable}`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -1128,6 +1225,10 @@ self.onmessage = function (event) {
               },
               description: `Total ${yVariable} per ${xVariable} in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || `Dot Plot`,
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${yVariable} for ${xVariable}`,
             },
             chartData: Object.keys(frequencyMap).flatMap((key) => {
               return frequencyMap[key].map((value) => ({
@@ -1141,7 +1242,8 @@ self.onmessage = function (event) {
               chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title ?? "Title",
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -1181,6 +1283,10 @@ self.onmessage = function (event) {
               },
               description: `Total ${yVariable} per ${xVariable} in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Frequency Polygon",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${yVariable} across ${xVariable} categories`,
             },
             chartData: Object.keys(frequencyMap).map((key) => ({
               category: key,
@@ -1190,9 +1296,10 @@ self.onmessage = function (event) {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
               chartColor: chartConfig.chartColor || ["#4682B4"],
-              useLegend: chartConfig.useLegend ?? true,
               useAxis: chartConfig.useAxis ?? true,
-              title: chartConfig.title ?? `${yVariable} Distribution`,
+              useLegend: chartConfig.useLegend ?? true,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -1253,6 +1360,16 @@ self.onmessage = function (event) {
       }, {});
 
       // Konversi ke format data yang bisa digunakan oleh chart
+      const chartData = Object.keys(frequencyMap)
+        .map((key) => {
+          return frequencyMap[key].map((entry) => ({
+            category: key,
+            subcategory: entry.subcategory,
+            value: entry.value,
+          }));
+        })
+        .flat();
+
       const chartJSON = {
         charts: [
           {
@@ -1266,25 +1383,22 @@ self.onmessage = function (event) {
                 ", "
               )}.`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Population Pyramid",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${yVariablesList.join(
+                  ", "
+                )} across ${xVariable} categories`,
             },
-            chartData: Object.keys(frequencyMap)
-              .map((key) => {
-                return frequencyMap[key].map((entry) => ({
-                  category: key,
-                  subcategory: entry.subcategory,
-                  value: entry.value,
-                }));
-              })
-              .flat(), // `flat()` untuk meratakan array yang berbentuk array of arrays
+            chartData: chartData,
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
-              chartColor: chartConfig.color || ["#4682B4"],
+              chartColor: chartConfig.chartColor || ["#4682B4", "#e74c3c"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title:
-                chartConfig.title ??
-                `Distribution of ${yVariablesList.join(", ")} by ${xVariable}`,
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -1327,11 +1441,17 @@ self.onmessage = function (event) {
             chartType: chartType,
             chartMetadata: {
               axisInfo: {
-                category: groupByVariable,
-                value: xVariable,
+                category: chartMetadata.axisInfo?.category || groupByVariable,
+                value: chartMetadata.axisInfo?.value || xVariable,
               },
-              description: `Data ${xVariable} per ${groupByVariable} in the dataset`,
+              description:
+                chartMetadata.description ||
+                `Total ${xVariable} per ${groupByVariable} in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Stacked Histogram",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${xVariable} across ${groupByVariable} categories`,
             },
             chartData: chartData, // ChartData yang berisi entry terpisah
             chartConfig: {
@@ -1340,7 +1460,8 @@ self.onmessage = function (event) {
               chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title ?? "Title",
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -1391,11 +1512,23 @@ self.onmessage = function (event) {
             chartType: chartType,
             chartMetadata: {
               axisInfo: {
-                category: xVariable,
-                value: yVariable,
+                category: chartMetadata.axisInfo?.category || xVariable,
+                value: chartMetadata.axisInfo?.value || yVariable,
               },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              description: `Total ${
+                chartMetadata.axisInfo?.value || yVariable
+              } per ${
+                chartMetadata.axisInfo?.category || xVariable
+              } in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Clustered Error Bar Chart",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${
+                  chartMetadata.axisInfo?.value || yVariable || ""
+                } across ${
+                  chartMetadata.axisInfo?.category || xVariable || ""
+                } categories`,
             },
             chartData: chartData, // ChartData that holds individual entries
             chartConfig: {
@@ -1404,7 +1537,8 @@ self.onmessage = function (event) {
               chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title ?? "Title",
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -1445,13 +1579,21 @@ self.onmessage = function (event) {
             chartType: chartType,
             chartMetadata: {
               axisInfo: {
-                category: xVariables.join(", "),
-                value: "Values for each variable",
+                category:
+                  chartMetadata.axisInfo?.category || xVariables.join(", "),
+                value:
+                  chartMetadata.axisInfo?.value || "Values for each variable",
               },
               description: `Scatterplot matrix for ${xVariables.join(
                 ", "
               )} in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Scatter Plot Matrix",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${xVariables.join(
+                  ", "
+                )} in the dataset`,
             },
             chartData: chartData, // ChartData that holds individual entries
             chartConfig: {
@@ -1460,7 +1602,8 @@ self.onmessage = function (event) {
               chartColor: chartConfig.chartColor || ["#4682B4"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title ?? "Title",
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -1507,20 +1650,33 @@ self.onmessage = function (event) {
             chartType: chartType,
             chartMetadata: {
               axisInfo: {
-                category: xVariable,
-                value: yVariable,
+                category: chartMetadata.axisInfo?.category || xVariable,
+                value: chartMetadata.axisInfo?.value || yVariable,
               },
-              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              description: `Distribution of ${
+                chartMetadata.axisInfo?.value || yVariable
+              } per ${
+                chartMetadata.axisInfo?.category || xVariable
+              } grouped by ${groupByVariable} in the dataset`,
               notes: chartMetadata.note || null,
+              title: chartMetadata.title || "Clustered Boxplot",
+              subtitle:
+                chartMetadata.subtitle ||
+                `Showing distribution of ${
+                  chartMetadata.axisInfo?.value || yVariable || ""
+                } across ${
+                  chartMetadata.axisInfo?.category || xVariable || ""
+                } categories grouped by ${groupByVariable || ""}`,
             },
             chartData: chartData, // ChartData that holds individual entries
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
-              chartColor: chartConfig.chartColor || ["#4682B4"],
+              chartColor: chartConfig.chartColor || ["#dddddd"],
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
-              title: chartConfig.title ?? "Title",
+              axisLabels: chartConfig.axisLabels,
+              axisScaleOptions: chartConfig.axisScaleOptions,
             },
           },
         ],
@@ -2701,6 +2857,172 @@ self.onmessage = function (event) {
         ],
       };
 
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Density Chart") {
+      const yVariable = yVariables[0]; // Y variable untuk histogram
+
+      // Cari indeks variabel Y dalam array variables
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+
+      if (yIndex === -1) {
+        throw new Error("Variabel Y tidak ditemukan.");
+      }
+
+      // Ambil data untuk variabel Y
+      const validData = data.reduce((acc, row) => {
+        const yValue = parseFloat(row[yIndex]); // Nilai untuk Y (misalnya 20, 40, dst.)
+
+        // Validasi apakah yValue adalah angka dan tidak NaN
+        if (!isNaN(yValue) && yValue !== 0) {
+          acc.push(yValue); // Tambahkan nilai Y yang valid
+        }
+
+        return acc;
+      }, []);
+
+      // Output data untuk histogram
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                value: yVariable, // Nama variabel Y
+              },
+              description: `Density Plot for ${yVariable} values in the dataset`,
+              notes: chartMetadata.note || null,
+            },
+            chartData: validData, // Data valid yang akan digunakan untuk histogram
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              uselegend: chartConfig.legend ?? true,
+              useAxis: chartConfig.useAxis ?? true,
+              title: chartConfig.title ?? `${yVariable} Distribution`,
+            },
+          },
+        ],
+      };
+
+      // Kirim hasil ke main thread
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Violin Plot") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+
+      if (xIndex === -1 || yIndex === -1) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      const frequencyMap = data.reduce((acc, row) => {
+        let key = row[xIndex]; // Kategori (misalnya "A" atau "B")
+        const yValue = parseFloat(row[yIndex]); // Nilai (misalnya 20, 40, dst.)
+
+        if (key === null || key === undefined || key === "") {
+          key = "unknown"; // Ganti kategori kosong dengan 'unknown'
+        }
+
+        if (!isNaN(yValue)) {
+          // Pastikan format data yang benar
+          acc.push({ category: key, value: yValue });
+        }
+
+        return acc;
+      }, []);
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                category: xVariable,
+                value: yVariable,
+              },
+              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              notes: chartMetadata.note || null,
+            },
+            chartData: frequencyMap,
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title || `${yVariable} Distribution`,
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Stem And Leaf Plot") {
+      const yVariable = yVariables[0]; // Variabel Y
+
+      // Cari indeks variabel Y dalam array variables
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+
+      if (yIndex === -1) {
+        throw new Error("Variabel Y tidak ditemukan.");
+      }
+
+      // Ambil data untuk variabel Y
+      const validData = data.reduce((acc, row) => {
+        const yValue = parseFloat(row[yIndex]);
+
+        // Validasi apakah yValue adalah angka dan bukan NaN
+        if (!isNaN(yValue)) {
+          acc.push(yValue);
+        }
+
+        return acc;
+      }, []);
+
+      // Buat data stem-and-leaf
+      const stemLeafData = validData.reduce((acc, value) => {
+        const stem = Math.floor(value / 10).toString();
+        const leaf = Math.floor(value % 10); // Pastikan leaf juga bilangan bulat
+
+        if (!acc[stem]) acc[stem] = [];
+        acc[stem].push(leaf);
+
+        return acc;
+      }, {});
+
+      // Sort leaf values untuk setiap stem
+      for (const stem in stemLeafData) {
+        stemLeafData[stem].sort((a, b) => a - b);
+      }
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                value: yVariable,
+              },
+              description: `Stem and Leaf Plot for ${yVariable}`,
+              notes: chartMetadata.note || null,
+            },
+            chartData: stemLeafData,
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              uselegend: chartConfig.legend ?? false,
+              useAxis: chartConfig.useAxis ?? false,
+              title: chartConfig.title ?? `${yVariable} Stem and Leaf Plot`,
+            },
+          },
+        ],
+      };
+
+      // Kirim hasil ke main thread
       self.postMessage({ success: true, chartJSON });
     } else {
       // Implementasi untuk jenis chart lain

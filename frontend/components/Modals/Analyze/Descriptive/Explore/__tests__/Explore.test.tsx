@@ -13,14 +13,22 @@ import { BaseModalProps } from '@/types/modalTypes';
 // Mock the custom hooks module
 jest.mock('../hooks');
 
-// Mock child components
-const MockVariablesTab = () => <div data-testid="variables-tab">VariablesTab</div>;
-MockVariablesTab.displayName = 'VariablesTab';
-jest.mock('../VariablesTab', () => MockVariablesTab);
+// Mock child components (use factory functions to avoid hoisting issues)
+jest.mock('../VariablesTab', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: () => <div data-testid="variables-tab">VariablesTab</div>,
+  };
+});
 
-const MockStatisticsTab = () => <div data-testid="statistics-tab">StatisticsTab</div>;
-MockStatisticsTab.displayName = 'StatisticsTab';
-jest.mock('../StatisticsTab', () => MockStatisticsTab);
+jest.mock('../StatisticsTab', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: () => <div data-testid="statistics-tab">StatisticsTab</div>,
+  };
+});
 
 // Type-safe casting for mocked hooks
 const mockedUseVariableManagement = useVariableManagement as jest.Mock;

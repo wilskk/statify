@@ -59,9 +59,15 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
         return variable.label ? `${variable.label} [${variable.name}]` : variable.name;
     };
 
-    const getSortByDisplayName = useCallback((variable: Variable): string => {
+    // Display helper that adds ▲ / ▼ **hanya** untuk variabel yang sudah berada di daftar "Sort By".
+    const getEnhancedDisplayName = useCallback((variable: Variable): string => {
         const config = sortByConfigs.find((c: SortVariableConfig) => c.variable.tempId === variable.tempId);
-        const directionSymbol = config?.direction === 'asc' ? '▲' : '▼';
+        if (!config) {
+            // Variabel belum ada di daftar Sort By → tampilkan nama biasa tanpa simbol arah
+            return getDisplayName(variable);
+        }
+
+        const directionSymbol = config.direction === "asc" ? "▲" : "▼";
         return `${directionSymbol} ${getDisplayName(variable)}`;
     }, [sortByConfigs]);
 
@@ -126,29 +132,8 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
         draggableItems: true
     };
     
-    const renderDefaultSortOrderControls = useCallback(() => {
-        if (highlightedVariable?.source === 'sortBy') return null;
-        
-        return (
-            <div className="mt-2 p-1.5 rounded bg-accent border border-border">
-                <div className="text-xs font-medium mb-1">Default direction for new variables:</div>
-                <RadioGroup
-                    value={defaultSortOrder}
-                    onValueChange={(value) => setDefaultSortOrder(value as 'asc' | 'desc')}
-                    className="flex flex-col space-y-1"
-                >
-                    <Label className="flex items-center gap-2 cursor-pointer">
-                        <RadioGroupItem value="asc" />
-                        <span className="text-xs">Ascending</span>
-                    </Label>
-                    <Label className="flex items-center gap-2 cursor-pointer">
-                        <RadioGroupItem value="desc" />
-                        <span className="text-xs">Descending</span>
-                    </Label>
-                </RadioGroup>
-            </div>
-        );
-    }, [defaultSortOrder, highlightedVariable, setDefaultSortOrder]);
+    // Kontrol default direction tidak lagi ditampilkan.
+    const renderDefaultSortOrderControls = useCallback(() => null, []);
 
     return (
         <>
@@ -174,7 +159,7 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
                         onMoveVariable={handleMoveVariable}
                         onReorderVariable={handleReorderVariable}
                         getVariableIcon={getVariableIcon}
-                        getDisplayName={sortByConfigs.length > 0 ? getSortByDisplayName : getDisplayName}
+                        getDisplayName={getEnhancedDisplayName}
                         renderListFooter={renderSortByListFooter}
                         showArrowButtons={true}
                         availableListHeight="16rem"
