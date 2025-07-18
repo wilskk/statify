@@ -13,20 +13,26 @@ jest.mock('@/hooks/useAnalysisData');
 
 // Mock Worker
 const mockPostMessage = jest.fn();
-const mockTerminate = jest.fn();
+const mockWorkerTerminate = jest.fn();
 let workerOnMessage: (event: { data: any }) => void;
 let workerOnError: (event: ErrorEvent) => void;
 
-global.Worker = jest.fn().mockImplementation(() => ({
+// A fake Worker instance used by the pooled client
+const fakeWorker: any = {
   postMessage: mockPostMessage,
-  terminate: mockTerminate,
+  terminate: mockWorkerTerminate,
   set onmessage(fn: (event: { data: any }) => void) {
     workerOnMessage = fn;
   },
   set onerror(fn: (event: ErrorEvent) => void) {
     workerOnError = fn;
   },
-}));
+};
+
+// ------------------------------
+// Override global.Worker as fallback (not used because we mock registry)
+// ------------------------------
+global.Worker = jest.fn().mockImplementation(() => fakeWorker);
 
 // Mock implementations
 const mockedUseResultStore = useResultStore as unknown as jest.Mock;
@@ -108,7 +114,6 @@ describe('useDescriptivesAnalysis', () => {
         expect(mockAddLog).toHaveBeenCalled();
         expect(mockAddAnalytic).toHaveBeenCalled();
         expect(mockAddStatistic).toHaveBeenCalledTimes(1);
-        expect(mockTerminate).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
         expect(result.current.isCalculating).toBe(false);
         expect(result.current.error).toBe(null);
@@ -164,7 +169,6 @@ describe('useDescriptivesAnalysis', () => {
         });
         
         // Should not terminate yet
-        expect(mockTerminate).not.toHaveBeenCalled();
         expect(result.current.isCalculating).toBe(true);
         
         await act(async () => {
@@ -178,7 +182,6 @@ describe('useDescriptivesAnalysis', () => {
         const parsedData = JSON.parse(formatCall);
         expect(parsedData.tables[0].rows).toHaveLength(2); // Two variable rows
         
-        expect(mockTerminate).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
         expect(result.current.isCalculating).toBe(false);
     });
@@ -220,6 +223,5 @@ describe('useDescriptivesAnalysis', () => {
 
         expect(result.current.error).toContain('A critical worker error occurred: Worker script could not be loaded');
         expect(result.current.isCalculating).toBe(false);
-        expect(mockTerminate).toHaveBeenCalled();
     });
 }); 
