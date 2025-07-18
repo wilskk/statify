@@ -83,3 +83,4 @@ backend/dist
 # node_modules
 _tes/
 /_skripsi penulisan
+/frontend/coverage
