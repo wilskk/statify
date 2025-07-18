@@ -15,7 +15,7 @@ import './libs/utils.js';
 import './libs/oneSampleTTest.js';
 import './libs/independentSamplesTTest.js';
 import './libs/pairedSamplesTTest.js';
-// import './libs/oneWayAnova.js';
+import './libs/oneWayAnova.js';
 // import './libs/effectSize.js';
 
 // Definisikan global calculator map
@@ -23,7 +23,7 @@ const calculators = {
     oneSampleTTest: OneSampleTTestCalculator,
     independentSamplesTTest: IndependentSamplesTTestCalculator,
     pairedSamplesTTest: PairedSamplesTTestCalculator,
-    // oneWayAnova: OneWayAnovaCalculator,
+    oneWayAnova: OneWayAnovaCalculator,
     // effectSize: EffectSizeCalculator,
 };
 
@@ -32,7 +32,7 @@ const calculators = {
  * @param {MessageEvent} event - Event pesan yang diterima.
  */
 onmessage = (event) => {
-    const { analysisType, variable, variable1, variable2, data, data1, data2, groupingVariable, groupingData, options } = event.data;
+    const { analysisType, variable, variable1, variable2, data, data1, data2, factorVariable, factorData, groupingVariable, groupingData, options } = event.data;
     
     // --- Start of Debugging ---
     console.log(`[Worker] Received analysis request: ${analysisType}`);
@@ -40,15 +40,19 @@ onmessage = (event) => {
         console.log('[Worker] Received variable:', JSON.parse(JSON.stringify(variable)));
         console.log('[Worker] Received data (first 5 rows):', data ? data.slice(0, 5) : 'No data');
     }
-    // if (variable1 && variable2 && data1 && data2) {
+    if (variable1 && variable2 && data1 && data2) {
         console.log('[Worker] Received variable1:', JSON.parse(JSON.stringify(variable1)));
         console.log('[Worker] Received variable2:', JSON.parse(JSON.stringify(variable2)));
         console.log('[Worker] Received data1 (first 5 rows):', data1 ? data1.slice(0, 5) : 'No data');
         console.log('[Worker] Received data2 (first 5 rows):', data2 ? data2.slice(0, 5) : 'No data');
-    // }
+    }
     if (groupingVariable && groupingData) {
         console.log('[Worker] Received grouping variable:', JSON.parse(JSON.stringify(groupingVariable)));
         console.log('[Worker] Received grouping data (first 5 rows):', groupingData ? groupingData.slice(0, 5) : 'No data');
+    }
+    if (factorVariable && factorData) {
+        console.log('[Worker] Received factor variable:', JSON.parse(JSON.stringify(factorVariable)));
+        console.log('[Worker] Received factor data (first 5 rows):', factorData ? factorData.slice(0, 5) : 'No data');
     }
     console.log('[Worker] Received options:', JSON.parse(JSON.stringify(options || {})));
     // --- End of Debugging ---
@@ -109,9 +113,21 @@ onmessage = (event) => {
                 calculator = new CalculatorClass({ 
                     variable, 
                     data, 
-                    weights, 
+                    factorVariable,
+                    factorData,
                     options 
                 });
+
+                console.log('[Worker] One Way ANOVA Results:', JSON.stringify(calculator.getOutput().oneWayAnova));
+                console.log('[Worker] One Way ANOVA Descriptives Results:', JSON.stringify(calculator.getOutput().descriptives));
+                console.log('[Worker] One Way ANOVA Homogeneity of Variance Results:', JSON.stringify(calculator.getOutput().homogeneityOfVariances));
+                console.log('[Worker] One Way ANOVA Multiple Comparisons Results:', JSON.stringify(calculator.getOutput().multipleComparisons));
+                console.log('[Worker] One Way ANOVA Homogeneous Subsets Results:', JSON.stringify(calculator.getOutput().homogeneousSubsets));
+                results.oneWayAnova = calculator.getOutput().oneWayAnova;
+                results.descriptives = calculator.getOutput().descriptives;
+                results.homogeneityOfVariances = calculator.getOutput().homogeneityOfVariances;
+                results.multipleComparisons = calculator.getOutput().multipleComparisons;
+                results.homogeneousSubsets = calculator.getOutput().homogeneousSubsets;
             } else if (type === 'effectSize') {
                 calculator = new CalculatorClass({ 
                     variable, 

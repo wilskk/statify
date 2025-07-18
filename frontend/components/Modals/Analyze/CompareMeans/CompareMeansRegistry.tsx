@@ -32,7 +32,7 @@ function withSuspense(Component: React.ComponentType<BaseModalProps>): React.Com
 const OneSampleTTestModal = lazy(() => import('@/components/Modals/Analyze/CompareMeans/OneSampleTTest'));
 const IndependentSamplesTTestModal = lazy(() => import('@/components/Modals/Analyze/CompareMeans/IndependentSamplesTTest'));
 const PairedSamplesTTestModal = lazy(() => import('@/components/Modals/Analyze/CompareMeans/PairedSamplesTTest'));
-// const OneWayANOVAModal = lazy(() => import('@/components/Modals/Analyze/CompareMeans/OneWayANOVA'));
+const OneWayANOVAModal = lazy(() => import('@/components/Modals/Analyze/CompareMeans/OneWayAnova'));
 
 /**
  * COMPARE_MEANS_MODAL_COMPONENTS - Registry for compare means modal components
@@ -43,7 +43,7 @@ export const COMPARE_MEANS_MODAL_COMPONENTS: Record<string, React.ComponentType<
   [ModalType.OneSampleTTest]: withSuspense(OneSampleTTestModal as any) as React.ComponentType<BaseModalProps>,
   [ModalType.IndependentSamplesTTest]: withSuspense(IndependentSamplesTTestModal as any) as React.ComponentType<BaseModalProps>,
   [ModalType.PairedSamplesTTest]: withSuspense(PairedSamplesTTestModal as any) as React.ComponentType<BaseModalProps>,
-//   [ModalType.OneWayANOVA]: withSuspense(OneWayANOVAModal as any) as React.ComponentType<BaseModalProps>,
+  [ModalType.OneWayANOVA]: withSuspense(OneWayANOVAModal as any) as React.ComponentType<BaseModalProps>,
 };
 
 /**
@@ -73,5 +73,5 @@ export const COMPARE_MEANS_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType
   [ModalType.OneSampleTTest]: "sidebar",
   [ModalType.IndependentSamplesTTest]: "sidebar",
   [ModalType.PairedSamplesTTest]: "sidebar",
-//   [ModalType.OneWayANOVA]: "sidebar",
+  [ModalType.OneWayANOVA]: "sidebar",
 };
