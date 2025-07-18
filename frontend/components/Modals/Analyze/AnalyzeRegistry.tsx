@@ -26,6 +26,27 @@ import {
     isTimeSeriesModal
 } from './TimeSeries';
 
+// Import from CompareMeans registry via index.ts
+import {
+    COMPARE_MEANS_MODAL_COMPONENTS,
+    COMPARE_MEANS_MODAL_CONTAINER_PREFERENCES,
+    getCompareMeansModalComponent
+} from './CompareMeans';
+
+// Import from NonparametricTests registry via index.ts
+import {
+    NONPARAMETRIC_TEST_MODAL_COMPONENTS,
+    NONPARAMETRIC_TEST_MODAL_CONTAINER_PREFERENCES,
+    getNonparametricTestModalComponent
+} from './NonparametricTests';
+
+// Import from Correlate registry via index.ts
+import {
+    CORRELATE_MODAL_COMPONENTS,
+    CORRELATE_MODAL_CONTAINER_PREFERENCES,
+    getCorrelateModalComponent
+} from './Correlate';
+
 /**
  * ANALYZE_MODAL_COMPONENTS - Central registry for all Analyze modals
  *
@@ -45,8 +66,16 @@ export const ANALYZE_MODAL_COMPONENTS: Record<
     // Time Series modals
     ...TIME_SERIES_MODAL_COMPONENTS,
     
+    // Compare Means modals
+    ...COMPARE_MEANS_MODAL_COMPONENTS,
+
+    // Correlate modals
+    ...CORRELATE_MODAL_COMPONENTS,
+    
+    // Nonparametric Tests modals
+    ...NONPARAMETRIC_TEST_MODAL_COMPONENTS,
+    
     // Future categories will be added here
-    // ...COMPARE_MEANS_MODAL_COMPONENTS,
     // ...NONPARAMETRIC_MODAL_COMPONENTS,
     // etc.
 };
@@ -87,6 +116,15 @@ export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<
     
     // Time Series modals
     ...TIME_SERIES_MODAL_CONTAINER_PREFERENCES,
+    
+    // Compare Means modals
+    ...COMPARE_MEANS_MODAL_CONTAINER_PREFERENCES,
+    
+    // Nonparametric Tests modals
+    ...NONPARAMETRIC_TEST_MODAL_CONTAINER_PREFERENCES,
+
+    // Correlate modals
+    ...CORRELATE_MODAL_CONTAINER_PREFERENCES,
     
     // Future categories will be added here
 };
