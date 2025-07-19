@@ -190,13 +190,14 @@ export const createVerticalBarChart2 = (
           const dataPoint = processedData.find((item) => item.uniqueId === d);
           return dataPoint ? truncateText(dataPoint.displayLabel, 12) : d;
         },
-        maxValueLength: 12,
+        maxValueLength: 8,
         showGridLines: true,
       },
       yAxisOptions: {
         customFormat: formatAxisNumber,
         showGridLines: false,
         showTicks: true,
+        maxValueLength: 8,
       },
     });
   }
@@ -553,6 +554,7 @@ export const createVerticalStackedBarChart = (
       chartType: "vertical",
       xAxisOptions: {
         showGridLines: true,
+        maxValueLength: 8,
       },
       yAxisOptions: {
         tickValues: yAxisMajorIncrement
@@ -560,6 +562,7 @@ export const createVerticalStackedBarChart = (
           : undefined,
         customFormat: formatAxisNumber,
         showGridLines: false,
+        maxValueLength: 8,
       },
     });
 

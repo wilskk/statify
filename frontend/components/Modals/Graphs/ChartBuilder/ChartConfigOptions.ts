@@ -1236,7 +1236,7 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
       },
     },
   },
-  "Normal Q-Q Plot": {
+  "Q-Q Plot": {
     title: true,
     subtitle: true,
     titleColor: true,

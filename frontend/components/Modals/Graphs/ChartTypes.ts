@@ -45,7 +45,7 @@ export const chartTypes = [
   "Stem And Leaf Plot",
   "Violin Plot",
   "Density Chart",
-  "Normal Q-Q Plot",
+  "Q-Q Plot",
   "P-P Plot",
   "3D Bar Chart (ECharts)",
   "3D Scatter Plot (ECharts)",

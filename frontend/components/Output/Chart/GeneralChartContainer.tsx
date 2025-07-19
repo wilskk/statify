@@ -21,13 +21,13 @@ interface ChartData {
     useAxis?: boolean;
     useLegend?: boolean;
     statistic?: "mean" | "median" | "mode" | "min" | "max"; // Add statistic option
-    showNormalCurve?: boolean; // For Histogram - show normal curve overlay
     fitFunctions?: Array<{
       fn: string; // String representation of function: "x => parameters.a + parameters.b * x"
       equation?: string;
       color?: string;
       parameters?: Record<string, number>; // Store coefficients: {a: 2, b: 3}
     }>; // For Scatter Plot With Multiple Fit Line
+    showNormalCurve?: boolean; // For Histogram - show normal curve overlay
     axisLabels: {
       x: string;
       y: string;
@@ -162,64 +162,54 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
       return svgBlob;
     }
   };
-
   const convertSvgToPng = async (svgElement: SVGElement): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       try {
-        // Check if canvas is supported
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
         if (!ctx) {
-          console.warn("Canvas not supported, falling back to SVG");
           resolve(fallbackToSvgExport(svgElement, "png"));
           return;
         }
 
-        // Get SVG dimensions
-        const svgRect = svgElement.getBoundingClientRect();
-        const width = svgRect.width || 800;
-        const height = svgRect.height || 600;
+        // ✅ Fix: use getBBox() instead of getBoundingClientRect()
+        const bbox = (svgElement as SVGGraphicsElement).getBBox();
+        const width = bbox.width + bbox.x + 20;
+        const height = bbox.height + bbox.y + 20;
 
-        // Set canvas size (2x for better quality)
         canvas.width = width * 2;
         canvas.height = height * 2;
         ctx.scale(2, 2);
 
-        // Create a new SVG element with proper dimensions
+        // ✅ Clone with correct dimension
         const clonedSvg = svgElement.cloneNode(true) as SVGElement;
-        clonedSvg.setAttribute("width", width.toString());
-        clonedSvg.setAttribute("height", height.toString());
+        clonedSvg.setAttribute("width", `${width}`);
+        clonedSvg.setAttribute("height", `${height}`);
         clonedSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-        // Convert SVG to data URL
+        // Convert to data URL
         const svgData = new XMLSerializer().serializeToString(clonedSvg);
         const svgBlob = new Blob([svgData], {
           type: "image/svg+xml;charset=utf-8",
         });
         const url = URL.createObjectURL(svgBlob);
 
-        // Create image element
         const img = new Image();
         img.crossOrigin = "anonymous";
 
         img.onload = () => {
           try {
-            // Fill white background
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, 0, width, height);
-
-            // Draw the image
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Convert to blob
             canvas.toBlob(
               (blob) => {
                 URL.revokeObjectURL(url);
                 if (blob) {
                   resolve(blob);
                 } else {
-                  console.warn("PNG conversion failed, falling back to SVG");
                   resolve(fallbackToSvgExport(svgElement, "png"));
                 }
               },
@@ -228,23 +218,17 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
             );
           } catch (error) {
             URL.revokeObjectURL(url);
-            console.warn("Canvas error, falling back to SVG:", error);
             resolve(fallbackToSvgExport(svgElement, "png"));
           }
         };
 
         img.onerror = () => {
           URL.revokeObjectURL(url);
-          console.warn("Image loading failed, falling back to SVG");
           resolve(fallbackToSvgExport(svgElement, "png"));
         };
 
         img.src = url;
       } catch (error) {
-        console.warn(
-          "SVG to PNG conversion error, falling back to SVG:",
-          error
-        );
         resolve(fallbackToSvgExport(svgElement, "png"));
       }
     });
@@ -1045,7 +1029,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.axisLabels,
                 chartConfig?.axisScaleOptions,
                 chartConfig?.chartColor,
-                chartConfig?.showNormalCurve // ✅ Tambahkan showNormalCurve parameter
+                chartConfig?.showNormalCurve
               );
               break;
             case "Error Bar Chart":
@@ -1555,14 +1539,14 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.chartColor
               );
               break;
-            case "Normal Q-Q Plot":
+            case "Normal QQ Plot":
               chartNode = chartUtils.createNormalQQPlot(
                 chartDataPoints,
                 width,
                 height,
                 useAxis,
                 {
-                  title: chartMetadata?.title || "Normal Q-Q Plot",
+                  title: chartMetadata?.title || "Normal QQ Plot",
                   subtitle: chartMetadata?.subtitle,
                   titleFontSize: chartMetadata?.titleFontSize || 16,
                   subtitleFontSize: chartMetadata?.subtitleFontSize || 12,

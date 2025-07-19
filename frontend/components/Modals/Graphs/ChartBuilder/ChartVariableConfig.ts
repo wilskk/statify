@@ -42,7 +42,7 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
     },
     "Pie Chart": {
       side: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "string" },
+      bottom: { min: 1, max: 1, allowedTypes: "both" },
       color: { min: 0, max: 0, allowedTypes: "both" },
       filter: { min: 0, max: 0, allowedTypes: "both" },
     },
@@ -84,13 +84,13 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
     },
     "Horizontal Stacked Bar Chart": {
       side: { min: 1, max: Infinity, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "string" },
+      bottom: { min: 1, max: 1, allowedTypes: "both" },
       color: { min: 0, max: 0, allowedTypes: "both" },
       filter: { min: 0, max: 0, allowedTypes: "both" },
     },
     "Vertical Stacked Bar Chart": {
       side: { min: 1, max: Infinity, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "string" },
+      bottom: { min: 1, max: 1, allowedTypes: "both" },
       color: { min: 0, max: 0, allowedTypes: "both" },
       filter: { min: 0, max: 0, allowedTypes: "both" },
     },
@@ -145,7 +145,7 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
     "Clustered Error Bar Chart": {
       side: { min: 1, max: 1, allowedTypes: "numeric" },
       bottom: { min: 1, max: 1, allowedTypes: "string" },
-      color: { min: 1, max: 1, allowedTypes: "string" },
+      color: { min: 1, max: 1, allowedTypes: "both" },
       filter: { min: 0, max: 0, allowedTypes: "both" },
     },
     "Scatter Plot Matrix": {
@@ -162,8 +162,8 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
     },
     "Clustered Boxplot": {
       side: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "string" },
-      color: { min: 1, max: 1, allowedTypes: "string" },
+      bottom: { min: 1, max: 1, allowedTypes: "both" },
+      color: { min: 1, max: 1, allowedTypes: "both" },
       filter: { min: 0, max: 0, allowedTypes: "both" },
     },
     "1-D Boxplot": {
@@ -318,7 +318,7 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       color: { min: 0, max: 0, allowedTypes: "both" },
       bottom2: { min: 0, max: 0, allowedTypes: "both" },
     },
-    "Normal Q-Q Plot": {
+    "Q-Q Plot": {
       side: { min: 1, max: 1, allowedTypes: "numeric" },
       bottom: { min: 0, max: 0, allowedTypes: "both" },
       color: { min: 0, max: 0, allowedTypes: "both" },

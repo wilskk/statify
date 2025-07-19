@@ -5,7 +5,7 @@
  * DOKUMENTASI PENGGUNAAN SPESIFIK
  * ============================================================================
  *
- * 1. NORMAL Q-Q PLOT
+ * 1. Q-Q PLOT
  * =================
  *
  * // Raw data dari CSV/SPSS (format: rows = cases, columns = variables)
@@ -22,9 +22,9 @@
  *   { name: "GM", type: "NUMERIC" }
  * ];
  *
- * // Process data untuk Normal Q-Q Plot
+ * // Process data untuk Q-Q Plot
  * const result = DataProcessingService.processDataForChart({
- *   chartType: "Normal Q-Q Plot",
+ *   chartType: "Q-Q Plot",
  *   rawData: rawData,
  *   variables: variables,
  *   chartVariables: {
@@ -274,7 +274,7 @@ const CHART_AGGREGATION_CONFIG: { [chartType: string]: string[] } = {
   "Dual Axes Scatter Plot": ["none"],
   "Grouped 3D Scatter Plot": ["none"],
   "Density Chart": ["none"],
-  "Normal Q-Q Plot": ["count", "none"],
+  "Q-Q Plot": ["count", "none"],
   "P-P Plot": ["count", "none"],
   "Scatter Plot Matrix": ["none"],
   "Clustered Boxplot": ["none"],
@@ -660,7 +660,7 @@ export class DataProcessingService {
         //   break;
 
         case "Histogram":
-        case "Normal Q-Q Plot":
+        case "Q-Q Plot":
         case "P-P Plot":
         case "Density Chart":
         case "Frequency Polygon":
@@ -740,6 +740,7 @@ export class DataProcessingService {
       );
 
       console.log("✅ Data processing completed:", {
+        data: processedData,
         originalLength: rawData.length,
         processedLength: processedData.length,
         sampleData: processedData.slice(0, 3),

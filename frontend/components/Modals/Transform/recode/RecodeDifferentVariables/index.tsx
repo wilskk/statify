@@ -109,7 +109,7 @@ export const RecodeDifferentVariablesModal: FC<
     if (outputType !== recodeListType && recodeListType !== null) {
       setRecodeListType(outputType);
     }
-  }, [outputType]);
+  }, [outputType, recodeListType]);
 
   const moveToRightPane = useCallback(
     (variable: Variable, targetIndex?: number) => {

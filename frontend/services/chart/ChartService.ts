@@ -7,7 +7,7 @@ import { DataProcessingService } from "./DataProcessingService";
  * DOKUMENTASI PENGGUNAAN SPESIFIK
  * ============================================================================
  *
- * 1. NORMAL Q-Q PLOT
+ * 1. Q-Q PLOT
  * =================
  *
  * // Cara 1: Menggunakan DataProcessingService + ChartService (Recommended)
@@ -25,7 +25,7 @@ import { DataProcessingService } from "./DataProcessingService";
  *
  * // Step 1: Process data menggunakan DataProcessingService
  * const processedData = DataProcessingService.processDataForChart({
- *   chartType: "Normal Q-Q Plot",
+ *   chartType: "Q-Q Plot",
  *   rawData: rawData,
  *   variables: variables,
  *   chartVariables: {
@@ -35,7 +35,7 @@ import { DataProcessingService } from "./DataProcessingService";
  *
  * // Step 2: Buat chart JSON menggunakan ChartService
  * const chartJSON = ChartService.createChartJSON({
- *   chartType: "Normal Q-Q Plot",
+ *   chartType: "Q-Q Plot",
  *   chartData: processedData.data,
  *   chartVariables: {
  *     y: ["NN"]
@@ -64,7 +64,7 @@ import { DataProcessingService } from "./DataProcessingService";
  *     { x: 1.28, y: 1.2 },
  *     { x: 1.96, y: 2.0 }
  *   ],
- *   "Normal Q-Q Plot"
+ *   "Q-Q Plot"
  * );
  *
  * ============================================================================
@@ -463,7 +463,7 @@ import { DataProcessingService } from "./DataProcessingService";
  * Contoh Minimal:
  * ```typescript
  * const chartJSON = ChartService.createChartJSON({
- *   chartType: "Normal Q-Q Plot",     // ✅ WAJIB
+ *   chartType: "Q-Q Plot",     // ✅ WAJIB
  *   chartData: processedData.data    // ✅ WAJIB
  * });
  * ```
@@ -484,7 +484,7 @@ import { DataProcessingService } from "./DataProcessingService";
  *
  * 1. DataProcessingService.processDataForChart() mengubah raw data menjadi format yang sesuai
  * 2. ChartService.createChartJSON() membuat JSON yang siap untuk rendering
- * 3. Untuk Normal Q-Q Plot dan P-P Plot, hanya butuh 1 variabel di Y-axis (side)
+ * 3. Untuk Q-Q Plot dan P-P Plot, hanya butuh 1 variabel di Y-axis (side)
  * 4. Untuk Scatter Plot With Multiple Fit Line, butuh 2 variabel (X dan Y)
  * 5. Fit functions harus dideklarasikan manual dengan format string dan parameters
  * 6. Fit functions disimpan sebagai string untuk kompatibilitas JSON
@@ -494,7 +494,7 @@ import { DataProcessingService } from "./DataProcessingService";
  * FORMAT DATA YANG DIHARAPKAN:
  * ============================
  *
- * Normal Q-Q Plot & P-P Plot:
+ * Q-Q Plot & P-P Plot:
  * - Input: rawData[][] + variables[] + chartVariables.y[]
  * - Output: [{ x: number, y: number }]
  *
@@ -614,7 +614,7 @@ function generateFinalAxisLabels(
   const isDualAxis = isDualAxisChart(chartType);
   const is3DChart = chartType.includes("3D");
 
-  if (chartType === "Normal Q-Q Plot") {
+  if (chartType === "Q-Q Plot") {
     return {
       x: axisLabels.x || "Theoretical Quantiles",
       y: axisLabels.y || "Sample Quantiles",
@@ -689,7 +689,7 @@ function generateChartColors(
     case "Violin Plot":
     case "Density Chart":
     case "Stem And Leaf Plot":
-    case "Normal Q-Q Plot":
+    case "Q-Q Plot":
     case "P-P Plot":
       return [defaultColors[0]]; // Single color
 

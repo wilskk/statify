@@ -884,8 +884,8 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
             height
           );
         }
-      } else if (chartType === "Normal Q-Q Plot") {
-        // Example data for normal Q-Q plot
+      } else if (chartType === "Q-Q Plot") {
+        // Example data for Q-Q plot
         const sampleData = [1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2];
         chartNode = chartUtils.createNormalQQPlot(
           sampleData,

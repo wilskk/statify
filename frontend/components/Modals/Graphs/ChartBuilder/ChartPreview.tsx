@@ -214,6 +214,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
     // Add state to store the generated JSON for ChartBuilderModal
     const [generatedChartJSON, setGeneratedChartJSON] = useState<any>(null);
 
+    // Add state to control execution order
+    const [isProcessingData, setIsProcessingData] = useState(false);
+    const [isRenderingChart, setIsRenderingChart] = useState(false);
+
+    // Add state to track if data needs reprocessing
+    const [lastProcessedChartType, setLastProcessedChartType] =
+      useState<ChartType | null>(null);
+    const [lastProcessedVariables, setLastProcessedVariables] =
+      useState<string>("");
+
     // Tambahkan state untuk menyimpan hasil DataProcessingService
     const data = useDataStore((state) => state.data);
 
@@ -225,6 +235,141 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       title: string;
       description: string;
     } | null>(null);
+
+    // Process data when variables or options change
+    useEffect(() => {
+      // Only process if we have data and variables
+      if (data.length === 0 || variables.length === 0) {
+        setProcessedResult({ data: [], axisInfo: {} });
+        setIsProcessingData(false);
+        return;
+      }
+
+      console.log("🔄 Processing data with options:", {
+        chartType,
+        variables: variables.length,
+        errorBarOptions,
+      });
+
+      setIsProcessingData(true);
+
+      function normalizeRawData(
+        rawData: any[][],
+        variables: { name: string; type?: string }[]
+      ): any[][] {
+        return rawData.map((row, rowIdx) => {
+          if (row.length !== variables.length) {
+            console.warn(
+              `[normalizeRawData] ⚠️ Jumlah kolom tidak sesuai pada baris ${rowIdx}:`,
+              `data columns = ${row.length}, variables = ${variables.length}`
+            );
+          }
+
+          return row.map((cell, colIdx) => {
+            const varMeta = variables[colIdx];
+            const varName = varMeta?.name ?? `kolom${colIdx}`;
+            const type = varMeta?.type ?? "string";
+
+            let casted: any = cell;
+
+            if (type === "numeric") {
+              const num = parseFloat(cell);
+              casted = isNaN(num) ? null : num;
+            }
+
+            // console.log(
+            //   `[normalizeRawData] row ${rowIdx}, col ${colIdx} (${varName}) →`,
+            //   `type: ${type}, value:`,
+            //   cell,
+            //   `→ casted:`,
+            //   casted
+            // );
+
+            return casted;
+          });
+        });
+      }
+
+      try {
+        console.log("🔄 Processing data with options:", {
+          chartType,
+          variables: variables.length,
+          errorBarOptions,
+        });
+
+        const isErrorBarChart =
+          chartType === "Error Bar Chart" ||
+          chartType === "Clustered Error Bar Chart";
+
+        const processingOptions = {
+          aggregation: isErrorBarChart
+            ? ("average" as const)
+            : ("none" as const),
+          filterEmpty: true,
+          sortBy: undefined,
+          sortOrder: "asc" as const,
+          limit: undefined,
+          ...(isErrorBarChart && {
+            errorBar: errorBarOptions,
+          }),
+        };
+
+        const chartVariables = {
+          x: bottomVariables,
+          y: chartType.includes("3D") ? bottom2Variables : sideVariables,
+          groupBy: colorVariables,
+          low: lowVariables,
+          high: highVariables,
+          close: closeVariables,
+          z: chartType.includes("3D") ? sideVariables : bottom2Variables,
+          y2: side2Variables,
+        };
+
+        const result = DataProcessingService.processDataForChart({
+          chartType,
+          rawData: normalizeRawData(data, variables),
+          variables,
+          chartVariables,
+          processingOptions,
+        });
+
+        console.log("✅ Data processed:", result);
+        setProcessedResult(result);
+        setIsProcessingData(false);
+
+        // Mark that data has been processed for this chart type and variables
+        setLastProcessedChartType(chartType);
+        setLastProcessedVariables(
+          JSON.stringify({
+            bottomVariables,
+            sideVariables,
+            colorVariables,
+            lowVariables,
+            highVariables,
+            closeVariables,
+            bottom2Variables,
+            side2Variables,
+          })
+        );
+      } catch (error) {
+        console.error("❌ Error processing data:", error);
+        setProcessedResult({ data: [], axisInfo: {} });
+        setIsProcessingData(false);
+      }
+    }, [
+      data,
+      variables,
+      chartType,
+      bottomVariables,
+      sideVariables,
+      colorVariables,
+      lowVariables,
+      highVariables,
+      closeVariables,
+      bottom2Variables,
+      side2Variables,
+      errorBarOptions,
+    ]);
 
     // Function to generate chart JSON using DataProcessingService + ChartService
     const generateChartJSON = useCallback(() => {
@@ -320,7 +465,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               axisLabels: {
                 x: xAxisLabel || bottomVariables[0],
                 y:
-                  chartType.includes("Normal Q-Q Plot") ||
+                  chartType.includes("Q-Q Plot") ||
                   chartType.includes("P-P Plot")
                     ? yAxisLabel
                     : yAxisLabel || sideVariables[0],
@@ -379,18 +524,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         setGeneratedChartJSON(null);
       }
     }, [
-      data,
-      variables,
-      chartType,
-      bottomVariables,
-      sideVariables,
-      colorVariables,
-      lowVariables,
-      highVariables,
-      closeVariables,
-      bottom2Variables,
-      side2Variables,
+      // Only depend on processedResult and chart configuration
+      // This prevents unnecessary re-renders when variables change
       processedResult,
+      chartType,
       chartTitle,
       chartSubtitle,
       chartTitleFontSize,
@@ -419,7 +556,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       selectedStatistic,
       chartColors,
       useaxis,
-      showNormalCurve, // ✅ Tambahkan showNormalCurve ke dependency array
+      showNormalCurve,
     ]);
 
     // Smart validation function for different chart types
@@ -464,7 +601,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           );
 
         case "P-P Plot":
-        case "Normal Q-Q Plot":
+        case "Q-Q Plot":
         case "Histogram":
         case "Frequency Polygon":
         case "Density Chart":
@@ -487,10 +624,8 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       }
     };
 
-    // Generate chart JSON whenever relevant props change
-    useEffect(() => {
-      generateChartJSON();
-    }, [generateChartJSON]);
+    // Generate chart JSON is now handled by the optimized useEffect below
+    // This old useEffect has been removed to prevent duplicate JSON generation
 
     // const [errorMsg, setErrorMsg] = useState<string | null>(null);
     // const [isCalculating, setIsCalculating] = useState(false);
@@ -547,33 +682,33 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
     };
 
     // Helper function untuk mengecek apakah variable sesuai dengan allowed types
-    const isVariableTypeAllowed = (
-      variableName: string,
-      allowedTypes: AllowedDataTypes
-    ): boolean => {
-      if (allowedTypes === "both") return true;
+    const isVariableTypeAllowed = useCallback(
+      (variableName: string, allowedTypes: AllowedDataTypes): boolean => {
+        if (allowedTypes === "both") return true;
 
-      const variable = variables.find((v) => v.name === variableName);
-      if (!variable) return false;
+        const variable = variables.find((v) => v.name === variableName);
+        if (!variable) return false;
 
-      const variableType = variable.type || "STRING";
+        const variableType = variable.type || "STRING";
 
-      if (allowedTypes === "numeric") {
-        // Check for all numeric types
-        return (
-          variableType === "NUMERIC" ||
-          variableType === "COMMA" ||
-          variableType === "DOT" ||
-          variableType === "SCIENTIFIC" ||
-          variableType === "DOLLAR" ||
-          variableType === "RESTRICTED_NUMERIC"
-        );
-      } else if (allowedTypes === "string") {
-        return variableType === "STRING";
-      }
+        if (allowedTypes === "numeric") {
+          // Check for all numeric types
+          return (
+            variableType === "NUMERIC" ||
+            variableType === "COMMA" ||
+            variableType === "DOT" ||
+            variableType === "SCIENTIFIC" ||
+            variableType === "DOLLAR" ||
+            variableType === "RESTRICTED_NUMERIC"
+          );
+        } else if (allowedTypes === "string") {
+          return variableType === "STRING";
+        }
 
-      return false;
-    };
+        return false;
+      },
+      [variables]
+    );
 
     // Helper function untuk menampilkan pesan error tipe data
     const showTypeValidationError = (
@@ -1207,9 +1342,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           "Density Chart": Array.from({ length: 100 }, () =>
             Math.round(d3.randomNormal(500, 100)())
           ),
-          "Normal Q-Q Plot": [
-            1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2,
-          ],
+          "Q-Q Plot": [1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2],
           "P-P Plot": [1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2],
           "Stem And Leaf Plot": [
             { stem: "1", leaves: [2, 5] },
@@ -1275,11 +1408,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         };
       },
       [
-        bottomVariables,
+        // bottomVariables,
         chartSubtitle,
         chartTitle,
-        processedResult.data,
-        sideVariables,
+        processedResult,
+        // sideVariables,
         xAxisLabel,
         xAxisMajorIncrement,
         xAxisMax,
@@ -1291,7 +1424,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         yAxisMin,
         yAxisOrigin,
       ]
-    ); // No dependencies needed as it's a pure function
+    );
 
     const createStackedChartConfig = useCallback(
       (chartType: string, isDefault: boolean = false) => {
@@ -1321,7 +1454,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         config.axisConfig.y = yAxisLabel || "Sample Quantiles";
         return config;
       },
-      [createChartConfig, sideVariables]
+      [createChartConfig, xAxisLabel, yAxisLabel]
     );
 
     const createPPPlotConfig = useCallback(
@@ -1332,7 +1465,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         config.axisConfig.y = yAxisLabel || "Expected Cum Prop";
         return config;
       },
-      [createChartConfig, sideVariables]
+      [createChartConfig, xAxisLabel, yAxisLabel]
     );
 
     const createDualAxisChartConfig = useCallback(
@@ -1444,216 +1577,248 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
     }
 
     // Helper function untuk mengecek apakah semua required variables sudah diisi
-    const checkRequiredVariables = (chartType: ChartType) => {
-      const config = chartVariableConfig[chartType];
-      const issues: string[] = [];
+    const checkRequiredVariables = useCallback(
+      (chartType: ChartType) => {
+        const config = chartVariableConfig[chartType];
+        const issues: string[] = [];
 
-      // Helper function untuk mengecek tipe data variabel
-      const checkVariableTypes = (
-        variableNames: string[],
-        allowedTypes: AllowedDataTypes | undefined,
-        axisName: string
-      ) => {
-        if (!allowedTypes) return [];
+        // Helper function untuk mengecek tipe data variabel
+        const checkVariableTypes = (
+          variableNames: string[],
+          allowedTypes: AllowedDataTypes | undefined,
+          axisName: string
+        ) => {
+          if (!allowedTypes) return [];
 
-        const typeIssues: string[] = [];
-        variableNames.forEach((varName) => {
-          if (!isVariableTypeAllowed(varName, allowedTypes)) {
-            const variableObj = variables.find((v) => v.name === varName);
-            const actualVarType = variableObj?.type || "STRING";
+          const typeIssues: string[] = [];
+          variableNames.forEach((varName) => {
+            if (!isVariableTypeAllowed(varName, allowedTypes)) {
+              const variableObj = variables.find((v) => v.name === varName);
+              const actualVarType = variableObj?.type || "STRING";
 
-            const friendlyActualType =
-              actualVarType === "NUMERIC" ||
-              actualVarType === "COMMA" ||
-              actualVarType === "DOT" ||
-              actualVarType === "SCIENTIFIC" ||
-              actualVarType === "DOLLAR" ||
-              actualVarType === "RESTRICTED_NUMERIC"
-                ? "numeric"
-                : "string";
+              const friendlyActualType =
+                actualVarType === "NUMERIC" ||
+                actualVarType === "COMMA" ||
+                actualVarType === "DOT" ||
+                actualVarType === "SCIENTIFIC" ||
+                actualVarType === "DOLLAR" ||
+                actualVarType === "RESTRICTED_NUMERIC"
+                  ? "numeric"
+                  : "string";
 
-            const allowedTypesText =
-              allowedTypes === "numeric"
-                ? "numeric"
-                : allowedTypes === "string"
-                ? "string"
-                : "both numeric and string";
+              const allowedTypesText =
+                allowedTypes === "numeric"
+                  ? "numeric"
+                  : allowedTypes === "string"
+                  ? "string"
+                  : "both numeric and string";
 
-            typeIssues.push(
-              `${axisName}: "${varName}" is ${friendlyActualType} but needs to be ${allowedTypesText}`
-            );
-          }
-        });
-        return typeIssues;
-      };
+              typeIssues.push(
+                `${axisName}: "${varName}" is ${friendlyActualType} but needs to be ${allowedTypesText}`
+              );
+            }
+          });
+          return typeIssues;
+        };
 
-      // Check side variables
-      if (config.side.min > 0 && sideVariables.length < config.side.min) {
-        const axisName = chartType.includes("3D") ? "Y-axis" : "Side";
-        issues.push(
-          `${axisName} needs ${config.side.min} variable(s), currently has ${sideVariables.length}`
-        );
-      } else if (sideVariables.length > 0) {
-        // Check data types for existing side variables
-        const axisName = chartType.includes("3D") ? "Y-axis" : "Side";
-        const typeIssues = checkVariableTypes(
-          sideVariables,
-          config.side.allowedTypes,
-          axisName
-        );
-        issues.push(...typeIssues);
-      }
+        // Check side variables
+        if (config.side.min > 0 && sideVariables.length < config.side.min) {
+          const axisName = chartType.includes("3D") ? "Y-axis" : "Side";
+          issues.push(
+            `${axisName} needs ${config.side.min} variable(s), currently has ${sideVariables.length}`
+          );
+        } else if (sideVariables.length > 0) {
+          // Check data types for existing side variables
+          const axisName = chartType.includes("3D") ? "Y-axis" : "Side";
+          const typeIssues = checkVariableTypes(
+            sideVariables,
+            config.side.allowedTypes,
+            axisName
+          );
+          issues.push(...typeIssues);
+        }
 
-      // Check bottom variables
-      if (config.bottom.min > 0 && bottomVariables.length < config.bottom.min) {
-        const axisName = chartType.includes("3D") ? "X-axis" : "Bottom";
-        issues.push(
-          `${axisName} needs ${config.bottom.min} variable(s), currently has ${bottomVariables.length}`
-        );
-      } else if (bottomVariables.length > 0) {
-        // Check data types for existing bottom variables
-        const axisName = chartType.includes("3D") ? "X-axis" : "Bottom";
-        const typeIssues = checkVariableTypes(
-          bottomVariables,
-          config.bottom.allowedTypes,
-          axisName
-        );
-        issues.push(...typeIssues);
-      }
+        // Check bottom variables
+        if (
+          config.bottom.min > 0 &&
+          bottomVariables.length < config.bottom.min
+        ) {
+          const axisName = chartType.includes("3D") ? "X-axis" : "Bottom";
+          issues.push(
+            `${axisName} needs ${config.bottom.min} variable(s), currently has ${bottomVariables.length}`
+          );
+        } else if (bottomVariables.length > 0) {
+          // Check data types for existing bottom variables
+          const axisName = chartType.includes("3D") ? "X-axis" : "Bottom";
+          const typeIssues = checkVariableTypes(
+            bottomVariables,
+            config.bottom.allowedTypes,
+            axisName
+          );
+          issues.push(...typeIssues);
+        }
 
-      // Check side2 variables
-      if (
-        config.side2 &&
-        config.side2.min > 0 &&
-        side2Variables.length < config.side2.min
-      ) {
-        issues.push(
-          `Side2 needs ${config.side2.min} variable(s), currently has ${side2Variables.length}`
-        );
-      } else if (side2Variables.length > 0 && config.side2?.allowedTypes) {
-        const typeIssues = checkVariableTypes(
-          side2Variables,
-          config.side2.allowedTypes,
-          "Side2"
-        );
-        issues.push(...typeIssues);
-      }
+        // Check side2 variables
+        if (
+          config.side2 &&
+          config.side2.min > 0 &&
+          side2Variables.length < config.side2.min
+        ) {
+          issues.push(
+            `Side2 needs ${config.side2.min} variable(s), currently has ${side2Variables.length}`
+          );
+        } else if (side2Variables.length > 0 && config.side2?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            side2Variables,
+            config.side2.allowedTypes,
+            "Side2"
+          );
+          issues.push(...typeIssues);
+        }
 
-      // Check bottom2 variables
-      if (
-        config.bottom2 &&
-        config.bottom2.min > 0 &&
-        bottom2Variables.length < config.bottom2.min
-      ) {
-        const axisName = chartType.includes("3D") ? "Z-axis" : "Bottom2";
-        issues.push(
-          `${axisName} needs ${config.bottom2.min} variable(s), currently has ${bottom2Variables.length}`
-        );
-      } else if (bottom2Variables.length > 0 && config.bottom2?.allowedTypes) {
-        const axisName = chartType.includes("3D") ? "Z-axis" : "Bottom2";
-        const typeIssues = checkVariableTypes(
-          bottom2Variables,
-          config.bottom2.allowedTypes,
-          axisName
-        );
-        issues.push(...typeIssues);
-      }
+        // Check bottom2 variables
+        if (
+          config.bottom2 &&
+          config.bottom2.min > 0 &&
+          bottom2Variables.length < config.bottom2.min
+        ) {
+          const axisName = chartType.includes("3D") ? "Z-axis" : "Bottom2";
+          issues.push(
+            `${axisName} needs ${config.bottom2.min} variable(s), currently has ${bottom2Variables.length}`
+          );
+        } else if (
+          bottom2Variables.length > 0 &&
+          config.bottom2?.allowedTypes
+        ) {
+          const axisName = chartType.includes("3D") ? "Z-axis" : "Bottom2";
+          const typeIssues = checkVariableTypes(
+            bottom2Variables,
+            config.bottom2.allowedTypes,
+            axisName
+          );
+          issues.push(...typeIssues);
+        }
 
-      // Check color variables
-      if (
-        config.color &&
-        config.color.min > 0 &&
-        colorVariables.length < config.color.min
-      ) {
-        issues.push(
-          `Color/Group needs ${config.color.min} variable(s), currently has ${colorVariables.length}`
-        );
-      } else if (colorVariables.length > 0 && config.color?.allowedTypes) {
-        const typeIssues = checkVariableTypes(
-          colorVariables,
-          config.color.allowedTypes,
-          "Color/Group"
-        );
-        issues.push(...typeIssues);
-      }
+        // Check color variables
+        if (
+          config.color &&
+          config.color.min > 0 &&
+          colorVariables.length < config.color.min
+        ) {
+          issues.push(
+            `Color/Group needs ${config.color.min} variable(s), currently has ${colorVariables.length}`
+          );
+        } else if (colorVariables.length > 0 && config.color?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            colorVariables,
+            config.color.allowedTypes,
+            "Color/Group"
+          );
+          issues.push(...typeIssues);
+        }
 
-      // Check high/low/close variables
-      if (
-        config.high &&
-        config.high.min > 0 &&
-        highVariables.length < config.high.min
-      ) {
-        issues.push(
-          `High needs ${config.high.min} variable(s), currently has ${highVariables.length}`
-        );
-      } else if (highVariables.length > 0 && config.high?.allowedTypes) {
-        const typeIssues = checkVariableTypes(
-          highVariables,
-          config.high.allowedTypes,
-          "High"
-        );
-        issues.push(...typeIssues);
-      }
+        // Check high/low/close variables
+        if (
+          config.high &&
+          config.high.min > 0 &&
+          highVariables.length < config.high.min
+        ) {
+          issues.push(
+            `High needs ${config.high.min} variable(s), currently has ${highVariables.length}`
+          );
+        } else if (highVariables.length > 0 && config.high?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            highVariables,
+            config.high.allowedTypes,
+            "High"
+          );
+          issues.push(...typeIssues);
+        }
 
-      if (
-        config.low &&
-        config.low.min > 0 &&
-        lowVariables.length < config.low.min
-      ) {
-        issues.push(
-          `Low needs ${config.low.min} variable(s), currently has ${lowVariables.length}`
-        );
-      } else if (lowVariables.length > 0 && config.low?.allowedTypes) {
-        const typeIssues = checkVariableTypes(
-          lowVariables,
-          config.low.allowedTypes,
-          "Low"
-        );
-        issues.push(...typeIssues);
-      }
+        if (
+          config.low &&
+          config.low.min > 0 &&
+          lowVariables.length < config.low.min
+        ) {
+          issues.push(
+            `Low needs ${config.low.min} variable(s), currently has ${lowVariables.length}`
+          );
+        } else if (lowVariables.length > 0 && config.low?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            lowVariables,
+            config.low.allowedTypes,
+            "Low"
+          );
+          issues.push(...typeIssues);
+        }
 
-      if (
-        config.close &&
-        config.close.min > 0 &&
-        closeVariables.length < config.close.min
-      ) {
-        issues.push(
-          `Close needs ${config.close.min} variable(s), currently has ${closeVariables.length}`
-        );
-      } else if (closeVariables.length > 0 && config.close?.allowedTypes) {
-        const typeIssues = checkVariableTypes(
-          closeVariables,
-          config.close.allowedTypes,
-          "Close"
-        );
-        issues.push(...typeIssues);
-      }
+        if (
+          config.close &&
+          config.close.min > 0 &&
+          closeVariables.length < config.close.min
+        ) {
+          issues.push(
+            `Close needs ${config.close.min} variable(s), currently has ${closeVariables.length}`
+          );
+        } else if (closeVariables.length > 0 && config.close?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            closeVariables,
+            config.close.allowedTypes,
+            "Close"
+          );
+          issues.push(...typeIssues);
+        }
 
-      return issues;
-    };
+        return issues;
+      },
+      [
+        sideVariables,
+        bottomVariables,
+        side2Variables,
+        bottom2Variables,
+        colorVariables,
+        highVariables,
+        lowVariables,
+        closeVariables,
+        variables,
+        isVariableTypeAllowed,
+      ]
+    );
 
-    // Helper function untuk mengecek apakah ada variabel yang sudah diisi
-    const hasAnyVariables = () => {
+    const hasAnyVariables = useCallback(() => {
       return (
         sideVariables.length > 0 ||
         bottomVariables.length > 0 ||
-        side2Variables.length > 0 ||
-        bottom2Variables.length > 0 ||
         colorVariables.length > 0 ||
         filterVariables.length > 0 ||
-        highVariables.length > 0 ||
         lowVariables.length > 0 ||
-        closeVariables.length > 0
+        highVariables.length > 0 ||
+        closeVariables.length > 0 ||
+        side2Variables.length > 0 ||
+        bottom2Variables.length > 0
       );
-    };
+    }, [
+      sideVariables,
+      bottomVariables,
+      colorVariables,
+      filterVariables,
+      lowVariables,
+      highVariables,
+      closeVariables,
+      side2Variables,
+      bottom2Variables,
+    ]);
 
     // This is a refactored version of the chart rendering logic
     // Combining two separate switch statements into one unified switch statement
+    // Chart rendering should only happen after data processing is complete
 
     useEffect(() => {
       console.log("🎨 Chart rendering useEffect triggered:", {
         chartType,
         selectedStatistic,
+        processedDataLength: processedResult.data.length,
+        isProcessingData,
         variablesChanged: JSON.stringify({
           side: sideVariables,
           bottom: bottomVariables,
@@ -1661,6 +1826,58 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         }),
       });
 
+      // Check if data needs to be reprocessed for current chart type
+      const currentVariables = JSON.stringify({
+        bottomVariables,
+        sideVariables,
+        colorVariables,
+        lowVariables,
+        highVariables,
+        closeVariables,
+        bottom2Variables,
+        side2Variables,
+      });
+
+      const needsReprocessing =
+        lastProcessedChartType !== chartType ||
+        lastProcessedVariables !== currentVariables;
+
+      // Check if this is a default preview (no variables selected)
+      const hasAnyVariablesSelected =
+        sideVariables.length > 0 ||
+        bottomVariables.length > 0 ||
+        colorVariables.length > 0 ||
+        lowVariables.length > 0 ||
+        highVariables.length > 0 ||
+        closeVariables.length > 0 ||
+        side2Variables.length > 0 ||
+        bottom2Variables.length > 0;
+
+      // Don't render if data is still being processed
+      if (isProcessingData) {
+        console.log("⏳ Waiting for data processing to complete...", {
+          isProcessingData,
+          dataLength: processedResult.data.length,
+        });
+        return;
+      }
+
+      // For default preview (no variables), allow rendering even without processed data
+      if (!hasAnyVariablesSelected) {
+        console.log("🎨 Rendering default preview (no variables selected)");
+      } else if (needsReprocessing) {
+        console.log("⏳ Waiting for data processing to complete...", {
+          dataLength: processedResult.data.length,
+          needsReprocessing,
+          lastChartType: lastProcessedChartType,
+          currentChartType: chartType,
+        });
+        return;
+      }
+      // Note: We don't return here if processedResult.data.length === 0
+      // because we want to show validation errors even without processed data
+
+      // Clean up chart container first
       if (chartContainerRef.current) {
         // Cleanup any existing 3D charts first
         const existingContainer = chartContainerRef.current.firstChild as any;
@@ -1672,36 +1889,109 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         }
 
         chartContainerRef.current.innerHTML = "";
-        chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
         chartContainerRef.current.id = "chart-container"; // Pastikan ada ID
-        let chartNode = null;
-        const svg = d3.select(chartContainerRef.current);
-        svg.selectAll("*").remove();
+      }
 
-        // Check validation status
-        const requiredIssues = checkRequiredVariables(chartType);
-        const hasVariables = hasAnyVariables();
+      // Check validation status for incomplete variables
+      const requiredIssues = checkRequiredVariables(chartType);
+      const hasVariables = hasAnyVariables();
 
-        // Determine chart rendering mode
-        let renderMode: "default" | "incomplete" | "complete";
-        if (!hasVariables) {
-          renderMode = "default"; // No variables set, show default preview
-        } else if (requiredIssues.length > 0) {
-          renderMode = "incomplete"; // Some variables set but incomplete
-        } else {
-          renderMode = "complete"; // All required variables set
-        }
+      // Determine chart rendering mode
+      let renderMode: "default" | "incomplete" | "complete";
+      if (!hasVariables) {
+        renderMode = "default"; // No variables set, show default preview
+      } else if (requiredIssues.length > 0) {
+        renderMode = "incomplete"; // Some variables set but incomplete
+      } else {
+        renderMode = "complete"; // All required variables set
+      }
 
-        console.log(
-          "📊 Chart render mode:",
-          renderMode,
-          "Issues:",
-          requiredIssues
+      console.log(
+        "📊 Chart render mode:",
+        renderMode,
+        "Issues:",
+        requiredIssues,
+        "hasVariables:",
+        hasVariables,
+        "sideVariables:",
+        sideVariables,
+        "bottomVariables:",
+        bottomVariables
+      );
+
+      // Handle incomplete state - show requirements message
+      console.log("🔍 Checking renderMode:", renderMode, "=== 'incomplete'");
+      if (renderMode === "incomplete") {
+        console.log("✅ Showing incomplete state message");
+        const typeIssues = requiredIssues.filter(
+          (issue) => issue.includes("is") && issue.includes("but needs to be")
+        );
+        const otherIssues = requiredIssues.filter(
+          (issue) => !typeIssues.includes(issue)
         );
 
-        // Handle incomplete state - show requirements message
+        let headerText = "Please complete the required variables";
+        let headerIcon = "⚠️";
+
+        if (typeIssues.length > 0) {
+          headerText = "Variable type mismatch detected";
+          headerIcon = "🔄";
+        }
+
+        const warningContainer = document.createElement("div");
+        warningContainer.className =
+          "flex justify-center items-center w-full h-full px-4"; // Padding untuk responsif di layar kecil
+        warningContainer.style.overflow = "visible";
+
+        warningContainer.innerHTML = `
+    <div class="w-full max-w-md bg-none rounded-lg p-4 text-center">
+      <div class="text-5xl mb-3">${headerIcon}</div>
+      <div class="text-base md:text-lg font-semibold text-gray-700 mb-3">
+        ${headerText}
+      </div>
+
+      ${
+        typeIssues.length > 0
+          ? `
+        <div class="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-3 space-y-1">
+          <div class="font-semibold">Type Mismatches:</div>
+          ${typeIssues
+            .map(
+              (issue: string) => `<div>• ${replaceDropAreaLabel(issue)}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="text-xs text-red-500 mb-3 text-left">
+          <strong>Solutions:</strong><br/>
+          • Remove incompatible variables and add compatible ones<br/>
+          • Switch to a chart type that supports these data types<br/>
+          • Check your data types in the variable list
+        </div>
+      `
+          : ""
+      }
+
+      ${
+        otherIssues.length > 0
+          ? `
+        <div class="text-sm text-gray-600 text-left space-y-2">
+          ${otherIssues
+            .map(
+              (issue: string) => `<div>• ${replaceDropAreaLabel(issue)}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="text-xs text-gray-500 mt-3 text-left">
+          Drag variables to the required positions to see the chart preview
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
         if (renderMode === "incomplete") {
-          // Separate type issues from other issues
+          console.log("✅ Showing incomplete state message");
+
           const typeIssues = requiredIssues.filter(
             (issue) => issue.includes("is") && issue.includes("but needs to be")
           );
@@ -1719,57 +2009,78 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           const warningContainer = document.createElement("div");
           warningContainer.className =
-            "flex justify-center items-center w-full h-full";
-          warningContainer.style.overflow = "visible";
+            "flex justify-center items-center w-full h-full overflow-auto px-4";
+
           warningContainer.innerHTML = `
-            <div class="bg-none rounded-lg p-6 text-center" style="max-width: 400px;">
-              <div class="text-6xl mb-4">${headerIcon}</div>
-              <div class="text-lg font-semibold text-gray-700 mb-4">
-                ${headerText}
-              </div>
-              ${
-                typeIssues.length > 0
-                  ? `
-                <div class="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-4 space-y-1">
-                  <div class="font-semibold">Type Mismatches:</div>
-                  ${typeIssues
-                    .map(
-                      (issue: string) =>
-                        `<div>• ${replaceDropAreaLabel(issue)}</div>`
-                    )
-                    .join("")}
-                </div>
-                <div class="text-xs text-red-500 mb-4">
-                  <strong>Solutions:</strong><br/>
-                  • Remove incompatible variables and add compatible ones<br/>
-                  • Switch to a chart type that supports these data types<br/>
-                  • Check your data types in the variable list
-                </div>
-              `
-                  : ""
-              }
-              ${
-                otherIssues.length > 0
-                  ? `
-                <div class="text-sm text-gray-600 space-y-2">
-                  ${otherIssues
-                    .map(
-                      (issue: string) =>
-                        `<div>• ${replaceDropAreaLabel(issue)}</div>`
-                    )
-                    .join("")}
-                </div>
-                <div class="text-xs text-gray-500 mt-4">
-                  Drag variables to the required positions to see the chart preview
-                </div>
-              `
-                  : ""
-              }
-            </div>
-          `;
-          chartContainerRef.current.appendChild(warningContainer);
+    <div class="w-full max-w-md bg-none rounded-lg p-4 text-center overflow-auto max-h-full">
+      <div class="text-5xl mb-3">${headerIcon}</div>
+      <div class="text-base md:text-lg font-semibold text-gray-700 mb-3">
+        ${headerText}
+      </div>
+
+      ${
+        typeIssues.length > 0
+          ? `
+        <div class="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-3 space-y-1 text-left">
+          <div class="font-semibold">Type Mismatches:</div>
+          ${typeIssues
+            .map(
+              (issue: string) => `<div>• ${replaceDropAreaLabel(issue)}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="text-xs text-red-500 mb-3 text-left">
+          <strong>Solutions:</strong><br/>
+          • Remove incompatible variables and add compatible ones<br/>
+          • Switch to a chart type that supports these data types<br/>
+          • Check your data types in the variable list
+        </div>
+      `
+          : ""
+      }
+
+      ${
+        otherIssues.length > 0
+          ? `
+        <div class="text-sm text-gray-600 text-left space-y-2">
+          ${otherIssues
+            .map(
+              (issue: string) => `<div>• ${replaceDropAreaLabel(issue)}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="text-xs text-gray-500 mt-3 text-left">
+          Drag variables to the required positions to see the chart preview
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+
+          if (chartContainerRef.current) {
+            chartContainerRef.current.innerHTML = ""; // optional: reset warning jika render ulang
+            chartContainerRef.current.appendChild(warningContainer);
+          }
+
           return;
         }
+
+        if (chartContainerRef.current) {
+          // Clear previous warning if needed
+          chartContainerRef.current.innerHTML = "";
+          chartContainerRef.current.appendChild(warningContainer);
+        }
+        return;
+      }
+
+      console.log("🎨 Starting chart rendering, renderMode:", renderMode);
+      setIsRenderingChart(true);
+
+      if (chartContainerRef.current) {
+        let chartNode = null;
+        const svg = d3.select(chartContainerRef.current);
+        svg.selectAll("*").remove();
 
         // UNIFIED SWITCH STATEMENT - All chart types in one place
         switch (chartType) {
@@ -2344,7 +2655,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Normal Q-Q Plot": {
+          case "Q-Q Plot": {
             const isDefault = renderMode === "default";
             const config = createNormalQQPlotConfig(chartType, isDefault);
 
@@ -3133,24 +3444,32 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           console.log("chartContainerRef.current:", chartContainerRef.current);
           console.log("chart:", chartNode);
         }
+
+        // Mark chart rendering as complete
+        setIsRenderingChart(false);
       }
     }, [
-      // Dependencies array remains the same
+      // Optimized dependencies - only depend on processedResult and chartType
+      // This ensures chart rendering only happens after data processing is complete
+      processedResult,
       chartType,
-      sideVariables,
-      side2Variables,
+      isProcessingData,
+      isRenderingChart,
+      lastProcessedChartType,
+      lastProcessedVariables,
+      // Variables that affect data processing
       bottomVariables,
-      bottom2Variables,
+      sideVariables,
       colorVariables,
-      filterVariables,
       lowVariables,
       highVariables,
       closeVariables,
-      data,
+      bottom2Variables,
+      side2Variables,
+      // Chart configuration props
       useaxis,
       width,
       height,
-      variables,
       chartTitle,
       chartSubtitle,
       chartTitleFontSize,
@@ -3177,136 +3496,31 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       zAxisMajorIncrement,
       zAxisOrigin,
       chartColors,
-      processedResult,
       selectedStatistic,
       showNormalCurve,
+      // Functions that need to be stable
       createChartConfig,
       createClusteredErrorBarChartConfig,
       createDualAxisChartConfig,
       createErrorBarChartConfig,
       createStackedChartConfig,
+      createNormalQQPlotConfig,
+      createPPPlotConfig,
+      checkRequiredVariables,
+      hasAnyVariables,
     ]);
 
-    // Process data when variables or options change
-    useEffect(() => {
-      // Only process if we have data and variables
-      if (data.length === 0 || variables.length === 0) {
-        setProcessedResult({ data: [], axisInfo: {} });
-        return;
-      }
+    // // Add a function to get the generated JSON (for ChartBuilderModal)
+    // const getGeneratedChartJSON = useCallback(() => {
+    //   return generatedChartJSON;
+    // }, [generatedChartJSON]);
 
-      function normalizeRawData(
-        rawData: any[][],
-        variables: { name: string; type?: string }[]
-      ): any[][] {
-        return rawData.map((row, rowIdx) => {
-          if (row.length !== variables.length) {
-            console.warn(
-              `[normalizeRawData] ⚠️ Jumlah kolom tidak sesuai pada baris ${rowIdx}:`,
-              `data columns = ${row.length}, variables = ${variables.length}`
-            );
-          }
-
-          return row.map((cell, colIdx) => {
-            const varMeta = variables[colIdx];
-            const varName = varMeta?.name ?? `kolom${colIdx}`;
-            const type = varMeta?.type ?? "string";
-
-            let casted: any = cell;
-
-            if (type === "numeric") {
-              const num = parseFloat(cell);
-              casted = isNaN(num) ? null : num;
-            }
-
-            console.log(
-              `[normalizeRawData] row ${rowIdx}, col ${colIdx} (${varName}) →`,
-              `type: ${type}, value:`,
-              cell,
-              `→ casted:`,
-              casted
-            );
-
-            return casted;
-          });
-        });
-      }
-
-      try {
-        console.log("🔄 Processing data with options:", {
-          chartType,
-          variables: variables.length,
-          errorBarOptions,
-        });
-
-        const isErrorBarChart =
-          chartType === "Error Bar Chart" ||
-          chartType === "Clustered Error Bar Chart";
-
-        const processingOptions = {
-          aggregation: isErrorBarChart
-            ? ("average" as const)
-            : ("none" as const),
-          filterEmpty: true,
-          sortBy: undefined,
-          sortOrder: "asc" as const,
-          limit: undefined,
-          ...(isErrorBarChart && {
-            errorBar: errorBarOptions,
-          }),
-        };
-
-        const chartVariables = {
-          x: bottomVariables,
-          y: chartType.includes("3D") ? bottom2Variables : sideVariables,
-          groupBy: colorVariables,
-          low: lowVariables,
-          high: highVariables,
-          close: closeVariables,
-          z: chartType.includes("3D") ? sideVariables : bottom2Variables,
-          y2: side2Variables,
-        };
-
-        const result = DataProcessingService.processDataForChart({
-          chartType,
-          rawData: normalizeRawData(data, variables),
-          variables,
-          chartVariables,
-          processingOptions,
-        });
-
-        console.log("✅ Data processed:", result);
-        setProcessedResult(result);
-      } catch (error) {
-        console.error("❌ Error processing data:", error);
-        setProcessedResult({ data: [], axisInfo: {} });
-      }
-    }, [
-      data,
-      variables,
-      chartType,
-      bottomVariables,
-      sideVariables,
-      colorVariables,
-      lowVariables,
-      highVariables,
-      closeVariables,
-      bottom2Variables,
-      side2Variables,
-      errorBarOptions,
-    ]);
-
-    // Add a function to get the generated JSON (for ChartBuilderModal)
-    const getGeneratedChartJSON = useCallback(() => {
-      return generatedChartJSON;
-    }, [generatedChartJSON]);
-
-    // Expose the function to parent component
-    useEffect(() => {
-      if (typeof window !== "undefined") {
-        (window as any).getChartPreviewJSON = getGeneratedChartJSON;
-      }
-    }, [getGeneratedChartJSON]);
+    // // Expose the function to parent component
+    // useEffect(() => {
+    //   if (typeof window !== "undefined") {
+    //     (window as any).getChartPreviewJSON = getGeneratedChartJSON;
+    //   }
+    // }, [getGeneratedChartJSON]);
 
     // Expose methods to parent component
     useImperativeHandle(ref, () => ({
@@ -3324,11 +3538,92 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
     };
 
     // Add useEffect to generate chart JSON when processed data changes
+    // This should run after chart rendering is complete
     useEffect(() => {
-      if (processedResult.data.length > 0) {
-        generateChartJSON();
+      // Check if data needs to be reprocessed
+      const currentVariables = JSON.stringify({
+        bottomVariables,
+        sideVariables,
+        colorVariables,
+        lowVariables,
+        highVariables,
+        closeVariables,
+        bottom2Variables,
+        side2Variables,
+      });
+
+      const needsReprocessing =
+        lastProcessedChartType !== chartType ||
+        lastProcessedVariables !== currentVariables;
+
+      // Check if this is a default preview (no variables selected)
+      const hasAnyVariablesSelected =
+        sideVariables.length > 0 ||
+        bottomVariables.length > 0 ||
+        colorVariables.length > 0 ||
+        lowVariables.length > 0 ||
+        highVariables.length > 0 ||
+        closeVariables.length > 0 ||
+        side2Variables.length > 0 ||
+        bottom2Variables.length > 0;
+
+      // For default preview, don't generate JSON
+      if (!hasAnyVariablesSelected) {
+        console.log("🎨 Default preview - skipping JSON generation");
+        return;
       }
-    }, [processedResult, generateChartJSON]);
+
+      if (
+        processedResult.data.length > 0 &&
+        !isRenderingChart &&
+        !needsReprocessing &&
+        hasAnyVariablesSelected
+      ) {
+        // Add a small delay to ensure chart rendering is complete
+        const timer = setTimeout(() => {
+          generateChartJSON();
+        }, 100);
+
+        return () => clearTimeout(timer);
+      }
+    }, [
+      // Only depend on essential state changes
+      processedResult,
+      isRenderingChart,
+      chartType,
+      lastProcessedChartType,
+      lastProcessedVariables,
+      // Chart customization props that affect JSON
+      chartTitle,
+      chartSubtitle,
+      chartTitleFontSize,
+      chartSubtitleFontSize,
+      xAxisLabel,
+      yAxisLabel,
+      yLeftAxisLabel,
+      yRightAxisLabel,
+      zAxisLabel,
+      xAxisMin,
+      xAxisMax,
+      xAxisMajorIncrement,
+      xAxisOrigin,
+      yAxisMin,
+      yAxisMax,
+      yAxisMajorIncrement,
+      yAxisOrigin,
+      yRightAxisMin,
+      yRightAxisMax,
+      yRightAxisMajorIncrement,
+      yRightAxisOrigin,
+      zAxisMin,
+      zAxisMax,
+      zAxisMajorIncrement,
+      zAxisOrigin,
+      selectedStatistic,
+      chartColors,
+      useaxis,
+      showNormalCurve,
+    ]);
 
     // Mapping nama variabel drop area ke label user-friendly
     const dropAreaLabelMap: Record<string, string> = {
@@ -3402,6 +3697,24 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             <span role="img" aria-label="component" className="mr-2">
               🧩
             </span>
+            {isProcessingData && (
+              <span className="ml-2 text-blue-500 animate-pulse">
+                🔄 Processing...
+              </span>
+            )}
+            {/* {isRenderingChart && !isProcessingData && (
+              <span className="ml-2 text-green-500 animate-pulse">
+                🎨 Rendering...
+              </span>
+            )} */}
+            {!isProcessingData &&
+              !isRenderingChart &&
+              lastProcessedChartType !== null &&
+              lastProcessedChartType !== chartType && (
+                <span className="ml-2 text-orange-500 animate-pulse">
+                  ⚡ Reprocessing needed...
+                </span>
+              )}
           </span>
         </div>
         {/* Wrapper dengan padding untuk drop areas */}
@@ -3431,7 +3744,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
                       {/* Perkecil font dan padding */}
                       <span className="text-xs font-normal">
-                        "No variables selected"
+                        &quot;No variables selected&quot;
                       </span>
                     </div>
                   ) : (
@@ -3584,7 +3897,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                   {bottomVariables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
                       <span className="text-xs font-normal">
-                        "No variables selected"
+                        &quot;No variables selected&quot;
                       </span>
                     </div>
                   ) : (
@@ -3659,7 +3972,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                   {bottom2Variables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
                       <span className="text-xs font-normal">
-                        "No variables selected"
+                        &quot;No variables selected&quot;
                       </span>
                     </div>
                   ) : (
