@@ -3,7 +3,7 @@ use serde::Serialize;
 
 use crate::models::result::{
     ClusterMembership,
-    ClusteringResult,
+    KMeansResult,
     DistancesBetweenCenters,
     ClusterPlot,
 };
@@ -12,7 +12,7 @@ pub fn string_to_js_error(error: String) -> JsValue {
     JsValue::from_str(&error)
 }
 
-pub fn format_result(result: &Option<ClusteringResult>) -> Result<JsValue, JsValue> {
+pub fn format_result(result: &Option<KMeansResult>) -> Result<JsValue, JsValue> {
     match result {
         Some(result) => {
             let formatted = FormatResult::from_clustering_result(result);
@@ -107,7 +107,7 @@ struct ClusterCount {
 }
 
 impl FormatResult {
-    fn from_clustering_result(result: &ClusteringResult) -> Self {
+    fn from_clustering_result(result: &KMeansResult) -> Self {
         let initial_centers = result.initial_centers.as_ref().map(|centers| {
             let centers_vec = centers.centers
                 .iter()

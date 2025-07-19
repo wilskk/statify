@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-use crate::models::{ config::ClusterConfig, data::AnalysisData, result::ClusteringResult };
+use crate::models::{ config::KMeansConfig, data::AnalysisData, result::KMeansResult };
 use crate::utils::converter::format_result;
 use crate::utils::{ log::FunctionLogger, converter::string_to_js_error, error::ErrorCollector };
 
@@ -8,10 +8,10 @@ use crate::stats::core;
 
 pub fn run_analysis(
     data: &AnalysisData,
-    config: &ClusterConfig,
+    config: &KMeansConfig,
     error_collector: &mut ErrorCollector,
     logger: &mut FunctionLogger
-) -> Result<Option<ClusteringResult>, JsValue> {
+) -> Result<Option<KMeansResult>, JsValue> {
     web_sys::console::log_1(&"Memulai analisis K-Means Cluster...".into());
     web_sys::console::log_1(&format!("Konfigurasi: {:?}", config).into());
     web_sys::console::log_1(&format!("Data: {:?}", data).into());
@@ -151,7 +151,7 @@ pub fn run_analysis(
     }
 
     // Menggabungkan semua hasil analisis ke dalam satu struktur data.
-    let result = ClusteringResult {
+    let result = KMeansResult {
         initial_centers,
         iteration_history,
         cluster_membership,
@@ -165,10 +165,10 @@ pub fn run_analysis(
     Ok(Some(result))
 }
 
-/// Mengambil hasil analisis mentah dalam format `ClusteringResult`.
+/// Mengambil hasil analisis mentah dalam format `KMeansResult`.
 /// Fungsi ini mengembalikan data hasil analisis sebelum diformat, cocok untuk
 /// pemrosesan lebih lanjut di sisi JavaScript.
-pub fn get_results(result: &Option<ClusteringResult>) -> Result<JsValue, JsValue> {
+pub fn get_results(result: &Option<KMeansResult>) -> Result<JsValue, JsValue> {
     match result {
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
         None => Err(string_to_js_error("No analysis results available".to_string())),
@@ -176,9 +176,9 @@ pub fn get_results(result: &Option<ClusteringResult>) -> Result<JsValue, JsValue
 }
 
 /// Mengambil hasil analisis yang sudah diformat untuk ditampilkan.
-/// Fungsi ini memanggil `format_result` untuk mengubah `ClusteringResult` menjadi
+/// Fungsi ini memanggil `format_result` untuk mengubah `KMeansResult` menjadi
 /// format yang lebih mudah dibaca atau ditampilkan di UI.
-pub fn get_formatted_results(result: &Option<ClusteringResult>) -> Result<JsValue, JsValue> {
+pub fn get_formatted_results(result: &Option<KMeansResult>) -> Result<JsValue, JsValue> {
     format_result(result)
 }
 

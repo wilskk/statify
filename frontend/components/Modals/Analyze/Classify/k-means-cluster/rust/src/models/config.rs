@@ -1,7 +1,7 @@
 use serde::{ Deserialize, Serialize };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ClusterConfig {
+pub struct KMeansConfig {
     pub main: MainConfig,
     pub iterate: IterateConfig,
     pub save: SaveConfig,
