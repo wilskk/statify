@@ -10,12 +10,8 @@ use crate::models::result::{
     LackOfFitTests,
     LeveneTest,
     ParameterEstimates,
-    PlotData,
-    PostHoc,
-    RobustParameterEstimates,
     SavedVariables,
     SourceEntry,
-    SpreadVsLevelPoint,
     UnivariateResult,
     DescriptiveStatGroup,
 };
@@ -46,11 +42,7 @@ struct FormatResult {
     contrast_coefficients: Option<ContrastCoefficients>,
     hypothesis_l_matrices: Option<HypothesisLMatrices>,
     lack_of_fit_tests: Option<LackOfFitTests>,
-    spread_vs_level_plots: Option<FormattedSpreadVsLevelPlots>,
-    posthoc_tests: Option<PostHoc>,
     emmeans: Option<EMMeansResult>,
-    robust_parameter_estimates: Option<RobustParameterEstimates>,
-    plots: Option<Vec<FormattedPlot>>,
     saved_variables: Option<SavedVariables>,
 }
 
@@ -82,19 +74,6 @@ struct FormattedTestsBetweenSubjectsEffects {
     sources: Vec<SourceEntry>,
     note: Option<String>,
     interpretation: Option<String>,
-}
-
-#[derive(Serialize)]
-struct FormattedSpreadVsLevelPlots {
-    points: Vec<SpreadVsLevelPoint>,
-    note: Option<String>,
-    interpretation: Option<String>,
-}
-
-#[derive(Serialize)]
-struct FormattedPlot {
-    name: String,
-    plot_data: PlotData,
 }
 
 impl FormatResult {
@@ -146,26 +125,6 @@ impl FormatResult {
                 }
             });
 
-        let spread_vs_level_plots = result.spread_vs_level_plots.as_ref().map(|plots| {
-            FormattedSpreadVsLevelPlots {
-                points: plots.points.clone(),
-                note: plots.note.clone(),
-                interpretation: plots.interpretation.clone(),
-            }
-        });
-
-        let plots = result.plots.as_ref().map(|plots| {
-            plots
-                .iter()
-                .map(|(name, plot_data)| {
-                    FormattedPlot {
-                        name: name.clone(),
-                        plot_data: plot_data.clone(),
-                    }
-                })
-                .collect()
-        });
-
         FormatResult {
             between_subjects_factors,
             descriptive_statistics,
@@ -177,11 +136,7 @@ impl FormatResult {
             contrast_coefficients: result.contrast_coefficients.clone(),
             hypothesis_l_matrices: result.hypothesis_l_matrices.clone(),
             lack_of_fit_tests: result.lack_of_fit_tests.clone(),
-            spread_vs_level_plots,
-            posthoc_tests: result.posthoc_tests.clone(),
             emmeans: result.emmeans.clone(),
-            robust_parameter_estimates: result.robust_parameter_estimates.clone(),
-            plots,
             saved_variables: result.saved_variables.clone(),
         }
     }

@@ -27,17 +27,6 @@ pub fn calculate_tests_between_subjects_effects(
         format!("Failed to create design matrix for Between Subjects Effects: {}", e)
     })?;
 
-    // Penanganan kasus khusus: tidak ada data atau parameter
-    if design_info.n_samples == 0 {
-        return create_empty_results(&design_info, config);
-    }
-    if
-        design_info.p_parameters == 0 &&
-        config.model.sum_of_square_method != SumOfSquaresMethod::TypeI
-    {
-        return create_empty_results(&design_info, config);
-    }
-
     // Membuat matriks cross-product (Z'WZ) untuk perhitungan statistik
     let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e| {
         format!("Failed to create cross-product matrix: {}", e)
@@ -67,8 +56,6 @@ pub fn calculate_tests_between_subjects_effects(
 
     // Vec untuk menyimpan hasil tes setiap efek
     let mut final_sources: Vec<SourceEntry> = Vec::new();
-
-    // ===== PERHITUNGAN STATISTIK DASAR =====
 
     // Menghitung rata-rata variabel dependen (Y)
     let y_mean = design_info.y.mean();
@@ -101,8 +88,6 @@ pub fn calculate_tests_between_subjects_effects(
         df_error,
         df_model_overall
     );
-
-    // ===== PERHITUNGAN EFEK INDIVIDUAL =====
 
     // Daftar semua term dalam model desain
     let all_model_terms_in_design = &design_info.term_names;
@@ -176,8 +161,6 @@ pub fn calculate_tests_between_subjects_effects(
         final_sources.push(SourceEntry { name: term_name.clone(), effect: effect_entry });
     }
 
-    // ===== MENAMBAHKAN RINGKASAN MODEL =====
-
     // Menambahkan entry untuk model keseluruhan, error, dan total
     add_model_summary_entries(
         &mut final_sources,
@@ -192,8 +175,7 @@ pub fn calculate_tests_between_subjects_effects(
         config
     );
 
-    // ===== MENYIAPKAN CATATAN DAN METADATA =====
-
+    // Menyiapkan catatan dan metadata
     let mut notes = Vec::new();
     if let Some(dep_var) = &config.main.dep_var {
         notes.push(format!("Dependent Variable: {}", dep_var));
@@ -209,50 +191,6 @@ pub fn calculate_tests_between_subjects_effects(
         interpretation: Some(
             "This table tests the hypothesis that each effect (e.g., factor or interaction) in the model is null. A significant F-value (Sig. < .05) suggests that the effect significantly contributes to explaining the variance in the dependent variable. The Partial Eta Squared indicates the proportion of variance uniquely explained by that effect.".to_string()
         ),
-    })
-}
-
-/// Membuat hasil kosong ketika tidak ada data atau parameter
-fn create_empty_results(
-    design_info: &DesignMatrixInfo,
-    config: &UnivariateConfig
-) -> Result<TestsBetweenSubjectsEffects, String> {
-    // Menghitung rata-rata dan total sum of squares untuk kasus kosong
-    let y_mean = design_info.y.mean();
-    let ss_total_corrected = if design_info.n_samples > 0 {
-        design_info.y
-            .iter()
-            .map(|val| (val - y_mean).powi(2))
-            .sum::<f64>()
-    } else {
-        0.0
-    };
-
-    // Membuat entry untuk "Corrected Total" dengan nilai default
-    let mut sources = Vec::new();
-    sources.push(SourceEntry {
-        name: "Corrected Total".to_string(),
-        effect: TestEffectEntry {
-            sum_of_squares: ss_total_corrected,
-            df: design_info.n_samples.saturating_sub(1),
-            mean_square: f64::NAN,
-            f_value: f64::NAN,
-            significance: f64::NAN,
-            partial_eta_squared: f64::NAN,
-            noncent_parameter: f64::NAN,
-            observed_power: f64::NAN,
-        },
-    });
-
-    Ok(TestsBetweenSubjectsEffects {
-        sources,
-        note: Some(
-            format!(
-                "No data or parameters to analyze for this model. Alpha = {}.",
-                config.options.sig_level
-            )
-        ),
-        interpretation: None,
     })
 }
 
@@ -351,7 +289,7 @@ fn add_model_summary_entries(
     let has_intercept = config.model.intercept;
 
     if has_intercept {
-        // ===== MODEL DENGAN INTERCEPT =====
+        // Model dengan Intercept
         // Entry: Corrected Model, Error, Corrected Total, Total
 
         if df_model_overall > 0 {
@@ -467,7 +405,7 @@ fn add_model_summary_entries(
             },
         });
     } else {
-        // ===== MODEL TANPA INTERCEPT =====
+        // Model Tanpa Intercept
         // Entry: Model, Error, Total (tanpa corrected model/total)
 
         // Total Sum of Squares tanpa koreksi

@@ -22,7 +22,7 @@ pub fn basic_processing_summary(
     // Inisialisasi HashMap untuk menampung hasil ringkasan.
     let mut result = HashMap::new();
 
-    // --- Proses Faktor Tetap (Fixed Factors) ---
+    // Proses Faktor Tetap (Fixed Factors)
     if let Some(fix_factors) = &config.main.fix_factor {
         // Iterasi melalui setiap nama faktor tetap yang telah ditentukan dalam konfigurasi.
         for factor_name in fix_factors {
@@ -66,7 +66,7 @@ pub fn basic_processing_summary(
         }
     }
 
-    // --- Proses Faktor Acak (Random Factors) ---
+    // Proses Faktor Acak (Random Factors)
     // Proses ini hanya berjalan jika faktor acak didefinisikan dalam konfigurasi.
     if let Some(random_factors) = &config.main.rand_factor {
         if let Some(random_factor_data) = &data.random_factor_data {
@@ -107,44 +107,6 @@ pub fn basic_processing_summary(
             }
         }
     }
-
-    // // --- Proses Kovariat (Covariates) ---
-    // // Blok kode ini saat ini tidak aktif (dikomentari).
-    // // Jika diaktifkan, akan memproses kovariat dengan cara yang mirip dengan faktor.
-    // if let Some(covariates) = &config.main.covar {
-    //     if let Some(covariate_data) = &data.covariate_data {
-    //         for covariate_name in covariates {
-    //             let levels = get_factor_levels(data, covariate_name)?;
-    //             let mut level_counts = HashMap::new();
-
-    //             for level in levels {
-    //                 level_counts.insert(level, 0);
-    //             }
-
-    //             if let Some(covariate_defs_groups) = &data.covariate_data_defs {
-    //                 for (group_idx, def_group) in covariate_defs_groups.iter().enumerate() {
-    //                     if def_group.iter().any(|def| &def.name == covariate_name) {
-    //                         if let Some(data_records) = covariate_data.get(group_idx) {
-    //                             for record in data_records {
-    //                                 if let Some(value) = record.values.get(covariate_name) {
-    //                                     let level = data_value_to_string(value);
-    //                                     *level_counts.entry(level).or_insert(0) += 1;
-    //                                 }
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-
-    //             let sorted_counts = level_counts
-    //                 .into_iter()
-    //                 .collect::<BTreeMap<String, usize>>();
-    //             result.insert(format!("{} (Covariate)", covariate_name), BetweenSubjectFactors {
-    //                 factors: sorted_counts,
-    //             });
-    //         }
-    //     }
-    // }
 
     // Kembalikan hasil ringkasan yang telah diproses.
     Ok(result)

@@ -29,7 +29,7 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
     let factor_name = parts[0].trim().to_string();
     let mut method = ContrastMethod::None;
     let mut actual_ref_setting = "N/A".to_string(); // Default to N/A
-    let mut use_first_as_ref = false; // Effective default for Dev/Simple is Last
+    let mut use_first_as_ref = false;
 
     if parts.len() > 1 {
         let settings_part = parts[1].trim_end_matches(')');
@@ -61,7 +61,7 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
         if method == ContrastMethod::Deviation || method == ContrastMethod::Simple {
             // Default ke "Last" untuk metode ini
             actual_ref_setting = "Last".to_string();
-            use_first_as_ref = false; // Corresponds to "Last"
+            use_first_as_ref = false;
 
             if settings_details.len() > 1 {
                 let ref_from_spec = settings_details[1].trim().to_string();
@@ -87,13 +87,11 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
                     format!(
                         "Warning: 'Ref: {}' setting is ignored for contrast method '{}' on factor '{}'.",
                         ref_from_spec_ignored,
-                        method_str, // Use original method_str in warning
+                        method_str,
                         factor_name
                     )
                 );
             }
-            // actual_ref_setting remains "N/A"
-            // use_first_as_ref remains false (not applicable)
         }
     }
     // Jika parts.len() <= 1 (tidak ada kurung), method tetap None,
@@ -122,10 +120,9 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
 fn generate_l_matrix_and_descriptions(
     parsed_spec: &ParsedFactorSpec,
     levels_of_contrasted_factor: &Vec<String>,
-    all_model_parameters_names: &Vec<String>, // Renamed for clarity
-    p_total_model_params: usize, // Renamed for clarity
-    all_factors_in_model_with_their_levels: &HashMap<String, Vec<String>> // New parameter
-    // data: &AnalysisData, // To call get_factor_levels for other factors, now passed in all_factors_in_model_with_their_levels
+    all_model_parameters_names: &Vec<String>,
+    p_total_model_params: usize,
+    all_factors_in_model_with_their_levels: &HashMap<String, Vec<String>>
 ) -> Result<(Vec<Vec<f64>>, Vec<String>, Vec<String>), String> {
     // l_matrix, cce_row_descriptions, l_labels
 
@@ -157,8 +154,6 @@ fn generate_l_matrix_and_descriptions(
     let mut cce_row_descriptions: Vec<String> = Vec::with_capacity(num_contrasts);
     let mut l_labels: Vec<String> = Vec::with_capacity(num_contrasts);
 
-    // ===== LOOP UNTUK SETIAP KONTRAS =====
-
     // Loop untuk setiap kontras yang didefinisikan oleh metode (e.g., Helmert memiliki k-1 kontras/baris)
     for i_contrast_idx in 0..num_contrasts {
         // Untuk setiap parameter model (kolom dalam matriks L)
@@ -179,17 +174,11 @@ fn generate_l_matrix_and_descriptions(
                 .iter()
                 .position(|r| r == level_of_contrasted_factor_in_this_param);
 
-            if level_idx_in_factor_levels.is_none() {
-                // Seharusnya tidak terjadi jika data konsisten
-                l_matrix[i_contrast_idx][j_param_col_idx] = 0.0;
-                continue;
-            }
             let current_level_data_idx = level_idx_in_factor_levels.unwrap();
 
             let mut base_coeff = 0.0;
 
-            // ===== MENENTUKAN KOEFISIEN KONTRAS BERDASARKAN METODE =====
-
+            // Menentukan koefisien kontras berdasarkan metode
             match parsed_spec.method {
                 ContrastMethod::Deviation => {
                     // Deviation: membandingkan level tertentu dengan grand mean
@@ -277,9 +266,8 @@ fn generate_l_matrix_and_descriptions(
                 ContrastMethod::Polynomial => {
                     // Hanya Linear (degree 1), i_contrast_idx akan 0
                     let poly_coeffs = generate_polynomial_contrast(
-                        level_count_of_contrasted_factor,
-                        1
-                    ); // Degree 1
+                        level_count_of_contrasted_factor
+                    );
                     if current_level_data_idx < poly_coeffs.len() {
                         base_coeff = poly_coeffs[current_level_data_idx];
                     }
@@ -288,8 +276,6 @@ fn generate_l_matrix_and_descriptions(
                     base_coeff = 0.0;
                 }
             }
-
-            // ===== LOGIKA AVERAGING UNTUK FAKTOR LAIN =====
 
             // Averaging logic untuk faktor lain dalam parameter
             let mut final_coeff = base_coeff;
@@ -314,8 +300,6 @@ fn generate_l_matrix_and_descriptions(
             }
             l_matrix[i_contrast_idx][j_param_col_idx] = final_coeff;
         }
-
-        // ===== GENERASI DESKRIPSI UNTUK BARIS KONTRAS INI =====
 
         // Generate description untuk baris kontras ini (setelah semua parameter diproses untuk baris ini)
         // Deskripsi ini untuk baris K-matrix dalam ContrastResult.parameter
@@ -547,9 +531,9 @@ fn create_contrast_result(
 // 4. Create ContrastTestResult
 fn create_contrast_test_result(
     factor_spec_str: &str,
-    l_matrix_for_this_factor: &Vec<Vec<f64>>, // num_contrasts_for_factor x p_model_params
-    beta_hat: &DVector<f64>, // p_model_params x 1
-    g_inv: &DMatrix<f64>, // p_model_params x p_model_params
+    l_matrix_for_this_factor: &Vec<Vec<f64>>,
+    beta_hat: &DVector<f64>,
+    g_inv: &DMatrix<f64>,
     mse: f64,
     df_error: f64,
     sig_level: f64,
@@ -1072,16 +1056,11 @@ pub fn calculate_contrast_coefficients(
 
 /// Generate polynomial contrasts of specified degree for a given number of levels.
 /// Returns a vector of coefficients, one for each level of the factor.
-pub fn generate_polynomial_contrast(level_count: usize, degree: usize) -> Vec<f64> {
+pub fn generate_polynomial_contrast(level_count: usize) -> Vec<f64> {
     if level_count == 0 {
         return vec![];
     }
     let mut contrasts = vec![0.0; level_count];
-
-    // For this project, Polynomial is always Linear (degree 1)
-    if degree != 1 {
-        // Only Linear (degree 1) is supported
-    }
 
     if level_count < 2 {
         // Linear contrast needs at least 2 levels
