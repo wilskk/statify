@@ -1590,7 +1590,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           <Button onClick={handleAnalyze} disabled={isLoading}>
             {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : 'OK'}
           </Button>
-          <Button variant="outline" disabled={isLoading}>Paste</Button>
           <Button variant="outline" onClick={handleReset} disabled={isLoading}>Reset</Button>
           <Button variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel

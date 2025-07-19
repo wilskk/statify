@@ -10,8 +10,6 @@ interface ModelsTabProps {
     setIncludeConstant: (value: boolean) => void;
     plotModels: boolean;
     setPlotModels: (value: boolean) => void;
-    displayANOVA: boolean;
-    setDisplayANOVA: (value: boolean) => void;
     upperBound: string;
     setUpperBound: (value: string) => void;
     isProcessing: boolean;
@@ -24,8 +22,6 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                                                  setIncludeConstant,
                                                  plotModels,
                                                  setPlotModels,
-                                                 displayANOVA,
-                                                 setDisplayANOVA,
                                                  upperBound,
                                                  setUpperBound,
                                                  isProcessing
@@ -107,17 +103,6 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                                 className="mr-2"
                             />
                             <Label htmlFor="plotModels" className="text-sm font-normal cursor-pointer">Plot models</Label>
-                        </div>
-
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="displayANOVA"
-                                checked={displayANOVA}
-                                onCheckedChange={(checked) => setDisplayANOVA(!!checked)}
-                                disabled={isProcessing}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="displayANOVA" className="text-sm font-normal cursor-pointer">Display ANOVA table</Label>
                         </div>
                     </div>
                 </div>

@@ -428,12 +428,6 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
           </Button>
           <Button
             variant="outline"
-            disabled={isProcessing}
-          >
-            Paste
-          </Button>
-          <Button
-            variant="outline"
             onClick={handleReset}
             disabled={isProcessing}
           >
