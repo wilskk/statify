@@ -557,7 +557,36 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       chartColors,
       useaxis,
       showNormalCurve,
+      // Add missing dependencies
+      bottomVariables,
+      bottom2Variables,
+      closeVariables,
+      colorVariables,
+      data.length,
+      highVariables,
+      lowVariables,
+      side2Variables,
+      sideVariables,
+      variables.length,
     ]);
+
+    // Helper function to format variable lists with limits
+    const formatLimitedList = useCallback(
+      (items: string[], limit: number = 3): string => {
+        if (items.length === 0) return "";
+        if (items.length <= limit) return items.join(", ");
+
+        const limited = items.slice(0, limit);
+        const remaining = items.length - limit;
+
+        if (remaining === 1) {
+          return `${limited.join(", ")} and ${items[limit]}`;
+        } else {
+          return `${limited.join(", ")} and ${remaining} more`;
+        }
+      },
+      []
+    );
 
     // Smart validation function for different chart types
     const validateChartVariablesForType = (
@@ -1408,11 +1437,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         };
       },
       [
-        // bottomVariables,
+        bottomVariables,
         chartSubtitle,
         chartTitle,
         processedResult,
-        // sideVariables,
+        sideVariables,
         xAxisLabel,
         xAxisMajorIncrement,
         xAxisMax,
@@ -1443,8 +1472,8 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
         return config;
       },
-      [bottomVariables, createChartConfig, sideVariables]
-    ); // No dependencies needed as it's a pure function
+      [bottomVariables, createChartConfig, sideVariables, formatLimitedList]
+    );
 
     const createNormalQQPlotConfig = useCallback(
       (chartType: string, isDefault: boolean = false) => {
@@ -3527,16 +3556,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       getGeneratedChartJSON: () => generatedChartJSON,
     }));
 
-    // Helper function untuk format limited list
-    const formatLimitedList = (items: string[], limit: number = 3): string => {
-      const limited = items.slice(0, limit);
-      const remaining = items.length - limit;
-      if (remaining > 0) {
-        return `${limited.join(", ")} and ${remaining} more`;
-      }
-      return limited.join(", ");
-    };
-
     // Add useEffect to generate chart JSON when processed data changes
     // This should run after chart rendering is complete
     useEffect(() => {
@@ -3623,6 +3642,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       chartColors,
       useaxis,
       showNormalCurve,
+      // Add missing dependencies
+      bottom2Variables,
+      bottomVariables,
+      closeVariables,
+      colorVariables,
+      generateChartJSON,
+      highVariables,
+      lowVariables,
+      side2Variables,
+      sideVariables,
     ]);
 
     // Mapping nama variabel drop area ke label user-friendly
