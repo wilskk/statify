@@ -1,11 +1,6 @@
 // components/Modals/CurveEstimation/ModalCurveEstimation.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  DialogHeader,
-  DialogTitle,
-  DialogFooter
-} from '@/components/ui/dialog';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogContent,
@@ -27,6 +22,7 @@ import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useResultStore } from '@/stores/useResultStore';
 import { Variable, VariableType } from '@/types/Variable';
 import { Chart, registerables } from 'chart.js';
+import { Separator } from '@/components/ui/separator';
 
 // Import our custom tab components (menggunakan struktur baru)
 import VariablesTab from './VariablesTab';
@@ -41,14 +37,15 @@ export interface ModalCurveEstimationProps {
 }
 
 // Using named export like OpenSavFile
-export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose, containerType }) => {
-  // State variables dari desain baru
+export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose, containerType = "dialog" }) => {
+  // State for variables
   const [activeTab, setActiveTab] = useState("variables");
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
-  const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
-  const [selectedCaseLabels, setSelectedCaseLabels] = useState<Variable | null>(null);
+  const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable | null>(null);
+
+  // State for models
   const [selectedModels, setSelectedModels] = useState<string[]>(['Linear']);
   const [includeConstant, setIncludeConstant] = useState<boolean>(true); // State ini ada, tapi tidak dikirim ke worker oleh handleRunRegression versi lama
   const [plotModels, setPlotModels] = useState<boolean>(true);
@@ -62,21 +59,21 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
 
   const workerRef = useRef<Worker | null>(null);
 
-  const variables = useVariableStore((state) => state.variables);
+  const variablesFromStore = useVariableStore((state) => state.variables);
   const { data } = useAnalysisData();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
   // useEffect untuk memfilter availableVariables (dari kode baru)
   useEffect(() => {
-    const allVarsFiltered = variables.filter(v => {
-      if (!v.name) return false;
-      const isDependent = selectedDependentVariable?.columnIndex === v.columnIndex;
-      const isIndependent = selectedIndependentVariables.some(iv => iv.columnIndex === v.columnIndex);
-      const isCaseLabel = selectedCaseLabels?.columnIndex === v.columnIndex;
-      return !isDependent && !isIndependent && !isCaseLabel;
-    });
-    setAvailableVariables(allVarsFiltered);
-  }, [variables, selectedDependentVariable, selectedIndependentVariables, selectedCaseLabels]);
+    // Initial population of available variables
+    const initialVars = variablesFromStore.filter(
+      (v) =>
+        v.type !== 'STRING' &&
+        v.columnIndex !== selectedDependentVariable?.columnIndex &&
+        v.columnIndex !== selectedIndependentVariables?.columnIndex
+    );
+    setAvailableVariables(initialVars);
+  }, [variablesFromStore]);
 
   const showAlert = (title: string, description: string) => {
     if (containerType === "sidebar") {
@@ -89,64 +86,56 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
 
   // Handlers untuk VariablesTab (dari kode baru)
   const handleDependentDoubleClick = (variable: Variable) => {
+    if (isProcessing) return;
+    if (!variable) return;
+
     if (selectedDependentVariable) {
-      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
+        setAvailableVariables(prev => [...prev, selectedDependentVariable]);
     }
+
     setSelectedDependentVariable(variable);
     setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
     setHighlightedVariable(null);
   };
 
   const handleIndependentDoubleClick = (variable: Variable) => {
-    setSelectedIndependentVariables(prev => [...prev, variable]);
-    setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-    setHighlightedVariable(null);
-  };
+    if (isProcessing) return;
 
-  const handleCaseLabelsDoubleClick = (variable: Variable) => {
-    if (selectedCaseLabels) {
-      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
+    if (selectedIndependentVariables) {
+        setAvailableVariables(prev => [...prev, selectedIndependentVariables]);
     }
-    setSelectedCaseLabels(variable);
+    
+    setSelectedIndependentVariables(variable);
     setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
     setHighlightedVariable(null);
   };
 
   const moveToDependent = () => {
-    if (!highlightedVariable) return;
+    if (isProcessing || !highlightedVariable) return;
     const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) handleDependentDoubleClick(variable);
+    if (variable) {
+        handleDependentDoubleClick(variable);
+    }
   };
 
   const moveToIndependent = () => {
-    if (!highlightedVariable) return;
+    if (isProcessing || !highlightedVariable) return;
     const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) handleIndependentDoubleClick(variable);
-  };
-
-  const moveToCaseLabels = () => {
-    if (!highlightedVariable) return;
-    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) handleCaseLabelsDoubleClick(variable);
+    if (variable) {
+        handleIndependentDoubleClick(variable);
+    }
   };
 
   const removeDependent = () => {
-    if (selectedDependentVariable) {
-      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
-      setSelectedDependentVariable(null);
-    }
+    if (isProcessing || !selectedDependentVariable) return;
+    setAvailableVariables(prev => [...prev, selectedDependentVariable]);
+    setSelectedDependentVariable(null);
   };
 
-  const removeIndependent = (variable: Variable) => {
-    setSelectedIndependentVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-    setAvailableVariables(prev => [...prev, variable]);
-  };
-
-  const removeCaseLabels = () => {
-    if (selectedCaseLabels) {
-      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
-      setSelectedCaseLabels(null);
-    }
+  const removeIndependent = () => {
+    if (isProcessing || !selectedIndependentVariables) return;
+    setAvailableVariables(prev => [...prev, selectedIndependentVariables]);
+    setSelectedIndependentVariables(null);
   };
 
   // Handler untuk ModelsTab (dari kode baru)
@@ -170,15 +159,11 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
     if (selectedDependentVariable) {
       setAvailableVariables(prev => [...prev, selectedDependentVariable]);
     }
-    if (selectedIndependentVariables.length > 0) {
-      setAvailableVariables(prev => [...prev, ...selectedIndependentVariables]);
-    }
-    if (selectedCaseLabels) {
-      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
+    if (selectedIndependentVariables) {
+      setAvailableVariables(prev => [...prev, selectedIndependentVariables]);
     }
     setSelectedDependentVariable(null);
-    setSelectedIndependentVariables([]);
-    setSelectedCaseLabels(null);
+    setSelectedIndependentVariables(null);
     setHighlightedVariable(null);
     setSelectedModels(['Linear']);
     setIncludeConstant(true);
@@ -194,8 +179,9 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
   // ========================================================================
   const handleRunRegression = async () => {
     setInlineAlertMessage(null);
-    if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
-      showAlert("Missing Information", "Please select a dependent variable and at least one independent variable.");
+    if (!selectedDependentVariable || !selectedIndependentVariables) {
+      showAlert('Input Error', 'Please select both a dependent and an independent variable.');
+      setIsProcessing(false);
       return;
     }
 
@@ -209,10 +195,8 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
 
     try {
       const depCol = selectedDependentVariable.columnIndex;
-      // The component supports multiple selections, but the old logic only uses the first one.
-      // We'll stick to that to avoid changing the core analysis behavior.
-      const indepColX = selectedIndependentVariables[0].columnIndex;
-      const independentVarNames = selectedIndependentVariables.map(iv => iv.name);
+      const indepColX = selectedIndependentVariables.columnIndex;
+      const independentVarNames = [selectedIndependentVariables.name];
       const dependentVarName = selectedDependentVariable.name;
 
       // New data filtering: Perform listwise deletion on the data from useAnalysisData
@@ -344,7 +328,7 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
 
   // Render function (JSX) modified to work with ModalRenderer
   return (
-    <div className="flex flex-col h-full max-h-[85vh] overflow-hidden">
+    <div className="flex flex-col h-full">
       <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -356,86 +340,80 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* Header section */}
-      <div className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-        <h3 className="text-[22px] font-semibold">Curve Estimation</h3>
+      
+      <div className="px-6 py-4">
+        <Separator className="my-2" />
       </div>
 
-      {/* Error and Warning Messages */}
-      {errorMessage && (
-        <div className="px-6 py-2 text-destructive">{errorMessage}</div>
-      )}
-      {containerType === "sidebar" && inlineAlertMessage && (
-          <div className="p-2 mb-2 mx-6 text-sm text-destructive-foreground bg-destructive rounded-md">
-              {inlineAlertMessage}
-              <Button variant="ghost" size="sm" onClick={() => setInlineAlertMessage(null)} className="ml-2 text-destructive-foreground hover:bg-destructive/80">Dismiss</Button>
-          </div>
-      )}
+      <div className="flex-grow px-6 overflow-y-auto">
+        {/* Error and Warning Messages */}
+        {errorMessage && (
+          <div className="px-6 py-2 text-destructive">{errorMessage}</div>
+        )}
+        {containerType === "sidebar" && inlineAlertMessage && (
+            <div className="p-2 mb-2 mx-6 text-sm text-destructive-foreground bg-destructive rounded-md">
+                {inlineAlertMessage}
+                <Button variant="ghost" size="sm" onClick={() => setInlineAlertMessage(null)} className="ml-2 text-destructive-foreground hover:bg-destructive/80">Dismiss</Button>
+            </div>
+        )}
 
-      {/* Main content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-        <div className="border-b border-[#E6E6E6] flex-shrink-0">
-          <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-            <TabsTrigger
-              value="variables"
-              className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-            >
-              Variables
-            </TabsTrigger>
-            <TabsTrigger
-              value="models"
-              className={`px-4 h-8 rounded-none text-sm ${activeTab === 'models' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-            >
-              Models
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        {/* Main content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger
+                value="variables"
+                >
+                Variables
+                </TabsTrigger>
+                <TabsTrigger
+                value="models"
+                >
+                Models
+                </TabsTrigger>
+            </TabsList>
 
-        {/* Variables Tab Content */}
-        <TabsContent value="variables" className="overflow-y-auto flex-grow p-6 data-[state=inactive]:hidden">
-          <VariablesTab
-            availableVariables={availableVariables}
-            highlightedVariable={highlightedVariable}
-            setHighlightedVariable={setHighlightedVariable}
-            selectedDependentVariable={selectedDependentVariable}
-            selectedIndependentVariables={selectedIndependentVariables}
-            selectedCaseLabels={selectedCaseLabels}
-            handleDependentDoubleClick={handleDependentDoubleClick}
-            handleIndependentDoubleClick={handleIndependentDoubleClick}
-            handleCaseLabelsDoubleClick={handleCaseLabelsDoubleClick}
-            moveToDependent={moveToDependent}
-            moveToIndependent={moveToIndependent}
-            moveToCaseLabels={moveToCaseLabels}
-            removeDependent={removeDependent}
-            removeIndependent={removeIndependent}
-            removeCaseLabels={removeCaseLabels}
-            isProcessing={isProcessing}
-          />
-        </TabsContent>
+            {/* Variables Tab Content */}
+            <TabsContent value="variables" className="mt-4">
+            <VariablesTab
+                availableVariables={availableVariables}
+                highlightedVariable={highlightedVariable}
+                setHighlightedVariable={setHighlightedVariable}
+                selectedDependentVariable={selectedDependentVariable}
+                selectedIndependentVariables={selectedIndependentVariables}
+                handleDependentDoubleClick={handleDependentDoubleClick}
+                handleIndependentDoubleClick={handleIndependentDoubleClick}
+                moveToDependent={moveToDependent}
+                moveToIndependent={moveToIndependent}
+                removeDependent={removeDependent}
+                removeIndependent={removeIndependent}
+                isProcessing={isProcessing}
+            />
+            </TabsContent>
 
-        {/* Models Tab Content */}
-        <TabsContent value="models" className="overflow-y-auto flex-grow data-[state=inactive]:hidden">
-          <ModelsTab
-            selectedModels={selectedModels}
-            handleModelChange={handleModelChange}
-            includeConstant={includeConstant}
-            setIncludeConstant={setIncludeConstant}
-            plotModels={plotModels}
-            setPlotModels={setPlotModels}
-            displayANOVA={displayANOVA}
-            setDisplayANOVA={setDisplayANOVA}
-            upperBound={upperBound}
-            setUpperBound={setUpperBound}
-            isProcessing={isProcessing}
-          />
-        </TabsContent>
-      </Tabs>
+            {/* Models Tab Content */}
+            <TabsContent value="models" className="mt-4">
+            <ModelsTab
+                selectedModels={selectedModels}
+                handleModelChange={handleModelChange}
+                includeConstant={includeConstant}
+                setIncludeConstant={setIncludeConstant}
+                plotModels={plotModels}
+                setPlotModels={setPlotModels}
+                displayANOVA={displayANOVA}
+                setDisplayANOVA={setDisplayANOVA}
+                upperBound={upperBound}
+                setUpperBound={setUpperBound}
+                isProcessing={isProcessing}
+            />
+            </TabsContent>
+        </Tabs>
+      </div>
+
 
       {/* Footer section */}
-      <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-        <div className="flex justify-end space-x-3">
+      <div className="px-6 py-4 border-t border-border bg-muted mt-auto">
+        <div className="flex justify-center space-x-4">
           <Button
-            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
             onClick={handleRunRegression}
             disabled={isProcessing}
           >
@@ -450,14 +428,12 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
           </Button>
           <Button
             variant="outline"
-            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
             disabled={isProcessing}
           >
             Paste
           </Button>
           <Button
             variant="outline"
-            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
             onClick={handleReset}
             disabled={isProcessing}
           >
@@ -465,7 +441,6 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
           </Button>
           <Button
             variant="outline"
-            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
             onClick={handleClose}
             disabled={isProcessing}
           >
@@ -473,7 +448,6 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
           </Button>
           <Button
             variant="outline"
-            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
             disabled={isProcessing}
           >
             Help
