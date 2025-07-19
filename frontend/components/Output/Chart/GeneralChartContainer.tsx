@@ -21,6 +21,13 @@ interface ChartData {
     useAxis?: boolean;
     useLegend?: boolean;
     statistic?: "mean" | "median" | "mode" | "min" | "max"; // Add statistic option
+    showNormalCurve?: boolean; // For Histogram - show normal curve overlay
+    fitFunctions?: Array<{
+      fn: string; // String representation of function: "x => parameters.a + parameters.b * x"
+      equation?: string;
+      color?: string;
+      parameters?: Record<string, number>; // Store coefficients: {a: 2, b: 3}
+    }>; // For Scatter Plot With Multiple Fit Line
     axisLabels: {
       x: string;
       y: string;
@@ -884,6 +891,26 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.chartColor
               );
               break;
+            case "Scatter Plot With Multiple Fit Line":
+              chartNode = chartUtils.createScatterPlotWithMultipleFitLine(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title:
+                    chartMetadata?.title ||
+                    "Scatter Plot With Multiple Fit Line",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor,
+                chartConfig?.fitFunctions
+              );
+              break;
             case "Line Chart":
               chartNode = chartUtils.createLineChart(
                 chartDataPoints,
@@ -1017,7 +1044,8 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 },
                 chartConfig?.axisLabels,
                 chartConfig?.axisScaleOptions,
-                chartConfig?.chartColor
+                chartConfig?.chartColor,
+                chartConfig?.showNormalCurve // ✅ Tambahkan showNormalCurve parameter
               );
               break;
             case "Error Bar Chart":
@@ -1518,6 +1546,40 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 useAxis,
                 {
                   title: chartMetadata?.title || "Stem And Leaf Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
+              );
+              break;
+            case "Normal Q-Q Plot":
+              chartNode = chartUtils.createNormalQQPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Normal Q-Q Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
+              );
+              break;
+            case "P-P Plot":
+              chartNode = chartUtils.createPPPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "P-P Plot",
                   subtitle: chartMetadata?.subtitle,
                   titleFontSize: chartMetadata?.titleFontSize || 16,
                   subtitleFontSize: chartMetadata?.subtitleFontSize || 12,

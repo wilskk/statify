@@ -34,7 +34,7 @@ const ComputeVariablesTab: FC<ComputeVariablesTabProps> = ({
       id: "target",
       title: "Target Variable:",
       variables: targetVariable ? [targetVariable] : [],
-      height: "100px",
+      height: "min(calc(100vh - 400px), 150px)",
       draggableItems: true,
       droppable: true,
       maxItems: 1,

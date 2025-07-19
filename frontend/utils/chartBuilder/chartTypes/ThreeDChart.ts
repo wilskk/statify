@@ -2391,3 +2391,376 @@ export function createEChartsClustered3DBarChart(
     return fallback;
   }
 }
+
+/**
+ * Creates a simplified 2D representation for 3D charts when used in small preview sizes
+ * This function provides better visual representation for chart selection previews
+ */
+export function createSimplified2DRepresentation(
+  chartType: string,
+  width: number,
+  height: number,
+  useAxis: boolean = false
+): HTMLDivElement {
+  const container = document.createElement("div");
+  container.style.width = width + "px";
+  container.style.height = height + "px";
+  container.style.display = "flex";
+  container.style.alignItems = "center";
+  container.style.justifyContent = "center";
+  container.style.backgroundColor = "white";
+  container.style.borderRadius = "4px";
+  container.style.overflow = "hidden";
+
+  // Create SVG for 2D representation
+  const svg = d3
+    .select(container)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .style("background", "white");
+
+  const margin = { top: 5, right: 5, bottom: 5, left: 5 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+
+  // Create chart group
+  const g = svg
+    .append("g")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+  // Different representations based on chart type
+  if (chartType.includes("Bar")) {
+    if (chartType.includes("Clustered")) {
+      // Create simplified clustered bar chart representation
+      const categories = ["A", "B", "C"];
+      const groups = ["X", "Y"];
+      const data = [
+        { category: "A", group: "X", value: 30 },
+        { category: "A", group: "Y", value: 20 },
+        { category: "B", group: "X", value: 45 },
+        { category: "B", group: "Y", value: 35 },
+        { category: "C", group: "X", value: 60 },
+        { category: "C", group: "Y", value: 50 },
+      ];
+
+      const xScale = d3
+        .scaleBand()
+        .domain(categories)
+        .range([0, chartWidth])
+        .padding(0.2);
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([0, d3.max(data, (d) => d.value) || 100])
+        .range([chartHeight, 0]);
+
+      const groupScale = d3
+        .scaleBand()
+        .domain(groups)
+        .range([0, xScale.bandwidth()])
+        .padding(0.1);
+
+      // Create clustered bars
+      g.selectAll(".category")
+        .data(categories)
+        .enter()
+        .append("g")
+        .attr("class", "category")
+        .attr("transform", (d) => `translate(${xScale(d)}, 0)`)
+        .selectAll("rect")
+        .data((d) =>
+          groups.map((group) => ({
+            category: d,
+            group,
+            value:
+              data.find((item) => item.category === d && item.group === group)
+                ?.value || 0,
+          }))
+        )
+        .enter()
+        .append("rect")
+        .attr("x", (d) => groupScale(d.group) || 0)
+        .attr("y", (d) => yScale(d.value))
+        .attr("width", groupScale.bandwidth())
+        .attr("height", (d) => chartHeight - yScale(d.value))
+        .attr("fill", (d, i) => d3.schemeCategory10[i % 10])
+        .attr("opacity", 0.8);
+    } else if (chartType.includes("Stacked")) {
+      // Create simplified stacked bar chart representation
+      const categories = ["A", "B", "C"];
+      const groups = ["X", "Y", "Z"];
+      const data = [
+        { category: "A", group: "X", value: 20 },
+        { category: "A", group: "Y", value: 15 },
+        { category: "A", group: "Z", value: 10 },
+        { category: "B", group: "X", value: 25 },
+        { category: "B", group: "Y", value: 20 },
+        { category: "B", group: "Z", value: 15 },
+        { category: "C", group: "X", value: 30 },
+        { category: "C", group: "Y", value: 25 },
+        { category: "C", group: "Z", value: 20 },
+      ];
+
+      const xScale = d3
+        .scaleBand()
+        .domain(categories)
+        .range([0, chartWidth])
+        .padding(0.2);
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([
+          0,
+          d3.max(
+            categories.map((cat) =>
+              data
+                .filter((d) => d.category === cat)
+                .reduce((sum, d) => sum + d.value, 0)
+            )
+          ) || 100,
+        ])
+        .range([chartHeight, 0]);
+
+      // Create stacked bars
+      categories.forEach((category, catIndex) => {
+        let yOffset = 0;
+        groups.forEach((group, groupIndex) => {
+          const value =
+            data.find((d) => d.category === category && d.group === group)
+              ?.value || 0;
+          if (value > 0) {
+            g.append("rect")
+              .attr("x", xScale(category) || 0)
+              .attr("y", yScale(yOffset + value))
+              .attr("width", xScale.bandwidth())
+              .attr("height", chartHeight - yScale(value))
+              .attr("fill", d3.schemeCategory10[groupIndex % 10])
+              .attr("opacity", 0.8);
+            yOffset += value;
+          }
+        });
+      });
+    } else {
+      // Create simplified regular bar chart representation
+      const data = [30, 60, 45, 80, 35];
+      const barWidth = (chartWidth / data.length) * 0.8;
+      const barSpacing = (chartWidth / data.length) * 0.2;
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([0, d3.max(data) || 100])
+        .range([chartHeight, 0]);
+
+      g.selectAll("rect")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr("x", (d, i) => i * (barWidth + barSpacing))
+        .attr("y", (d) => yScale(d))
+        .attr("width", barWidth)
+        .attr("height", (d) => chartHeight - yScale(d))
+        .attr("fill", (d, i) => d3.schemeCategory10[i % 10])
+        .attr("opacity", 0.8);
+    }
+
+    // Add 3D effect with gradient for all bar types
+    g.selectAll("rect").each(function () {
+      const rect = d3.select(this);
+      const fill = rect.attr("fill");
+
+      // Create gradient for 3D effect
+      const gradient = svg
+        .append("defs")
+        .append("linearGradient")
+        .attr("id", `grad-${Math.random().toString(36).substr(2, 9)}`);
+
+      gradient
+        .append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", d3.color(fill)?.brighter(0.3)?.toString() || fill);
+
+      gradient
+        .append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", d3.color(fill)?.darker(0.3)?.toString() || fill);
+
+      rect.attr("fill", `url(#${gradient.attr("id")})`);
+    });
+  } else if (chartType.includes("Scatter")) {
+    if (chartType.includes("Grouped")) {
+      // Create simplified grouped scatter plot representation
+      const groups = ["A", "B", "C"];
+      const data = [
+        { x: 20, y: 30, group: "A" },
+        { x: 40, y: 60, group: "A" },
+        { x: 60, y: 40, group: "B" },
+        { x: 80, y: 70, group: "B" },
+        { x: 30, y: 50, group: "C" },
+        { x: 70, y: 20, group: "C" },
+        { x: 25, y: 45, group: "A" },
+        { x: 55, y: 35, group: "B" },
+        { x: 65, y: 55, group: "C" },
+      ];
+
+      const xScale = d3.scaleLinear().domain([0, 100]).range([0, chartWidth]);
+      const yScale = d3.scaleLinear().domain([0, 100]).range([chartHeight, 0]);
+
+      // Create scatter points with different colors for each group
+      g.selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("cx", (d) => xScale(d.x))
+        .attr("cy", (d) => yScale(d.y))
+        .attr("r", 3)
+        .attr("fill", (d) => {
+          const groupIndex = groups.indexOf(d.group);
+          return d3.schemeCategory10[groupIndex % 10];
+        })
+        .attr("opacity", 0.7);
+
+      // Add legend-like indicators
+      groups.forEach((group, index) => {
+        const legendX = chartWidth - 20;
+        const legendY = 10 + index * 8;
+
+        g.append("circle")
+          .attr("cx", legendX)
+          .attr("cy", legendY)
+          .attr("r", 2)
+          .attr("fill", d3.schemeCategory10[index % 10])
+          .attr("opacity", 0.8);
+      });
+    } else {
+      // Create simplified regular scatter plot representation
+      const data = [
+        { x: 20, y: 30 },
+        { x: 40, y: 60 },
+        { x: 60, y: 40 },
+        { x: 80, y: 70 },
+        { x: 30, y: 50 },
+        { x: 70, y: 20 },
+        { x: 25, y: 45 },
+        { x: 55, y: 35 },
+        { x: 65, y: 55 },
+      ];
+
+      const xScale = d3.scaleLinear().domain([0, 100]).range([0, chartWidth]);
+      const yScale = d3.scaleLinear().domain([0, 100]).range([chartHeight, 0]);
+
+      g.selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("cx", (d) => xScale(d.x))
+        .attr("cy", (d) => yScale(d.y))
+        .attr("r", 3)
+        .attr("fill", (d, i) => d3.schemeCategory10[i % 10])
+        .attr("opacity", 0.7);
+    }
+  } else if (chartType.includes("Line")) {
+    // Create simplified line chart representation
+    const data = [30, 60, 45, 80, 35, 70, 50];
+
+    const xScale = d3
+      .scaleLinear()
+      .domain([0, data.length - 1])
+      .range([0, chartWidth]);
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, d3.max(data) || 100])
+      .range([chartHeight, 0]);
+
+    const line = d3
+      .line<number>()
+      .x((d, i) => xScale(i))
+      .y((d) => yScale(d))
+      .curve(d3.curveMonotoneX);
+
+    g.append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", "#1f77b4")
+      .attr("stroke-width", 2)
+      .attr("d", line);
+  } else {
+    // Default representation - simple geometric shapes
+    const centerX = chartWidth / 2;
+    const centerY = chartHeight / 2;
+    const size = Math.min(chartWidth, chartHeight) * 0.3;
+
+    // Create a 3D-like cube representation
+    const cube = g
+      .append("g")
+      .attr("transform", `translate(${centerX}, ${centerY})`);
+
+    // Front face
+    cube
+      .append("rect")
+      .attr("x", -size / 2)
+      .attr("y", -size / 2)
+      .attr("width", size)
+      .attr("height", size)
+      .attr("fill", "#1f77b4")
+      .attr("opacity", 0.8);
+
+    // Top face (for 3D effect)
+    cube
+      .append("polygon")
+      .attr(
+        "points",
+        `${-size / 2},${-size / 2} ${size / 2},${-size / 2} ${
+          size / 2 + size * 0.3
+        },${-size / 2 - size * 0.3} ${-size / 2 + size * 0.3},${
+          -size / 2 - size * 0.3
+        }`
+      )
+      .attr("fill", "#1f77b4")
+      .attr("opacity", 0.6);
+
+    // Right face (for 3D effect)
+    cube
+      .append("polygon")
+      .attr(
+        "points",
+        `${size / 2},${-size / 2} ${size / 2},${size / 2} ${
+          size / 2 + size * 0.3
+        },${size / 2 - size * 0.3} ${size / 2 + size * 0.3},${
+          -size / 2 - size * 0.3
+        }`
+      )
+      .attr("fill", "#1f77b4")
+      .attr("opacity", 0.4);
+  }
+
+  // Add subtle grid lines for better visual context
+  if (useAxis && width > 60 && height > 60) {
+    const gridSize = 20;
+
+    // Vertical grid lines
+    for (let i = 0; i <= chartWidth; i += gridSize) {
+      g.append("line")
+        .attr("x1", i)
+        .attr("y1", 0)
+        .attr("x2", i)
+        .attr("y2", chartHeight)
+        .attr("stroke", "#f0f0f0")
+        .attr("stroke-width", 0.5);
+    }
+
+    // Horizontal grid lines
+    for (let i = 0; i <= chartHeight; i += gridSize) {
+      g.append("line")
+        .attr("x1", 0)
+        .attr("y1", i)
+        .attr("x2", chartWidth)
+        .attr("y2", i)
+        .attr("stroke", "#f0f0f0")
+        .attr("stroke-width", 0.5);
+    }
+  }
+
+  return container;
+}

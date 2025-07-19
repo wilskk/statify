@@ -41,7 +41,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleClick(button)}
                     className={`
-                      px-3 py-2 text-sm
+                      px-2 md:px-3 py-2 text-xs md:text-sm
                       bg-white hover:bg-gray-100
                       border border-[#999999]
                       active:border-t-[#666666]
@@ -50,6 +50,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                       active:border-r-white
                       rounded-md
                       col-span-2
+                      min-h-[32px] md:min-h-[36px]
                     `}
                     style={{ gridColumn: "span 2 / span 2" }}
                   >
@@ -67,7 +68,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleClick(button)}
                     className={`
-                      px-3 py-2 text-sm
+                      px-2 md:px-3 py-2 text-xs md:text-sm
                       bg-white hover:bg-gray-100
                       border border-[#999999]
                       active:border-t-[#666666]
@@ -76,6 +77,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                       active:border-r-white
                       rounded-md
                       col-span-2
+                      min-h-[32px] md:min-h-[36px]
                     `}
                     style={{ gridColumn: "span 2 / span 2" }}
                   >
@@ -89,7 +91,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleClick(button)}
                     className={`
-                      px-3 py-2 text-sm
+                      px-2 md:px-3 py-2 text-xs md:text-sm
                       bg-white hover:bg-gray-100
                       border border-[#999999]
                       active:border-t-[#666666]
@@ -97,6 +99,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                       active:border-b-white
                       active:border-r-white
                       rounded-md
+                      min-h-[32px] md:min-h-[36px]
                     `}
                   >
                     {button === "\u2260" ? "≠" : button}

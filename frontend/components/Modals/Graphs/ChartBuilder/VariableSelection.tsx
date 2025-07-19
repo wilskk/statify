@@ -16,15 +16,15 @@ const VariableSelection: React.FC<VariableSelectionProps> = ({
   return (
     <div className="border p-4 rounded-lg shadow-sm h-[250px]">
       <Label className="font-semibold">Choose Variables</Label>
-      <div className="space-y-2 mt-4 overflow-y-auto max-h-[200px]">
+      <div className="space-y-2 mt-4 overflow-y-auto max-h-[190px]">
         {variables.map(({ columnIndex, name }, index) => (
           <div
             key={columnIndex}
-            className="ml-[10px] cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
+            className="ml-[6px] cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
             draggable="true"
             onDragStart={(e) => onDragStart(e, name)}
           >
-            <Label htmlFor={`var${index}`} className="ml-2">
+            <Label htmlFor={`var${index}`} className="ml-2 text-[10px]">
               {name}
             </Label>
           </div>

@@ -41,7 +41,7 @@ const RecodeVariablesTab: FC<RecodeVariablesTabProps> = ({
       id: "recodeList", // Changed from 'string'
       title: "Variables to Recode:", // Changed title
       variables: variablesToRecode, // Changed from stringVariables
-      height: "300px",
+      height: "min(calc(100vh - 400px), 500px)", // Make height responsive with a maximum
       draggableItems: true,
       droppable: true,
     },

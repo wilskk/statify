@@ -61,6 +61,7 @@
     "immer": "^10.1.1",
     "jspdf": "^3.0.0",
     "jspdf-autotable": "^5.0.2",
+    "jstat": "^1.9.6",
     "lodash": "^4.17.21",
     "lucide-react": "^0.453.0",
     "mathjs": "^14.0.1",

@@ -10,6 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +50,11 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
   const [numericExpression, setNumericExpression] = useState("");
   const [ifCondition, setIfCondition] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+  } | null>(null);
 
   const allVariablesFromStore = useVariableStore.getState().variables;
   const addVariable = useVariableStore((state) => state.addVariable);
@@ -53,21 +67,21 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
 
   const handleCompute = useCallback(async () => {
     if (!targetName || !numericExpression) {
-      toast({
+      setErrorDialog({
+        open: true,
         title: "Missing required fields",
         description:
           "Please fill in both target variable name and numeric expression.",
-        variant: "destructive",
       });
       return;
     }
 
     // Check if variable name already exists
     if (allVariablesFromStore.some((v) => v.name === targetName)) {
-      toast({
+      setErrorDialog({
+        open: true,
         title: "Invalid variable name",
         description: "A variable with this name already exists.",
-        variant: "destructive",
       });
       return;
     }
@@ -160,18 +174,18 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
             onClose();
           } catch (err) {
             console.error("Error during post-compute actions:", err);
-            toast({
+            setErrorDialog({
+              open: true,
               title: "Error",
               description: "Failed to save computation results.",
-              variant: "destructive",
             });
             setIsProcessing(false);
           }
         } else {
-          toast({
+          setErrorDialog({
+            open: true,
             title: "Computation Error",
             description: error || "Failed to compute variable.",
-            variant: "destructive",
           });
           setIsProcessing(false);
         }
@@ -180,20 +194,20 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
 
       worker.onerror = (error) => {
         console.error("Worker error:", error);
-        toast({
+        setErrorDialog({
+          open: true,
           title: "Worker Error",
           description: "An error occurred during computation.",
-          variant: "destructive",
         });
         setIsProcessing(false);
         worker.terminate();
       };
     } catch (error) {
       console.error("Error during computation:", error);
-      toast({
+      setErrorDialog({
+        open: true,
         title: "Error",
         description: "Failed to start computation process.",
-        variant: "destructive",
       });
       setIsProcessing(false);
     }
@@ -210,17 +224,16 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
     addAnalytic,
     addStatistic,
     onClose,
-    toast,
   ]);
 
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Main Content */}
-      <div className="p-4 flex-grow">
-        <div className="grid grid-cols-2 gap-4">
+      <div className="p-4 md:p-6 flex-grow overflow-y-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* Left side - Target Variable */}
-          <div className="flex flex-col">
-            <div className="space-y-4 mb-4">
+          <div className="flex flex-col space-y-4">
+            <div className="space-y-4">
               <div>
                 <Label className="mb-2 block">Target Variable:</Label>
                 <Input
@@ -261,89 +274,123 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
             </div>
 
             {/* Variables List */}
-            <div className="flex-grow border bg-white rounded overflow-hidden">
-              <ScrollArea className="h-[calc(100vh-500px)]">
+            <div className="flex-grow">
+              <Label className="mb-2 block">Variables:</Label>
+              <ScrollArea className="h-[min(calc(100vh-500px),300px)] border rounded-md p-2 bg-white">
                 {allVariablesFromStore.map((variable) => (
                   <div
                     key={variable.tempId}
-                    className="flex items-center p-2 hover:bg-blue-100 cursor-pointer"
+                    className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer text-sm"
                     onDoubleClick={() => handleVariableDoubleClick(variable)}
                   >
-                    <span className="mr-2">
+                    <div className="w-4 h-4 flex-shrink-0">
                       {variable.type === "NUMERIC"
                         ? "🔢"
                         : variable.type === "STRING"
                         ? "📝"
                         : "📅"}
+                    </div>
+                    <span className="truncate">
+                      {variable.label
+                        ? `${variable.label} [${variable.name}]`
+                        : variable.name}
                     </span>
-                    <span>{variable.name}</span>
                   </div>
                 ))}
               </ScrollArea>
             </div>
           </div>
 
-          {/* Right side - Expression */}
-          <div>
-            <Label className="mb-2 block">Numeric Expression:</Label>
-            <textarea
-              value={numericExpression}
-              onChange={(e) => setNumericExpression(e.target.value)}
-              className="w-full h-[100px] p-2 bg-white border rounded resize-none"
-            />
-            <Calculator
-              onButtonClick={(value) => {
-                if (value === "") {
-                  setNumericExpression("");
-                } else {
-                  setNumericExpression((prev) => prev + value);
+          {/* Right side - Expression & Calculator */}
+          <div className="flex flex-col space-y-4">
+            {/* Expression Input */}
+            <div>
+              <Label className="mb-2 block">Numeric Expression:</Label>
+              <textarea
+                value={numericExpression}
+                onChange={(e) => setNumericExpression(e.target.value)}
+                className="w-full h-24 md:h-32 p-2 border rounded-md bg-white resize-none text-sm"
+                placeholder="Enter expression (e.g., var1 + var2)"
+              />
+            </div>
+
+            {/* Calculator */}
+            <div>
+              <Label className="mb-2 block">Calculator:</Label>
+              <Calculator
+                onButtonClick={(value) => {
+                  if (value === "") {
+                    // Delete last character
+                    setNumericExpression((prev) => prev.slice(0, -1));
+                  } else {
+                    setNumericExpression((prev) => prev + value);
+                  }
+                }}
+              />
+            </div>
+
+            {/* Functions */}
+            <div className="flex-grow">
+              <Label className="mb-2 block">Functions:</Label>
+              <FunctionsList
+                onFunctionSelect={(func) =>
+                  setNumericExpression((prev) => prev + func)
                 }
-              }}
-            />
-            <FunctionsList
-              onFunctionSelect={(func) => {
-                setNumericExpression((prev) => prev + func);
-              }}
-            />
+              />
+            </div>
           </div>
         </div>
 
-        {/* If condition */}
-        {/* <div className="mt-4">
-          <Label className="mb-2 block">
-            If (optional case selection condition):
-          </Label>
+        {/* If Condition */}
+        <div className="mt-4 md:mt-6">
+          <Label className="mb-2 block">If (Optional):</Label>
           <Input
             value={ifCondition}
             onChange={(e) => setIfCondition(e.target.value)}
             className="bg-white"
+            placeholder="Enter condition (e.g., var1 > 10)"
           />
-        </div> */}
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
-        <Button
-          onClick={handleCompute}
-          disabled={!targetName || !numericExpression || isProcessing}
-        >
-          {isProcessing ? "Computing..." : "OK"}
-        </Button>
-        <Button variant="secondary">Paste</Button>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            setNumericExpression("");
-            setIfCondition("");
-          }}
-        >
-          Reset
-        </Button>
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button variant="secondary">Help</Button>
+      <div className="px-4 md:px-6 py-3 md:py-4 border-t border-gray-200 flex-shrink-0 bg-gray-50">
+        <div className="flex flex-wrap gap-2 justify-end">
+          <Button
+            variant="default"
+            onClick={handleCompute}
+            disabled={isProcessing || !targetName || !numericExpression}
+          >
+            {isProcessing ? "Computing..." : "OK"}
+          </Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="outline">Help</Button>
+        </div>
       </div>
+
+      {/* Error Alert Dialog (ChartBuilder style) */}
+      {errorDialog?.open && (
+        <AlertDialog
+          open={errorDialog.open}
+          onOpenChange={(open) => setErrorDialog(open ? errorDialog : null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{errorDialog.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {errorDialog.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setErrorDialog(null)}>
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 };

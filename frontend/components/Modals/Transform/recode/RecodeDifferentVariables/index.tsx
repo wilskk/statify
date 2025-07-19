@@ -82,6 +82,13 @@ export const RecodeDifferentVariablesModal: FC<
   const [stringWidth, setStringWidth] = useState(8);
   const [convertStringToNumber, setConvertStringToNumber] = useState(false);
 
+  // Tambahkan state untuk error dialog
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+  } | null>(null);
+
   useEffect(() => {
     const recodeVarTempIds = new Set(
       recodeMappings.map((m) => m.sourceVariable.tempId)
@@ -97,6 +104,12 @@ export const RecodeDifferentVariablesModal: FC<
       setRecodeListType(null);
     }
   }, [allVariablesFromStore, recodeMappings, recodeListType]);
+
+  useEffect(() => {
+    if (outputType !== recodeListType && recodeListType !== null) {
+      setRecodeListType(outputType);
+    }
+  }, [outputType]);
 
   const moveToRightPane = useCallback(
     (variable: Variable, targetIndex?: number) => {
@@ -332,19 +345,19 @@ export const RecodeDifferentVariablesModal: FC<
 
   const handleOk = async () => {
     if (recodeMappings.length === 0) {
-      toast({
+      setErrorDialog({
+        open: true,
         title: "No variables selected",
         description: "Please select at least one variable to recode.",
-        variant: "destructive",
       });
       return;
     }
 
     if (recodeRules.length === 0) {
-      toast({
+      setErrorDialog({
+        open: true,
         title: "No recode rules defined",
         description: "Please define at least one rule for recoding.",
-        variant: "destructive",
       });
       return;
     }
@@ -358,12 +371,20 @@ export const RecodeDifferentVariablesModal: FC<
       const newVariablesToAdd: Partial<Variable>[] = [];
       const initialUpdates: CellUpdate[] = [];
       for (const mapping of recodeMappings) {
+        // Tentukan tipe output efektif
+        let effectiveOutputType = outputType;
+        if (outputType !== "STRING" && !convertStringToNumber) {
+          // Jika kedua opsi tidak dicentang, ikuti tipe variabel asli, fallback ke STRING jika undefined
+          effectiveOutputType =
+            mapping.sourceVariable.type === "NUMERIC" ? "NUMERIC" : "STRING";
+        }
+
         const newVariable: Partial<Variable> = {
           name: mapping.targetName,
           label: mapping.targetLabel,
-          type: recodeListType || "NUMERIC",
+          type: effectiveOutputType, // gunakan tipe efektif
           columnIndex: currentColumnIndex,
-          width: 8,
+          width: effectiveOutputType === "STRING" ? stringWidth : 8,
           decimals: 2,
           values: [],
           missing: {
@@ -371,8 +392,8 @@ export const RecodeDifferentVariablesModal: FC<
             range: { min: undefined, max: undefined },
           },
           columns: 100,
-          align: "right" as const,
-          measure: (recodeListType === "NUMERIC"
+          align: effectiveOutputType === "STRING" ? "left" : ("right" as const),
+          measure: (effectiveOutputType === "NUMERIC"
             ? "scale"
             : "nominal") as Variable["measure"],
           role: "input" as Variable["role"],
@@ -391,6 +412,14 @@ export const RecodeDifferentVariablesModal: FC<
       let columnOffset = allVariablesFromStore.length;
 
       for (const mapping of recodeMappings) {
+        // Tentukan tipe output efektif
+        let effectiveOutputType = outputType;
+        if (outputType !== "STRING" && !convertStringToNumber) {
+          // Jika kedua opsi tidak dicentang, ikuti tipe variabel asli, fallback ke STRING jika undefined
+          effectiveOutputType =
+            mapping.sourceVariable.type === "NUMERIC" ? "NUMERIC" : "STRING";
+        }
+
         // Get data from source variable
         const { data } = await dataStore.getVariableData(
           mapping.sourceVariable
@@ -398,10 +427,26 @@ export const RecodeDifferentVariablesModal: FC<
 
         // Apply recode rules to create new data
         const newData = data.map((value) => {
-          // Handle null values before passing to evaluateValueWithRules
           const safeValue = value === null ? "" : value;
-          const recodedValue = evaluateValueWithRules(safeValue, recodeRules);
-          return recodedValue === "" ? "" : String(recodedValue);
+          let recodedValue = evaluateValueWithRules(safeValue, recodeRules);
+
+          if (effectiveOutputType === "STRING") {
+            return recodedValue === "" ? "" : String(recodedValue);
+          } else {
+            // NUMERIC
+            if (convertStringToNumber) {
+              if (
+                typeof recodedValue === "string" &&
+                recodedValue.trim() !== ""
+              ) {
+                const num = Number(recodedValue);
+                return isNaN(num) ? "" : num;
+              }
+              return recodedValue === "" ? "" : recodedValue;
+            } else {
+              return recodedValue === "" ? "" : recodedValue;
+            }
+          }
         });
 
         // Add to bulk updates
@@ -413,6 +458,28 @@ export const RecodeDifferentVariablesModal: FC<
           });
         });
 
+        // Tipe variable baru juga ikut effectiveOutputType
+        const newVariable: Partial<Variable> = {
+          name: mapping.targetName,
+          label: mapping.targetLabel,
+          type: effectiveOutputType, // gunakan tipe efektif
+          columnIndex: currentColumnIndex,
+          width: effectiveOutputType === "STRING" ? stringWidth : 8,
+          decimals: 2,
+          values: [],
+          missing: {
+            discrete: [],
+            range: { min: undefined, max: undefined },
+          },
+          columns: 100,
+          align: effectiveOutputType === "STRING" ? "left" : ("right" as const),
+          measure: (effectiveOutputType === "NUMERIC"
+            ? "scale"
+            : "nominal") as Variable["measure"],
+          role: "input" as Variable["role"],
+        };
+        newVariablesToAdd.push(newVariable);
+        currentColumnIndex++;
         columnOffset++;
       }
 
@@ -490,10 +557,10 @@ export const RecodeDifferentVariablesModal: FC<
       onClose();
     } catch (error) {
       console.error("Error during recode:", error);
-      toast({
+      setErrorDialog({
+        open: true,
         title: "Error",
         description: "An error occurred while recoding variables.",
-        variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
@@ -607,7 +674,11 @@ export const RecodeDifferentVariablesModal: FC<
         </Button>
         <Button
           onClick={handleOk}
-          disabled={isProcessing || recodeMappings.length === 0}
+          disabled={
+            isProcessing ||
+            recodeMappings.length === 0 ||
+            recodeRules.length === 0
+          }
         >
           {isProcessing ? "Processing..." : "OK"}
         </Button>
@@ -634,6 +705,27 @@ export const RecodeDifferentVariablesModal: FC<
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Error Alert Dialog (ChartBuilder style) */}
+      {errorDialog?.open && (
+        <AlertDialog
+          open={errorDialog.open}
+          onOpenChange={(open) => setErrorDialog(open ? errorDialog : null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{errorDialog.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {errorDialog.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setErrorDialog(null)}>
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 

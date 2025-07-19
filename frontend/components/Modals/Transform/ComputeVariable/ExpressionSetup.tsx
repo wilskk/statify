@@ -228,12 +228,12 @@ const ExpressionSetup: React.FC<ExpressionSetupProps> = ({
         </Alert>
       )}
 
-      <div className="grid grid-cols-12 gap-4 h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 h-full">
         {/* Left Column - Variables */}
-        <div className="col-span-4 flex flex-col space-y-4">
+        <div className="lg:col-span-4 flex flex-col space-y-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Available Variables:</Label>
-            <ScrollArea className="h-[300px] border rounded-md p-2">
+            <ScrollArea className="h-[200px] md:h-[300px] border rounded-md p-2">
               {availableVariables.map((variable) => (
                 <div
                   key={variable.tempId}
@@ -250,7 +250,7 @@ const ExpressionSetup: React.FC<ExpressionSetupProps> = ({
                   </div>
                   <span className="truncate">
                     {variable.label
-                      ? `${variable.name} [${variable.label}]`
+                      ? `${variable.label} [${variable.name}]`
                       : variable.name}
                   </span>
                 </div>
@@ -259,36 +259,38 @@ const ExpressionSetup: React.FC<ExpressionSetupProps> = ({
           </div>
         </div>
 
-        {/* Middle Column - Expression and Calculator */}
-        <div className="col-span-4 flex flex-col space-y-4">
+        {/* Middle Column - Expression & Calculator */}
+        <div className="lg:col-span-5 flex flex-col space-y-4">
+          {/* Expression Input */}
           <div className="space-y-2">
-            <Label htmlFor="numeric-expression" className="text-sm font-medium">
-              Numeric Expression:
-            </Label>
+            <Label className="text-sm font-medium">Numeric Expression:</Label>
             <textarea
-              id="numeric-expression"
               value={numericExpression}
               onChange={(e) => onExpressionChange(e.target.value)}
               onDrop={handleTextareaDrop}
               onDragOver={(e) => e.preventDefault()}
-              className="w-full h-24 p-3 border border-input rounded-md bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Enter your numeric expression here..."
+              className="w-full h-24 md:h-32 p-2 border rounded-md bg-white resize-none text-sm"
+              placeholder="Enter expression or drag variables here"
             />
           </div>
 
-          <Calculator onButtonClick={handleAddToExpression} />
+          {/* Calculator */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Calculator:</Label>
+            <Calculator onButtonClick={handleAddToExpression} />
+          </div>
         </div>
 
         {/* Right Column - Functions */}
-        <div className="col-span-4 flex flex-col space-y-4">
+        <div className="lg:col-span-3 flex flex-col space-y-4">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Function group:</Label>
+            <Label className="text-sm font-medium">Functions:</Label>
             <Select value={functionGroup} onValueChange={setFunctionGroup}>
-              <SelectTrigger>
-                <SelectValue placeholder="All" />
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select function group" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="All">All</SelectItem>
+                <SelectItem value="All">All Functions</SelectItem>
                 <SelectItem value="Arithmetic">Arithmetic</SelectItem>
                 <SelectItem value="Statistical">Statistical</SelectItem>
                 <SelectItem value="Trigonometry">Trigonometry</SelectItem>
@@ -296,16 +298,19 @@ const ExpressionSetup: React.FC<ExpressionSetupProps> = ({
             </Select>
           </div>
 
-          <div className="flex-grow flex flex-col space-y-2">
-            <Label className="text-sm font-medium">
-              Functions and Special Variables:
-            </Label>
-            <FunctionsList
-              functionGroup={functionGroup}
-              onDoubleClick={handleFunctionDoubleClick}
-            />
-          </div>
+          <FunctionsList
+            functionGroup={functionGroup}
+            onDoubleClick={handleFunctionDoubleClick}
+          />
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="mt-4 md:mt-6 flex flex-wrap gap-2 justify-end">
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="outline">Help</Button>
       </div>
     </>
   );

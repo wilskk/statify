@@ -19,6 +19,17 @@ import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContain
 import { groupBy } from "lodash";
 import { DataProcessingInput } from "@/services/chart/DataProcessingService";
 import { type ErrorBarOptions } from "@/services/chart/DataProcessingService";
+import { toast } from "sonner";
+// Tambahkan import AlertDialog shadcn/ui
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 interface ChartPreviewProps {
   chartType: ChartType;
@@ -90,6 +101,8 @@ interface ChartPreviewProps {
   // Add prop for statistic selection (Summary Point Plot)
   selectedStatistic?: "mean" | "median" | "mode" | "min" | "max";
   errorBarOptions?: ErrorBarOptions;
+  // Add prop for normal curve (Histogram)
+  showNormalCurve?: boolean;
 }
 
 // Definisi interface untuk data chart
@@ -164,6 +177,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       chartSubtitleFontSize,
       selectedStatistic,
       errorBarOptions,
+      showNormalCurve,
     },
     ref
   ) => {
@@ -204,6 +218,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
     const data = useDataStore((state) => state.data);
 
     const variables = useVariableStore.getState().variables;
+
+    // Tambahkan state untuk error dialog
+    const [errorDialog, setErrorDialog] = useState<{
+      open: boolean;
+      title: string;
+      description: string;
+    } | null>(null);
 
     // Function to generate chart JSON using DataProcessingService + ChartService
     const generateChartJSON = useCallback(() => {
@@ -254,6 +275,17 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           };
 
           // Step 2: Create chart JSON menggunakan ChartService (reuse processed data)
+
+          // Buat fit functions untuk Scatter Plot With Multiple Fit Line
+          let fitFunctions;
+          if (chartType === "Scatter Plot With Multiple Fit Line") {
+            const scatterData = processedResult.data.map((d: any) => ({
+              x: d.x,
+              y: d.y,
+            }));
+            fitFunctions = ChartService.createFitFunctions(scatterData);
+          }
+
           const chartJSON = ChartService.createChartJSON({
             chartType: chartType,
             chartData: processedResult.data,
@@ -277,13 +309,25 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               useAxis: useaxis,
               useLegend: true,
               statistic: selectedStatistic,
+              // Hanya tambahkan showNormalCurve untuk Histogram
+              ...(chartType === "Histogram" && {
+                showNormalCurve: showNormalCurve,
+              }),
+              // Hanya tambahkan fitFunctions untuk Scatter Plot With Multiple Fit Line
+              ...(chartType === "Scatter Plot With Multiple Fit Line" && {
+                fitFunctions: fitFunctions,
+              }),
               axisLabels: {
-                x: xAxisLabel || bottomVariables[0] || "Category",
-                y: yAxisLabel || sideVariables[0] || "Value",
-                y1: yLeftAxisLabel || sideVariables[0] || "Y1-axis",
-                y2: yRightAxisLabel || side2Variables[0] || "Y2-axis",
+                x: xAxisLabel || bottomVariables[0],
+                y:
+                  chartType.includes("Normal Q-Q Plot") ||
+                  chartType.includes("P-P Plot")
+                    ? yAxisLabel
+                    : yAxisLabel || sideVariables[0],
+                y1: yLeftAxisLabel || sideVariables[0],
+                y2: yRightAxisLabel || side2Variables[0],
                 z: chartType.includes("3D")
-                  ? zAxisLabel || bottom2Variables[0] || "Z-axis"
+                  ? zAxisLabel || bottom2Variables[0]
                   : undefined,
               },
               axisScaleOptions: {
@@ -375,6 +419,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       selectedStatistic,
       chartColors,
       useaxis,
+      showNormalCurve, // ✅ Tambahkan showNormalCurve ke dependency array
     ]);
 
     // Smart validation function for different chart types
@@ -417,6 +462,18 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             sideVariables.length > 0 &&
             bottom2Variables.length > 0
           );
+
+        case "P-P Plot":
+        case "Normal Q-Q Plot":
+        case "Histogram":
+        case "Frequency Polygon":
+        case "Density Chart":
+        case "Stem And Leaf Plot":
+        case "Violin Plot":
+        case "1-D Boxplot":
+        case "Summary Point Plot":
+          // These charts only need Y-axis (side) variable
+          return sideVariables.length > 0;
 
         default:
           // Default: need at least one variable
@@ -539,21 +596,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
       const allowedTypesText =
         allowedTypes === "numeric"
-          ? "numeric only"
+          ? "numerik saja"
           : allowedTypes === "string"
-          ? "string only"
-          : "both numeric and string";
+          ? "string saja"
+          : "numerik atau string";
 
-      console.warn(
-        `❌ Variable "${variableName}" (type: ${friendlyActualType}) cannot be dropped to ${dropZone}. ` +
-          `Allowed types: ${allowedTypesText}`
-      );
-
-      // Optional: Show toast notification or modal alert here
-      alert(
-        `Variable "${variableName}" (${friendlyActualType}) is not compatible with ${dropZone}.\n` +
-          `Required: ${allowedTypesText}`
-      );
+      setErrorDialog({
+        open: true,
+        title: `Variabel \"${variableName}\" bertipe ${friendlyActualType}`,
+        description: `Hanya variabel bertipe ${allowedTypesText} yang dapat digunakan di bagian ini.\nSilakan pilih variabel yang sesuai.`,
+      });
     };
 
     // Fungsi untuk menangani drag over
@@ -828,6 +880,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           Histogram: histogramData,
           "Scatter Plot": scatterPlotData,
           "Scatter Plot With Fit Line": scatterPlotData,
+          "Scatter Plot With Multiple Fit Line": scatterPlotData,
           Boxplot: boxplotData,
           "Scatter Plot Matrix": scatterPlotMatrixData,
           "Error Bar Chart": [
@@ -1154,6 +1207,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           "Density Chart": Array.from({ length: 100 }, () =>
             Math.round(d3.randomNormal(500, 100)())
           ),
+          "Normal Q-Q Plot": [
+            1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2,
+          ],
+          "P-P Plot": [1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2],
           "Stem And Leaf Plot": [
             { stem: "1", leaves: [2, 5] },
             { stem: "2", leaves: [1, 2, 4] },
@@ -1255,6 +1312,28 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       },
       [bottomVariables, createChartConfig, sideVariables]
     ); // No dependencies needed as it's a pure function
+
+    const createNormalQQPlotConfig = useCallback(
+      (chartType: string, isDefault: boolean = false) => {
+        const config = createChartConfig(chartType, isDefault);
+
+        config.axisConfig.x = xAxisLabel || "Theoretical Quantiles (Z)";
+        config.axisConfig.y = yAxisLabel || "Sample Quantiles";
+        return config;
+      },
+      [createChartConfig, sideVariables]
+    );
+
+    const createPPPlotConfig = useCallback(
+      (chartType: string, isDefault: boolean = false) => {
+        const config = createChartConfig(chartType, isDefault);
+
+        config.axisConfig.x = xAxisLabel || "Observed Cum Prop";
+        config.axisConfig.y = yAxisLabel || "Expected Cum Prop";
+        return config;
+      },
+      [createChartConfig, sideVariables]
+    );
 
     const createDualAxisChartConfig = useCallback(
       (chartType: string, isDefault: boolean = false) => {
@@ -1622,10 +1701,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
         // Handle incomplete state - show requirements message
         if (renderMode === "incomplete") {
-          const messageDiv = document.createElement("div");
-          messageDiv.className =
-            "flex flex-col items-center justify-center h-full text-center p-6";
-
           // Separate type issues from other issues
           const typeIssues = requiredIssues.filter(
             (issue) => issue.includes("is") && issue.includes("but needs to be")
@@ -1642,41 +1717,57 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             headerIcon = "🔄";
           }
 
-          messageDiv.innerHTML = `
-            <div class="text-6xl mb-4">${headerIcon}</div>
-            <div class="text-lg font-semibold text-gray-700 mb-4">
-              ${headerText}
+          const warningContainer = document.createElement("div");
+          warningContainer.className =
+            "flex justify-center items-center w-full h-full";
+          warningContainer.style.overflow = "visible";
+          warningContainer.innerHTML = `
+            <div class="bg-none rounded-lg p-6 text-center" style="max-width: 400px;">
+              <div class="text-6xl mb-4">${headerIcon}</div>
+              <div class="text-lg font-semibold text-gray-700 mb-4">
+                ${headerText}
+              </div>
+              ${
+                typeIssues.length > 0
+                  ? `
+                <div class="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-4 space-y-1">
+                  <div class="font-semibold">Type Mismatches:</div>
+                  ${typeIssues
+                    .map(
+                      (issue: string) =>
+                        `<div>• ${replaceDropAreaLabel(issue)}</div>`
+                    )
+                    .join("")}
+                </div>
+                <div class="text-xs text-red-500 mb-4">
+                  <strong>Solutions:</strong><br/>
+                  • Remove incompatible variables and add compatible ones<br/>
+                  • Switch to a chart type that supports these data types<br/>
+                  • Check your data types in the variable list
+                </div>
+              `
+                  : ""
+              }
+              ${
+                otherIssues.length > 0
+                  ? `
+                <div class="text-sm text-gray-600 space-y-2">
+                  ${otherIssues
+                    .map(
+                      (issue: string) =>
+                        `<div>• ${replaceDropAreaLabel(issue)}</div>`
+                    )
+                    .join("")}
+                </div>
+                <div class="text-xs text-gray-500 mt-4">
+                  Drag variables to the required positions to see the chart preview
+                </div>
+              `
+                  : ""
+              }
             </div>
-            ${
-              typeIssues.length > 0
-                ? `
-              <div class="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-4 space-y-1">
-                <div class="font-semibold">Type Mismatches:</div>
-                ${typeIssues.map((issue) => `<div>• ${issue}</div>`).join("")}
-              </div>
-              <div class="text-xs text-red-500 mb-4">
-                <strong>Solutions:</strong><br/>
-                • Remove incompatible variables and add compatible ones<br/>
-                • Switch to a chart type that supports these data types<br/>
-                • Check your data types in the variable list
-              </div>
-            `
-                : ""
-            }
-            ${
-              otherIssues.length > 0
-                ? `
-              <div class="text-sm text-gray-600 space-y-2">
-                ${otherIssues.map((issue) => `<div>• ${issue}</div>`).join("")}
-              </div>
-              <div class="text-xs text-gray-500 mt-4">
-                Drag variables to the required positions to see the chart preview
-              </div>
-            `
-                : ""
-            }
           `;
-          chartContainerRef.current.appendChild(messageDiv);
+          chartContainerRef.current.appendChild(warningContainer);
           return;
         }
 
@@ -1884,6 +1975,68 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
+          case "Scatter Plot With Multiple Fit Line": {
+            const isDefault = renderMode === "default";
+            const config = createChartConfig(chartType, isDefault);
+
+            // Transform data ke format yang diharapkan oleh scatterUtils
+            const scatterData = config.data
+              .map((d: any) => {
+                // Handle different data formats
+                if (d.x !== undefined && d.y !== undefined) {
+                  return { x: d.x, y: d.y };
+                } else if (d.value !== undefined && d.category !== undefined) {
+                  // For bar chart data format
+                  return { x: parseFloat(d.category) || 0, y: d.value };
+                } else if (Array.isArray(d)) {
+                  // For array format
+                  return { x: d[0] || 0, y: d[1] || 0 };
+                } else {
+                  // Fallback
+                  return { x: 0, y: 0 };
+                }
+              })
+              .filter((d: any) => !isNaN(d.x) && !isNaN(d.y));
+
+            // Debug logging untuk data yang dikirim
+            console.log("🔍 ChartPreview - config.data:", config.data);
+            console.log(
+              "🔍 ChartPreview - config.data length:",
+              config.data?.length
+            );
+            console.log(
+              "🔍 ChartPreview - Sample data:",
+              config.data?.slice(0, 3)
+            );
+            console.log(
+              "🔍 ChartPreview - Transformed scatterData:",
+              scatterData
+            );
+            console.log(
+              "🔍 ChartPreview - Transformed data length:",
+              scatterData.length
+            );
+
+            // Gunakan ChartService untuk membuat fit functions
+            const fitFunctions = ChartService.createFitFunctions(scatterData);
+
+            chartNode = chartUtils.createScatterPlotWithMultipleFitLine(
+              scatterData,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors,
+              fitFunctions
+            );
+
+            // Simpan fitFunctions ke dalam config untuk JSON output
+            (config as any).fitFunctions = fitFunctions;
+            break;
+          }
+
           case "Grouped Scatter Plot": {
             const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
@@ -1928,7 +2081,8 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               config.titleConfig,
               config.axisConfig,
               config.scaleConfig,
-              chartColors
+              chartColors,
+              showNormalCurve
             );
             break;
           }
@@ -2179,6 +2333,40 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
             chartNode = chartUtils.createDensityChart(
               densityData,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "Normal Q-Q Plot": {
+            const isDefault = renderMode === "default";
+            const config = createNormalQQPlotConfig(chartType, isDefault);
+
+            chartNode = chartUtils.createNormalQQPlot(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "P-P Plot": {
+            const isDefault = renderMode === "default";
+            const config = createPPPlotConfig(chartType, isDefault);
+
+            chartNode = chartUtils.createPPPlot(
+              config.data,
               width,
               height,
               useaxis,
@@ -2479,219 +2667,219 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "3D Bar Chart2": {
-            const isDefault = renderMode === "default";
-            // Buat elemen chart
-            const d3BarChartData = isDefault
-              ? [
-                  { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
-                  { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
-                  { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
-                  { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
-                  { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
-                  { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
-                  { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
-                  { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
-                  { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
-                  { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
-                  { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
-                  { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
-                  { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
-                  { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
-                  { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
-                ]
-              : processedResult.data;
+          // case "3D Bar Chart2": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3BarChartData = isDefault
+          //     ? [
+          //         { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+          //         { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+          //         { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+          //         { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+          //         { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+          //         { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+          //         { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+          //         { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+          //         { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+          //         { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+          //         { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+          //         { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+          //         { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+          //         { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+          //         { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+          //       ]
+          //     : processedResult.data;
 
-            chartNode = chartUtils.create3DBarChart2(
-              d3BarChartData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.create3DBarChart2(
+          //     d3BarChartData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
-          case "3D Scatter Plot": {
-            const isDefault = renderMode === "default";
-            // Buat elemen chart
-            const d3ScatterPlotData = isDefault
-              ? [
-                  { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
-                  { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
-                  { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
-                  { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
-                  { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
-                  { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
-                  { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
-                  { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
-                  { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
-                  { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
-                  { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
-                  { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
-                  { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
-                  { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
-                  { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
-                ]
-              : processedResult.data.map((d) => ({
-                  x:
-                    d.category && Number(d.category) !== 0
-                      ? Number(d.category)
-                      : Number(d.bottom_0) || 0,
-                  y: Number(d.value) || 0,
-                  z: Number(d.bottom2_0) || 0,
-                }));
+          // case "3D Scatter Plot": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3ScatterPlotData = isDefault
+          //     ? [
+          //         { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+          //         { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+          //         { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+          //         { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+          //         { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+          //         { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+          //         { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+          //         { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+          //         { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+          //         { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+          //         { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+          //         { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+          //         { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+          //         { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+          //         { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+          //       ]
+          //     : processedResult.data.map((d) => ({
+          //         x:
+          //           d.category && Number(d.category) !== 0
+          //             ? Number(d.category)
+          //             : Number(d.bottom_0) || 0,
+          //         y: Number(d.value) || 0,
+          //         z: Number(d.bottom2_0) || 0,
+          //       }));
 
-            chartNode = chartUtils.create3DScatterPlot(
-              d3ScatterPlotData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.create3DScatterPlot(
+          //     d3ScatterPlotData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
-          case "Grouped 3D Scatter Plot": {
-            const isDefault = renderMode === "default";
-            // Buat elemen chart
-            const d3GroupedScatterPlotData = isDefault
-              ? [
-                  { x: 1, y: 2, z: 3, category: "A" },
-                  { x: 1, y: 2, z: 3, category: "B" },
-                  { x: 1, y: 2, z: 3, category: "C" },
-                  { x: 1, y: 4, z: 3, category: "D" },
-                  { x: 2, y: 4, z: 1, category: "A" },
-                  { x: 3, y: 1, z: 2, category: "B" },
-                  { x: 4, y: 3, z: 4, category: "B" },
-                  { x: 5, y: 2, z: 5, category: "C" },
-                  { x: 6, y: 5, z: 3, category: "C" },
-                  { x: 7, y: 3, z: 2, category: "D" },
-                  { x: 8, y: 4, z: 1, category: "D" },
-                ]
-              : processedResult.data
-                  .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
-                  .map((d) => ({
-                    x:
-                      d.category && Number(d.category) !== 0
-                        ? Number(d.category)
-                        : Number(d.bottom_0) || 0,
-                    y: Number(d.value) || 0,
-                    z: Number(d.bottom2_0) || 0,
-                    category: String(d.color || "unknown"),
-                  }));
+          // case "Grouped 3D Scatter Plot": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3GroupedScatterPlotData = isDefault
+          //     ? [
+          //         { x: 1, y: 2, z: 3, category: "A" },
+          //         { x: 1, y: 2, z: 3, category: "B" },
+          //         { x: 1, y: 2, z: 3, category: "C" },
+          //         { x: 1, y: 4, z: 3, category: "D" },
+          //         { x: 2, y: 4, z: 1, category: "A" },
+          //         { x: 3, y: 1, z: 2, category: "B" },
+          //         { x: 4, y: 3, z: 4, category: "B" },
+          //         { x: 5, y: 2, z: 5, category: "C" },
+          //         { x: 6, y: 5, z: 3, category: "C" },
+          //         { x: 7, y: 3, z: 2, category: "D" },
+          //         { x: 8, y: 4, z: 1, category: "D" },
+          //       ]
+          //     : processedResult.data
+          //         .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+          //         .map((d) => ({
+          //           x:
+          //             d.category && Number(d.category) !== 0
+          //               ? Number(d.category)
+          //               : Number(d.bottom_0) || 0,
+          //           y: Number(d.value) || 0,
+          //           z: Number(d.bottom2_0) || 0,
+          //           category: String(d.color || "unknown"),
+          //         }));
 
-            chartNode = chartUtils.createGrouped3DScatterPlot(
-              d3GroupedScatterPlotData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.createGrouped3DScatterPlot(
+          //     d3GroupedScatterPlotData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
-          case "Clustered 3D Bar Chart": {
-            const isDefault = renderMode === "default";
-            // Buat elemen chart
-            const d3ClusteredBarChartData = isDefault
-              ? [
-                  { x: 1, z: 1, y: 6, category: "A" },
-                  { x: 2, z: 1, y: 7, category: "A" },
-                  { x: 2, z: 1, y: 6, category: "B" },
-                  { x: 2, z: 1, y: 5, category: "C" },
-                  { x: 2, z: 1, y: 6, category: "D" },
-                  { x: 6, z: 4, y: 7, category: "A" },
-                  { x: 6, z: 4, y: 6, category: "B" },
-                  { x: 6, z: 4, y: 5, category: "C" },
-                  { x: 6, z: 4, y: 6, category: "D" },
-                  { x: 4, z: 7, y: 5, category: "A" },
-                  { x: -4, z: 6, y: 3, category: "A" },
-                  { x: -4, z: 6, y: 6, category: "B" },
-                  { x: -4, z: 6, y: 7, category: "C" },
-                  { x: -4, z: 6, y: 1, category: "D" },
-                  { x: -4, z: 6, y: 4, category: "E" },
-                  { x: -9, z: 8, y: 4, category: "A" },
-                  { x: -9, z: 8, y: 6, category: "B" },
-                  { x: -9, z: 8, y: 2, category: "E" },
-                  { x: 8, z: -6, y: 3, category: "A" },
-                  { x: 8, z: -6, y: 4, category: "B" },
-                  { x: 8, z: -6, y: 9, category: "C" },
-                  { x: 8, z: -6, y: 2, category: "D" },
-                  { x: 8, z: -6, y: 5, category: "E" },
-                  { x: -8, z: -2, y: 3, category: "A" },
-                  { x: -8, z: -2, y: 6, category: "B" },
-                  { x: -8, z: -2, y: 3, category: "C" },
-                  { x: -8, z: -2, y: 1, category: "D" },
-                  { x: -8, z: -2, y: 4, category: "E" },
-                ]
-              : processedResult.data
-                  .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
-                  .map((d) => ({
-                    x:
-                      d.category && Number(d.category) !== 0
-                        ? Number(d.category)
-                        : Number(d.bottom_0) || 0,
-                    y: Number(d.value) || 0,
-                    z: Number(d.bottom2_0) || 0,
-                    category: String(d.color || "unknown"),
-                  }));
+          // case "Clustered 3D Bar Chart": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3ClusteredBarChartData = isDefault
+          //     ? [
+          //         { x: 1, z: 1, y: 6, category: "A" },
+          //         { x: 2, z: 1, y: 7, category: "A" },
+          //         { x: 2, z: 1, y: 6, category: "B" },
+          //         { x: 2, z: 1, y: 5, category: "C" },
+          //         { x: 2, z: 1, y: 6, category: "D" },
+          //         { x: 6, z: 4, y: 7, category: "A" },
+          //         { x: 6, z: 4, y: 6, category: "B" },
+          //         { x: 6, z: 4, y: 5, category: "C" },
+          //         { x: 6, z: 4, y: 6, category: "D" },
+          //         { x: 4, z: 7, y: 5, category: "A" },
+          //         { x: -4, z: 6, y: 3, category: "A" },
+          //         { x: -4, z: 6, y: 6, category: "B" },
+          //         { x: -4, z: 6, y: 7, category: "C" },
+          //         { x: -4, z: 6, y: 1, category: "D" },
+          //         { x: -4, z: 6, y: 4, category: "E" },
+          //         { x: -9, z: 8, y: 4, category: "A" },
+          //         { x: -9, z: 8, y: 6, category: "B" },
+          //         { x: -9, z: 8, y: 2, category: "E" },
+          //         { x: 8, z: -6, y: 3, category: "A" },
+          //         { x: 8, z: -6, y: 4, category: "B" },
+          //         { x: 8, z: -6, y: 9, category: "C" },
+          //         { x: 8, z: -6, y: 2, category: "D" },
+          //         { x: 8, z: -6, y: 5, category: "E" },
+          //         { x: -8, z: -2, y: 3, category: "A" },
+          //         { x: -8, z: -2, y: 6, category: "B" },
+          //         { x: -8, z: -2, y: 3, category: "C" },
+          //         { x: -8, z: -2, y: 1, category: "D" },
+          //         { x: -8, z: -2, y: 4, category: "E" },
+          //       ]
+          //     : processedResult.data
+          //         .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+          //         .map((d) => ({
+          //           x:
+          //             d.category && Number(d.category) !== 0
+          //               ? Number(d.category)
+          //               : Number(d.bottom_0) || 0,
+          //           y: Number(d.value) || 0,
+          //           z: Number(d.bottom2_0) || 0,
+          //           category: String(d.color || "unknown"),
+          //         }));
 
-            chartNode = chartUtils.createClustered3DBarChart(
-              d3ClusteredBarChartData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.createClustered3DBarChart(
+          //     d3ClusteredBarChartData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
-          case "Stacked 3D Bar Chart": {
-            const isDefault = renderMode === "default";
-            // Buat elemen chart
-            const d3StackedBarChartData = isDefault
-              ? [
-                  { x: 1, z: 1, y: 6, category: "A" },
-                  { x: 2, z: 6, y: 2, category: "A" },
-                  { x: 2, z: 6, y: 3, category: "B" },
-                  { x: 2, z: 6, y: 2, category: "C" },
-                  { x: 2, z: 6, y: 1, category: "D" },
-                  { x: 5, z: 4, y: 1, category: "A" },
-                  { x: 5, z: 4, y: 2, category: "B" },
-                  { x: 5, z: 4, y: 3, category: "C" },
-                  { x: 5, z: 4, y: 1, category: "D" },
-                  { x: 9, z: 7, y: 7, category: "A" },
-                  { x: -4, z: 6, y: 3, category: "A" },
-                  { x: -4, z: 6, y: 1, category: "B" },
-                  { x: -4, z: 6, y: 2, category: "C" },
-                  { x: -4, z: 6, y: 2, category: "D" },
-                  { x: -4, z: 6, y: 1, category: "E" },
-                  { x: -9, z: 8, y: 1, category: "A" },
-                  { x: -9, z: 8, y: 2, category: "B" },
-                  { x: -9, z: 8, y: 2, category: "E" },
-                  { x: 8, z: -6, y: 3, category: "A" },
-                  { x: 8, z: -6, y: 2, category: "B" },
-                  { x: 8, z: -6, y: 1, category: "C" },
-                  { x: 8, z: -6, y: 2, category: "D" },
-                  { x: 8, z: -6, y: 2, category: "E" },
-                  { x: -8, z: -2, y: 3, category: "A" },
-                  { x: -8, z: -2, y: 2, category: "B" },
-                  { x: -8, z: -2, y: 3, category: "C" },
-                  { x: -8, z: -2, y: 1, category: "D" },
-                  { x: -8, z: -2, y: 1, category: "E" },
-                ]
-              : processedResult.data
-                  .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
-                  .map((d) => ({
-                    x:
-                      d.category && Number(d.category) !== 0
-                        ? Number(d.category)
-                        : Number(d.bottom_0) || 0,
-                    y: Number(d.value) || 0,
-                    z: Number(d.bottom2_0) || 0,
-                    category: String(d.color || "unknown"),
-                  }));
+          // case "Stacked 3D Bar Chart": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3StackedBarChartData = isDefault
+          //     ? [
+          //         { x: 1, z: 1, y: 6, category: "A" },
+          //         { x: 2, z: 6, y: 2, category: "A" },
+          //         { x: 2, z: 6, y: 3, category: "B" },
+          //         { x: 2, z: 6, y: 2, category: "C" },
+          //         { x: 2, z: 6, y: 1, category: "D" },
+          //         { x: 5, z: 4, y: 1, category: "A" },
+          //         { x: 5, z: 4, y: 2, category: "B" },
+          //         { x: 5, z: 4, y: 3, category: "C" },
+          //         { x: 5, z: 4, y: 1, category: "D" },
+          //         { x: 9, z: 7, y: 7, category: "A" },
+          //         { x: -4, z: 6, y: 3, category: "A" },
+          //         { x: -4, z: 6, y: 1, category: "B" },
+          //         { x: -4, z: 6, y: 2, category: "C" },
+          //         { x: -4, z: 6, y: 2, category: "D" },
+          //         { x: -4, z: 6, y: 1, category: "E" },
+          //         { x: -9, z: 8, y: 1, category: "A" },
+          //         { x: -9, z: 8, y: 2, category: "B" },
+          //         { x: -9, z: 8, y: 2, category: "E" },
+          //         { x: 8, z: -6, y: 3, category: "A" },
+          //         { x: 8, z: -6, y: 2, category: "B" },
+          //         { x: 8, z: -6, y: 1, category: "C" },
+          //         { x: 8, z: -6, y: 2, category: "D" },
+          //         { x: 8, z: -6, y: 2, category: "E" },
+          //         { x: -8, z: -2, y: 3, category: "A" },
+          //         { x: -8, z: -2, y: 2, category: "B" },
+          //         { x: -8, z: -2, y: 3, category: "C" },
+          //         { x: -8, z: -2, y: 1, category: "D" },
+          //         { x: -8, z: -2, y: 1, category: "E" },
+          //       ]
+          //     : processedResult.data
+          //         .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+          //         .map((d) => ({
+          //           x:
+          //             d.category && Number(d.category) !== 0
+          //               ? Number(d.category)
+          //               : Number(d.bottom_0) || 0,
+          //           y: Number(d.value) || 0,
+          //           z: Number(d.bottom2_0) || 0,
+          //           category: String(d.color || "unknown"),
+          //         }));
 
-            chartNode = chartUtils.createStacked3DBarChart(
-              d3StackedBarChartData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.createStacked3DBarChart(
+          //     d3StackedBarChartData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
           case "Stacked 3D Bar Chart (ECharts)": {
             const isDefault = renderMode === "default";
@@ -2991,6 +3179,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       chartColors,
       processedResult,
       selectedStatistic,
+      showNormalCurve,
       createChartConfig,
       createClusteredErrorBarChartConfig,
       createDualAxisChartConfig,
@@ -3141,12 +3330,66 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       }
     }, [processedResult, generateChartJSON]);
 
+    // Mapping nama variabel drop area ke label user-friendly
+    const dropAreaLabelMap: Record<string, string> = {
+      side: "Left",
+      side2: "Right",
+      bottom: "Bottom",
+      bottom2: "Bottom 2",
+      color: "Group",
+      high: "High",
+      low: "Low",
+      close: "Close",
+    };
+
+    // Helper untuk mengganti label variabel pada pesan
+    function replaceDropAreaLabel(text: string) {
+      return text.replace(
+        /(Side 2|Side|Bottom 2|Bottom|Color|High|Low|Close)/gi,
+        (match) => {
+          const key = match.toLowerCase().replace(" ", "");
+          if (key === "side") return "Left";
+          if (key === "side2") return "Right";
+          if (key === "bottom") return "Bottom";
+          if (key === "bottom2") return "Bottom 2";
+          if (key === "color") return "Group";
+          if (key === "high") return "High";
+          if (key === "low") return "Low";
+          if (key === "close") return "Close";
+          return match;
+        }
+      );
+    }
+
     return (
       <div className="flex flex-col p-5 border-2 border-gray-200 rounded-lg pb-24">
+        {/* AlertDialog untuk error tipe data */}
+        {errorDialog?.open && (
+          <AlertDialog
+            open={errorDialog.open}
+            onOpenChange={(open: boolean) =>
+              setErrorDialog(open ? errorDialog : null)
+            }
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{errorDialog.title}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {errorDialog.description}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setErrorDialog(null)}>
+                  OK
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         {/* Label Chart Preview di tengah atas kotak putih */}
         <div
           className="flex justify-center items-center w-full"
-          style={{ marginTop: "10px", marginBottom: "0px" }}
+          style={{ marginTop: "8px", marginBottom: "4px" }}
         >
           <span
             className="text-lg font-semibold text-gray-500 uppercase tracking-widest px-6 py-1 rounded border border-gray-200 shadow-sm"
@@ -3172,13 +3415,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                 {/* Copy dari JSX lama untuk side */}
                 <div
                   className={clsx(
-                    "rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer",
-                    (chartType === "3D Bar Chart2" ||
-                      chartType === "3D Scatter Plot" ||
-                      chartType === "Grouped 3D Scatter Plot" ||
-                      chartType === "Clustered 3D Bar Chart" ||
-                      chartType === "Stacked 3D Bar Chart") &&
-                      "border-3 border-green-500"
+                    "rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border-[1px] border-gray-400 rounded-md px-2 py-1 cursor-pointer font-normal text-xs"
+                    // (chartType === "3D Bar Chart2" ||
+                    //   chartType === "3D Scatter Plot" ||
+                    //   chartType === "Grouped 3D Scatter Plot" ||
+                    //   chartType === "Clustered 3D Bar Chart" ||
+                    //   chartType === "Stacked 3D Bar Chart") &&
+                    //   "border-3 border-green-500"
                   )}
                   onDrop={(e) => handleDrop(e, "side")}
                   onDragOver={(e) => e.preventDefault()}
@@ -3186,13 +3429,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                 >
                   {sideVariables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                      {chartType === "3D Bar Chart2" ||
-                      chartType === "3D Scatter Plot" ||
-                      chartType === "Grouped 3D Scatter Plot" ||
-                      chartType === "Clustered 3D Bar Chart" ||
-                      chartType === "Stacked 3D Bar Chart"
-                        ? "Y axis"
-                        : "No variables selected"}
+                      {/* Perkecil font dan padding */}
+                      <span className="text-xs font-normal">
+                        "No variables selected"
+                      </span>
                     </div>
                   ) : (
                     (() => {
@@ -3219,14 +3459,21 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                             <div
                               key={index}
                               className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                              style={{ minWidth: "40px" }}
+                              style={{
+                                minWidth: "40px",
+                                fontSize: "11px",
+                                fontWeight: 400,
+                                padding: "4px 8px",
+                              }}
                             >
                               {variable}
                             </div>
                           ))}
                           {hiddenCount > 0 && (
                             <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                              +{hiddenCount} more
+                              <span className="text-xs font-normal">
+                                +{hiddenCount} more
+                              </span>
                             </div>
                           )}
                         </div>
@@ -3244,14 +3491,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                 {/* ...side2 drop area JSX... */}
                 {/* Copy dari JSX lama untuk side2 */}
                 <div
-                  className="rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer"
+                  className="rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border-[1px] border-gray-400 rounded-md px-2 py-1 cursor-pointer font-normal text-xs"
                   onDrop={(e) => handleDrop(e, "side2")}
                   onDragOver={(e) => e.preventDefault()}
                   onClick={() => handleOpenModal("side2")}
                 >
                   {side2Variables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                      No variables selected
+                      <span className="text-xs font-normal">
+                        No variables selected
+                      </span>
                     </div>
                   ) : (
                     (() => {
@@ -3278,14 +3527,21 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                             <div
                               key={index}
                               className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                              style={{ minWidth: "40px" }}
+                              style={{
+                                minWidth: "40px",
+                                fontSize: "11px",
+                                fontWeight: 400,
+                                padding: "4px 8px",
+                              }}
                             >
                               {variable}
                             </div>
                           ))}
                           {hiddenCount > 0 && (
                             <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                              +{hiddenCount} more
+                              <span className="text-xs font-normal">
+                                +{hiddenCount} more
+                              </span>
                             </div>
                           )}
                         </div>
@@ -3300,26 +3556,36 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             (chartVariableConfig[chartType].bottom?.min !== 0 ||
               chartVariableConfig[chartType].bottom?.max !== 0) && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 z-10"
-                style={{ bottom: "-50px" }}
+                className="absolute z-10"
+                style={
+                  chartVariableConfig[chartType]?.bottom2 &&
+                  (chartVariableConfig[chartType].bottom2?.min !== 0 ||
+                    chartVariableConfig[chartType].bottom2?.max !== 0)
+                    ? {
+                        left: "calc(50% - 140px)",
+                        bottom: "-50px",
+                        transform: "translateX(-50%)",
+                      }
+                    : {
+                        left: "50%",
+                        bottom: "-50px",
+                        transform: "translateX(-50%)",
+                      }
+                }
               >
                 {/* ...bottom drop area JSX... */}
                 {/* Copy dari JSX lama untuk bottom */}
                 <div
-                  className="flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer"
+                  className="flex justify-center items-center space-x-1 w-[200px] border-[1px] border-gray-400 rounded-md px-2 py-1 cursor-pointer font-normal text-xs"
                   onDrop={(e) => handleDrop(e, "bottom")}
                   onDragOver={(e) => e.preventDefault()}
                   onClick={() => handleOpenModal("bottom")}
                 >
                   {bottomVariables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                      {chartType === "3D Bar Chart2" ||
-                      chartType === "3D Scatter Plot" ||
-                      chartType === "Grouped 3D Scatter Plot" ||
-                      chartType === "Clustered 3D Bar Chart" ||
-                      chartType === "Stacked 3D Bar Chart"
-                        ? "X axis"
-                        : "No variables selected"}
+                      <span className="text-xs font-normal">
+                        "No variables selected"
+                      </span>
                     </div>
                   ) : (
                     (() => {
@@ -3346,14 +3612,21 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                             <div
                               key={index}
                               className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                              style={{ minWidth: "40px" }}
+                              style={{
+                                minWidth: "40px",
+                                fontSize: "11px",
+                                fontWeight: 400,
+                                padding: "4px 8px",
+                              }}
                             >
                               {variable}
                             </div>
                           ))}
                           {hiddenCount > 0 && (
                             <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                              +{hiddenCount} more
+                              <span className="text-xs font-normal">
+                                +{hiddenCount} more
+                              </span>
                             </div>
                           )}
                         </div>
@@ -3369,25 +3642,25 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               chartVariableConfig[chartType].bottom2?.max !== 0) && (
               <div
                 className="absolute z-10"
-                style={{ bottom: "-50px", right: "150px" }}
+                style={{
+                  left: "calc(50% + 140px)",
+                  bottom: "-50px",
+                  transform: "translateX(-50%)",
+                }}
               >
                 {/* ...bottom2 drop area JSX... */}
                 {/* Copy dari JSX lama untuk bottom2 */}
                 <div
-                  className="flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer"
+                  className="flex justify-center items-center space-x-1 w-[200px] border-[1px] border-gray-400 rounded-md px-2 py-1 cursor-pointer font-normal text-xs"
                   onDrop={(e) => handleDrop(e, "bottom2")}
                   onDragOver={(e) => e.preventDefault()}
                   onClick={() => handleOpenModal("bottom2")}
                 >
                   {bottom2Variables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                      {chartType === "3D Bar Chart2" ||
-                      chartType === "3D Scatter Plot" ||
-                      chartType === "Grouped 3D Scatter Plot" ||
-                      chartType === "Clustered 3D Bar Chart" ||
-                      chartType === "Stacked 3D Bar Chart"
-                        ? "Z axis"
-                        : "No variables selected"}
+                      <span className="text-xs font-normal">
+                        "No variables selected"
+                      </span>
                     </div>
                   ) : (
                     (() => {
@@ -3414,14 +3687,21 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                             <div
                               key={index}
                               className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                              style={{ minWidth: "40px" }}
+                              style={{
+                                minWidth: "40px",
+                                fontSize: "11px",
+                                fontWeight: 400,
+                                padding: "4px 8px",
+                              }}
                             >
                               {variable}
                             </div>
                           ))}
                           {hiddenCount > 0 && (
                             <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                              +{hiddenCount} more
+                              <span className="text-xs font-normal">
+                                +{hiddenCount} more
+                              </span>
                             </div>
                           )}
                         </div>
@@ -3438,20 +3718,25 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               <div className="absolute top-[-20px] right-[-10px] z-10">
                 {/* ...color drop area JSX... */}
                 <div
-                  className="p-2 border border-dashed border-gray-400 rounded-lg text-gray-500"
+                  className="px-2 py-1 border-[1px] border-dashed border-gray-400 rounded-lg text-gray-500 text-xs font-normal"
                   onDrop={(e) => handleDrop(e, "color")}
                   onDragOver={handleDragOver}
                   onClick={() => handleOpenModal("color")}
                 >
                   {colorVariables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md">
-                      Group by
+                      <span className="text-xs font-normal">Group by</span>
                     </div>
                   ) : (
                     colorVariables.map((variable, index) => (
                       <div
                         key={index}
                         className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md"
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 400,
+                          padding: "4px 8px",
+                        }}
                       >
                         {variable}
                       </div>
@@ -3467,7 +3752,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10">
                 {/* ...filter drop area JSX... */}
                 <div
-                  className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md rotate-90 w-full text-center"
+                  className="bg-gray-300 text-gray-500 px-2 py-1 rounded-md text-xs font-normal shadow-md rotate-90 w-full text-center border-[1px] border-dashed border-gray-400"
                   onDrop={(e) => handleDrop(e, "filter")}
                   onDragOver={handleDragOver}
                   onClick={() => handleOpenModal("filter")}
@@ -3478,6 +3763,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                         <div
                           key={index}
                           className="bg-green-500 text-white p-2 rounded-md text-sm shadow-md rotate-90 w-full text-center"
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 400,
+                            padding: "4px 8px",
+                          }}
                         >
                           {variable}
                         </div>
@@ -3532,7 +3822,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                           : dropZone === "close" && closeVariables.length > 0
                           ? "bg-blue-500 text-white border-blue-500"
                           : "bg-gray-300 text-gray-500 border-gray-500"
-                      } p-2 rounded-md text-sm shadow-md text-center border border-dashed`}
+                      } px-2 py-1 rounded-md text-xs font-normal shadow-md text-center border-[1px] border-dashed`}
                       style={{ width: itemWidth }} // Set width based on number of elements
                       onDrop={(e) => handleDrop(e, dropZone)} // Pass simplified drop zone (e.g. "high", "low", "close")
                       onDragOver={(e) => e.preventDefault()}
@@ -3540,13 +3830,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                     >
                       {/* Menampilkan variabel yang sudah di-drop atau label default */}
                       {
-                        dropZone === "high" && highVariables.length > 0
-                          ? highVariables.join(", ") // Jika ada variabel, tampilkan
-                          : dropZone === "low" && lowVariables.length > 0
-                          ? lowVariables.join(", ") // Jika ada variabel, tampilkan
-                          : dropZone === "close" && closeVariables.length > 0
-                          ? closeVariables.join(", ") // Jika ada variabel, tampilkan
-                          : label // Jika tidak ada variabel, tampilkan label default
+                        dropZone === "high" && highVariables.length > 0 ? (
+                          highVariables.join(", ") // Jika ada variabel, tampilkan
+                        ) : dropZone === "low" && lowVariables.length > 0 ? (
+                          lowVariables.join(", ") // Jika ada variabel, tampilkan
+                        ) : dropZone === "close" &&
+                          closeVariables.length > 0 ? (
+                          closeVariables.join(", ") // Jika ada variabel, tampilkan
+                        ) : (
+                          <span className="text-xs font-normal">{label}</span>
+                        ) // Jika tidak ada variabel, tampilkan label default
                       }
                     </div>
                   );
@@ -3621,16 +3914,31 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           )}
 
           {/* Kotak chart preview, hanya chart */}
-          <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[700px] max-w-full h-[450px] flex items-center justify-center mt-8">
-            <div className="bg-white rounded-lg shadow w-full h-full flex items-center justify-center overflow-hidden">
+          <div
+            className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 flex items-center justify-center mt-8 w-full max-w-[800px]"
+            style={{
+              width: width ? width + 50 : "100%", // Tambah padding lebih besar untuk legend
+              height: height ? height + 40 : "auto",
+              minWidth: 200,
+              minHeight: 120,
+            }}
+          >
+            <div
+              className="bg-white rounded-lg shadow w-full h-full flex items-center justify-center overflow-hidden rounded-lg p-2"
+              style={{ width: width, height: height }}
+            >
               <div
                 id="chart-container"
                 ref={chartContainerRef}
-                className="w-[90%] h-[90%] max-w-[600px] max-h-[400px] bg-white overflow-hidden"
+                className="w-full h-full bg-white overflow-visible"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  width: width,
+                  height: height,
+                  maxWidth: "100%",
+                  maxHeight: "100%",
                 }}
               />
             </div>

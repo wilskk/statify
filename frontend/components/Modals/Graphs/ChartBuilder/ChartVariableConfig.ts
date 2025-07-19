@@ -70,6 +70,12 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       color: { min: 0, max: 0, allowedTypes: "both" },
       filter: { min: 0, max: 0, allowedTypes: "both" },
     },
+    "Scatter Plot With Multiple Fit Line": {
+      side: { min: 1, max: 1, allowedTypes: "numeric" },
+      bottom: { min: 1, max: 1, allowedTypes: "numeric" },
+      color: { min: 0, max: 0, allowedTypes: "both" },
+      filter: { min: 0, max: 0, allowedTypes: "both" },
+    },
     Boxplot: {
       side: { min: 1, max: 1, allowedTypes: "numeric" },
       bottom: { min: 1, max: 1, allowedTypes: "string" },
@@ -244,11 +250,11 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       side: { min: 1, max: 1, allowedTypes: "numeric" },
       bottom: { min: 1, max: 1, allowedTypes: "string" },
     },
-    "3D Bar Chart2": {
-      side: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
-    },
+    // "3D Bar Chart2": {
+    //   side: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   bottom: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
+    // },
     "3D Bar Chart (ECharts)": {
       side: { min: 1, max: 1, allowedTypes: "numeric" },
       bottom: { min: 1, max: 1, allowedTypes: "numeric" },
@@ -277,29 +283,29 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
       color: { min: 1, max: 1, allowedTypes: "string" },
     },
-    "Clustered 3D Bar Chart": {
-      side: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "numeric" },
-      color: { min: 1, max: 1, allowedTypes: "string" },
-      bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
-    },
-    "3D Scatter Plot": {
-      side: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
-    },
-    "Grouped 3D Scatter Plot": {
-      side: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "numeric" },
-      color: { min: 1, max: 1, allowedTypes: "string" },
-      bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
-    },
-    "Stacked 3D Bar Chart": {
-      side: { min: 1, max: 1, allowedTypes: "numeric" },
-      bottom: { min: 1, max: 1, allowedTypes: "numeric" },
-      color: { min: 1, max: 1, allowedTypes: "string" },
-      bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
-    },
+    // "Clustered 3D Bar Chart": {
+    //   side: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   bottom: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   color: { min: 1, max: 1, allowedTypes: "string" },
+    //   bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
+    // },
+    // "3D Scatter Plot": {
+    //   side: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   bottom: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
+    // },
+    // "Grouped 3D Scatter Plot": {
+    //   side: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   bottom: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   color: { min: 1, max: 1, allowedTypes: "string" },
+    //   bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
+    // },
+    // "Stacked 3D Bar Chart": {
+    //   side: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   bottom: { min: 1, max: 1, allowedTypes: "numeric" },
+    //   color: { min: 1, max: 1, allowedTypes: "string" },
+    //   bottom2: { min: 1, max: 1, allowedTypes: "numeric" },
+    // },
     "Violin Plot": {
       side: { min: 1, max: 1, allowedTypes: "numeric" },
       bottom: { min: 1, max: 1, allowedTypes: "string" },
@@ -311,6 +317,18 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       bottom: { min: 0, max: 0, allowedTypes: "both" },
       color: { min: 0, max: 0, allowedTypes: "both" },
       bottom2: { min: 0, max: 0, allowedTypes: "both" },
+    },
+    "Normal Q-Q Plot": {
+      side: { min: 1, max: 1, allowedTypes: "numeric" },
+      bottom: { min: 0, max: 0, allowedTypes: "both" },
+      color: { min: 0, max: 0, allowedTypes: "both" },
+      filter: { min: 0, max: 0, allowedTypes: "both" },
+    },
+    "P-P Plot": {
+      side: { min: 1, max: 1, allowedTypes: "numeric" },
+      bottom: { min: 0, max: 0, allowedTypes: "both" },
+      color: { min: 0, max: 0, allowedTypes: "both" },
+      filter: { min: 0, max: 0, allowedTypes: "both" },
     },
     "Stem And Leaf Plot": {
       side: { min: 1, max: 1, allowedTypes: "numeric" },

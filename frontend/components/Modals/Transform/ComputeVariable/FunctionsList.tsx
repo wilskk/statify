@@ -50,31 +50,37 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
     if (selectedGroup === "All") {
       return Object.entries(functionGroups).map(([group, functions]) => (
         <div key={group} className="mb-4">
-          <div className="font-medium text-sm text-gray-700 mb-1">{group}</div>
-          {functions.map((func) => (
-            <div
-              key={func}
-              className="pl-4 py-1 text-sm hover:bg-blue-100 cursor-pointer"
-              onClick={() => onFunctionSelect(`${func}(`)}
-            >
-              {func}
-            </div>
-          ))}
+          <div className="font-medium text-sm text-gray-700 mb-2">{group}</div>
+          <div className="space-y-1">
+            {functions.map((func) => (
+              <div
+                key={func}
+                className="pl-2 py-1 text-sm hover:bg-blue-100 cursor-pointer rounded"
+                onClick={() => onFunctionSelect(`${func}(`)}
+              >
+                {func}
+              </div>
+            ))}
+          </div>
         </div>
       ));
     }
 
     const functions =
       functionGroups[selectedGroup as keyof typeof functionGroups] || [];
-    return functions.map((func) => (
-      <div
-        key={func}
-        className="py-1 text-sm hover:bg-blue-100 cursor-pointer"
-        onClick={() => onFunctionSelect(`${func}(`)}
-      >
-        {func}
+    return (
+      <div className="space-y-1">
+        {functions.map((func) => (
+          <div
+            key={func}
+            className="py-1 px-2 text-sm hover:bg-blue-100 cursor-pointer rounded"
+            onClick={() => onFunctionSelect(`${func}(`)}
+          >
+            {func}
+          </div>
+        ))}
       </div>
-    ));
+    );
   };
 
   return (
@@ -93,7 +99,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         </SelectContent>
       </Select>
 
-      <ScrollArea className="h-[200px] mt-2 border rounded bg-white p-2">
+      <ScrollArea className="h-[150px] md:h-[200px] mt-2 border rounded bg-white p-2">
         {renderFunctions()}
       </ScrollArea>
     </div>

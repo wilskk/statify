@@ -49,6 +49,7 @@ import { HexColorPicker } from "react-colorful";
 import { chartConfigOptions } from "./ChartConfigOptions";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { type ErrorBarOptions } from "@/services/chart/DataProcessingService";
+import CustomizationPanel from "./CustomizationPanel";
 
 interface ChartBuilderModalProps {
   onClose: () => void;
@@ -68,6 +69,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
 
   // Add ref to access ChartPreview
   const chartPreviewRef = useRef<ChartPreviewRef>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   // Add new state variables for chart customization
   const [chartTitle, setChartTitle] = useState<string>("");
@@ -119,6 +121,9 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     "mean" | "median" | "mode" | "min" | "max"
   >("mean");
 
+  // Add state for normal curve (for Histogram)
+  const [showNormalCurve, setShowNormalCurve] = useState<boolean>(false);
+
   const [isCalculating, setIsCalculating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -136,6 +141,12 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [errorBarOptions, setErrorBarOptions] = useState<
     ErrorBarOptions | undefined
   >(undefined);
+
+  useEffect(() => {
+    if (dialogRef.current) {
+      dialogRef.current.focus();
+    }
+  }, []);
 
   // Update useEffect to create proper error bar options
   useEffect(() => {
@@ -251,107 +262,45 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   ].filter((item) => item.show);
   const [selectedSetting, setSelectedSetting] = useState<string>("title");
 
-  const [showCustomizationPanel, setShowCustomizationPanel] = useState(true);
+  const [showCustomizationPanel, setShowCustomizationPanel] = useState(false);
 
-  // Add color presets
-  const basicColors = [
-    { name: "Red", value: "#ff0000" },
-    { name: "Blue", value: "#0000ff" },
-    { name: "Green", value: "#00ff00" },
-    { name: "Yellow", value: "#ffff00" },
-    { name: "Purple", value: "#800080" },
-    { name: "Orange", value: "#ffa500" },
-    { name: "Pink", value: "#ffc0cb" },
-    { name: "Brown", value: "#a52a2a" },
-    { name: "Black", value: "#000000" },
-    { name: "White", value: "#ffffff" },
-  ];
+  // Responsive chart dimensions
+  const [chartDimensions, setChartDimensions] = useState({
+    width: 300,
+    height: 390,
+  });
 
-  const gradientPresets = [
-    {
-      name: "Blue Gradient",
-      colors: ["#1a237e", "#0d47a1", "#1976d2", "#2196f3", "#64b5f6"],
-    },
-    {
-      name: "Green Gradient",
-      colors: ["#1b5e20", "#2e7d32", "#388e3c", "#4caf50", "#81c784"],
-    },
-    {
-      name: "Red Gradient",
-      colors: ["#b71c1c", "#c62828", "#d32f2f", "#e53935", "#ef5350"],
-    },
-    {
-      name: "Purple Gradient",
-      colors: ["#4a148c", "#6a1b9a", "#7b1fa2", "#8e24aa", "#ba68c8"],
-    },
-    {
-      name: "Orange Gradient",
-      colors: ["#e65100", "#ef6c00", "#f57c00", "#fb8c00", "#ffb74d"],
-    },
-  ];
+  // Calculate responsive chart dimensions
+  useEffect(() => {
+    const updateChartDimensions = () => {
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
 
-  const colorSchemes = [
-    {
-      name: "Tableau",
-      colors: [
-        "#1f77b4",
-        "#ff7f0e",
-        "#2ca02c",
-        "#d62728",
-        "#9467bd",
-        "#8c564b",
-        "#e377c2",
-        "#7f7f7f",
-        "#bcbd22",
-        "#17becf",
-      ],
-    },
-    {
-      name: "Material",
-      colors: [
-        "#f44336",
-        "#e91e63",
-        "#9c27b0",
-        "#673ab7",
-        "#3f51b5",
-        "#2196f3",
-        "#03a9f4",
-        "#00bcd4",
-        "#009688",
-        "#4caf50",
-      ],
-    },
-    {
-      name: "Pastel",
-      colors: [
-        "#ffb3ba",
-        "#baffc9",
-        "#bae1ff",
-        "#ffffba",
-        "#ffdfba",
-        "#ffb3ff",
-        "#e6b3ff",
-        "#b3d9ff",
-        "#b3ffd9",
-        "#ffffb3",
-      ],
-    },
-    {
-      name: "Vibrant",
-      colors: [
-        "#ff0000",
-        "#00ff00",
-        "#0000ff",
-        "#ffff00",
-        "#ff00ff",
-        "#00ffff",
-        "#ff8000",
-        "#8000ff",
-        "#008000",
-        "#800000",
-      ],
-    },
-  ];
+      let width, height;
+
+      if (screenWidth < 1024) {
+        // Mobile/tablet view
+        width = Math.min(screenWidth * 0.8, 400);
+        height = Math.min(screenHeight * 0.4, 250);
+      } else {
+        // Desktop view
+        if (showCustomizationPanel) {
+          width = Math.min(screenWidth * 0.25, 400);
+          height = Math.min(screenHeight * 0.45, 300);
+        } else {
+          width = Math.min(screenWidth * 0.3, 450);
+          height = Math.min(screenHeight * 0.45, 600);
+        }
+      }
+
+      setChartDimensions({ width, height });
+    };
+
+    updateChartDimensions();
+    window.addEventListener("resize", updateChartDimensions);
+
+    return () => window.removeEventListener("resize", updateChartDimensions);
+  }, [showCustomizationPanel]);
 
   // Add new state variables for color selection
   const [selectedColorType, setSelectedColorType] = useState<
@@ -361,7 +310,9 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [selectedColorScheme, setSelectedColorScheme] = useState<string>("");
 
   // State for color mode
-  const [colorMode, setColorMode] = useState<"single" | "group">("single");
+  const [colorMode, setColorMode] = useState<"single" | "group" | "custom">(
+    "single"
+  );
   const [singleColor, setSingleColor] = useState<string>("#1f77b4");
   const [inputColor, setInputColor] = useState<string>("#1f77b4");
   const [pickerColor, setPickerColor] = useState<string>("#1f77b4");
@@ -637,19 +588,22 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       return false;
     }
 
-    // Validasi untuk bottom (sumbu X)
-    if (
-      bottomVariables.length < chartConfig.bottom.min ||
-      bottomVariables.length > chartConfig.bottom.max
-    ) {
-      alert(
-        `Jumlah variabel untuk sumbu X (bottom) harus antara ${chartConfig.bottom.min} dan ${chartConfig.bottom.max}.`
-      );
-      return false;
+    // Validasi untuk bottom (sumbu X) - hanya jika chart memerlukan bottom variables
+    if (chartConfig.bottom.min > 0 || chartConfig.bottom.max > 0) {
+      if (
+        bottomVariables.length < chartConfig.bottom.min ||
+        bottomVariables.length > chartConfig.bottom.max
+      ) {
+        alert(
+          `Jumlah variabel untuk sumbu X (bottom) harus antara ${chartConfig.bottom.min} dan ${chartConfig.bottom.max}.`
+        );
+        return false;
+      }
     }
 
     if (
       chartConfig.low &&
+      (chartConfig.low.min > 0 || chartConfig.low.max > 0) &&
       (lowVariables.length < chartConfig.low.min ||
         lowVariables.length > chartConfig.low.max)
     ) {
@@ -661,6 +615,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
 
     if (
       chartConfig.high &&
+      (chartConfig.high.min > 0 || chartConfig.high.max > 0) &&
       (highVariables.length < chartConfig.high.min ||
         highVariables.length > chartConfig.high.max)
     ) {
@@ -672,6 +627,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
 
     if (
       chartConfig.close &&
+      (chartConfig.close.min > 0 || chartConfig.close.max > 0) &&
       (closeVariables.length < chartConfig.close.min ||
         closeVariables.length > chartConfig.close.max)
     ) {
@@ -684,34 +640,59 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     return true; // Jika semua validasi lolos
   };
 
+  // Paksa scroll ke atas saat modal muncul agar scroll mouse wheel langsung aktif
+  useEffect(() => {
+    if (dialogRef.current) {
+      dialogRef.current.scrollTop = 0;
+      dialogRef.current.focus();
+    }
+    // Forward event wheel ke modal jika mouse berada di luar modal
+    const handler = (e: WheelEvent) => {
+      if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
+        dialogRef.current.scrollTop += e.deltaY;
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("wheel", handler, { passive: false });
+    return () => window.removeEventListener("wheel", handler);
+  }, []);
+
   if (showResult) {
     return <ResultOutput />;
   }
 
   return (
-    <DialogContent className="sm:max-h-[90%] max-w-[90%] overflow-auto">
-      <DialogHeader className="p-2 m-0 flex flex-row justify-between items-center">
-        <DialogTitle className="text-lg font-semibold m-0">
+    <DialogContent
+      className="custom-dialog-content sm:max-h-[95%] max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] overflow-y-scroll"
+      style={{ WebkitOverflowScrolling: "touch" }}
+      tabIndex={0}
+      ref={dialogRef}
+      autoFocus
+      onOpenAutoFocus={(e) => e.preventDefault()}
+    >
+      <DialogHeader className="p-1 m-0 flex flex-row justify-between items-center">
+        <DialogTitle className="text-xs lg:text-sm font-semibold m-0 p-0">
           Chart Builder
         </DialogTitle>
         {!showCustomizationPanel && (
           <button
-            className="ml-2 p-2 rounded hover:bg-gray-200 text-gray-600"
+            className="ml-2 p-2 rounded hover:bg-gray-200 text-gray-600 text-xs lg:text-sm"
             title="Show Customization"
             onClick={() => setShowCustomizationPanel(true)}
+            tabIndex={-1}
           >
             <GearIcon className="w-5 h-5" />
           </button>
         )}
       </DialogHeader>
 
-      <div className="grid grid-cols-12 gap-6 py-4">
+      <div className="grid grid-cols-12 gap-2 lg:gap-4 py-0 lg:py-1 px-1 lg:px-0 text-xs lg:text-sm">
         {/* Kolom Kiri - Pilih Variabel dan Jenis Chart */}
         <div
           className={
             showCustomizationPanel
-              ? "col-span-3 space-y-6 pr-6 border-r-2 border-gray-100"
-              : "col-span-4 space-y-6 pr-6 border-r-2 border-gray-100"
+              ? "col-span-12 lg:col-span-3 space-y-2 lg:space-y-4 pr-2 lg:pr-4 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-gray-100 mb-2 lg:mb-0 pb-2 lg:pb-0 text-xs lg:text-sm"
+              : "col-span-12 lg:col-span-5 space-y-2 lg:space-y-4 pr-2 lg:pr-4 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-gray-100 mb-2 lg:mb-0 pb-2 lg:pb-0 text-xs lg:text-sm"
           }
         >
           <VariableSelection
@@ -720,38 +701,53 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
           />
           {/* Chart Type Selection tetap di sini */}
           <TooltipProvider>
-            <div className="border p-4 rounded-lg shadow-sm h-[300px] mt-4">
-              <div className="mb-2">
-                <Label>Choose Graph</Label>
+            <div className="border p-2 lg:p-3 rounded-lg shadow-sm h-[160px] lg:h-[270px] mt-2 text-xs lg:text-sm">
+              <div className="mb-1">
+                <Label className="text-xs lg:text-sm">Choose Graph</Label>
               </div>
-              <div className="overflow-y-auto max-h-[220px]">
-                <div className="grid grid-cols-3 gap-4 mt-2">
+              <div className="overflow-y-auto max-h-[100px] lg:max-h-[220px] chart-selection-container">
+                <div
+                  className="chart-selection-grid w-full gap-1 lg:gap-2 mt-1 gap-y-0.5 lg:gap-y-1"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
+                  }}
+                >
                   {chartTypes.map((type, index) => (
                     <Tooltip key={index}>
                       <TooltipTrigger asChild>
                         <div
-                          className={`relative cursor-pointer p-4 border-2 rounded-lg text-center flex flex-col items-center justify-center h-[150px] w-full ${
+                          className={`relative cursor-pointer p-2 lg:p-2 border-2 rounded-lg text-center flex flex-col items-center justify-center h-[70px] lg:h-[100px] w-full text-xs lg:text-sm ${
                             chartType === type
                               ? "bg-gray-300 text-black"
                               : "bg-gray-100"
                           }`}
                           onClick={() => handleChartTypeChange(type)}
                         >
-                          <div className="flex justify-center items-center overflow-hidden mb-2">
+                          <div className="flex justify-center items-center overflow-hidden mb-1 lg:mb-2">
                             <ChartSelection
                               chartType={type}
-                              width={80}
-                              height={80}
+                              width={50}
+                              height={50}
                               useaxis={false}
                             />
                           </div>
-                          <span className="font-semibold text-xs block">
+                          <span
+                            className="font-semibold text-[6px] lg:text-[8px] block leading-tight line-clamp-2 overflow-hidden text-ellipsis text-center"
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              whiteSpace: "normal",
+                              minHeight: "20px",
+                            }}
+                          >
                             {type.charAt(0).toUpperCase() + type.slice(1)}
                           </span>
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent side="top">
-                        {type.charAt(0).toUpperCase() + type.slice(1)} Chart
+                      <TooltipContent side="top" className="text-xs lg:text-sm">
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
                       </TooltipContent>
                     </Tooltip>
                   ))}
@@ -765,15 +761,16 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
         <div
           className={
             showCustomizationPanel
-              ? "col-span-6 flex justify-center items-center"
-              : "col-span-8 flex justify-center items-center"
+              ? "col-span-12 lg:col-span-6 flex justify-center items-center mb-2 lg:mb-0 pb-2 lg:pb-0 border-b-2 lg:border-b-0 border-gray-100 text-xs lg:text-sm px-4"
+              : "col-span-12 lg:col-span-7 flex justify-center items-center mb-2 lg:mb-0 pb-2 lg:pb-0 border-b-2 lg:border-b-0 border-gray-100 text-xs lg:text-sm px-4"
           }
+          style={{ minHeight: "400px", overflowX: "auto" }}
         >
           <ChartPreview
             ref={chartPreviewRef}
             chartType={chartType}
-            width={600}
-            height={390}
+            width={chartDimensions.width}
+            height={chartDimensions.height}
             useaxis={true}
             sideVariables={sideVariables}
             side2Variables={side2Variables}
@@ -816,967 +813,80 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
             chartColors={chartColors}
             selectedStatistic={selectedStatistic}
             errorBarOptions={errorBarOptions}
+            showNormalCurve={showNormalCurve}
           />
         </div>
 
         {/* Kolom Kanan - Panel Customisasi (Sidebar + Form) */}
         {showCustomizationPanel && (
-          <div className="col-span-3 flex flex-col h-full pl-6 border-l-2 border-gray-100 relative">
-            {/* Tombol X di pojok kanan atas panel */}
-            <button
-              className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 text-gray-600 z-10"
-              title="Close Customization Panel"
-              onClick={() => setShowCustomizationPanel(false)}
-            >
-              <Cross2Icon className="w-5 h-5" />
-            </button>
-
-            <Tabs defaultValue="element" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="element">Element</TabsTrigger>
-                <TabsTrigger value="appearance">Appearance</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="element" className="mt-4">
-                {/* Sidebar List */}
-                <div className="flex flex-col gap-1 overflow-y-auto max-h-48 mb-4">
-                  {settingList.map((item) => (
-                    <button
-                      key={item.key}
-                      className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors w-full text-left ${
-                        selectedSetting === item.key
-                          ? "bg-blue-100 text-blue-700 font-semibold"
-                          : "hover:bg-gray-100 text-gray-700"
-                      }`}
-                      onClick={() => setSelectedSetting(item.key)}
-                    >
-                      {item.icon}
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-                {/* Form Pengaturan Detail */}
-                <div className="flex-1 border rounded-lg p-4 bg-white shadow-sm">
-                  {selectedSetting === "title" &&
-                    chartConfigOptions[chartType].title && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="chartTitle">Title</Label>
-                          <input
-                            id="chartTitle"
-                            type="text"
-                            className="w-full p-2 border rounded-md"
-                            value={chartTitle}
-                            onChange={(e) => setChartTitle(e.target.value)}
-                            placeholder="Enter chart title"
-                          />
-                        </div>
-                        {/* {chartConfigOptions[chartType].titleFontSize && (
-                          <div>
-                            <Label htmlFor="titleFontSize">Font Size</Label>
-                            <input
-                              id="titleFontSize"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={titleFontSize}
-                              onChange={(e) => setTitleFontSize(e.target.value)}
-                              placeholder="Enter font size"
-                              min="8"
-                              max="72"
-                            />
-                          </div>
-                        )}
-                        {chartConfigOptions[chartType].titleColor && (
-                          <div>
-                            <Label htmlFor="titleColor">Color</Label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                id="titleColor"
-                                type="color"
-                                className="w-10 h-10 p-1 border rounded-md"
-                                value={titleColor}
-                                onChange={(e) => setTitleColor(e.target.value)}
-                              />
-                              <input
-                                type="text"
-                                className="flex-1 p-2 border rounded-md"
-                                value={titleColor}
-                                onChange={(e) => setTitleColor(e.target.value)}
-                                placeholder="Enter color code"
-                              />
-                            </div>
-                          </div>
-                        )} */}
-                      </div>
-                    )}
-                  {selectedSetting === "subtitle" &&
-                    chartConfigOptions[chartType].subtitle && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="chartSubtitle">Subtitle</Label>
-                          <input
-                            id="chartSubtitle"
-                            type="text"
-                            className="w-full p-2 border rounded-md"
-                            value={chartSubtitle}
-                            onChange={(e) => setChartSubtitle(e.target.value)}
-                            placeholder="Enter chart subtitle"
-                          />
-                        </div>
-                        {/* {chartConfigOptions[chartType].subtitleFontSize && (
-                          <div>
-                            <Label htmlFor="subtitleFontSize">Font Size</Label>
-                            <input
-                              id="subtitleFontSize"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={subtitleFontSize}
-                              onChange={(e) =>
-                                setSubtitleFontSize(e.target.value)
-                              }
-                              placeholder="Enter font size"
-                              min="8"
-                              max="72"
-                            />
-                          </div>
-                        )}
-                        {chartConfigOptions[chartType].subtitleColor && (
-                          <div>
-                            <Label htmlFor="subtitleColor">Color</Label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                id="subtitleColor"
-                                type="color"
-                                className="w-10 h-10 p-1 border rounded-md"
-                                value={subtitleColor}
-                                onChange={(e) =>
-                                  setSubtitleColor(e.target.value)
-                                }
-                              />
-                              <input
-                                type="text"
-                                className="flex-1 p-2 border rounded-md"
-                                value={subtitleColor}
-                                onChange={(e) =>
-                                  setSubtitleColor(e.target.value)
-                                }
-                                placeholder="Enter color code"
-                              />
-                            </div>
-                          </div>
-                        )} */}
-                      </div>
-                    )}
-                  {selectedSetting === "statistic" &&
-                    chartConfigOptions[chartType].statistic && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="selectedStatistic">
-                            Statistical Function
-                          </Label>
-                          <Select
-                            value={selectedStatistic}
-                            onValueChange={(value: any) =>
-                              setSelectedStatistic(value)
-                            }
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select statistic" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="mean">
-                                Mean (Average)
-                              </SelectItem>
-                              <SelectItem value="median">Median</SelectItem>
-                              <SelectItem value="mode">Mode</SelectItem>
-                              <SelectItem value="min">Minimum</SelectItem>
-                              <SelectItem value="max">Maximum</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Choose which statistical measure to display for each
-                            category
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  {selectedSetting === "x-axis" && (
-                    <div className="space-y-2">
-                      {chartConfigOptions[chartType].axis.x.label && (
-                        <>
-                          <Label htmlFor="xAxisLabel">Label</Label>
-                          <input
-                            id="xAxisLabel"
-                            type="text"
-                            className="w-full p-2 border rounded-md"
-                            value={xAxisOptions.label}
-                            onChange={(e) =>
-                              setXAxisOptions({
-                                ...xAxisOptions,
-                                label: e.target.value,
-                              })
-                            }
-                            placeholder="Enter X-axis label"
-                          />
-                        </>
-                      )}
-                      {chartConfigOptions[chartType].axis.x.min && (
-                        <>
-                          <Label htmlFor="xAxisMin">Minimum</Label>
-                          <input
-                            id="xAxisMin"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            value={xAxisOptions.min}
-                            onChange={(e) =>
-                              setXAxisOptions({
-                                ...xAxisOptions,
-                                min: e.target.value,
-                              })
-                            }
-                            placeholder="Min value"
-                          />
-                        </>
-                      )}
-                      {chartConfigOptions[chartType].axis.x.max && (
-                        <>
-                          <Label htmlFor="xAxisMax">Maximum</Label>
-                          <input
-                            id="xAxisMax"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            value={xAxisOptions.max}
-                            onChange={(e) =>
-                              setXAxisOptions({
-                                ...xAxisOptions,
-                                max: e.target.value,
-                              })
-                            }
-                            placeholder="Max value"
-                          />
-                        </>
-                      )}
-                      {chartConfigOptions[chartType].axis.x.majorIncrement && (
-                        <>
-                          <Label htmlFor="xAxisMajorIncrement">
-                            Major Increment
-                          </Label>
-                          <input
-                            id="xAxisMajorIncrement"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            value={xAxisOptions.majorIncrement}
-                            onChange={(e) =>
-                              setXAxisOptions({
-                                ...xAxisOptions,
-                                majorIncrement: e.target.value,
-                              })
-                            }
-                            placeholder="Major increment"
-                          />
-                        </>
-                      )}
-                      {chartConfigOptions[chartType].axis.x.origin && (
-                        <>
-                          <Label htmlFor="xAxisOrigin">Origin</Label>
-                          <input
-                            id="xAxisOrigin"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            value={xAxisOptions.origin}
-                            onChange={(e) =>
-                              setXAxisOptions({
-                                ...xAxisOptions,
-                                origin: e.target.value,
-                              })
-                            }
-                            placeholder="Origin value"
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {selectedSetting === "y-axis" &&
-                    !hasDualYAxis(config.axis) && (
-                      <div className="space-y-2">
-                        {(chartConfigOptions[chartType].axis as any).y
-                          .label && (
-                          <>
-                            <Label htmlFor="yAxisLabel">Label</Label>
-                            <input
-                              id="yAxisLabel"
-                              type="text"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.label}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  label: e.target.value,
-                                })
-                              }
-                              placeholder="Enter Y-axis label"
-                            />
-                          </>
-                        )}
-                        {(chartConfigOptions[chartType].axis as any).y.min && (
-                          <>
-                            <Label htmlFor="yAxisMin">Minimum</Label>
-                            <input
-                              id="yAxisMin"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.min}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  min: e.target.value,
-                                })
-                              }
-                              placeholder="Min value"
-                            />
-                          </>
-                        )}
-                        {(chartConfigOptions[chartType].axis as any).y.max && (
-                          <>
-                            <Label htmlFor="yAxisMax">Maximum</Label>
-                            <input
-                              id="yAxisMax"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.max}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  max: e.target.value,
-                                })
-                              }
-                              placeholder="Max value"
-                            />
-                          </>
-                        )}
-                        {(chartConfigOptions[chartType].axis as any).y
-                          .majorIncrement && (
-                          <>
-                            <Label htmlFor="yAxisMajorIncrement">
-                              Major Increment
-                            </Label>
-                            <input
-                              id="yAxisMajorIncrement"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.majorIncrement}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  majorIncrement: e.target.value,
-                                })
-                              }
-                              placeholder="Major increment"
-                            />
-                          </>
-                        )}
-                        {(chartConfigOptions[chartType].axis as any).y
-                          .origin && (
-                          <>
-                            <Label htmlFor="yAxisOrigin">Origin</Label>
-                            <input
-                              id="yAxisOrigin"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.origin}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  origin: e.target.value,
-                                })
-                              }
-                              placeholder="Origin value"
-                            />
-                          </>
-                        )}
-                      </div>
-                    )}
-                  {selectedSetting === "y1-axis" &&
-                    hasDualYAxis(config.axis) && (
-                      <div className="space-y-2">
-                        {config.axis.y1.label && (
-                          <>
-                            <Label htmlFor="y1AxisLabel">Y1-Axis Label</Label>
-                            <input
-                              id="y1AxisLabel"
-                              type="text"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.label}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  label: e.target.value,
-                                })
-                              }
-                              placeholder="Enter Y1-axis label"
-                            />
-                          </>
-                        )}
-                        {config.axis.y1.min && (
-                          <>
-                            <Label htmlFor="y1AxisMin">Minimum</Label>
-                            <input
-                              id="y1AxisMin"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.min}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  min: e.target.value,
-                                })
-                              }
-                              placeholder="Min value"
-                            />
-                          </>
-                        )}
-                        {config.axis.y1.max && (
-                          <>
-                            <Label htmlFor="y1AxisMax">Maximum</Label>
-                            <input
-                              id="y1AxisMax"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.max}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  max: e.target.value,
-                                })
-                              }
-                              placeholder="Max value"
-                            />
-                          </>
-                        )}
-                        {config.axis.y1.majorIncrement && (
-                          <>
-                            <Label htmlFor="y1AxisMajorIncrement">
-                              Major Increment
-                            </Label>
-                            <input
-                              id="y1AxisMajorIncrement"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.majorIncrement}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  majorIncrement: e.target.value,
-                                })
-                              }
-                              placeholder="Major increment"
-                            />
-                          </>
-                        )}
-                        {config.axis.y1.origin && (
-                          <>
-                            <Label htmlFor="y1AxisOrigin">Origin</Label>
-                            <input
-                              id="y1AxisOrigin"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={yAxisOptions.origin}
-                              onChange={(e) =>
-                                setYAxisOptions({
-                                  ...yAxisOptions,
-                                  origin: e.target.value,
-                                })
-                              }
-                              placeholder="Origin value"
-                            />
-                          </>
-                        )}
-                      </div>
-                    )}
-                  {selectedSetting === "y2-axis" &&
-                    hasDualYAxis(config.axis) && (
-                      <div className="space-y-2">
-                        {config.axis.y2.label && (
-                          <>
-                            <Label htmlFor="y2AxisLabel">Y2-Axis Label</Label>
-                            <input
-                              id="y2AxisLabel"
-                              type="text"
-                              className="w-full p-2 border rounded-md"
-                              value={y2AxisOptions.label}
-                              onChange={(e) =>
-                                setY2AxisOptions({
-                                  ...y2AxisOptions,
-                                  label: e.target.value,
-                                })
-                              }
-                              placeholder="Enter Y2-axis label"
-                            />
-                          </>
-                        )}
-                        {config.axis.y2.min && (
-                          <>
-                            <Label htmlFor="y2AxisMin">Minimum</Label>
-                            <input
-                              id="y2AxisMin"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={y2AxisOptions.min}
-                              onChange={(e) =>
-                                setY2AxisOptions({
-                                  ...y2AxisOptions,
-                                  min: e.target.value,
-                                })
-                              }
-                              placeholder="Min value"
-                            />
-                          </>
-                        )}
-                        {config.axis.y2.max && (
-                          <>
-                            <Label htmlFor="y2AxisMax">Maximum</Label>
-                            <input
-                              id="y2AxisMax"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={y2AxisOptions.max}
-                              onChange={(e) =>
-                                setY2AxisOptions({
-                                  ...y2AxisOptions,
-                                  max: e.target.value,
-                                })
-                              }
-                              placeholder="Max value"
-                            />
-                          </>
-                        )}
-                        {config.axis.y2.majorIncrement && (
-                          <>
-                            <Label htmlFor="y2AxisMajorIncrement">
-                              Major Increment
-                            </Label>
-                            <input
-                              id="y2AxisMajorIncrement"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={y2AxisOptions.majorIncrement}
-                              onChange={(e) =>
-                                setY2AxisOptions({
-                                  ...y2AxisOptions,
-                                  majorIncrement: e.target.value,
-                                })
-                              }
-                              placeholder="Major increment"
-                            />
-                          </>
-                        )}
-                        {config.axis.y2.origin && (
-                          <>
-                            <Label htmlFor="y2AxisOrigin">Origin</Label>
-                            <input
-                              id="y2AxisOrigin"
-                              type="number"
-                              className="w-full p-2 border rounded-md"
-                              value={y2AxisOptions.origin}
-                              onChange={(e) =>
-                                setY2AxisOptions({
-                                  ...y2AxisOptions,
-                                  origin: e.target.value,
-                                })
-                              }
-                              placeholder="Origin value"
-                            />
-                          </>
-                        )}
-                      </div>
-                    )}
-                  {selectedSetting === "error-bar" &&
-                    config.errorBar &&
-                    isErrorBarEnabled(config.errorBar) && (
-                      <div className="space-y-2">
-                        <Label className="block text-sm font-medium text-gray-900">
-                          Error Bars Represent
-                        </Label>
-                        <div className="space-y-4">
-                          {/* Confidence Interval */}
-                          {config.errorBar.ci?.confidenceLevel && (
-                            <label className="flex items-start gap-2">
-                              <input
-                                type="radio"
-                                name="error-bar-type"
-                                value="ci"
-                                checked={errorBarType === "ci"}
-                                onChange={() => setErrorBarType("ci")}
-                                className="mt-1"
-                              />
-                              <div className="flex flex-col">
-                                <span>Confidence intervals</span>
-                                <div className="mt-1 grid grid-cols-2 items-center">
-                                  <span className="text-xs text-gray-500">
-                                    Level (%)
-                                  </span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    className="w-20 justify-self-end p-1 border rounded disabled:bg-gray-300"
-                                    value={confidenceLevel}
-                                    onChange={(e) => {
-                                      const value = parseFloat(e.target.value);
-                                      if (
-                                        !isNaN(value) &&
-                                        value >= 0 &&
-                                        value <= 100
-                                      ) {
-                                        setConfidenceLevel(value);
-                                      }
-                                    }}
-                                    disabled={errorBarType !== "ci"}
-                                    placeholder="Level (%)"
-                                  />
-                                </div>
-                              </div>
-                            </label>
-                          )}
-
-                          {/* Standard Error */}
-                          {config.errorBar.se?.multiplier && (
-                            <label className="flex items-start gap-2">
-                              <input
-                                type="radio"
-                                name="error-bar-type"
-                                value="se"
-                                checked={errorBarType === "se"}
-                                onChange={() => setErrorBarType("se")}
-                                className="mt-1"
-                              />
-                              <div className="flex flex-col">
-                                <span>Standard error</span>
-                                <div className="mt-1 grid grid-cols-2 items-center">
-                                  <span className="text-xs text-gray-500">
-                                    Multiplier
-                                  </span>
-                                  <input
-                                    type="number"
-                                    min="0.01"
-                                    step="1"
-                                    className="w-20 justify-self-end p-1 border rounded disabled:bg-gray-300"
-                                    value={
-                                      errorBarType === "se"
-                                        ? seMultiplier
-                                        : seMultiplier
-                                    }
-                                    onChange={(e) => {
-                                      const value = parseFloat(e.target.value);
-                                      if (!isNaN(value) && value > 0) {
-                                        if (errorBarType === "se") {
-                                          setSeMultiplier(value);
-                                        }
-                                      }
-                                    }}
-                                    disabled={errorBarType !== "se"}
-                                    placeholder="Multiplier"
-                                  />
-                                </div>
-                              </div>
-                            </label>
-                          )}
-
-                          {/* Standard Deviation */}
-                          {config.errorBar.sd?.multiplier && (
-                            <label className="flex items-start gap-2">
-                              <input
-                                type="radio"
-                                name="error-bar-type"
-                                value="sd"
-                                checked={errorBarType === "sd"}
-                                onChange={() => setErrorBarType("sd")}
-                                className="mt-1"
-                              />
-                              <div className="flex flex-col">
-                                <span>Standard deviation</span>
-                                <div className="mt-1 grid grid-cols-2 items-center">
-                                  <span className="text-xs text-gray-500">
-                                    Multiplier
-                                  </span>
-                                  <input
-                                    type="number"
-                                    min="0.01"
-                                    step="1"
-                                    className="w-20 justify-self-end p-1 border rounded disabled:bg-gray-300"
-                                    value={
-                                      errorBarType === "sd"
-                                        ? sdMultiplier
-                                        : sdMultiplier
-                                    }
-                                    onChange={(e) => {
-                                      const value = parseFloat(e.target.value);
-                                      if (!isNaN(value) && value > 0) {
-                                        if (errorBarType === "sd") {
-                                          setSdMultiplier(value);
-                                        }
-                                      }
-                                    }}
-                                    disabled={errorBarType !== "sd"}
-                                    placeholder="Multiplier"
-                                  />
-                                </div>
-                              </div>
-                            </label>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="appearance" className="mt-4">
-                {chartConfigOptions[chartType].chartColors && (
-                  <div className="space-y-6">
-                    <div>
-                      <Label>Color Mode</Label>
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          className={`px-4 py-2 rounded border ${
-                            colorMode === "single"
-                              ? "bg-blue-500 text-white"
-                              : "bg-white border-gray-300"
-                          }`}
-                          onClick={() => setColorMode("single")}
-                        >
-                          Single
-                        </button>
-                        <button
-                          className={`px-4 py-2 rounded border ${
-                            colorMode === "group"
-                              ? "bg-blue-500 text-white"
-                              : "bg-white border-gray-300"
-                          }`}
-                          onClick={() => setColorMode("group")}
-                        >
-                          Group
-                        </button>
-                      </div>
-                    </div>
-                    {colorMode === "single" && (
-                      <div>
-                        <Label>Pick Color</Label>
-                        {/* Preview warna yang sedang dipilih */}
-                        <div className="flex flex-col items-center my-4">
-                          <div
-                            className="w-14 h-14 rounded-full border-2 border-gray-300 mb-2"
-                            style={{ backgroundColor: pickerColor }}
-                          />
-                          <span className="font-mono text-base">
-                            {pickerColor}
-                          </span>
-                        </div>
-                        {/* Grid preset warna */}
-                        <div className="w-full flex justify-center">
-                          <div className="grid grid-cols-7 gap-2 w-full max-w-xs relative">
-                            <button
-                              ref={singleCustomRef}
-                              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
-                                showSingleCustom
-                                  ? "border-blue-500"
-                                  : "border-gray-300"
-                              }`}
-                              onClick={() => setShowSingleCustom((v) => !v)}
-                              title="Custom color"
-                              style={{
-                                background:
-                                  "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
-                              }}
-                            >
-                              <span className="text-lg font-bold text-white">
-                                +
-                              </span>
-                            </button>
-                            {popularColors.map((color) => (
-                              <button
-                                key={color}
-                                className={`w-8 h-8 rounded-full border-2 ${
-                                  pickerColor === color && !showSingleCustom
-                                    ? "border-blue-500"
-                                    : "border-transparent"
-                                }`}
-                                style={{ backgroundColor: color }}
-                                onClick={() => {
-                                  setPickerColor(color);
-                                  setInputColor(color);
-                                  setSingleColor(color);
-                                  setChartColors([color]);
-                                  setShowSingleCustom(false);
-                                }}
-                                title={color}
-                              />
-                            ))}
-                            {/* Popover custom color picker */}
-                            {showSingleCustom && (
-                              <div
-                                className="absolute left-0 top-12 z-20 bg-white rounded-lg shadow-lg p-4 flex flex-col items-center border"
-                                style={{ minWidth: 220 }}
-                              >
-                                <button
-                                  className="absolute top-1 right-1 text-gray-400 hover:text-gray-700"
-                                  onClick={() => setShowSingleCustom(false)}
-                                  title="Close"
-                                >
-                                  ×
-                                </button>
-                                <HexColorPicker
-                                  color={pickerColor}
-                                  onChange={(c) => {
-                                    setPickerColor(c);
-                                    setInputColor(c);
-                                    setSingleColor(c);
-                                    setChartColors([c]);
-                                  }}
-                                />
-                                <input
-                                  type="text"
-                                  className="w-28 p-1 border rounded text-center mt-2"
-                                  value={inputColor}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setInputColor(val);
-                                    if (/^#[0-9A-Fa-f]{3,8}$/.test(val)) {
-                                      setPickerColor(val);
-                                      setSingleColor(val);
-                                      setChartColors([val]);
-                                    }
-                                  }}
-                                  maxLength={9}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {colorMode === "group" && (
-                      <div>
-                        <Label>Pick Colors for Each Group</Label>
-                        <div className="space-y-3 mt-2">
-                          {groupColors.map((color, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-3 relative"
-                            >
-                              <span className="text-xs w-14">
-                                Group {idx + 1}
-                              </span>
-                              <button
-                                className="w-7 h-7 rounded-full border-2"
-                                style={{ backgroundColor: color }}
-                                onClick={() => setShowGroupCustom(idx)}
-                              />
-                              {showGroupCustom === idx && (
-                                <div
-                                  className="absolute left-16 z-20 bg-white rounded-lg shadow-lg p-3 border flex flex-col items-center"
-                                  tabIndex={0}
-                                  onBlur={(e) => {
-                                    if (
-                                      !e.currentTarget.contains(e.relatedTarget)
-                                    )
-                                      setShowGroupCustom(null);
-                                  }}
-                                >
-                                  <div className="flex gap-1 mb-2">
-                                    {customPresets.map((preset) => (
-                                      <button
-                                        key={preset}
-                                        className={`w-6 h-6 rounded-full border-2 ${
-                                          color === preset
-                                            ? "border-blue-500"
-                                            : "border-gray-300"
-                                        }`}
-                                        style={{ backgroundColor: preset }}
-                                        onClick={() => {
-                                          const newColors = [...groupColors];
-                                          newColors[idx] = preset;
-                                          setGroupColors(newColors);
-                                          setShowGroupCustom(null);
-                                        }}
-                                        title={preset}
-                                      />
-                                    ))}
-                                  </div>
-                                  <HexColorPicker
-                                    color={color}
-                                    onChange={(c) => {
-                                      const newColors = [...groupColors];
-                                      newColors[idx] = c;
-                                      setGroupColors(newColors);
-                                    }}
-                                  />
-                                  <input
-                                    type="text"
-                                    className="w-24 p-1 border rounded text-center mt-2"
-                                    value={color}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      const newColors = [...groupColors];
-                                      newColors[idx] = val;
-                                      setGroupColors(newColors);
-                                    }}
-                                    maxLength={9}
-                                    placeholder="#RRGGBB"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          <div className="flex gap-2 mt-2">
-                            <button
-                              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs"
-                              onClick={() =>
-                                setGroupColors([...groupColors, "#000000"])
-                              }
-                            >
-                              + Add Group Color
-                            </button>
-                            {groupColors.length > 1 && (
-                              <button
-                                className="px-3 py-1 rounded bg-red-200 hover:bg-red-300 text-xs"
-                                onClick={() =>
-                                  setGroupColors(groupColors.slice(0, -1))
-                                }
-                              >
-                                - Remove Last
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
+          <CustomizationPanel
+            onClose={() => setShowCustomizationPanel(false)}
+            chartType={chartType}
+            chartConfigOptions={chartConfigOptions}
+            colorMode={colorMode}
+            setColorMode={setColorMode}
+            singleColor={singleColor}
+            setSingleColor={setSingleColor}
+            groupColors={groupColors}
+            setGroupColors={setGroupColors}
+            setChartColors={setChartColors}
+            chartTitle={chartTitle}
+            setChartTitle={setChartTitle}
+            chartSubtitle={chartSubtitle}
+            setChartSubtitle={setChartSubtitle}
+            xAxisOptions={xAxisOptions}
+            setXAxisOptions={setXAxisOptions}
+            yAxisOptions={yAxisOptions}
+            setYAxisOptions={setYAxisOptions}
+            y2AxisOptions={y2AxisOptions}
+            setY2AxisOptions={setY2AxisOptions}
+            selectedStatistic={selectedStatistic}
+            setSelectedStatistic={setSelectedStatistic}
+            errorBarType={errorBarType}
+            setErrorBarType={setErrorBarType}
+            confidenceLevel={confidenceLevel}
+            setConfidenceLevel={setConfidenceLevel}
+            seMultiplier={seMultiplier}
+            setSeMultiplier={setSeMultiplier}
+            sdMultiplier={sdMultiplier}
+            setSdMultiplier={setSdMultiplier}
+            showNormalCurve={showNormalCurve}
+            setShowNormalCurve={setShowNormalCurve}
+          />
         )}
       </div>
 
       {/* Error Message */}
-      {errorMsg && <div className="text-red-500 text-sm mb-2">{errorMsg}</div>}
+      {errorMsg && (
+        <div className="text-red-500 text-xs lg:text-sm mb-2 px-1 lg:px-0">
+          {errorMsg}
+        </div>
+      )}
 
-      <DialogFooter>
-        <Button variant="outline" onClick={handleResetVariables}>
+      <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 mt-2 text-xs lg:text-sm">
+        <Button
+          variant="outline"
+          onClick={handleResetVariables}
+          className="text-xs lg:text-sm"
+        >
           Reset
         </Button>
-        <Button variant="outline" onClick={onClose}>
+        <Button
+          variant="outline"
+          onClick={onClose}
+          className="text-xs lg:text-sm"
+        >
           Cancel
         </Button>
         <Button
           onClick={handleGenerateChart}
           disabled={isCalculating || data.length === 0}
+          className="text-xs lg:text-sm"
         >
           {isCalculating ? (
             <>
               <svg
-                className="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-gray-900 rounded-full"
+                className="animate-spin h-4 w-4 lg:h-5 lg:w-5 mr-2 lg:mr-3 border-t-2 border-b-2 border-gray-900 rounded-full"
                 viewBox="0 0 24 24"
               ></svg>
               Generating...
