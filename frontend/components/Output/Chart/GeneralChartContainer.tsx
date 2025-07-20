@@ -1749,7 +1749,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               id={id}
               className="border border-gray-200 rounded-lg p-4 shadow-inner"
               style={{
-                width: width + 32, // Add padding space
+                width: width + 32, // Extra space for pie chart legend
                 height: height + 32, // Add padding space
               }}
             >

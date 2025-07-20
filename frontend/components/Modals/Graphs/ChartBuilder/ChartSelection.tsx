@@ -582,12 +582,7 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
       } else if (chartType === "Line Chart") {
         chartNode = chartUtils.createLineChart(data2, width, height, useaxis);
       } else if (chartType === "Pie Chart") {
-        chartNode = chartUtils.createPieChart(
-          data1,
-          width * 0.8,
-          height * 0.8,
-          false
-        );
+        chartNode = chartUtils.createPieChart(data1, width, height, useaxis);
       } else if (chartType === "Area Chart") {
         chartNode = chartUtils.createAreaChart(data2, width, height, useaxis);
       } else if (chartType === "Histogram") {

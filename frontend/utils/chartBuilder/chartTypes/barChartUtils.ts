@@ -460,6 +460,7 @@ export const createVerticalStackedBarChart = (
     categories,
     hasLegend: true,
     legendPosition: "right",
+    itemCount: subcategories.length,
   });
 
   // Skala untuk sumbu X
@@ -682,6 +683,7 @@ export const createHorizontalStackedBarChart = (
     hasLegend: true,
     legendPosition: "right",
     isHorizontalChart: true,
+    itemCount: subcategories.length,
   });
 
   // X scale with axis options
@@ -781,9 +783,11 @@ export const createHorizontalStackedBarChart = (
           : undefined,
         customFormat: formatAxisNumber,
         showGridLines: false,
+        maxValueLength: 6,
       },
       yAxisOptions: {
         showGridLines: true,
+        maxValueLength: 6,
       },
     });
 
@@ -897,6 +901,7 @@ export const createClusteredBarChart = (
     categories,
     hasLegend: true,
     legendPosition: "right",
+    itemCount: subcategories.length,
   });
 
   // Skala untuk sumbu X
@@ -996,6 +1001,7 @@ export const createClusteredBarChart = (
       chartType: "vertical",
       xAxisOptions: {
         showGridLines: true,
+        maxValueLength: 6,
       },
       yAxisOptions: {
         tickValues: yAxisMajorIncrement
@@ -1003,6 +1009,7 @@ export const createClusteredBarChart = (
           : undefined,
         customFormat: formatAxisNumber,
         showGridLines: false,
+        maxValueLength: 6,
       },
     });
 
