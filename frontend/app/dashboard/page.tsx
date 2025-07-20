@@ -31,31 +31,31 @@ export default function DashboardPage() {
     const handleNewProject = async () => {
         await resetData();
         await resetVariables();
-        await setMeta({ name: 'Proyek Baru', location: '', created: new Date() });
+        await setMeta({ name: 'New Project', location: '', created: new Date() });
     };
 
     const dataActions: DataAction[] = [
         {
             id: 'new',
             icon: <FilePlus className="h-12 w-12 text-primary" />,
-            title: 'Proyek Baru',
-            description: 'Mulai proyek analisis data baru dari awal',
+            title: 'New Project',
+            description: 'Start a new data analysis project from scratch',
             action: handleNewProject,
             primary: true
         },
         {
             id: 'open',
             icon: <FolderOpen className="h-12 w-12 text-primary" />,
-            title: 'Buka Proyek',
-            description: 'Buka file data SPSS (.sav)',
+            title: 'Open Project',
+            description: 'Open an SPSS data file (.sav)',
             action: handleOpenProject,
             primary: false
         },
         {
             id: 'example',
             icon: <Database className="h-12 w-12 text-primary" />,
-            title: 'Dataset Contoh',
-            description: 'Akses berbagai dataset untuk latihan',
+            title: 'Example Datasets',
+            description: 'Access various datasets for practice',
             action: () => openModal(ModalType.ExampleDataset),
             primary: false
         }

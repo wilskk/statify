@@ -10,18 +10,38 @@ import {
 import { calculateResponsiveMargin } from "../responsiveMarginUtils";
 import * as d3 from "d3";
 
-const colorScheme = [
-  "#4e79a7",
-  "#f28e2c",
-  "#e15759",
-  "#76b7b2",
-  "#59a14f",
-  "#edc949",
-  "#af7aa1",
-  "#ff9da7",
-  "#9c755f",
-  "#bab0ab",
-];
+import { d3ColorScales } from "../defaultStyles/defaultColors";
+
+// Combine multiple categorical schemes for more color options
+const getExtendedColorScheme = () => {
+  const colors = [];
+  // Add Category10
+  colors.push(...d3ColorScales.categorical[0].colors);
+  // Add Observable10
+  colors.push(...d3ColorScales.categorical[1].colors);
+  // Add Accent
+  colors.push(...d3ColorScales.categorical[2].colors);
+  // Add Dark2
+  colors.push(...d3ColorScales.categorical[3].colors);
+  // Add Paired
+  colors.push(...d3ColorScales.categorical[4].colors);
+  // Add Pastel1
+  colors.push(...d3ColorScales.categorical[5].colors);
+  // Add Pastel2
+  colors.push(...d3ColorScales.categorical[6].colors);
+  // Add Set1
+  colors.push(...d3ColorScales.categorical[7].colors);
+  // Add Set2
+  colors.push(...d3ColorScales.categorical[8].colors);
+  // Add Set3
+  colors.push(...d3ColorScales.categorical[9].colors);
+  // Add Tableau10
+  colors.push(...d3ColorScales.categorical[10].colors);
+
+  return colors;
+};
+
+const colorScheme = getExtendedColorScheme();
 
 export const createPieChart = (
   data: { category: string; value: number }[],
@@ -31,8 +51,6 @@ export const createPieChart = (
   titleOptions?: ChartTitleOptions,
   chartColors?: string[]
 ) => {
-  console.log("Creating pie chart with data:", data);
-
   const validData = data.filter(
     (d) =>
       typeof d.category === "string" &&

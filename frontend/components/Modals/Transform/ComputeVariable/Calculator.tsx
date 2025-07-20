@@ -29,7 +29,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
   };
 
   return (
-    <div className="my-4">
+    <div className="flex items-center justify-center">
       <div className="grid grid-cols-6 gap-1">
         {buttons.map((row, rowIndex) => (
           <React.Fragment key={rowIndex}>
@@ -41,7 +41,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleClick(button)}
                     className={`
-                      px-2 md:px-3 py-2 text-xs md:text-sm
+                      px-1 md:px-2 py-1 text-xs
                       bg-white hover:bg-gray-100
                       border border-[#999999]
                       active:border-t-[#666666]
@@ -50,7 +50,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                       active:border-r-white
                       rounded-md
                       col-span-2
-                      min-h-[32px] md:min-h-[36px]
+                      min-h-[24px] md:min-h-[28px]
                     `}
                     style={{ gridColumn: "span 2 / span 2" }}
                   >
@@ -68,7 +68,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleClick(button)}
                     className={`
-                      px-2 md:px-3 py-2 text-xs md:text-sm
+                      px-1 md:px-2 py-1 text-xs
                       bg-white hover:bg-gray-100
                       border border-[#999999]
                       active:border-t-[#666666]
@@ -77,7 +77,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                       active:border-r-white
                       rounded-md
                       col-span-2
-                      min-h-[32px] md:min-h-[36px]
+                      min-h-[24px] md:min-h-[28px]
                     `}
                     style={{ gridColumn: "span 2 / span 2" }}
                   >
@@ -91,7 +91,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleClick(button)}
                     className={`
-                      px-2 md:px-3 py-2 text-xs md:text-sm
+                      px-1 md:px-2 py-1 text-xs
                       bg-white hover:bg-gray-100
                       border border-[#999999]
                       active:border-t-[#666666]
@@ -99,7 +99,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ onButtonClick }) => {
                       active:border-b-white
                       active:border-r-white
                       rounded-md
-                      min-h-[32px] md:min-h-[36px]
+                      min-h-[24px] md:min-h-[28px]
                     `}
                   >
                     {button === "\u2260" ? "≠" : button}

@@ -274,26 +274,18 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
       ];
 
       const data21 = [
-        { category: "A", value0: 62.7, value1: 63.4 },
-        { category: "B", value0: 59.9, value1: 58 },
-        { category: "C", value0: 59.1, value1: 53.3 },
-        { category: "D", value0: 58.8, value1: 55.7 },
-        { category: "E", value0: 58.7, value1: 64.2 },
-        { category: "F", value0: 57, value1: 58.8 },
-        { category: "G", value0: 56.7, value1: 57.9 },
-        { category: "H", value0: 56.8, value1: 61.8 },
-        { category: "I", value0: 56.7, value1: 69.3 },
-        { category: "J", value0: 60.1, value1: 71.2 },
-        { category: "K", value0: 61.1, value1: 68.7 },
-        { category: "L", value0: 61.5, value1: 61.8 },
-        { category: "M", value0: 64.3, value1: 63 },
-        { category: "N", value0: 67.1, value1: 66.9 },
-        { category: "O", value0: 64.6, value1: 61.7 },
-        { category: "P", value0: 61.6, value1: 61.8 },
-        { category: "Q", value0: 61.1, value1: 62.8 },
-        { category: "R", value0: 59.2, value1: 60.8 },
-        { category: "S", value0: 58.9, value1: 62.1 },
-        { category: "T", value0: 57.2, value1: 65.1 },
+        { category: "A", value0: 30, value1: 45 },
+        { category: "B", value0: 25, value1: 35 },
+        { category: "C", value0: 40, value1: 30 },
+        { category: "D", value0: 35, value1: 50 },
+        { category: "E", value0: 20, value1: 40 },
+        { category: "F", value0: 50, value1: 35 },
+        { category: "G", value0: 45, value1: 60 },
+        { category: "H", value0: 30, value1: 25 },
+        { category: "I", value0: 55, value1: 70 },
+        { category: "J", value0: 40, value1: 30 },
+        { category: "K", value0: 35, value1: 45 },
+        { category: "L", value0: 25, value1: 40 },
       ];
 
       const data22 = [
@@ -782,14 +774,6 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           width,
           height,
           useaxis
-        );
-      } else if (chartType === "Vertical Bar & Line Chart2") {
-        chartNode = chartUtils.createBarAndLineChart2(
-          data26,
-          width,
-          height,
-          useaxis,
-          "stacked"
         );
       } else if (chartType === "Stem And Leaf Plot") {
         chartNode = chartUtils.createStemAndLeafPlot(

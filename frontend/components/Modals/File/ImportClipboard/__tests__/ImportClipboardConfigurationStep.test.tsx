@@ -1,123 +1,117 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import { ImportClipboardConfigurationStep } from '../components/ImportClipboardConfigurationStep';
-import { useImportClipboardProcessor } from '../hooks/useImportClipboardProcessor';
+import * as processorHook from '../hooks/useImportClipboardProcessor';
 
-// Mock dependencies
+// Mock the processor hook
 jest.mock('../hooks/useImportClipboardProcessor');
-const mockedUseImportClipboardProcessor = useImportClipboardProcessor as jest.Mock;
+const mockedUseImportClipboardProcessor = processorHook.useImportClipboardProcessor as jest.Mock;
 
-jest.mock('@handsontable/react-wrapper', () => {
-  const MockHotTable = React.forwardRef((props: any, ref: any) => {
-    // Mock the ref with a dummy hotInstance and updateSettings method
-    if (ref) {
-      ref.current = {
-        hotInstance: {
-          updateSettings: jest.fn(),
-        },
-      };
-    }
-    return <div>Mocked HotTable</div>;
-  });
-  MockHotTable.displayName = 'HotTable';
-  return {
-    HotTable: MockHotTable,
-  };
-});
+// Mock Handsontable
+jest.mock('@handsontable/react-wrapper', () => ({
+    HotTable: (props: any) => (
+        <div data-testid="mock-hot-table">
+            <div data-testid="hot-data">{JSON.stringify(props.data)}</div>
+            <div data-testid="hot-headers">{JSON.stringify(props.colHeaders)}</div>
+        </div>
+    ),
+}));
 
 describe('ImportClipboardConfigurationStep Component', () => {
-  const mockOnClose = jest.fn();
-  const mockOnBack = jest.fn();
-  const mockProcessClipboardData = jest.fn();
-  const mockExcelStyleTextToColumns = jest.fn();
+    const mockOnClose = jest.fn();
+    const mockOnBack = jest.fn();
+    const mockExcelStyleTextToColumns = jest.fn();
+    const mockProcessClipboardData = jest.fn();
+    const user = userEvent.setup();
 
-  const defaultPastedText = 'col1,col2\nval1,val2';
-  const initialParsedData = [['col1', 'col2'], ['val1', 'val2']];
-  
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockedUseImportClipboardProcessor.mockReturnValue({
-      processClipboardData: mockProcessClipboardData,
-      excelStyleTextToColumns: mockExcelStyleTextToColumns.mockReturnValue(initialParsedData),
-    });
-  });
-
-  const renderComponent = (props = {}) => {
     const defaultProps = {
-      onClose: mockOnClose,
-      onBack: mockOnBack,
-      pastedText: defaultPastedText,
-      parsedData: initialParsedData,
-      ...props
+        onClose: mockOnClose,
+        onBack: mockOnBack,
+        pastedText: 'col1\tcol2\nval1\tval2',
+        parsedData: [['col1', 'col2'], ['val1', 'val2']],
     };
-    return render(<ImportClipboardConfigurationStep {...defaultProps} />);
-  }
 
-  it('renders correctly and shows initial preview', () => {
-    renderComponent();
-    expect(screen.getByText('Configure Clipboard Import')).toBeInTheDocument();
-    expect(screen.getByText('Mocked HotTable')).toBeInTheDocument();
-    expect(mockExcelStyleTextToColumns).toHaveBeenCalledTimes(1);
-  });
-  
-  it('calls onBack when back button is clicked', async () => {
-    const user = userEvent.setup();
-    renderComponent();
-    const backButton = screen.getByRole('button', { name: /back/i });
-    await user.click(backButton);
-    expect(mockOnBack).toHaveBeenCalledTimes(1);
-  });
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockedUseImportClipboardProcessor.mockReturnValue({
+            excelStyleTextToColumns: mockExcelStyleTextToColumns,
+            processClipboardData: mockProcessClipboardData,
+        });
+        mockExcelStyleTextToColumns.mockReturnValue(defaultProps.parsedData);
+    });
 
-  it('calls processClipboardData when import button is clicked', async () => {
-    const user = userEvent.setup();
-    mockProcessClipboardData.mockResolvedValue({}); // mock successful import
-    renderComponent();
-    const importButton = screen.getByRole('button', { name: /import/i });
-    await user.click(importButton);
+    it('renders correctly with initial data', () => {
+        render(<ImportClipboardConfigurationStep {...defaultProps} />);
+        expect(screen.getByText('Configure Clipboard Import')).toBeInTheDocument();
+        expect(screen.getByTestId('mock-hot-table')).toBeInTheDocument();
+        expect(screen.getByTestId('hot-data')).toHaveTextContent(JSON.stringify(defaultProps.parsedData));
+    });
 
-    expect(mockProcessClipboardData).toHaveBeenCalledTimes(1);
-    // You could also assert the options passed to processClipboardData
-    expect(mockProcessClipboardData).toHaveBeenCalledWith(
-        defaultPastedText,
-        expect.objectContaining({
-            firstRowAsHeader: false, // Initial state
-            delimiter: 'tab'
-        })
-    );
-    // Check that onClose is called on success
-    await screen.findByText('Mocked HotTable'); // wait for state update cycle
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
-  });
+    it('updates preview when delimiter option is changed', async () => {
+        render(<ImportClipboardConfigurationStep {...defaultProps} />);
+        
+        const delimiterSelect = screen.getAllByRole('combobox')[0];
+        await user.click(delimiterSelect);
+        const commaOption = await screen.findByText('Comma (,)');
+        await user.click(commaOption);
+        
+        await waitFor(() => {
+            expect(mockExcelStyleTextToColumns).toHaveBeenCalledWith(
+                defaultProps.pastedText,
+                expect.objectContaining({ delimiter: ',' })
+            );
+        });
+    });
 
-  it('updates preview when options change', async () => {
-    const user = userEvent.setup();
-    renderComponent();
+    it('updates preview when "First row as headers" is toggled', async () => {
+        render(<ImportClipboardConfigurationStep {...defaultProps} />);
+        const headerCheckbox = screen.getByLabelText(/first row as headers/i);
+        
+        await user.click(headerCheckbox);
 
-    // Initial call
-    expect(mockExcelStyleTextToColumns).toHaveBeenCalledTimes(1);
+        await waitFor(() => {
+            expect(mockExcelStyleTextToColumns).toHaveBeenCalledWith(
+                defaultProps.pastedText,
+                expect.objectContaining({ hasHeaderRow: true })
+            );
+        });
+    });
 
-    const headerCheckbox = screen.getByLabelText(/first row as headers/i);
-    await user.click(headerCheckbox);
-    
-    // Called again on option change
-    expect(mockExcelStyleTextToColumns).toHaveBeenCalledTimes(2);
-    expect(mockExcelStyleTextToColumns).toHaveBeenLastCalledWith(
-      defaultPastedText,
-      expect.objectContaining({ hasHeaderRow: true })
-    );
-  });
-  
-  it('displays error message on failed import', async () => {
-    const user = userEvent.setup();
-    const errorMessage = 'Import failed!';
-    mockProcessClipboardData.mockRejectedValue(new Error(errorMessage));
-    renderComponent();
+    it('calls onBack when Back button is clicked', async () => {
+        render(<ImportClipboardConfigurationStep {...defaultProps} />);
+        const backButton = screen.getByRole('button', { name: /back/i });
+        await user.click(backButton);
+        expect(mockOnBack).toHaveBeenCalled();
+    });
 
-    const importButton = screen.getByRole('button', { name: /import/i });
-    await user.click(importButton);
-    
-    expect(await screen.findByText(errorMessage)).toBeInTheDocument();
-    expect(mockOnClose).not.toHaveBeenCalled();
-  });
+    it('calls processClipboardData and onClose on successful import', async () => {
+        render(<ImportClipboardConfigurationStep {...defaultProps} />);
+        const importButton = screen.getByRole('button', { name: /import/i });
+        await user.click(importButton);
+        
+        expect(mockProcessClipboardData).toHaveBeenCalled();
+        await waitFor(() => {
+            expect(mockOnClose).toHaveBeenCalled();
+        });
+    });
+
+    it('displays an error message if import fails', async () => {
+        const error = new Error('Import failed');
+        mockProcessClipboardData.mockRejectedValue(error);
+        render(<ImportClipboardConfigurationStep {...defaultProps} />);
+        const importButton = screen.getByRole('button', { name: /import/i });
+        
+        await user.click(importButton);
+        
+        expect(await screen.findByText(error.message)).toBeInTheDocument();
+        expect(mockOnClose).not.toHaveBeenCalled();
+    });
+
+    it('disables import button when there is no preview data', () => {
+        mockExcelStyleTextToColumns.mockReturnValue([]);
+        render(<ImportClipboardConfigurationStep {...defaultProps} pastedText="" parsedData={[]} />);
+        expect(screen.getByRole('button', { name: /import/i })).toBeDisabled();
+    });
 }); 

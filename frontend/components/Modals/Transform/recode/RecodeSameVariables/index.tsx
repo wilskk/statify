@@ -162,6 +162,16 @@ const RecodeSameVariablesContent: React.FC<RecodeSameVariablesContentProps> = ({
               </Button>
             </>
           ) : null}
+
+          {/* <Button variant="outline" onClick={handlePaste}>
+            Paste
+          </Button> */}
+          <Button variant="outline" onClick={handleReset}>
+            Reset
+          </Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button
             variant="default"
             onClick={handleOk}
@@ -173,16 +183,7 @@ const RecodeSameVariablesContent: React.FC<RecodeSameVariablesContentProps> = ({
           >
             {isProcessing ? "Processing..." : "OK"}
           </Button>
-          <Button variant="outline" onClick={handlePaste}>
-            Paste
-          </Button>
-          <Button variant="outline" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="outline">Help</Button>
+          {/* <Button variant="outline">Help</Button> */}
         </div>
       </div>
     </div>
@@ -632,6 +633,15 @@ export const RecodeSameVariablesModal: React.FC<
       </Tabs>
 
       <div className="px-6 py-4 border-t border-[#E6E6E6] flex-shrink-0 bg-muted flex justify-end space-x-2 w-full">
+        {/* <Button variant="outline" onClick={handlePaste}>
+          Paste
+        </Button> */}
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="outline" onClick={handleReset}>
+          Reset
+        </Button>
         <Button
           variant="default"
           onClick={handleOk}
@@ -643,16 +653,8 @@ export const RecodeSameVariablesModal: React.FC<
         >
           {isProcessing ? "Processing..." : "OK"}
         </Button>
-        <Button variant="outline" onClick={handlePaste}>
-          Paste
-        </Button>
-        <Button variant="outline" onClick={handleReset}>
-          Reset
-        </Button>
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button variant="outline">Help</Button>
+
+        {/* <Button variant="outline">Help</Button> */}
       </div>
 
       {/* Type Mismatch Alert Dialog */}

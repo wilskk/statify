@@ -49,13 +49,13 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
   const renderFunctions = () => {
     if (selectedGroup === "All") {
       return Object.entries(functionGroups).map(([group, functions]) => (
-        <div key={group} className="mb-4">
-          <div className="font-medium text-sm text-gray-700 mb-2">{group}</div>
+        <div key={group} className="mb-3">
+          <div className="font-medium text-xs text-gray-700 mb-1">{group}</div>
           <div className="space-y-1">
             {functions.map((func) => (
               <div
                 key={func}
-                className="pl-2 py-1 text-sm hover:bg-blue-100 cursor-pointer rounded"
+                className="pl-2 py-1 text-xs hover:bg-blue-100 cursor-pointer rounded"
                 onClick={() => onFunctionSelect(`${func}(`)}
               >
                 {func}
@@ -73,7 +73,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         {functions.map((func) => (
           <div
             key={func}
-            className="py-1 px-2 text-sm hover:bg-blue-100 cursor-pointer rounded"
+            className="py-1 px-2 text-xs hover:bg-blue-100 cursor-pointer rounded"
             onClick={() => onFunctionSelect(`${func}(`)}
           >
             {func}
@@ -84,24 +84,26 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
   };
 
   return (
-    <div className="mt-4">
+    <div className="flex flex-col">
       <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-        <SelectTrigger className="w-full bg-white">
+        <SelectTrigger className="w-full bg-white text-xs">
           <SelectValue placeholder="Select a function group" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="All">All</SelectItem>
+          <SelectItem value="All" className="text-xs">
+            All
+          </SelectItem>
           {Object.keys(functionGroups).map((group) => (
-            <SelectItem key={group} value={group}>
+            <SelectItem key={group} value={group} className="text-xs">
               {group}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
 
-      <ScrollArea className="h-[150px] md:h-[200px] mt-2 border rounded bg-white p-2">
-        {renderFunctions()}
-      </ScrollArea>
+      <div className="mt-2 border rounded bg-white h-[250px] md:h-[300px] lg:h-[350px]">
+        <ScrollArea className="h-full p-2">{renderFunctions()}</ScrollArea>
+      </div>
     </div>
   );
 };

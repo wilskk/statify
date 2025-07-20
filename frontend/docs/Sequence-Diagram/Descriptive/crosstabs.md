@@ -61,6 +61,7 @@ sequenceDiagram
 
     Hook->>Hook: `isCalculating = true`
     Hook->>Hook: Menyiapkan pasangan variabel (row * col)
+    Hook->>+Worker: Membuat satu instance Worker
 
     loop untuk setiap pasangan variabel
         Hook->>Worker: `postMessage({ analysisType: 'crosstabs', ... })`

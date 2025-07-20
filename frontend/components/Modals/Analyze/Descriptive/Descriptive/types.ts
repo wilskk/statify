@@ -26,7 +26,7 @@ export type DisplayOrderType = 'variableList' | 'alphabetic' | 'mean' | 'ascendi
 // Variable Selection Types
 // ---------------------------------
 export interface HighlightedVariableInfo {
-  tempId: string;
+  id: number;
   source: 'available' | 'selected';
 }
 

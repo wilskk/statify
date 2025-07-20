@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertCircle, CornerDownRight, Info, HelpCircle } from "lucide-react";
+import { AlertCircle, CornerDownRight, Info } from "lucide-react";
 import { useSelectCases } from "./hooks/useSelectCases";
 import { getVariableIcon, getDisplayName } from "./utils/variableUtils";
 
@@ -91,7 +91,7 @@ const SelectCasesContent: FC<{
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-6 mb-3 md:mb-6">
                     {/* Variables List */}
                     <div className="col-span-1 md:col-span-4">
-                        <Label className="text-xs font-semibold mb-2 block text-popover-foreground">Variables:</Label>
+                        <Label className="text-sm font-medium mb-2 block text-popover-foreground">Variables:</Label>
                         <div className="border border-border rounded-md h-[200px] sm:h-[240px] md:h-[280px] overflow-y-auto overflow-x-hidden bg-card">
                             <div className="p-2 space-y-1">
                                 {storeVariables.map((variable) => (
@@ -105,12 +105,12 @@ const SelectCasesContent: FC<{
                                                 >
                                                     <div className="flex items-center w-full">
                                                         {getVariableIcon(variable)}
-                                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
+                                                        <span className="text-sm truncate">{getDisplayName(variable)}</span>
                                                     </div>
                                                 </div>
                                             </TooltipTrigger>
                                             <TooltipContent side="right">
-                                                <p className="text-xs">{getDisplayName(variable)}</p>
+                                                <p className="text-sm">{getDisplayName(variable)}</p>
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
@@ -125,7 +125,7 @@ const SelectCasesContent: FC<{
                             <div className="text-sm font-medium mb-3 text-card-foreground">Select</div>
 
                             <div className="space-y-2 sm:space-y-3">
-                                <label className="flex items-center space-x-2 text-card-foreground text-xs sm:text-sm">
+                                <label className="flex items-center space-x-2 text-card-foreground text-sm">
                                     <input
                                         type="radio"
                                         name="selectCasesOption"
@@ -137,7 +137,7 @@ const SelectCasesContent: FC<{
                                 </label>
 
                                 <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
-                                    <label className="flex items-center space-x-2 text-card-foreground text-xs sm:text-sm flex-grow">
+                                    <label className="flex items-center space-x-2 text-card-foreground text-sm flex-grow">
                                         <input
                                             type="radio"
                                             name="selectCasesOption"
@@ -150,7 +150,7 @@ const SelectCasesContent: FC<{
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-xs h-8 mt-1 md:mt-0"
+                                        className="h-8 mt-1 md:mt-0"
                                         onClick={handleIfButtonClick}
                                         disabled={selectOption !== "condition"}
                                     >
@@ -158,13 +158,13 @@ const SelectCasesContent: FC<{
                                     </Button>
                                 </div>
                                 {selectOption === "condition" && conditionExpression && (
-                                    <p className="text-xs ml-6 text-muted-foreground">
+                                    <p className="text-sm ml-6 text-muted-foreground">
                                         Condition: <span className="font-semibold text-primary">{conditionExpression}</span>
                                     </p>
                                 )}
 
                                 <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
-                                    <label className="flex items-center space-x-2 text-card-foreground text-xs sm:text-sm flex-grow">
+                                    <label className="flex items-center space-x-2 text-card-foreground text-sm flex-grow">
                                         <input
                                             type="radio"
                                             name="selectCasesOption"
@@ -177,7 +177,7 @@ const SelectCasesContent: FC<{
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-xs h-8 mt-1 md:mt-0"
+                                        className="h-8 mt-1 md:mt-0"
                                         onClick={handleSampleButtonClick}
                                         disabled={selectOption !== "random"}
                                     >
@@ -185,13 +185,13 @@ const SelectCasesContent: FC<{
                                     </Button>
                                 </div>
                                 {selectOption === "random" && randomSampleConfig && (
-                                    <p className="text-xs ml-6 text-muted-foreground">
+                                    <p className="text-sm ml-6 text-muted-foreground">
                                         Sample: {randomSampleConfig.sampleType === "approximate" ? `Approx. ${randomSampleConfig.percentage}%` : `Exactly ${randomSampleConfig.exactCount} from first ${randomSampleConfig.fromFirstCount || 'all'}`}
                                     </p>
                                 )}
 
                                 <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
-                                    <label className="flex items-center space-x-2 text-card-foreground text-xs sm:text-sm flex-grow">
+                                    <label className="flex items-center space-x-2 text-card-foreground text-sm flex-grow">
                                         <input
                                             type="radio"
                                             name="selectCasesOption"
@@ -204,7 +204,7 @@ const SelectCasesContent: FC<{
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-xs h-8 mt-1 md:mt-0"
+                                        className="h-8 mt-1 md:mt-0"
                                         onClick={handleRangeButtonClick}
                                         disabled={selectOption !== "time"}
                                     >
@@ -212,12 +212,12 @@ const SelectCasesContent: FC<{
                                     </Button>
                                 </div>
                                 {selectOption === "time" && rangeConfig && (
-                                    <p className="text-xs ml-6 text-muted-foreground">
+                                    <p className="text-sm ml-6 text-muted-foreground">
                                         Range: {rangeConfig.firstCase || 'Start'} to {rangeConfig.lastCase || 'End'}
                                     </p>
                                 )}
 
-                                <label className="flex items-center space-x-2 text-card-foreground text-xs sm:text-sm">
+                                <label className="flex items-center space-x-2 text-card-foreground text-sm">
                                     <input
                                         type="radio"
                                         name="selectCasesOption"
@@ -233,7 +233,7 @@ const SelectCasesContent: FC<{
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="text-xs h-8 ml-6 w-28 flex items-center justify-center"
+                                    className="h-8 ml-6 w-28 flex items-center justify-center"
                                     onClick={handleTransferClick}
                                     disabled={selectOption !== "variable" || !highlightedVariable}
                                 >
@@ -249,7 +249,7 @@ const SelectCasesContent: FC<{
                     <div className="border border-border rounded-md p-3 sm:p-4 bg-card">
                         <div className="text-sm font-medium mb-3 text-card-foreground">Output</div>
                         <div className="space-y-2 sm:space-y-3">
-                            <label className="flex items-center space-x-2 text-card-foreground text-xs sm:text-sm">
+                            <label className="flex items-center space-x-2 text-card-foreground text-sm">
                                 <input
                                     type="radio"
                                     name="outputOption"
@@ -260,7 +260,7 @@ const SelectCasesContent: FC<{
                                 />
                                 <span>Filter out unselected cases</span>
                             </label>
-                            <label className="flex items-center space-x-2 text-card-foreground text-xs sm:text-sm">
+                            <label className="flex items-center space-x-2 text-card-foreground text-sm">
                                 <input
                                     type="radio"
                                     name="outputOption"
@@ -274,7 +274,7 @@ const SelectCasesContent: FC<{
                         </div>
                     </div>
 
-                    <p className="text-xs text-muted-foreground px-1">
+                    <p className="text-sm text-muted-foreground px-1">
                         Current Status: <span className="font-semibold text-popover-foreground">{currentStatus}</span>
                     </p>
                 </div>
@@ -282,13 +282,11 @@ const SelectCasesContent: FC<{
 
             {containerType === 'dialog' && (
                 <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                    {/* Left: Help icon */}
-                    <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                        <HelpCircle size={18} className="mr-1" />
-                    </div>
+                    {/* Left section removed help icon */}
+                    <div></div>
                     {/* Right: Buttons */}
                     <div className="flex items-center gap-2">
-                        {isProcessing && <span className="text-xs text-muted-foreground mr-2">Processing...</span>}
+                        {isProcessing && <span className="text-sm text-muted-foreground mr-2">Processing...</span>}
                         <Button variant="outline" className="mr-2" onClick={handleReset} disabled={isProcessing}>Reset</Button>
                         <Button variant="outline" className="mr-2" onClick={onClose} disabled={isProcessing}>Cancel</Button>
                         <Button onClick={handleConfirm} disabled={isProcessing}>
@@ -367,9 +365,7 @@ const SelectCases: FC<{
                 </div>
                 {/* Footer for sidebar */}
                 <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary shrink-0">
-                    <div className="flex items-center text-muted-foreground">
-                        <HelpCircle size={18} className="mr-1" />
-                    </div>
+                    <div></div>
                     <div className="flex items-center gap-2">
                         <Button variant="outline" className="mr-2"
                             onClick={() => document.dispatchEvent(new CustomEvent('selectCasesReset'))}>
@@ -390,7 +386,7 @@ const SelectCases: FC<{
     // For dialog mode, use Dialog and DialogContent
     return (
         <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[800px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
+            <DialogContent className="max-w-xl p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
                 <SelectCasesContent onClose={onClose} containerType={containerType} />
             </DialogContent>
         </Dialog>

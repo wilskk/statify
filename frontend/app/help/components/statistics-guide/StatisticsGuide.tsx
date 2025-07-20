@@ -1,8 +1,9 @@
 import React from 'react';
-import { Crosstabs } from './descriptive/Crosstabs';
+import { Crosstabs } from './crosstabs';
 import { DescriptiveAnalysis } from './descriptive/DescriptiveAnalysis';
-import { Explore } from './descriptive/Explore';
-import { Frequencies } from './descriptive/Frequencies';
+import { Explore } from './explore';
+import { Frequencies } from './frequencies';
+// Removed HelpContentWrapper and related UI imports since the component now defaults to the Frequencies guide
 
 type StatisticsGuideProps = {
   section?: string;
@@ -10,6 +11,11 @@ type StatisticsGuideProps = {
 
 export const StatisticsGuide: React.FC<StatisticsGuideProps> = ({ section }) => {
   const renderContent = () => {
+    // When no specific sub-section is provided, default to Frequencies guide
+    if (!section) {
+      return <Frequencies />;
+    }
+
     switch (section) {
       case 'frequencies':
         return <Frequencies />;
@@ -20,15 +26,10 @@ export const StatisticsGuide: React.FC<StatisticsGuideProps> = ({ section }) => 
       case 'crosstabs':
         return <Crosstabs />;
       default:
-        return (
-          <div className="prose max-w-none">
-            <h2>Panduan Statistik</h2>
-            <p>Pilih topik dari submenu untuk melihat panduan analisis statistik yang spesifik.</p>
-            <p>Panduan ini akan membantu Anda memahami dan menginterpretasikan berbagai jenis analisis statistik yang tersedia di Statify.</p>
-          </div>
-        );
+        // Fallback to Frequencies as well for any unmatched keys
+        return <Frequencies />;
     }
   };
 
-  return <div>{renderContent()}</div>;
+  return renderContent();
 }; 

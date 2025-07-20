@@ -43,7 +43,7 @@ sequenceDiagram
         Stores-->>Hook: Kembalikan state
         Hook->>Hook: Lakukan sanitasi & transformasi data
         Hook->>+API: Panggil `createSavFile(payload)`
-        API->>+Backend: POST /api/sav-upload dengan data JSON
+        API->>+Backend: POST /api/sav/create dengan data JSON
         Backend-->>-API: Kembalikan file dalam bentuk Blob
         API-->>-Hook: Kembalikan Blob
         Hook->>Hook: Panggil `downloadBlobAsFile(blob, 'data.sav')`

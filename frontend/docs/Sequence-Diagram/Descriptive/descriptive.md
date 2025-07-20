@@ -97,15 +97,9 @@ sequenceDiagram
 
     rect rgb(220, 220, 220)
     note over ZScoreHook, DataStore: Pemrosesan Z-Score
-    ZScoreHook->>ZScoreHook: Memvalidasi data & menyiapkan variabel baru
-    ZScoreHook->>VariableStore: `addMultipleVariables(newVariables)`
-    Note right of VariableStore: Menambahkan definisi variabel baru (misal: ZVar1)
-    
-    ZScoreHook->>DataStore: `ensureColumns(newIndex)`
-    Note right of DataStore: Memastikan kolom matriks data ada
-    
-    ZScoreHook->>DataStore: `updateCells(bulkCellUpdates)`
-    Note right of DataStore: Mengisi nilai Z-score ke sel-sel yang sesuai
+    ZScoreHook->>ZScoreHook: Memvalidasi & menyiapkan definisi variabel baru dan pembaruan sel
+    ZScoreHook->>VariableStore: `addVariables(newDefinitions, cellUpdates)`
+    Note right of VariableStore: Secara atomik menambahkan variabel baru<br/>dan memperbarui sel-sel data terkait
     end
 
     ZScoreHook-->>-AnalysisHook: Selesai

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HexColorPicker } from "react-colorful";
@@ -94,6 +94,8 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   showNormalCurve,
   setShowNormalCurve,
 }) => {
+  const customColorPickerRef = useRef<HTMLDivElement>(null);
+  const singleColorPickerRef = useRef<HTMLDivElement>(null);
   const [selectedColorType, setSelectedColorType] = useState<
     "sequential" | "diverging" | "categorical"
   >("categorical");
@@ -116,6 +118,29 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       setChartColors(colors);
     }
   };
+
+  // Close color pickers when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        customColorPickerRef.current &&
+        !customColorPickerRef.current.contains(event.target as Node)
+      ) {
+        setSelectedGroupIndex(null);
+      }
+      if (
+        singleColorPickerRef.current &&
+        !singleColorPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowSingleCustom(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Custom color gradient for the "custom" mode
   const customGradientColors = [
@@ -196,31 +221,24 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   ];
 
   return (
-    <div className="col-span-12 lg:col-span-3 flex flex-col h-full pl-3 lg:pl-6 border-l-0 lg:border-l-2 border-t-2 lg:border-t-0 border-gray-100 relative pt-4 lg:pt-0">
-      <button
-        className="absolute top-0 right-2 p-1 rounded hover:bg-gray-200 text-gray-600 z-10"
-        onClick={onClose}
-      >
-        <Cross2Icon className="w-5 h-5" />
-      </button>
-
+    <div className="col-span-12 lg:col-span-3 flex flex-col h-full pl-2 lg:pl-4 border-l-0 lg:border-l-2 border-t-2 lg:border-t-0 border-gray-100 relative pt-2 lg:pt-0">
       <Tabs defaultValue="element" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mt-6 text-xs lg:text-sm">
-          <TabsTrigger value="element" className="text-xs lg:text-sm">
+        <TabsList className="grid w-full grid-cols-2 mt-3 text-xs">
+          <TabsTrigger value="element" className="text-xs">
             Element
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="text-xs lg:text-sm">
+          <TabsTrigger value="appearance" className="text-xs">
             Appearance
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="element" className="mt-4">
+        <TabsContent value="element" className="mt-2">
           {/* Sidebar List */}
-          <div className="flex flex-col gap-1 overflow-y-auto max-h-48 mb-4">
+          <div className="flex flex-col gap-1 overflow-y-auto max-h-40 mb-3">
             {settingList.map((item) => (
               <button
                 key={item.key}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors w-full text-left ${
+                className={`flex items-center px-2 py-1 rounded-md text-xs font-medium transition-colors w-full text-left ${
                   selectedSetting === item.key
                     ? "bg-blue-100 text-blue-700 font-semibold"
                     : "hover:bg-gray-100 text-gray-700"
@@ -233,16 +251,18 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             ))}
           </div>
           {/* Form Pengaturan Detail */}
-          <div className="flex-1 border rounded-lg p-4 bg-white shadow-sm">
+          <div className="flex-1 border rounded-lg p-3 bg-white shadow-sm">
             {selectedSetting === "title" &&
               chartConfigOptions[chartType].title && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <Label htmlFor="chartTitle">Title</Label>
+                    <Label htmlFor="chartTitle" className="text-xs">
+                      Title
+                    </Label>
                     <input
                       id="chartTitle"
                       type="text"
-                      className="w-full p-2 border rounded-md"
+                      className="w-full p-1.5 border rounded-md text-xs"
                       value={chartTitle}
                       onChange={(e) => setChartTitle(e.target.value)}
                       placeholder="Enter chart title"
@@ -288,13 +308,15 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               )}
             {selectedSetting === "subtitle" &&
               chartConfigOptions[chartType].subtitle && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <Label htmlFor="chartSubtitle">Subtitle</Label>
+                    <Label htmlFor="chartSubtitle" className="text-xs">
+                      Subtitle
+                    </Label>
                     <input
                       id="chartSubtitle"
                       type="text"
-                      className="w-full p-2 border rounded-md"
+                      className="w-full p-1.5 border rounded-md text-xs"
                       value={chartSubtitle}
                       onChange={(e) => setChartSubtitle(e.target.value)}
                       placeholder="Enter chart subtitle"
@@ -346,9 +368,9 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               )}
             {selectedSetting === "statistic" &&
               chartConfigOptions[chartType].statistic && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <Label htmlFor="selectedStatistic">
+                    <Label htmlFor="selectedStatistic" className="text-xs">
                       Statistical Function
                     </Label>
                     <Select
@@ -357,15 +379,25 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                         setSelectedStatistic(value)
                       }
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full text-xs">
                         <SelectValue placeholder="Select statistic" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="mean">Mean (Average)</SelectItem>
-                        <SelectItem value="median">Median</SelectItem>
-                        <SelectItem value="mode">Mode</SelectItem>
-                        <SelectItem value="min">Minimum</SelectItem>
-                        <SelectItem value="max">Maximum</SelectItem>
+                        <SelectItem value="mean" className="text-xs">
+                          Mean (Average)
+                        </SelectItem>
+                        <SelectItem value="median" className="text-xs">
+                          Median
+                        </SelectItem>
+                        <SelectItem value="mode" className="text-xs">
+                          Mode
+                        </SelectItem>
+                        <SelectItem value="min" className="text-xs">
+                          Minimum
+                        </SelectItem>
+                        <SelectItem value="max" className="text-xs">
+                          Maximum
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-gray-500 mt-1">
@@ -377,20 +409,20 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               )}
             {selectedSetting === "normal-curve" &&
               chartConfigOptions[chartType].normalCurve && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <Label htmlFor="showNormalCurve">
+                    <Label htmlFor="showNormalCurve" className="text-xs">
                       Normal Curve Display
                     </Label>
                     <div className="flex items-center space-x-2 mt-2">
                       <input
                         id="showNormalCurve"
                         type="checkbox"
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                        className="w-3 h-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                         checked={showNormalCurve || false}
                         onChange={(e) => setShowNormalCurve?.(e.target.checked)}
                       />
-                      <Label htmlFor="showNormalCurve" className="text-sm">
+                      <Label htmlFor="showNormalCurve" className="text-xs">
                         Show normal curve on histogram
                       </Label>
                     </div>
@@ -405,11 +437,13 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               <div className="space-y-2">
                 {chartConfigOptions[chartType].axis.x.label && (
                   <>
-                    <Label htmlFor="xAxisLabel">Label</Label>
+                    <Label htmlFor="xAxisLabel" className="text-xs">
+                      Label
+                    </Label>
                     <input
                       id="xAxisLabel"
                       type="text"
-                      className="w-full p-2 border rounded-md"
+                      className="w-full p-1.5 border rounded-md text-xs"
                       value={xAxisOptions.label}
                       onChange={(e) =>
                         setXAxisOptions({
@@ -923,19 +957,17 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           </div>
         </TabsContent>
 
-        <TabsContent value="appearance" className="mt-4 text-xs lg:text-sm">
+        <TabsContent value="appearance" className="mt-2 text-xs">
           {chartConfigOptions[chartType].chartColors && (
-            <div className="space-y-6 text-xs lg:text-sm">
+            <div className="space-y-4 text-xs">
               {/* Color Mode Selection */}
               <div className="flex flex-col items-center w-full">
-                <Label className="text-xs lg:text-sm text-center w-full">
-                  Color Mode
-                </Label>
-                <div className="flex gap-2 mt-2 justify-center w-full">
+                <Label className="text-xs text-center w-full">Color Mode</Label>
+                <div className="flex gap-1 mt-1 justify-center w-full">
                   {["single", "group", "custom"].map((mode) => (
                     <button
                       key={mode}
-                      className={`text-xs px-2 py-1 rounded-md font-medium border transition-colors duration-100
+                      className={`text-xs px-1.5 py-0.5 rounded-md font-medium border transition-colors duration-100
                         ${
                           colorMode === mode
                             ? "bg-blue-500 text-white border-blue-500"
@@ -950,7 +982,7 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                           setColorMode(mode as typeof colorMode);
                         }
                       }}
-                      style={{ minWidth: 60 }}
+                      style={{ minWidth: 50 }}
                     >
                       {mode.charAt(0).toUpperCase() + mode.slice(1)}
                     </button>
@@ -960,21 +992,28 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
 
               {colorMode === "custom" && (
                 <div>
-                  <Label>Custom Gradient Colors</Label>
+                  <Label className="text-xs">Custom Gradient Colors</Label>
                   <div className="space-y-2 mt-2">
                     {groupColors.map((color, index) => (
                       <div
                         key={index}
                         className="flex items-center gap-2 relative"
                       >
-                        <span className="text-sm">Group {index + 1}</span>
+                        <span className="text-xs">Group {index + 1}</span>
                         <div
                           className="w-8 h-8 rounded-full border-2 border-gray-300 cursor-pointer"
                           style={{ backgroundColor: color }}
                           onClick={() => setSelectedGroupIndex(index)}
                         />
                         {selectedGroupIndex === index && (
-                          <div className="absolute left-16 z-10 bg-white rounded-lg shadow-lg p-3 border flex flex-col items-center">
+                          <div
+                            ref={customColorPickerRef}
+                            className="absolute left-16 z-10 bg-white rounded-lg shadow-lg p-2 border flex flex-col items-center"
+                            style={{
+                              transform: "scale(0.55)",
+                              transformOrigin: "top left",
+                            }}
+                          >
                             <HexColorPicker
                               color={color}
                               onChange={(newColor) => {
@@ -986,7 +1025,7 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                             />
                             <input
                               type="text"
-                              className="w-24 p-1 border rounded text-center mt-2"
+                              className="w-25 p-1 border rounded text-center mt-2 text-xl"
                               value={color}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -1032,42 +1071,97 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
 
               {colorMode === "group" && (
                 <>
-                  {/* Color Scale Type Selection */}
+                  {/* Color Scale Type Selection - Carousel */}
                   <div className="flex flex-col items-center w-full">
-                    <Label className="text-xs lg:text-sm text-center w-full">
+                    <Label className="text-xs text-center w-full">
                       Color Scale Type
                     </Label>
-                    <div className="flex gap-2 mt-2 justify-center w-full">
-                      {Object.keys(d3ColorScales).map((scaleType) => (
-                        <button
-                          key={scaleType}
-                          className={`text-xs px-2 py-1 rounded-md font-medium border transition-colors duration-100
-                            ${
-                              selectedColorType === scaleType
-                                ? "bg-blue-500 text-white border-blue-500"
-                                : "bg-white text-gray-700 border-gray-300 hover:bg-blue-100 hover:text-blue-700"
-                            }`}
-                          onClick={() => setSelectedColorType(scaleType as any)}
-                          style={{ minWidth: 80 }}
+                    <div className="flex items-center gap-1 mt-1 justify-center w-full">
+                      {/* Left Arrow */}
+                      <button
+                        className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                        onClick={() => {
+                          const currentIndex =
+                            Object.keys(d3ColorScales).indexOf(
+                              selectedColorType
+                            );
+                          const prevIndex =
+                            currentIndex > 0
+                              ? currentIndex - 1
+                              : Object.keys(d3ColorScales).length - 1;
+                          setSelectedColorType(
+                            Object.keys(d3ColorScales)[prevIndex] as any
+                          );
+                        }}
+                      >
+                        <svg
+                          className="w-4 h-4 text-gray-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          {scaleType.charAt(0).toUpperCase() +
-                            scaleType.slice(1)}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* Current Selection */}
+                      <div className="flex-1 flex justify-center">
+                        <button className="text-xs px-3 py-1.5 rounded-md font-medium border bg-blue-500 text-white border-blue-500 min-w-[80px]">
+                          {selectedColorType.charAt(0).toUpperCase() +
+                            selectedColorType.slice(1)}
                         </button>
-                      ))}
+                      </div>
+
+                      {/* Right Arrow */}
+                      <button
+                        className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                        onClick={() => {
+                          const currentIndex =
+                            Object.keys(d3ColorScales).indexOf(
+                              selectedColorType
+                            );
+                          const nextIndex =
+                            currentIndex < Object.keys(d3ColorScales).length - 1
+                              ? currentIndex + 1
+                              : 0;
+                          setSelectedColorType(
+                            Object.keys(d3ColorScales)[nextIndex] as any
+                          );
+                        }}
+                      >
+                        <svg
+                          className="w-4 h-4 text-gray-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                   {/* Color Scale Preview */}
-                  <div className="space-y-4">
-                    <Label className="text-xs lg:text-sm">Color Scales</Label>
-                    <div className="grid grid-cols-1 gap-4 max-h-64 overflow-y-auto pr-2">
+                  <div className="space-y-3">
+                    <Label className="text-xs">Color Scales</Label>
+                    <div className="grid grid-cols-1 gap-3 max-h-48 overflow-y-auto pr-2">
                       {d3ColorScales[selectedColorType].map((scale: any) => (
-                        <div key={scale.name} className="space-y-2">
+                        <div key={scale.name} className="space-y-1">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs lg:text-sm font-medium">
+                            <span className="text-xs font-medium">
                               {scale.name}
                             </span>
                             <button
-                              className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                              className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                               onClick={() =>
                                 handleColorScaleSelect(scale.colors)
                               }
@@ -1075,7 +1169,7 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                               Apply
                             </button>
                           </div>
-                          <div className="flex h-8 rounded overflow-hidden">
+                          <div className="flex h-6 rounded overflow-hidden">
                             {scale.colors.map((color: string, i: number) => (
                               <div
                                 key={i}
@@ -1093,20 +1187,21 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
 
               {colorMode === "single" && (
                 <div>
-                  <Label className="text-xs lg:text-sm">Pick Color</Label>
+                  <Label className="text-xs">Pick Color</Label>
                   {/* Selected color preview */}
-                  <div className="flex justify-center mb-2">
+                  <div className="flex justify-center mb-1">
                     <div
-                      className="w-12 h-12 rounded-full border-2 border-gray-400"
+                      className="w-10 h-10 rounded-full border-2 border-gray-400"
                       style={{ backgroundColor: singleColor }}
                       title={singleColor}
                     />
                   </div>
+
                   {/* Always visible hex input */}
-                  <div className="flex justify-center mt-2 mb-2">
+                  <div className="flex justify-center mt-1 mb-1">
                     <input
                       type="text"
-                      className="w-32 p-1 border rounded text-center"
+                      className="w-28 p-1 border rounded text-center text-xs"
                       value={inputColor}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -1122,11 +1217,11 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                     />
                   </div>
                   {/* Grid preset warna */}
-                  <div className="w-full flex justify-center my-2">
-                    <div className="grid grid-cols-8 gap-2 w-full max-w-xs relative">
+                  <div className="w-full flex justify-center my-1">
+                    <div className="grid grid-cols-8 gap-1.5 w-full max-w-xs relative">
                       {/* Custom color button */}
                       <button
-                        className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                           showSingleCustom
                             ? "border-blue-500"
                             : "border-gray-300"
@@ -1138,7 +1233,7 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                             "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
                         }}
                       >
-                        <span className="text-lg font-bold text-white">+</span>
+                        <span className="text-sm font-bold text-white">+</span>
                       </button>
                       {/* Preset dari d3.schemeCategory10 dan popularColors */}
                       {[
@@ -1158,7 +1253,7 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                       ].map((color, idx) => (
                         <button
                           key={color + idx}
-                          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                             singleColor === color && !showSingleCustom
                               ? "border-blue-500"
                               : "border-gray-300"
@@ -1177,11 +1272,16 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                       {/* Popover custom color picker */}
                       {showSingleCustom && (
                         <div
-                          className="absolute left-0 top-12 z-20 bg-white rounded-lg shadow-lg p-4 flex flex-col items-center border"
-                          style={{ minWidth: 220 }}
+                          ref={singleColorPickerRef}
+                          className="absolute left-0 top-12 z-20 bg-white rounded-lg shadow-lg p-1 flex flex-col items-center border"
+                          style={{
+                            transform: "scale(0.55)",
+                            transformOrigin: "top left",
+                            minWidth: 50,
+                          }}
                         >
                           <button
-                            className="absolute top-1 right-1 text-gray-400 hover:text-gray-700"
+                            className="absolute top-0.5 right-0.5 text-gray-400 hover:text-gray-700 text-xs"
                             onClick={() => setShowSingleCustom(false)}
                             title="Close"
                           >
@@ -1198,7 +1298,7 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                           />
                           <input
                             type="text"
-                            className="w-28 p-1 border rounded text-center mt-2"
+                            className="w-20 p-0.5 border rounded text-center mt-1 text-xl"
                             value={inputColor}
                             onChange={(e) => {
                               const val = e.target.value;

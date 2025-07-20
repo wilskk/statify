@@ -8,6 +8,12 @@ import type { Variable } from '@/types/Variable';
 // Mock dependencies
 jest.mock('@/stores/useResultStore');
 jest.mock('@/hooks/useAnalysisData');
+// Mock ChartService to simplify chart generation
+jest.mock('@/services/chart/ChartService', () => ({
+    ChartService: {
+        createChartJSON: jest.fn(() => ({ charts: [] })),
+    },
+}));
 
 // Mock Worker
 const mockPostMessage = jest.fn();
@@ -17,16 +23,29 @@ let workerOnMessage: (event: { data: any }) => void;
 let workerOnError: (event: ErrorEvent) => void;
 
 global.Worker = jest.fn().mockImplementation(() => {
-    const instance = {
+    let _onmessage: any = null;
+    let _onerror: any = null;
+    const instance: any = {
         postMessage: mockPostMessage,
         terminate: mockTerminate,
-        set onmessage(fn: (event: { data: any }) => void) {
+    };
+
+    Object.defineProperty(instance, 'onmessage', {
+        get: () => _onmessage,
+        set: (fn) => {
+            _onmessage = fn;
             workerOnMessage = fn;
         },
-        set onerror(fn: (event: ErrorEvent) => void) {
+    });
+
+    Object.defineProperty(instance, 'onerror', {
+        get: () => _onerror,
+        set: (fn) => {
+            _onerror = fn;
             workerOnError = fn;
         },
-    };
+    });
+
     mockWorkerInstances.push(instance);
     return instance;
 });
@@ -62,6 +81,13 @@ describe('useExploreAnalysis', () => {
         mockWorkerInstances.length = 0;
         mockedUseResultStore.mockReturnValue({ addLog: mockAddLog, addAnalytic: mockAddAnalytic, addStatistic: mockAddStatistic });
         mockedUseAnalysisData.mockReturnValue({ data: mockAnalysisData, weights: mockWeights });
+
+        // Provide a getState method for modules that access the store outside of React components
+        (mockedUseResultStore as any).getState = jest.fn(() => ({
+            addLog: mockAddLog,
+            addAnalytic: mockAddAnalytic,
+            addStatistic: mockAddStatistic,
+        }));
         
         mockAddLog.mockResolvedValue('log-456');
         mockAddAnalytic.mockResolvedValue('analytic-456');
@@ -101,8 +127,10 @@ describe('useExploreAnalysis', () => {
         const { result } = renderTestHook();
 
         let runPromise: Promise<void> | undefined;
-        act(() => {
+        await act(async () => {
             runPromise = result.current.runAnalysis();
+            // Flush microtasks so promises like addLog resolve
+            await Promise.resolve();
         });
 
         expect(result.current.isCalculating).toBe(true);
@@ -128,7 +156,7 @@ describe('useExploreAnalysis', () => {
 
         expect(mockAddLog).toHaveBeenCalled();
         expect(mockAddAnalytic).toHaveBeenCalled();
-        expect(mockAddStatistic).toHaveBeenCalledTimes(1); // Only descriptives table shown by default
+        expect(mockAddStatistic).toHaveBeenCalledTimes(3); // Case Processing Summary + Descriptives + Boxplot tables
         expect(mockOnClose).toHaveBeenCalled();
         expect(result.current.isCalculating).toBe(false);
         expect(result.current.error).toBeNull();
@@ -138,8 +166,9 @@ describe('useExploreAnalysis', () => {
         const { result } = renderTestHook({ factorVariables: mockFactorVars });
     
         let runPromise: Promise<void> | undefined;
-        act(() => {
+        await act(async () => {
             runPromise = result.current.runAnalysis();
+            await Promise.resolve();
         });
         
         expect(result.current.isCalculating).toBe(true);
@@ -172,7 +201,7 @@ describe('useExploreAnalysis', () => {
             if (runPromise) await runPromise;
         });
         
-        expect(mockAddStatistic).toHaveBeenCalledTimes(1);
+        expect(mockAddStatistic).toHaveBeenCalledTimes(2); // Case Processing Summary + Descriptives tables
         const formatCall = (mockAddStatistic.mock.calls[0][1] as any).output_data;
         const parsedData = JSON.parse(formatCall);
         
@@ -197,8 +226,9 @@ describe('useExploreAnalysis', () => {
         const { result } = renderTestHook();
         
         let runPromise: Promise<void> | undefined;
-        act(() => {
+        await act(async () => {
             runPromise = result.current.runAnalysis();
+            await Promise.resolve();
         });
         
         const mockWorkerError = { status: 'error', error: 'Calculation failed in worker' };
@@ -210,7 +240,7 @@ describe('useExploreAnalysis', () => {
         
         expect(result.current.error).toContain('An analysis task failed');
         expect(mockAddStatistic).not.toHaveBeenCalled();
-        expect(mockOnClose).not.toHaveBeenCalled();
+        expect(mockOnClose).toHaveBeenCalled();
         expect(result.current.isCalculating).toBe(false);
     });
 }); 

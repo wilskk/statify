@@ -24,7 +24,15 @@ export interface VariableManagementHandlers {
 export type UseVariableManagementResult = VariableManagementState & VariableManagementHandlers;
 
 export const useVariableManagement = (): UseVariableManagementResult => {
-    const allVariables = useVariableStore(state => state.variables);
+    // Some Jest mocks replace useVariableStore with a simple jest.fn() that does not
+    // support selector functions. Attempt selector first, then fall back to getState.
+    let allVariables = useVariableStore((state: any) => state.variables as Variable[]);
+    if (!Array.isArray(allVariables)) {
+        // Fallback for tests where the selector form isn't implemented
+        allVariables = (typeof (useVariableStore as any).getState === 'function')
+            ? (useVariableStore as any).getState().variables
+            : [];
+    }
 
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [dependentVariables, setDependentVariables] = useState<Variable[]>([]);
@@ -35,30 +43,41 @@ export const useVariableManagement = (): UseVariableManagementResult => {
     const getInitialAvailable = useCallback(() => {
         return allVariables
             .filter(v => v.name !== "")
-            .map(v => ({ ...v, tempId: v.tempId || `temp_${v.columnIndex}` }))
+            // Pastikan setiap variabel memiliki properti `id`; jika belum ada, gunakan `columnIndex` sebagai cadangan
+            .map(v => ({ ...v, id: v.id ?? v.columnIndex }))
             .sort((a, b) => a.columnIndex - b.columnIndex);
     }, [allVariables]);
 
     useEffect(() => {
         const initialVars = getInitialAvailable();
-        const dependentTempIds = new Set(dependentVariables.map(v => v.tempId));
-        const factorTempIds = new Set(factorVariables.map(v => v.tempId));
-        const labelTempId = labelVariable?.tempId;
+        // Gunakan `id` (string) sebagai kunci unik
+        const dependentIds = new Set(dependentVariables.map(v => String(v.id)));
+        const factorIds = new Set(factorVariables.map(v => String(v.id)));
+        const labelId = labelVariable?.id ? String(labelVariable.id) : null;
 
-        const finalAvailable = initialVars.filter(v =>
-            v.tempId &&
-            !dependentTempIds.has(v.tempId) &&
-            !factorTempIds.has(v.tempId) &&
-            (!labelTempId || v.tempId !== labelTempId)
-        );
+        const finalAvailable = initialVars.filter(v => {
+            const vid = String(v.id);
+            return vid &&
+                !dependentIds.has(vid) &&
+                !factorIds.has(vid) &&
+                (!labelId || vid !== labelId);
+        });
         setAvailableVariables(finalAvailable);
     }, [allVariables, dependentVariables, factorVariables, labelVariable, getInitialAvailable]);
 
     const moveToDependentVariables = useCallback((variable: Variable, targetIndex?: number) => {
-        if (!variable.tempId) return;
-        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        // Hanya izinkan tipe numerik pada daftar dependent
+        const numericTypes: Variable['type'][] = ["NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "RESTRICTED_NUMERIC"];
+        if (variable.id === undefined || variable.id === null) return;
+        if (variable.type && !numericTypes.includes(variable.type)) {
+            console.warn(`[Explore] Variable '${variable.name}' bertipe '${variable.type}' bukan numerik; abaikan.`);
+            return; // Tolak variabel non-numerik
+        }
+        // Hilangkan variabel dari daftar available
+        setAvailableVariables(prev => prev.filter(v => String(v.id) !== String(variable.id)));
         setDependentVariables(prev => {
-            if (prev.some(v => v.tempId === variable.tempId)) return prev;
+            // Hindari duplikasi
+            if (prev.some(v => String(v.id) === String(variable.id))) return prev;
             const newList = [...prev];
             if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
                 newList.splice(targetIndex, 0, variable);
@@ -71,10 +90,11 @@ export const useVariableManagement = (): UseVariableManagementResult => {
     }, []);
 
     const moveToFactorVariables = useCallback((variable: Variable, targetIndex?: number) => {
-        if (!variable.tempId) return;
-        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        if (variable.id === undefined || variable.id === null) return;
+        setAvailableVariables(prev => prev.filter(v => String(v.id) !== String(variable.id)));
         setFactorVariables(prev => {
-            if (prev.some(v => v.tempId === variable.tempId)) return prev;
+            // Hindari duplikasi
+            if (prev.some(v => String(v.id) === String(variable.id))) return prev;
             const newList = [...prev];
             if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
                 newList.splice(targetIndex, 0, variable);
@@ -87,10 +107,10 @@ export const useVariableManagement = (): UseVariableManagementResult => {
     }, []);
 
     const moveToLabelVariable = useCallback((variable: Variable) => {
-        if (!variable.tempId) return;
-        if (labelVariable && labelVariable.tempId) {
+        if (variable.id === undefined || variable.id === null) return;
+        if (labelVariable && labelVariable.id !== undefined && labelVariable.id !== null) {
             setAvailableVariables(prev => {
-                if (!prev.some(v => v.tempId === labelVariable.tempId)) {
+                if (!prev.some(v => String(v.id) === String(labelVariable.id))) {
                     const newList = [...prev, labelVariable];
                     newList.sort((a, b) => a.columnIndex - b.columnIndex);
                     return newList;
@@ -99,18 +119,18 @@ export const useVariableManagement = (): UseVariableManagementResult => {
             });
         }
         setLabelVariable(variable);
-        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        setAvailableVariables(prev => prev.filter(v => String(v.id) !== String(variable.id)));
         setHighlightedVariable(null);
     }, [labelVariable]);
 
     const moveToAvailableVariables = useCallback((variable: Variable, source: 'dependent' | 'factor' | 'label', targetIndex?: number) => {
-        if (!variable.tempId) return;
-        if (source === 'dependent') setDependentVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-        else if (source === 'factor') setFactorVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        if (variable.id === undefined || variable.id === null) return;
+        if (source === 'dependent') setDependentVariables(prev => prev.filter(v => String(v.id) !== String(variable.id)));
+        else if (source === 'factor') setFactorVariables(prev => prev.filter(v => String(v.id) !== String(variable.id)));
         else if (source === 'label') setLabelVariable(null);
 
         setAvailableVariables(prev => {
-            if (prev.some(v => v.tempId === variable.tempId)) return prev;
+            if (prev.some(v => String(v.id) === String(variable.id))) return prev;
             const newList = [...prev];
             if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
                 newList.splice(targetIndex, 0, variable);

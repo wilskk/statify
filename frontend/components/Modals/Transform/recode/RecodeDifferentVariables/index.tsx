@@ -592,6 +592,24 @@ export const RecodeDifferentVariablesModal: FC<
     }
   };
 
+  const handleReset = () => {
+    const allVars = allVariablesFromStore
+      .filter((v) => v.name !== "")
+      .map((v) => ({ ...v, tempId: v.tempId || `temp_${v.columnIndex}` }))
+      .sort((a, b) => (a.columnIndex || 0) - (b.columnIndex || 0));
+    setAvailableVariables(allVars);
+    setVariablesToRecode([]);
+    setRecodeMappings([]);
+    setHighlightedVariable(null);
+    setRecodeListType(null);
+    setRecodeRules([]);
+    setSelectedMappingIndex(null);
+    setOutputType("NUMERIC");
+    setStringWidth(8);
+    setConvertStringToNumber(false);
+    console.log("Reset clicked");
+  };
+
   const RecodeContent = () => (
     <>
       <Tabs
@@ -671,6 +689,9 @@ export const RecodeDifferentVariablesModal: FC<
       <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
         <Button variant="outline" className="mr-2" onClick={onClose}>
           Cancel
+        </Button>
+        <Button variant="outline" className="mr-2" onClick={handleReset}>
+          Reset
         </Button>
         <Button
           onClick={handleOk}

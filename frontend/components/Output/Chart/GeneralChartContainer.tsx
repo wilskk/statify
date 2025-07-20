@@ -776,7 +776,6 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   };
 
   useEffect(() => {
-    console.log("data di kontainer", parsedData);
     if (parsedData && parsedData.charts && Array.isArray(parsedData.charts)) {
       const nodes = parsedData.charts.map(
         (chartData: ChartData, index: number) => {

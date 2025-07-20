@@ -41,7 +41,7 @@ export const chartTypes = [
   // "3D Scatter Plot",
   // "Grouped 3D Scatter Plot",
   // "Word Cloud",
-  "Vertical Bar & Line Chart2",
+  // "Vertical Bar & Line Chart2",
   "Stem And Leaf Plot",
   "Violin Plot",
   "Density Chart",

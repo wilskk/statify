@@ -453,20 +453,9 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
-                    <TabsList className="bg-muted rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            id="aggregate-options-tab-trigger"
-                            value="options"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
-                        >
-                            Options
-                        </TabsTrigger>
+                    <TabsList>
+                        <TabsTrigger value="variables">Variables</TabsTrigger>
+                        <TabsTrigger id="aggregate-options-tab-trigger" value="options">Options</TabsTrigger>
                         {/* <TabsTrigger
                             value="save"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}

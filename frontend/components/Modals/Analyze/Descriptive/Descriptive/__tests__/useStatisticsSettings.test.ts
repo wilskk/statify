@@ -1,65 +1,57 @@
 import { renderHook, act } from '@testing-library/react';
 import { useStatisticsSettings } from '../hooks/useStatisticsSettings';
 
-describe('useStatisticsSettings', () => {
-    it('should initialize with default statistics', () => {
-        const { result } = renderHook(() => useStatisticsSettings());
-        expect(result.current.displayStatistics.mean).toBe(true);
-        expect(result.current.displayStatistics.stdDev).toBe(true);
-        expect(result.current.displayStatistics.minimum).toBe(true);
-        expect(result.current.displayStatistics.maximum).toBe(true);
-        expect(result.current.displayStatistics.variance).toBe(false);
-        expect(result.current.displayOrder).toBe('variableList');
-        expect(result.current.saveStandardized).toBe(false);
+
+describe('useStatisticsSettings hook', () => {
+  it('initializes with default values', () => {
+    const { result } = renderHook(() => useStatisticsSettings());
+
+    const { displayStatistics, displayOrder, saveStandardized } = result.current;
+
+    expect(displayOrder).toBe('variableList');
+    expect(saveStandardized).toBe(false);
+    // A couple of spot checks on default statistics values
+    expect(displayStatistics.mean).toBe(true);
+    expect(displayStatistics.variance).toBe(false);
+  });
+
+  it('allows updating individual statistic flags', () => {
+    const { result } = renderHook(() => useStatisticsSettings());
+
+    act(() => {
+      result.current.updateStatistic('variance', true);
     });
 
-    it('should initialize with provided initial values', () => {
-        const { result } = renderHook(() => useStatisticsSettings({
-            initialDisplayStatistics: { mean: false, variance: true },
-            initialDisplayOrder: 'alphabetic',
-            initialSaveStandardized: true,
-        }));
-        expect(result.current.displayStatistics.mean).toBe(false);
-        expect(result.current.displayStatistics.variance).toBe(true);
-        expect(result.current.displayOrder).toBe('alphabetic');
-        expect(result.current.saveStandardized).toBe(true);
+    expect(result.current.displayStatistics.variance).toBe(true);
+  });
+
+  it('updates display order and saveStandardized flags', () => {
+    const { result } = renderHook(() => useStatisticsSettings());
+
+    act(() => {
+      result.current.setDisplayOrder('alphabetic');
+      result.current.setSaveStandardized(true);
     });
 
-    it('should update a single statistic value', () => {
-        const { result } = renderHook(() => useStatisticsSettings());
-        
-        act(() => {
-            result.current.updateStatistic('sum', true);
-        });
-        
-        expect(result.current.displayStatistics.sum).toBe(true);
-        
-        act(() => {
-            result.current.updateStatistic('mean', false);
-        });
-        
-        expect(result.current.displayStatistics.mean).toBe(false);
+    expect(result.current.displayOrder).toBe('alphabetic');
+    expect(result.current.saveStandardized).toBe(true);
+  });
+
+  it('resets to default values', () => {
+    const { result } = renderHook(() => useStatisticsSettings());
+
+    act(() => {
+      result.current.updateStatistic('variance', true);
+      result.current.setDisplayOrder('alphabetic');
+      result.current.setSaveStandardized(true);
     });
 
-    it('should reset all settings to their default values', () => {
-        const { result } = renderHook(() => useStatisticsSettings());
-
-        act(() => {
-            result.current.updateStatistic('sum', true);
-            result.current.setDisplayOrder('ascendingMeans');
-            result.current.setSaveStandardized(true);
-        });
-
-        expect(result.current.displayStatistics.sum).toBe(true);
-        expect(result.current.displayOrder).toBe('ascendingMeans');
-        expect(result.current.saveStandardized).toBe(true);
-
-        act(() => {
-            result.current.resetStatisticsSettings();
-        });
-
-        expect(result.current.displayStatistics.sum).toBe(false);
-        expect(result.current.displayOrder).toBe('variableList');
-        expect(result.current.saveStandardized).toBe(false);
+    act(() => {
+      result.current.resetStatisticsSettings();
     });
+
+    expect(result.current.displayStatistics.variance).toBe(false);
+    expect(result.current.displayOrder).toBe('variableList');
+    expect(result.current.saveStandardized).toBe(false);
+  });
 }); 

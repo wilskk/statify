@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Info } from "lucide-react";
 import type { RecodeRule } from "../Types"; // Import RecodeRule from the main modal component
 import type { VariableType } from "@/types/Variable";
@@ -56,6 +65,13 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
 
   // --- State for managing the list of rules ---
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+
+  // State untuk error dialog
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+  } | null>(null);
 
   const isNumeric = recodeListType === "NUMERIC";
   const isString = recodeListType === "STRING";
@@ -139,7 +155,11 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
     switch (oldValueSelectionType) {
       case "value":
         if (oldSingleValue.trim() === "") {
-          alert("Old value cannot be empty.");
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description: "Old value cannot be empty.",
+          });
           return;
         }
         tempOldValueDisplay = oldSingleValue;
@@ -149,17 +169,29 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
         break;
       case "range":
         if (oldRangeMin.trim() === "" || oldRangeMax.trim() === "") {
-          alert("Both min and max range values must be provided.");
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description: "Both min and max range values must be provided.",
+          });
           return;
         }
         const min = parseFloat(oldRangeMin);
         const max = parseFloat(oldRangeMax);
         if (isNaN(min) || isNaN(max)) {
-          alert("Range values must be numeric.");
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description: "Range values must be numeric.",
+          });
           return;
         }
         if (min > max) {
-          alert("Min range value cannot be greater than Max.");
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description: "Min range value cannot be greater than Max.",
+          });
           return;
         }
         tempOldValueDisplay = `${oldRangeMin}-${oldRangeMax}`;
@@ -167,12 +199,20 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
         break;
       case "rangeLowest":
         if (oldRangeLowestMax.trim() === "") {
-          alert("Max value for LOWEST range must be provided.");
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description: "Max value for LOWEST range must be provided.",
+          });
           return;
         }
         const lowestMax = parseFloat(oldRangeLowestMax);
         if (isNaN(lowestMax)) {
-          alert("Range value must be numeric.");
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description: "Range value must be numeric.",
+          });
           return;
         }
         tempOldValueDisplay = `LOWEST-${oldRangeLowestMax}`;
@@ -180,12 +220,20 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
         break;
       case "rangeHighest":
         if (oldRangeHighestMin.trim() === "") {
-          alert("Min value for HIGHEST range must be provided.");
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description: "Min value for HIGHEST range must be provided.",
+          });
           return;
         }
         const highestMin = parseFloat(oldRangeHighestMin);
         if (isNaN(highestMin)) {
-          alert("Range value must be numeric.");
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description: "Range value must be numeric.",
+          });
           return;
         }
         tempOldValueDisplay = `${oldRangeHighestMin}-HIGHEST`;
@@ -210,7 +258,11 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
 
     if (newValueSelectionType === "value") {
       if (newSingleValue.trim() === "") {
-        alert("New value cannot be empty if type is 'Value'.");
+        setErrorDialog({
+          open: true,
+          title: "Validation Error",
+          description: "New value cannot be empty if type is 'Value'.",
+        });
         return;
       }
       tempNewValueDisplay = newSingleValue;
@@ -334,6 +386,28 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
 
   return (
     <>
+      {/* Error Alert Dialog */}
+      {errorDialog?.open && (
+        <AlertDialog
+          open={errorDialog.open}
+          onOpenChange={(open) => setErrorDialog(open ? errorDialog : null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{errorDialog.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {errorDialog.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setErrorDialog(null)}>
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       {/* Info Alert - rules apply to all variables */}
       <Alert className="mb-4 bg-blue-50 border border-blue-200">
         <Info className="h-4 w-4 text-blue-500" />

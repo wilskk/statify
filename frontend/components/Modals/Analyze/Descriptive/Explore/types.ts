@@ -1,6 +1,4 @@
-import { Dispatch, SetStateAction } from 'react';
 import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
 import { TourStep } from './hooks/useTourGuide';
 import { UseVariableManagementResult } from './hooks/useVariableManagement';
 import { UseStatisticsSettingsResult } from './hooks/useStatisticsSettings';
@@ -8,7 +6,7 @@ import { UsePlotsSettingsResult } from './hooks/usePlotsSettings';
 
 // Type for highlighted variable
 export type HighlightedVariable = {
-    tempId: string;
+    id: string | number;
     source: 'available' | 'dependent' | 'factor' | 'label';
 } | null;
 
@@ -67,7 +65,7 @@ export interface ExploreAnalysisParams {
     showMEstimators: boolean;
     showOutliers: boolean;
     showPercentiles: boolean;
-    boxplotType: 'dependents-together' | 'factor-levels-together';
+    boxplotType: 'none' | 'dependents-together' | 'factor-levels-together';
     showStemAndLeaf: boolean;
     showHistogram: boolean;
     showNormalityPlots: boolean;

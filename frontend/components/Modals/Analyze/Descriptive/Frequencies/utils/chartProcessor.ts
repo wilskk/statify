@@ -1,24 +1,12 @@
-import { ChartOptions, FrequencyTable } from '../types';
-import { useResultStore } from '@/stores/useResultStore';
+import { ChartOptions, FrequencyTable } from "../types";
+import { useResultStore } from "@/stores/useResultStore";
+import { ChartService } from "@/services/chart/ChartService";
 
-// Helper function to get the appropriate chart title
-const getChartTitle = (type: string | null, varName: string): string => {
-    switch(type) {
-        case 'barCharts': return `Bar Chart for ${varName}`;
-        case 'pieCharts': return `Pie Chart for ${varName}`;
-        case 'histograms': return `Histogram for ${varName}`;
-        default: return `Chart for ${varName}`;
-    }
-};
-
-// Helper function to get the chart component type name
-const getChartComponentType = (type: string | null): string => {
-    switch(type) {
-        case 'barCharts': return 'Bar';
-        case 'pieCharts': return 'Pie';
-        case 'histograms': return 'Histogram';
-        default: return 'Bar';
-    }
+// Map Frequencies modal chart type → (ChartService chart type, component name)
+const chartTypeMeta: Record<NonNullable<ChartOptions["type"]>, { chartServiceType: string; component: string }> = {
+  barCharts: { chartServiceType: "Vertical Bar Chart", component: "Bar" },
+  pieCharts: { chartServiceType: "Pie Chart", component: "Pie" },
+  histograms: { chartServiceType: "Histogram", component: "Histogram" },
 };
 
 /**
@@ -34,6 +22,10 @@ export const processAndAddCharts = async (
 ) => {
     const { addStatistic } = useResultStore.getState();
 
+    // Collect charts by type for ordered output
+    const order: NonNullable<ChartOptions["type"]>[] = ["barCharts", "pieCharts", "histograms"];
+    const chartsByType: Record<string, Array<{ title: string; output: any; component: string }>> = {};
+
     for (const varName in frequencyTables) {
         const table = frequencyTables[varName];
         if (!table || !table.rows || table.rows.length === 0) continue;
@@ -44,26 +36,100 @@ export const processAndAddCharts = async (
                 {
                     label: chartOptions.values === 'percentages' ? 'Percentage' : 'Frequency',
                     data: table.rows.map(row => chartOptions.values === 'percentages' ? row.validPercent : row.frequency),
-                    // You can add more styling options here later, e.g., colors
                 }
             ]
         };
 
-        const chartTitle = getChartTitle(chartOptions.type, table.title || varName);
-        const chartComponent = getChartComponentType(chartOptions.type);
+        /*
+         * Build a descriptive title for the chart. Tests (and users) expect the
+         * title to contain the chart type (e.g. "Bar Chart", "Pie Chart"). We
+         * therefore prefix the original frequency-table title with the chart type
+         * label. For example:
+         *   "Var1 Frequencies"  ->  "Bar Chart: Var1 Frequencies"
+         */
+        const chartTypeLabelMap: Record<NonNullable<ChartOptions["type"]>, string> = {
+            barCharts: "Bar Chart",
+            pieCharts: "Pie Chart",
+            histograms: "Histogram",
+        } as const;
 
-        await addStatistic(analyticId, {
-            title: chartTitle,
-            output_data: JSON.stringify({
-                data: chartData,
-                options: {
-                    // Pass any chart-specific display options here
-                    // e.g., showNormalCurveOnHistogram
-                    ...(chartOptions.type === 'histograms' && { showNormalCurve: chartOptions.showNormalCurveOnHistogram })
-                }
-            }),
-            components: chartComponent,
-            description: `A ${chartComponent} chart showing ${chartOptions.values} for ${table.title || varName}.`
-        });
+        let chartTitle = table.title || varName;
+        if (chartOptions.type) {
+            const label = chartTypeLabelMap[chartOptions.type];
+            // Ensure we only prepend if not already included.
+            if (label && !chartTitle.includes(label)) {
+                chartTitle = `${label}: ${chartTitle}`;
+            }
+        }
+        const chartComponent = chartOptions.type ? chartTypeMeta[chartOptions.type].component : "Bar";
+
+        let outputData: any;
+        try {
+            if (chartOptions.type && chartOptions.type !== "histograms") {
+                // Bar & Pie charts – gunakan ChartService
+                const chartType = chartTypeMeta[chartOptions.type].chartServiceType;
+                const processedChartData = table.rows.map(row => ({
+                    category: row.label,
+                    value: chartOptions.values === 'percentages' ? (row.validPercent ?? row.percent ?? 0) : row.frequency,
+                }));
+
+                outputData = ChartService.createChartJSON({
+                    chartType,
+                    chartData: processedChartData,
+                    chartMetadata: {
+                        title: chartTitle,
+                        description: `Generated by Frequencies analysis (${chartOptions.values})`,
+                    },
+                    chartConfig: { useAxis: true },
+                });
+            } else if (chartOptions.type === "histograms") {
+                // Histogram – bangun kembali array nilai mentah berdasarkan frekuensi
+                const values: number[] = [];
+                table.rows.forEach(row => {
+                    const val = Number(row.label);
+                    if (!Number.isNaN(val)) {
+                        const freq = row.frequency || 0;
+                        for (let i = 0; i < freq; i++) {
+                            values.push(val);
+                        }
+                    }
+                });
+
+                outputData = ChartService.createChartJSON({
+                    chartType: "Histogram",
+                    chartData: values,
+                    chartMetadata: {
+                        title: chartTitle,
+                        description: `Generated by Frequencies analysis (${chartOptions.values})`,
+                    },
+                    chartConfig: { useAxis: true },
+                });
+            } else {
+                // Fallback – seharusnya tidak terjadi
+                outputData = { data: chartData, options: {} };
+            }
+        } catch (err) {
+            console.error('[chartProcessor] Failed to build ChartJSON:', err);
+            outputData = { data: chartData, options: {} };
+        }
+
+        const key = chartOptions.type || "barCharts";
+        chartsByType[key] = chartsByType[key] || [];
+        chartsByType[key].push({ title: chartTitle, output: outputData, component: chartComponent });
+    }
+
+    // Output in desired order
+    for (const typeKey of order) {
+        const chartList = chartsByType[typeKey];
+        if (!chartList || chartList.length === 0) continue;
+
+        for (const chart of chartList) {
+            await addStatistic(analyticId, {
+                title: chart.title,
+                output_data: JSON.stringify(chart.output),
+                components: chart.component,
+                description: '',
+            });
+        }
     }
 }; 

@@ -10,6 +10,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
@@ -35,7 +44,8 @@ import {
   TextAlignLeftIcon,
   BarChartIcon,
   Cross2Icon,
-  GearIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon,
 } from "@radix-ui/react-icons";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -126,6 +136,13 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
 
   const [isCalculating, setIsCalculating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // State untuk error dialog
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+  } | null>(null);
 
   const { addStatistic, addLog, addAnalytic } = useResultStore();
   const [showResult, setShowResult] = useState(false);
@@ -220,7 +237,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     {
       key: "statistic",
       label: "Statistic",
-      icon: <GearIcon className="w-4 h-4 mr-2" />,
+      icon: <BarChartIcon className="w-4 h-4 mr-2" />,
       show: config.statistic || false,
     },
     {
@@ -506,9 +523,9 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   };
 
   const handleGenerateChart = async () => {
-    // Validasi Input
+    // Validasi Input dengan error dialog
     if (
-      !validateChartVariables(
+      !validateChartVariablesWithError(
         chartType,
         sideVariables,
         bottomVariables,
@@ -567,6 +584,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     }
   };
 
+  // Function untuk validasi tanpa menampilkan error dialog (untuk cek tombol)
   const validateChartVariables = (
     chartType: ChartType,
     sideVariables: string[],
@@ -582,9 +600,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       sideVariables.length < chartConfig.side.min ||
       sideVariables.length > chartConfig.side.max
     ) {
-      alert(
-        `Jumlah variabel untuk sumbu Y (side) harus antara ${chartConfig.side.min} dan ${chartConfig.side.max}.`
-      );
       return false;
     }
 
@@ -594,9 +609,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
         bottomVariables.length < chartConfig.bottom.min ||
         bottomVariables.length > chartConfig.bottom.max
       ) {
-        alert(
-          `Jumlah variabel untuk sumbu X (bottom) harus antara ${chartConfig.bottom.min} dan ${chartConfig.bottom.max}.`
-        );
         return false;
       }
     }
@@ -607,9 +619,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       (lowVariables.length < chartConfig.low.min ||
         lowVariables.length > chartConfig.low.max)
     ) {
-      alert(
-        `Jumlah variabel untuk sumbu low harus antara ${chartConfig.low.min} dan ${chartConfig.low.max}.`
-      );
       return false;
     }
 
@@ -619,9 +628,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       (highVariables.length < chartConfig.high.min ||
         highVariables.length > chartConfig.high.max)
     ) {
-      alert(
-        `Jumlah variabel untuk sumbu high harus antara ${chartConfig.high.min} dan ${chartConfig.high.max}.`
-      );
       return false;
     }
 
@@ -631,13 +637,117 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       (closeVariables.length < chartConfig.close.min ||
         closeVariables.length > chartConfig.close.max)
     ) {
-      alert(
-        `Jumlah variabel untuk sumbu close harus antara ${chartConfig.close.min} dan ${chartConfig.close.max}.`
-      );
       return false;
     }
 
     return true; // Jika semua validasi lolos
+  };
+
+  // Function untuk validasi dengan menampilkan error dialog
+  const validateChartVariablesWithError = (
+    chartType: ChartType,
+    sideVariables: string[],
+    bottomVariables: string[],
+    lowVariables: string[],
+    highVariables: string[],
+    closeVariables: string[]
+  ) => {
+    const chartConfig = chartVariableConfig[chartType];
+
+    // Validasi untuk side (sumbu Y)
+    if (
+      sideVariables.length < chartConfig.side.min ||
+      sideVariables.length > chartConfig.side.max
+    ) {
+      setErrorDialog({
+        open: true,
+        title: "Validation Error",
+        description: `Jumlah variabel untuk sumbu Y (side) harus antara ${chartConfig.side.min} dan ${chartConfig.side.max}.`,
+      });
+      return false;
+    }
+
+    // Validasi untuk bottom (sumbu X) - hanya jika chart memerlukan bottom variables
+    if (chartConfig.bottom.min > 0 || chartConfig.bottom.max > 0) {
+      if (
+        bottomVariables.length < chartConfig.bottom.min ||
+        bottomVariables.length > chartConfig.bottom.max
+      ) {
+        setErrorDialog({
+          open: true,
+          title: "Validation Error",
+          description: `Jumlah variabel untuk sumbu X (bottom) harus antara ${chartConfig.bottom.min} dan ${chartConfig.bottom.max}.`,
+        });
+        return false;
+      }
+    }
+
+    if (
+      chartConfig.low &&
+      (chartConfig.low.min > 0 || chartConfig.low.max > 0) &&
+      (lowVariables.length < chartConfig.low.min ||
+        lowVariables.length > chartConfig.low.max)
+    ) {
+      setErrorDialog({
+        open: true,
+        title: "Validation Error",
+        description: `Jumlah variabel untuk sumbu low harus antara ${chartConfig.low.min} dan ${chartConfig.low.max}.`,
+      });
+      return false;
+    }
+
+    if (
+      chartConfig.high &&
+      (chartConfig.high.min > 0 || chartConfig.high.max > 0) &&
+      (highVariables.length < chartConfig.high.min ||
+        highVariables.length > chartConfig.high.max)
+    ) {
+      setErrorDialog({
+        open: true,
+        title: "Validation Error",
+        description: `Jumlah variabel untuk sumbu high harus antara ${chartConfig.high.min} dan ${chartConfig.high.max}.`,
+      });
+      return false;
+    }
+
+    if (
+      chartConfig.close &&
+      (chartConfig.close.min > 0 || chartConfig.close.max > 0) &&
+      (closeVariables.length < chartConfig.close.min ||
+        closeVariables.length > chartConfig.close.max)
+    ) {
+      setErrorDialog({
+        open: true,
+        title: "Validation Error",
+        description: `Jumlah variabel untuk sumbu close harus antara ${chartConfig.close.min} dan ${chartConfig.close.max}.`,
+      });
+      return false;
+    }
+
+    return true; // Jika semua validasi lolos
+  };
+
+  // Function untuk mengecek apakah chart siap untuk di-generate
+  const isChartReadyToGenerate = () => {
+    // Cek apakah ada data
+    if (data.length === 0) {
+      return false;
+    }
+
+    // Cek apakah ada variabel yang dipilih
+    if (sideVariables.length === 0) {
+      return false;
+    }
+
+    // Validasi variabel berdasarkan chart type
+    return validateChartVariables(
+      chartType,
+      sideVariables,
+      bottomVariables,
+      lowVariables,
+      highVariables,
+      closeVariables
+    );
   };
 
   // Paksa scroll ke atas saat modal muncul agar scroll mouse wheel langsung aktif
@@ -662,241 +772,309 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   }
 
   return (
-    <DialogContent
-      className="custom-dialog-content sm:max-h-[95%] max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] overflow-y-scroll"
-      style={{ WebkitOverflowScrolling: "touch" }}
-      tabIndex={0}
-      ref={dialogRef}
-      autoFocus
-      onOpenAutoFocus={(e) => e.preventDefault()}
-    >
-      <DialogHeader className="p-1 m-0 flex flex-row justify-between items-center">
-        <DialogTitle className="text-xs lg:text-sm font-semibold m-0 p-0">
-          Chart Builder
-        </DialogTitle>
-        {!showCustomizationPanel && (
-          <button
-            className="ml-2 p-2 rounded hover:bg-gray-200 text-gray-600 text-xs lg:text-sm"
-            title="Show Customization"
-            onClick={() => setShowCustomizationPanel(true)}
-            tabIndex={-1}
-          >
-            <GearIcon className="w-5 h-5" />
-          </button>
-        )}
-      </DialogHeader>
-
-      <div className="grid grid-cols-12 gap-2 lg:gap-4 py-0 lg:py-1 px-1 lg:px-0 text-xs lg:text-sm">
-        {/* Kolom Kiri - Pilih Variabel dan Jenis Chart */}
-        <div
-          className={
-            showCustomizationPanel
-              ? "col-span-12 lg:col-span-3 space-y-2 lg:space-y-4 pr-2 lg:pr-4 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-gray-100 mb-2 lg:mb-0 pb-2 lg:pb-0 text-xs lg:text-sm"
-              : "col-span-12 lg:col-span-5 space-y-2 lg:space-y-4 pr-2 lg:pr-4 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-gray-100 mb-2 lg:mb-0 pb-2 lg:pb-0 text-xs lg:text-sm"
-          }
+    <>
+      {/* Error Alert Dialog */}
+      {errorDialog?.open && (
+        <AlertDialog
+          open={errorDialog.open}
+          onOpenChange={(open) => setErrorDialog(open ? errorDialog : null)}
         >
-          <VariableSelection
-            variables={variables}
-            onDragStart={handleDragStart}
-          />
-          {/* Chart Type Selection tetap di sini */}
-          <TooltipProvider>
-            <div className="border p-2 lg:p-3 rounded-lg shadow-sm h-[160px] lg:h-[270px] mt-2 text-xs lg:text-sm">
-              <div className="mb-1">
-                <Label className="text-xs lg:text-sm">Choose Graph</Label>
-              </div>
-              <div className="overflow-y-auto max-h-[100px] lg:max-h-[220px] chart-selection-container">
-                <div
-                  className="chart-selection-grid w-full gap-1 lg:gap-2 mt-1 gap-y-0.5 lg:gap-y-1"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
-                  }}
-                >
-                  {chartTypes.map((type, index) => (
-                    <Tooltip key={index}>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={`relative cursor-pointer p-2 lg:p-2 border-2 rounded-lg text-center flex flex-col items-center justify-center h-[70px] lg:h-[100px] w-full text-xs lg:text-sm ${
-                            chartType === type
-                              ? "bg-gray-300 text-black"
-                              : "bg-gray-100"
-                          }`}
-                          onClick={() => handleChartTypeChange(type)}
-                        >
-                          <div className="flex justify-center items-center overflow-hidden mb-1 lg:mb-2">
-                            <ChartSelection
-                              chartType={type}
-                              width={50}
-                              height={50}
-                              useaxis={false}
-                            />
-                          </div>
-                          <span
-                            className="font-semibold text-[6px] lg:text-[8px] block leading-tight line-clamp-2 overflow-hidden text-ellipsis text-center"
-                            style={{
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                              whiteSpace: "normal",
-                              minHeight: "20px",
-                            }}
-                          >
-                            {type.charAt(0).toUpperCase() + type.slice(1)}
-                          </span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs lg:text-sm">
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </TooltipProvider>
-        </div>
-
-        {/* Kolom Tengah - Preview Chart */}
-        <div
-          className={
-            showCustomizationPanel
-              ? "col-span-12 lg:col-span-6 flex justify-center items-center mb-2 lg:mb-0 pb-2 lg:pb-0 border-b-2 lg:border-b-0 border-gray-100 text-xs lg:text-sm px-4"
-              : "col-span-12 lg:col-span-7 flex justify-center items-center mb-2 lg:mb-0 pb-2 lg:pb-0 border-b-2 lg:border-b-0 border-gray-100 text-xs lg:text-sm px-4"
-          }
-          style={{ minHeight: "400px", overflowX: "auto" }}
-        >
-          <ChartPreview
-            ref={chartPreviewRef}
-            chartType={chartType}
-            width={chartDimensions.width}
-            height={chartDimensions.height}
-            useaxis={true}
-            sideVariables={sideVariables}
-            side2Variables={side2Variables}
-            bottomVariables={bottomVariables}
-            bottom2Variables={bottom2Variables}
-            colorVariables={colorVariables}
-            filterVariables={filterVariables}
-            lowVariables={lowVariables}
-            highVariables={highVariables}
-            closeVariables={closeVariables}
-            onDropSide={handleDropSide}
-            onDropSide2={handleDropSide2}
-            onDropBottom={handleDropBottom}
-            onDropBottom2={handleDropBottom2}
-            onDropColor={handleDropColor}
-            onDropFilter={handleDropFilter}
-            onDropLow={handleDropLow}
-            onDropHigh={handleDropHigh}
-            onDropClose={handleDropClose}
-            handleRemoveVariable={handleRemoveVariable}
-            validateChartVariables={validateChartVariables}
-            chartTitle={chartTitle}
-            chartSubtitle={chartSubtitle}
-            xAxisLabel={xAxisOptions.label}
-            yAxisLabel={yAxisOptions.label}
-            yLeftAxisLabel={yAxisOptions.label}
-            yRightAxisLabel={y2AxisOptions.label}
-            xAxisMin={xAxisOptions.min}
-            xAxisMax={xAxisOptions.max}
-            xAxisMajorIncrement={xAxisOptions.majorIncrement}
-            xAxisOrigin={xAxisOptions.origin}
-            yAxisMin={yAxisOptions.min}
-            yAxisMax={yAxisOptions.max}
-            yAxisMajorIncrement={yAxisOptions.majorIncrement}
-            yAxisOrigin={yAxisOptions.origin}
-            yRightAxisMin={y2AxisOptions.min}
-            yRightAxisMax={y2AxisOptions.max}
-            yRightAxisMajorIncrement={y2AxisOptions.majorIncrement}
-            yRightAxisOrigin={y2AxisOptions.origin}
-            chartColors={chartColors}
-            selectedStatistic={selectedStatistic}
-            errorBarOptions={errorBarOptions}
-            showNormalCurve={showNormalCurve}
-          />
-        </div>
-
-        {/* Kolom Kanan - Panel Customisasi (Sidebar + Form) */}
-        {showCustomizationPanel && (
-          <CustomizationPanel
-            onClose={() => setShowCustomizationPanel(false)}
-            chartType={chartType}
-            chartConfigOptions={chartConfigOptions}
-            colorMode={colorMode}
-            setColorMode={setColorMode}
-            singleColor={singleColor}
-            setSingleColor={setSingleColor}
-            groupColors={groupColors}
-            setGroupColors={setGroupColors}
-            setChartColors={setChartColors}
-            chartTitle={chartTitle}
-            setChartTitle={setChartTitle}
-            chartSubtitle={chartSubtitle}
-            setChartSubtitle={setChartSubtitle}
-            xAxisOptions={xAxisOptions}
-            setXAxisOptions={setXAxisOptions}
-            yAxisOptions={yAxisOptions}
-            setYAxisOptions={setYAxisOptions}
-            y2AxisOptions={y2AxisOptions}
-            setY2AxisOptions={setY2AxisOptions}
-            selectedStatistic={selectedStatistic}
-            setSelectedStatistic={setSelectedStatistic}
-            errorBarType={errorBarType}
-            setErrorBarType={setErrorBarType}
-            confidenceLevel={confidenceLevel}
-            setConfidenceLevel={setConfidenceLevel}
-            seMultiplier={seMultiplier}
-            setSeMultiplier={setSeMultiplier}
-            sdMultiplier={sdMultiplier}
-            setSdMultiplier={setSdMultiplier}
-            showNormalCurve={showNormalCurve}
-            setShowNormalCurve={setShowNormalCurve}
-          />
-        )}
-      </div>
-
-      {/* Error Message */}
-      {errorMsg && (
-        <div className="text-red-500 text-xs lg:text-sm mb-2 px-1 lg:px-0">
-          {errorMsg}
-        </div>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{errorDialog.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {errorDialog.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setErrorDialog(null)}>
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
-      <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 mt-2 text-xs lg:text-sm">
-        <Button
-          variant="outline"
-          onClick={handleResetVariables}
-          className="text-xs lg:text-sm"
+      <DialogContent
+        className="custom-dialog-content sm:max-h-[95%] max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] overflow-y-scroll"
+        style={{ WebkitOverflowScrolling: "touch" }}
+        tabIndex={0}
+        ref={dialogRef}
+        autoFocus
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="p-1 m-0 flex flex-row justify-between items-center">
+          <DialogTitle className="text-xs lg:text-sm font-semibold m-0 p-0">
+            Chart Builder
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-12 gap-2 lg:gap-4 py-0 lg:py-1 px-1 lg:px-0 text-xs lg:text-sm relative">
+          {/* Kolom Kiri - Pilih Variabel dan Jenis Chart */}
+          <div
+            className={
+              showCustomizationPanel
+                ? "col-span-12 lg:col-span-3 space-y-2 lg:space-y-4 pr-2 lg:pr-4 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-gray-100 mb-2 lg:mb-0 pb-2 lg:pb-0 text-xs lg:text-sm"
+                : "col-span-12 lg:col-span-5 space-y-2 lg:space-y-4 pr-2 lg:pr-4 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-gray-100 mb-2 lg:mb-0 pb-2 lg:pb-0 text-xs lg:text-sm"
+            }
+          >
+            <VariableSelection
+              variables={variables}
+              onDragStart={handleDragStart}
+            />
+            {/* Chart Type Selection tetap di sini */}
+            <TooltipProvider>
+              <div className="border p-2 lg:p-3 rounded-lg shadow-sm h-[160px] lg:h-[270px] mt-2 text-xs lg:text-sm">
+                <div className="mb-1">
+                  <Label className="text-xs lg:text-sm">Choose Graph</Label>
+                </div>
+                <div className="overflow-y-auto max-h-[100px] lg:max-h-[220px] chart-selection-container">
+                  <div
+                    className="chart-selection-grid w-full gap-1 lg:gap-2 mt-1 gap-y-0.5 lg:gap-y-1"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(70px, 1fr))",
+                    }}
+                  >
+                    {chartTypes.map((type, index) => (
+                      <Tooltip key={index}>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={`relative cursor-pointer p-2 lg:p-2 border-2 rounded-lg text-center flex flex-col items-center justify-center h-[70px] lg:h-[100px] w-full text-xs lg:text-sm ${
+                              chartType === type
+                                ? "bg-gray-300 text-black"
+                                : "bg-gray-100"
+                            }`}
+                            onClick={() => handleChartTypeChange(type)}
+                          >
+                            <div className="flex justify-center items-center overflow-hidden mb-1 lg:mb-2">
+                              <ChartSelection
+                                chartType={type}
+                                width={50}
+                                height={50}
+                                useaxis={false}
+                              />
+                            </div>
+                            <span
+                              className="font-semibold text-[6px] lg:text-[8px] block leading-tight line-clamp-2 overflow-hidden text-ellipsis text-center"
+                              style={{
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                whiteSpace: "normal",
+                                minHeight: "20px",
+                              }}
+                            >
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="text-xs lg:text-sm"
+                        >
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </TooltipProvider>
+          </div>
+
+          {/* Kolom Tengah - Preview Chart */}
+          <div
+            className={
+              showCustomizationPanel
+                ? "col-span-12 lg:col-span-6 flex justify-center items-center mb-2 lg:mb-0 pb-2 lg:pb-0 border-b-2 lg:border-b-0 border-gray-100 text-xs lg:text-sm px-4"
+                : "col-span-12 lg:col-span-7 flex justify-center items-center mb-2 lg:mb-0 pb-2 lg:pb-0 border-b-2 lg:border-b-0 border-gray-100 text-xs lg:text-sm px-4"
+            }
+            style={{ minHeight: "400px", overflowX: "auto" }}
+          >
+            <ChartPreview
+              ref={chartPreviewRef}
+              chartType={chartType}
+              width={chartDimensions.width}
+              height={chartDimensions.height}
+              useaxis={true}
+              sideVariables={sideVariables}
+              side2Variables={side2Variables}
+              bottomVariables={bottomVariables}
+              bottom2Variables={bottom2Variables}
+              colorVariables={colorVariables}
+              filterVariables={filterVariables}
+              lowVariables={lowVariables}
+              highVariables={highVariables}
+              closeVariables={closeVariables}
+              onDropSide={handleDropSide}
+              onDropSide2={handleDropSide2}
+              onDropBottom={handleDropBottom}
+              onDropBottom2={handleDropBottom2}
+              onDropColor={handleDropColor}
+              onDropFilter={handleDropFilter}
+              onDropLow={handleDropLow}
+              onDropHigh={handleDropHigh}
+              onDropClose={handleDropClose}
+              handleRemoveVariable={handleRemoveVariable}
+              validateChartVariables={validateChartVariables}
+              chartTitle={chartTitle}
+              chartSubtitle={chartSubtitle}
+              xAxisLabel={xAxisOptions.label}
+              yAxisLabel={yAxisOptions.label}
+              yLeftAxisLabel={yAxisOptions.label}
+              yRightAxisLabel={y2AxisOptions.label}
+              xAxisMin={xAxisOptions.min}
+              xAxisMax={xAxisOptions.max}
+              xAxisMajorIncrement={xAxisOptions.majorIncrement}
+              xAxisOrigin={xAxisOptions.origin}
+              yAxisMin={yAxisOptions.min}
+              yAxisMax={yAxisOptions.max}
+              yAxisMajorIncrement={yAxisOptions.majorIncrement}
+              yAxisOrigin={yAxisOptions.origin}
+              yRightAxisMin={y2AxisOptions.min}
+              yRightAxisMax={y2AxisOptions.max}
+              yRightAxisMajorIncrement={y2AxisOptions.majorIncrement}
+              yRightAxisOrigin={y2AxisOptions.origin}
+              chartColors={chartColors}
+              selectedStatistic={selectedStatistic}
+              errorBarOptions={errorBarOptions}
+              showNormalCurve={showNormalCurve}
+            />
+          </div>
+        </div>
+
+        {/* Panel Kustomisasi - Absolute Positioning */}
+        <div
+          className={`absolute right-0 bg-white z-10 transition-transform duration-300 ${
+            showCustomizationPanel
+              ? "w-[200px] sm:w-[220px] md:w-[240px] lg:w-[270px] xl:w-[270px]"
+              : "w-0"
+          }`}
+          style={{
+            top: "50%",
+            transform: showCustomizationPanel
+              ? "translateY(-50%)"
+              : "translate(100%, -50%)",
+            height: "calc(80vh - 1rem)",
+            maxHeight: "calc(100% - 2rem)",
+            overflowY: "auto",
+          }}
         >
-          Reset
-        </Button>
-        <Button
-          variant="outline"
-          onClick={onClose}
-          className="text-xs lg:text-sm"
+          {/* Konten panel */}
+          <div className="p-4 h-full overflow-y-auto">
+            <CustomizationPanel
+              onClose={() => setShowCustomizationPanel(false)}
+              chartType={chartType}
+              chartConfigOptions={chartConfigOptions}
+              colorMode={colorMode}
+              setColorMode={setColorMode}
+              singleColor={singleColor}
+              setSingleColor={setSingleColor}
+              groupColors={groupColors}
+              setGroupColors={setGroupColors}
+              setChartColors={setChartColors}
+              chartTitle={chartTitle}
+              setChartTitle={setChartTitle}
+              chartSubtitle={chartSubtitle}
+              setChartSubtitle={setChartSubtitle}
+              xAxisOptions={xAxisOptions}
+              setXAxisOptions={setXAxisOptions}
+              yAxisOptions={yAxisOptions}
+              setYAxisOptions={setYAxisOptions}
+              y2AxisOptions={y2AxisOptions}
+              setY2AxisOptions={setY2AxisOptions}
+              selectedStatistic={selectedStatistic}
+              setSelectedStatistic={setSelectedStatistic}
+              errorBarType={errorBarType}
+              setErrorBarType={setErrorBarType}
+              confidenceLevel={confidenceLevel}
+              setConfidenceLevel={setConfidenceLevel}
+              seMultiplier={seMultiplier}
+              setSeMultiplier={setSeMultiplier}
+              sdMultiplier={sdMultiplier}
+              setSdMultiplier={setSdMultiplier}
+              showNormalCurve={showNormalCurve}
+              setShowNormalCurve={setShowNormalCurve}
+            />
+          </div>
+        </div>
+
+        {/* Tombol Expand - Di Luar Panel, Z-Index Lebih Tinggi */}
+        <button
+          onClick={() => setShowCustomizationPanel(!showCustomizationPanel)}
+          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-[#E5E0D8] border border-gray-300 transition-all duration-300 ${
+            showCustomizationPanel
+              ? "right-[200px] sm:right-[220px] md:right-[240px] lg:right-[270px] xl:right-[255px]"
+              : "right-0"
+          }`}
+          style={{
+            width: "24px",
+            height: "80px",
+            borderRadius: "12px 0 0 12px",
+            padding: "8px 4px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "2px 0 4px rgba(0,0,0,0.1)",
+          }}
         >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleGenerateChart}
-          disabled={isCalculating || data.length === 0}
-          className="text-xs lg:text-sm"
-        >
-          {isCalculating ? (
-            <>
-              <svg
-                className="animate-spin h-4 w-4 lg:h-5 lg:w-5 mr-2 lg:mr-3 border-t-2 border-b-2 border-gray-900 rounded-full"
-                viewBox="0 0 24 24"
-              ></svg>
-              Generating...
-            </>
-          ) : (
-            "Generate Chart"
-          )}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+          <div className="flex flex-col items-center space-y-1">
+            {/* <div className="w-1 h-1 bg-gray-400 rounded-full"></div> */}
+            <ChevronLeftIcon
+              className={`w-4 h-4 text-gray-600 transition-transform ${
+                showCustomizationPanel ? "" : "rotate-180"
+              }`}
+            />
+            {/* <div className="w-1 h-1 bg-gray-400 rounded-full"></div> */}
+          </div>
+        </button>
+
+        {/* Error Message */}
+        {errorMsg && (
+          <div className="text-red-500 text-xs lg:text-sm mb-2 px-1 lg:px-0">
+            {errorMsg}
+          </div>
+        )}
+
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 mt-2 text-xs lg:text-sm">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="text-xs lg:text-sm"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleResetVariables}
+            className="text-xs lg:text-sm"
+          >
+            Reset
+          </Button>
+
+          <Button
+            onClick={handleGenerateChart}
+            disabled={isCalculating || !isChartReadyToGenerate()}
+            className="text-xs lg:text-sm"
+          >
+            {isCalculating ? (
+              <>
+                <svg
+                  className="animate-spin h-4 w-4 lg:h-5 lg:w-5 mr-2 lg:mr-3 border-t-2 border-b-2 border-gray-900 rounded-full"
+                  viewBox="0 0 24 24"
+                ></svg>
+                Generating...
+              </>
+            ) : (
+              "OK"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </>
   );
 };
 

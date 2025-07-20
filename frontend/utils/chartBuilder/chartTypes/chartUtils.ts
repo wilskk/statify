@@ -44,10 +44,6 @@ export const addChartTitle = (
   svg: d3.Selection<SVGSVGElement, any, null, undefined>,
   options: ChartTitleOptions
 ) => {
-  console.log("addChartTitle called with options:", options);
-  console.log("SVG selection:", svg);
-  console.log("SVG node:", svg.node());
-
   const {
     title,
     subtitle,
@@ -79,9 +75,6 @@ export const addChartTitle = (
     calculatedSubtitleY = subtitleY || 50;
   }
 
-  console.log("Adding main title:", title);
-  console.log("Calculated titleY:", calculatedTitleY, "marginTop:", marginTop);
-
   // Add main title
   svg
     .append("text")
@@ -96,8 +89,6 @@ export const addChartTitle = (
 
   // Add subtitle if provided
   if (subtitle) {
-    console.log("Adding subtitle:", subtitle);
-    console.log("Calculated subtitleY:", calculatedSubtitleY);
     svg
       .append("text")
       .attr("x", "50%")
@@ -197,43 +188,34 @@ export const calculateXAxisRotation = (
 
 // Helper function to format numeric values with max length
 function formatNumericValue(value: number, maxLength: number): string {
-  console.log("formatNumericValue called with:", { value, maxLength });
-
   const str = value.toString();
   if (str.length <= maxLength) {
-    console.log("returning original:", str);
     return str;
   }
 
   // If number has decimal points
   if (str.includes(".")) {
     const [whole, decimal] = str.split(".");
-    console.log("decimal number parts:", { whole, decimal });
 
     if (whole.length >= maxLength) {
       // If whole part is already too long, use exponential notation
       const result = value.toExponential(maxLength - 4);
-      console.log("using exponential:", result);
       return result;
     }
     // Calculate how many decimal places we can show
     const availableSpace = maxLength - whole.length - 1; // -1 for decimal point
-    console.log("available space for decimals:", availableSpace);
 
     if (availableSpace <= 0) {
       // No space for decimals, return whole number
-      console.log("no space for decimals, returning whole:", whole);
       return whole;
     }
     // Return with exact number of decimal places
     const result = value.toFixed(availableSpace);
-    console.log("formatted with decimals:", result);
     return result;
   }
 
   // For large integers, use exponential notation if longer than maxLength
   const result = value.toExponential(maxLength - 4);
-  console.log("large integer to exponential:", result);
   return result;
 }
 
@@ -527,29 +509,23 @@ export const addStandardYAxis = (
     maxValueLength = 6,
   } = options;
 
-  console.log("addStandardYAxis options:", { maxValueLength, customFormat });
-
   // Buat axis dasar
   const axis = d3
     .axisLeft(yScale)
     .tickFormat(
       showValues
         ? (d: any) => {
-            console.log("formatting tick value:", d);
             // If customFormat is provided, use it first
             const value = customFormat ? customFormat(d) : d;
-            console.log("after customFormat:", value);
 
             // If the value is numeric, use number formatting
             const num = Number(value);
             if (!isNaN(num)) {
               const result = formatNumericValue(num, maxValueLength);
-              console.log("numeric formatting result:", result);
               return result;
             }
             // For non-numeric values, use truncation
             const result = truncateText(value.toString(), maxValueLength);
-            console.log("text truncation result:", result);
             return result;
           }
         : () => ""

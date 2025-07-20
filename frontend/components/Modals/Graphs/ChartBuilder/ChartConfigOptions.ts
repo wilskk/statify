@@ -1136,31 +1136,6 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
   //     },
   //   },
   // },
-  "Vertical Bar & Line Chart2": {
-    title: true,
-    subtitle: true,
-    titleColor: true,
-    subtitleColor: true,
-    titleFontSize: true,
-    subtitleFontSize: true,
-    chartColors: true,
-    axis: {
-      x: {
-        label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
-        origin: false,
-      },
-      y: {
-        label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
-        origin: false,
-      },
-    },
-  },
   "Stem And Leaf Plot": {
     title: true,
     subtitle: true,

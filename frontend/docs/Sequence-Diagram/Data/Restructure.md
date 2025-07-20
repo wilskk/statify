@@ -54,11 +54,11 @@ sequenceDiagram
     Service-->>-Hook: Return { newData, newVariables }
     deactivate Service
 
+    Hook->>+VarStore: setVariables(newVariables)
+    deactivate VarStore
+
     Hook->>+DataStore: setData(newData)
     deactivate DataStore
-
-    Hook->>+VarStore: overwriteVariables(newVariables)
-    deactivate VarStore
 
     Hook->>UI: onClose()
     deactivate Hook

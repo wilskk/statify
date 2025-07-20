@@ -1,10 +1,7 @@
 import React, { FC, useCallback } from "react";
-import { InfoIcon } from "lucide-react";
 import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 import { VariablesTabProps } from "./types";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 // Source types remain the same, but used internally by the parent mostly
@@ -14,13 +11,13 @@ const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,
     dependentVariables,
     factorVariables,
-    labelVariable,
+    labelVariable: _labelVariable,
     highlightedVariable,
     setHighlightedVariable,
     moveToAvailableVariables,
     moveToDependentVariables,
     moveToFactorVariables,
-    moveToLabelVariable,
+    moveToLabelVariable, // not used – retained for props compatibility
     reorderVariables,
     errorMsg,
     containerType = "dialog",
@@ -28,12 +25,15 @@ const VariablesTab: FC<VariablesTabProps> = ({
     currentStep = 0,
     tourSteps = [],
 }) => {
+    // Silence unused prop warning for moveToLabelVariable
+    void moveToLabelVariable;
+    void _labelVariable;
 
     const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
     const varListsStep = getStepIndex('explore-variable-lists');
 
     // --- Adapt props for VariableListManager ---
-    const variableIdKeyToUse: keyof Variable = 'tempId';
+    const variableIdKeyToUse: keyof Variable = 'id';
 
     // 1. Configure the target lists
     const targetLists: TargetListConfig[] = [
@@ -41,7 +41,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'dependent',
             title: 'Dependent List',
             variables: dependentVariables,
-            height: '110px',
+            height: '160px', // increased to fill space formerly used by label list
             draggableItems: true,
             droppable: true,
         },
@@ -49,30 +49,21 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'factor',
             title: 'Factor List',
             variables: factorVariables,
-            height: '80px',
+            height: '110px', // increased accordingly
             draggableItems: true,
             droppable: true,
-        },
-        {
-            id: 'label',
-            title: 'Label Cases by',
-            variables: labelVariable ? [labelVariable] : [],
-            height: '50px',
-            maxItems: 1,
-            draggableItems: false, // Cannot drag *from* or reorder within label list
-            droppable: true, // Can drop *into* label list (up to maxItems)
         }
     ];
 
-    // 2. Adapt highlightedVariable state (already using tempId)
+    // 2. Adapt highlightedVariable state (already using id)
     const managerHighlightedVariable = highlightedVariable
-        ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
+        ? { id: String(highlightedVariable.id), source: highlightedVariable.source }
         : null;
 
     const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
-        // Ensure the source is one of the expected types for this component
-        if (value && ['available', 'dependent', 'factor', 'label'].includes(value.source)) {
-            setHighlightedVariable({ tempId: value.id, source: value.source as AllSource });
+        // Ensure the source is one of the expected types for this component (label removed)
+        if (value && ['available', 'dependent', 'factor'].includes(value.source)) {
+            setHighlightedVariable({ id: value.id, source: value.source as AllSource });
         } else {
             setHighlightedVariable(null);
         }
@@ -94,12 +85,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
             case 'factor':
                 moveToFactorVariables(variable, targetIndex);
                 break;
-            case 'label':
-                // moveToLabelVariable doesn't take targetIndex
-                moveToLabelVariable(variable);
-                break;
+            // 'label' list removed – no action needed
         }
-    }, [moveToAvailableVariables, moveToDependentVariables, moveToFactorVariables, moveToLabelVariable]);
+    }, [moveToAvailableVariables, moveToDependentVariables, moveToFactorVariables]);
 
     // 4. Create onReorderVariable callback
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {

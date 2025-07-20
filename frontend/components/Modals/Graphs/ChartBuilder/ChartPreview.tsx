@@ -2804,24 +2804,6 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Vertical Bar & Line Chart2": {
-            const isDefault = renderMode === "default";
-            const config = createChartConfig(chartType, isDefault);
-
-            chartNode = chartUtils.createBarAndLineChart2(
-              config.data,
-              width,
-              height,
-              useaxis,
-              "stacked",
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
           case "Dual Axes Scatter Plot": {
             const isDefault = renderMode === "default";
             const dualAxisScatterConfig = createDualAxisChartConfig(
@@ -3691,9 +3673,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         {errorDialog?.open && (
           <AlertDialog
             open={errorDialog.open}
-            onOpenChange={(open: boolean) =>
-              setErrorDialog(open ? errorDialog : null)
-            }
+            onOpenChange={(open) => setErrorDialog(open ? errorDialog : null)}
           >
             <AlertDialogContent>
               <AlertDialogHeader>

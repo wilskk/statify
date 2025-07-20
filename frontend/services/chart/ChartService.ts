@@ -1,4 +1,5 @@
 import { DataProcessingService } from "./DataProcessingService";
+import { d3ColorScales } from "@/utils/chartBuilder/defaultStyles/defaultColors";
 
 /**
  * ChartService - Service untuk membuat chart JSON
@@ -659,16 +660,36 @@ function generateChartColors(
 ): string[] {
   if (customColors) return customColors;
 
-  const defaultColors = [
-    "#E69F00", // blue-400
-    "#56B4E9", // green-400
-    "#009E73", // red-400
-    "#F0E442", // amber-400
-    "#0072B2", // violet-400
-    "#D55E00", // emerald-400
-    "#CC79A7", // orange-400
-    "#000000", // purple-400
-  ];
+  // Combine multiple categorical schemes for more color options
+  const getExtendedColors = () => {
+    const colors = [];
+    // Add Category10
+    colors.push(...d3ColorScales.categorical[0].colors);
+    // Add Observable10
+    colors.push(...d3ColorScales.categorical[1].colors);
+    // Add Accent
+    colors.push(...d3ColorScales.categorical[2].colors);
+    // Add Dark2
+    colors.push(...d3ColorScales.categorical[3].colors);
+    // Add Paired
+    colors.push(...d3ColorScales.categorical[4].colors);
+    // Add Pastel1
+    colors.push(...d3ColorScales.categorical[5].colors);
+    // Add Pastel2
+    colors.push(...d3ColorScales.categorical[6].colors);
+    // Add Set1
+    colors.push(...d3ColorScales.categorical[7].colors);
+    // Add Set2
+    colors.push(...d3ColorScales.categorical[8].colors);
+    // Add Set3
+    colors.push(...d3ColorScales.categorical[9].colors);
+    // Add Tableau10
+    colors.push(...d3ColorScales.categorical[10].colors);
+
+    return colors;
+  };
+
+  const defaultColors = getExtendedColors();
 
   switch (chartType) {
     // Single color charts
@@ -676,7 +697,6 @@ function generateChartColors(
     case "Horizontal Bar Chart":
     case "Line Chart":
     case "Area Chart":
-    case "Pie Chart":
     case "Scatter Plot":
     case "Scatter Plot With Fit Line":
     case "Scatter Plot With Multiple Fit Line":
@@ -704,7 +724,7 @@ function generateChartColors(
 
     // Special cases
     case "Population Pyramid":
-      return ["#4682B4", "#e74c3c"]; // 2 specific colors
+      return ["#4682B4", "#e74c3c"];
 
     case "3D Bar Chart":
     case "3D Bar Chart2":
@@ -715,6 +735,7 @@ function generateChartColors(
 
     case "Grouped Scatter Plot":
     case "Drop Line Chart":
+    case "Pie Chart":
       if (Array.isArray(chartData)) {
         // Ambil semua nilai unik dari field 'category'
         const uniqueCategories = Array.from(

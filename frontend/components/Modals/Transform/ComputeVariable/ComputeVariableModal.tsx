@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Calculator } from "./Calculator";
 import { FunctionsList } from "./FunctionsList";
+import { VariablesList } from "./VariablesList";
 
 interface ComputeVariableProps {
   onClose: () => void;
@@ -55,15 +56,50 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
     title: string;
     description: string;
   } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const allVariablesFromStore = useVariableStore.getState().variables;
   const addVariable = useVariableStore((state) => state.addVariable);
   const data = useDataStore((state) => state.data);
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-  const handleVariableDoubleClick = useCallback((variable: Variable) => {
+  const handleVariableClick = useCallback((variable: Variable) => {
     setNumericExpression((prev) => prev + variable.name);
   }, []);
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLDivElement>, variable: Variable) => {
+      e.dataTransfer.setData("text/plain", variable.name);
+      e.dataTransfer.effectAllowed = "copy";
+    },
+    []
+  );
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const variableName = e.dataTransfer.getData("text/plain");
+    if (variableName) {
+      setNumericExpression((prev) => prev + variableName);
+    }
+  }, []);
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent<HTMLTextAreaElement>) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      setIsDragOver(true);
+    },
+    []
+  );
+
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent<HTMLTextAreaElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+    },
+    []
+  );
 
   const handleCompute = useCallback(async () => {
     if (!targetName || !numericExpression) {
@@ -226,44 +262,57 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
     onClose,
   ]);
 
+  const handleReset = useCallback(() => {
+    setTargetName("");
+    setTargetType("NUMERIC");
+    setTargetLabel("");
+    setNumericExpression("");
+    setIfCondition("");
+    setIsProcessing(false);
+    setErrorDialog(null);
+    setIsDragOver(false);
+    console.log("Reset clicked");
+  }, []);
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Main Content */}
       <div className="p-4 md:p-6 flex-grow overflow-y-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 min-h-0">
           {/* Left side - Target Variable */}
-          <div className="flex flex-col space-y-4">
-            <div className="space-y-4">
-              <div>
-                <Label className="mb-2 block">Target Variable:</Label>
-                <Input
-                  value={targetName}
-                  onChange={(e) => setTargetName(e.target.value)}
-                  className="bg-white"
-                  placeholder="Enter variable name"
-                />
+          <div className="flex flex-col min-h-0">
+            <div className="space-y-4 flex-shrink-0">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <Label className="mb-2 block">Target Variable:</Label>
+                  <Input
+                    value={targetName}
+                    onChange={(e) => setTargetName(e.target.value)}
+                    className="bg-white"
+                    placeholder="Enter variable name"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-2 block">Type:</Label>
+                  <Select
+                    value={targetType}
+                    onValueChange={(value: "NUMERIC" | "STRING") =>
+                      setTargetType(value)
+                    }
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NUMERIC">Numeric</SelectItem>
+                      <SelectItem value="STRING">String</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div>
-                <Label className="mb-2 block">Type:</Label>
-                <Select
-                  value={targetType}
-                  onValueChange={(value: "NUMERIC" | "STRING") =>
-                    setTargetType(value)
-                  }
-                >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NUMERIC">Numeric</SelectItem>
-                    <SelectItem value="STRING">String</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="mb-2 block">Label:</Label>
+                {/* <Label className="mb-2 block">Label:</Label> */}
                 <Input
                   value={targetLabel}
                   onChange={(e) => setTargetLabel(e.target.value)}
@@ -274,63 +323,55 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
             </div>
 
             {/* Variables List */}
-            <div className="flex-grow">
-              <Label className="mb-2 block">Variables:</Label>
-              <ScrollArea className="h-[min(calc(100vh-500px),300px)] border rounded-md p-2 bg-white">
-                {allVariablesFromStore.map((variable) => (
-                  <div
-                    key={variable.tempId}
-                    className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer text-sm"
-                    onDoubleClick={() => handleVariableDoubleClick(variable)}
-                  >
-                    <div className="w-4 h-4 flex-shrink-0">
-                      {variable.type === "NUMERIC"
-                        ? "🔢"
-                        : variable.type === "STRING"
-                        ? "📝"
-                        : "📅"}
-                    </div>
-                    <span className="truncate">
-                      {variable.label
-                        ? `${variable.label} [${variable.name}]`
-                        : variable.name}
-                    </span>
-                  </div>
-                ))}
-              </ScrollArea>
-            </div>
+            <VariablesList
+              variables={allVariablesFromStore}
+              onVariableClick={handleVariableClick}
+              onDragStart={handleDragStart}
+            />
           </div>
 
-          {/* Right side - Expression & Calculator */}
-          <div className="flex flex-col space-y-4">
+          {/* Center side - Expression & Calculator */}
+          <div className="flex flex-col min-h-0">
             {/* Expression Input */}
-            <div>
+            <div className="flex-shrink-0">
               <Label className="mb-2 block">Numeric Expression:</Label>
               <textarea
                 value={numericExpression}
                 onChange={(e) => setNumericExpression(e.target.value)}
-                className="w-full h-24 md:h-32 p-2 border rounded-md bg-white resize-none text-sm"
-                placeholder="Enter expression (e.g., var1 + var2)"
+                className={`w-full h-24 md:h-32 p-2 border rounded-md bg-white resize-none text-sm transition-colors ${
+                  isDragOver ? "border-blue-500 bg-blue-50" : ""
+                }`}
+                placeholder="Enter expression (e.g., var1 + var2) or drag variables here"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
               />
             </div>
 
             {/* Calculator */}
-            <div>
-              <Label className="mb-2 block">Calculator:</Label>
-              <Calculator
-                onButtonClick={(value) => {
-                  if (value === "") {
-                    // Delete last character
-                    setNumericExpression((prev) => prev.slice(0, -1));
-                  } else {
-                    setNumericExpression((prev) => prev + value);
-                  }
-                }}
-              />
+            <div className="flex-shrink-0 mt-4">
+              {/* <Label className="mb-2 block">Calculator:</Label> */}
+              <div className="border rounded-md bg-white p-2">
+                <Calculator
+                  onButtonClick={(value) => {
+                    if (value === "") {
+                      // Delete last character
+                      setNumericExpression((prev) => prev.slice(0, -1));
+                    } else {
+                      setNumericExpression((prev) => prev + value);
+                    }
+                  }}
+                />
+              </div>
             </div>
 
-            {/* Functions */}
-            <div className="flex-grow">
+            {/* Spacer to fill remaining space */}
+            <div className="flex-grow min-h-0"></div>
+          </div>
+
+          {/* Right side - Functions */}
+          <div className="flex flex-col min-h-0">
+            <div className="flex-grow min-h-0">
               <Label className="mb-2 block">Functions:</Label>
               <FunctionsList
                 onFunctionSelect={(func) =>
@@ -340,8 +381,7 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
             </div>
           </div>
         </div>
-
-        {/* If Condition */}
+        {/* If Condition
         <div className="mt-4 md:mt-6">
           <Label className="mb-2 block">If (Optional):</Label>
           <Input
@@ -350,12 +390,18 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
             className="bg-white"
             placeholder="Enter condition (e.g., var1 > 10)"
           />
-        </div>
+        </div> */}
       </div>
 
       {/* Footer */}
       <div className="px-4 md:px-6 py-3 md:py-4 border-t border-gray-200 flex-shrink-0 bg-gray-50">
         <div className="flex flex-wrap gap-2 justify-end">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="outline" onClick={handleReset}>
+            Reset
+          </Button>
           <Button
             variant="default"
             onClick={handleCompute}
@@ -363,10 +409,8 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
           >
             {isProcessing ? "Computing..." : "OK"}
           </Button>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="outline">Help</Button>
+
+          {/* <Button variant="outline">Help</Button> */}
         </div>
       </div>
 

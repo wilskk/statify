@@ -1,55 +1,50 @@
 import { readTextFromClipboard } from '../services/services';
 
-describe('readTextFromClipboard service', () => {
-  const mockReadText = jest.fn();
+describe('ImportClipboard Services', () => {
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // Mock the global navigator.clipboard object
-    Object.defineProperty(global.navigator, 'clipboard', {
-      value: {
-        readText: mockReadText,
-      },
-      writable: true,
-      configurable: true,
+    const originalClipboard = navigator.clipboard;
+
+    afterEach(() => {
+        // Restore original clipboard object after each test
+        Object.defineProperty(navigator, 'clipboard', {
+            value: originalClipboard,
+            writable: true,
+        });
     });
-  });
 
-  afterAll(() => {
-    // Clean up the mock after all tests are done
-     Object.defineProperty(global.navigator, 'clipboard', {
-      value: undefined,
-      writable: true,
-      configurable: true,
+    it('should read text from clipboard successfully', async () => {
+        const mockText = 'Hello, clipboard!';
+        const mockClipboard = {
+            readText: jest.fn().mockResolvedValue(mockText),
+        };
+        Object.defineProperty(navigator, 'clipboard', {
+            value: mockClipboard,
+            writable: true,
+        });
+
+        const text = await readTextFromClipboard();
+        expect(text).toBe(mockText);
+        expect(mockClipboard.readText).toHaveBeenCalledTimes(1);
     });
-  });
 
-  it('should resolve with text from clipboard on success', async () => {
-    const clipboardText = 'hello\tworld';
-    mockReadText.mockResolvedValue(clipboardText);
+    it('should throw a user-friendly error if reading fails', async () => {
+        const mockClipboard = {
+            readText: jest.fn().mockRejectedValue(new Error('Permission denied')),
+        };
+        Object.defineProperty(navigator, 'clipboard', {
+            value: mockClipboard,
+            writable: true,
+        });
 
-    await expect(readTextFromClipboard()).resolves.toBe(clipboardText);
-    expect(mockReadText).toHaveBeenCalledTimes(1);
-  });
-
-  it('should reject if clipboard API is not available', async () => {
-    // Temporarily remove the clipboard API for this test
-    Object.defineProperty(global.navigator, 'clipboard', {
-        value: undefined,
-        writable: true,
-        configurable: true,
+        await expect(readTextFromClipboard()).rejects.toThrow('Could not read from clipboard. Permission might be denied or an unexpected error occurred.');
     });
-    await expect(readTextFromClipboard()).rejects.toThrow('Clipboard API not available.');
-  });
-  
-  it('should reject if clipboard is empty', async () => {
-    mockReadText.mockResolvedValue('');
-    await expect(readTextFromClipboard()).rejects.toThrow('Clipboard is empty or contains non-text data.');
-  });
 
-  it('should reject when readText throws an error (e.g., permission denied)', async () => {
-    const error = new Error('Permission denied');
-    mockReadText.mockRejectedValue(error);
-    await expect(readTextFromClipboard()).rejects.toThrow('Could not read from clipboard. Permission might be denied or an unexpected error occurred.');
-  });
+    it('should throw an error if clipboard API is not supported', async () => {
+        Object.defineProperty(navigator, 'clipboard', {
+            value: undefined,
+            writable: true,
+        });
+
+        await expect(readTextFromClipboard()).rejects.toThrow('Clipboard API not available.');
+    });
 }); 

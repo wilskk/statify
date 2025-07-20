@@ -1,4 +1,4 @@
 export * from './ComparisonSection';
 export * from './FeaturesSection';
 export * from './HeroSection';
-export * from './TestimonialsSection'; 
+export * from './CspSection'; 
