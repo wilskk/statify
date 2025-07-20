@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { InputRow } from "./TimeSeriesInput";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
@@ -42,6 +42,27 @@ export function useTimeHook(
     ]);
 
     const [isLoaded, setIsLoaded] = useState(false);
+
+    
+    const handleSetYear = useCallback((value: number) => {
+        setYear(value);
+        setYearState(value);
+    }, [setYear, setYearState]);
+
+    const handleSetMonth = useCallback((value: number) => {
+        setMonth(value);
+        setMonthState(value);
+    }, [setMonth, setMonthState]);
+
+    const handleSetDay = useCallback((value: number) => {
+        setDay(value);
+        setDayState(value);
+    }, [setDay, setDayState]);
+
+    const handleSetHour = useCallback((value: number) => {
+        setHour(value);
+        setHourState(value);
+    }, [setHour, setHourState]);
 
     // Load data from IndexedDB on mount
     useEffect(() => {
@@ -89,7 +110,7 @@ export function useTimeHook(
             }
         };
         loadData();
-    }, [setTypeDate, setYear, setMonth, setDay, setHour, getTypeDate]);
+    }, [setTypeDate, handleSetYear, handleSetMonth, handleSetDay, handleSetHour, getTypeDate]);
 
     // Save to IndexedDB whenever relevant state changes (but only after initial load)
     useEffect(() => {
@@ -116,29 +137,6 @@ export function useTimeHook(
         } else {
             setHour(0); // Reset to 0 hours for other periods
         }
-    }
-
-    // function resetTime() {
-    //     const p = periods.find((p) => p.id === getTypeDate());
-    //     setSelectedPeriod(["0", "Not Dated"]);
-    //     setTypeDate("nd");
-    // }
-
-    const handleSetYear = (value: number) => {
-        setYear(value);
-        setYearState(value);
-    }
-    const handleSetMonth = (value: number) => {
-        setMonth(value);
-        setMonthState(value);
-    }
-    const handleSetDay = (value: number) => {
-        setDay(value);
-        setDayState(value);
-    }
-    const handleSetHour = (value: number) => {
-        setHour(value);
-        setHourState(value);
     }
 
     function resetTime() {
