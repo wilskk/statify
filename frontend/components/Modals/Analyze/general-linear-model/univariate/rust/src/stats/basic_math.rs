@@ -1,5 +1,5 @@
 use statrs::statistics::Statistics;
-use crate::models::{ data::AnalysisData, result::StatsEntry };
+use crate::models::result::StatsEntry;
 
 /// Menghitung nilai rata-rata (mean) dari sekumpulan data.
 ///
@@ -33,26 +33,6 @@ pub fn calculate_variance(values: &[f64], known_mean: Option<f64>) -> f64 {
         .iter()
         .map(|x| (x - mean).powi(2))
         .sum::<f64>() / (n as f64)
-}
-
-/// Menghitung standar deviasi populasi, yang merupakan akar kuadrat dari varians.
-///
-/// Standar deviasi memberikan gambaran sebaran data dalam unit yang sama dengan data itu sendiri,
-/// sehingga lebih mudah diinterpretasikan. Menerima `known_mean` opsional untuk
-/// diteruskan ke `calculate_variance` demi efisiensi.
-pub fn calculate_std_deviation(values: &[f64], known_mean: Option<f64>) -> f64 {
-    calculate_variance(values, known_mean).sqrt()
-}
-
-/// Menghitung jumlah total observasi (kasus) dari seluruh grup dalam data analisis.
-///
-/// Data analisis dapat terdiri dari beberapa grup; fungsi ini menjumlahkan
-/// ukuran dari setiap grup untuk mendapatkan total keseluruhan.
-pub fn count_total_cases(data: &AnalysisData) -> usize {
-    data.dependent_data
-        .iter()
-        .map(|records| records.len())
-        .sum()
 }
 
 /// Menghitung statistik deskriptif (rata-rata, standar deviasi, dan jumlah sampel)

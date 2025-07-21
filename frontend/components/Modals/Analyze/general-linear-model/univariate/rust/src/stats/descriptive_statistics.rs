@@ -104,7 +104,7 @@ pub fn calculate_descriptive_statistics(
     // --- 1. Inisialisasi dan Pengumpulan Faktor ---
     let dep_var_name = config.main.dep_var
         .as_ref()
-        .ok_or_else(|| "Variabel dependen tidak ditentukan dalam konfigurasi".to_string())?;
+        .ok_or_else(|| "Dependent variable not specified in the configuration".to_string())?;
 
     // Kumpulkan semua faktor (tetap dan acak) dari konfigurasi.
     let mut all_factors = Vec::new();

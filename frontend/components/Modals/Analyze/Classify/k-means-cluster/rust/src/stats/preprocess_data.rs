@@ -1,5 +1,5 @@
 use crate::models::{
-    config::ClusterConfig,
+    config::KMeansConfig,
     data::{ AnalysisData, DataValue },
     result::ProcessedData,
 };
@@ -8,7 +8,7 @@ use crate::models::{
 /// Proses ini mencakup pemilihan variabel, penanganan data yang hilang (missing values), dan transformasi data ke format matriks.
 pub fn preprocess_data(
     data: &AnalysisData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<ProcessedData, String> {
     // --- Penentuan Variabel ---
     // Menentukan variabel yang akan digunakan untuk klastering berdasarkan `target_var` dari konfigurasi.
@@ -51,11 +51,22 @@ pub fn preprocess_data(
 
             for dataset in &data.target_data {
                 if case_idx < dataset.len() {
-                    if let Some(DataValue::Number(val)) = dataset[case_idx].values.get(var) {
-                        row.push(*val);
-                        non_missing_count += 1;
-                        var_found = true;
-                        break; // Lanjut ke variabel berikutnya setelah nilai ditemukan.
+                    if let Some(value) = dataset[case_idx].values.get(var) {
+                        let numeric_value = match value {
+                            DataValue::Number(v) => Some(*v as f64),
+                            DataValue::NumberFloat(v) => Some(*v),
+                            DataValue::Currency(v) => Some(*v),
+                            DataValue::Scientific(v) => Some(*v),
+                            DataValue::Percentage(v) => Some(*v),
+                            _ => None,
+                        };
+
+                        if let Some(val) = numeric_value {
+                            row.push(val);
+                            non_missing_count += 1;
+                            var_found = true;
+                            break; // Lanjut ke variabel berikutnya setelah nilai ditemukan
+                        }
                     }
                 }
             }
@@ -108,13 +119,20 @@ pub fn preprocess_data(
             for dataset in &data.case_data {
                 if idx < dataset.len() {
                     if let Some(value) = dataset[idx].values.get(case_target) {
-                        // Konversi nilai (teks, angka, boolean) menjadi string.
-                        name = match value {
-                            DataValue::Text(text) => Some(text.clone()),
-                            DataValue::Number(num) => Some(num.to_string()),
-                            DataValue::Boolean(b) => Some(b.to_string()),
-                            _ => None,
-                        };
+                        // Konversi nilai (teks, angka, boolean, dll.) menjadi string.
+                        name = Some(match value {
+                            DataValue::Text(text) => text.clone(),
+                            DataValue::Number(num) => num.to_string(),
+                            DataValue::NumberFloat(num) => num.to_string(),
+                            DataValue::Boolean(b) => b.to_string(),
+                            DataValue::Date(d) => d.clone(),
+                            DataValue::DateTime(dt) => dt.clone(),
+                            DataValue::Time(t) => t.clone(),
+                            DataValue::Currency(c) => c.to_string(),
+                            DataValue::Scientific(s) => s.to_string(),
+                            DataValue::Percentage(p) => p.to_string(),
+                            DataValue::Null => String::new(),
+                        });
                         if name.is_some() {
                             break;
                         }

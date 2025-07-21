@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::models::{
-    config::ClusterConfig,
+    config::KMeansConfig,
     result::{ DistancesBetweenCenters, FinalClusterCenters, ProcessedData },
 };
 
@@ -14,7 +14,7 @@ use super::core::*;
 /// perubahan posisi pusat cluster di bawah ambang batas tertentu atau jumlah iterasi maksimum tercapai.
 pub fn generate_final_cluster_centers(
     data: &ProcessedData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<FinalClusterCenters, String> {
     // Inisialisasi parameter dari konfigurasi.
     let num_clusters = config.main.cluster as usize;
@@ -131,7 +131,7 @@ pub fn generate_final_cluster_centers(
 /// jarak Euclidean antara setiap pasang pusat cluster.
 pub fn calculate_distances_between_centers(
     data: &ProcessedData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<DistancesBetweenCenters, String> {
     let num_clusters = config.main.cluster as usize;
 

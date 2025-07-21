@@ -16,11 +16,7 @@ pub struct UnivariateResult {
     pub hypothesis_l_matrices: Option<HypothesisLMatrices>,
     pub contrast_coefficients: Option<ContrastCoefficients>,
     pub lack_of_fit_tests: Option<LackOfFitTests>,
-    pub spread_vs_level_plots: Option<SpreadVsLevelPlots>,
-    pub posthoc_tests: Option<PostHoc>,
     pub emmeans: Option<EMMeansResult>,
-    pub robust_parameter_estimates: Option<RobustParameterEstimates>,
-    pub plots: Option<HashMap<String, PlotData>>,
     pub saved_variables: Option<SavedVariables>,
 }
 
@@ -170,52 +166,6 @@ pub struct EMMeansEstimatesEntry {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PostHoc {
-    pub factor_names: Vec<String>,
-    pub comparison: Vec<PostHocComparison>,
-    pub homogoneous: Vec<PostHocHomogoneous>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PostHocComparison {
-    pub entries: Vec<PostHocComparisonEntry>,
-    pub note: Option<String>,
-    pub interpretation: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PostHocComparisonEntry {
-    pub method: String,
-    pub parameter: Vec<String>,
-    pub mean_difference: Vec<f64>,
-    pub standard_error: Vec<f64>,
-    pub significance: Vec<f64>,
-    pub confidence_interval: Vec<ConfidenceInterval>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PostHocHomogoneous {
-    pub entries: Vec<PostHocHomogoneousEntry>,
-    pub note: Option<String>,
-    pub interpretation: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PostHocHomogoneousEntry {
-    pub method: String,
-    pub parameter: Vec<String>,
-    pub mean_difference: Vec<f64>,
-    pub n: Vec<usize>,
-    pub subsets: Vec<Subset>,
-    pub significances: Option<Vec<Option<f64>>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Subset {
-    pub subset: Vec<f64>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PairwiseComparisons {
     pub entries: Vec<PairwiseComparisonsEntry>,
     pub note: Option<String>,
@@ -263,27 +213,6 @@ pub struct ParameterEstimateEntry {
     pub parameter: String,
     pub b: f64,
     pub std_error: f64,
-    pub t_value: f64,
-    pub significance: f64,
-    pub confidence_interval: ConfidenceInterval,
-    pub partial_eta_squared: f64,
-    pub noncent_parameter: f64,
-    pub observed_power: f64,
-    pub is_redundant: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct RobustParameterEstimates {
-    pub estimates: Vec<RobustParameterEstimateEntry>,
-    pub note: Option<String>,
-    pub interpretation: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct RobustParameterEstimateEntry {
-    pub parameter: String,
-    pub b: f64,
-    pub robust_std_error: f64,
     pub t_value: f64,
     pub significance: f64,
     pub confidence_interval: ConfidenceInterval,
@@ -433,19 +362,6 @@ pub struct LackOfFitTestsEntries {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SpreadVsLevelPlots {
-    pub points: Vec<SpreadVsLevelPoint>,
-    pub note: Option<String>,
-    pub interpretation: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SpreadVsLevelPoint {
-    pub level_mean: f64,
-    pub spread_standard_deviation: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HeteroscedasticityTests {
     pub white: Option<WhiteTest>,
     pub breusch_pagan: Option<BPTest>,
@@ -488,35 +404,6 @@ pub struct FTest {
     pub p_value: f64,
     pub note: Option<String>,
     pub interpretation: Option<String>,
-}
-
-// Añadir estas nuevas estructuras
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PlotData {
-    pub title: String,
-    pub x_label: String,
-    pub y_label: String,
-    pub series: Vec<PlotSeries>,
-    pub y_axis_starts_at_zero: bool,
-    pub includes_reference_line: bool,
-    pub reference_line: Option<f64>,
-    pub note: Option<String>,
-    pub interpretation: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PlotSeries {
-    pub name: String,
-    pub points: Vec<PlotPoint>,
-    pub error_bars: Option<Vec<ConfidenceInterval>>,
-    pub series_type: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PlotPoint {
-    pub x: f64,
-    pub y: f64,
-    pub label: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
