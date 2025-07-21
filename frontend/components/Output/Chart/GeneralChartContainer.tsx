@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo} from "react";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 import { Button } from "@/components/ui/button";
 import {
@@ -98,6 +98,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
     () => (typeof data === "string" ? JSON.parse(data) : data),
     [data]
   );
+
 
   // Helper function to convert string axisScaleOptions to number
   const convertAxisScaleOptions = (options?: {
@@ -835,7 +836,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
               );
               break;
             case "Dual Axes Scatter Plot":

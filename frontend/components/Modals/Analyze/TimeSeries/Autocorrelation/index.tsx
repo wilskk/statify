@@ -13,6 +13,8 @@ import VariablesTab from "./VariablesTab";
 import TimeTab from "../TimeSeriesTimeTab";
 import OptionTab from "./OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { DataRow } from "@/types/Data";
+import { toast } from "sonner";
 
 interface AutocorrelationProps {
     onClose: () => void;
@@ -31,8 +33,8 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
+    const [prevDataRef, setPrevDataRef] = useState<DataRow[] | null>(null);
+    const [errorMsg, setErrorMsg] = useState<String | null>(null);
     const [activeTab, setActiveTab] = useState("variables");
 
     const {
@@ -67,12 +69,33 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
     const combinedError = errorMsg || analysisError;
     const [isLoaded, setIsLoaded] = useState(false);
 
+    console.log("Current data", data);
+    console.log("Previous data", prevDataRef);
+
+    useEffect(() => {
+        if (combinedError) {
+            toast.error("Error: " + String(combinedError));
+        }
+    }, [combinedError]);
+
     // Load saved state from IndexedDB on component mount
     useEffect(() => {
         const loadSavedState = async () => {
             try {
                 const savedData = await getFormData("Autocorrelation", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
+
+                if (savedData && savedData.prevDataRef) {
+                    // If previous data reference exists, check if it matches current data
+                    setPrevDataRef(savedData.prevDataRef);
+                    if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
+                        // Clear saved state if previous data doesn't match current
+                        await clearFormData("Autocorrelation");
+                        setAvailableVariables(filteredVariables);
+                        setSelectedVariables([]);
+                        return;
+                    }
+                }
                 
                 if (savedData && savedData.availableVariables && savedData.selectedVariables) {
                     // Validate that saved variables still exist in current variable store
@@ -107,7 +130,7 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
         };
 
         loadSavedState();
-    }, [variables]);
+    }, [variables, data]);
 
     // Save state to IndexedDB whenever variables change
     useEffect(() => {
@@ -115,9 +138,13 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
         
         const saveState = async () => {
             try {
-                const stateToSave: VariableState = {
+                const variableToSave: VariableState = {
                     availableVariables,
-                    selectedVariables
+                    selectedVariables,
+                };
+                const stateToSave = {
+                    ...variableToSave,
+                    prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("Autocorrelation", stateToSave, "variables");
             } catch (error) {
@@ -126,14 +153,14 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, isLoaded]);
+    }, [availableVariables, selectedVariables, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {
-            setErrorMsg("Hanya boleh memilih satu variabel saja.");
+            setErrorMsg("You may only select one variable.");
             return;
         }
-        setErrorMsg(null); // clear error kalau sukses
+        setErrorMsg(null); // clear error if successful
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setSelectedVariables(prev => {
             if (prev.some(v => v.columnIndex === variable.columnIndex)) {
@@ -245,8 +272,6 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
                     />
                 </TabsContent>
             </Tabs>
-
-            {combinedError && <div className="text-red-600 text-center mt-2">{combinedError}</div>}
 
             <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">
