@@ -1,32 +1,43 @@
-import { analyzeKMeansCluster } from "@/services/analyze/classify/k-means-cluster/k-means-cluster-analysis";
-import init, { KMeansClusterAnalysis } from "@/wasm/pkg/wasm";
+import { analyzeVarianceComps } from "@/services/analyze/general-linear-model/variance-components/variance-components-analysis";
+import init, { VarianceComponentsAnalysis } from "@/wasm/pkg/wasm";
 
 // Mock the wasm init function
 jest.mock("@/wasm/pkg/wasm", () => {
-    const mockKMeansClusterAnalysis = jest.fn();
-    mockKMeansClusterAnalysis.mockImplementation(
+    const mockVarianceComponentsAnalysis = jest.fn();
+    mockVarianceComponentsAnalysis.mockImplementation(
         (
-            target_data,
-            case_data,
-            target_data_defs,
-            case_data_defs,
+            dependent_data,
+            fix_factor_data,
+            random_factor_data,
+            covar_data,
+            wls_data,
+            dependent_data_defs,
+            fix_factor_data_defs,
+            random_factor_data_defs,
+            covar_data_defs,
+            wls_data_defs,
             config_data
         ) => {
             // This implementation mimics the behavior of the actual Rust constructor
             // It will validate inputs and throw errors for invalid data
 
-            // Check if cluster number is positive
-            if (!config_data?.main?.Cluster || config_data.main.Cluster <= 0) {
-                throw new Error("Number of clusters must be positive");
-            }
-
-            // Check if target variables are selected
+            // Check if dependent variable is selected
             if (
-                !config_data?.main?.TargetVar ||
-                config_data.main.TargetVar.length === 0
+                !config_data?.main?.dep_var ||
+                config_data.main.dep_var.length === 0
             ) {
                 throw new Error(
-                    "Target variables must be selected for K-Means Cluster analysis"
+                    "A dependent variable must be selected for variance components analysis"
+                );
+            }
+
+            // Check if at least one random factor is selected
+            if (
+                !config_data?.main?.rand_factor ||
+                config_data.main.rand_factor.length === 0
+            ) {
+                throw new Error(
+                    "At least one random factor must be selected for variance components analysis"
                 );
             }
 
@@ -44,7 +55,7 @@ jest.mock("@/wasm/pkg/wasm", () => {
     return {
         __esModule: true,
         default: jest.fn().mockResolvedValue(true),
-        KMeansClusterAnalysis: mockKMeansClusterAnalysis,
+        VarianceComponentsAnalysis: mockVarianceComponentsAnalysis,
     };
 });
 
@@ -54,41 +65,49 @@ jest.mock("@/hooks/useVariable", () => ({
     getVarDefs: jest.fn().mockReturnValue([]),
 }));
 
-describe("KMeansCluster Analysis Constructor Error Handling", () => {
+describe("Variance Components Analysis Constructor Error Handling", () => {
     // Helper function to create a minimal valid config
     const createValidConfig = () => ({
         main: {
-            TargetVar: ["var1", "var2"],
-            CaseTarget: "var3",
-            IterateClassify: true,
-            ClassifyOnly: false,
-            Cluster: 3,
-            OpenDataset: false,
-            ExternalDatafile: false,
-            NewDataset: false,
-            DataFile: false,
-            ReadInitial: false,
-            WriteFinal: false,
-            OpenDatasetMethod: null,
-            NewData: null,
-            InitialData: null,
-            FinalData: null,
+            DepVar: "dependent1",
+            FixFactor: ["factor1", "factor2"],
+            RandFactor: ["random1"],
+            Covar: ["covar1"],
+            WlsWeight: "weight1",
         },
-        iterate: {
-            MaximumIterations: 100,
-            ConvergenceCriterion: 0.001,
-            UseRunningMeans: true,
-        },
-        save: {
-            ClusterMembership: true,
-            DistanceClusterCenter: true,
+        model: {
+            NonCust: true,
+            Custom: false,
+            BuildCustomTerm: false,
+            FactorsVar: ["factor1", "factor2", "random1"],
+            BuildTermMethod: "Enter",
+            Intercept: true,
         },
         options: {
-            InitialCluster: true,
-            ANOVA: true,
-            ClusterInfo: true,
-            ExcludeListWise: true,
-            ExcludePairWise: false,
+            Minque: true,
+            Anova: false,
+            MaxLikelihood: false,
+            ResMaxLikelihood: false,
+            Uniform: true,
+            Zero: false,
+            TypeI: true,
+            TypeIII: false,
+            ConvergenceMethod: "Default",
+            MaxIter: 100,
+            SumOfSquares: true,
+            ExpectedMeanSquares: true,
+            IterationHistory: false,
+            InStepsOf: 1,
+        },
+        save: {
+            VarCompEst: true,
+            CompCovar: false,
+            CovMatrix: false,
+            CorMatrix: false,
+            CreateNewDataset: false,
+            DatasetName: null,
+            WriteNewDataFile: false,
+            FilePath: null,
         },
     });
 
@@ -97,28 +116,34 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
     const mockAddAnalytic = jest.fn().mockResolvedValue(1);
     const mockAddStatistic = jest.fn().mockResolvedValue(1);
     const mockVariables = [
-        { name: "var1" },
-        { name: "var2" },
-        { name: "var3" },
+        { name: "dependent1" },
+        { name: "factor1" },
+        { name: "factor2" },
+        { name: "random1" },
+        { name: "covar1" },
+        { name: "weight1" },
     ];
     const mockDataVariables = [
         [1, 2, 3],
         [4, 5, 6],
         [7, 8, 9],
+        [10, 11, 12],
+        [13, 14, 15],
+        [16, 17, 18],
     ];
 
     beforeEach(() => {
         jest.clearAllMocks();
     });
 
-    test("should throw error when Cluster value is missing or not positive", async () => {
-        // Setup invalid config with missing Cluster value
+    test("should throw error when dependent variable is missing", async () => {
+        // Setup invalid config with missing dependent variable
         const invalidConfig = createValidConfig();
-        invalidConfig.main.Cluster = null;
+        invalidConfig.main.DepVar = null;
 
         // Call the function and expect it to throw
         await expect(
-            analyzeKMeansCluster({
+            analyzeVarianceComps({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -126,18 +151,20 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
             })
-        ).rejects.toThrow("Number of clusters must be positive");
+        ).rejects.toThrow(
+            "A dependent variable must be selected for variance components analysis"
+        );
 
         // Verify the constructor was called with the invalid config
-        expect(KMeansClusterAnalysis).toHaveBeenCalled();
+        expect(VarianceComponentsAnalysis).toHaveBeenCalled();
 
-        // Setup another invalid config with non-positive Cluster value
+        // Setup another invalid config with empty dependent variable
         const invalidConfig2 = createValidConfig();
-        invalidConfig2.main.Cluster = 0;
+        invalidConfig2.main.DepVar = "";
 
         // Call the function and expect it to throw
         await expect(
-            analyzeKMeansCluster({
+            analyzeVarianceComps({
                 configData: invalidConfig2,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -145,20 +172,22 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
             })
-        ).rejects.toThrow("Number of clusters must be positive");
+        ).rejects.toThrow(
+            "A dependent variable must be selected for variance components analysis"
+        );
 
         // Verify the constructor was called with the invalid config
-        expect(KMeansClusterAnalysis).toHaveBeenCalled();
+        expect(VarianceComponentsAnalysis).toHaveBeenCalled();
     });
 
-    test("should throw error when TargetVar is missing", async () => {
-        // Setup invalid config with missing TargetVar
+    test("should throw error when random factor is missing", async () => {
+        // Setup invalid config with missing random factor
         const invalidConfig = createValidConfig();
-        invalidConfig.main.TargetVar = null;
+        invalidConfig.main.RandFactor = null;
 
         // Call the function and expect it to throw
         await expect(
-            analyzeKMeansCluster({
+            analyzeVarianceComps({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -167,22 +196,20 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
                 addStatistic: mockAddStatistic,
             })
         ).rejects.toThrow(
-            "Target variables must be selected for K-Means Cluster analysis"
+            "At least one random factor must be selected for variance components analysis"
         );
 
         // Verify the constructor was called with the invalid config
-        expect(KMeansClusterAnalysis).toHaveBeenCalled();
-    });
+        expect(VarianceComponentsAnalysis).toHaveBeenCalled();
 
-    test("should throw error when TargetVar is empty array", async () => {
-        // Setup invalid config with empty TargetVar
-        const invalidConfig = createValidConfig();
-        invalidConfig.main.TargetVar = [];
+        // Setup another invalid config with empty random factor array
+        const invalidConfig2 = createValidConfig();
+        invalidConfig2.main.RandFactor = [];
 
         // Call the function and expect it to throw
         await expect(
-            analyzeKMeansCluster({
-                configData: invalidConfig,
+            analyzeVarianceComps({
+                configData: invalidConfig2,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
                 addLog: mockAddLog,
@@ -190,11 +217,11 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
                 addStatistic: mockAddStatistic,
             })
         ).rejects.toThrow(
-            "Target variables must be selected for K-Means Cluster analysis"
+            "At least one random factor must be selected for variance components analysis"
         );
 
         // Verify the constructor was called with the invalid config
-        expect(KMeansClusterAnalysis).toHaveBeenCalled();
+        expect(VarianceComponentsAnalysis).toHaveBeenCalled();
     });
 
     test("should process valid configuration correctly", async () => {
@@ -202,7 +229,7 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
         const validConfig = createValidConfig();
 
         // Call the function
-        await analyzeKMeansCluster({
+        await analyzeVarianceComps({
             configData: validConfig,
             dataVariables: mockDataVariables,
             variables: mockVariables,
@@ -212,14 +239,20 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
         });
 
         // Verify the constructor was called with the valid config
-        expect(KMeansClusterAnalysis).toHaveBeenCalled();
+        expect(VarianceComponentsAnalysis).toHaveBeenCalled();
 
-        // Check that KMeansClusterAnalysis was called with the correct parameters
-        expect(KMeansClusterAnalysis).toHaveBeenCalledWith(
-            expect.any(Array), // slicedDataForTarget
-            expect.any(Array), // slicedDataForCaseTarget
-            expect.any(Array), // varDefsForTarget
-            expect.any(Array), // varDefsForCaseTarget
+        // Check that VarianceComponentsAnalysis was called with the correct parameters
+        expect(VarianceComponentsAnalysis).toHaveBeenCalledWith(
+            expect.any(Array), // dependent_data
+            expect.any(Array), // fix_factor_data
+            expect.any(Array), // random_factor_data
+            expect.any(Array), // covar_data
+            expect.any(Array), // wls_data
+            expect.any(Array), // dependent_data_defs
+            expect.any(Array), // fix_factor_data_defs
+            expect.any(Array), // random_factor_data_defs
+            expect.any(Array), // covar_data_defs
+            expect.any(Array), // wls_data_defs
             validConfig // config
         );
     });
@@ -236,7 +269,7 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
         getSlicedData.mockReturnValueOnce("invalid data type"); // String instead of expected array
 
         // Call the function (it should catch the error internally)
-        await analyzeKMeansCluster({
+        await analyzeVarianceComps({
             configData: validConfig,
             dataVariables: mockDataVariables,
             variables: mockVariables,
@@ -260,7 +293,7 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
 
         // Call the function and expect it to throw
         await expect(
-            analyzeKMeansCluster({
+            analyzeVarianceComps({
                 configData: malformedConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -271,6 +304,6 @@ describe("KMeansCluster Analysis Constructor Error Handling", () => {
         ).rejects.toThrow();
 
         // Verify the constructor was called with the malformed config
-        expect(KMeansClusterAnalysis).toHaveBeenCalled();
+        expect(VarianceComponentsAnalysis).toHaveBeenCalled();
     });
 });

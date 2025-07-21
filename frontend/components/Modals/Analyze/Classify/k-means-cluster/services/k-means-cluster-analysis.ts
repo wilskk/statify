@@ -32,6 +32,12 @@ export async function analyzeKMeansCluster({
     const varDefsForTarget = getVarDefs(variables, TargetVariables);
     const varDefsForCaseTarget = getVarDefs(variables, CaseTargetVariable);
 
+    console.log("slicedDataForTarget", slicedDataForTarget);
+    console.log("slicedDataForCaseTarget", slicedDataForCaseTarget);
+    console.log("varDefsForTarget", varDefsForTarget);
+    console.log("varDefsForCaseTarget", varDefsForCaseTarget);
+    console.log("configData", configData);
+
     await init();
     const kmeans = new KMeansClusterAnalysis(
         slicedDataForTarget,

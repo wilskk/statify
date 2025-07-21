@@ -16,10 +16,6 @@ pub fn run_analysis(
 ) -> Result<Option<UnivariateResult>, JsValue> {
     web_sys::console::log_1(&"Starting univariate analysis".into());
 
-    // Mencatat konfigurasi dan data untuk melacak metode yang akan dieksekusi dan data yang diproses.
-    web_sys::console::log_1(&format!("Config: {:?}", config).into());
-    web_sys::console::log_1(&format!("Data: {:?}", data).into());
-
     // Langkah 1: Ringkasan pemrosesan dasar (selalu dieksekusi).
     // Fungsi ini memberikan informasi awal tentang data, seperti jumlah kasus yang valid dan hilang.
     logger.add_log("basic_processing_summary");

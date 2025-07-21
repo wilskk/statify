@@ -12,10 +12,6 @@ pub fn run_analysis(
     error_collector: &mut ErrorCollector,
     logger: &mut FunctionLogger
 ) -> Result<Option<KMeansResult>, JsValue> {
-    web_sys::console::log_1(&"Memulai analisis K-Means Cluster...".into());
-    web_sys::console::log_1(&format!("Konfigurasi: {:?}", config).into());
-    web_sys::console::log_1(&format!("Data: {:?}", data).into());
-
     // --- Langkah 1: Pra-pemrosesan Data ---
     // Tahap ini mempersiapkan data mentah agar siap untuk dianalisis. Proses ini dapat
     // mencakup penanganan data hilang, tergantung pada konfigurasi yang diberikan.
@@ -27,8 +23,6 @@ pub fn run_analysis(
             return Err(string_to_js_error(e));
         }
     };
-
-    web_sys::console::log_1(&format!("Preprocessed Data: {:?}", preprocessed_data).into());
 
     // Langkah 2: Inisialisasi Pusat Cluster Awal
     // Jika diaktifkan, langkah ini menentukan posisi awal dari pusat-pusat cluster

@@ -10,8 +10,8 @@ pub struct DataRecord {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum DataValue {
-    Number(i64),
     NumberFloat(f64),
+    Number(i64),
     Text(String),
     Boolean(bool),
     Date(String),
