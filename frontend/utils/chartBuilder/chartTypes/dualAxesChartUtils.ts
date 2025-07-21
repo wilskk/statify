@@ -96,10 +96,20 @@ export const createBarAndLineChart = (
     categories,
     hasLegend: true,
     legendPosition: "right",
+    itemCount: 2, // Bar and Line
   });
 
-  // Increase right margin for legend and second axis
-  margin.right += 20;
+  // For small preview charts, reduce margins to make chart larger
+  const isPreview = width < 150 || height < 150;
+  if (isPreview) {
+    margin.top = Math.max(2, margin.top * 0.2);
+    margin.right = Math.max(2, margin.right * 0.2);
+    margin.bottom = Math.max(8, margin.bottom * 0.4);
+    margin.left = Math.max(8, margin.left * 0.4);
+  } else {
+    // Increase right margin for legend and second axis only for full-size charts
+    margin.right += 20;
+  }
 
   // Definisi X axis
   const x = d3
@@ -198,42 +208,44 @@ export const createBarAndLineChart = (
       .selectAll(".y-axis .tick text")
       .attr("fill", chartColors?.[0] || defaultChartColors[0]);
 
-    // Add Y2 axis
-    const y2Axis = d3.axisRight(y2);
-    if (axisScaleOptions?.y2?.majorIncrement) {
-      const y2Ticks = generateAxisTicks(
-        y2Min,
-        y2Max,
-        Number(axisScaleOptions.y2.majorIncrement)
-      );
-      if (y2Ticks) {
-        y2Axis.tickValues(y2Ticks);
+    // Add Y2 axis only for full-size charts
+    if (!isPreview) {
+      const y2Axis = d3.axisRight(y2);
+      if (axisScaleOptions?.y2?.majorIncrement) {
+        const y2Ticks = generateAxisTicks(
+          y2Min,
+          y2Max,
+          Number(axisScaleOptions.y2.majorIncrement)
+        );
+        if (y2Ticks) {
+          y2Axis.tickValues(y2Ticks);
+        }
       }
-    }
-    y2Axis.tickFormat((d) => formatAxisNumber(d as number));
+      y2Axis.tickFormat((d) => formatAxisNumber(d as number));
 
-    const y2AxisG = svg
-      .append("g")
-      .attr("class", "y2-axis")
-      .attr("transform", `translate(${width - margin.right}, 0)`)
-      .call(y2Axis);
+      const y2AxisG = svg
+        .append("g")
+        .attr("class", "y2-axis")
+        .attr("transform", `translate(${width - margin.right}, 0)`)
+        .call(y2Axis);
 
-    // Style Y2 axis to match line color
-    y2AxisG
-      .selectAll(".tick text")
-      .attr("fill", chartColors?.[1] || defaultChartColors[1]);
+      // Style Y2 axis to match line color
+      y2AxisG
+        .selectAll(".tick text")
+        .attr("fill", chartColors?.[1] || defaultChartColors[1]);
 
-    // Add Y2 axis label if provided
-    if (axisLabels?.y2) {
-      svg
-        .append("text")
-        .attr("class", "y2-axis-label")
-        .attr("transform", "rotate(-90)")
-        .attr("y", width - margin.right + 40)
-        .attr("x", -(height - margin.bottom + margin.top) / 2)
-        .attr("text-anchor", "middle")
-        .attr("fill", chartColors?.[1] || defaultChartColors[1])
-        .text(axisLabels.y2);
+      // Add Y2 axis label if provided
+      if (axisLabels?.y2) {
+        svg
+          .append("text")
+          .attr("class", "y2-axis-label")
+          .attr("transform", "rotate(-90)")
+          .attr("y", width - margin.right + 40)
+          .attr("x", -(height - margin.bottom + margin.top) / 2)
+          .attr("text-anchor", "middle")
+          .attr("fill", chartColors?.[1] || defaultChartColors[1])
+          .text(axisLabels.y2);
+      }
     }
   }
 
@@ -247,7 +259,7 @@ export const createBarAndLineChart = (
     .attr("x", (d) => x(d[keyX]) || 0)
     .attr("y", (d) => y(Math.max(0, d[keyBar])))
     .attr("height", (d) => Math.abs(y(d[keyBar]) - y(0)))
-    .attr("width", x.bandwidth());
+    .attr("width", isPreview ? x.bandwidth() * 0.8 : x.bandwidth());
 
   // Line chart
   const line = d3
@@ -260,7 +272,7 @@ export const createBarAndLineChart = (
     .datum(filteredData)
     .attr("fill", "none")
     .attr("stroke", chartColors?.[1] || defaultChartColors[1])
-    .attr("stroke-width", 1.5)
+    .attr("stroke-width", isPreview ? 1 : 1.5)
     .attr("d", line);
 
   // Points for the line
@@ -272,7 +284,7 @@ export const createBarAndLineChart = (
     .attr("class", "dot")
     .attr("cx", (d) => x(d[keyX])! + x.bandwidth() / 2)
     .attr("cy", (d) => y2(d[keyLine]))
-    .attr("r", 4)
+    .attr("r", isPreview ? 2 : 4)
     .attr("fill", chartColors?.[1] || defaultChartColors[1]);
 
   // Add legend
@@ -301,9 +313,9 @@ export const createBarAndLineChart = (
       .range(legendItems.map((item) => item.color)),
     position: legendPosition,
     legendPosition: "right",
-    itemWidth: 15,
-    itemHeight: 15,
-    fontSize: 12,
+    itemWidth: isPreview ? 10 : 15,
+    itemHeight: isPreview ? 10 : 15,
+    fontSize: isPreview ? 9 : 12,
   });
 
   return svg.node();

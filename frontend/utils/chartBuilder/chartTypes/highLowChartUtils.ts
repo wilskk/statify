@@ -749,7 +749,7 @@ export const createDifferenceArea = (
     ...yTicks.map((tick) => ctx.measureText(formatAxisNumber(tick)).width)
   );
 
-  // Use responsive margin utility with legend consideration
+  // Use responsive margin utility like stacked bar chart
   const margin = calculateResponsiveMargin({
     width,
     height,
@@ -760,12 +760,22 @@ export const createDifferenceArea = (
     axisLabels,
     maxLabelWidth,
     categories,
-    hasLegend: true,
+    hasLegend: useAxis,
     legendPosition: "right",
+    itemCount: 2, // Only 2 legend items for difference area
   });
 
-  // Increase right margin specifically for legend to prevent cutoff
-  margin.right = Math.max(margin.right, 150); // Ensure minimum 150px for legend
+  // For small preview charts, reduce margins more aggressively to make chart larger
+  const isPreview = width < 150 || height < 150;
+  if (isPreview) {
+    margin.top = Math.max(2, margin.top * 0.2);
+    margin.right = Math.max(2, margin.right * 0.2);
+    margin.bottom = Math.max(2, margin.bottom * 0.4);
+    margin.left = Math.max(2, margin.left * 0.4);
+  } else {
+    // Only apply large right margin for full-size charts
+    margin.right = Math.max(margin.right, 150);
+  }
 
   // Axis scale options
   let yMin = d3.min(validData, (d) => Math.min(d[key0], d[key1])) ?? 0;
@@ -895,7 +905,8 @@ export const createDifferenceArea = (
       yMax,
       chartType: "vertical",
       xAxisOptions: {
-        showGridLines: true,
+        showGridLines: true, // Keep grid lines like stacked bar chart
+        maxValueLength: 8,
       },
       yAxisOptions: {
         tickValues: axisScaleOptions?.y?.majorIncrement
@@ -907,21 +918,28 @@ export const createDifferenceArea = (
           : undefined,
         customFormat: formatAxisNumber,
         showGridLines: false,
+        maxValueLength: 8,
       },
     });
 
+    // Show legend for all charts like stacked bar chart
     // Build legend items pakai nama kolom dinamis
     const legendItems = [
       { label: `${key1} > ${key0}`, color: colors.above },
       { label: `${key0} > ${key1}`, color: colors.below },
     ];
 
-    // Calculate legend position with custom positioning for better fit
-    const legendPosition = {
-      x: width - margin.right + 15, // Closer to chart edge
-      y: margin.top + 20, // A bit lower from top
-      maxItemsPerRow: 1,
-    };
+    // Use the same legend positioning as stacked bar chart
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft: margin.left,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginTop: margin.top,
+      legendPosition: "right",
+      itemCount: legendItems.length,
+    });
 
     // Use addLegend utility with right positioning like vertical stacked bar chart
     addLegend({
@@ -933,10 +951,9 @@ export const createDifferenceArea = (
       position: legendPosition,
       legendPosition: "right",
       domain: legendItems.map((item) => item.label),
-      itemWidth: 12,
-      itemHeight: 12,
-      fontSize: 11,
-      title: "Keterangan",
+      itemWidth: isPreview ? 10 : 15,
+      itemHeight: isPreview ? 10 : 15,
+      fontSize: isPreview ? 9 : 12,
     });
   }
 

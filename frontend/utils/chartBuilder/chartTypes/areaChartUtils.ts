@@ -122,12 +122,12 @@ export const createAreaChart = (
   const { top: marginTop, left: marginLeft, right: marginRight } = margin;
 
   // Skala X dan Y
-  // X pakai uniqueId
+  // X pakai uniqueId dengan padding yang lebih besar untuk label
   const x = d3
     .scaleBand()
     .domain(processedData.map((d) => d.uniqueId))
     .range([marginLeft, width - marginRight])
-    .padding(0.2);
+    .padding(0.1);
 
   // Y scale with nice values
   const y = d3
@@ -207,7 +207,7 @@ export const createAreaChart = (
       chartType: "vertical",
       data: processedData,
       xAxisOptions: {
-        maxValueLength: 8,
+        maxValueLength: 6,
         tickFormat: (d: any) => {
           const dataPoint = processedData.find((item) => item.uniqueId === d);
           const displayLabel = dataPoint ? dataPoint.displayLabel : d;
@@ -331,6 +331,7 @@ export const createStackedAreaChart = (
     categories,
     hasLegend: true,
     legendPosition: "right",
+    itemCount: subcategories.length,
   });
 
   // Y scale with axis options
@@ -346,12 +347,12 @@ export const createStackedAreaChart = (
       yMax = Number(axisScaleOptions.y.max);
   }
 
-  // Skala X dan Y
+  // Skala X dan Y - gunakan scaleBand seperti vertical bar chart
   const x = d3
-    .scalePoint()
+    .scaleBand()
     .domain(categories)
     .range([margin.left, width - margin.right])
-    .padding(0.5);
+    .padding(0.1);
 
   const y = d3
     .scaleLinear()
@@ -368,7 +369,7 @@ export const createStackedAreaChart = (
   // Area Generator
   const area = d3
     .area<d3.SeriesPoint<{ category: string } & Record<string, number>>>()
-    .x((d) => x(d.data.category)!)
+    .x((d) => x(d.data.category)! + x.bandwidth() / 2)
     .y0((d) => y(Math.max(yMin, Math.min(yMax, d[0]))))
     .y1((d) => y(Math.max(yMin, Math.min(yMax, d[1]))))
     .curve(d3.curveLinear);

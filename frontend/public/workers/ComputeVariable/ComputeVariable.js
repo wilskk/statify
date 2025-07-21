@@ -196,6 +196,15 @@ function safeEvaluate(expression, context) {
 
     return math.evaluate(processedExpr, context);
   } catch (error) {
+    // Deteksi error undefined symbol
+    if (error.message && error.message.startsWith("Undefined symbol ")) {
+      // Ambil nama symbol
+      const match = error.message.match(/Undefined symbol ([^ ]+)/);
+      const symbol = match ? match[1] : "?";
+      throw new Error(
+        `Unknown expression '${symbol}'. Did you mean something else?`
+      );
+    }
     throw new Error(`Error evaluating expression: ${error.message}`);
   }
 }
@@ -304,12 +313,20 @@ self.onmessage = function (event) {
         try {
           computedValue = safeEvaluate(processedExpr, context);
         } catch (error) {
-          throw new Error(`Error pada baris ${rowIndex + 1}: ${error.message}`);
+          throw new Error(
+            `An error occurred on row ${rowIndex + 1}: ${
+              error.message
+            }. Please check your formula.`
+          );
         }
 
         if (computedValue === undefined || Number.isNaN(computedValue))
           throw new Error(
-            `Nilai ekspresi di baris ${rowIndex + 1} tidak valid`
+            `An error occurred on row ${
+              rowIndex + 1
+            }: The expression is invalid. Please review your formula for missing parentheses or typos.\nDetails: ${
+              error.message
+            }`
           );
 
         // Apply rounding if needed
