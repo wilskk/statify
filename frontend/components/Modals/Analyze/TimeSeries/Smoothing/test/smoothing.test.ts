@@ -56,19 +56,160 @@ jest.mock("../../timeSeriesTimeHook", () => ({
   }),
 }));
 
-jest.mock("../hook/optionHook", () => ({
-  useOptionHook: () => ({
-    selectedMethod: ["dma"],
-    parameters: [5],
-    methods: [],
-    inputParameters: [],
-    handleSelectedMethod: jest.fn(),
-    resetOptions: jest.fn(),
-  }),
-}));
+describe("useAnalyzeHook - Error Case", () => {
+  it("TCS01: Returns an error value if the selected variable is empty.", async () => {
+    const mockVar: Variable = {
+      id: 1,
+      name: "Test Var",
+      columnIndex: 0,
+      type: "NUMERIC",
+      width: 8,
+      decimals: 2,
+      label: "",
+      values: [],
+      missing: null,
+      columns: 10,
+      align: "right",
+      measure: "scale",
+      role: "input",
+    };
+
+    const { result } = renderHook(() =>
+      useAnalyzeHook(
+        ["sma"],         // selectedMethod
+        [3],             // parameters -> artinya butuh minimal 9 * 3 = 27 data
+        ["1", "Valid"],  // selectedPeriod
+        [],       // storeVariables
+        [], // data kosong
+        false,           // saveForecasting
+        jest.fn()        // onClose
+      )
+    );
+
+    await act(async () => {
+      await result.current.handleAnalyzes();
+    });
+
+    expect(result.current.errorMsg).toBe(`Please select at least one variable.`);
+  });
+});
 
 describe("useAnalyzeHook - Error Case", () => {
-  it("returns error when using 'dma' with too few data points", async () => {
+  it("TCS02: Returns an error value if the selected variable type is not numeric.", async () => {
+    const mockVar: Variable = {
+      id: 1,
+      name: "Test Var",
+      columnIndex: 0,
+      type: "STRING",
+      width: 8,
+      decimals: 2,
+      label: "",
+      values: [],
+      missing: null,
+      columns: 10,
+      align: "right",
+      measure: "scale",
+      role: "input",
+    };
+
+    const { result } = renderHook(() =>
+      useAnalyzeHook(
+        ["sma"],         // selectedMethod
+        [3],             // parameters -> artinya butuh minimal 9 * 3 = 27 data
+        ["1", "Valid"],  // selectedPeriod
+        [],       // storeVariables
+        [[1], [2], [3], [4], [5],], // data berisi 5 observasi
+        false,           // saveForecasting
+        jest.fn()        // onClose
+      )
+    );
+
+    await act(async () => {
+      await result.current.handleAnalyzes();
+    });
+
+    expect(result.current.errorMsg).toBe(`Selected variable is not numeric.`);
+  });
+});
+
+describe("useAnalyzeHook - Error Case", () => {
+  it("TCS03: Returns an error value if the selected variable data is empty.", async () => {
+    const mockVar: Variable = {
+      id: 1,
+      name: "Test Var",
+      columnIndex: 0,
+      type: "NUMERIC",
+      width: 8,
+      decimals: 2,
+      label: "",
+      values: [],
+      missing: null,
+      columns: 10,
+      align: "right",
+      measure: "scale",
+      role: "input",
+    };
+
+    const { result } = renderHook(() =>
+      useAnalyzeHook(
+        ["sma"],         // selectedMethod
+        [3],             // parameters -> artinya butuh minimal 9 * 3 = 27 data
+        ["1", "Valid"],  // selectedPeriod
+        [mockVar],       // storeVariables
+        [], // data kosong
+        false,           // saveForecasting
+        jest.fn()        // onClose
+      )
+    );
+
+    await act(async () => {
+      await result.current.handleAnalyzes();
+    });
+
+    expect(result.current.errorMsg).toBe(`No data available for the selected variables.`);
+  });
+});
+
+describe("useAnalyzeHook - Error Case", () => {
+  it("TCS04: Returns an error value if the number of data observations is less than 20.", async () => {
+    const mockVar: Variable = {
+      id: 1,
+      name: "Test Var",
+      columnIndex: 0,
+      type: "NUMERIC",
+      width: 8,
+      decimals: 2,
+      label: "",
+      values: [],
+      missing: null,
+      columns: 10,
+      align: "right",
+      measure: "scale",
+      role: "input",
+    };
+
+    const { result } = renderHook(() =>
+      useAnalyzeHook(
+        ["sma"],         // selectedMethod
+        [3],             // parameters -> artinya butuh minimal 9 * 3 = 27 data
+        ["1", "Valid"],  // selectedPeriod
+        [],       // storeVariables
+        [[1], [2], [3], [4], [5],], // data berisi 5 observasi
+        false,           // saveForecasting
+        jest.fn()        // onClose
+      )
+    );
+
+    await act(async () => {
+      await result.current.handleAnalyzes();
+    });
+
+    expect(result.current.errorMsg).toBe(`Data length must be at least 20 observations.`);
+  });
+});
+
+describe("useAnalyzeHook - Error Case", () => {
+  it("TCS09: Returns an error value if the number of data observations is less than three times the 'dma' parameter.", async () => {
     const mockVar: Variable = {
       id: 1,
       name: "Test Var",
@@ -88,10 +229,16 @@ describe("useAnalyzeHook - Error Case", () => {
     const { result } = renderHook(() =>
       useAnalyzeHook(
         ["dma"],         // selectedMethod
-        [5],             // parameters -> artinya butuh minimal 5 * 3 = 15 data
+        [9],             // parameters -> artinya butuh minimal 9 * 3 = 27 data
         ["1", "Valid"],  // selectedPeriod
         [mockVar],       // storeVariables
-        [[1], [2], [3], [4], [5]], // hanya 5 data point → tidak cukup
+        [
+          [1], [2], [3], [4], [5], 
+          [1], [2], [3], [4], [5], 
+          [1], [2], [3], [4], [5], 
+          [1], [2], [3], [4], [5], 
+          [1], [2], [3], [4], [5]
+        ], // hanya 25 observasi data kurang dari 9
         false,           // saveForecasting
         jest.fn()        // onClose
       )
@@ -101,6 +248,6 @@ describe("useAnalyzeHook - Error Case", () => {
       await result.current.handleAnalyzes();
     });
 
-    expect(result.current.errorMsg).toBe("Data length must be at least 20 observations.");
+    expect(result.current.errorMsg).toBe(`Data length is too short for distance 9 Double Moving Average.`);
   });
 });
