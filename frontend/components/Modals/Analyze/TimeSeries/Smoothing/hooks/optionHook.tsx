@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { InputRow } from "../../TimeSeriesInput";
+import { InputRow } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesInput";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 type MethodParameters = {

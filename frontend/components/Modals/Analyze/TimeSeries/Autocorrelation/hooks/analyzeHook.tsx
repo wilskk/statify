@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
-import { handleAutocorrelation } from "../analyze/analyze";
+import { handleAutocorrelation } from "@/components/Modals/Analyze/TimeSeries/Autocorrelation/analyze/analyze";
 
 export function useAnalyzeHook(
     storeVariable: Variable[],

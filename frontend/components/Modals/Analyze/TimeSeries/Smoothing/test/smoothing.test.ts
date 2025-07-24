@@ -2,7 +2,7 @@
 
 import '@testing-library/jest-dom';
 import { renderHook, act } from '@testing-library/react';
-import { useAnalyzeHook } from '../hooks/analyzeHook';
+import { useAnalyzeHook } from '@/components/Modals/Analyze/TimeSeries/Smoothing/hooks/analyzeHook';
 import { Variable } from '@/types/Variable';
 import { da } from 'date-fns/locale';
 

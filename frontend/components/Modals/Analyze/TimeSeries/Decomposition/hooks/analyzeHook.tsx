@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { handleDecomposition } from "../analyze/analyze";
+import { handleDecomposition } from "@/components/Modals/Analyze/TimeSeries/Decomposition/analyze/analyze";
 import { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
 import { useVariableStore } from "@/stores/useVariableStore";

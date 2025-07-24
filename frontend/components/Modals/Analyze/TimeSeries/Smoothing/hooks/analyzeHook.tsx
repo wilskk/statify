@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { handleSmoothing } from "../analyze/analyze";
+import { handleSmoothing } from "@/components/Modals/Analyze/TimeSeries/Smoothing/analyze/analyze";
 import { useResultStore } from "@/stores/useResultStore"; // Untuk log dan statistik
 import { useVariableStore } from "@/stores/useVariableStore"; // Untuk akses variabel
 import { useDataStore } from "@/stores/useDataStore";
