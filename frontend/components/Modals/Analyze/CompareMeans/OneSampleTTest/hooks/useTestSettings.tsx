@@ -5,7 +5,7 @@ import {
 
 export const useTestSettings = ({
   initialTestValue = 0,
-  initialEstimateEffectSize = true
+  initialEstimateEffectSize = false
 }: Omit<TestSettingsProps, 'resetTestSettings'> = {}) => {
   const [testValue, setTestValue] = useState<number>(initialTestValue);
   const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(initialEstimateEffectSize);

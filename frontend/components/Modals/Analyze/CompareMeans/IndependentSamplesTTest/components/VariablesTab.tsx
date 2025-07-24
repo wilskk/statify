@@ -65,7 +65,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const targetLists: TargetListConfig[] = [
         {
             id: 'test',
-            title: 'Test Variables',
+            title: 'Test Variable(s)',
             variables: testVariables,
             height: '169.5px',
             draggableItems: true,
@@ -224,6 +224,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                 checked={estimateEffectSize}
                                 onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
                                 className="mr-2 border-[#CCCCCC]"
+                                disabled
                             />
                             <Label htmlFor="estimate-effect-size" className="text-sm">
                                 Estimate effect size

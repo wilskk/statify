@@ -121,12 +121,13 @@ export const useKRelatedSamplesAnalysis = ({
                                 Percentile75
                             }
                         });
-                    } else {
-                        console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
                     }
+                    // else {
+                    //     console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
 
                 if (results.ranks) {
@@ -137,12 +138,13 @@ export const useKRelatedSamplesAnalysis = ({
                             variable,
                             ranks: { groups }
                         });
-                    } else {
-                        console.error(`Error processing ranks for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
                     }
+                    // else {
+                    //     console.error(`Error processing ranks for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
 
                 if (results.frequencies) {
@@ -155,12 +157,13 @@ export const useKRelatedSamplesAnalysis = ({
                                 groups
                             }
                         });
-                    } else {
-                        console.error(`Error processing ranks for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
                     }
+                    // else {
+                    //     console.error(`Error processing ranks for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
 
                 console.log('[Results] testStatistics:', JSON.stringify(results.testStatistics));
@@ -169,7 +172,7 @@ export const useKRelatedSamplesAnalysis = ({
                 if (results.testStatistics) {
                     const { variable, TestType, N, W, TestValue, PValue, df } = results.testStatistics;
 
-                    if (variable && TestType && N && TestValue && PValue && df) {
+                    // if (variable && TestType && N && TestValue && PValue && df) {
                         resultsRef.current.push({
                             variable,
                             testStatistics: {
@@ -181,12 +184,13 @@ export const useKRelatedSamplesAnalysis = ({
                                 df
                             }
                         });
-                    } else {
-                        console.error(`Error processing test statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
+                    // }
+                    // else {
+                    //     console.error(`Error processing test statistics for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);

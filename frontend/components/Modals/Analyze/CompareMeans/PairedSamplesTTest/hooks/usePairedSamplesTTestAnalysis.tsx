@@ -18,6 +18,7 @@ import {
 export const usePairedSamplesTTestAnalysis = ({
     testVariables1,
     testVariables2,
+    pairNumbers,
     estimateEffectSize,
     calculateStandardizer,
     areAllPairsValid,
@@ -31,7 +32,8 @@ export const usePairedSamplesTTestAnalysis = ({
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
     const workerRef = useRef<Worker | null>(null);
-    
+
+    const insufficientDataVarsRef = useRef<string[]>([]);
     const resultsRef = useRef<PairedSamplesTTestResult[]>([]);
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
@@ -60,7 +62,7 @@ export const usePairedSamplesTTestAnalysis = ({
 
         const worker = new Worker('/workers/CompareMeans/manager.js', { type: 'module' });
         workerRef.current = worker;
-
+        
         for (let i = 0; i < testVariables1.length; i++) {
             const dataForVar1 = analysisData.map(row => row[testVariables1[i].columnIndex]);
             const dataForVar2 = analysisData.map(row => row[testVariables2[i].columnIndex]);
@@ -68,6 +70,7 @@ export const usePairedSamplesTTestAnalysis = ({
                 analysisType: ['pairedSamplesTTest'],
                 variable1: testVariables1[i],
                 variable2: testVariables2[i],
+                pair: pairNumbers[i] || i + 1,
                 data1: dataForVar1,
                 data2: dataForVar2,
                 options: { estimateEffectSize, calculateStandardizer }
@@ -79,33 +82,42 @@ export const usePairedSamplesTTestAnalysis = ({
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
+                // Check for metadata about insufficient data
+                if (results.metadata && results.metadata.hasInsufficientData) {
+                    insufficientDataVarsRef.current.push(`Pair ${results.metadata.pair}`);
+                    console.warn(`Insufficient valid data for Pair ${results.metadata.pair}`);
+                }
+
                 if (results.pairedSamplesStatistics) {
-                    const { variable1, variable2, group1, group2 } = results.pairedSamplesStatistics;
+                    const { variable1, variable2, pair, group1, group2 } = results.pairedSamplesStatistics;
 
                     if (group1 && group2) {
                         resultsRef.current.push({
                             variable1,
                             variable2,
+                            pair: pair || 0,
                             pairedSamplesStatistics: {
                                 group1,
                                 group2
                             }
                         });
-                    } else {
-                        console.error(`Error processing paired samples statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
                     }
+                    // else {
+                    //     console.error(`Error processing paired samples statistics for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
 
                 if (results.pairedSamplesCorrelation) {
-                    const { variable1, variable2, Label, N, Correlation, PValue } = results.pairedSamplesCorrelation;
+                    const { variable1, variable2, pair, Label, N, Correlation, PValue } = results.pairedSamplesCorrelation;
 
                     if (variable1 && variable2 && Label && N && Correlation && PValue) {
                         resultsRef.current.push({
                             variable1,
                             variable2,
+                            pair: pair || 0,
                             pairedSamplesCorrelation: {
                                 Label,
                                 N,
@@ -113,21 +125,24 @@ export const usePairedSamplesTTestAnalysis = ({
                                 PValue
                             }
                         });
-                    } else {
-                        console.error(`Error processing paired samples correlation for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
                     }
+                    // else {
+                    //     console.error(`Error processing paired samples correlation for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
 
                 if (results.pairedSamplesTest) {
-                    const { variable1, variable2, label, Mean, StdDev, SEMean, LowerCI, UpperCI, t, df, pValue } = results.pairedSamplesTest;
+                    console.log('results.pairedSamplesTest', JSON.stringify(results.pairedSamplesTest));
+                    const { variable1, variable2, pair, label, Mean, StdDev, SEMean, LowerCI, UpperCI, t, df, pValue } = results.pairedSamplesTest;
 
-                    if (variable1 && variable2 && label && Mean && StdDev && SEMean && LowerCI && UpperCI && t && df && pValue) {
+                    if (variable1 && variable2 && label && Mean && StdDev && SEMean && LowerCI && UpperCI && t && df && pValue !== undefined && pair !== undefined) {
                         resultsRef.current.push({
                             variable1,
                             variable2,
+                            pair: pair || 0,
                             pairedSamplesTest: {
                                 label,
                                 Mean,
@@ -140,12 +155,13 @@ export const usePairedSamplesTTestAnalysis = ({
                                 pValue
                             }
                         });
-                    } else {
-                        console.error(`Error processing paired samples test for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
                     }
+                    // else {
+                    //     console.error(`Error processing paired samples test for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
@@ -163,17 +179,11 @@ export const usePairedSamplesTTestAnalysis = ({
                         const pairedSamplesStatistics = resultsRef.current.filter(r => 'pairedSamplesStatistics' in (r as any));
                         const pairedSamplesCorrelation = resultsRef.current.filter(r => 'pairedSamplesCorrelation' in (r as any));
                         const pairedSamplesTest = resultsRef.current.filter(r => 'pairedSamplesTest' in (r as any));
-                        // const frequencies = resultsRef.current.filter(r => 'frequencies' in (r as any));
-                        // const testStatisticsMedian = resultsRef.current.filter(r => 'testStatisticsMedian' in (r as any));
-                        // const jonckheereTerpstraTest = resultsRef.current.filter(r => 'jonckheereTerpstraTest' in (r as any));
-                      
+                        
                         const results: PairedSamplesTTestResults = {
                             pairedSamplesStatistics,
                             pairedSamplesCorrelation,
                             pairedSamplesTest,
-                            // frequencies,
-                            // testStatisticsMedian,
-                            // jonckheereTerpstraTest
                         };
 
                         console.log('Results to format:', JSON.stringify(results));
@@ -181,6 +191,7 @@ export const usePairedSamplesTTestAnalysis = ({
                         const formattedPairedSamplesStatisticsTable = formatPairedSamplesStatisticsTable(results);
                         const formattedPairedSamplesCorrelationTable = formatPairedSamplesCorrelationTable(results);
                         const formattedPairedSamplesTestTable = formatPairedSamplesTestTable(results);
+                        console.log('formattedPairedSamplesTestTable', JSON.stringify(formattedPairedSamplesTestTable));
 
                         // Prepare log message
                         const variableNames1 = testVariables1.map(v => v.name).join(" ");
@@ -193,7 +204,14 @@ export const usePairedSamplesTTestAnalysis = ({
 
                         // Save to database
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "Paired Samples T Test" });
+
+                        // Prepare note about insufficient data if needed
+                        let note = "";
+                        if (insufficientDataVarsRef.current.length > 0) {
+                            note = `Note: The following pairs did not have sufficient valid data for analysis: ${insufficientDataVarsRef.current.join(', ')}. These pairs require at least two valid numeric values in each pair for T-Test calculation.`;
+                        }
+
+                        const analyticId = await addAnalytic(logId, { title: "T Test", note: note || undefined });
 
 
                         await addStatistic(analyticId, {
@@ -203,20 +221,23 @@ export const usePairedSamplesTTestAnalysis = ({
                             description: ""
                         });
 
-                        await addStatistic(analyticId, {
-                            title: "Paired Samples Correlation",
-                            output_data: JSON.stringify({ tables: [formattedPairedSamplesCorrelationTable] }),
-                            components: "Paired Samples Correlation",
-                            description: ""
-                        });
+                        if (formattedPairedSamplesCorrelationTable.rows.length > 0) {
+                            await addStatistic(analyticId, {
+                                title: "Paired Samples Correlation",
+                                output_data: JSON.stringify({ tables: [formattedPairedSamplesCorrelationTable] }),
+                                components: "Paired Samples Correlation",
+                                description: ""
+                            });
+                        }
 
-                        await addStatistic(analyticId, {
-                            title: "Paired Samples Test",
-                            output_data: JSON.stringify({ tables: [formattedPairedSamplesTestTable] }),
-                            components: "Paired Samples Test",
-                            description: ""
-                        });
-
+                        if (formattedPairedSamplesTestTable.rows.length > 0) {
+                            await addStatistic(analyticId, {
+                                title: "Paired Samples Test",
+                                output_data: JSON.stringify({ tables: [formattedPairedSamplesTestTable] }),
+                                components: "Paired Samples Test",
+                                description: ""
+                            });
+                        }
 
                         if (onClose) {
                             onClose();
@@ -245,7 +266,7 @@ export const usePairedSamplesTTestAnalysis = ({
                 workerRef.current = null;
             }
         };
-    }, [testVariables1, testVariables2, estimateEffectSize, calculateStandardizer, addLog, addAnalytic, addStatistic, onClose, analysisData]);
+    }, [testVariables1, testVariables2, pairNumbers, estimateEffectSize, calculateStandardizer, addLog, addAnalytic, addStatistic, onClose, analysisData]);
 
     const cancelCalculation = useCallback(() => {
         if (workerRef.current) {

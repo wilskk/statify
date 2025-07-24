@@ -13,6 +13,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,
     testVariables1,
     testVariables2,
+    pairNumbers,
     highlightedVariable,
     setHighlightedVariable,
     highlightedPair,
@@ -207,7 +208,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 className="mr-2 h-4 w-4"
             />
             <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                Include unknown measurement level
+                Treat &apos;unknown&apos; as Scale and allow selection
             </Label>
         </div>
     );
@@ -325,7 +326,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                                     : 'hsl(var(--border))',
                                             }}
                                         >
-                                            <span className="text-sm">{index + 1}</span>
+                                            <span className="text-sm">{pairNumbers[index] || index + 1}</span>
                                         </TableCell>
                                         <TableCell 
                                             className={`cursor-pointer hover:bg-accent ${

@@ -45,6 +45,10 @@ export function formatOneWayAnovaTable(
         const { SumOfSquares, df, MeanSquare, F, Sig, withinGroupsSumOfSquares, withinGroupsDf, withinGroupsMeanSquare, totalSumOfSquares, totalDf } = oneWayAnova as OneWayAnova;
         const decimals = variable.decimals;
 
+        if (isNaN(Sig)) {
+            return;
+        }
+
         // Between Groups row
         table.rows.push({
             rowHeader: [variable.label || variable.name],
@@ -466,6 +470,14 @@ export function formatHomogeneousSubsetsTable(
 
     console.log("formattedHomogeneousSubsetsTable", JSON.stringify(table));
     return table;
+}
+
+export function formatErrorTable() {
+    return {
+        title: "",
+        columnHeaders: [{ header: "No Data", key: "noData" }],
+        rows: []
+    };
 }
 
 /**

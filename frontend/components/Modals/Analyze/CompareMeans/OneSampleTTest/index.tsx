@@ -24,6 +24,7 @@ import {
 import { TourPopup } from "@/components/Common/TourComponents";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { BaseModalProps } from "@/types/modalTypes";
+import { toast } from "sonner";
 import {
     useVariableSelection,
     useTestSettings,
@@ -104,6 +105,15 @@ const OneSampleTTestContent: FC<BaseModalProps> = ({ onClose, containerType = "d
             setActiveTab(value);
         }
     }, [setActiveTab]);
+
+    const handleContinue = useCallback(() => {
+        if (testVariables.length === 0) {
+            toast.warning("Please select at least one variable for testing.");
+            return;
+        }
+        
+        runAnalysis();
+    }, [testVariables, runAnalysis]);
 
     useEffect(() => {
         return () => {
@@ -227,7 +237,7 @@ const OneSampleTTestContent: FC<BaseModalProps> = ({ onClose, containerType = "d
                     </Button>
                     <Button
                         id="one-sample-t-test-ok-button"
-                        onClick={runAnalysis}
+                        onClick={handleContinue}
                         disabled={isCalculating || testVariables.length < 1}
                     >
                         {isCalculating ? "Processing..." : "OK"}

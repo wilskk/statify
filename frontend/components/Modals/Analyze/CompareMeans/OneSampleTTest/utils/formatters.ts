@@ -39,13 +39,13 @@ export function formatOneSampleStatisticsTable(
     // Process each result
     results.oneSampleStatistics.forEach((result) => {
         const stats = result.stats as OneSampleStatistics;
-        const decimals = result.variable.decimals || 2;
+        const decimals = result.variable.decimals
 
         table.rows.push(
             {
                 rowHeader: [result.variable.label || result.variable.name],
                 N: stats.N,
-                Mean: formatNumber(stats.Mean, decimals + 3),
+                Mean: formatNumber(stats.Mean, decimals + 2),
                 StdDev: formatNumber(stats.StdDev, decimals + 3),
                 SEMean: formatNumber(stats.SEMean, decimals + 3)
             }
@@ -102,7 +102,7 @@ export function formatOneSampleTestTable (
     // Process each result
     results.oneSampleTest.forEach((result) => {
         const stats = result.stats as OneSampleTest;
-        const decimals = result.variable.decimals || 2;
+        const decimals = result.variable.decimals;
         
         table.rows.push(
             {
@@ -111,8 +111,8 @@ export function formatOneSampleTestTable (
                 DF: formatDF(stats.DF),
                 PValue: formatPValue(stats.PValue),
                 MeanDifference: formatNumber(stats.MeanDifference, decimals + 3),
-                Lower: formatNumber(stats.Lower, decimals + 3),
-                Upper: formatNumber(stats.Upper, decimals + 3)
+                Lower: formatNumber(stats.Lower, decimals + 2),
+                Upper: formatNumber(stats.Upper, decimals + 2)
             }
         );
     });
@@ -120,6 +120,13 @@ export function formatOneSampleTestTable (
     return table;
 }
 
+export function formatErrorTable() {
+    return {
+        title: "",
+        columnHeaders: [{ header: "No Data", key: "noData" }],
+        rows: []
+    };
+}
 /**
  * Formats number with specified precision
  * @param value Number to format

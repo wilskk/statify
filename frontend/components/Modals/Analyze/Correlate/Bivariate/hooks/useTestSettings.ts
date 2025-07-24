@@ -16,7 +16,7 @@ export const useTestSettings = ({
         oneTailed: false,
         twoTailed: true
     },
-    initialFlagSignificantCorrelations = true,
+    initialFlagSignificantCorrelations = false,
     initialShowOnlyTheLowerTriangle = false,
     initialShowDiagonal = true,
     initialPartialCorrelationKendallsTauB = false,

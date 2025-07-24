@@ -109,7 +109,7 @@ class IndependentSamplesTTestCalculator {
      * @returns {number} Mean
      */
     #mean(arr) {
-        if (!arr || arr.length === 0) return 0;
+        if (!arr || arr.length === 0) return null;
         return arr.reduce((sum, x) => sum + x, 0) / arr.length;
     }
     
@@ -120,7 +120,7 @@ class IndependentSamplesTTestCalculator {
      * @returns {number} Standard deviation
      */
     #stdDev(arr, meanValue) {
-        if (!arr || arr.length <= 1) return 0;
+        if (!arr || arr.length <= 1) return null;
         const sumSq = arr.reduce((sum, x) => sum + Math.pow(x - meanValue, 2), 0);
         return Math.sqrt(sumSq / (arr.length - 1));
     }
@@ -132,7 +132,7 @@ class IndependentSamplesTTestCalculator {
      * @returns {number} Standard error mean
      */
     #stdError(stdDev, n) {
-        if (n <= 1) return 0;
+        if (n <= 1) return null;
         return stdDev / Math.sqrt(n);
     }
     
@@ -397,12 +397,24 @@ class IndependentSamplesTTestCalculator {
      * @returns {Object} Objek hasil yang berisi statistik grup dan hasil uji.
      */
     getOutput() {
+        this.#initialize();
+
+        const hasInsufficientData = this.group1Data.length === 0 || this.group2Data.length === 0;
+        const group1N = this.group1Data.length;
+        const group2N = this.group2Data.length;
+
         const groupStatistics = this.getGroupStatistics();
         const independentSamplesTest = this.getIndependentSamplesTest();
         
         return {
             groupStatistics,
-            independentSamplesTest
+            independentSamplesTest,
+            metadata: {
+                hasInsufficientData,
+                group1N,
+                group2N,
+                variableName: this.variable.name
+            }
         };
     }
 }

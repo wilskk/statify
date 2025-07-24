@@ -11,7 +11,8 @@ import {
 
 import {
   formatOneSampleTestTable,
-  formatOneSampleStatisticsTable
+  formatOneSampleStatisticsTable,
+  formatErrorTable
 } from '../utils/formatters'
 
 export const useOneSampleTTestAnalysis = ({
@@ -31,6 +32,7 @@ export const useOneSampleTTestAnalysis = ({
   const resultsRef = useRef<OneSampleTTestResult[]>([]);
   const errorCountRef = useRef<number>(0);
   const processedCountRef = useRef<number>(0);
+  const insufficientDataVarsRef = useRef<string[]>([]);
 
   const runAnalysis = useCallback(async () => {
     if (testVariables.length === 0) {
@@ -53,6 +55,7 @@ export const useOneSampleTTestAnalysis = ({
     resultsRef.current = [];
     errorCountRef.current = 0;
     processedCountRef.current = 0;
+    insufficientDataVarsRef.current = [];
 
     const worker = new Worker('/workers/CompareMeans/manager.js', { type: 'module' });
     workerRef.current = worker;
@@ -77,9 +80,16 @@ export const useOneSampleTTestAnalysis = ({
     });
 
     worker.onmessage = async (event) => {
+      console.log('event.data', JSON.stringify(event.data));
       const { variableName, results, status, error: workerError } = event.data;
 
       if (status === 'success' && results) {
+        // Check for metadata about insufficient data
+        if (results.metadata && results.metadata.hasInsufficientData) {
+          insufficientDataVarsRef.current.push(results.metadata.variableName);
+          console.warn(`Insufficient valid data for variable: ${results.metadata.variableName}. Total: ${results.metadata.totalData}, Valid: ${results.metadata.validData}`);
+        }
+        
         if (results.oneSampleStatistics) {
           const { variable, N, Mean, StdDev, SEMean } = results.oneSampleStatistics;
 
@@ -93,12 +103,13 @@ export const useOneSampleTTestAnalysis = ({
                 SEMean
               }
             });
-          } else {
-            console.error(`Error processing oneSampleStatistics for ${variableName}:`, workerError);
-            const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-            setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-            errorCountRef.current += 1;
           }
+          // else {
+          //   console.error(`Error processing oneSampleStatistics for ${variableName}:`, workerError);
+          //   const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+          //   setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+          //   errorCountRef.current += 1;
+          // }
         }
 
         if (results.oneSampleTest) {
@@ -117,12 +128,13 @@ export const useOneSampleTTestAnalysis = ({
                 Upper
               }
             });
-          } else {
-            console.error(`Error processing oneSampleTest for ${variableName}:`, workerError);
-            const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-            setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-            errorCountRef.current += 1;
           }
+          // else {
+          //   console.error(`Error processing oneSampleTest for ${variableName}:`, workerError);
+          //   const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+          //   setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+          //   errorCountRef.current += 1;
+          // }
         }
       } else {
         console.error(`Error processing ${variableName}:`, workerError);
@@ -134,8 +146,37 @@ export const useOneSampleTTestAnalysis = ({
       processedCountRef.current++;
 
       if (processedCountRef.current === testVariables.length) {
-        if (resultsRef.current.length > 0) {
-          try {
+        try {
+          // Prepare log message
+          const variableNames = testVariables.map(v => v.name).join(" ");
+          let logMsg = `T-TEST {TESTVAL=${testValue}} {VARIABLES=${variableNames}}`;
+
+          if (estimateEffectSize) {
+            logMsg += `{ES DISPLAY (TRUE)}`;
+          } else {
+            logMsg += `{ES DISPLAY (FALSE)}`;
+          }
+          
+          logMsg += `{CRITERIA=0.95}`;
+
+          // Save to database
+          const logId = await addLog({ log: logMsg });
+          
+          // Prepare note about insufficient data if needed
+          let note = "";
+          if (insufficientDataVarsRef.current.length > 0) {
+            note = `Note: The following variables did not have sufficient valid data for analysis: ${insufficientDataVarsRef.current.join(', ')}. 
+                These variables require at least two valid numeric values for T-Test calculation.`;
+          }
+          
+          // Create analytic with or without note
+          const analyticId = await addAnalytic(logId, { 
+            title: "T-Test", 
+            note: note || undefined 
+          });
+
+          if (resultsRef.current.length > 0) {
+            // We have some valid results
             const oneSampleStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
             const oneSampleTest = resultsRef.current.filter(r => 'T' in (r.stats as any));
 
@@ -150,43 +191,41 @@ export const useOneSampleTTestAnalysis = ({
             const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(results);
             const formattedOneSampleTestTable = formatOneSampleTestTable(results);
 
-            // Prepare log message
-            const variableNames = testVariables.map(v => v.name).join(" ");
-            let logMsg = `T-TEST {TESTVAL=${testValue}} {VARIABLES=${variableNames}}`;
+            if (insufficientDataVarsRef.current.length < testVariables.length) {
+              await addStatistic(analyticId, {
+                title: "One-Sample Statistics",
+                output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
+                components: "One-Sample Statistics",
+                description: ""
+              });
 
-            if (estimateEffectSize) {
-              logMsg += `{ES DISPLAY (TRUE)}`;
-            } else {
-              logMsg += `{ES DISPLAY (FALSE)}`;
+              await addStatistic(analyticId, {
+                title: "One-Sample Test",
+                output_data: JSON.stringify({ tables: [formattedOneSampleTestTable] }),
+                components: "One-Sample Test",
+                description: ""
+              });
             }
-            
-            logMsg += `{CRITERIA=0.95}`;
-
-            // Save to database
-            const logId = await addLog({ log: logMsg });
-            const analyticId = await addAnalytic(logId, { title: "One-Sample T-Test" });
-
-            await addStatistic(analyticId, {
-              title: "One-Sample T-Test",
-              output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
-              components: "One-Sample Statistics",
-              description: ""
-            });
-
-            await addStatistic(analyticId, {
-              title: "One-Sample T-Test",
-              output_data: JSON.stringify({ tables: [formattedOneSampleTestTable] }),
-              components: "One-Sample Test",
-              description: ""
-            });
-
-            if (onClose) {
-              onClose();
-            }
-          } catch (err) {
-            console.error("Error saving results:", err);
-            setErrorMsg("Error saving results.");
           }
+          
+          // If no valid results or all variables have insufficient data, show error table
+          if (resultsRef.current.length === 0 || insufficientDataVarsRef.current.length === testVariables.length) {
+            const formattedErrorTable = formatErrorTable();
+            console.log('formattedErrorTable', JSON.stringify(formattedErrorTable));
+            await addStatistic(analyticId, {
+              title: "Error",
+              output_data: JSON.stringify({ tables: [formattedErrorTable] }),
+              components: "Error",
+              description: ""
+            });
+          }
+
+          if (onClose) {
+            onClose();
+          }
+        } catch (err) {
+          console.error("Error saving results:", err);
+          setErrorMsg("Error saving results.");
         }
 
         setIsCalculating(false);

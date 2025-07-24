@@ -24,6 +24,7 @@ import {
 import { TourPopup } from "@/components/Common/TourComponents";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { BaseModalProps } from "@/types/modalTypes";
+import { toast } from "sonner";
 import {
     useVariableSelection,
     useTestSettings,
@@ -49,6 +50,7 @@ const PairedSamplesTTestContent: FC<BaseModalProps> = ({ onClose, containerType 
         availableVariables,
         testVariables1,
         testVariables2,
+        pairNumbers,
         highlightedPair,
         setHighlightedPair,
         highlightedVariable,
@@ -77,11 +79,12 @@ const PairedSamplesTTestContent: FC<BaseModalProps> = ({ onClose, containerType 
     const { 
         isCalculating,
         errorMsg, 
-        runAnalysis,
+        runAnalysis: executeAnalysis,
         cancelCalculation
     } = usePairedSamplesTTestAnalysis({
         testVariables1,
         testVariables2,
+        pairNumbers,
         calculateStandardizer,
         estimateEffectSize,
         areAllPairsValid,
@@ -120,6 +123,14 @@ const PairedSamplesTTestContent: FC<BaseModalProps> = ({ onClose, containerType 
         }
     }, [setActiveTab]);
 
+    const runAnalysis = useCallback(() => {
+        if (hasDuplicatePairs()) {
+            toast.error("The grid contains a duplicate pair.");
+            return;
+        }
+        executeAnalysis();
+    }, [hasDuplicatePairs, executeAnalysis]);
+
     useEffect(() => {
         return () => {
             cancelCalculation();
@@ -152,6 +163,7 @@ const PairedSamplesTTestContent: FC<BaseModalProps> = ({ onClose, containerType 
                         availableVariables={availableVariables}
                         testVariables1={testVariables1}
                         testVariables2={testVariables2}
+                        pairNumbers={pairNumbers}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
                         highlightedPair={highlightedPair}
@@ -268,7 +280,6 @@ const PairedSamplesTTestContent: FC<BaseModalProps> = ({ onClose, containerType 
                         disabled={
                             isCalculating ||
                             !areAllPairsValid() ||
-                            hasDuplicatePairs() ||
                             (
                                 !calculateStandardizer.standardDeviation &&
                                 !calculateStandardizer.correctedStandardDeviation &&

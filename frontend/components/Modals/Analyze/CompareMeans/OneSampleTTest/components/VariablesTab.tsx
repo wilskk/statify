@@ -123,6 +123,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                 checked={estimateEffectSize}
                                 onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
                                 className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                                disabled
                             />
                             <Label htmlFor="estimate-effect-size" className="text-sm cursor-pointer">
                                 Estimate effect size

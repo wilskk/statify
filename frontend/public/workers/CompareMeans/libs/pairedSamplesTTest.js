@@ -18,8 +18,9 @@ class PairedSamplesTTestCalculator {
      * @param {Array<any>} params.data2 - Data array for the second variable.
      * @param {object} params.options - Additional options from the main thread.
      */
-    constructor({ variable1, data1, variable2, data2, options = {} }) {
+    constructor({ pair, variable1, data1, variable2, data2, options = {} }) {
         console.log('PairedSamplesTTestCalculator constructor');
+        this.pair = pair;
         this.variable1 = variable1;
         this.data1 = data1;
         this.variable2 = variable2;
@@ -175,6 +176,7 @@ class PairedSamplesTTestCalculator {
             const result = {
                 variable1: this.variable1,
                 variable2: this.variable2,
+                pair: this.pair,
                 group1: {
                     label: this.variable1.label || this.variable1.name,
                     N: 0,
@@ -206,6 +208,7 @@ class PairedSamplesTTestCalculator {
         const result = {
             variable1: this.variable1,
             variable2: this.variable2,
+            pair: this.pair,
             group1: {
                 label: this.variable1.label || this.variable1.name,
                 N: this.N,
@@ -239,6 +242,7 @@ class PairedSamplesTTestCalculator {
             const result = {
                 variable1: this.variable1,
                 variable2: this.variable2,
+                pair: this.pair,
                 Label: label,
                 N: 0,
                 Correlation: 0,
@@ -259,6 +263,7 @@ class PairedSamplesTTestCalculator {
         const result = {
             variable1: this.variable1,
             variable2: this.variable2,
+            pair: this.pair,
             Label: label,
             N: this.N,
             Correlation: correlation,
@@ -282,6 +287,7 @@ class PairedSamplesTTestCalculator {
             const result = {
                 variable1: this.variable1,
                 variable2: this.variable2,
+                pair: this.pair,
                 label: label,
                 N: 0,
                 Mean: 0,
@@ -347,6 +353,7 @@ class PairedSamplesTTestCalculator {
             variable1: this.variable1,
             variable2: this.variable2,
             label: label,
+            pair: this.pair,
             Mean: meanDiff,
             StdDev: stdDevDiff,
             SEMean: stdErrDiff,
@@ -360,6 +367,10 @@ class PairedSamplesTTestCalculator {
     }
 
     getOutput() {
+        this.#initialize();
+
+        const hasInsufficientData = this.pairedData.length === 0;
+
         const pairedSamplesStatistics = this.getStatistics();
         const pairedSamplesCorrelation = this.getCorrelations();
         const pairedSamplesTest = this.getTestResults();
@@ -367,7 +378,11 @@ class PairedSamplesTTestCalculator {
         return {
             pairedSamplesStatistics,
             pairedSamplesCorrelation,
-            pairedSamplesTest
+            pairedSamplesTest,
+            metadata: {
+                hasInsufficientData,
+                pair: this.pair
+            }
         };
     }
 }
