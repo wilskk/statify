@@ -13,6 +13,8 @@ import VariablesTab from "./VariablesTab";
 import TimeTab from "../TimeSeriesTimeTab";
 import OptionTab from "./OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { DataRow } from "@/types/Data";
+import { toast } from "sonner";
 
 interface BoxJenkinsModelProps {
     onClose: () => void;
@@ -32,7 +34,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
+    const [prevDataRef, setPrevDataRef] = useState<DataRow[] | null>(null);
     const [activeTab, setActiveTab] = useState("variables");
     const [saveAsVariable, setSaveAsVariable] = useState(false);
 
@@ -68,6 +70,12 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
     const combinedError = errorMsg || analysisError;
     const [isLoaded, setIsLoaded] = useState(false);
 
+    useEffect(() => {
+        if (combinedError) {
+            toast.error("Error: " + String(combinedError));
+        }
+    }, [combinedError]);
+
     // Load saved state from IndexedDB on component mount
     useEffect(() => {
         const loadSavedState = async () => {
@@ -75,6 +83,18 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                 const savedData = await getFormData("BoxJenkinsModel", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
                 
+                if (savedData && savedData.prevDataRef) {
+                    // If previous data reference exists, check if it matches current data
+                    setPrevDataRef(savedData.prevDataRef);
+                    if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
+                        // Clear saved state if previous data doesn't match current
+                        await clearFormData("Autocorrelation");
+                        setAvailableVariables(filteredVariables);
+                        setSelectedVariables([]);
+                        return;
+                    }
+                }
+
                 if (savedData?.saveAsVariable) {
                     setSaveAsVariable(savedData.saveAsVariable);
                 }
@@ -112,7 +132,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
         };
 
         loadSavedState();
-    }, [variables, setSaveAsVariable]);
+    }, [variables, data, setSaveAsVariable]);
 
     // Save state to IndexedDB whenever variables change
     useEffect(() => {
@@ -126,7 +146,8 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                 };
                 const stateToSave = {
                     ...variableToSave,
-                    saveAsVariable,
+                    saveAsVariable: saveAsVariable,
+                    prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("BoxJenkinsModel", stateToSave, "variables");
             } catch (error) {
@@ -135,14 +156,14 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, saveAsVariable, isLoaded]);
+    }, [availableVariables, selectedVariables, saveAsVariable, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {
-            setErrorMsg("Hanya boleh memilih satu variabel saja.");
+            setErrorMsg("You may only select one variable.");
             return;
         }
-        setErrorMsg(null); // clear error kalau sukses
+        setErrorMsg(null); // clear error if successful
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setSelectedVariables(prev => {
             if (prev.some(v => v.columnIndex === variable.columnIndex)) {
@@ -256,8 +277,6 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                     />
                 </TabsContent>
             </Tabs>
-
-            {combinedError && <div className="text-red-600 text-center mt-2">{combinedError}</div>}
 
             <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">

@@ -33,7 +33,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const varListsStep = getStepIndex('explore-variable-lists');
 
     // --- Adapt props for VariableListManager ---
-    const variableIdKeyToUse: keyof Variable = 'tempId';
+    const variableIdKeyToUse: keyof Variable = 'id';
 
     // 1. Configure the target lists
     const targetLists: TargetListConfig[] = [
@@ -55,15 +55,15 @@ const VariablesTab: FC<VariablesTabProps> = ({
         }
     ];
 
-    // 2. Adapt highlightedVariable state (already using tempId)
+    // 2. Adapt highlightedVariable state (already using id)
     const managerHighlightedVariable = highlightedVariable
-        ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
+        ? { id: String(highlightedVariable.id), source: highlightedVariable.source }
         : null;
 
     const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
         // Ensure the source is one of the expected types for this component (label removed)
         if (value && ['available', 'dependent', 'factor'].includes(value.source)) {
-            setHighlightedVariable({ tempId: value.id, source: value.source as AllSource });
+            setHighlightedVariable({ id: value.id, source: value.source as AllSource });
         } else {
             setHighlightedVariable(null);
         }

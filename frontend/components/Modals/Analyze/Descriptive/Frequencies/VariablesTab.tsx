@@ -37,7 +37,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const { showFrequencyTables, setShowFrequencyTables } = displaySettings;
     
-    const variableIdKeyToUse: keyof Variable = 'tempId';
+    const variableIdKeyToUse: keyof Variable = 'id';
 
     // --- Adapt props for VariableListManager ---
 
@@ -56,13 +56,16 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // 2. Adapt highlightedVariable state
     // Map internal state {tempId, source} to manager's {id, source}
     const managerHighlightedVariable = highlightedVariable
-        ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
+        ? { id: String(highlightedVariable.id), source: highlightedVariable.source }
         : null;
 
     // Adapt setHighlightedVariable to map back from manager's format
     const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
         if (value && (value.source === 'available' || value.source === 'selected')) {
-            setHighlightedVariable({ tempId: value.id, source: value.source as 'available' | 'selected' });
+            const parsedId = Number(value.id);
+            if (!isNaN(parsedId)) {
+                setHighlightedVariable({ id: parsedId, source: value.source as 'available' | 'selected' });
+            }
         } else {
             setHighlightedVariable(null);
         }

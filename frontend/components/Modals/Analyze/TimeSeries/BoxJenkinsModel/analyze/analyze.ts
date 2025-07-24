@@ -1,5 +1,5 @@
-import init, {Arima} from '../../../../../../src/wasm/pkg/wasm.js';
-import {generateDate} from '../../TimeSeriesGenerateDate';
+import init, {Arima} from '../../wasm/pkg/wasm.js';
+import {generateDate} from '../../timeSeriesGenerateDate';
 
 export async function handleBoxJenkinsModel(
     data: (number)[], 
@@ -12,7 +12,7 @@ export async function handleBoxJenkinsModel(
     startDay: number,
     startMonth: number,
     startYear: number
-):Promise<[string, number[], string, string, string, number[], string]> {
+):Promise<[string, string, number[], string, string, string, number[], string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -188,19 +188,20 @@ export async function handleBoxJenkinsModel(
                 charts: [
                     {
                         chartType: "Multiple Line Chart",
-                        chartMetaData: {
+                        chartMetadata: {
                             axisInfo: {
                                 category: `date`,
                                 subCategory: [`${dataHeader}`, `ARIMA Forecasting`],
                             },
                             description: `ARIMA ${dataHeader}`,
                             notes: `ARIMA ${dataHeader}`,
+                            title: `ARIMA Forecasting of ${dataHeader}`,
                         },
                         chartData: structuredForecasting,
                         chartConfig: {
-                            "width": 800,
-                            "height": 600,
-                            "chartColor": ["#4682B4"],
+                            "width": 1000,
+                            "height": 500,
+                            "chartColor": ["#0096FF", "#FFC300"],
                             "useLegend": true,
                             "useAxis": true,
                         }
@@ -226,9 +227,23 @@ export async function handleBoxJenkinsModel(
             forecast = [0];
         }
 
-        return [descriptionJSON, [...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast, graphicJSON];
+        return ["success", descriptionJSON, [...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast, graphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["", [0], "", "", JSON.stringify({ error: errorMessage.message }), [0], ""];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON, [0], "", "", "", [0], ""];
     }
 }

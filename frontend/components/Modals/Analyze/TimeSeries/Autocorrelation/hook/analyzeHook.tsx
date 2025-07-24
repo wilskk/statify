@@ -38,6 +38,9 @@ export function useAnalyzeHook(
         if (getHour() < 0 || getHour() > 23) {
             return "Hour must be between 0 and 23.";
         }
+        if (maximumLag < 10 || maximumLag > 20) {
+            return "Lag length must be between 10 and 20.";
+        }
         return null;
     };
 
@@ -75,6 +78,7 @@ export function useAnalyzeHook(
     };
 
     const processResults = async (
+        resultMessage: string,
         descriptionTable: any,
         acfValue: any[],
         acf: any,
@@ -98,40 +102,50 @@ export function useAnalyzeHook(
             note: "",
         });
 
-        await addStatistic(analyticId, {
-            title: "Description Table",
-            output_data: descriptionTable,
-            components: "Description Table",
-            description: "",
-        });
+        if (resultMessage === "error") {
+            await addStatistic(analyticId, {
+                title: "Error",
+                output_data: resultMessage,
+                components: "Error",
+                description: "An error occurred during autocorrelation analysis.",
+            });
+            return;
+        } else {
+            await addStatistic(analyticId, {
+                title: "Description Table",
+                output_data: descriptionTable,
+                components: "Description Table",
+                description: "Description of the autocorrelation results",
+            });
 
-        await addStatistic(analyticId, {
-            title: "Autocorrelation Table",
-            output_data: acf,
-            components: "Autocorrelation Table",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: "Autocorrelation Table",
+                output_data: acf,
+                components: "Autocorrelation Table",
+                description: "Autocorrelation function results",
+            });
 
-        await addStatistic(analyticId, {
-            title: "Autocorrelation Graphic",
-            output_data: acfGraphicJSON,
-            components: "Autocorrelation Graphic",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: "Autocorrelation Correlogram",
+                output_data: acfGraphicJSON,
+                components: "Autocorrelation Correlogram",
+                description: "Correlogram of the autocorrelation results",
+            });
 
-        await addStatistic(analyticId, {
-            title: "Partial Autocorrelation Table",
-            output_data: pacf,
-            components: "Partial Autocorrelation Table",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: "Partial Autocorrelation Table",
+                output_data: pacf,
+                components: "Partial Autocorrelation Table",
+                description: "Partial autocorrelation function results",
+            });
 
-        await addStatistic(analyticId, {
-            title: "Partial Autocorrelation Graphic",
-            output_data: pacfGraphicJSON,
-            components: "Partial Autocorrelation Graphic",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: "Partial Autocorrelation Correlogram",
+                output_data: pacfGraphicJSON,
+                components: "Partial Autocorrelation Correlogram",
+                description: "Correlogram of the partial autocorrelation results",
+            });
+        }
     };
 
     const handleAnalyzes = async () => {
@@ -148,17 +162,11 @@ export function useAnalyzeHook(
             const { dataValues, dataVarDef } = prepareData();
 
             if (dataValues.length === 0) {
-                throw new Error("No data available for the selected variables.");
+                throw new Error("No data available for the selected variable.");
             }
 
-            if (seasonally) {
-                const periodicity = Number(selectedPeriod[0]);
-                if (dataValues.length < 4 * periodicity) {
-                    throw new Error("Data length is less than 4 times the periodicity.");
-                }
-                if (dataValues.length % periodicity !== 0) {
-                    throw new Error("Data length is not a multiple of the periodicity.");
-                }
+            if (dataValues.length < 20) {
+                throw new Error("Data length must be at least 20 observations.");
             }
 
             const results = await handleAutocorrelation(

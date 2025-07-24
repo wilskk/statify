@@ -17,6 +17,7 @@ export * from '@/components/Modals/File/ExportCsv';
 export * from '@/components/Modals/File/ExportExcel';
 export * from '@/components/Modals/File/OpenSavFile';
 export * from '@/components/Modals/File/Print';
+export * from '@/components/Modals/File/ExampleDataset';
 
 // Helper function to check file type
 export const isFileModal = (type: ModalType): boolean => {
@@ -32,6 +33,7 @@ export const isFileModal = (type: ModalType): boolean => {
         ModalType.Print,
         ModalType.ExportCSV,
         ModalType.ExportExcel,
+        ModalType.ExampleDataset,
         ModalType.Exit
     ].includes(type);
 }; 

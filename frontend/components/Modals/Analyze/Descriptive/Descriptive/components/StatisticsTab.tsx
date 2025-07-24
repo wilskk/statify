@@ -163,19 +163,19 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 <div className="text-sm font-medium mb-3">Display Order</div>
                 <RadioGroup value={displayOrder} onValueChange={handleDisplayOrderChange} className="space-y-2">
                     <div className="flex items-center">
-                        <RadioGroupItem id="variableList" value="variableList" className="mr-2 border-[#CCCCCC]" />
+                        <RadioGroupItem id="variableList" value="variableList" className="mr-2 border-[#CCCCCC]" {...({ changeHandler: handleDisplayOrderChange } as any)} />
                         <Label htmlFor="variableList" className="text-sm cursor-pointer">Variable list</Label>
                     </div>
                     <div className="flex items-center">
-                        <RadioGroupItem id="alphabetic" value="alphabetic" className="mr-2 border-[#CCCCCC]" />
+                        <RadioGroupItem id="alphabetic" value="alphabetic" className="mr-2 border-[#CCCCCC]" {...({ changeHandler: handleDisplayOrderChange } as any)} />
                         <Label htmlFor="alphabetic" className="text-sm cursor-pointer">Alphabetic</Label>
                     </div>
                     <div className="flex items-center">
-                        <RadioGroupItem id="ascendingMeans" value="ascendingMeans" className="mr-2 border-[#CCCCCC]" />
+                        <RadioGroupItem id="ascendingMeans" value="ascendingMeans" className="mr-2 border-[#CCCCCC]" {...({ changeHandler: handleDisplayOrderChange } as any)} />
                         <Label htmlFor="ascendingMeans" className="text-sm cursor-pointer">Ascending means</Label>
                     </div>
                     <div className="flex items-center">
-                        <RadioGroupItem id="descendingMeans" value="descendingMeans" className="mr-2 border-[#CCCCCC]" />
+                        <RadioGroupItem id="descendingMeans" value="descendingMeans" className="mr-2 border-[#CCCCCC]" {...({ changeHandler: handleDisplayOrderChange } as any)} />
                         <Label htmlFor="descendingMeans" className="text-sm cursor-pointer">Descending means</Label>
                     </div>
                 </RadioGroup>

@@ -14,8 +14,8 @@ interface TrendedMethod {
 }
 
 const decompositionMethods: DecompositionMethod[] = [
-    { value: 'additive', label: 'additive' },
-    { value: 'multiplicative', label: 'multiplicative' },
+    { value: 'additive', label: 'Additive' },
+    { value: 'multiplicative', label: 'Multiplicative' },
 ];
 
 const trendedMethods: TrendedMethod[] = [
@@ -27,7 +27,7 @@ export function useOptionHook(
 ) {
     const [selectedDecompositionMethod, setSelectedDecompositionMethod] = useState<string[]>([
         'additive',
-        'additive',
+        'Additive',
     ]);
     const [selectedTrendedMethod, setSelectedTrendedMethod] = useState<string[]>([
         'linear',
@@ -58,7 +58,7 @@ export function useOptionHook(
                     }
                 } else {
                     // Use store defaults if no saved data
-                    setSelectedDecompositionMethod(['additive', 'additive']);
+                    setSelectedDecompositionMethod(['additive', 'Additive']);
                     setSelectedTrendedMethod(['linear', 'Linear']);
                 }
             } catch (err) {
@@ -130,7 +130,7 @@ export function useOptionHook(
         // setSelectedTrendedMethod(['linear', 'Linear']);
         clearFormData("Decomposition")
         .then(() => {
-            setSelectedDecompositionMethod(['additive', 'additive']);
+            setSelectedDecompositionMethod(['additive', 'Additive']);
             setSelectedTrendedMethod(['linear', 'Linear']);
         })
         .catch((e) => console.error("Failed to clear time data:", e));

@@ -1,5 +1,5 @@
-import init, {Smoothing} from '../../../../../../src/wasm/pkg/wasm.js';
-import {generateDate} from '../../TimeSeriesGenerateDate';
+import init, {Smoothing} from '../../wasm/pkg/wasm.js';
+import {generateDate} from '../../timeSeriesGenerateDate';
 
 export async function handleSmoothing(
     data: (number)[], 
@@ -12,7 +12,7 @@ export async function handleSmoothing(
     startMonth: (number),
     startYear: (number),
     method: string): 
-Promise<[string, number[], string, string]> {
+Promise<[string, string, number[], string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data)? data : null;
     
@@ -153,7 +153,7 @@ Promise<[string, number[], string, string]> {
                 structuredSmoothing.push({
                     category: `${dateArray[i]}`,
                     subcategory: `${nameMethod}`,
-                    value: smoothingArray[i] === 0? null : smoothingArray[i],
+                    value: smoothingRound[i] === 0? null : smoothingRound[i],
                 });
                 if (smoothingArray[i] === 0.0){
                     smoothingRound[i] = NaN;
@@ -166,19 +166,20 @@ Promise<[string, number[], string, string]> {
             charts: [
                 {
                     chartType: "Multiple Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`${dataHeader}`, `$(nameMethod) Smoothing`],
                         },
                         description: `Smoothing ${dataHeader} using ${nameMethod}`,
                         notes: `Smoothing ${dataHeader}`,
+                        title: `Smoothing of ${dataHeader} using ${nameMethod}`,
                     },
                     chartData: structuredSmoothing,
                     chartConfig: {
-                        "width": 800,
-                        "height": 600,
-                        "chartColor": ["#4682B4"],
+                        "width": 1000,
+                        "height": 500,
+                        "chartColor": ["#0096FF", "#FFC300"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -199,9 +200,24 @@ Promise<[string, number[], string, string]> {
                 },
             ],
         });
-        return [descriptionJSON, smoothingRound, graphicJSON, evalJSON];
+
+        return ["success", descriptionJSON, smoothingRound, graphicJSON, evalJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["",[0],"",JSON.stringify({ error: errorMessage.message })];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON,[0],"",""];
     }
 }

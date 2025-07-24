@@ -38,7 +38,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     currentStep = 0,
     tourSteps = [],
 }) => {
-    const variableIdKeyToUse: keyof Variable = 'tempId';
+    const variableIdKeyToUse: keyof Variable = 'id';
     // Variabel hanya perlu bertipe NUMERIC untuk dapat dipilih – level pengukuran tidak lagi diperiksa
     const isVariableDisabled = useCallback((variable: Variable): boolean => {
         return variable.type !== 'NUMERIC';
@@ -73,12 +73,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
     ];
 
     const managerHighlightedVariable = highlightedVariable
-        ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
+        ? { id: String(highlightedVariable.id), source: highlightedVariable.source }
         : null;
 
     const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
         if (value && (value.source === 'available' || value.source === 'selected')) {
-            setHighlightedVariable({ tempId: value.id, source: value.source as 'available' | 'selected' });
+            setHighlightedVariable({ id: Number(value.id), source: value.source as 'available' | 'selected' });
         } else {
             setHighlightedVariable(null);
         }
