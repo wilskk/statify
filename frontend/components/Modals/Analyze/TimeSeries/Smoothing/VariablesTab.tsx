@@ -43,7 +43,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
             variables: selectedVariables,
             height: '100px',
             draggableItems: true,
-            droppable: true
+            droppable: true,
+            maxItems: 1,
         }
     ];
 
@@ -108,6 +109,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             onMoveVariable={handleMoveVariable}
             onReorderVariable={handleReorderVariables}
             renderListFooter={renderSelectedFooter}
+            onVariableDoubleClick={() => {}}
         />
     );
 };

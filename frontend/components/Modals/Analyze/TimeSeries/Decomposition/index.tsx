@@ -158,11 +158,6 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
     }, [availableVariables, selectedVariables, saveAsVariable, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
-        if (selectedVariables.length > 0) {
-            setErrorMsg("You may only select one variable.");
-            return;
-        }
-        setErrorMsg(null); // clear error if successful
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setSelectedVariables(prev => {
             if (prev.some(v => v.columnIndex === variable.columnIndex)) {
@@ -306,6 +301,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         disabled={isCalculating}
+                        onClick={() => window.open("https://drive.google.com/file/d/1RkrwpeQQqO3YDJdSKxtcos2fdMax49ML/view?usp=sharing", "_blank")}
                     >
                         Help
                     </Button>
