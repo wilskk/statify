@@ -1366,13 +1366,6 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.chartColor
               );
               break;
-            case "3D Bar Chart2":
-              chartNode = chartUtils.create3DBarChart2(
-                chartDataPoints,
-                width,
-                height
-              );
-              break;
             case "3D Bar Chart (ECharts)":
               chartNode = chartUtils.createECharts3DBarChart(
                 chartDataPoints,
@@ -1457,34 +1450,6 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.axisLabels,
                 chartConfig?.axisScaleOptions,
                 chartConfig?.chartColor
-              );
-              break;
-            case "Clustered 3D Bar Chart":
-              chartNode = chartUtils.createClustered3DBarChart(
-                chartDataPoints,
-                width,
-                height
-              );
-              break;
-            case "Stacked 3D Bar Chart":
-              chartNode = chartUtils.createStacked3DBarChart(
-                chartDataPoints,
-                width,
-                height
-              );
-              break;
-            case "3D Scatter Plot":
-              chartNode = chartUtils.create3DScatterPlot(
-                chartDataPoints,
-                width,
-                height
-              );
-              break;
-            case "Grouped 3D Scatter Plot":
-              chartNode = chartUtils.createGrouped3DScatterPlot(
-                chartDataPoints,
-                width,
-                height
               );
               break;
             case "Density Chart":
