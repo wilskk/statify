@@ -32,6 +32,7 @@ interface OldNewValuesSetupProps {
   setRecodeRules: React.Dispatch<React.SetStateAction<RecodeRule[]>>;
   onCloseSetup: () => void; // To go back to the variable selection view
   variableCount?: number; // Jumlah variabel yang akan direkode
+  outputType?: "NUMERIC" | "STRING"; // Tipe output untuk menentukan konversi nilai baru
 }
 
 const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
@@ -40,6 +41,7 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
   setRecodeRules,
   onCloseSetup,
   variableCount = 0,
+  outputType,
 }) => {
   // --- State for Old Value inputs ---
   const [oldValueSelectionType, setOldValueSelectionType] = useState<
@@ -75,6 +77,27 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
 
   const isNumeric = recodeListType === "NUMERIC";
   const isString = recodeListType === "STRING";
+
+  // Helper functions untuk validasi input berdasarkan tipe output
+  const isOutputNumeric = outputType === "NUMERIC";
+  const isOutputString = outputType === "STRING";
+
+  // Validasi input untuk nilai baru berdasarkan tipe output
+  const validateNewValueInput = (value: string): boolean => {
+    if (isOutputNumeric) {
+      // Jika output numeric, hanya terima angka, titik desimal, dan tanda minus
+      return /^-?\d*\.?\d*$/.test(value);
+    }
+    // Jika output string, terima semua karakter
+    return true;
+  };
+
+  // Handler untuk input nilai baru dengan validasi
+  const handleNewValueChange = (value: string) => {
+    if (validateNewValueInput(value)) {
+      setNewSingleValue(value);
+    }
+  };
 
   // Effect to reset specific range inputs when main range type changes
   useEffect(() => {
@@ -265,8 +288,26 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
         });
         return;
       }
+
+      // Validasi tambahan berdasarkan tipe output
+      if (isOutputNumeric) {
+        const numValue = parseFloat(newSingleValue);
+        if (isNaN(numValue)) {
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            description:
+              "New value must be a valid number since output type is NUMERIC.",
+          });
+          return;
+        }
+      }
+
       tempNewValueDisplay = newSingleValue;
-      tempNewValueActual = isNumeric
+      // Gunakan outputType untuk menentukan konversi, fallback ke isNumeric jika outputType tidak tersedia
+      const shouldConvertToNumeric =
+        outputType === "NUMERIC" || (outputType === undefined && isNumeric);
+      tempNewValueActual = shouldConvertToNumeric
         ? parseFloat(newSingleValue)
         : newSingleValue;
     } else {
@@ -415,6 +456,12 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
           The recode rules defined here will apply to all {variableCount}{" "}
           selected {recodeListType?.toLowerCase()} variable
           {variableCount !== 1 ? "s" : ""}.
+          {outputType && (
+            <span className="font-semibold">
+              {" "}
+              Output will be {outputType.toLowerCase()}.
+            </span>
+          )}
         </AlertDescription>
       </Alert>
 
@@ -549,7 +596,14 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
 
         {/* New Value Section (Column 2) */}
         <div className="border rounded-md p-3 bg-[#FAFAFA]">
-          <h3 className="font-semibold mb-2">New Value</h3>
+          <h3 className="font-semibold mb-2">
+            New Value
+            {outputType && (
+              <span className="text-sm font-normal text-gray-600 ml-2">
+                (Output: {outputType})
+              </span>
+            )}
+          </h3>
           <RadioGroup
             value={newValueSelectionType}
             onValueChange={(v) => setNewValueSelectionType(v as any)}
@@ -565,8 +619,12 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
                   <Input
                     className="h-7"
                     value={newSingleValue}
-                    onChange={(e) => setNewSingleValue(e.target.value)}
-                    placeholder={isNumeric ? "e.g. 99" : "e.g. Unknown"}
+                    onChange={(e) => handleNewValueChange(e.target.value)}
+                    placeholder={
+                      isOutputNumeric
+                        ? "e.g. 99 (numeric only)"
+                        : "e.g. Unknown (any text)"
+                    }
                   />
                 </div>
               )}
