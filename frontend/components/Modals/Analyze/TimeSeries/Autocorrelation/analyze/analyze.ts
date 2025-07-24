@@ -1,4 +1,4 @@
-import init, {Autocorrelation} from '../../../../../../src/wasm/pkg/wasm.js';
+import init, {Autocorrelation} from '../../wasm/pkg/wasm.js';
 
 export async function handleAutocorrelation(
     data: (number)[], 
@@ -7,7 +7,7 @@ export async function handleAutocorrelation(
     difference: (string),
     useSeasonal: (boolean),
     seasonal: (number),
-):Promise<[string, number[], string, string, string, string]> {
+):Promise<[string, string, number[], string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -174,13 +174,14 @@ export async function handleAutocorrelation(
                             barValue: `acf`,
                             lineValue: [`bartlet left ACF`, `bartlet right ACF`],
                         },
-                        description: `Autocorellation ${dataHeader} using ${lag}`,
-                        notes: `Autocorellation ${dataHeader}`,
+                        description: `Autocorrelation ${dataHeader} using ${lag}`,
+                        notes: `Autocorrelation ${dataHeader}`,
+                        title: `Autocorrelation Function Correlogram`,
                     },
                     chartData: structureACF,
                     config: {
-                        "width": 800,
-                        "height": 600,
+                        "width": 1000,
+                        "height": 400,
                         "chartColor": ["#4682B4"],
                         "useLegend": true,
                         "useAxis": true,
@@ -217,12 +218,13 @@ export async function handleAutocorrelation(
                         },
                         description: `Autocorellation ${dataHeader} using ${lag}`,
                         notes: `Autocorellation ${dataHeader}`,
+                        title: `Partial Autocorrelation Function Correlogram`,
                     },
                     chartData: structurePACF,
                     config: {
-                        "width": 800,
-                        "height": 600,
-                        "chartColor": ["#4682B4"],
+                        "width": 1000,
+                        "height": 400,
+                        "chartColor": ["#0096FF", "#1B1212", "#1B1212"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -230,9 +232,23 @@ export async function handleAutocorrelation(
             ]
         });
 
-        return [descriptionJSON,test7,acfJSON ,pacfJSON, acfGraphicJSON, pacfGraphicJSON];
+        return ["success", descriptionJSON, test7, acfJSON, pacfJSON, acfGraphicJSON, pacfGraphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["",[0],"" ,JSON.stringify({ error: errorMessage.message }), "", ""];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON,[0], "", "", "", ""];
     }
 }

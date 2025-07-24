@@ -45,25 +45,47 @@ export function useAnalyzeHook(
         if (getHour() < 0 || getHour() > 23) {
             return "Hour must be between 0 and 23.";
         }
+        if (selectedMethod[0] === "sma" && (parameters[0] < 2 || parameters[0] > 11)) {
+            return "Simple Moving Average period must be between 2 and 11.";
+        }
+        if (selectedMethod[0] === "dma" && (parameters[0] < 2 || parameters[0] > 11)) {
+            return "Double Moving Average period must be between 2 and 11.";
+        }
+        if (selectedMethod[0] === "ses" && (parameters[0] < 0 || parameters[0] > 1)) {
+            return "Simple Exponential Smoothing alpha parameter must be between 0 and 1.";
+        }
+        if (selectedMethod[0] === "des" && (parameters[0] < 0 || parameters[0] > 1)) {
+            return "Double Exponential Smoothing alpha parameter must be between 0 and 1.";
+        }
+        if (selectedMethod[0] === "holt" && (parameters[0] < 0 || parameters[0] > 1)) {
+            return "Holt's method alpha parameter must be between 0 and 1.";
+        }
+        if (selectedMethod[0] === "holt" && (parameters[1] < 0 || parameters[1] > 1)) {
+            return "Holt's method beta parameter must be between 0 and 1.";
+        }
+        if (selectedMethod[0] === "winter" && (parameters[0] < 0 || parameters[0] > 1)) {
+            return "Winter's method alpha parameter must be between 0 and 1.";
+        }
+        if (selectedMethod[0] === "winter" && (parameters[1] < 0 || parameters[1] > 1)) {
+            return "Winter's method beta parameter must be between 0 and 1.";
+        }
+        if (selectedMethod[0] === "winter" && (parameters[2] < 0 || parameters[2] > 1)) {
+            return "Winter's method gamma parameter must be between 0 and 1.";
+        }
         return null;
     };
 
     const prepareData = () => {
         // Ambil variabel data yang dipilih user (biasanya 1 variabel)
         const dataVarDef = storeVariables[0];
-        if (!dataVarDef) {
-            throw new Error("Selected variable not found");
-        }
+        if (!dataVarDef) throw new Error("Selected variable not found");
+        if (dataVarDef.type !== "NUMERIC") throw new Error("Selected variable is not numeric");
 
         const dataValues = data.map((row: any) => {
             const val = row[dataVarDef.columnIndex];
             const num = parseFloat(val);
             return isNaN(num) ? null : num;
         }).filter((v) => v !== null);
-
-        if (dataValues.length === 0) {
-        throw new Error("No numeric data available for selected variable.");
-        }
 
         return { dataValues, dataVarDef };
     };
@@ -80,9 +102,19 @@ export function useAnalyzeHook(
 
         try {
             const { dataValues, dataVarDef } = prepareData();
-
+            if (dataValues.length === 0) {
+                throw new Error("No data available for the selected variables.");
+            }
+            if (dataValues.length < 20) {
+                throw new Error("Data length must be at least 20 observations.");
+            }
+            if (selectedMethod[0] === "dma" && dataValues.length < parameters[0] * 3) {
+                throw new Error(`Data length is too short for ${parameters[0]} Double Moving Average.`);
+            }
+            
             // Jalankan smoothing
             const [
+                resultMessage,
                 descriptionTable,
                 smoothingResult,
                 smoothingGraphic,
@@ -102,6 +134,7 @@ export function useAnalyzeHook(
 
             // Proses hasil smoothing (log, statistik, simpan variabel)
             await processSmoothingResults(
+                resultMessage,
                 descriptionTable,
                 smoothingResult,
                 smoothingGraphic,
@@ -114,53 +147,6 @@ export function useAnalyzeHook(
         } catch (ex) {
             setIsCalculating(false);
             setErrorMsg(ex instanceof Error ? ex.message : "An unknown error occurred.");
-        }
-    };
-
-    const processSmoothingResults = async (
-        descriptionTable: any,
-        smoothingResult: any[],
-        smoothingGraphic: any,
-        smoothingEvaluation: any,
-        dataVarDef: Variable
-    ) => {
-        console.log(smoothingGraphic);
-        // Buat log
-        const logMsg = `SMOOTHING: ${dataVarDef.label || dataVarDef.name} Using ${
-            selectedMethod[1]
-        } method with parameters: ${parameters.join(", ")}`;
-        const logId = await addLog({ log: logMsg });
-
-        // Buat analytic
-        const analyticId = await addAnalytic(logId, {
-            title: `Smoothing ${selectedMethod[1]}`,
-            note: "",
-        });
-
-        // Tambah statistik
-        await addStatistic(analyticId, {
-            title: `Description Table`,
-            output_data: descriptionTable,
-            components: "Description Table",
-            description: "",
-        });
-
-        await addStatistic(analyticId, {
-            title: `Smoothing Graphic`,
-            output_data: smoothingGraphic,
-            components: "Smoothing Graphic",
-            description: "",
-        });
-
-        await addStatistic(analyticId, {
-            title: "Smoothing Evaluation",
-            output_data: smoothingEvaluation,
-            components: "Smoothing Evaluation",
-            description: "",
-        });
-
-        if (saveForecasting) {
-            await saveSmoothingResultsAsVariable(smoothingResult, dataVarDef);
         }
     };
 
@@ -220,6 +206,75 @@ export function useAnalyzeHook(
 
         if (updates.length > 0) {
             await updateCells(updates);
+        }
+    };
+
+    const processSmoothingResults = async (
+        resultMessage: string,
+        descriptionTable: any,
+        smoothingResult: any[],
+        smoothingGraphic: any,
+        smoothingEvaluation: any,
+        dataVarDef: Variable
+    ) => {
+        console.log(smoothingGraphic);
+        let parameterDesc = ``;
+        switch (selectedMethod[0]) {
+            case "sma": case "dma": case "ses": case "des":
+                parameterDesc = `${parameters[0]}`;
+                break;
+            case "holt":
+                parameterDesc = `${parameters[0]}, ${parameters[1]}`;
+                break;
+            case "winter":
+                parameterDesc = `${parameters[0]}, ${parameters[1]}, ${parameters[2]}`;
+                break;
+        }
+        // Buat log
+        const logMsg = `SMOOTHING: ${dataVarDef.label || dataVarDef.name} Using ${
+            selectedMethod[1]
+        } method with parameters: ${parameterDesc}`;
+        const logId = await addLog({ log: logMsg });
+
+        // Buat analytic
+        const analyticId = await addAnalytic(logId, {
+            title: `Smoothing ${selectedMethod[1]}`,
+            note: "",
+        });
+
+        if (resultMessage === "error") {
+            await addStatistic(analyticId, {
+                title: "Smoothing Error",
+                output_data: resultMessage,
+                components: "Smoothing Error",
+                description: "Error occurred during smoothing",
+            });
+        } else {
+            // Tambah statistik
+            await addStatistic(analyticId, {
+                title: `Description Table`,
+                output_data: descriptionTable,
+                components: "Description Table",
+                description: "Description of the smoothing results",
+            });
+
+            await addStatistic(analyticId, {
+                title: `Smoothing Graphic`,
+                output_data: smoothingGraphic,
+                components: "Smoothing Graphic",
+                description: "Smoothing result graphic",
+            });
+
+            await addStatistic(analyticId, {
+                title: "Smoothing Evaluation",
+                output_data: smoothingEvaluation,
+                components: "Smoothing Evaluation",
+                description: "Smoothing evaluation results",
+            });
+
+            if (saveForecasting) {
+                await saveSmoothingResultsAsVariable(smoothingResult, dataVarDef);
+            }
         }
     };
 

@@ -43,6 +43,18 @@ export function useAnalyzeHook(
         if (getHour() < 0 || getHour() > 23) {
             return "Hour must be between 0 and 23.";
         }
+        if (arOrder < 0 || diffOrder < 0 || maOrder < 0) {
+            return "AR, differencing, and MA orders must be non-negative.";
+        }
+        if (diffOrder > 2) {
+            return "Differencing order cannot exceed 2.";
+        }
+        if (arOrder > 5) {
+            return "AR order cannot exceed 5.";
+        }
+        if (maOrder > 5) {
+            return "MA order cannot exceed 5.";
+        }
         return null;
     };
 
@@ -78,6 +90,49 @@ export function useAnalyzeHook(
         }
 
         return { dataValues, dataVarDef };
+    };
+
+    const handleAnalyzes = async () => {
+        const validationError = validateInputs();
+        if (validationError) {
+            setErrorMsg(validationError);
+            return;
+        }
+
+        setErrorMsg(null);
+        setIsCalculating(true);
+
+        try {
+            const { dataValues, dataVarDef } = prepareData();
+
+            if (dataValues.length === 0) {
+                throw new Error("No data available for the selected variable.");
+            }
+            if (dataValues.length < 20) {
+                throw new Error("Data length is less than 20 observations.");
+            }
+
+            const results = await handleBoxJenkinsModel(
+                dataValues,
+                dataVarDef.name,
+                [arOrder, diffOrder, maOrder],
+                checkedForecasting,
+                Number(selectedPeriod[0]),
+                getTypeDate(),
+                getHour(),
+                getDay(),
+                getMonth(),
+                getYear(),
+            );
+
+            await processResults(results, dataVarDef);
+
+            setIsCalculating(false);
+            onClose();
+        } catch (ex) {
+            setErrorMsg(ex instanceof Error ? ex.message : "An unknown error occurred.");
+            setIsCalculating(false);
+        }
     };
 
     const saveForecastingAsVariable = async (forecast: any[], dataVarDef: Variable) => {
@@ -117,7 +172,7 @@ export function useAnalyzeHook(
     };
 
     const processResults = async (results: any[], dataVarDef: Variable) => {
-        const [descriptionTable, test, coefficient, criteria, evaluation, forecast, graphic] = results;
+        const [resultMessage, descriptionTable, test, coefficient, criteria, evaluation, forecast, graphic] = results;
 
         const logMsg = `ARIMA(${arOrder},${diffOrder},${maOrder}) ${dataVarDef.label || dataVarDef.name}.`;
         const logId = await addLog({ log: logMsg });
@@ -126,82 +181,49 @@ export function useAnalyzeHook(
             note: "",
         });
 
-        await addStatistic(analyticId, {
-            title: "Description Table",
-            output_data: descriptionTable,
-            components: "Description Table",
-            description: "",
-        });
-        await addStatistic(analyticId, {
-            title: `Coefficient Test for ARIMA(${arOrder},${diffOrder},${maOrder})`,
-            output_data: coefficient,
-            components: `Coefficient Test for ARIMA(${arOrder},${diffOrder},${maOrder})`,
-            description: "",
-        });
-        await addStatistic(analyticId, {
-            title: `Criteria Selection for ARIMA(${arOrder},${diffOrder},${maOrder})`,
-            output_data: criteria,
-            components: `Criteria Selection for ARIMA(${arOrder},${diffOrder},${maOrder})`,
-            description: "",
-        });
-
-        if (checkedForecasting) {
+        if (resultMessage === "error") {
             await addStatistic(analyticId, {
-                title: `Graphic Forecasting for ARIMA(${arOrder},${diffOrder},${maOrder})`,
-                output_data: graphic,
-                components: `Graphic Forecasting for ARIMA(${arOrder},${diffOrder},${maOrder})`,
-                description: "",
+                title: "ARIMA Error",
+                output_data: resultMessage,
+                components: "ARIMA Error",
+                description: "An error occurred during ARIMA analysis.",
             });
-            await addStatistic(analyticId, {
-                title: `Forecasting Evaluation for ARIMA(${arOrder},${diffOrder},${maOrder})`,
-                output_data: evaluation,
-                components: `Forecasting Evaluation for ARIMA(${arOrder},${diffOrder},${maOrder})`,
-                description: "",
-            });
-            await saveForecastingAsVariable(forecast, dataVarDef);
-        }
-    };
-
-    const handleAnalyzes = async () => {
-        const validationError = validateInputs();
-        if (validationError) {
-            setErrorMsg(validationError);
             return;
-        }
+        } else {
+            await addStatistic(analyticId, {
+                title: "Description Table",
+                output_data: descriptionTable,
+                components: "Description Table",
+                description: "Description of the ARIMA results",
+            });
+            await addStatistic(analyticId, {
+                title: `Coefficient Test for ARIMA(${arOrder},${diffOrder},${maOrder})`,
+                output_data: coefficient,
+                components: `Coefficient Test for ARIMA(${arOrder},${diffOrder},${maOrder})`,
+                description: "Coefficient test results",
+            });
+            await addStatistic(analyticId, {
+                title: `Criteria Selection for ARIMA(${arOrder},${diffOrder},${maOrder})`,
+                output_data: criteria,
+                components: `Criteria Selection for ARIMA(${arOrder},${diffOrder},${maOrder})`,
+                description: "Criteria selection results",
+            });
 
-        setErrorMsg(null);
-        setIsCalculating(true);
-
-        try {
-            const { dataValues, dataVarDef } = prepareData();
-
-            if (dataValues.length === 0) {
-                throw new Error("No data available for the selected variables.");
+            if (checkedForecasting) {
+                await addStatistic(analyticId, {
+                    title: `Graphic Forecasting for ARIMA(${arOrder},${diffOrder},${maOrder})`,
+                    output_data: graphic,
+                    components: `Graphic Forecasting for ARIMA(${arOrder},${diffOrder},${maOrder})`,
+                    description: "Graphic of the forecasting results",
+                });
+                await addStatistic(analyticId, {
+                    title: `Forecasting Evaluation for ARIMA(${arOrder},${diffOrder},${maOrder})`,
+                    output_data: evaluation,
+                    components: `Forecasting Evaluation for ARIMA(${arOrder},${diffOrder},${maOrder})`,
+                    description: "Evaluation results for the forecasting",
+                });
+                await saveForecastingAsVariable(forecast, dataVarDef);
             }
-            if (dataValues.length < 20) {
-                throw new Error("Data length is less than 20 observations.");
-            }
-
-            const results = await handleBoxJenkinsModel(
-                dataValues,
-                dataVarDef.name,
-                [arOrder, diffOrder, maOrder],
-                checkedForecasting,
-                Number(selectedPeriod[0]),
-                getTypeDate(),
-                getHour(),
-                getDay(),
-                getMonth(),
-                getYear(),
-            );
-
-            await processResults(results, dataVarDef);
-
-            setIsCalculating(false);
-            onClose();
-        } catch (ex) {
-            setErrorMsg(ex instanceof Error ? ex.message : "An unknown error occurred.");
-            setIsCalculating(false);
         }
     };
 
