@@ -7,7 +7,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
 import { useOptionHook } from "@/components/Modals/Analyze/TimeSeries/Smoothing/hooks/optionHook";
-import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/timeSeriesTimeHook";
+import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeHook";
 import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/Smoothing/hooks/analyzeHook";
 import VariablesTab from "@/components/Modals/Analyze/TimeSeries/Smoothing/VariablesTab";
 import OptionTab from "@/components/Modals/Analyze/TimeSeries/Smoothing/OptionTab";

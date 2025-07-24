@@ -1,5 +1,5 @@
 import init, {Arima} from '@/components/Modals/Analyze/TimeSeries/wasm/pkg/wasm';
-import {generateDate} from '@/components/Modals/Analyze/TimeSeries/timeSeriesGenerateDate';
+import {generateDate} from '@/components/Modals/Analyze/TimeSeries/TimeSeriesGenerateDate';
 
 export async function handleBoxJenkinsModel(
     data: (number)[], 

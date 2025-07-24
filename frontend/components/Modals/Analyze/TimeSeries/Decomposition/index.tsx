@@ -7,7 +7,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
 import { useOptionHook } from "@/components/Modals/Analyze/TimeSeries/Decomposition/hooks/optionHook";
-import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/timeSeriesTimeHook";
+import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeHook";
 import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/Decomposition/hooks/analyzeHook";
 import VariablesTab from "@/components/Modals/Analyze/TimeSeries/Decomposition/VariablesTab";
 import OptionTab from "@/components/Modals/Analyze/TimeSeries/Decomposition/OptionTab";
