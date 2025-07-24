@@ -1,12 +1,12 @@
 import { ModalType, BaseModalProps } from '@/types/modalTypes';
-import { isTimeSeriesModal } from './TimeSeriesModal';
+import { isTimeSeriesModal } from '@/components/Modals/Analyze/TimeSeries/TimeSeriesModal';
 
 // Import time series modals directly from their directories
-import Smoothing from './Smoothing';
-import Decomposition from './Decomposition';
-import Autocorrelation from './Autocorrelation';
-import UnitRootTest from './UnitRootTest';
-import BoxJenkinsModel from './BoxJenkinsModel';
+import Smoothing from '@/components/Modals/Analyze/TimeSeries/Smoothing';
+import Decomposition from '@/components/Modals/Analyze/TimeSeries/Decomposition';
+import Autocorrelation from '@/components/Modals/Analyze/TimeSeries/Autocorrelation';
+import UnitRootTest from '@/components/Modals/Analyze/TimeSeries/UnitRootTest';
+import BoxJenkinsModel from '@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel';
 
 /**
  * TIME_SERIES_MODAL_COMPONENTS - Registry for time series modal components
