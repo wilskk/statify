@@ -2,7 +2,7 @@ use serde::{ Deserialize, Serialize };
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ClusteringResult {
+pub struct KMeansResult {
     pub initial_centers: Option<InitialClusterCenters>,
     pub iteration_history: Option<IterationHistory>,
     pub cluster_membership: Option<ClusterMembership>,

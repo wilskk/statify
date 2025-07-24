@@ -1,5 +1,5 @@
 use crate::models::{
-    config::ClusterConfig,
+    config::KMeansConfig,
     result::{ IterationHistory, IterationStep, ProcessedData },
 };
 
@@ -12,7 +12,7 @@ use super::core::*;
 /// iterasi terlampaui.
 pub fn generate_iteration_history(
     data: &ProcessedData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<IterationHistory, String> {
     let num_clusters = config.main.cluster as usize; // Jumlah cluster yang diinginkan.
     let max_iterations = config.iterate.maximum_iterations; // Batas maksimum iterasi.
@@ -51,7 +51,7 @@ pub fn generate_iteration_history(
             // Tahap Penugasan dan Pembaruan Inkremental
             // Setiap titik data ditugaskan dan pusat cluster langsung diperbarui.
             for case in &data.data_matrix {
-                let closest = find_closest_cluster(case, &new_centers);
+                let closest = find_nearest_cluster(case, &new_centers).0;
                 cluster_counts[closest] += 1;
                 let count = cluster_counts[closest] as f64;
 
@@ -67,11 +67,10 @@ pub fn generate_iteration_history(
             let mut changes = Vec::with_capacity(num_clusters);
             let mut max_change: f64 = 0.0;
             for i in 0..num_clusters {
-                let cluster_change = (0..data.variables.len())
-                    .map(|j| (new_centers[i][j] - old_centers_for_change_calc[i][j]).powi(2))
-                    .sum::<f64>()
-                    .sqrt();
-
+                let cluster_change = euclidean_distance(
+                    &new_centers[i],
+                    &old_centers_for_change_calc[i]
+                );
                 changes.push((format!("{}", i + 1), cluster_change));
                 max_change = max_change.max(cluster_change);
             }
@@ -104,7 +103,7 @@ pub fn generate_iteration_history(
 
             // Tahap Penugasan (Assignment Step)
             for case in &data.data_matrix {
-                let closest = find_closest_cluster(case, &current_centers);
+                let closest = find_nearest_cluster(case, &current_centers).0;
                 cluster_counts[closest] += 1;
                 for (j, &val) in case.iter().enumerate() {
                     new_centers[closest][j] += val;
@@ -132,10 +131,7 @@ pub fn generate_iteration_history(
             let mut max_change: f64 = 0.0;
 
             for i in 0..num_clusters {
-                let cluster_change = (0..data.variables.len())
-                    .map(|j| (new_centers[i][j] - current_centers[i][j]).powi(2))
-                    .sum::<f64>()
-                    .sqrt();
+                let cluster_change = euclidean_distance(&new_centers[i], &current_centers[i]);
                 changes.push((format!("{}", i + 1), cluster_change));
                 max_change = max_change.max(cluster_change);
             }

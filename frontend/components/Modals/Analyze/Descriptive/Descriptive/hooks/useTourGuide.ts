@@ -120,18 +120,27 @@ export const useTourGuide = (
   }, [clearTimeoutCallback]);
 
   const nextStep = useCallback(() => {
-    const nextStepIndex = currentStep + 1;
-    if (nextStepIndex < tourSteps.length) {
-      const step = tourSteps[currentStep];
-      if (step.forceChangeTab) {
-        const nextStep = tourSteps[nextStepIndex];
-        switchTabIfNeeded(nextStep.requiredTab);
+    setCurrentStep(prevStep => {
+      const nextStepIndex = prevStep + 1;
+
+      // If there are more steps, advance. Otherwise, end the tour.
+      if (nextStepIndex < tourSteps.length) {
+        const currentStepData = tourSteps[prevStep];
+
+        // Handle forced tab changes if required.
+        if (currentStepData?.forceChangeTab) {
+          const upcomingStep = tourSteps[nextStepIndex];
+          switchTabIfNeeded(upcomingStep.requiredTab);
+        }
+
+        return nextStepIndex;
       }
-      setCurrentStep(nextStepIndex);
-    } else {
+
+      // No more steps → end tour and keep the existing index (it will be reset to 0 by endTour).
       endTour();
-    }
-  }, [currentStep, tourSteps, switchTabIfNeeded, endTour]);
+      return prevStep;
+    });
+  }, [tourSteps, switchTabIfNeeded, endTour]);
 
   const prevStep = useCallback(() => {
     const prevStepIndex = currentStep - 1;

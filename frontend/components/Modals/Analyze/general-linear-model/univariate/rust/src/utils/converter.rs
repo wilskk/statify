@@ -6,18 +6,14 @@ use crate::models::result::{
     EMMeansResult,
     GeneralEstimableFunction,
     HeteroscedasticityTests,
+    HypothesisLMatrices,
     LackOfFitTests,
     LeveneTest,
     ParameterEstimates,
-    PlotData,
-    PostHoc,
-    RobustParameterEstimates,
     SavedVariables,
-    SpreadVsLevelPoint,
-    TestEffectEntry,
+    SourceEntry,
     UnivariateResult,
     DescriptiveStatGroup,
-    HypothesisLMatrices,
 };
 
 pub fn string_to_js_error(error: String) -> JsValue {
@@ -46,11 +42,7 @@ struct FormatResult {
     contrast_coefficients: Option<ContrastCoefficients>,
     hypothesis_l_matrices: Option<HypothesisLMatrices>,
     lack_of_fit_tests: Option<LackOfFitTests>,
-    spread_vs_level_plots: Option<FormattedSpreadVsLevelPlots>,
-    posthoc_tests: Option<PostHoc>,
     emmeans: Option<EMMeansResult>,
-    robust_parameter_estimates: Option<RobustParameterEstimates>,
-    plots: Option<Vec<FormattedPlot>>,
     saved_variables: Option<SavedVariables>,
 }
 
@@ -80,29 +72,8 @@ struct FormattedDescriptiveStatistic {
 #[derive(Serialize)]
 struct FormattedTestsBetweenSubjectsEffects {
     sources: Vec<SourceEntry>,
-    r_squared: f64,
-    adjusted_r_squared: f64,
     note: Option<String>,
     interpretation: Option<String>,
-}
-
-#[derive(Serialize)]
-struct SourceEntry {
-    name: String,
-    effect: TestEffectEntry,
-}
-
-#[derive(Serialize)]
-struct FormattedSpreadVsLevelPlots {
-    points: Vec<SpreadVsLevelPoint>,
-    note: Option<String>,
-    interpretation: Option<String>,
-}
-
-#[derive(Serialize)]
-struct FormattedPlot {
-    name: String,
-    plot_data: PlotData,
 }
 
 impl FormatResult {
@@ -147,44 +118,12 @@ impl FormatResult {
         let tests_of_between_subjects_effects = result.tests_of_between_subjects_effects
             .as_ref()
             .map(|tests| {
-                let sources = tests.source
-                    .iter()
-                    .map(|(name, effect)| {
-                        SourceEntry {
-                            name: name.clone(),
-                            effect: effect.clone(),
-                        }
-                    })
-                    .collect();
-
                 FormattedTestsBetweenSubjectsEffects {
-                    sources,
-                    r_squared: tests.r_squared,
-                    adjusted_r_squared: tests.adjusted_r_squared,
+                    sources: tests.sources.clone(),
                     note: tests.note.clone(),
                     interpretation: tests.interpretation.clone(),
                 }
             });
-
-        let spread_vs_level_plots = result.spread_vs_level_plots.as_ref().map(|plots| {
-            FormattedSpreadVsLevelPlots {
-                points: plots.points.clone(),
-                note: plots.note.clone(),
-                interpretation: plots.interpretation.clone(),
-            }
-        });
-
-        let plots = result.plots.as_ref().map(|plots| {
-            plots
-                .iter()
-                .map(|(name, plot_data)| {
-                    FormattedPlot {
-                        name: name.clone(),
-                        plot_data: plot_data.clone(),
-                    }
-                })
-                .collect()
-        });
 
         FormatResult {
             between_subjects_factors,
@@ -197,11 +136,7 @@ impl FormatResult {
             contrast_coefficients: result.contrast_coefficients.clone(),
             hypothesis_l_matrices: result.hypothesis_l_matrices.clone(),
             lack_of_fit_tests: result.lack_of_fit_tests.clone(),
-            spread_vs_level_plots,
-            posthoc_tests: result.posthoc_tests.clone(),
             emmeans: result.emmeans.clone(),
-            robust_parameter_estimates: result.robust_parameter_estimates.clone(),
-            plots,
             saved_variables: result.saved_variables.clone(),
         }
     }

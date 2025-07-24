@@ -18,7 +18,7 @@ interface FormidableFile {
  * @param variable The variable object from the request body.
  * @returns A transformed variable object.
  */
-const transformVariable = (variable: any) => {
+export const transformVariable = (variable: any) => {
     let type: number;
     if (variable.type === "STRING") {
         type = VariableType.String;
@@ -89,7 +89,7 @@ const transformVariable = (variable: any) => {
  * @param transformedVariables The array of fully transformed variable definitions.
  * @returns A processed data record.
  */
-const transformRecord = (record: any, transformedVariables: any[]) => {
+export const transformRecord = (record: any, transformedVariables: any[]) => {
     const result: Record<string, any> = {};
 
     for (const varName of Object.keys(record)) {
@@ -122,7 +122,22 @@ const transformRecord = (record: any, transformedVariables: any[]) => {
 };
 
 export const uploadSavFile = (req: Request, res: Response) => {
-    const form = formidable({ multiples: false });
+    const form = formidable({
+        multiples: false,
+        // Limit file size (default 10 MB, configurable via env)
+        maxFileSize: Number(process.env.MAX_UPLOAD_SIZE_MB || '10') * 1024 * 1024,
+        /**
+         * Only accept files that (a) have `.sav` extension and (b) match the expected mimetype.
+         * Formidable v3 passes each part to this filter before writing to disk.
+         */
+        filter: ({ originalFilename, mimetype }: any) => {
+            if (!originalFilename) return false;
+            const ext = path.extname(originalFilename).toLowerCase();
+            const allowedMimes = ['application/octet-stream', 'application/x-spss-sav'];
+            const mimeOk = !mimetype || allowedMimes.includes(mimetype);
+            return ext === '.sav' && mimeOk;
+        }
+    });
 
     form.parse(req, async (err, fields, files) => {
         if (err) {
@@ -206,7 +221,7 @@ export const createSavFile = (req: Request, res: Response) => {
         const transformedVariables = filteredVariables.map(transformVariable);
         const transformedData = data.map((record: any) => transformRecord(record, transformedVariables));
 
-        const outputDir = path.join(__dirname, '../../temp');
+        const outputDir = process.env.TEMP_DIR ? path.resolve(process.env.TEMP_DIR) : path.join(__dirname, '../../temp');
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
         }
@@ -268,7 +283,7 @@ export const createSavFile = (req: Request, res: Response) => {
 };
 
 export const cleanupTempFiles = () => {
-    const outputDir = path.join(__dirname, '../../temp');
+    const outputDir = process.env.TEMP_DIR ? path.resolve(process.env.TEMP_DIR) : path.join(__dirname, '../../temp');
     if (fs.existsSync(outputDir)) {
         const files = fs.readdirSync(outputDir);
         const now = Date.now();

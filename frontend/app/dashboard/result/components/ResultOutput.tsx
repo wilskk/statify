@@ -14,12 +14,11 @@ const TiptapEditor = dynamic(
     ),
   }
 );
-import { Edit } from "lucide-react";
+import { Edit, ChevronDown, ChevronUp } from "lucide-react";
 import TextRenderer from "@/components/Output/text/text-renderer";
 
 const ResultOutput: React.FC = () => {
   const { logs, updateStatistic } = useResultStore();
-  console.log("ResultOutput rendering with logs:", logs);
 
   const [editingDescriptionId, setEditingDescriptionId] = useState<
     number | null
@@ -29,12 +28,21 @@ const ResultOutput: React.FC = () => {
   >({});
   const [saveStatus, setSaveStatus] = useState<Record<number, string>>({});
 
+  // Track which tables are expanded to full height
+  const [expandedTables, setExpandedTables] = useState<Record<number, boolean>>({});
+
+  const toggleTable = (statId: number) => {
+    setExpandedTables((prev) => ({
+      ...prev,
+      [statId]: !prev[statId],
+    }));
+  };
+
   // Effect to load results when component mounts
   useEffect(() => {
     const loadResults = async () => {
       try {
         await useResultStore.getState().loadResults();
-        console.log("Results loaded successfully");
       } catch (error) {
         console.error("Failed to load results:", error);
       }
@@ -60,7 +68,7 @@ const ResultOutput: React.FC = () => {
   }, [logs]); // Rerunning when logs change ensures we can scroll to new content
 
   const handleDescriptionChange = (statId: number, value: string) => {
-    // Hanya hapus spasi kosong berlebih di awal/akhir, biarkan paragraf kosong untuk jeda baris
+    // Trim leading/trailing whitespace but keep empty paragraphs for line breaks
     const trimmed = value.trim();
 
     setDescriptionValues((prev) => ({
@@ -74,11 +82,11 @@ const ResultOutput: React.FC = () => {
       const description = descriptionValues[statId];
       if (description !== undefined) {
         setSaveStatus((prev) => ({ ...prev, [statId]: "saving" }));
-        // Simpan ke database
+        // Save to database
         await updateStatistic(statId, { description });
-        // Update status
+        // Update status flag
         setSaveStatus((prev) => ({ ...prev, [statId]: "saved" }));
-        // Reset status dan mode edit setelah beberapa detik
+        // Reset status and exit edit mode after a short delay
         setTimeout(() => {
           setSaveStatus((prev) => ({ ...prev, [statId]: "" }));
           setEditingDescriptionId(null);
@@ -162,7 +170,6 @@ const ResultOutput: React.FC = () => {
                                     typeof stat.output_data === "string"
                                       ? JSON.parse(stat.output_data)
                                       : stat.output_data;
-                                  console.log("ParsedData", parsedData);
                                 } catch (error) {
                                   console.error(
                                     "Failed to parse output_data:",
@@ -170,17 +177,49 @@ const ResultOutput: React.FC = () => {
                                   );
                                   return (
                                     <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
-                                      Data tidak valid: Format JSON tidak sesuai
+                                      Invalid data: JSON format is incorrect
                                     </div>
                                   );
                                 }
 
                                 if (parsedData.tables) {
+                                  const isExpandedTable = expandedTables[statId] || false;
+
+                                  // Determine if the rendered table is "long" enough to warrant a toggle (simple heuristic)
+                                  const isLongTable = parsedData.tables.some(
+                                    (tbl: any) => (tbl.rows?.length || 0) > 15
+                                  );
+
                                   return (
-                                    <div className="overflow-x-auto pb-2">
-                                      <DataTableRenderer
-                                        data={stat.output_data}
-                                      />
+                                    <div>
+                                      <div
+                                        className={`${
+                                          !isExpandedTable && isLongTable
+                                            ? "max-h-[500px] overflow-hidden"
+                                            : ""
+                                        } overflow-x-auto pb-2`}
+                                      >
+                                        <DataTableRenderer data={stat.output_data} />
+                                      </div>
+                                      {isLongTable && (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleTable(statId)}
+                                          className="mt-2 text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                                        >
+                                          {isExpandedTable ? (
+                                            <>
+                                              <ChevronUp className="h-3 w-3" />
+                                              Show Less
+                                            </>
+                                          ) : (
+                                            <>
+                                              <ChevronDown className="h-3 w-3" />
+                                              Show Full
+                                            </>
+                                          )}
+                                        </button>
+                                      )}
                                     </div>
                                   );
                                 } else if (parsedData.charts) {
@@ -196,7 +235,7 @@ const ResultOutput: React.FC = () => {
                                 } else {
                                   return (
                                     <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
-                                      Data tidak valid: Format tidak dikenali
+                                      Invalid data: Unrecognized format
                                     </div>
                                   );
                                 }
@@ -205,7 +244,7 @@ const ResultOutput: React.FC = () => {
                             <div className="mt-4 mb-10 relative">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="text-xs font-medium text-muted-foreground">
-                                  Deskripsi
+                                  Description
                                 </div>
                                 {!isEditing ? (
                                   <button
@@ -225,17 +264,17 @@ const ResultOutput: React.FC = () => {
                                   <div className="text-xs">
                                     {status === "saving" && (
                                       <span className="text-yellow-500">
-                                        Menyimpan...
+                                        Saving...
                                       </span>
                                     )}
                                     {status === "saved" && (
                                       <span className="text-green-500">
-                                        Tersimpan!
+                                        Saved!
                                       </span>
                                     )}
                                     {status === "error" && (
                                       <span className="text-red-500">
-                                        Gagal menyimpan
+                                        Failed to save
                                       </span>
                                     )}
                                   </div>
@@ -256,7 +295,7 @@ const ResultOutput: React.FC = () => {
                                     ? () => handleSaveDescription(statId)
                                     : undefined
                                 }
-                                placeholder="Tulis deskripsi statistik di sini..."
+                                placeholder="Write description here..."
                                 id={`editor-${statId}`}
                               />
                             </div>

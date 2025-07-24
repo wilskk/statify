@@ -2,4 +2,7 @@ export * from './GettingStarted';
 export * from './FAQ';
 export * from './Feedback';
 export * from './HelpContent';
+export * from './HelpContentWrapper';
 export * from './statistics-guide';
+export * from './file-guide';
+export * from './data-guide';

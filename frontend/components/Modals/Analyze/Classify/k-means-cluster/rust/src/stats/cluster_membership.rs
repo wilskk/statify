@@ -1,5 +1,5 @@
 use crate::models::{
-    config::ClusterConfig,
+    config::KMeansConfig,
     result::{ ClusterMembership, ProcessedData, ClusterMembershipData },
 };
 
@@ -11,7 +11,7 @@ use super::core::*;
 /// setiap titik data ke cluster terdekat berdasarkan pusat cluster final yang telah dihitung.
 pub fn generate_cluster_membership(
     data: &ProcessedData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<ClusterMembership, String> {
     // Menghitung pusat cluster final menggunakan algoritma K-Means hingga konvergen.
     let final_centers_result = generate_final_cluster_centers(data, config)?;

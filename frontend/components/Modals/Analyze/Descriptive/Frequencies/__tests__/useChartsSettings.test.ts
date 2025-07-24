@@ -1,6 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
 import { useChartsSettings } from '../hooks/useChartsSettings';
-import type { ChartOptions } from '../types';
 
 describe('useChartsSettings', () => {
   it('should initialize with default values', () => {
@@ -10,32 +9,58 @@ describe('useChartsSettings', () => {
     expect(result.current.chartType).toBe('none');
     expect(result.current.chartValues).toBe('frequencies');
     expect(result.current.showNormalCurve).toBe(false);
+    expect(result.current.getCurrentChartOptions()).toBeNull();
   });
 
-  it('should initialize with provided initial values', () => {
-    const { result } = renderHook(() => useChartsSettings({
-      initialShowCharts: true,
-      initialChartType: 'barCharts',
-      initialChartValues: 'percentages',
-    }));
+  it('should accept custom initial values', () => {
+    const { result } = renderHook(() =>
+      useChartsSettings({
+        initialShowCharts: true,
+        initialChartType: 'barCharts',
+        initialChartValues: 'percentages',
+        initialShowNormalCurve: true,
+      })
+    );
 
     expect(result.current.showCharts).toBe(true);
     expect(result.current.chartType).toBe('barCharts');
     expect(result.current.chartValues).toBe('percentages');
+    expect(result.current.showNormalCurve).toBe(true);
+
+    // getCurrentChartOptions should mirror the current state
+    expect(result.current.getCurrentChartOptions()).toEqual({
+      type: 'barCharts',
+      values: 'percentages',
+      showNormalCurveOnHistogram: false,
+    });
   });
 
-  it('should update chart type', () => {
+  it('should update state setters and compute options correctly', () => {
     const { result } = renderHook(() => useChartsSettings());
 
     act(() => {
-      result.current.setChartType('pieCharts');
+      result.current.setShowCharts(true);
+      result.current.setChartType('histograms');
+      result.current.setChartValues('percentages');
+      result.current.setShowNormalCurve(true);
     });
 
-    expect(result.current.chartType).toBe('pieCharts');
+    expect(result.current.showCharts).toBe(true);
+    expect(result.current.chartType).toBe('histograms');
+    expect(result.current.chartValues).toBe('percentages');
+    expect(result.current.showNormalCurve).toBe(true);
+
+    expect(result.current.getCurrentChartOptions()).toEqual({
+      type: 'histograms',
+      values: 'percentages',
+      showNormalCurveOnHistogram: true,
+    });
   });
 
-  it('should reset settings to default', () => {
-    const { result } = renderHook(() => useChartsSettings({ initialShowCharts: true, initialChartType: 'histograms' }));
+  it('should reset to default values', () => {
+    const { result } = renderHook(() =>
+      useChartsSettings({ initialShowCharts: true, initialChartType: 'pieCharts' })
+    );
 
     act(() => {
       result.current.resetChartsSettings();
@@ -43,54 +68,8 @@ describe('useChartsSettings', () => {
 
     expect(result.current.showCharts).toBe(false);
     expect(result.current.chartType).toBe('none');
-  });
-
-  it('should return null from getCurrentChartOptions when showCharts is false', () => {
-    const { result } = renderHook(() => useChartsSettings({ initialShowCharts: false }));
-    const options = result.current.getCurrentChartOptions();
-    expect(options).toBeNull();
-  });
-
-  it('should return correct options from getCurrentChartOptions when showCharts is true', () => {
-    const { result } = renderHook(() => useChartsSettings({ initialShowCharts: true }));
-
-    act(() => {
-      result.current.setChartType('barCharts');
-      result.current.setChartValues('percentages');
-    });
-
-    const options = result.current.getCurrentChartOptions();
-    
-    expect(options).toEqual<ChartOptions>({
-      type: 'barCharts',
-      values: 'percentages',
-      showNormalCurveOnHistogram: false,
-    });
-  });
-
-  it('should correctly handle the normal curve option for histograms', () => {
-    const { result } = renderHook(() => useChartsSettings({ initialShowCharts: true }));
-
-    act(() => {
-      result.current.setChartType('histograms');
-      result.current.setShowNormalCurve(true);
-    });
-
-    const options = result.current.getCurrentChartOptions();
-    expect(options?.showNormalCurveOnHistogram).toBe(true);
-
-    // Should be false for other chart types
-    act(() => {
-      result.current.setChartType('barCharts');
-    });
-
-    const options2 = result.current.getCurrentChartOptions();
-    expect(options2?.showNormalCurveOnHistogram).toBe(false);
-  });
-  
-  it('should return null for chart type if "none" is selected', () => {
-    const { result } = renderHook(() => useChartsSettings({ initialShowCharts: true, initialChartType: 'none' }));
-    const options = result.current.getCurrentChartOptions();
-    expect(options?.type).toBeNull();
+    expect(result.current.chartValues).toBe('frequencies');
+    expect(result.current.showNormalCurve).toBe(false);
+    expect(result.current.getCurrentChartOptions()).toBeNull();
   });
 }); 

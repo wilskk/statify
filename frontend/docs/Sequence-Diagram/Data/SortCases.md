@@ -42,10 +42,8 @@ sequenceDiagram
     UI->>+Hook: handleOk()
     Hook->>Hook: performSort()
 
-    loop untuk setiap konfigurasi di sortByConfigs
-        Hook->>+DataStore: sortData(columnIndex, direction)
-        deactivate DataStore
-    end
+    Hook->>+DataStore: setData(sortedDataArray)
+    deactivate DataStore
 
     deactivate Hook
     Hook->>UI: onClose()

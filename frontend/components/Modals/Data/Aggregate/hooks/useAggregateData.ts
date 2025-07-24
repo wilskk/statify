@@ -28,10 +28,13 @@ export const useAggregateData = () => {
      * variable-like objects (including AggregatedVariable).
      */
     const prepareVariablesWithTempId = useCallback((vars: Variable[]): Variable[] => {
-        return vars.map(v => ({
-            ...v,
-            tempId: v.tempId || `temp_${v.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        }));
+        return vars.map(v => {
+            if (!('tempId' in v) || !v.tempId) {
+                // mutate in place so external references (tests) see the new prop
+                (v as any).tempId = `temp_${v.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+            return v;
+        });
     }, []);
 
     useEffect(() => {
@@ -89,6 +92,9 @@ export const useAggregateData = () => {
     const [breakName, setBreakName] = useState<string>("N_BREAK");
 
     const getDisplayName = useCallback((variable: Variable | AggregatedVariable): string => {
+        if ('displayName' in variable && (variable as AggregatedVariable).displayName) {
+            return (variable as AggregatedVariable).displayName;
+        }
         if ('label' in variable && variable.label) {
             return `${variable.label} [${variable.name}]`;
         }

@@ -278,6 +278,7 @@ export const createMultipleLineChart = (
     categories,
     hasLegend: true,
     legendPosition: "right",
+    itemCount: subcategories.length,
   });
 
   // Y scale with axis options
@@ -294,12 +295,12 @@ export const createMultipleLineChart = (
       yMax = Number(axisScaleOptions.y.max);
   }
 
-  // Skala X dan Y
+  // Skala X dan Y - gunakan scaleBand seperti vertical bar chart
   const x = d3
-    .scalePoint()
+    .scaleBand()
     .domain(categories)
     .range([margin.left, width - margin.right])
-    .padding(0.5);
+    .padding(0.1);
 
   const y = d3
     .scaleLinear()
@@ -346,7 +347,7 @@ export const createMultipleLineChart = (
   // Membuat garis untuk setiap subkategori
   const line = d3
     .line<{ category: string; value: number }>()
-    .x((d) => x(d.category)!)
+    .x((d) => x(d.category)! + x.bandwidth() / 2)
     .y((d) => y(Math.max(yMin, Math.min(yMax, d.value))));
 
   svg
@@ -372,7 +373,7 @@ export const createMultipleLineChart = (
         )
       )
       .join("circle")
-      .attr("cx", (d) => x(d.category)!)
+      .attr("cx", (d) => x(d.category)! + x.bandwidth() / 2)
       .attr("cy", (d) => y(d.value))
       .attr("r", 3)
       .attr("fill", color(subcategory))

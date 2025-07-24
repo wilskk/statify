@@ -16,10 +16,6 @@ pub fn run_analysis(
 ) -> Result<Option<UnivariateResult>, JsValue> {
     web_sys::console::log_1(&"Starting univariate analysis".into());
 
-    // Mencatat konfigurasi dan data untuk melacak metode yang akan dieksekusi dan data yang diproses.
-    web_sys::console::log_1(&format!("Config: {:?}", config).into());
-    web_sys::console::log_1(&format!("Data: {:?}", data).into());
-
     // Langkah 1: Ringkasan pemrosesan dasar (selalu dieksekusi).
     // Fungsi ini memberikan informasi awal tentang data, seperti jumlah kasus yang valid dan hilang.
     logger.add_log("basic_processing_summary");
@@ -168,54 +164,6 @@ pub fn run_analysis(
         }
     }
 
-    // Langkah 10: Plot Sebaran vs Tingkat (Spread-vs-Level) jika diminta.
-    // Plot ini digunakan untuk memeriksa asumsi homogenitas varians secara visual
-    // dengan memplot log dari standar deviasi terhadap log dari rata-rata.
-    let mut spread_vs_level_plots = None;
-    if config.options.spr_vs_level {
-        logger.add_log("calculate_spread_vs_level_plots");
-        match core::calculate_spread_vs_level_plots(&data, config) {
-            Ok(plots) => {
-                spread_vs_level_plots = Some(plots);
-            }
-            Err(e) => {
-                error_collector.add_error("Run Analysis : Spread-vs-Level Plots", &e);
-            }
-        }
-    }
-
-    // Langkah 11: Analisis Bootstrap jika diminta.
-    // Bootstrap adalah metode resampling untuk mengestimasi distribusi statistik sampel
-    // dan menghasilkan interval kepercayaan yang lebih robust.
-    if config.bootstrap.perform_boot_strapping {
-        logger.add_log("perform_bootstrap_analysis");
-        match core::perform_bootstrap_analysis(&data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("Run Analysis : Bootstrap Analysis", &e);
-            }
-        }
-    }
-
-    // Langkah 12: Uji Post-Hoc jika diminta.
-    // Dilakukan setelah ANOVA menunjukkan hasil signifikan, untuk mengetahui
-    // kelompok mana yang secara spesifik berbeda satu sama lain.
-    let mut posthoc_tests = None;
-    if
-        config.posthoc.fix_factor_vars.is_some() &&
-        !config.posthoc.fix_factor_vars.as_ref().unwrap().is_empty()
-    {
-        logger.add_log("calculate_posthoc_tests");
-        match core::calculate_posthoc_tests(&data, config) {
-            Ok(tests) => {
-                posthoc_tests = Some(tests);
-            }
-            Err(e) => {
-                error_collector.add_error("Run Analysis : Post-Hoc Tests", &e);
-            }
-        }
-    }
-
     // Langkah 13: Rata-rata Marginal Estimasi (EMMeans) jika diminta.
     // Menghitung rata-rata kelompok yang disesuaikan dengan efek kovariat lain,
     // memberikan perbandingan yang lebih adil antar kelompok.
@@ -232,38 +180,7 @@ pub fn run_analysis(
         }
     }
 
-    // Langkah 14: Estimasi Parameter dengan Standard Error Robust jika diminta.
-    // Memberikan estimasi parameter yang lebih andal ketika asumsi homoskedastisitas dilanggar.
-    let mut robust_parameter_estimates = None;
-    if config.options.param_est_rob_std_err {
-        logger.add_log("calculate_robust_parameter_estimates");
-        match core::calculate_robust_parameter_estimates(&data, config) {
-            Ok(estimates) => {
-                robust_parameter_estimates = Some(estimates);
-            }
-            Err(e) => {
-                error_collector.add_error("Run Analysis : Robust Parameter Estimates", &e);
-            }
-        }
-    }
-
-    // Langkah 15: Membuat plot jika diminta.
-    // Memvisualisasikan hasil analisis, seperti plot interaksi atau plot profil,
-    // untuk mempermudah interpretasi.
-    let mut plots = None;
-    if config.plots.fix_factor_vars.as_ref().map_or(false, |v| !v.is_empty()) {
-        logger.add_log("generate_plots");
-        match core::generate_plots(&data, config) {
-            Ok(plot_data) => {
-                plots = Some(plot_data);
-            }
-            Err(e) => {
-                error_collector.add_error("Run Analysis : Plots", &e);
-            }
-        }
-    }
-
-    // Langkah 16: Menyimpan variabel baru jika diminta.
+    // Langkah 14: Menyimpan variabel baru jika diminta.
     // Menyimpan hasil perhitungan seperti residual, nilai prediksi, atau leverage
     // sebagai variabel baru untuk analisis lebih lanjut.
     let mut saved_variables = None;
@@ -289,7 +206,7 @@ pub fn run_analysis(
         }
     }
 
-    // Langkah 17: Menghitung fungsi estimable umum.
+    // Langkah 15: Menghitung fungsi estimable umum.
     // Memungkinkan pengujian hipotesis linier kustom yang tidak tersedia secara default.
     let mut general_estimable_function = None;
     if config.options.general_fun {
@@ -316,11 +233,7 @@ pub fn run_analysis(
         hypothesis_l_matrices,
         contrast_coefficients,
         lack_of_fit_tests,
-        spread_vs_level_plots,
-        posthoc_tests,
         emmeans,
-        robust_parameter_estimates,
-        plots,
         saved_variables,
     };
 

@@ -9,6 +9,11 @@
  */
 /* global importScripts, isNumeric, checkIsMissing */
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
+// Helper function to round numeric values according to the variable's decimals setting
+function roundToDecimals(number, decimals) {
+    if (typeof number !== 'number' || isNaN(number) || !isFinite(number)) return number;
+    return parseFloat(number.toFixed(decimals));
+}
 
 class DescriptiveCalculator {
     /**
@@ -219,27 +224,30 @@ class DescriptiveCalculator {
                 return (parseFloat(value) - stats.mean) / stats.stdDev;
             });
         }
+        const statsObj = {
+            N: stats.n,
+            Valid: stats.valid,
+            Missing: stats.missing,
+            Mean: stats.mean,
+            Sum: stats.sum,
+            StdDev: stats.stdDev,
+            Variance: stats.variance,
+            SEMean: stats.seMean,
+            Minimum: stats.min,
+            Maximum: stats.max,
+            Range: stats.range,
+            Skewness: stats.skewness,
+            SESkewness: stats.seSkewness,
+            Kurtosis: stats.kurtosis,
+            SEKurtosis: stats.seKurtosis,
+            Median: median,
+        };
+
+        // Rounding handled at worker layer for display; keep raw values here
 
         return {
             variable: this.variable,
-            stats: {
-                N: stats.n,
-                Valid: stats.valid,
-                Missing: stats.missing,
-                Mean: stats.mean,
-                Sum: stats.sum,
-                StdDev: stats.stdDev,
-                Variance: stats.variance,
-                SEMean: stats.seMean,
-                Minimum: stats.min,
-                Maximum: stats.max,
-                Range: stats.range,
-                Skewness: stats.skewness,
-                SESkewness: stats.seSkewness,
-                Kurtosis: stats.kurtosis,
-                SEKurtosis: stats.seKurtosis,
-                Median: median,
-            },
+            stats: statsObj,
             zScores: zScores,
         };
     }

@@ -1,9 +1,9 @@
 import type { ComponentType } from "react";
 import { ModalType, BaseModalProps } from "@/types/modalTypes";
-
-// Import transform modal components
-import { RecodeSameVariablesModal } from "./recodeSameVariables";
-import RecodeDifferentVariablesModal from "./recodeDifferentVariables";
+import {
+  RecodeSameVariablesModal,
+  RecodeDifferentVariablesModal,
+} from "./recode";
 import ComputeVariableModal from "./ComputeVariable/ComputeVariableModal";
 
 /**

@@ -4,7 +4,7 @@ import type { TourStep } from './hooks/useTourGuide';
 import type { Dispatch, SetStateAction } from 'react';
 import { useUnusualCases } from './hooks/useUnusualCases';
 
-export type TabType = 'variables' | 'options' | 'output' | 'save' | 'missing';
+export type TabType = 'variables' | 'options';
 
 export interface IdentifyUnusualCasesProps {
     onClose: () => void;

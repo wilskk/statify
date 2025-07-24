@@ -1,5 +1,5 @@
 use crate::models::{
-    config::ClusterConfig,
+    config::KMeansConfig,
     data::{ AnalysisData, DataValue },
     result::ProcessedData,
 };
@@ -8,7 +8,7 @@ use crate::models::{
 /// Proses ini mencakup pemilihan variabel, penanganan data yang hilang (missing values), dan transformasi data ke format matriks.
 pub fn preprocess_data(
     data: &AnalysisData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<ProcessedData, String> {
     // --- Penentuan Variabel ---
     // Menentukan variabel yang akan digunakan untuk klastering berdasarkan `target_var` dari konfigurasi.
@@ -35,7 +35,6 @@ pub fn preprocess_data(
     // Menentukan metode eksklusi data yang hilang berdasarkan konfigurasi.
     // `exclude_list_wise`: Jika satu nilai saja hilang, seluruh kasus (baris) akan dihapus.
     // `exclude_pair_wise`: Kasus tetap disertakan, perhitungan hanya dilakukan pada variabel yang lengkap.
-    // Metode list-wise menjadi prioritas jika kedua opsi diaktifkan.
     let use_list_wise = config.options.exclude_list_wise;
     let use_pair_wise = config.options.exclude_pair_wise;
 
@@ -44,7 +43,7 @@ pub fn preprocess_data(
     for case_idx in 0..num_cases {
         let mut row = Vec::with_capacity(variables.len());
         let mut has_missing = false;
-        let mut complete_variables = Vec::new();
+        let mut non_missing_count = 0;
 
         // Untuk setiap variabel yang telah ditentukan, cari nilainya di semua dataset.
         for var in &variables {
@@ -52,21 +51,35 @@ pub fn preprocess_data(
 
             for dataset in &data.target_data {
                 if case_idx < dataset.len() {
-                    if let Some(DataValue::Number(val)) = dataset[case_idx].values.get(var) {
-                        row.push(*val);
-                        complete_variables.push(var.clone());
-                        var_found = true;
-                        break; // Lanjut ke variabel berikutnya setelah nilai ditemukan.
+                    if let Some(value) = dataset[case_idx].values.get(var) {
+                        let numeric_value = match value {
+                            DataValue::Number(v) => Some(*v as f64),
+                            DataValue::NumberFloat(v) => Some(*v),
+                            DataValue::Currency(v) => Some(*v),
+                            DataValue::Scientific(v) => Some(*v),
+                            DataValue::Percentage(v) => Some(*v),
+                            _ => None,
+                        };
+
+                        if let Some(val) = numeric_value {
+                            row.push(val);
+                            non_missing_count += 1;
+                            var_found = true;
+                            break; // Lanjut ke variabel berikutnya setelah nilai ditemukan
+                        }
                     }
                 }
             }
 
-            // Jika variabel tidak ditemukan atau bukan numerik, tandai sebagai data hilang.
+            // Jika variabel tidak ditemukan atau bukan numerik, tangani sesuai metode.
             if !var_found {
                 has_missing = true;
                 if use_list_wise {
-                    // Jika menggunakan list-wise, hentikan pemrosesan baris ini dan lanjut ke kasus berikutnya.
+                    // Jika menggunakan list-wise, hentikan pemrosesan baris ini.
                     break;
+                } else if use_pair_wise {
+                    // Untuk pairwise, tambahkan NaN agar matriks tetap rectangular.
+                    row.push(f64::NAN);
                 }
             }
         }
@@ -74,14 +87,13 @@ pub fn preprocess_data(
         // --- Memasukkan Data ke Matriks Berdasarkan Metode Eksklusi ---
         if use_list_wise {
             // List-wise: Hanya kasus yang lengkap (tanpa data hilang) yang dimasukkan.
-            if !has_missing && row.len() == variables.len() {
+            if !has_missing {
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
             }
         } else if use_pair_wise {
-            // Pair-wise: Kasus dimasukkan jika memiliki setidaknya satu variabel yang valid.
-            // `row` hanya akan berisi nilai dari variabel yang tidak hilang.
-            if !complete_variables.is_empty() {
+            // Pair-wise: Kasus hanya dihapus jika semua variabelnya hilang.
+            if non_missing_count > 0 {
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
             }
@@ -107,13 +119,20 @@ pub fn preprocess_data(
             for dataset in &data.case_data {
                 if idx < dataset.len() {
                     if let Some(value) = dataset[idx].values.get(case_target) {
-                        // Konversi nilai (teks, angka, boolean) menjadi string.
-                        name = match value {
-                            DataValue::Text(text) => Some(text.clone()),
-                            DataValue::Number(num) => Some(num.to_string()),
-                            DataValue::Boolean(b) => Some(b.to_string()),
-                            _ => None,
-                        };
+                        // Konversi nilai (teks, angka, boolean, dll.) menjadi string.
+                        name = Some(match value {
+                            DataValue::Text(text) => text.clone(),
+                            DataValue::Number(num) => num.to_string(),
+                            DataValue::NumberFloat(num) => num.to_string(),
+                            DataValue::Boolean(b) => b.to_string(),
+                            DataValue::Date(d) => d.clone(),
+                            DataValue::DateTime(dt) => dt.clone(),
+                            DataValue::Time(t) => t.clone(),
+                            DataValue::Currency(c) => c.to_string(),
+                            DataValue::Scientific(s) => s.to_string(),
+                            DataValue::Percentage(p) => p.to_string(),
+                            DataValue::Null => String::new(),
+                        });
                         if name.is_some() {
                             break;
                         }

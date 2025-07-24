@@ -25,21 +25,24 @@ jest.mock('../components/StatisticsTab', () => ({
 }));
 
 // Mock Radix compose-refs to no-op to avoid nested state update loops during tests
-jest.mock('@radix-ui/react-compose-refs', () => ({
-  __esModule: true,
-  default: (...refs: any[]) => {
-    return (node: any) => {
-      refs.forEach((ref) => {
-        if (typeof ref === 'function') {
-          ref(node);
-        } else if (ref) {
-          // eslint-disable-next-line no-param-reassign
-          (ref as { current: any }).current = node;
-        }
-      });
-    };
-  },
-}));
+jest.mock('@radix-ui/react-compose-refs', () => {
+  const compose = (...refs: any[]) => (node: any) => {
+    refs.forEach((ref) => {
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        // eslint-disable-next-line no-param-reassign
+        (ref as { current: any }).current = node;
+      }
+    });
+  };
+  return {
+    __esModule: true,
+    default: compose,
+    useComposedRefs: compose,
+    composeRefs: compose,
+  };
+});
 
 // Type-safe casting for mocked hooks
 const mockedUseVariableSelection = useVariableSelection as jest.Mock;

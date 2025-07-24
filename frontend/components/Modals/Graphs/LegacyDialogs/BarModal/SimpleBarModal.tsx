@@ -17,7 +17,10 @@ interface SimpleBarModalProps {
   containerType?: "dialog" | "sidebar";
 }
 
-const SimpleBarModal: React.FC<SimpleBarModalProps> = ({ onClose, containerType = "dialog" }) => {
+const SimpleBarModal: React.FC<SimpleBarModalProps> = ({
+  onClose,
+  containerType = "dialog",
+}) => {
   const [selectedBarOption, setSelectedBarOption] = useState<string>(""); // Opsi Bar
   const [selectedVariable, setSelectedVariable] = useState<string>(""); // Variabel yang dipilih
   const [barRepresentVariable, setBarRepresentVariable] = useState<string>(""); // Variable untuk Bars Represent
@@ -186,9 +189,7 @@ const SimpleBarModal: React.FC<SimpleBarModalProps> = ({ onClose, containerType 
                 {categoryAxis ? (
                   <div
                     className={`flex items-center justify-between px-2 py-1 rounded-md cursor-pointer ${
-                      highlightedVariable === categoryAxis
-                        ? "bg-blue-100"
-                        : ""
+                      highlightedVariable === categoryAxis ? "bg-blue-100" : ""
                     }`}
                     onClick={() => {
                       setCategoryAxis(""); // Hapus Category Axis jika diklik
@@ -316,7 +317,7 @@ const SimpleBarModal: React.FC<SimpleBarModalProps> = ({ onClose, containerType 
       <Button variant="outline" onClick={onClose}>
         Cancel
       </Button>
-      <Button disabled={!selectedBarOption} onClick={() => alert("OK")}>
+      <Button disabled={!selectedBarOption} onClick={onClose}>
         OK
       </Button>
     </>

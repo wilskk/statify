@@ -1,3 +1,190 @@
+/**
+ * DataProcessingService - Service untuk memproses raw data menjadi format yang sesuai untuk chart
+ *
+ * ============================================================================
+ * DOKUMENTASI PENGGUNAAN SPESIFIK
+ * ============================================================================
+ *
+ * 1. Q-Q PLOT
+ * =================
+ *
+ * // Raw data dari CSV/SPSS (format: rows = cases, columns = variables)
+ * const rawData = [
+ *   [1, 2.1, 3.5, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2], // Case 1: NN values
+ *   [2, 3.8, 4.1, 5.3, 6.2, 7.1, 8.5, 9.2, 10.1, 11.3], // Case 2: NN values
+ *   [3, 4.5, 5.2, 6.1, 7.3, 8.2, 9.1, 10.5, 11.2, 12.1]  // Case 3: NN values
+ * ];
+ *
+ * // Variable definitions (metadata dari SPSS/CSV)
+ * const variables = [
+ *   { name: "NN", type: "NUMERIC" },
+ *   { name: "N", type: "NUMERIC" },
+ *   { name: "GM", type: "NUMERIC" }
+ * ];
+ *
+ * // Process data untuk Q-Q Plot
+ * const result = DataProcessingService.processDataForChart({
+ *   chartType: "Q-Q Plot",
+ *   rawData: rawData,
+ *   variables: variables,
+ *   chartVariables: {
+ *     y: ["NN"] // Hanya butuh 1 variabel di Y-axis
+ *   },
+ *   processingOptions: {
+ *     filterEmpty: true, // Hapus data kosong
+ *     sortBy: "value",   // Sort berdasarkan nilai
+ *     sortOrder: "asc"   // Ascending order
+ *   }
+ * });
+ *
+ * console.log(result.data);
+ * // Output: [
+ * //   { x: -1.96, y: -2.1 },
+ * //   { x: -1.28, y: -1.3 },
+ * //   { x: 0, y: 0.1 },
+ * //   { x: 1.28, y: 1.2 },
+ * //   { x: 1.96, y: 2.0 }
+ * // ]
+ *
+ * console.log(result.axisInfo);
+ * // Output: {
+ * //   x: "Theoretical Quantiles",
+ * //   y: "NN"
+ * // }
+ *
+ * ============================================================================
+ *
+ * 2. P-P PLOT
+ * ===========
+ *
+ * // Raw data dari CSV/SPSS
+ * const rawData = [
+ *   [1, 2.1, 3.5, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2],
+ *   [2, 3.8, 4.1, 5.3, 6.2, 7.1, 8.5, 9.2, 10.1, 11.3],
+ *   [3, 4.5, 5.2, 6.1, 7.3, 8.2, 9.1, 10.5, 11.2, 12.1]
+ * ];
+ *
+ * const variables = [
+ *   { name: "NN", type: "NUMERIC" },
+ *   { name: "N", type: "NUMERIC" },
+ *   { name: "GM", type: "NUMERIC" }
+ * ];
+ *
+ * // Process data untuk P-P Plot
+ * const result = DataProcessingService.processDataForChart({
+ *   chartType: "P-P Plot",
+ *   rawData: rawData,
+ *   variables: variables,
+ *   chartVariables: {
+ *     y: ["NN"] // Hanya butuh 1 variabel di Y-axis
+ *   },
+ *   processingOptions: {
+ *     filterEmpty: true,
+ *     sortBy: "value",
+ *     sortOrder: "asc"
+ *   }
+ * });
+ *
+ * console.log(result.data);
+ * // Output: [
+ * //   { x: 0.1, y: 0.12 },
+ * //   { x: 0.3, y: 0.28 },
+ * //   { x: 0.5, y: 0.52 },
+ * //   { x: 0.7, y: 0.68 },
+ * //   { x: 0.9, y: 0.91 }
+ * // ]
+ *
+ * console.log(result.axisInfo);
+ * // Output: {
+ * //   x: "Observed Cum Prop",
+ * //   y: "NN"
+ * // }
+ *
+ * ============================================================================
+ *
+ * 3. SCATTER PLOT WITH MULTIPLE FIT LINE
+ * =======================================
+ *
+ * // Raw data dari CSV/SPSS
+ * const rawData = [
+ *   [1, 2.1, 3.5, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2], // Case 1: [NN, N, GM]
+ *   [2, 3.8, 4.1, 5.3, 6.2, 7.1, 8.5, 9.2, 10.1, 11.3], // Case 2: [NN, N, GM]
+ *   [3, 4.5, 5.2, 6.1, 7.3, 8.2, 9.1, 10.5, 11.2, 12.1]  // Case 3: [NN, N, GM]
+ * ];
+ *
+ * const variables = [
+ *   { name: "NN", type: "NUMERIC" },
+ *   { name: "N", type: "NUMERIC" },
+ *   { name: "GM", type: "NUMERIC" }
+ * ];
+ *
+ * // Process data untuk Scatter Plot With Multiple Fit Line
+ * const result = DataProcessingService.processDataForChart({
+ *   chartType: "Scatter Plot With Multiple Fit Line",
+ *   rawData: rawData,
+ *   variables: variables,
+ *   chartVariables: {
+ *     x: ["NN"], // X-axis variable
+ *     y: ["N"]   // Y-axis variable
+ *   },
+ *   processingOptions: {
+ *     filterEmpty: true, // Hapus data kosong
+ *     sortBy: "x",       // Sort berdasarkan X values
+ *     sortOrder: "asc"   // Ascending order
+ *   }
+ * });
+ *
+ * console.log(result.data);
+ * // Output: [
+ * //   { x: 1, y: 2.1 },
+ * //   { x: 2, y: 3.8 },
+ * //   { x: 3, y: 4.5 },
+ * //   { x: 4, y: 5.2 },
+ * //   { x: 5, y: 6.1 }
+ * // ]
+ *
+ * console.log(result.axisInfo);
+ * // Output: {
+ * //   x: "NN",
+ * //   y: "N"
+ * // }
+ *
+ * ============================================================================
+ *
+ * CATATAN PENTING:
+ * ================
+ *
+ * 1. rawData format: Array of arrays dimana setiap row = 1 case, setiap column = 1 variable
+ * 2. variables: Metadata dari SPSS/CSV yang mendefinisikan nama dan tipe variabel
+ * 3. chartVariables: Mapping variabel ke axis (x, y, z, groupBy, dll)
+ * 4. processingOptions: Opsi untuk filtering, sorting, aggregation
+ * 5. Output: { data: processedData[], axisInfo: { x: string, y: string } }
+ *
+ * FORMAT INPUT/OUTPUT:
+ * ===================
+ *
+ * Input rawData: number[][]
+ * - Row = Case/Record
+ * - Column = Variable
+ * - Example: [[1,2,3], [4,5,6], [7,8,9]] = 3 cases, 3 variables
+ *
+ * Input variables: Array<{name: string, type?: string}>
+ * - name: Nama variabel (harus sama dengan chartVariables)
+ * - type: Tipe data (NUMERIC, STRING, dll)
+ *
+ * Input chartVariables: Object
+ * - x: string[] - Variabel untuk X-axis
+ * - y: string[] - Variabel untuk Y-axis
+ * - z: string[] - Variabel untuk Z-axis (3D charts)
+ * - groupBy: string[] - Variabel untuk grouping
+ *
+ * Output: { data: any[], axisInfo: Record<string, string> }
+ * - data: Data yang sudah diproses sesuai format chart
+ * - axisInfo: Label untuk setiap axis
+ *
+ * ============================================================================
+ */
+
 import { isNull } from "mathjs";
 import { probit, mean, variance, standardDeviation } from "simple-statistics";
 
@@ -77,6 +264,7 @@ const CHART_AGGREGATION_CONFIG: { [chartType: string]: string[] } = {
   // Charts dengan data individual only
   "Scatter Plot": ["none"],
   "Scatter Plot With Fit Line": ["none"],
+  "Scatter Plot With Multiple Fit Line": ["none"],
   "3D Scatter Plot": ["none"],
   "Grouped Scatter Plot": ["none"],
   "Drop Line Chart": ["none"],
@@ -86,6 +274,8 @@ const CHART_AGGREGATION_CONFIG: { [chartType: string]: string[] } = {
   "Dual Axes Scatter Plot": ["none"],
   "Grouped 3D Scatter Plot": ["none"],
   "Density Chart": ["none"],
+  "Q-Q Plot": ["count", "none"],
+  "P-P Plot": ["count", "none"],
   "Scatter Plot Matrix": ["none"],
   "Clustered Boxplot": ["none"],
   "1-D Boxplot": ["none"],
@@ -322,6 +512,7 @@ export class DataProcessingService {
 
         case "Scatter Plot":
         case "Scatter Plot With Fit Line":
+        case "Scatter Plot With Multiple Fit Line":
           processedData = this.processScatterData(rawData, variableIndices, {
             filterEmpty,
           });
@@ -469,6 +660,8 @@ export class DataProcessingService {
         //   break;
 
         case "Histogram":
+        case "Q-Q Plot":
+        case "P-P Plot":
         case "Density Chart":
         case "Frequency Polygon":
           processedData = this.processHistogramData(rawData, variableIndices, {
@@ -547,6 +740,7 @@ export class DataProcessingService {
       );
 
       console.log("✅ Data processing completed:", {
+        data: processedData,
         originalLength: rawData.length,
         processedLength: processedData.length,
         sampleData: processedData.slice(0, 3),
@@ -590,6 +784,7 @@ export class DataProcessingService {
 
       case "Scatter Plot":
       case "Scatter Plot With Fit Line":
+      case "Scatter Plot With Multiple Fit Line":
         return {
           x: getVariableName(chartVariables.x, 0),
           y: getVariableName(chartVariables.y, 0),

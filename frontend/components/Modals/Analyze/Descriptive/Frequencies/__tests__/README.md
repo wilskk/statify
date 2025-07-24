@@ -42,24 +42,7 @@ This directory houses the complete test suite for the Frequencies modal, its com
     - Ensures the `resetStatisticsSettings` function reverts all options to their defaults.
     - Tests that the `getCurrentStatisticsOptions` function returns a `null` or a correctly structured options object based on the state.
 
-### 5. `useChartsSettings.test.ts`
-
-- **Purpose**: Tests the `useChartsSettings` hook, which manages the state for chart generation.
-- **Coverage**:
-    - Verifies correct initialization and the ability to set initial values.
-    - Tests that chart type, chart values, and the normal curve option can be updated.
-    - Ensures the `resetChartsSettings` function works as expected.
-    - Confirms that `getCurrentChartOptions` returns the correct options object or `null` if charts are disabled.
-
-### 6. `useDisplaySettings.test.ts`
-
-- **Purpose**: Tests the simple `useDisplaySettings` hook.
-- **Coverage**:
-    - Verifies that the "Display frequency tables" option initializes to `true` by default.
-    - Ensures it can be initialized with a `false` value.
-    - Confirms the `resetDisplaySettings` function restores the value to `true`.
-
-### 7. `useTourGuide.test.ts`
+### 5. `useTourGuide.test.ts`
 
 - **Purpose**: Tests the `useTourGuide` hook for the Frequencies modal.
 - **Coverage**:
@@ -68,7 +51,7 @@ This directory houses the complete test suite for the Frequencies modal, its com
     - Verifies that the hook correctly triggers tab switches when the tour moves to steps on different tabs.
     - Ensures the correct DOM element is targeted for each step of the tour.
 
-### 8. `formatters.test.ts`
+### 6. `formatters.test.ts`
 
 - **Purpose**: Tests the utility functions that format raw analysis data into display-ready table structures.
 - **Coverage**:

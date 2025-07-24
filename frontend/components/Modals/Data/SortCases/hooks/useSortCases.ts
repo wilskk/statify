@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable } from "@/types/Variable";
@@ -24,6 +24,24 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
     const [defaultSortOrder, setDefaultSortOrder] = useState<"asc" | "desc">("asc");
     const [highlightedVariable, setHighlightedVariable] = useState<{ id: string; source: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Keep track of previous default sort order so we can selectively update existing configs
+    const prevDefaultSortOrderRef = useRef<"asc" | "desc">(defaultSortOrder);
+
+    // When the user changes the default sort order, automatically update any variables that
+    // are still using the *previous* default so the UI (arrow icons) remains consistent.
+    useEffect(() => {
+        const prevOrder = prevDefaultSortOrderRef.current;
+        if (prevOrder === defaultSortOrder) return; // nothing changed
+
+        setSortByConfigs(prevConfigs =>
+            prevConfigs.map(cfg =>
+                cfg.direction === prevOrder ? { ...cfg, direction: defaultSortOrder } : cfg
+            )
+        );
+
+        prevDefaultSortOrderRef.current = defaultSortOrder;
+    }, [defaultSortOrder]);
 
     useEffect(() => {
         const sortByVarColIndexes = sortByConfigs.map(config => config.variable.columnIndex);

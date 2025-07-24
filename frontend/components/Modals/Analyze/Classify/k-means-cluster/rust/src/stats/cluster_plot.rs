@@ -1,11 +1,10 @@
-use crate::{
-    models::{ config::ClusterConfig, result::{ ClusterPlot, ProcessedData } },
-    stats::core::{ convert_map_to_matrix, find_nearest_cluster, generate_final_cluster_centers },
-};
+use crate::models::{ config::KMeansConfig, result::{ ClusterPlot, ProcessedData } };
+
+use crate::stats::core::*;
 
 pub fn create_cluster_plot(
     data: &ProcessedData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<ClusterPlot, String> {
     if data.variables.len() < 2 {
         return Err("Data must have at least 2 variables to create a plot.".to_string());

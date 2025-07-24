@@ -1,11 +1,11 @@
-use crate::models::{ config::ClusterConfig, result::{ CaseCountTable, ProcessedData } };
+use crate::models::{ config::KMeansConfig, result::{ CaseCountTable, ProcessedData } };
 
 use super::core::*;
 
 /// Menghitung jumlah kasus (data point) untuk setiap cluster.
 pub fn generate_case_count(
     data: &ProcessedData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<CaseCountTable, String> {
     // Mendapatkan jumlah cluster dari konfigurasi.
     let num_clusters = config.main.cluster as usize;

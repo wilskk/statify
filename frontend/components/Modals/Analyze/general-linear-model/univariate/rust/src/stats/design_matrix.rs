@@ -45,21 +45,6 @@ pub fn create_design_response_weights(
     };
     let mut case_indices_to_keep: Vec<usize> = Vec::new();
 
-    if data.dependent_data.is_empty() || data.dependent_data[0].is_empty() {
-        return Ok(DesignMatrixInfo {
-            x: DMatrix::zeros(0, 0),
-            y: DVector::zeros(0),
-            w: None,
-            n_samples: 0,
-            p_parameters: 0,
-            r_x_rank: 0,
-            term_column_indices: HashMap::new(),
-            intercept_column: None,
-            term_names: Vec::new(),
-            case_indices_to_keep: Vec::new(),
-        });
-    }
-
     for (i, record) in data.dependent_data[0].iter().enumerate() {
         if let Some(dep_val) = extract_numeric_from_record(record, dep_var_name) {
             if let Some(wls_var_name) = &config.main.wls_weight {

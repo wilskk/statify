@@ -10,18 +10,38 @@ import {
 import { calculateResponsiveMargin } from "../responsiveMarginUtils";
 import * as d3 from "d3";
 
-const colorScheme = [
-  "#4e79a7",
-  "#f28e2c",
-  "#e15759",
-  "#76b7b2",
-  "#59a14f",
-  "#edc949",
-  "#af7aa1",
-  "#ff9da7",
-  "#9c755f",
-  "#bab0ab",
-];
+import { d3ColorScales } from "../defaultStyles/defaultColors";
+
+// Combine multiple categorical schemes for more color options
+const getExtendedColorScheme = () => {
+  const colors = [];
+  // Add Category10
+  colors.push(...d3ColorScales.categorical[0].colors);
+  // Add Observable10
+  colors.push(...d3ColorScales.categorical[1].colors);
+  // Add Accent
+  colors.push(...d3ColorScales.categorical[2].colors);
+  // Add Dark2
+  colors.push(...d3ColorScales.categorical[3].colors);
+  // Add Paired
+  colors.push(...d3ColorScales.categorical[4].colors);
+  // Add Pastel1
+  colors.push(...d3ColorScales.categorical[5].colors);
+  // Add Pastel2
+  colors.push(...d3ColorScales.categorical[6].colors);
+  // Add Set1
+  colors.push(...d3ColorScales.categorical[7].colors);
+  // Add Set2
+  colors.push(...d3ColorScales.categorical[8].colors);
+  // Add Set3
+  colors.push(...d3ColorScales.categorical[9].colors);
+  // Add Tableau10
+  colors.push(...d3ColorScales.categorical[10].colors);
+
+  return colors;
+};
+
+const colorScheme = getExtendedColorScheme();
 
 export const createPieChart = (
   data: { category: string; value: number }[],
@@ -31,8 +51,6 @@ export const createPieChart = (
   titleOptions?: ChartTitleOptions,
   chartColors?: string[]
 ) => {
-  console.log("Creating pie chart with data:", data);
-
   const validData = data.filter(
     (d) =>
       typeof d.category === "string" &&
@@ -73,15 +91,35 @@ export const createPieChart = (
     legendPosition: "right",
     maxLabelWidth,
     categories: categories,
+    itemCount: categories.length,
   });
 
-  // Calculate dimensions with margins
-  const chartWidth = width - margin.left - margin.right;
-  const chartHeight = height - margin.top - margin.bottom;
+  // For small preview charts, use minimal margins
+  const isSmallChart = width < 200 || height < 200;
 
-  // Make pie smaller by using a scale factor
-  const scaleFactor = 1; // Slightly reduce pie size for better proportions
-  const outerRadius = (Math.min(chartWidth, chartHeight) / 2) * scaleFactor;
+  const adjustedMargin = isSmallChart
+    ? {
+        top: 10,
+        right: 10,
+        bottom: 10,
+        left: 10,
+      }
+    : {
+        ...margin,
+        right: Math.max(margin.right, 250), // Increased right margin for legend
+        bottom: Math.max(margin.bottom, 50),
+      };
+
+  // Calculate dimensions with margins
+  const chartWidth = width - adjustedMargin.left - adjustedMargin.right;
+  const chartHeight = height - adjustedMargin.top - adjustedMargin.bottom;
+
+  // For small charts, use larger scale factor
+  const scaleFactor = isSmallChart ? 1 : 1;
+  const outerRadius = Math.max(
+    10,
+    (Math.min(chartWidth, chartHeight) / 2) * scaleFactor
+  );
   const labelRadius = outerRadius * 1.1;
 
   const arc = d3
@@ -100,27 +138,29 @@ export const createPieChart = (
   const svg = createStandardSVG({
     width,
     height,
-    marginTop: margin.top,
-    marginRight: margin.right,
-    marginBottom: margin.bottom,
-    marginLeft: margin.left,
+    marginTop: adjustedMargin.top,
+    marginRight: adjustedMargin.right,
+    marginBottom: adjustedMargin.bottom,
+    marginLeft: adjustedMargin.left,
   } as SVGCreationOptions);
 
   // Add title if provided - now with proper margin-aware positioning
   if (titleOptions) {
     addChartTitle(svg, {
       ...titleOptions,
-      marginTop: margin.top,
+      marginTop: adjustedMargin.top,
       useResponsivePositioning: true,
     });
   }
 
-  // Draw pie slices
+  // Draw pie slices - center for small charts, left-shifted for large charts
   const chartGroup = svg
     .append("g")
     .attr(
       "transform",
-      `translate(${width / 2}, ${margin.top + chartHeight / 2})`
+      `translate(${
+        adjustedMargin.left + chartWidth * (isSmallChart ? 0.5 : 0.35)
+      }, ${adjustedMargin.top + chartHeight / 2})`
     );
 
   chartGroup
@@ -141,15 +181,15 @@ export const createPieChart = (
         `${d.data.category}`
     );
 
-  if (useAxis) {
-    // Add legend using the improved legend utility
+  if (useAxis && !isSmallChart) {
+    // Add legend using the improved legend utility (only for large charts)
     const legendPosition = calculateLegendPosition({
       width,
       height,
-      marginLeft: margin.left,
-      marginRight: margin.right,
-      marginBottom: margin.bottom,
-      marginTop: margin.top,
+      marginLeft: adjustedMargin.left,
+      marginRight: adjustedMargin.right,
+      marginBottom: adjustedMargin.bottom,
+      marginTop: adjustedMargin.top,
       legendPosition: "right",
       itemCount: categories.length,
     });

@@ -16,7 +16,7 @@ export function parseCsvWithWorker(
   options: CSVProcessingOptions
 ): Promise<ProcessedCsvData> {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/workers/file-management/csvWorker.js");
+    const worker = new Worker("/workers/DataManagement/csvWorker.js");
     worker.onmessage = (e) => {
       const { result, error } = e.data;
       if (error) reject(new Error(error));

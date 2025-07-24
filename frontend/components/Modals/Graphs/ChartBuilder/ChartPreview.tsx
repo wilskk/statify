@@ -12,13 +12,24 @@ import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 
 import * as d3 from "d3";
 import { ChartType } from "@/components/Modals/Graphs/ChartTypes";
-import { chartVariableConfig } from "./ChartVariableConfig";
+import { chartVariableConfig, AllowedDataTypes } from "./ChartVariableConfig";
 import clsx from "clsx";
 import { ChartService, DataProcessingService } from "@/services/chart";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
 import { groupBy } from "lodash";
 import { DataProcessingInput } from "@/services/chart/DataProcessingService";
 import { type ErrorBarOptions } from "@/services/chart/DataProcessingService";
+import { toast } from "sonner";
+// Tambahkan import AlertDialog shadcn/ui
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 interface ChartPreviewProps {
   chartType: ChartType;
@@ -90,6 +101,8 @@ interface ChartPreviewProps {
   // Add prop for statistic selection (Summary Point Plot)
   selectedStatistic?: "mean" | "median" | "mode" | "min" | "max";
   errorBarOptions?: ErrorBarOptions;
+  // Add prop for normal curve (Histogram)
+  showNormalCurve?: boolean;
 }
 
 // Definisi interface untuk data chart
@@ -164,6 +177,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       chartSubtitleFontSize,
       selectedStatistic,
       errorBarOptions,
+      showNormalCurve,
     },
     ref
   ) => {
@@ -200,10 +214,162 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
     // Add state to store the generated JSON for ChartBuilderModal
     const [generatedChartJSON, setGeneratedChartJSON] = useState<any>(null);
 
+    // Add state to control execution order
+    const [isProcessingData, setIsProcessingData] = useState(false);
+    const [isRenderingChart, setIsRenderingChart] = useState(false);
+
+    // Add state to track if data needs reprocessing
+    const [lastProcessedChartType, setLastProcessedChartType] =
+      useState<ChartType | null>(null);
+    const [lastProcessedVariables, setLastProcessedVariables] =
+      useState<string>("");
+
     // Tambahkan state untuk menyimpan hasil DataProcessingService
     const data = useDataStore((state) => state.data);
 
     const variables = useVariableStore.getState().variables;
+
+    // Tambahkan state untuk error dialog
+    const [errorDialog, setErrorDialog] = useState<{
+      open: boolean;
+      title: string;
+      description: string;
+    } | null>(null);
+
+    // Process data when variables or options change
+    useEffect(() => {
+      // Only process if we have data and variables
+      if (data.length === 0 || variables.length === 0) {
+        setProcessedResult({ data: [], axisInfo: {} });
+        setIsProcessingData(false);
+        return;
+      }
+
+      console.log("🔄 Processing data with options:", {
+        chartType,
+        variables: variables.length,
+        errorBarOptions,
+      });
+
+      setIsProcessingData(true);
+
+      function normalizeRawData(
+        rawData: any[][],
+        variables: { name: string; type?: string }[]
+      ): any[][] {
+        return rawData.map((row, rowIdx) => {
+          if (row.length !== variables.length) {
+            console.warn(
+              `[normalizeRawData] ⚠️ Jumlah kolom tidak sesuai pada baris ${rowIdx}:`,
+              `data columns = ${row.length}, variables = ${variables.length}`
+            );
+          }
+
+          return row.map((cell, colIdx) => {
+            const varMeta = variables[colIdx];
+            const varName = varMeta?.name ?? `kolom${colIdx}`;
+            const type = varMeta?.type ?? "string";
+
+            let casted: any = cell;
+
+            if (type === "numeric") {
+              const num = parseFloat(cell);
+              casted = isNaN(num) ? null : num;
+            }
+
+            // console.log(
+            //   `[normalizeRawData] row ${rowIdx}, col ${colIdx} (${varName}) →`,
+            //   `type: ${type}, value:`,
+            //   cell,
+            //   `→ casted:`,
+            //   casted
+            // );
+
+            return casted;
+          });
+        });
+      }
+
+      try {
+        console.log("🔄 Processing data with options:", {
+          chartType,
+          variables: variables.length,
+          errorBarOptions,
+        });
+
+        const isErrorBarChart =
+          chartType === "Error Bar Chart" ||
+          chartType === "Clustered Error Bar Chart";
+
+        const processingOptions = {
+          aggregation: isErrorBarChart
+            ? ("average" as const)
+            : ("none" as const),
+          filterEmpty: true,
+          sortBy: undefined,
+          sortOrder: "asc" as const,
+          limit: undefined,
+          ...(isErrorBarChart && {
+            errorBar: errorBarOptions,
+          }),
+        };
+
+        const chartVariables = {
+          x: bottomVariables,
+          y: chartType.includes("3D") ? bottom2Variables : sideVariables,
+          groupBy: colorVariables,
+          low: lowVariables,
+          high: highVariables,
+          close: closeVariables,
+          z: chartType.includes("3D") ? sideVariables : bottom2Variables,
+          y2: side2Variables,
+        };
+
+        const result = DataProcessingService.processDataForChart({
+          chartType,
+          rawData: normalizeRawData(data, variables),
+          variables,
+          chartVariables,
+          processingOptions,
+        });
+
+        console.log("✅ Data processed:", result);
+        setProcessedResult(result);
+        setIsProcessingData(false);
+
+        // Mark that data has been processed for this chart type and variables
+        setLastProcessedChartType(chartType);
+        setLastProcessedVariables(
+          JSON.stringify({
+            bottomVariables,
+            sideVariables,
+            colorVariables,
+            lowVariables,
+            highVariables,
+            closeVariables,
+            bottom2Variables,
+            side2Variables,
+          })
+        );
+      } catch (error) {
+        console.error("❌ Error processing data:", error);
+        setProcessedResult({ data: [], axisInfo: {} });
+        setIsProcessingData(false);
+      }
+    }, [
+      data,
+      variables,
+      chartType,
+      bottomVariables,
+      sideVariables,
+      colorVariables,
+      lowVariables,
+      highVariables,
+      closeVariables,
+      bottom2Variables,
+      side2Variables,
+      errorBarOptions,
+    ]);
 
     // Function to generate chart JSON using DataProcessingService + ChartService
     const generateChartJSON = useCallback(() => {
@@ -254,6 +420,17 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           };
 
           // Step 2: Create chart JSON menggunakan ChartService (reuse processed data)
+
+          // Buat fit functions untuk Scatter Plot With Multiple Fit Line
+          let fitFunctions;
+          if (chartType === "Scatter Plot With Multiple Fit Line") {
+            const scatterData = processedResult.data.map((d: any) => ({
+              x: d.x,
+              y: d.y,
+            }));
+            fitFunctions = ChartService.createFitFunctions(scatterData);
+          }
+
           const chartJSON = ChartService.createChartJSON({
             chartType: chartType,
             chartData: processedResult.data,
@@ -277,13 +454,25 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               useAxis: useaxis,
               useLegend: true,
               statistic: selectedStatistic,
+              // Hanya tambahkan showNormalCurve untuk Histogram
+              ...(chartType === "Histogram" && {
+                showNormalCurve: showNormalCurve,
+              }),
+              // Hanya tambahkan fitFunctions untuk Scatter Plot With Multiple Fit Line
+              ...(chartType === "Scatter Plot With Multiple Fit Line" && {
+                fitFunctions: fitFunctions,
+              }),
               axisLabels: {
-                x: xAxisLabel || bottomVariables[0] || "Category",
-                y: yAxisLabel || sideVariables[0] || "Value",
-                y1: yLeftAxisLabel || sideVariables[0] || "Y1-axis",
-                y2: yRightAxisLabel || side2Variables[0] || "Y2-axis",
+                x: xAxisLabel || bottomVariables[0],
+                y:
+                  chartType.includes("Q-Q Plot") ||
+                  chartType.includes("P-P Plot")
+                    ? yAxisLabel
+                    : yAxisLabel || sideVariables[0],
+                y1: yLeftAxisLabel || sideVariables[0],
+                y2: yRightAxisLabel || side2Variables[0],
                 z: chartType.includes("3D")
-                  ? zAxisLabel || bottom2Variables[0] || "Z-axis"
+                  ? zAxisLabel || bottom2Variables[0]
                   : undefined,
               },
               axisScaleOptions: {
@@ -335,18 +524,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         setGeneratedChartJSON(null);
       }
     }, [
-      data,
-      variables,
-      chartType,
-      bottomVariables,
-      sideVariables,
-      colorVariables,
-      lowVariables,
-      highVariables,
-      closeVariables,
-      bottom2Variables,
-      side2Variables,
+      // Only depend on processedResult and chart configuration
+      // This prevents unnecessary re-renders when variables change
       processedResult,
+      chartType,
       chartTitle,
       chartSubtitle,
       chartTitleFontSize,
@@ -375,7 +556,37 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       selectedStatistic,
       chartColors,
       useaxis,
+      showNormalCurve,
+      // Add missing dependencies
+      bottomVariables,
+      bottom2Variables,
+      closeVariables,
+      colorVariables,
+      data.length,
+      highVariables,
+      lowVariables,
+      side2Variables,
+      sideVariables,
+      variables.length,
     ]);
+
+    // Helper function to format variable lists with limits
+    const formatLimitedList = useCallback(
+      (items: string[], limit: number = 3): string => {
+        if (items.length === 0) return "";
+        if (items.length <= limit) return items.join(", ");
+
+        const limited = items.slice(0, limit);
+        const remaining = items.length - limit;
+
+        if (remaining === 1) {
+          return `${limited.join(", ")} and ${items[limit]}`;
+        } else {
+          return `${limited.join(", ")} and ${remaining} more`;
+        }
+      },
+      []
+    );
 
     // Smart validation function for different chart types
     const validateChartVariablesForType = (
@@ -418,6 +629,18 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             bottom2Variables.length > 0
           );
 
+        case "P-P Plot":
+        case "Q-Q Plot":
+        case "Histogram":
+        case "Frequency Polygon":
+        case "Density Chart":
+        case "Stem And Leaf Plot":
+        case "Violin Plot":
+        case "1-D Boxplot":
+        case "Summary Point Plot":
+          // These charts only need Y-axis (side) variable
+          return sideVariables.length > 0;
+
         default:
           // Default: need at least one variable
           return (
@@ -430,10 +653,8 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       }
     };
 
-    // Generate chart JSON whenever relevant props change
-    useEffect(() => {
-      generateChartJSON();
-    }, [generateChartJSON]);
+    // Generate chart JSON is now handled by the optimized useEffect below
+    // This old useEffect has been removed to prevent duplicate JSON generation
 
     // const [errorMsg, setErrorMsg] = useState<string | null>(null);
     // const [isCalculating, setIsCalculating] = useState(false);
@@ -489,6 +710,68 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       setModalState({ type: null, isOpen: false });
     };
 
+    // Helper function untuk mengecek apakah variable sesuai dengan allowed types
+    const isVariableTypeAllowed = useCallback(
+      (variableName: string, allowedTypes: AllowedDataTypes): boolean => {
+        if (allowedTypes === "both") return true;
+
+        const variable = variables.find((v) => v.name === variableName);
+        if (!variable) return false;
+
+        const variableType = variable.type || "STRING";
+
+        if (allowedTypes === "numeric") {
+          // Check for all numeric types
+          return (
+            variableType === "NUMERIC" ||
+            variableType === "COMMA" ||
+            variableType === "DOT" ||
+            variableType === "SCIENTIFIC" ||
+            variableType === "DOLLAR" ||
+            variableType === "RESTRICTED_NUMERIC"
+          );
+        } else if (allowedTypes === "string") {
+          return variableType === "STRING";
+        }
+
+        return false;
+      },
+      [variables]
+    );
+
+    // Helper function untuk menampilkan pesan error tipe data
+    const showTypeValidationError = (
+      variableName: string,
+      dropZone: string,
+      allowedTypes: AllowedDataTypes
+    ) => {
+      const variable = variables.find((v) => v.name === variableName);
+      const actualType = variable?.type || "STRING";
+
+      const friendlyActualType =
+        actualType === "NUMERIC" ||
+        actualType === "COMMA" ||
+        actualType === "DOT" ||
+        actualType === "SCIENTIFIC" ||
+        actualType === "DOLLAR" ||
+        actualType === "RESTRICTED_NUMERIC"
+          ? "numeric"
+          : "string";
+
+      const allowedTypesText =
+        allowedTypes === "numeric"
+          ? "numerik saja"
+          : allowedTypes === "string"
+          ? "string saja"
+          : "numerik atau string";
+
+      setErrorDialog({
+        open: true,
+        title: `Variabel \"${variableName}\" bertipe ${friendlyActualType}`,
+        description: `Hanya variabel bertipe ${allowedTypesText} yang dapat digunakan di bagian ini.\nSilakan pilih variabel yang sesuai.`,
+      });
+    };
+
     // Fungsi untuk menangani drag over
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault(); // Mengizinkan drop
@@ -517,6 +800,34 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
       // Ambil konfigurasi chartType saat ini
       const config = chartVariableConfig[chartType];
+
+      // Validasi tipe data berdasarkan dropZone
+      let allowedTypes: AllowedDataTypes | undefined;
+      if (dropZone === "side" && config.side.allowedTypes) {
+        allowedTypes = config.side.allowedTypes;
+      } else if (dropZone === "bottom" && config.bottom.allowedTypes) {
+        allowedTypes = config.bottom.allowedTypes;
+      } else if (dropZone === "color" && config.color?.allowedTypes) {
+        allowedTypes = config.color.allowedTypes;
+      } else if (dropZone === "filter" && config.filter?.allowedTypes) {
+        allowedTypes = config.filter.allowedTypes;
+      } else if (dropZone === "high" && config.high?.allowedTypes) {
+        allowedTypes = config.high.allowedTypes;
+      } else if (dropZone === "low" && config.low?.allowedTypes) {
+        allowedTypes = config.low.allowedTypes;
+      } else if (dropZone === "close" && config.close?.allowedTypes) {
+        allowedTypes = config.close.allowedTypes;
+      } else if (dropZone === "side2" && config.side2?.allowedTypes) {
+        allowedTypes = config.side2.allowedTypes;
+      } else if (dropZone === "bottom2" && config.bottom2?.allowedTypes) {
+        allowedTypes = config.bottom2.allowedTypes;
+      }
+
+      // Cek validasi tipe data jika ada allowedTypes
+      if (allowedTypes && !isVariableTypeAllowed(variableName, allowedTypes)) {
+        showTypeValidationError(variableName, dropZone, allowedTypes);
+        return;
+      }
 
       if (dropZone === "side" && config.side.max > 0) {
         if (sideVariables.length >= config.side.max) {
@@ -733,6 +1044,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           Histogram: histogramData,
           "Scatter Plot": scatterPlotData,
           "Scatter Plot With Fit Line": scatterPlotData,
+          "Scatter Plot With Multiple Fit Line": scatterPlotData,
           Boxplot: boxplotData,
           "Scatter Plot Matrix": scatterPlotMatrixData,
           "Error Bar Chart": [
@@ -1059,6 +1371,8 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           "Density Chart": Array.from({ length: 100 }, () =>
             Math.round(d3.randomNormal(500, 100)())
           ),
+          "Q-Q Plot": [1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2],
+          "P-P Plot": [1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2],
           "Stem And Leaf Plot": [
             { stem: "1", leaves: [2, 5] },
             { stem: "2", leaves: [1, 2, 4] },
@@ -1126,7 +1440,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         bottomVariables,
         chartSubtitle,
         chartTitle,
-        processedResult.data,
+        processedResult,
         sideVariables,
         xAxisLabel,
         xAxisMajorIncrement,
@@ -1139,7 +1453,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         yAxisMin,
         yAxisOrigin,
       ]
-    ); // No dependencies needed as it's a pure function
+    );
 
     const createStackedChartConfig = useCallback(
       (chartType: string, isDefault: boolean = false) => {
@@ -1158,8 +1472,30 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
         return config;
       },
-      [bottomVariables, createChartConfig, sideVariables]
-    ); // No dependencies needed as it's a pure function
+      [bottomVariables, createChartConfig, sideVariables, formatLimitedList]
+    );
+
+    const createNormalQQPlotConfig = useCallback(
+      (chartType: string, isDefault: boolean = false) => {
+        const config = createChartConfig(chartType, isDefault);
+
+        config.axisConfig.x = xAxisLabel || "Theoretical Quantiles (Z)";
+        config.axisConfig.y = yAxisLabel || "Sample Quantiles";
+        return config;
+      },
+      [createChartConfig, xAxisLabel, yAxisLabel]
+    );
+
+    const createPPPlotConfig = useCallback(
+      (chartType: string, isDefault: boolean = false) => {
+        const config = createChartConfig(chartType, isDefault);
+
+        config.axisConfig.x = xAxisLabel || "Observed Cum Prop";
+        config.axisConfig.y = yAxisLabel || "Expected Cum Prop";
+        return config;
+      },
+      [createChartConfig, xAxisLabel, yAxisLabel]
+    );
 
     const createDualAxisChartConfig = useCallback(
       (chartType: string, isDefault: boolean = false) => {
@@ -1269,13 +1605,249 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       return undefined;
     }
 
+    // Helper function untuk mengecek apakah semua required variables sudah diisi
+    const checkRequiredVariables = useCallback(
+      (chartType: ChartType) => {
+        const config = chartVariableConfig[chartType];
+        const issues: string[] = [];
+
+        // Helper function untuk mengecek tipe data variabel
+        const checkVariableTypes = (
+          variableNames: string[],
+          allowedTypes: AllowedDataTypes | undefined,
+          axisName: string
+        ) => {
+          if (!allowedTypes) return [];
+
+          const typeIssues: string[] = [];
+          variableNames.forEach((varName) => {
+            if (!isVariableTypeAllowed(varName, allowedTypes)) {
+              const variableObj = variables.find((v) => v.name === varName);
+              const actualVarType = variableObj?.type || "STRING";
+
+              const friendlyActualType =
+                actualVarType === "NUMERIC" ||
+                actualVarType === "COMMA" ||
+                actualVarType === "DOT" ||
+                actualVarType === "SCIENTIFIC" ||
+                actualVarType === "DOLLAR" ||
+                actualVarType === "RESTRICTED_NUMERIC"
+                  ? "numeric"
+                  : "string";
+
+              const allowedTypesText =
+                allowedTypes === "numeric"
+                  ? "numeric"
+                  : allowedTypes === "string"
+                  ? "string"
+                  : "both numeric and string";
+
+              typeIssues.push(
+                `${axisName}: "${varName}" is ${friendlyActualType} but needs to be ${allowedTypesText}`
+              );
+            }
+          });
+          return typeIssues;
+        };
+
+        // Check side variables
+        if (config.side.min > 0 && sideVariables.length < config.side.min) {
+          const axisName = chartType.includes("3D") ? "Y-axis" : "Side";
+          issues.push(
+            `${axisName} needs ${config.side.min} variable(s), currently has ${sideVariables.length}`
+          );
+        } else if (sideVariables.length > 0) {
+          // Check data types for existing side variables
+          const axisName = chartType.includes("3D") ? "Y-axis" : "Side";
+          const typeIssues = checkVariableTypes(
+            sideVariables,
+            config.side.allowedTypes,
+            axisName
+          );
+          issues.push(...typeIssues);
+        }
+
+        // Check bottom variables
+        if (
+          config.bottom.min > 0 &&
+          bottomVariables.length < config.bottom.min
+        ) {
+          const axisName = chartType.includes("3D") ? "X-axis" : "Bottom";
+          issues.push(
+            `${axisName} needs ${config.bottom.min} variable(s), currently has ${bottomVariables.length}`
+          );
+        } else if (bottomVariables.length > 0) {
+          // Check data types for existing bottom variables
+          const axisName = chartType.includes("3D") ? "X-axis" : "Bottom";
+          const typeIssues = checkVariableTypes(
+            bottomVariables,
+            config.bottom.allowedTypes,
+            axisName
+          );
+          issues.push(...typeIssues);
+        }
+
+        // Check side2 variables
+        if (
+          config.side2 &&
+          config.side2.min > 0 &&
+          side2Variables.length < config.side2.min
+        ) {
+          issues.push(
+            `Side2 needs ${config.side2.min} variable(s), currently has ${side2Variables.length}`
+          );
+        } else if (side2Variables.length > 0 && config.side2?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            side2Variables,
+            config.side2.allowedTypes,
+            "Side2"
+          );
+          issues.push(...typeIssues);
+        }
+
+        // Check bottom2 variables
+        if (
+          config.bottom2 &&
+          config.bottom2.min > 0 &&
+          bottom2Variables.length < config.bottom2.min
+        ) {
+          const axisName = chartType.includes("3D") ? "Z-axis" : "Bottom2";
+          issues.push(
+            `${axisName} needs ${config.bottom2.min} variable(s), currently has ${bottom2Variables.length}`
+          );
+        } else if (
+          bottom2Variables.length > 0 &&
+          config.bottom2?.allowedTypes
+        ) {
+          const axisName = chartType.includes("3D") ? "Z-axis" : "Bottom2";
+          const typeIssues = checkVariableTypes(
+            bottom2Variables,
+            config.bottom2.allowedTypes,
+            axisName
+          );
+          issues.push(...typeIssues);
+        }
+
+        // Check color variables
+        if (
+          config.color &&
+          config.color.min > 0 &&
+          colorVariables.length < config.color.min
+        ) {
+          issues.push(
+            `Color/Group needs ${config.color.min} variable(s), currently has ${colorVariables.length}`
+          );
+        } else if (colorVariables.length > 0 && config.color?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            colorVariables,
+            config.color.allowedTypes,
+            "Color/Group"
+          );
+          issues.push(...typeIssues);
+        }
+
+        // Check high/low/close variables
+        if (
+          config.high &&
+          config.high.min > 0 &&
+          highVariables.length < config.high.min
+        ) {
+          issues.push(
+            `High needs ${config.high.min} variable(s), currently has ${highVariables.length}`
+          );
+        } else if (highVariables.length > 0 && config.high?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            highVariables,
+            config.high.allowedTypes,
+            "High"
+          );
+          issues.push(...typeIssues);
+        }
+
+        if (
+          config.low &&
+          config.low.min > 0 &&
+          lowVariables.length < config.low.min
+        ) {
+          issues.push(
+            `Low needs ${config.low.min} variable(s), currently has ${lowVariables.length}`
+          );
+        } else if (lowVariables.length > 0 && config.low?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            lowVariables,
+            config.low.allowedTypes,
+            "Low"
+          );
+          issues.push(...typeIssues);
+        }
+
+        if (
+          config.close &&
+          config.close.min > 0 &&
+          closeVariables.length < config.close.min
+        ) {
+          issues.push(
+            `Close needs ${config.close.min} variable(s), currently has ${closeVariables.length}`
+          );
+        } else if (closeVariables.length > 0 && config.close?.allowedTypes) {
+          const typeIssues = checkVariableTypes(
+            closeVariables,
+            config.close.allowedTypes,
+            "Close"
+          );
+          issues.push(...typeIssues);
+        }
+
+        return issues;
+      },
+      [
+        sideVariables,
+        bottomVariables,
+        side2Variables,
+        bottom2Variables,
+        colorVariables,
+        highVariables,
+        lowVariables,
+        closeVariables,
+        variables,
+        isVariableTypeAllowed,
+      ]
+    );
+
+    const hasAnyVariables = useCallback(() => {
+      return (
+        sideVariables.length > 0 ||
+        bottomVariables.length > 0 ||
+        colorVariables.length > 0 ||
+        filterVariables.length > 0 ||
+        lowVariables.length > 0 ||
+        highVariables.length > 0 ||
+        closeVariables.length > 0 ||
+        side2Variables.length > 0 ||
+        bottom2Variables.length > 0
+      );
+    }, [
+      sideVariables,
+      bottomVariables,
+      colorVariables,
+      filterVariables,
+      lowVariables,
+      highVariables,
+      closeVariables,
+      side2Variables,
+      bottom2Variables,
+    ]);
+
     // This is a refactored version of the chart rendering logic
     // Combining two separate switch statements into one unified switch statement
+    // Chart rendering should only happen after data processing is complete
 
     useEffect(() => {
       console.log("🎨 Chart rendering useEffect triggered:", {
         chartType,
         selectedStatistic,
+        processedDataLength: processedResult.data.length,
+        isProcessingData,
         variablesChanged: JSON.stringify({
           side: sideVariables,
           bottom: bottomVariables,
@@ -1283,6 +1855,58 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         }),
       });
 
+      // Check if data needs to be reprocessed for current chart type
+      const currentVariables = JSON.stringify({
+        bottomVariables,
+        sideVariables,
+        colorVariables,
+        lowVariables,
+        highVariables,
+        closeVariables,
+        bottom2Variables,
+        side2Variables,
+      });
+
+      const needsReprocessing =
+        lastProcessedChartType !== chartType ||
+        lastProcessedVariables !== currentVariables;
+
+      // Check if this is a default preview (no variables selected)
+      const hasAnyVariablesSelected =
+        sideVariables.length > 0 ||
+        bottomVariables.length > 0 ||
+        colorVariables.length > 0 ||
+        lowVariables.length > 0 ||
+        highVariables.length > 0 ||
+        closeVariables.length > 0 ||
+        side2Variables.length > 0 ||
+        bottom2Variables.length > 0;
+
+      // Don't render if data is still being processed
+      if (isProcessingData) {
+        console.log("⏳ Waiting for data processing to complete...", {
+          isProcessingData,
+          dataLength: processedResult.data.length,
+        });
+        return;
+      }
+
+      // For default preview (no variables), allow rendering even without processed data
+      if (!hasAnyVariablesSelected) {
+        console.log("🎨 Rendering default preview (no variables selected)");
+      } else if (needsReprocessing) {
+        console.log("⏳ Waiting for data processing to complete...", {
+          dataLength: processedResult.data.length,
+          needsReprocessing,
+          lastChartType: lastProcessedChartType,
+          currentChartType: chartType,
+        });
+        return;
+      }
+      // Note: We don't return here if processedResult.data.length === 0
+      // because we want to show validation errors even without processed data
+
+      // Clean up chart container first
       if (chartContainerRef.current) {
         // Cleanup any existing 3D charts first
         const existingContainer = chartContainerRef.current.firstChild as any;
@@ -1294,8 +1918,195 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         }
 
         chartContainerRef.current.innerHTML = "";
-        chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
         chartContainerRef.current.id = "chart-container"; // Pastikan ada ID
+      }
+
+      // Check validation status for incomplete variables
+      const requiredIssues = checkRequiredVariables(chartType);
+      const hasVariables = hasAnyVariables();
+
+      // Determine chart rendering mode
+      let renderMode: "default" | "incomplete" | "complete";
+      if (!hasVariables) {
+        renderMode = "default"; // No variables set, show default preview
+      } else if (requiredIssues.length > 0) {
+        renderMode = "incomplete"; // Some variables set but incomplete
+      } else {
+        renderMode = "complete"; // All required variables set
+      }
+
+      console.log(
+        "📊 Chart render mode:",
+        renderMode,
+        "Issues:",
+        requiredIssues,
+        "hasVariables:",
+        hasVariables,
+        "sideVariables:",
+        sideVariables,
+        "bottomVariables:",
+        bottomVariables
+      );
+
+      // Handle incomplete state - show requirements message
+      console.log("🔍 Checking renderMode:", renderMode, "=== 'incomplete'");
+      if (renderMode === "incomplete") {
+        console.log("✅ Showing incomplete state message");
+        const typeIssues = requiredIssues.filter(
+          (issue) => issue.includes("is") && issue.includes("but needs to be")
+        );
+        const otherIssues = requiredIssues.filter(
+          (issue) => !typeIssues.includes(issue)
+        );
+
+        let headerText = "Please complete the required variables";
+        let headerIcon = "⚠️";
+
+        if (typeIssues.length > 0) {
+          headerText = "Variable type mismatch detected";
+          headerIcon = "🔄";
+        }
+
+        const warningContainer = document.createElement("div");
+        warningContainer.className =
+          "flex justify-center items-center w-full h-full px-4"; // Padding untuk responsif di layar kecil
+        warningContainer.style.overflow = "visible";
+
+        warningContainer.innerHTML = `
+    <div class="w-full max-w-md bg-none rounded-lg p-4 text-center">
+      <div class="text-5xl mb-3">${headerIcon}</div>
+      <div class="text-base md:text-lg font-semibold text-gray-700 mb-3">
+        ${headerText}
+      </div>
+
+      ${
+        typeIssues.length > 0
+          ? `
+        <div class="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-3 space-y-1">
+          <div class="font-semibold">Type Mismatches:</div>
+          ${typeIssues
+            .map(
+              (issue: string) => `<div>• ${replaceDropAreaLabel(issue)}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="text-xs text-red-500 mb-3 text-left">
+          <strong>Solutions:</strong><br/>
+          • Remove incompatible variables and add compatible ones<br/>
+          • Switch to a chart type that supports these data types<br/>
+          • Check your data types in the variable list
+        </div>
+      `
+          : ""
+      }
+
+      ${
+        otherIssues.length > 0
+          ? `
+        <div class="text-sm text-gray-600 text-left space-y-2">
+          ${otherIssues
+            .map(
+              (issue: string) => `<div>• ${replaceDropAreaLabel(issue)}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="text-xs text-gray-500 mt-3 text-left">
+          Drag variables to the required positions to see the chart preview
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+        if (renderMode === "incomplete") {
+          console.log("✅ Showing incomplete state message");
+
+          const typeIssues = requiredIssues.filter(
+            (issue) => issue.includes("is") && issue.includes("but needs to be")
+          );
+          const otherIssues = requiredIssues.filter(
+            (issue) => !typeIssues.includes(issue)
+          );
+
+          let headerText = "Please complete the required variables";
+          let headerIcon = "⚠️";
+
+          if (typeIssues.length > 0) {
+            headerText = "Variable type mismatch detected";
+            headerIcon = "🔄";
+          }
+
+          const warningContainer = document.createElement("div");
+          warningContainer.className =
+            "flex justify-center items-center w-full h-full overflow-auto px-4";
+
+          warningContainer.innerHTML = `
+    <div class="w-full max-w-md bg-none rounded-lg p-4 text-center overflow-auto max-h-full">
+      <div class="text-5xl mb-3">${headerIcon}</div>
+      <div class="text-base md:text-lg font-semibold text-gray-700 mb-3">
+        ${headerText}
+      </div>
+
+      ${
+        typeIssues.length > 0
+          ? `
+        <div class="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-3 space-y-1 text-left">
+          <div class="font-semibold">Type Mismatches:</div>
+          ${typeIssues
+            .map(
+              (issue: string) => `<div>• ${replaceDropAreaLabel(issue)}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="text-xs text-red-500 mb-3 text-left">
+          <strong>Solutions:</strong><br/>
+          • Remove incompatible variables and add compatible ones<br/>
+          • Switch to a chart type that supports these data types<br/>
+          • Check your data types in the variable list
+        </div>
+      `
+          : ""
+      }
+
+      ${
+        otherIssues.length > 0
+          ? `
+        <div class="text-sm text-gray-600 text-left space-y-2">
+          ${otherIssues
+            .map(
+              (issue: string) => `<div>• ${replaceDropAreaLabel(issue)}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="text-xs text-gray-500 mt-3 text-left">
+          Drag variables to the required positions to see the chart preview
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+
+          if (chartContainerRef.current) {
+            chartContainerRef.current.innerHTML = ""; // optional: reset warning jika render ulang
+            chartContainerRef.current.appendChild(warningContainer);
+          }
+
+          return;
+        }
+
+        if (chartContainerRef.current) {
+          // Clear previous warning if needed
+          chartContainerRef.current.innerHTML = "";
+          chartContainerRef.current.appendChild(warningContainer);
+        }
+        return;
+      }
+
+      console.log("🎨 Starting chart rendering, renderMode:", renderMode);
+      setIsRenderingChart(true);
+
+      if (chartContainerRef.current) {
         let chartNode = null;
         const svg = d3.select(chartContainerRef.current);
         svg.selectAll("*").remove();
@@ -1304,7 +2115,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         switch (chartType) {
           // === REGULAR 2D CHARTS ===
           case "Vertical Bar Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createVerticalBarChart2(
@@ -1321,7 +2132,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Horizontal Bar Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createHorizontalBarChart(
@@ -1340,7 +2151,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Vertical Stacked Bar Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createStackedChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createVerticalStackedBarChart(
@@ -1357,7 +2168,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Horizontal Stacked Bar Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createStackedChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createHorizontalStackedBarChart(
@@ -1374,7 +2185,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Clustered Bar Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createStackedChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createClusteredBarChart(
@@ -1391,7 +2202,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Line Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createLineChart(
@@ -1408,7 +2219,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Multiple Line Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createStackedChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createMultipleLineChart(
@@ -1425,7 +2236,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Pie Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createPieChart(
               config.data,
@@ -1439,7 +2250,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Area Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createAreaChart(
               config.data,
@@ -1455,7 +2266,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Stacked Area Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createStackedChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createStackedAreaChart(
@@ -1473,7 +2284,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           // === SCATTER PLOTS ===
           case "Scatter Plot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createScatterPlot(
               config.data,
@@ -1489,7 +2300,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Scatter Plot With Fit Line": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createScatterPlotWithFitLine(
               config.data,
@@ -1504,8 +2315,70 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
+          case "Scatter Plot With Multiple Fit Line": {
+            const isDefault = renderMode === "default";
+            const config = createChartConfig(chartType, isDefault);
+
+            // Transform data ke format yang diharapkan oleh scatterUtils
+            const scatterData = config.data
+              .map((d: any) => {
+                // Handle different data formats
+                if (d.x !== undefined && d.y !== undefined) {
+                  return { x: d.x, y: d.y };
+                } else if (d.value !== undefined && d.category !== undefined) {
+                  // For bar chart data format
+                  return { x: parseFloat(d.category) || 0, y: d.value };
+                } else if (Array.isArray(d)) {
+                  // For array format
+                  return { x: d[0] || 0, y: d[1] || 0 };
+                } else {
+                  // Fallback
+                  return { x: 0, y: 0 };
+                }
+              })
+              .filter((d: any) => !isNaN(d.x) && !isNaN(d.y));
+
+            // Debug logging untuk data yang dikirim
+            console.log("🔍 ChartPreview - config.data:", config.data);
+            console.log(
+              "🔍 ChartPreview - config.data length:",
+              config.data?.length
+            );
+            console.log(
+              "🔍 ChartPreview - Sample data:",
+              config.data?.slice(0, 3)
+            );
+            console.log(
+              "🔍 ChartPreview - Transformed scatterData:",
+              scatterData
+            );
+            console.log(
+              "🔍 ChartPreview - Transformed data length:",
+              scatterData.length
+            );
+
+            // Gunakan ChartService untuk membuat fit functions
+            const fitFunctions = ChartService.createFitFunctions(scatterData);
+
+            chartNode = chartUtils.createScatterPlotWithMultipleFitLine(
+              scatterData,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors,
+              fitFunctions
+            );
+
+            // Simpan fitFunctions ke dalam config untuk JSON output
+            (config as any).fitFunctions = fitFunctions;
+            break;
+          }
+
           case "Grouped Scatter Plot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createGroupedScatterPlot(
@@ -1522,7 +2395,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Scatter Plot Matrix": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createScatterPlotMatrix(
               config.data,
@@ -1538,7 +2411,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           // === STATISTICAL CHARTS ===
           case "Histogram": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createHistogram(
               config.data,
@@ -1548,13 +2421,14 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               config.titleConfig,
               config.axisConfig,
               config.scaleConfig,
-              chartColors
+              chartColors,
+              showNormalCurve
             );
             break;
           }
 
           case "Stacked Histogram": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createStackedChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createStackedHistogram(
@@ -1570,7 +2444,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Boxplot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createBoxplot(
               config.data,
@@ -1586,7 +2460,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Clustered Boxplot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createClusteredBoxplot(
               config.data,
@@ -1602,7 +2476,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "1-D Boxplot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.create1DBoxplot(
               config.data,
@@ -1618,7 +2492,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Violin Plot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createViolinPlot(
               config.data,
@@ -1635,7 +2509,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           // === ERROR BAR CHARTS ===
           case "Error Bar Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createErrorBarChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createErrorBarChart(
@@ -1652,7 +2526,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Clustered Error Bar Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createClusteredErrorBarChartConfig(
               chartType,
               isDefault
@@ -1675,7 +2549,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           // === SPECIALIZED CHARTS ===
           case "Dot Plot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createDotPlot(
@@ -1692,7 +2566,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Population Pyramid": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createStackedChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createPopulationPyramid(
@@ -1709,7 +2583,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Frequency Polygon": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createFrequencyPolygon(
               config.data,
@@ -1725,7 +2599,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Drop Line Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createDropLineChart(
@@ -1742,7 +2616,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Summary Point Plot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             const statistics = selectedStatistic || "mean";
 
@@ -1769,7 +2643,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Stem And Leaf Plot": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createStemAndLeafPlot(
@@ -1786,7 +2660,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Density Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             // Convert config.data to array of numbers for density chart
@@ -1810,9 +2684,43 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
+          case "Q-Q Plot": {
+            const isDefault = renderMode === "default";
+            const config = createNormalQQPlotConfig(chartType, isDefault);
+
+            chartNode = chartUtils.createNormalQQPlot(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
+          case "P-P Plot": {
+            const isDefault = renderMode === "default";
+            const config = createPPPlotConfig(chartType, isDefault);
+
+            chartNode = chartUtils.createPPPlot(
+              config.data,
+              width,
+              height,
+              useaxis,
+              config.titleConfig,
+              config.axisConfig,
+              config.scaleConfig,
+              chartColors
+            );
+            break;
+          }
+
           // === RANGE CHARTS ===
           case "Simple Range Bar": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             chartNode = chartUtils.createSimpleRangeBar(
               config.data,
@@ -1828,7 +2736,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Clustered Range Bar": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createStackedChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createClusteredRangeBar(
@@ -1845,7 +2753,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "High-Low-Close Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createHighLowCloseChart(
@@ -1862,7 +2770,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Difference Area": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createDifferenceArea(
@@ -1880,7 +2788,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           // === DUAL AXIS CHARTS ===
           case "Vertical Bar & Line Chart": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createDualAxisChartConfig(chartType, isDefault);
 
             chartNode = chartUtils.createBarAndLineChart(
@@ -1896,39 +2804,24 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "Vertical Bar & Line Chart2": {
-            const isDefault = processedResult.data.length === 0;
-            const config = createChartConfig(chartType, isDefault);
-
-            chartNode = chartUtils.createBarAndLineChart2(
-              config.data,
-              width,
-              height,
-              useaxis,
-              "stacked",
-              config.titleConfig,
-              config.axisConfig,
-              config.scaleConfig,
-              chartColors
-            );
-            break;
-          }
-
           case "Dual Axes Scatter Plot": {
-            const dualAxisScatterConfig = createDualAxisChartConfig(chartType);
-            const dualAxesScatterPlotData =
-              processedResult.data.length === 0
-                ? [
-                    { x: 6, y1: 22, y2: 75 },
-                    { x: 8, y1: 25, y2: 78 },
-                    { x: 10, y1: 28, y2: 80 },
-                    { x: 12, y1: 30, y2: 82 },
-                    { x: 14, y1: 26, y2: 79 },
-                    { x: 16, y1: 24, y2: 74 },
-                    { x: 18, y1: 27, y2: 76 },
-                    { x: 20, y1: 25, y2: 70 },
-                  ]
-                : processedResult.data;
+            const isDefault = renderMode === "default";
+            const dualAxisScatterConfig = createDualAxisChartConfig(
+              chartType,
+              isDefault
+            );
+            const dualAxesScatterPlotData = isDefault
+              ? [
+                  { x: 6, y1: 22, y2: 75 },
+                  { x: 8, y1: 25, y2: 78 },
+                  { x: 10, y1: 28, y2: 80 },
+                  { x: 12, y1: 30, y2: 82 },
+                  { x: 14, y1: 26, y2: 79 },
+                  { x: 16, y1: 24, y2: 74 },
+                  { x: 18, y1: 27, y2: 76 },
+                  { x: 20, y1: 25, y2: 70 },
+                ]
+              : processedResult.data;
 
             chartNode = chartUtils.createDualAxesScatterPlot(
               dualAxesScatterPlotData,
@@ -1945,37 +2838,36 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
 
           // === 3D CHARTS ===
           case "3D Bar Chart (ECharts)": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
             // Data untuk ECharts
-            const echartBarData =
-              config.data.length === 0
-                ? [
-                    { x: 5, y: 2, z: 5 },
-                    { x: 4, y: 3, z: 6 },
-                    { x: 3, y: 5, z: 4 },
-                    { x: 2, y: 7, z: 6 },
-                    { x: 0, y: 0, z: 0 },
-                    { x: 2, y: 2, z: 6 },
-                    { x: 2, y: 4, z: 7 },
-                    { x: 3, y: 6, z: 5 },
-                    { x: 6, y: 4, z: 2 },
-                    { x: 7, y: 3, z: 5 },
-                    { x: 7, y: 2, z: 6 },
-                    { x: 5, y: 5, z: 5 },
-                    { x: 1, y: 1, z: 3 },
-                    { x: 4, y: 1, z: 2 },
-                    { x: 6, y: 6, z: 8 },
-                    { x: 1, y: 5, z: 4 },
-                    { x: 0, y: 3, z: 7 },
-                    { x: 3, y: 1, z: 2 },
-                    { x: 5, y: 1, z: 4 },
-                    { x: 6, y: 2, z: 5 },
-                    { x: 1, y: 3, z: 4 },
-                    { x: 4, y: 6, z: 5 },
-                  ]
-                : processedResult.data; // Langsung gunakan data yang sudah diproses
+            const echartBarData = isDefault
+              ? [
+                  { x: 5, y: 2, z: 5 },
+                  { x: 4, y: 3, z: 6 },
+                  { x: 3, y: 5, z: 4 },
+                  { x: 2, y: 7, z: 6 },
+                  { x: 0, y: 0, z: 0 },
+                  { x: 2, y: 2, z: 6 },
+                  { x: 2, y: 4, z: 7 },
+                  { x: 3, y: 6, z: 5 },
+                  { x: 6, y: 4, z: 2 },
+                  { x: 7, y: 3, z: 5 },
+                  { x: 7, y: 2, z: 6 },
+                  { x: 5, y: 5, z: 5 },
+                  { x: 1, y: 1, z: 3 },
+                  { x: 4, y: 1, z: 2 },
+                  { x: 6, y: 6, z: 8 },
+                  { x: 1, y: 5, z: 4 },
+                  { x: 0, y: 3, z: 7 },
+                  { x: 3, y: 1, z: 2 },
+                  { x: 5, y: 1, z: 4 },
+                  { x: 6, y: 2, z: 5 },
+                  { x: 1, y: 3, z: 4 },
+                  { x: 4, y: 6, z: 5 },
+                ]
+              : processedResult.data; // Langsung gunakan data yang sudah diproses
 
             // Log data untuk debugging
             console.log("Processed data for ECharts:", processedResult.data);
@@ -2017,31 +2909,30 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "3D Scatter Plot (ECharts)": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
             console.log("Menyiapkan config", config);
 
             // Data untuk ECharts 3D Scatter Plot
-            const echartScatterData =
-              config.data.length === 0
-                ? [
-                    { x: -5, y: 2, z: -5 },
-                    { x: -4, y: 3, z: 6 },
-                    { x: -3, y: 5, z: 4 },
-                    { x: -2, y: 7, z: -6 },
-                    { x: 0, y: 0, z: 0 },
-                    { x: 2, y: 2, z: -6 },
-                    { x: 2, y: 4, z: 7 },
-                    { x: 3, y: 6, z: -5 },
-                    { x: 4, y: 3, z: 2 },
-                    { x: 5, y: 5, z: -9 },
-                    { x: 6, y: 4, z: -2 },
-                    { x: 7, y: 3, z: 5 },
-                    { x: -7, y: 2, z: -6 },
-                    { x: -6, y: 4, z: -2 },
-                    { x: -5, y: 5, z: 5 },
-                  ]
-                : processedResult.data; // Langsung gunakan data yang sudah diproses
+            const echartScatterData = isDefault
+              ? [
+                  { x: -5, y: 2, z: -5 },
+                  { x: -4, y: 3, z: 6 },
+                  { x: -3, y: 5, z: 4 },
+                  { x: -2, y: 7, z: -6 },
+                  { x: 0, y: 0, z: 0 },
+                  { x: 2, y: 2, z: -6 },
+                  { x: 2, y: 4, z: 7 },
+                  { x: 3, y: 6, z: -5 },
+                  { x: 4, y: 3, z: 2 },
+                  { x: 5, y: 5, z: -9 },
+                  { x: 6, y: 4, z: -2 },
+                  { x: 7, y: 3, z: 5 },
+                  { x: -7, y: 2, z: -6 },
+                  { x: -6, y: 4, z: -2 },
+                  { x: -5, y: 5, z: 5 },
+                ]
+              : processedResult.data; // Langsung gunakan data yang sudah diproses
 
             // Log data untuk debugging
             console.log(
@@ -2098,262 +2989,261 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             break;
           }
 
-          case "3D Bar Chart2": {
-            // Buat elemen chart
-            const d3BarChartData =
-              processedResult.data.length === 0
-                ? [
-                    { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
-                    { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
-                    { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
-                    { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
-                    { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
-                    { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
-                    { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
-                    { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
-                    { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
-                    { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
-                    { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
-                    { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
-                    { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
-                    { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
-                    { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
-                  ]
-                : processedResult.data;
+          // case "3D Bar Chart2": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3BarChartData = isDefault
+          //     ? [
+          //         { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+          //         { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+          //         { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+          //         { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+          //         { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+          //         { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+          //         { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+          //         { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+          //         { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+          //         { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+          //         { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+          //         { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+          //         { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+          //         { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+          //         { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+          //       ]
+          //     : processedResult.data;
 
-            chartNode = chartUtils.create3DBarChart2(
-              d3BarChartData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.create3DBarChart2(
+          //     d3BarChartData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
-          case "3D Scatter Plot": {
-            // Buat elemen chart
-            const d3ScatterPlotData =
-              processedResult.data.length === 0
-                ? [
-                    { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
-                    { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
-                    { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
-                    { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
-                    { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
-                    { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
-                    { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
-                    { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
-                    { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
-                    { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
-                    { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
-                    { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
-                    { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
-                    { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
-                    { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
-                  ]
-                : processedResult.data.map((d) => ({
-                    x:
-                      d.category && Number(d.category) !== 0
-                        ? Number(d.category)
-                        : Number(d.bottom_0) || 0,
-                    y: Number(d.value) || 0,
-                    z: Number(d.bottom2_0) || 0,
-                  }));
+          // case "3D Scatter Plot": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3ScatterPlotData = isDefault
+          //     ? [
+          //         { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+          //         { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+          //         { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+          //         { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+          //         { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+          //         { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+          //         { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+          //         { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+          //         { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+          //         { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+          //         { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+          //         { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+          //         { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+          //         { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+          //         { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+          //       ]
+          //     : processedResult.data.map((d) => ({
+          //         x:
+          //           d.category && Number(d.category) !== 0
+          //             ? Number(d.category)
+          //             : Number(d.bottom_0) || 0,
+          //         y: Number(d.value) || 0,
+          //         z: Number(d.bottom2_0) || 0,
+          //       }));
 
-            chartNode = chartUtils.create3DScatterPlot(
-              d3ScatterPlotData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.create3DScatterPlot(
+          //     d3ScatterPlotData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
-          case "Grouped 3D Scatter Plot": {
-            // Buat elemen chart
-            const d3GroupedScatterPlotData =
-              processedResult.data.length === 0
-                ? [
-                    { x: 1, y: 2, z: 3, category: "A" },
-                    { x: 1, y: 2, z: 3, category: "B" },
-                    { x: 1, y: 2, z: 3, category: "C" },
-                    { x: 1, y: 4, z: 3, category: "D" },
-                    { x: 2, y: 4, z: 1, category: "A" },
-                    { x: 3, y: 1, z: 2, category: "B" },
-                    { x: 4, y: 3, z: 4, category: "B" },
-                    { x: 5, y: 2, z: 5, category: "C" },
-                    { x: 6, y: 5, z: 3, category: "C" },
-                    { x: 7, y: 3, z: 2, category: "D" },
-                    { x: 8, y: 4, z: 1, category: "D" },
-                  ]
-                : processedResult.data
-                    .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
-                    .map((d) => ({
-                      x:
-                        d.category && Number(d.category) !== 0
-                          ? Number(d.category)
-                          : Number(d.bottom_0) || 0,
-                      y: Number(d.value) || 0,
-                      z: Number(d.bottom2_0) || 0,
-                      category: String(d.color || "unknown"),
-                    }));
+          // case "Grouped 3D Scatter Plot": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3GroupedScatterPlotData = isDefault
+          //     ? [
+          //         { x: 1, y: 2, z: 3, category: "A" },
+          //         { x: 1, y: 2, z: 3, category: "B" },
+          //         { x: 1, y: 2, z: 3, category: "C" },
+          //         { x: 1, y: 4, z: 3, category: "D" },
+          //         { x: 2, y: 4, z: 1, category: "A" },
+          //         { x: 3, y: 1, z: 2, category: "B" },
+          //         { x: 4, y: 3, z: 4, category: "B" },
+          //         { x: 5, y: 2, z: 5, category: "C" },
+          //         { x: 6, y: 5, z: 3, category: "C" },
+          //         { x: 7, y: 3, z: 2, category: "D" },
+          //         { x: 8, y: 4, z: 1, category: "D" },
+          //       ]
+          //     : processedResult.data
+          //         .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+          //         .map((d) => ({
+          //           x:
+          //             d.category && Number(d.category) !== 0
+          //               ? Number(d.category)
+          //               : Number(d.bottom_0) || 0,
+          //           y: Number(d.value) || 0,
+          //           z: Number(d.bottom2_0) || 0,
+          //           category: String(d.color || "unknown"),
+          //         }));
 
-            chartNode = chartUtils.createGrouped3DScatterPlot(
-              d3GroupedScatterPlotData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.createGrouped3DScatterPlot(
+          //     d3GroupedScatterPlotData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
-          case "Clustered 3D Bar Chart": {
-            // Buat elemen chart
-            const d3ClusteredBarChartData =
-              processedResult.data.length === 0
-                ? [
-                    { x: 1, z: 1, y: 6, category: "A" },
-                    { x: 2, z: 1, y: 7, category: "A" },
-                    { x: 2, z: 1, y: 6, category: "B" },
-                    { x: 2, z: 1, y: 5, category: "C" },
-                    { x: 2, z: 1, y: 6, category: "D" },
-                    { x: 6, z: 4, y: 7, category: "A" },
-                    { x: 6, z: 4, y: 6, category: "B" },
-                    { x: 6, z: 4, y: 5, category: "C" },
-                    { x: 6, z: 4, y: 6, category: "D" },
-                    { x: 4, z: 7, y: 5, category: "A" },
-                    { x: -4, z: 6, y: 3, category: "A" },
-                    { x: -4, z: 6, y: 6, category: "B" },
-                    { x: -4, z: 6, y: 7, category: "C" },
-                    { x: -4, z: 6, y: 1, category: "D" },
-                    { x: -4, z: 6, y: 4, category: "E" },
-                    { x: -9, z: 8, y: 4, category: "A" },
-                    { x: -9, z: 8, y: 6, category: "B" },
-                    { x: -9, z: 8, y: 2, category: "E" },
-                    { x: 8, z: -6, y: 3, category: "A" },
-                    { x: 8, z: -6, y: 4, category: "B" },
-                    { x: 8, z: -6, y: 9, category: "C" },
-                    { x: 8, z: -6, y: 2, category: "D" },
-                    { x: 8, z: -6, y: 5, category: "E" },
-                    { x: -8, z: -2, y: 3, category: "A" },
-                    { x: -8, z: -2, y: 6, category: "B" },
-                    { x: -8, z: -2, y: 3, category: "C" },
-                    { x: -8, z: -2, y: 1, category: "D" },
-                    { x: -8, z: -2, y: 4, category: "E" },
-                  ]
-                : processedResult.data
-                    .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
-                    .map((d) => ({
-                      x:
-                        d.category && Number(d.category) !== 0
-                          ? Number(d.category)
-                          : Number(d.bottom_0) || 0,
-                      y: Number(d.value) || 0,
-                      z: Number(d.bottom2_0) || 0,
-                      category: String(d.color || "unknown"),
-                    }));
+          // case "Clustered 3D Bar Chart": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3ClusteredBarChartData = isDefault
+          //     ? [
+          //         { x: 1, z: 1, y: 6, category: "A" },
+          //         { x: 2, z: 1, y: 7, category: "A" },
+          //         { x: 2, z: 1, y: 6, category: "B" },
+          //         { x: 2, z: 1, y: 5, category: "C" },
+          //         { x: 2, z: 1, y: 6, category: "D" },
+          //         { x: 6, z: 4, y: 7, category: "A" },
+          //         { x: 6, z: 4, y: 6, category: "B" },
+          //         { x: 6, z: 4, y: 5, category: "C" },
+          //         { x: 6, z: 4, y: 6, category: "D" },
+          //         { x: 4, z: 7, y: 5, category: "A" },
+          //         { x: -4, z: 6, y: 3, category: "A" },
+          //         { x: -4, z: 6, y: 6, category: "B" },
+          //         { x: -4, z: 6, y: 7, category: "C" },
+          //         { x: -4, z: 6, y: 1, category: "D" },
+          //         { x: -4, z: 6, y: 4, category: "E" },
+          //         { x: -9, z: 8, y: 4, category: "A" },
+          //         { x: -9, z: 8, y: 6, category: "B" },
+          //         { x: -9, z: 8, y: 2, category: "E" },
+          //         { x: 8, z: -6, y: 3, category: "A" },
+          //         { x: 8, z: -6, y: 4, category: "B" },
+          //         { x: 8, z: -6, y: 9, category: "C" },
+          //         { x: 8, z: -6, y: 2, category: "D" },
+          //         { x: 8, z: -6, y: 5, category: "E" },
+          //         { x: -8, z: -2, y: 3, category: "A" },
+          //         { x: -8, z: -2, y: 6, category: "B" },
+          //         { x: -8, z: -2, y: 3, category: "C" },
+          //         { x: -8, z: -2, y: 1, category: "D" },
+          //         { x: -8, z: -2, y: 4, category: "E" },
+          //       ]
+          //     : processedResult.data
+          //         .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+          //         .map((d) => ({
+          //           x:
+          //             d.category && Number(d.category) !== 0
+          //               ? Number(d.category)
+          //               : Number(d.bottom_0) || 0,
+          //           y: Number(d.value) || 0,
+          //           z: Number(d.bottom2_0) || 0,
+          //           category: String(d.color || "unknown"),
+          //         }));
 
-            chartNode = chartUtils.createClustered3DBarChart(
-              d3ClusteredBarChartData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.createClustered3DBarChart(
+          //     d3ClusteredBarChartData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
-          case "Stacked 3D Bar Chart": {
-            // Buat elemen chart
-            const d3StackedBarChartData =
-              processedResult.data.length === 0
-                ? [
-                    { x: 1, z: 1, y: 6, category: "A" },
-                    { x: 2, z: 6, y: 2, category: "A" },
-                    { x: 2, z: 6, y: 3, category: "B" },
-                    { x: 2, z: 6, y: 2, category: "C" },
-                    { x: 2, z: 6, y: 1, category: "D" },
-                    { x: 5, z: 4, y: 1, category: "A" },
-                    { x: 5, z: 4, y: 2, category: "B" },
-                    { x: 5, z: 4, y: 3, category: "C" },
-                    { x: 5, z: 4, y: 1, category: "D" },
-                    { x: 9, z: 7, y: 7, category: "A" },
-                    { x: -4, z: 6, y: 3, category: "A" },
-                    { x: -4, z: 6, y: 1, category: "B" },
-                    { x: -4, z: 6, y: 2, category: "C" },
-                    { x: -4, z: 6, y: 2, category: "D" },
-                    { x: -4, z: 6, y: 1, category: "E" },
-                    { x: -9, z: 8, y: 1, category: "A" },
-                    { x: -9, z: 8, y: 2, category: "B" },
-                    { x: -9, z: 8, y: 2, category: "E" },
-                    { x: 8, z: -6, y: 3, category: "A" },
-                    { x: 8, z: -6, y: 2, category: "B" },
-                    { x: 8, z: -6, y: 1, category: "C" },
-                    { x: 8, z: -6, y: 2, category: "D" },
-                    { x: 8, z: -6, y: 2, category: "E" },
-                    { x: -8, z: -2, y: 3, category: "A" },
-                    { x: -8, z: -2, y: 2, category: "B" },
-                    { x: -8, z: -2, y: 3, category: "C" },
-                    { x: -8, z: -2, y: 1, category: "D" },
-                    { x: -8, z: -2, y: 1, category: "E" },
-                  ]
-                : processedResult.data
-                    .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
-                    .map((d) => ({
-                      x:
-                        d.category && Number(d.category) !== 0
-                          ? Number(d.category)
-                          : Number(d.bottom_0) || 0,
-                      y: Number(d.value) || 0,
-                      z: Number(d.bottom2_0) || 0,
-                      category: String(d.color || "unknown"),
-                    }));
+          // case "Stacked 3D Bar Chart": {
+          //   const isDefault = renderMode === "default";
+          //   // Buat elemen chart
+          //   const d3StackedBarChartData = isDefault
+          //     ? [
+          //         { x: 1, z: 1, y: 6, category: "A" },
+          //         { x: 2, z: 6, y: 2, category: "A" },
+          //         { x: 2, z: 6, y: 3, category: "B" },
+          //         { x: 2, z: 6, y: 2, category: "C" },
+          //         { x: 2, z: 6, y: 1, category: "D" },
+          //         { x: 5, z: 4, y: 1, category: "A" },
+          //         { x: 5, z: 4, y: 2, category: "B" },
+          //         { x: 5, z: 4, y: 3, category: "C" },
+          //         { x: 5, z: 4, y: 1, category: "D" },
+          //         { x: 9, z: 7, y: 7, category: "A" },
+          //         { x: -4, z: 6, y: 3, category: "A" },
+          //         { x: -4, z: 6, y: 1, category: "B" },
+          //         { x: -4, z: 6, y: 2, category: "C" },
+          //         { x: -4, z: 6, y: 2, category: "D" },
+          //         { x: -4, z: 6, y: 1, category: "E" },
+          //         { x: -9, z: 8, y: 1, category: "A" },
+          //         { x: -9, z: 8, y: 2, category: "B" },
+          //         { x: -9, z: 8, y: 2, category: "E" },
+          //         { x: 8, z: -6, y: 3, category: "A" },
+          //         { x: 8, z: -6, y: 2, category: "B" },
+          //         { x: 8, z: -6, y: 1, category: "C" },
+          //         { x: 8, z: -6, y: 2, category: "D" },
+          //         { x: 8, z: -6, y: 2, category: "E" },
+          //         { x: -8, z: -2, y: 3, category: "A" },
+          //         { x: -8, z: -2, y: 2, category: "B" },
+          //         { x: -8, z: -2, y: 3, category: "C" },
+          //         { x: -8, z: -2, y: 1, category: "D" },
+          //         { x: -8, z: -2, y: 1, category: "E" },
+          //       ]
+          //     : processedResult.data
+          //         .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+          //         .map((d) => ({
+          //           x:
+          //             d.category && Number(d.category) !== 0
+          //               ? Number(d.category)
+          //               : Number(d.bottom_0) || 0,
+          //           y: Number(d.value) || 0,
+          //           z: Number(d.bottom2_0) || 0,
+          //           category: String(d.color || "unknown"),
+          //         }));
 
-            chartNode = chartUtils.createStacked3DBarChart(
-              d3StackedBarChartData,
-              width,
-              height
-            );
-            break;
-          }
+          //   chartNode = chartUtils.createStacked3DBarChart(
+          //     d3StackedBarChartData,
+          //     width,
+          //     height
+          //   );
+          //   break;
+          // }
 
           case "Stacked 3D Bar Chart (ECharts)": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
-            const echartStackedBarData =
-              config.data.length === 0
-                ? [
-                    { x: 1, y: 6, z: 1, group: "A" },
-                    { x: 2, y: 2, z: 6, group: "A" },
-                    { x: 2, y: 3, z: 6, group: "B" },
-                    { x: 2, y: 2, z: 6, group: "C" },
-                    { x: 2, y: 1, z: 6, group: "D" },
-                    { x: 5, y: 1, z: 4, group: "A" },
-                    { x: 5, y: 2, z: 4, group: "B" },
-                    { x: 5, y: 3, z: 4, group: "C" },
-                    { x: 5, y: 1, z: 4, group: "D" },
-                    { x: 9, y: 7, z: 7, group: "A" },
-                    { x: -4, y: 3, z: 6, group: "A" },
-                    { x: -4, y: 1, z: 6, group: "B" },
-                    { x: -4, y: 2, z: 6, group: "C" },
-                    { x: -4, y: 2, z: 6, group: "D" },
-                    { x: -4, y: 1, z: 6, group: "E" },
-                    { x: -9, y: 1, z: 8, group: "A" },
-                    { x: -9, y: 2, z: 8, group: "B" },
-                    { x: -9, y: 2, z: 8, group: "E" },
-                    { x: 8, y: 3, z: 6, group: "A" },
-                    { x: 8, y: 2, z: 6, group: "B" },
-                    { x: 8, y: 1, z: 6, group: "C" },
-                    { x: 8, y: 2, z: 6, group: "D" },
-                    { x: 8, y: 2, z: 6, group: "E" },
-                    { x: -8, y: 3, z: 2, group: "A" },
-                    { x: -8, y: 6, z: 2, group: "B" },
-                    { x: -8, y: 3, z: 2, group: "C" },
-                    { x: -8, y: 1, z: 2, group: "D" },
-                    { x: -8, y: 1, z: 2, group: "E" },
-                  ]
-                : processedResult.data.map((d) => ({
-                    x: d.x ?? d.bottom_0 ?? d.category ?? 0,
-                    y: d.y ?? d.value ?? 0,
-                    z: d.z ?? d.bottom2_0 ?? 0,
-                    group: d.color || d.group || "unknown",
-                  }));
+            const echartStackedBarData = isDefault
+              ? [
+                  { x: 1, y: 6, z: 1, group: "A" },
+                  { x: 2, y: 2, z: 6, group: "A" },
+                  { x: 2, y: 3, z: 6, group: "B" },
+                  { x: 2, y: 2, z: 6, group: "C" },
+                  { x: 2, y: 1, z: 6, group: "D" },
+                  { x: 5, y: 1, z: 4, group: "A" },
+                  { x: 5, y: 2, z: 4, group: "B" },
+                  { x: 5, y: 3, z: 4, group: "C" },
+                  { x: 5, y: 1, z: 4, group: "D" },
+                  { x: 9, y: 7, z: 7, group: "A" },
+                  { x: -4, y: 3, z: 6, group: "A" },
+                  { x: -4, y: 1, z: 6, group: "B" },
+                  { x: -4, y: 2, z: 6, group: "C" },
+                  { x: -4, y: 2, z: 6, group: "D" },
+                  { x: -4, y: 1, z: 6, group: "E" },
+                  { x: -9, y: 1, z: 8, group: "A" },
+                  { x: -9, y: 2, z: 8, group: "B" },
+                  { x: -9, y: 2, z: 8, group: "E" },
+                  { x: 8, y: 3, z: 6, group: "A" },
+                  { x: 8, y: 2, z: 6, group: "B" },
+                  { x: 8, y: 1, z: 6, group: "C" },
+                  { x: 8, y: 2, z: 6, group: "D" },
+                  { x: 8, y: 2, z: 6, group: "E" },
+                  { x: -8, y: 3, z: 2, group: "A" },
+                  { x: -8, y: 6, z: 2, group: "B" },
+                  { x: -8, y: 3, z: 2, group: "C" },
+                  { x: -8, y: 1, z: 2, group: "D" },
+                  { x: -8, y: 1, z: 2, group: "E" },
+                ]
+              : processedResult.data.map((d) => ({
+                  x: d.x ?? d.bottom_0 ?? d.category ?? 0,
+                  y: d.y ?? d.value ?? 0,
+                  z: d.z ?? d.bottom2_0 ?? 0,
+                  group: d.color || d.group || "unknown",
+                }));
 
             const titleConfig = {
               title: chartTitle || "Stacked 3D Bar Chart",
@@ -2405,47 +3295,46 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Grouped 3D Scatter Plot (ECharts)": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
-            const echartGroupedScatterData =
-              config.data.length === 0
-                ? [
-                    { x: 1, y: 6, z: 1, group: "A" },
-                    { x: 2, y: 2, z: 6, group: "A" },
-                    { x: 2, y: 3, z: 6, group: "B" },
-                    { x: 2, y: 2, z: 6, group: "C" },
-                    { x: 2, y: 1, z: 6, group: "D" },
-                    { x: 5, y: 1, z: 4, group: "A" },
-                    { x: 5, y: 2, z: 4, group: "B" },
-                    { x: 5, y: 3, z: 4, group: "C" },
-                    { x: 5, y: 1, z: 4, group: "D" },
-                    { x: 9, y: 7, z: 7, group: "A" },
-                    { x: -4, y: 3, z: 6, group: "A" },
-                    { x: -4, y: 1, z: 6, group: "B" },
-                    { x: -4, y: 2, z: 6, group: "C" },
-                    { x: -4, y: 2, z: 6, group: "D" },
-                    { x: -4, y: 1, z: 6, group: "E" },
-                    { x: -9, y: 1, z: 8, group: "A" },
-                    { x: -9, y: 2, z: 8, group: "B" },
-                    { x: -9, y: 2, z: 8, group: "E" },
-                    { x: 8, y: 3, z: 6, group: "A" },
-                    { x: 8, y: 2, z: 6, group: "B" },
-                    { x: 8, y: 1, z: 6, group: "C" },
-                    { x: 8, y: 2, z: 6, group: "D" },
-                    { x: 8, y: 2, z: 6, group: "E" },
-                    { x: -8, y: 3, z: 2, group: "A" },
-                    { x: -8, y: 6, z: 2, group: "B" },
-                    { x: -8, y: 3, z: 2, group: "C" },
-                    { x: -8, y: 1, z: 2, group: "D" },
-                    { x: -8, y: 1, z: 2, group: "E" },
-                  ]
-                : processedResult.data.map((d) => ({
-                    x: typeof d.x === "number" ? d.x : parseFloat(d.x) || 0,
-                    y: typeof d.y === "number" ? d.y : parseFloat(d.y) || 0,
-                    z: typeof d.z === "number" ? d.z : parseFloat(d.z) || 0,
-                    group: String(d.group || "Unknown"),
-                  }));
+            const echartGroupedScatterData = isDefault
+              ? [
+                  { x: 1, y: 6, z: 1, group: "A" },
+                  { x: 2, y: 2, z: 6, group: "A" },
+                  { x: 2, y: 3, z: 6, group: "B" },
+                  { x: 2, y: 2, z: 6, group: "C" },
+                  { x: 2, y: 1, z: 6, group: "D" },
+                  { x: 5, y: 1, z: 4, group: "A" },
+                  { x: 5, y: 2, z: 4, group: "B" },
+                  { x: 5, y: 3, z: 4, group: "C" },
+                  { x: 5, y: 1, z: 4, group: "D" },
+                  { x: 9, y: 7, z: 7, group: "A" },
+                  { x: -4, y: 3, z: 6, group: "A" },
+                  { x: -4, y: 1, z: 6, group: "B" },
+                  { x: -4, y: 2, z: 6, group: "C" },
+                  { x: -4, y: 2, z: 6, group: "D" },
+                  { x: -4, y: 1, z: 6, group: "E" },
+                  { x: -9, y: 1, z: 8, group: "A" },
+                  { x: -9, y: 2, z: 8, group: "B" },
+                  { x: -9, y: 2, z: 8, group: "E" },
+                  { x: 8, y: 3, z: 6, group: "A" },
+                  { x: 8, y: 2, z: 6, group: "B" },
+                  { x: 8, y: 1, z: 6, group: "C" },
+                  { x: 8, y: 2, z: 6, group: "D" },
+                  { x: 8, y: 2, z: 6, group: "E" },
+                  { x: -8, y: 3, z: 2, group: "A" },
+                  { x: -8, y: 6, z: 2, group: "B" },
+                  { x: -8, y: 3, z: 2, group: "C" },
+                  { x: -8, y: 1, z: 2, group: "D" },
+                  { x: -8, y: 1, z: 2, group: "E" },
+                ]
+              : processedResult.data.map((d) => ({
+                  x: typeof d.x === "number" ? d.x : parseFloat(d.x) || 0,
+                  y: typeof d.y === "number" ? d.y : parseFloat(d.y) || 0,
+                  z: typeof d.z === "number" ? d.z : parseFloat(d.z) || 0,
+                  group: String(d.group || "Unknown"),
+                }));
 
             const titleConfig = {
               title: chartTitle || "Grouped 3D Scatter Plot",
@@ -2480,47 +3369,46 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           case "Clustered 3D Bar Chart (ECharts)": {
-            const isDefault = processedResult.data.length === 0;
+            const isDefault = renderMode === "default";
             const config = createChartConfig(chartType, isDefault);
 
-            const echartClusteredBarData =
-              config.data.length === 0
-                ? [
-                    { x: 1, y: 6, z: 1, group: "A" },
-                    { x: 2, y: 2, z: 6, group: "A" },
-                    { x: 2, y: 3, z: 6, group: "B" },
-                    { x: 2, y: 2, z: 6, group: "C" },
-                    { x: 2, y: 1, z: 6, group: "D" },
-                    { x: 5, y: 1, z: 4, group: "A" },
-                    { x: 5, y: 2, z: 4, group: "B" },
-                    { x: 5, y: 3, z: 4, group: "C" },
-                    { x: 5, y: 1, z: 4, group: "D" },
-                    { x: 9, y: 7, z: 7, group: "A" },
-                    { x: -4, y: 3, z: 6, group: "A" },
-                    { x: -4, y: 1, z: 6, group: "B" },
-                    { x: -4, y: 2, z: 6, group: "C" },
-                    { x: -4, y: 2, z: 6, group: "D" },
-                    { x: -4, y: 1, z: 6, group: "E" },
-                    { x: -9, y: 1, z: 8, group: "A" },
-                    { x: -9, y: 2, z: 8, group: "B" },
-                    { x: -9, y: 2, z: 8, group: "E" },
-                    { x: 8, y: 3, z: 6, group: "A" },
-                    { x: 8, y: 2, z: 6, group: "B" },
-                    { x: 8, y: 1, z: 6, group: "C" },
-                    { x: 8, y: 2, z: 6, group: "D" },
-                    { x: 8, y: 2, z: 6, group: "E" },
-                    { x: -8, y: 3, z: 2, group: "A" },
-                    { x: -8, y: 6, z: 2, group: "B" },
-                    { x: -8, y: 3, z: 2, group: "C" },
-                    { x: -8, y: 1, z: 2, group: "D" },
-                    { x: -8, y: 1, z: 2, group: "E" },
-                  ]
-                : processedResult.data.map((d) => ({
-                    x: typeof d.x === "number" ? d.x : parseFloat(d.x) || 0,
-                    y: typeof d.y === "number" ? d.y : parseFloat(d.y) || 0,
-                    z: typeof d.z === "number" ? d.z : parseFloat(d.z) || 0,
-                    group: String(d.group || "Unknown"),
-                  }));
+            const echartClusteredBarData = isDefault
+              ? [
+                  { x: 1, y: 6, z: 1, group: "A" },
+                  { x: 2, y: 2, z: 6, group: "A" },
+                  { x: 2, y: 3, z: 6, group: "B" },
+                  { x: 2, y: 2, z: 6, group: "C" },
+                  { x: 2, y: 1, z: 6, group: "D" },
+                  { x: 5, y: 1, z: 4, group: "A" },
+                  { x: 5, y: 2, z: 4, group: "B" },
+                  { x: 5, y: 3, z: 4, group: "C" },
+                  { x: 5, y: 1, z: 4, group: "D" },
+                  { x: 9, y: 7, z: 7, group: "A" },
+                  { x: -4, y: 3, z: 6, group: "A" },
+                  { x: -4, y: 1, z: 6, group: "B" },
+                  { x: -4, y: 2, z: 6, group: "C" },
+                  { x: -4, y: 2, z: 6, group: "D" },
+                  { x: -4, y: 1, z: 6, group: "E" },
+                  { x: -9, y: 1, z: 8, group: "A" },
+                  { x: -9, y: 2, z: 8, group: "B" },
+                  { x: -9, y: 2, z: 8, group: "E" },
+                  { x: 8, y: 3, z: 6, group: "A" },
+                  { x: 8, y: 2, z: 6, group: "B" },
+                  { x: 8, y: 1, z: 6, group: "C" },
+                  { x: 8, y: 2, z: 6, group: "D" },
+                  { x: 8, y: 2, z: 6, group: "E" },
+                  { x: -8, y: 3, z: 2, group: "A" },
+                  { x: -8, y: 6, z: 2, group: "B" },
+                  { x: -8, y: 3, z: 2, group: "C" },
+                  { x: -8, y: 1, z: 2, group: "D" },
+                  { x: -8, y: 1, z: 2, group: "E" },
+                ]
+              : processedResult.data.map((d) => ({
+                  x: typeof d.x === "number" ? d.x : parseFloat(d.x) || 0,
+                  y: typeof d.y === "number" ? d.y : parseFloat(d.y) || 0,
+                  z: typeof d.z === "number" ? d.z : parseFloat(d.z) || 0,
+                  group: String(d.group || "Unknown"),
+                }));
 
             const titleConfig = {
               title: chartTitle || "Clustered 3D Bar Chart",
@@ -2567,24 +3455,32 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           console.log("chartContainerRef.current:", chartContainerRef.current);
           console.log("chart:", chartNode);
         }
+
+        // Mark chart rendering as complete
+        setIsRenderingChart(false);
       }
     }, [
-      // Dependencies array remains the same
+      // Optimized dependencies - only depend on processedResult and chartType
+      // This ensures chart rendering only happens after data processing is complete
+      processedResult,
       chartType,
-      sideVariables,
-      side2Variables,
+      isProcessingData,
+      isRenderingChart,
+      lastProcessedChartType,
+      lastProcessedVariables,
+      // Variables that affect data processing
       bottomVariables,
-      bottom2Variables,
+      sideVariables,
       colorVariables,
-      filterVariables,
       lowVariables,
       highVariables,
       closeVariables,
-      data,
+      bottom2Variables,
+      side2Variables,
+      // Chart configuration props
       useaxis,
       width,
       height,
-      variables,
       chartTitle,
       chartSubtitle,
       chartTitleFontSize,
@@ -2611,164 +3507,193 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
       zAxisMajorIncrement,
       zAxisOrigin,
       chartColors,
-      processedResult,
       selectedStatistic,
+      showNormalCurve,
+      // Functions that need to be stable
       createChartConfig,
       createClusteredErrorBarChartConfig,
       createDualAxisChartConfig,
       createErrorBarChartConfig,
       createStackedChartConfig,
+      createNormalQQPlotConfig,
+      createPPPlotConfig,
+      checkRequiredVariables,
+      hasAnyVariables,
     ]);
 
-    // Process data when variables or options change
-    useEffect(() => {
-      // Only process if we have data and variables
-      if (data.length === 0 || variables.length === 0) {
-        setProcessedResult({ data: [], axisInfo: {} });
-        return;
-      }
+    // // Add a function to get the generated JSON (for ChartBuilderModal)
+    // const getGeneratedChartJSON = useCallback(() => {
+    //   return generatedChartJSON;
+    // }, [generatedChartJSON]);
 
-      function normalizeRawData(
-        rawData: any[][],
-        variables: { name: string; type?: string }[]
-      ): any[][] {
-        return rawData.map((row, rowIdx) => {
-          if (row.length !== variables.length) {
-            console.warn(
-              `[normalizeRawData] ⚠️ Jumlah kolom tidak sesuai pada baris ${rowIdx}:`,
-              `data columns = ${row.length}, variables = ${variables.length}`
-            );
-          }
-
-          return row.map((cell, colIdx) => {
-            const varMeta = variables[colIdx];
-            const varName = varMeta?.name ?? `kolom${colIdx}`;
-            const type = varMeta?.type ?? "string";
-
-            let casted: any = cell;
-
-            if (type === "numeric") {
-              const num = parseFloat(cell);
-              casted = isNaN(num) ? null : num;
-            }
-
-            console.log(
-              `[normalizeRawData] row ${rowIdx}, col ${colIdx} (${varName}) →`,
-              `type: ${type}, value:`,
-              cell,
-              `→ casted:`,
-              casted
-            );
-
-            return casted;
-          });
-        });
-      }
-
-      try {
-        console.log("🔄 Processing data with options:", {
-          chartType,
-          variables: variables.length,
-          errorBarOptions,
-        });
-
-        const isErrorBarChart =
-          chartType === "Error Bar Chart" ||
-          chartType === "Clustered Error Bar Chart";
-
-        const processingOptions = {
-          aggregation: isErrorBarChart
-            ? ("average" as const)
-            : ("none" as const),
-          filterEmpty: true,
-          sortBy: undefined,
-          sortOrder: "asc" as const,
-          limit: undefined,
-          ...(isErrorBarChart && {
-            errorBar: errorBarOptions,
-          }),
-        };
-
-        const chartVariables = {
-          x: bottomVariables,
-          y: chartType.includes("3D") ? bottom2Variables : sideVariables,
-          groupBy: colorVariables,
-          low: lowVariables,
-          high: highVariables,
-          close: closeVariables,
-          z: chartType.includes("3D") ? sideVariables : bottom2Variables,
-          y2: side2Variables,
-        };
-
-        const result = DataProcessingService.processDataForChart({
-          chartType,
-          rawData: normalizeRawData(data, variables),
-          variables,
-          chartVariables,
-          processingOptions,
-        });
-
-        console.log("✅ Data processed:", result);
-        setProcessedResult(result);
-      } catch (error) {
-        console.error("❌ Error processing data:", error);
-        setProcessedResult({ data: [], axisInfo: {} });
-      }
-    }, [
-      data,
-      variables,
-      chartType,
-      bottomVariables,
-      sideVariables,
-      colorVariables,
-      lowVariables,
-      highVariables,
-      closeVariables,
-      bottom2Variables,
-      side2Variables,
-      errorBarOptions,
-    ]);
-
-    // Add a function to get the generated JSON (for ChartBuilderModal)
-    const getGeneratedChartJSON = useCallback(() => {
-      return generatedChartJSON;
-    }, [generatedChartJSON]);
-
-    // Expose the function to parent component
-    useEffect(() => {
-      if (typeof window !== "undefined") {
-        (window as any).getChartPreviewJSON = getGeneratedChartJSON;
-      }
-    }, [getGeneratedChartJSON]);
+    // // Expose the function to parent component
+    // useEffect(() => {
+    //   if (typeof window !== "undefined") {
+    //     (window as any).getChartPreviewJSON = getGeneratedChartJSON;
+    //   }
+    // }, [getGeneratedChartJSON]);
 
     // Expose methods to parent component
     useImperativeHandle(ref, () => ({
       getGeneratedChartJSON: () => generatedChartJSON,
     }));
 
-    // Helper function untuk format limited list
-    const formatLimitedList = (items: string[], limit: number = 3): string => {
-      const limited = items.slice(0, limit);
-      const remaining = items.length - limit;
-      if (remaining > 0) {
-        return `${limited.join(", ")} and ${remaining} more`;
+    // Add useEffect to generate chart JSON when processed data changes
+    // This should run after chart rendering is complete
+    useEffect(() => {
+      // Check if data needs to be reprocessed
+      const currentVariables = JSON.stringify({
+        bottomVariables,
+        sideVariables,
+        colorVariables,
+        lowVariables,
+        highVariables,
+        closeVariables,
+        bottom2Variables,
+        side2Variables,
+      });
+
+      const needsReprocessing =
+        lastProcessedChartType !== chartType ||
+        lastProcessedVariables !== currentVariables;
+
+      // Check if this is a default preview (no variables selected)
+      const hasAnyVariablesSelected =
+        sideVariables.length > 0 ||
+        bottomVariables.length > 0 ||
+        colorVariables.length > 0 ||
+        lowVariables.length > 0 ||
+        highVariables.length > 0 ||
+        closeVariables.length > 0 ||
+        side2Variables.length > 0 ||
+        bottom2Variables.length > 0;
+
+      // For default preview, don't generate JSON
+      if (!hasAnyVariablesSelected) {
+        console.log("🎨 Default preview - skipping JSON generation");
+        return;
       }
-      return limited.join(", ");
+
+      if (
+        processedResult.data.length > 0 &&
+        !isRenderingChart &&
+        !needsReprocessing &&
+        hasAnyVariablesSelected
+      ) {
+        // Add a small delay to ensure chart rendering is complete
+        const timer = setTimeout(() => {
+          generateChartJSON();
+        }, 100);
+
+        return () => clearTimeout(timer);
+      }
+    }, [
+      // Only depend on essential state changes
+      processedResult,
+      isRenderingChart,
+      chartType,
+      lastProcessedChartType,
+      lastProcessedVariables,
+      // Chart customization props that affect JSON
+      chartTitle,
+      chartSubtitle,
+      chartTitleFontSize,
+      chartSubtitleFontSize,
+      xAxisLabel,
+      yAxisLabel,
+      yLeftAxisLabel,
+      yRightAxisLabel,
+      zAxisLabel,
+      xAxisMin,
+      xAxisMax,
+      xAxisMajorIncrement,
+      xAxisOrigin,
+      yAxisMin,
+      yAxisMax,
+      yAxisMajorIncrement,
+      yAxisOrigin,
+      yRightAxisMin,
+      yRightAxisMax,
+      yRightAxisMajorIncrement,
+      yRightAxisOrigin,
+      zAxisMin,
+      zAxisMax,
+      zAxisMajorIncrement,
+      zAxisOrigin,
+      selectedStatistic,
+      chartColors,
+      useaxis,
+      showNormalCurve,
+      // Add missing dependencies
+      bottom2Variables,
+      bottomVariables,
+      closeVariables,
+      colorVariables,
+      generateChartJSON,
+      highVariables,
+      lowVariables,
+      side2Variables,
+      sideVariables,
+    ]);
+
+    // Mapping nama variabel drop area ke label user-friendly
+    const dropAreaLabelMap: Record<string, string> = {
+      side: "Left",
+      side2: "Right",
+      bottom: "Bottom",
+      bottom2: "Bottom 2",
+      color: "Group",
+      high: "High",
+      low: "Low",
+      close: "Close",
     };
 
-    // Add useEffect to generate chart JSON when processed data changes
-    useEffect(() => {
-      if (processedResult.data.length > 0) {
-        generateChartJSON();
-      }
-    }, [processedResult, generateChartJSON]);
+    // Helper untuk mengganti label variabel pada pesan
+    function replaceDropAreaLabel(text: string) {
+      return text.replace(
+        /(Side 2|Side|Bottom 2|Bottom|Color|High|Low|Close)/gi,
+        (match) => {
+          const key = match.toLowerCase().replace(" ", "");
+          if (key === "side") return "Left";
+          if (key === "side2") return "Right";
+          if (key === "bottom") return "Bottom";
+          if (key === "bottom2") return "Bottom 2";
+          if (key === "color") return "Group";
+          if (key === "high") return "High";
+          if (key === "low") return "Low";
+          if (key === "close") return "Close";
+          return match;
+        }
+      );
+    }
 
     return (
       <div className="flex flex-col p-5 border-2 border-gray-200 rounded-lg pb-24">
+        {/* AlertDialog untuk error tipe data */}
+        {errorDialog?.open && (
+          <AlertDialog
+            open={errorDialog.open}
+            onOpenChange={(open) => setErrorDialog(open ? errorDialog : null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{errorDialog.title}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {errorDialog.description}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setErrorDialog(null)}>
+                  OK
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         {/* Label Chart Preview di tengah atas kotak putih */}
         <div
           className="flex justify-center items-center w-full"
-          style={{ marginTop: "10px", marginBottom: "0px" }}
+          style={{ marginTop: "8px", marginBottom: "4px" }}
         >
           <span
             className="text-lg font-semibold text-gray-500 uppercase tracking-widest px-6 py-1 rounded border border-gray-200 shadow-sm"
@@ -2781,6 +3706,24 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             <span role="img" aria-label="component" className="mr-2">
               🧩
             </span>
+            {isProcessingData && (
+              <span className="ml-2 text-blue-500 animate-pulse">
+                🔄 Processing...
+              </span>
+            )}
+            {/* {isRenderingChart && !isProcessingData && (
+              <span className="ml-2 text-green-500 animate-pulse">
+                🎨 Rendering...
+              </span>
+            )} */}
+            {!isProcessingData &&
+              !isRenderingChart &&
+              lastProcessedChartType !== null &&
+              lastProcessedChartType !== chartType && (
+                <span className="ml-2 text-orange-500 animate-pulse">
+                  ⚡ Reprocessing needed...
+                </span>
+              )}
           </span>
         </div>
         {/* Wrapper dengan padding untuk drop areas */}
@@ -2794,13 +3737,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                 {/* Copy dari JSX lama untuk side */}
                 <div
                   className={clsx(
-                    "rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer",
-                    (chartType === "3D Bar Chart2" ||
-                      chartType === "3D Scatter Plot" ||
-                      chartType === "Grouped 3D Scatter Plot" ||
-                      chartType === "Clustered 3D Bar Chart" ||
-                      chartType === "Stacked 3D Bar Chart") &&
-                      "border-3 border-green-500"
+                    "rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border-[1px] border-gray-400 rounded-md px-2 py-1 cursor-pointer font-normal text-xs"
+                    // (chartType === "3D Bar Chart2" ||
+                    //   chartType === "3D Scatter Plot" ||
+                    //   chartType === "Grouped 3D Scatter Plot" ||
+                    //   chartType === "Clustered 3D Bar Chart" ||
+                    //   chartType === "Stacked 3D Bar Chart") &&
+                    //   "border-3 border-green-500"
                   )}
                   onDrop={(e) => handleDrop(e, "side")}
                   onDragOver={(e) => e.preventDefault()}
@@ -2808,13 +3751,10 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                 >
                   {sideVariables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                      {chartType === "3D Bar Chart2" ||
-                      chartType === "3D Scatter Plot" ||
-                      chartType === "Grouped 3D Scatter Plot" ||
-                      chartType === "Clustered 3D Bar Chart" ||
-                      chartType === "Stacked 3D Bar Chart"
-                        ? "Y axis"
-                        : "No variables selected"}
+                      {/* Perkecil font dan padding */}
+                      <span className="text-xs font-normal">
+                        &quot;No variables selected&quot;
+                      </span>
                     </div>
                   ) : (
                     (() => {
@@ -2841,14 +3781,21 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                             <div
                               key={index}
                               className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                              style={{ minWidth: "40px" }}
+                              style={{
+                                minWidth: "40px",
+                                fontSize: "11px",
+                                fontWeight: 400,
+                                padding: "4px 8px",
+                              }}
                             >
                               {variable}
                             </div>
                           ))}
                           {hiddenCount > 0 && (
                             <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                              +{hiddenCount} more
+                              <span className="text-xs font-normal">
+                                +{hiddenCount} more
+                              </span>
                             </div>
                           )}
                         </div>
@@ -2866,14 +3813,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                 {/* ...side2 drop area JSX... */}
                 {/* Copy dari JSX lama untuk side2 */}
                 <div
-                  className="rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer"
+                  className="rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border-[1px] border-gray-400 rounded-md px-2 py-1 cursor-pointer font-normal text-xs"
                   onDrop={(e) => handleDrop(e, "side2")}
                   onDragOver={(e) => e.preventDefault()}
                   onClick={() => handleOpenModal("side2")}
                 >
                   {side2Variables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                      No variables selected
+                      <span className="text-xs font-normal">
+                        No variables selected
+                      </span>
                     </div>
                   ) : (
                     (() => {
@@ -2900,14 +3849,21 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                             <div
                               key={index}
                               className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                              style={{ minWidth: "40px" }}
+                              style={{
+                                minWidth: "40px",
+                                fontSize: "11px",
+                                fontWeight: 400,
+                                padding: "4px 8px",
+                              }}
                             >
                               {variable}
                             </div>
                           ))}
                           {hiddenCount > 0 && (
                             <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                              +{hiddenCount} more
+                              <span className="text-xs font-normal">
+                                +{hiddenCount} more
+                              </span>
                             </div>
                           )}
                         </div>
@@ -2922,26 +3878,36 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
             (chartVariableConfig[chartType].bottom?.min !== 0 ||
               chartVariableConfig[chartType].bottom?.max !== 0) && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 z-10"
-                style={{ bottom: "-50px" }}
+                className="absolute z-10"
+                style={
+                  chartVariableConfig[chartType]?.bottom2 &&
+                  (chartVariableConfig[chartType].bottom2?.min !== 0 ||
+                    chartVariableConfig[chartType].bottom2?.max !== 0)
+                    ? {
+                        left: "calc(50% - 140px)",
+                        bottom: "-50px",
+                        transform: "translateX(-50%)",
+                      }
+                    : {
+                        left: "50%",
+                        bottom: "-50px",
+                        transform: "translateX(-50%)",
+                      }
+                }
               >
                 {/* ...bottom drop area JSX... */}
                 {/* Copy dari JSX lama untuk bottom */}
                 <div
-                  className="flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer"
+                  className="flex justify-center items-center space-x-1 w-[200px] border-[1px] border-gray-400 rounded-md px-2 py-1 cursor-pointer font-normal text-xs"
                   onDrop={(e) => handleDrop(e, "bottom")}
                   onDragOver={(e) => e.preventDefault()}
                   onClick={() => handleOpenModal("bottom")}
                 >
                   {bottomVariables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                      {chartType === "3D Bar Chart2" ||
-                      chartType === "3D Scatter Plot" ||
-                      chartType === "Grouped 3D Scatter Plot" ||
-                      chartType === "Clustered 3D Bar Chart" ||
-                      chartType === "Stacked 3D Bar Chart"
-                        ? "X axis"
-                        : "No variables selected"}
+                      <span className="text-xs font-normal">
+                        &quot;No variables selected&quot;
+                      </span>
                     </div>
                   ) : (
                     (() => {
@@ -2968,14 +3934,21 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                             <div
                               key={index}
                               className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                              style={{ minWidth: "40px" }}
+                              style={{
+                                minWidth: "40px",
+                                fontSize: "11px",
+                                fontWeight: 400,
+                                padding: "4px 8px",
+                              }}
                             >
                               {variable}
                             </div>
                           ))}
                           {hiddenCount > 0 && (
                             <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                              +{hiddenCount} more
+                              <span className="text-xs font-normal">
+                                +{hiddenCount} more
+                              </span>
                             </div>
                           )}
                         </div>
@@ -2991,25 +3964,25 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               chartVariableConfig[chartType].bottom2?.max !== 0) && (
               <div
                 className="absolute z-10"
-                style={{ bottom: "-50px", right: "150px" }}
+                style={{
+                  left: "calc(50% + 140px)",
+                  bottom: "-50px",
+                  transform: "translateX(-50%)",
+                }}
               >
                 {/* ...bottom2 drop area JSX... */}
                 {/* Copy dari JSX lama untuk bottom2 */}
                 <div
-                  className="flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer"
+                  className="flex justify-center items-center space-x-1 w-[200px] border-[1px] border-gray-400 rounded-md px-2 py-1 cursor-pointer font-normal text-xs"
                   onDrop={(e) => handleDrop(e, "bottom2")}
                   onDragOver={(e) => e.preventDefault()}
                   onClick={() => handleOpenModal("bottom2")}
                 >
                   {bottom2Variables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                      {chartType === "3D Bar Chart2" ||
-                      chartType === "3D Scatter Plot" ||
-                      chartType === "Grouped 3D Scatter Plot" ||
-                      chartType === "Clustered 3D Bar Chart" ||
-                      chartType === "Stacked 3D Bar Chart"
-                        ? "Z axis"
-                        : "No variables selected"}
+                      <span className="text-xs font-normal">
+                        &quot;No variables selected&quot;
+                      </span>
                     </div>
                   ) : (
                     (() => {
@@ -3036,14 +4009,21 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                             <div
                               key={index}
                               className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                              style={{ minWidth: "40px" }}
+                              style={{
+                                minWidth: "40px",
+                                fontSize: "11px",
+                                fontWeight: 400,
+                                padding: "4px 8px",
+                              }}
                             >
                               {variable}
                             </div>
                           ))}
                           {hiddenCount > 0 && (
                             <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                              +{hiddenCount} more
+                              <span className="text-xs font-normal">
+                                +{hiddenCount} more
+                              </span>
                             </div>
                           )}
                         </div>
@@ -3060,20 +4040,25 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               <div className="absolute top-[-20px] right-[-10px] z-10">
                 {/* ...color drop area JSX... */}
                 <div
-                  className="p-2 border border-dashed border-gray-400 rounded-lg text-gray-500"
+                  className="px-2 py-1 border-[1px] border-dashed border-gray-400 rounded-lg text-gray-500 text-xs font-normal"
                   onDrop={(e) => handleDrop(e, "color")}
                   onDragOver={handleDragOver}
                   onClick={() => handleOpenModal("color")}
                 >
                   {colorVariables.length === 0 ? (
                     <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md">
-                      Group by
+                      <span className="text-xs font-normal">Group by</span>
                     </div>
                   ) : (
                     colorVariables.map((variable, index) => (
                       <div
                         key={index}
                         className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md"
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 400,
+                          padding: "4px 8px",
+                        }}
                       >
                         {variable}
                       </div>
@@ -3089,7 +4074,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10">
                 {/* ...filter drop area JSX... */}
                 <div
-                  className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md rotate-90 w-full text-center"
+                  className="bg-gray-300 text-gray-500 px-2 py-1 rounded-md text-xs font-normal shadow-md rotate-90 w-full text-center border-[1px] border-dashed border-gray-400"
                   onDrop={(e) => handleDrop(e, "filter")}
                   onDragOver={handleDragOver}
                   onClick={() => handleOpenModal("filter")}
@@ -3100,6 +4085,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                         <div
                           key={index}
                           className="bg-green-500 text-white p-2 rounded-md text-sm shadow-md rotate-90 w-full text-center"
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 400,
+                            padding: "4px 8px",
+                          }}
                         >
                           {variable}
                         </div>
@@ -3154,7 +4144,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                           : dropZone === "close" && closeVariables.length > 0
                           ? "bg-blue-500 text-white border-blue-500"
                           : "bg-gray-300 text-gray-500 border-gray-500"
-                      } p-2 rounded-md text-sm shadow-md text-center border border-dashed`}
+                      } px-2 py-1 rounded-md text-xs font-normal shadow-md text-center border-[1px] border-dashed`}
                       style={{ width: itemWidth }} // Set width based on number of elements
                       onDrop={(e) => handleDrop(e, dropZone)} // Pass simplified drop zone (e.g. "high", "low", "close")
                       onDragOver={(e) => e.preventDefault()}
@@ -3162,13 +4152,16 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                     >
                       {/* Menampilkan variabel yang sudah di-drop atau label default */}
                       {
-                        dropZone === "high" && highVariables.length > 0
-                          ? highVariables.join(", ") // Jika ada variabel, tampilkan
-                          : dropZone === "low" && lowVariables.length > 0
-                          ? lowVariables.join(", ") // Jika ada variabel, tampilkan
-                          : dropZone === "close" && closeVariables.length > 0
-                          ? closeVariables.join(", ") // Jika ada variabel, tampilkan
-                          : label // Jika tidak ada variabel, tampilkan label default
+                        dropZone === "high" && highVariables.length > 0 ? (
+                          highVariables.join(", ") // Jika ada variabel, tampilkan
+                        ) : dropZone === "low" && lowVariables.length > 0 ? (
+                          lowVariables.join(", ") // Jika ada variabel, tampilkan
+                        ) : dropZone === "close" &&
+                          closeVariables.length > 0 ? (
+                          closeVariables.join(", ") // Jika ada variabel, tampilkan
+                        ) : (
+                          <span className="text-xs font-normal">{label}</span>
+                        ) // Jika tidak ada variabel, tampilkan label default
                       }
                     </div>
                   );
@@ -3243,16 +4236,31 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           )}
 
           {/* Kotak chart preview, hanya chart */}
-          <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[700px] max-w-full h-[450px] flex items-center justify-center mt-8">
-            <div className="bg-white rounded-lg shadow w-full h-full flex items-center justify-center overflow-hidden">
+          <div
+            className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 flex items-center justify-center mt-8 w-full max-w-[800px]"
+            style={{
+              width: width ? width + 50 : "100%", // Tambah padding lebih besar untuk legend
+              height: height ? height + 40 : "auto",
+              minWidth: 200,
+              minHeight: 120,
+            }}
+          >
+            <div
+              className="bg-white rounded-lg shadow w-full h-full flex items-center justify-center overflow-hidden rounded-lg p-2"
+              style={{ width: width, height: height }}
+            >
               <div
                 id="chart-container"
                 ref={chartContainerRef}
-                className="w-[90%] h-[90%] max-w-[600px] max-h-[400px] bg-white overflow-hidden"
+                className="w-full h-full bg-white overflow-visible"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  width: width,
+                  height: height,
+                  maxWidth: "100%",
+                  maxHeight: "100%",
                 }}
               />
             </div>

@@ -85,10 +85,8 @@ sequenceDiagram
 
     alt Output: 'Filter out unselected cases'
         Hook->>Hook: createFilterVariable(selectedIndices)
-        Hook->>+VarStore: addVariable("filter_$")
+        Hook->>+VarStore: addVariables([filterVar], cellUpdates)
         deactivate VarStore
-        Hook->>+DataStore: updateCells(filterValues)
-        deactivate DataStore
         Hook->>+MetaStore: setMeta({ filter: "filter_$" })
         deactivate MetaStore
     else Output: 'Delete unselected cases'

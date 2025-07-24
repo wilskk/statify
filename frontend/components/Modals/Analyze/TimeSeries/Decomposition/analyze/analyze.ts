@@ -1,6 +1,7 @@
 import { se } from 'date-fns/locale';
-import init, {Decomposition} from '../../../../../../src/wasm/pkg/wasm.js';
-import {generateDate} from '../../TimeSeriesGenerateDate';
+import init, {Decomposition} from '@/components/Modals/Analyze/TimeSeries/wasm/pkg/wasm';
+import {generateDate} from '@/components/Modals/Analyze/TimeSeries/timeSeriesGenerateDate';
+import { title } from 'process';
 
 export async function handleDecomposition(
     data: (number)[],
@@ -14,7 +15,7 @@ export async function handleDecomposition(
     startDay: number,
     startMonth: number,
     startYear: number
-): Promise<[string, number[], number[], number[], number[], number[], 
+): Promise<[string, string, number[], number[], number[], number[], number[], 
             string, string, string, string, string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
@@ -138,19 +139,20 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`${dataHeader}`],
                         },
                         description: `${dataHeader}`,
                         notes: `${dataHeader}`,
+                        title: `Data Series ${dataHeader}`,
                     },
                     chartData: structuredData,
                     chartConfig: {
-                        "width": 400,
-                        "height": 200,
-                        "chartColor": ["#4682B4"],
+                        "width": 1000,
+                        "height": 400,
+                        "chartColor": ["#0000FF"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -175,19 +177,20 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`Trend`],
                         },
                         description: `Trend`,
                         notes: `Trend`,
+                        title: `Trend Component of ${dataHeader}`,
                     },
                     chartData: structuredTrend,
                     chartConfig: {
-                        "width": 400,
-                        "height": 200,
-                        "chartColor": ["#4682B4"],
+                        "width": 1000,
+                        "height": 400,
+                        "chartColor": ["#0000FF"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -212,19 +215,20 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`Seasonal`],
                         },
                         description: `Seasonal`,
                         notes: `Seasonal`,
+                        title: `Seasonal Component of ${dataHeader}`,
                     },
                     chartData: structuredSeasonal,
                     chartConfig: {
-                        "width": 400,
-                        "height": 200,
-                        "chartColor": ["#4682B4"],
+                        "width": 1000,
+                        "height": 400,
+                        "chartColor": ["#0000FF"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -249,19 +253,20 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`Irregular`],
                         },
                         description: `Irregular`,
                         notes: `Irregular`,
+                        title: `Irregular Component of ${dataHeader}`,
                     },
                     chartData: structuredIrregular,
                     chartConfig: {
-                        "width": 400,
-                        "height": 200,
-                        "chartColor": ["#4682B4"],
+                        "width": 1000,
+                        "height": 400,
+                        "chartColor": ["#0000FF"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -291,19 +296,20 @@ export async function handleDecomposition(
             charts: [
                 {
                     chartType: "Multiple Line Chart",
-                    chartMetaData: {
+                    chartMetadata: {
                         axisInfo: {
                             category: `date`,
                             subCategory: [`${dataHeader}`, `Decomposition Forecasting`],
                         },
                         description: `Decomposition ${dataHeader}`,
                         notes: `Decomposition ${dataHeader}`,
+                        title: `Decomposition Forecasting of ${dataHeader}`,
                     },
                     chartData: structuredForecasting,
                     chartConfig: {
-                        "width": 800,
-                        "height": 600,
-                        "chartColor": ["#4682B4"],
+                        "width": 1000,
+                        "height": 500,
+                        "chartColor": ["#0096FF", "#FFC300"],
                         "useLegend": true,
                         "useAxis": true,
                     }
@@ -359,11 +365,25 @@ export async function handleDecomposition(
             ]
         });
 
-        return [descriptionJSON, centered, seasonalRound, trendRound, irregularRound, 
+        return ["success", descriptionJSON, centered, seasonalRound, trendRound, irregularRound, 
                 forecastingRound, evalJSON, seasonJSON, equationJSON, forecastingGraphicJSON,
                 dataGraphicJSON, trendGraphicJSON, seasonalGraphicJSON, irregularGraphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["",[0],[0],[0],[0],[0],JSON.stringify({ error: errorMessage.message }),"","","","", "", "", ""];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON, [0],[0],[0],[0],[0],"","","","","", "", "", ""];
     }
 }

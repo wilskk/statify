@@ -1,10 +1,6 @@
 use std::collections::{ HashMap, HashSet };
 
-use crate::models::{
-    config::UnivariateConfig,
-    data::AnalysisData,
-    result::DesignMatrixInfo,
-};
+use crate::models::{ config::UnivariateConfig, data::AnalysisData, result::DesignMatrixInfo };
 use super::core::*;
 
 /// Mem-parsing sebuah string istilah interaksi (misalnya, "A*B") menjadi komponen faktor individual.
@@ -32,29 +28,6 @@ pub fn parse_parameter_name(param_str: &str) -> HashMap<String, String> {
         }
     });
     factors
-}
-
-/// Fungsi pembantu untuk menemukan posisi kurung tutup ')' yang sesuai dengan
-/// kurung buka '(' pada posisi yang diberikan dalam sebuah string.
-pub fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
-    let chars: Vec<char> = text.chars().collect();
-    let mut depth = 0;
-
-    for i in open_pos..chars.len() {
-        match chars[i] {
-            '(' => {
-                depth += 1;
-            }
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(i);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
 }
 
 /// Mengambil semua level unik untuk sebuah faktor dari data analisis.
@@ -521,4 +494,128 @@ pub fn generate_all_row_parameter_names_sorted(
         }
     }
     Ok(all_params)
+}
+
+/// Mengidentifikasi semua kombinasi unik dari level faktor yang ada dalam data (sel yang tidak kosong).
+/// Fungsi ini sangat penting untuk analisis Tipe IV SS, yang sensitif terhadap adanya
+/// sel kosong dalam desain.
+///
+/// # Arguments
+/// * `data` - Referensi ke `AnalysisData` yang berisi semua data.
+/// * `config` - Konfigurasi univariat untuk mengidentifikasi faktor-faktor dalam model.
+///
+/// # Returns
+/// * `Ok(Vec<HashMap<String, String>>)` - Sebuah vektor di mana setiap `HashMap` merepresentasikan
+///   satu sel yang unik dan tidak kosong. Kunci `HashMap` adalah nama faktor dan nilainya adalah level.
+/// * `Err(String)` - Pesan error jika terjadi inkonsistensi data.
+pub fn get_all_non_empty_cells(
+    data: &AnalysisData,
+    config: &UnivariateConfig
+) -> Result<Vec<HashMap<String, String>>, String> {
+    // 1. Kumpulkan semua nama faktor unik dari konfigurasi.
+    let mut all_factor_names = HashSet::new();
+    if let Some(fix_factors) = &config.main.fix_factor {
+        all_factor_names.extend(fix_factors.iter().cloned());
+    }
+    if let Some(rand_factors) = &config.main.rand_factor {
+        all_factor_names.extend(rand_factors.iter().cloned());
+    }
+
+    if all_factor_names.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Tentukan jumlah total sampel/baris data.
+    let n_samples = if let Some(dep_data_group) = data.dependent_data.get(0) {
+        dep_data_group.len()
+    } else {
+        return Ok(Vec::new()); // Tidak ada data untuk dianalisis.
+    };
+
+    if n_samples == 0 {
+        return Ok(Vec::new());
+    }
+
+    // 2. Buat peta lokasi untuk setiap faktor agar pencarian lebih cepat.
+    // Peta ini akan menyimpan: nama_faktor -> (apakah_faktor_tetap, indeks_grup).
+    let mut factor_locations = HashMap::new();
+    for factor_name in &all_factor_names {
+        // Cari di faktor tetap.
+        let mut found = false;
+        for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
+            if def_group.iter().any(|def| &def.name == factor_name) {
+                factor_locations.insert(factor_name.clone(), (true, group_idx));
+                found = true;
+                break;
+            }
+        }
+        if found {
+            continue;
+        }
+
+        // Jika tidak ditemukan, cari di faktor acak.
+        if let Some(rand_defs) = &data.random_factor_data_defs {
+            for (group_idx, def_group) in rand_defs.iter().enumerate() {
+                if def_group.iter().any(|def| &def.name == factor_name) {
+                    factor_locations.insert(factor_name.clone(), (false, group_idx));
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if !found {
+            return Err(format!("Definisi untuk faktor '{}' tidak ditemukan.", factor_name));
+        }
+    }
+
+    // 3. Iterasi melalui setiap baris data untuk membangun sel dan kumpulkan yang unik.
+    let mut seen_representations = HashSet::new();
+    let mut unique_cells = Vec::new();
+
+    for i in 0..n_samples {
+        let mut current_cell = HashMap::new();
+        for factor_name in &all_factor_names {
+            if let Some(&(is_fixed, group_idx)) = factor_locations.get(factor_name) {
+                let data_records = if is_fixed {
+                    data.fix_factor_data.get(group_idx)
+                } else {
+                    data.random_factor_data.as_ref().and_then(|d| d.get(group_idx))
+                };
+
+                if let Some(record) = data_records.and_then(|g| g.get(i)) {
+                    if let Some(value) = record.values.get(factor_name) {
+                        current_cell.insert(factor_name.clone(), data_value_to_string(value));
+                    } else {
+                        return Err(
+                            format!(
+                                "Inkonsistensi data: Nilai untuk faktor '{}' tidak ditemukan di baris {}.",
+                                factor_name,
+                                i
+                            )
+                        );
+                    }
+                }
+            }
+        }
+        if !current_cell.is_empty() {
+            // Buat representasi string kanonis dari sel untuk keperluan hashing.
+            // Kunci diurutkan untuk memastikan representasi yang konsisten.
+            let mut pairs: Vec<(&String, &String)> = current_cell.iter().collect();
+            pairs.sort_unstable_by_key(|(k, _)| *k);
+            let representation = pairs
+                .into_iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join(";");
+
+            // Jika representasi ini belum pernah terlihat, tambahkan sel ke daftar unik.
+            if seen_representations.insert(representation) {
+                unique_cells.push(current_cell);
+            }
+        }
+    }
+
+    // 4. Konversi HashSet yang berisi sel-sel unik menjadi sebuah Vec.
+    Ok(unique_cells)
 }

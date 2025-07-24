@@ -1,4 +1,4 @@
-import init, {DickeyFuller, AugmentedDickeyFuller, get_t} from '../../../../../../src/wasm/pkg/wasm.js';
+import init, {DickeyFuller, AugmentedDickeyFuller, get_t} from '@/components/Modals/Analyze/TimeSeries/wasm/pkg/wasm';
 
 export async function handleUnitRootTest(
     data: (number)[], 
@@ -7,7 +7,7 @@ export async function handleUnitRootTest(
     lag: (number),
     equation: (string),
     differencing: (string),
-):Promise<[string, number[], string, string, string, string]> {
+):Promise<[string, string, number[], string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -211,9 +211,23 @@ export async function handleUnitRootTest(
             }]
         });
         
-        return [descriptionJSON, [...critical_value, adf_statistic, ...coeficient, ...standard_error, adf_pvalue], adfJSON, coefJSON, sel_critJSON, methodName];
+        return ["success", descriptionJSON, [...critical_value, adf_statistic, ...coeficient, ...standard_error, adf_pvalue], adfJSON, coefJSON, sel_critJSON, methodName];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["", [0], "", "", JSON.stringify({ error: errorMessage.message }), ""];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON, [0], "", "", "", ""];
     }
 }

@@ -29,7 +29,7 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
     let factor_name = parts[0].trim().to_string();
     let mut method = ContrastMethod::None;
     let mut actual_ref_setting = "N/A".to_string(); // Default to N/A
-    let mut use_first_as_ref = false; // Effective default for Dev/Simple is Last
+    let mut use_first_as_ref = false;
 
     if parts.len() > 1 {
         let settings_part = parts[1].trim_end_matches(')');
@@ -61,7 +61,7 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
         if method == ContrastMethod::Deviation || method == ContrastMethod::Simple {
             // Default ke "Last" untuk metode ini
             actual_ref_setting = "Last".to_string();
-            use_first_as_ref = false; // Corresponds to "Last"
+            use_first_as_ref = false;
 
             if settings_details.len() > 1 {
                 let ref_from_spec = settings_details[1].trim().to_string();
@@ -87,13 +87,11 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
                     format!(
                         "Warning: 'Ref: {}' setting is ignored for contrast method '{}' on factor '{}'.",
                         ref_from_spec_ignored,
-                        method_str, // Use original method_str in warning
+                        method_str,
                         factor_name
                     )
                 );
             }
-            // actual_ref_setting remains "N/A"
-            // use_first_as_ref remains false (not applicable)
         }
     }
     // Jika parts.len() <= 1 (tidak ada kurung), method tetap None,
@@ -122,10 +120,9 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
 fn generate_l_matrix_and_descriptions(
     parsed_spec: &ParsedFactorSpec,
     levels_of_contrasted_factor: &Vec<String>,
-    all_model_parameters_names: &Vec<String>, // Renamed for clarity
-    p_total_model_params: usize, // Renamed for clarity
-    all_factors_in_model_with_their_levels: &HashMap<String, Vec<String>> // New parameter
-    // data: &AnalysisData, // To call get_factor_levels for other factors, now passed in all_factors_in_model_with_their_levels
+    all_model_parameters_names: &Vec<String>,
+    p_total_model_params: usize,
+    all_factors_in_model_with_their_levels: &HashMap<String, Vec<String>>
 ) -> Result<(Vec<Vec<f64>>, Vec<String>, Vec<String>), String> {
     // l_matrix, cce_row_descriptions, l_labels
 
@@ -157,8 +154,6 @@ fn generate_l_matrix_and_descriptions(
     let mut cce_row_descriptions: Vec<String> = Vec::with_capacity(num_contrasts);
     let mut l_labels: Vec<String> = Vec::with_capacity(num_contrasts);
 
-    // ===== LOOP UNTUK SETIAP KONTRAS =====
-
     // Loop untuk setiap kontras yang didefinisikan oleh metode (e.g., Helmert memiliki k-1 kontras/baris)
     for i_contrast_idx in 0..num_contrasts {
         // Untuk setiap parameter model (kolom dalam matriks L)
@@ -179,22 +174,16 @@ fn generate_l_matrix_and_descriptions(
                 .iter()
                 .position(|r| r == level_of_contrasted_factor_in_this_param);
 
-            if level_idx_in_factor_levels.is_none() {
-                // Seharusnya tidak terjadi jika data konsisten
-                l_matrix[i_contrast_idx][j_param_col_idx] = 0.0;
-                continue;
-            }
             let current_level_data_idx = level_idx_in_factor_levels.unwrap();
 
             let mut base_coeff = 0.0;
 
-            // ===== MENENTUKAN KOEFISIEN KONTRAS BERDASARKAN METODE =====
-
+            // Menentukan koefisien kontras berdasarkan metode
             match parsed_spec.method {
                 ContrastMethod::Deviation => {
                     // Deviation: membandingkan level tertentu dengan grand mean
                     if level_count_of_contrasted_factor == 2 {
-                        let target_level_for_positive_coeff = if use_first_as_ref { 0 } else { 1 }; // e.g. level "2" if ref is "1" (last)
+                        let target_level_for_positive_coeff = if use_first_as_ref { 1 } else { 0 }; // e.g. level "2" if ref is "1" (last)
                         if current_level_data_idx == target_level_for_positive_coeff {
                             base_coeff = 0.5;
                         } else {
@@ -277,9 +266,8 @@ fn generate_l_matrix_and_descriptions(
                 ContrastMethod::Polynomial => {
                     // Hanya Linear (degree 1), i_contrast_idx akan 0
                     let poly_coeffs = generate_polynomial_contrast(
-                        level_count_of_contrasted_factor,
-                        1
-                    ); // Degree 1
+                        level_count_of_contrasted_factor
+                    );
                     if current_level_data_idx < poly_coeffs.len() {
                         base_coeff = poly_coeffs[current_level_data_idx];
                     }
@@ -288,8 +276,6 @@ fn generate_l_matrix_and_descriptions(
                     base_coeff = 0.0;
                 }
             }
-
-            // ===== LOGIKA AVERAGING UNTUK FAKTOR LAIN =====
 
             // Averaging logic untuk faktor lain dalam parameter
             let mut final_coeff = base_coeff;
@@ -315,15 +301,13 @@ fn generate_l_matrix_and_descriptions(
             l_matrix[i_contrast_idx][j_param_col_idx] = final_coeff;
         }
 
-        // ===== GENERASI DESKRIPSI UNTUK BARIS KONTRAS INI =====
-
         // Generate description untuk baris kontras ini (setelah semua parameter diproses untuk baris ini)
         // Deskripsi ini untuk baris K-matrix dalam ContrastResult.parameter
         let row_desc = match parsed_spec.method {
             ContrastMethod::Deviation => {
                 if level_count_of_contrasted_factor == 2 {
-                    let compared_level_idx = if use_first_as_ref { 0 } else { 1 };
-                    let omitted_level_idx = if use_first_as_ref { 1 } else { 0 };
+                    let compared_level_idx = if use_first_as_ref { 1 } else { 0 };
+                    let omitted_level_idx = if use_first_as_ref { 0 } else { 1 };
                     format!(
                         "{} vs. Mean (Omitted: {})",
                         levels_of_contrasted_factor[compared_level_idx],
@@ -547,12 +531,14 @@ fn create_contrast_result(
 // 4. Create ContrastTestResult
 fn create_contrast_test_result(
     factor_spec_str: &str,
-    l_matrix_for_this_factor: &Vec<Vec<f64>>, // num_contrasts_for_factor x p_model_params
-    beta_hat: &DVector<f64>, // p_model_params x 1
-    g_inv: &DMatrix<f64>, // p_model_params x p_model_params
+    l_matrix_for_this_factor: &Vec<Vec<f64>>,
+    beta_hat: &DVector<f64>,
+    g_inv: &DMatrix<f64>,
     mse: f64,
-    df_error: f64
-    // p_model_params: usize // Not directly used here but good for context
+    df_error: f64,
+    sig_level: f64,
+    est_effect_size: bool,
+    obs_power: bool
 ) -> ContrastTestResult {
     let num_contrasts_for_factor = l_matrix_for_this_factor.len();
     let df_hypothesis = num_contrasts_for_factor;
@@ -566,6 +552,9 @@ fn create_contrast_test_result(
             mean_square: f64::NAN,
             f_value: f64::NAN,
             significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         };
         let error_entry = ContrastTestResultEntry {
             source: "Error".to_string(),
@@ -582,6 +571,9 @@ fn create_contrast_test_result(
             },
             f_value: f64::NAN,
             significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         };
         return ContrastTestResult {
             source: vec![format!("Overall test for {}", factor_spec_str)],
@@ -600,6 +592,9 @@ fn create_contrast_test_result(
             mean_square: f64::NAN,
             f_value: f64::NAN,
             significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         };
         let error_entry = ContrastTestResultEntry {
             source: "Error".to_string(),
@@ -616,6 +611,9 @@ fn create_contrast_test_result(
             },
             f_value: f64::NAN,
             significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         };
         return ContrastTestResult {
             source: vec![format!("Overall test for {}", factor_spec_str)],
@@ -697,6 +695,40 @@ fn create_contrast_test_result(
         calculate_f_significance(df_hypothesis, df_error_usize, f_value)
     };
 
+    let (partial_eta_squared, noncent_parameter, observed_power) = {
+        let ss_error = if !mse.is_nan() && df_error_usize > 0 {
+            mse * (df_error_usize as f64)
+        } else {
+            f64::NAN
+        };
+
+        let pes = if est_effect_size && !ssh.is_nan() && !ss_error.is_nan() {
+            let den = ssh + ss_error;
+            if den > 1e-9 {
+                (ssh / den).max(0.0).min(1.0)
+            } else {
+                0.0
+            }
+        } else {
+            f64::NAN
+        };
+
+        let (ncp, power) = if obs_power && !f_value.is_nan() && f_value > 0.0 && df_hypothesis > 0 {
+            let ncp_val = f_value * (df_hypothesis as f64);
+            let power_val = calculate_observed_power_f(
+                f_value,
+                df_hypothesis as f64,
+                df_error,
+                sig_level
+            );
+            (ncp_val, power_val)
+        } else {
+            (f64::NAN, f64::NAN)
+        };
+
+        (pes, ncp, power)
+    };
+
     let contrast_entry = ContrastTestResultEntry {
         source: "Contrast".to_string(),
         sum_of_squares: ssh,
@@ -704,6 +736,9 @@ fn create_contrast_test_result(
         mean_square: msh,
         f_value,
         significance: f_significance,
+        partial_eta_squared,
+        noncent_parameter,
+        observed_power,
     };
 
     let error_entry = ContrastTestResultEntry {
@@ -721,6 +756,9 @@ fn create_contrast_test_result(
         },
         f_value: f64::NAN, // F is not applicable for Error row
         significance: f64::NAN, // Sig is not applicable for Error row
+        partial_eta_squared: f64::NAN,
+        noncent_parameter: f64::NAN,
+        observed_power: f64::NAN,
     };
 
     ContrastTestResult {
@@ -849,34 +887,34 @@ pub fn calculate_contrast_coefficients(
     for spec_str in &factors_to_process_specs {
         let parsed_spec = parse_contrast_factor_spec(spec_str)?;
 
-        if config.options.coefficient_matrix {
-            let levels_of_contrasted_factor = match
-                get_factor_levels(data, &parsed_spec.factor_name)
-            {
-                Ok(levels) => levels,
-                Err(e) => {
-                    return Err(
-                        format!(
-                            "Failed to get levels for contrast factor {}: {}",
-                            parsed_spec.factor_name,
-                            e
-                        )
-                    );
-                }
-            };
-
-            let (l_matrix, cce_row_descriptions, l_labels) = generate_l_matrix_and_descriptions(
-                &parsed_spec,
-                &levels_of_contrasted_factor,
-                &all_model_parameters_names,
-                design_info.p_parameters,
-                &all_factors_in_model_with_their_levels
-            )?;
-
-            if l_matrix.is_empty() {
-                continue;
+        let levels_of_contrasted_factor = match get_factor_levels(data, &parsed_spec.factor_name) {
+            Ok(levels) => levels,
+            Err(e) => {
+                return Err(
+                    format!(
+                        "Failed to get levels for contrast factor {}: {}",
+                        parsed_spec.factor_name,
+                        e
+                    )
+                );
             }
+        };
 
+        let (l_matrix, cce_row_descriptions, l_labels) = generate_l_matrix_and_descriptions(
+            &parsed_spec,
+            &levels_of_contrasted_factor,
+            &all_model_parameters_names,
+            design_info.p_parameters,
+            &all_factors_in_model_with_their_levels
+        )?;
+
+        if l_matrix.is_empty() {
+            continue;
+        }
+
+        let cce: ContrastCoefficientsEntry;
+
+        if config.options.coefficient_matrix {
             let cce_note_ref_part = if parsed_spec.ref_setting != "N/A" {
                 format!(", Ref: {}.", parsed_spec.ref_setting)
             } else {
@@ -896,7 +934,7 @@ pub fn calculate_contrast_coefficients(
                 )
             ];
 
-            let cce = ContrastCoefficientsEntry {
+            cce = ContrastCoefficientsEntry {
                 parameter: all_model_parameters_names.clone(),
                 l_label: l_labels,
                 l_matrix: l_matrix.clone(),
@@ -906,74 +944,86 @@ pub fn calculate_contrast_coefficients(
                     "This table provides the contrast coefficients (L' Matrix) for the specified factor. Each row represents a contrast, and each column represents a model parameter. The coefficients indicate the contribution of each parameter to the contrast.".to_string()
                 ),
             };
-
-            let contrast_result_struct = create_contrast_result(
-                &cce_row_descriptions,
-                spec_str,
-                &l_matrix,
-                beta_hat,
-                g_inv,
-                mse,
-                df_error as f64,
-                sig_level_config
-            );
-
-            let contrast_test_struct = create_contrast_test_result(
-                spec_str,
-                &l_matrix,
-                beta_hat,
-                g_inv,
-                mse,
-                df_error as f64
-            );
-
-            let method_name_str = match parsed_spec.method {
-                ContrastMethod::Deviation => "Deviation",
-                ContrastMethod::Simple => "Simple",
-                ContrastMethod::Difference => "Difference",
-                ContrastMethod::Helmert => "Helmert",
-                ContrastMethod::Repeated => "Repeated",
-                ContrastMethod::Polynomial => "Polynomial (Linear)",
-                ContrastMethod::None => "No",
+        } else {
+            cce = ContrastCoefficientsEntry {
+                parameter: Vec::new(),
+                l_label: Vec::new(),
+                l_matrix: Vec::new(),
+                contrast_information: Vec::new(),
+                note: None,
+                interpretation: None,
             };
-
-            let detail_str = if parsed_spec.method == ContrastMethod::Polynomial {
-                format!(" (metric = {} levels)", levels_of_contrasted_factor.len())
-            } else if
-                (parsed_spec.method == ContrastMethod::Deviation ||
-                    parsed_spec.method == ContrastMethod::Simple) &&
-                parsed_spec.ref_setting != "N/A"
-            {
-                let ref_level_name = if parsed_spec.use_first_as_ref {
-                    levels_of_contrasted_factor.first().map_or("N/A", |s| s.as_str())
-                } else {
-                    levels_of_contrasted_factor.last().map_or("N/A", |s| s.as_str())
-                };
-                format!(" (omitted category/ref = {})", ref_level_name)
-            } else {
-                "".to_string()
-            };
-
-            let l_matrix_description_for_index = format!(
-                "{} Contrast{} for {}",
-                method_name_str,
-                detail_str,
-                parsed_spec.factor_name
-            );
-
-            let contrast_info_for_index = ContrastInformation {
-                contrast_name: l_matrix_description_for_index,
-                transformation_coef: "Identity Matrix".to_string(),
-                contrast_result: "Zero Matrix".to_string(),
-            };
-
-            processed_contrast_data_map.insert(spec_str.clone(), (
-                cce,
-                contrast_result_struct,
-                contrast_test_struct,
-                contrast_info_for_index,
-            ));
         }
+
+        let contrast_result_struct = create_contrast_result(
+            &cce_row_descriptions,
+            spec_str,
+            &l_matrix,
+            beta_hat,
+            g_inv,
+            mse,
+            df_error as f64,
+            sig_level_config
+        );
+
+        let contrast_test_struct = create_contrast_test_result(
+            spec_str,
+            &l_matrix,
+            beta_hat,
+            g_inv,
+            mse,
+            df_error as f64,
+            config.options.sig_level,
+            config.options.est_effect_size,
+            config.options.obs_power
+        );
+
+        let method_name_str = match parsed_spec.method {
+            ContrastMethod::Deviation => "Deviation",
+            ContrastMethod::Simple => "Simple",
+            ContrastMethod::Difference => "Difference",
+            ContrastMethod::Helmert => "Helmert",
+            ContrastMethod::Repeated => "Repeated",
+            ContrastMethod::Polynomial => "Polynomial (Linear)",
+            ContrastMethod::None => "No",
+        };
+
+        let detail_str = if parsed_spec.method == ContrastMethod::Polynomial {
+            format!(" (metric = {} levels)", levels_of_contrasted_factor.len())
+        } else if
+            (parsed_spec.method == ContrastMethod::Deviation ||
+                parsed_spec.method == ContrastMethod::Simple) &&
+            parsed_spec.ref_setting != "N/A"
+        {
+            let ref_level_name = if parsed_spec.use_first_as_ref {
+                levels_of_contrasted_factor.first().map_or("N/A", |s| s.as_str())
+            } else {
+                levels_of_contrasted_factor.last().map_or("N/A", |s| s.as_str())
+            };
+            format!(" (omitted category/ref = {})", ref_level_name)
+        } else {
+            "".to_string()
+        };
+
+        let l_matrix_description_for_index = format!(
+            "{} Contrast{} for {}",
+            method_name_str,
+            detail_str,
+            parsed_spec.factor_name
+        );
+
+        let contrast_info_for_index = ContrastInformation {
+            contrast_name: l_matrix_description_for_index,
+            transformation_coef: "Identity Matrix".to_string(),
+            contrast_result: "Zero Matrix".to_string(),
+        };
+
+        processed_contrast_data_map.insert(spec_str.clone(), (
+            cce,
+            contrast_result_struct,
+            contrast_test_struct,
+            contrast_info_for_index,
+        ));
     }
 
     // Prepare final lists based on the original order of factors_to_process_specs
@@ -986,23 +1036,13 @@ pub fn calculate_contrast_coefficients(
     for spec_str in factors_to_process_specs {
         if let Some((cce, cr, ctr, info)) = processed_contrast_data_map.remove(&spec_str) {
             final_factor_names_list.push(spec_str.clone()); // Use the full spec string as the factor name identifier
-            final_cce_list.push(cce);
+            if config.options.coefficient_matrix {
+                final_cce_list.push(cce);
+            }
             final_cr_list.push(cr);
             final_ctr_list.push(ctr);
             final_information_list.push(info); // This information is tied to the specific factor processed
         }
-    }
-
-    if
-        final_factor_names_list.is_empty() &&
-        !config.contrast.factor_list.as_ref().map_or(true, |f| f.is_empty())
-    {
-        return Err(
-            format!(
-                "No contrast entries generated despite having processing specs. Factors processed: {:?}. Check L-matrix generation for each.",
-                config.contrast.factor_list.as_ref().unwrap()
-            )
-        );
     }
 
     Ok(ContrastCoefficients {
@@ -1016,16 +1056,11 @@ pub fn calculate_contrast_coefficients(
 
 /// Generate polynomial contrasts of specified degree for a given number of levels.
 /// Returns a vector of coefficients, one for each level of the factor.
-pub fn generate_polynomial_contrast(level_count: usize, degree: usize) -> Vec<f64> {
+pub fn generate_polynomial_contrast(level_count: usize) -> Vec<f64> {
     if level_count == 0 {
         return vec![];
     }
     let mut contrasts = vec![0.0; level_count];
-
-    // For this project, Polynomial is always Linear (degree 1)
-    if degree != 1 {
-        // Only Linear (degree 1) is supported
-    }
 
     if level_count < 2 {
         // Linear contrast needs at least 2 levels

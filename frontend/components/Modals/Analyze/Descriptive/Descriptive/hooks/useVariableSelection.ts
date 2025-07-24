@@ -19,46 +19,47 @@ export const useVariableSelection = ({
   }, []);
 
   useEffect(() => {
-    const globalVarsWithTempId = variables.map(v => ({
-      ...v,
-      tempId: v.tempId || `temp_id_${v.columnIndex}`
-    }));
-    const globalVarTempIds = new Set(globalVarsWithTempId.map(v => v.tempId));
+    // Filter out variables without a valid id or empty name
+    const validGlobalVars = variables.filter(v => v.id !== undefined && v.name !== "");
 
-    // Synchronize selectedVariables with global store: remove any selected variables that no longer exist globally.
-    const stillExistingSelectedVars = selectedVariables.filter(sv => 
-        sv.tempId && globalVarTempIds.has(sv.tempId)
-    );
+    const globalIdLookup = new Map(validGlobalVars.map(v => [v.id as number, v]));
 
-    if (stillExistingSelectedVars.length !== selectedVariables.length || 
-        !stillExistingSelectedVars.every((val, index) => val.tempId === selectedVariables[index]?.tempId)) {
-        setSelectedVariables(stillExistingSelectedVars);
+    // Keep only selected variables whose id still exists in the global list
+    const stillExistingSelectedVars = selectedVariables.filter(sv => {
+      if (sv.id === undefined) return false;
+      return globalIdLookup.has(sv.id);
+    });
+
+    // Update selectedVariables state if there are changes
+    if (
+      stillExistingSelectedVars.length !== selectedVariables.length ||
+      !stillExistingSelectedVars.every((val, idx) => val.id === selectedVariables[idx]?.id)
+    ) {
+      setSelectedVariables(stillExistingSelectedVars);
     }
-    
-    // Update availableVariables based on the potentially updated selectedVariables list.
-    const currentSelectedTempIds = new Set(stillExistingSelectedVars.filter(v => v.tempId).map(v => v.tempId!));
-    const newAvailableVariables = globalVarsWithTempId.filter(
-      v => v.name !== "" && v.tempId && !currentSelectedTempIds.has(v.tempId)
-    );
+
+    // Compute available variables (those not selected and having valid id & name)
+    const selectedIds = new Set(stillExistingSelectedVars.map(v => v.id as number));
+    const newAvailableVariables = validGlobalVars.filter(v => !selectedIds.has(v.id as number));
+
     setAvailableVariables(newAvailableVariables);
 
   }, [variables, selectedVariables]);
 
   const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
-    const variableWithTempId = {
-      ...variable,
-      tempId: variable.tempId || `temp_id_${variable.columnIndex}`
-    };
-    setAvailableVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
+    if (variable.id === undefined) return; // Cannot move a variable without id
+
+    setAvailableVariables(prev => prev.filter(v => v.id !== variable.id));
     setSelectedVariables(prev => {
-      if (prev.some(v => v.tempId === variableWithTempId.tempId)) {
+      if (prev.some(v => v.id === variable.id)) {
         return prev;
       }
+
       const newList = [...prev];
       if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
-        newList.splice(targetIndex, 0, variableWithTempId);
+        newList.splice(targetIndex, 0, variable);
       } else {
-        newList.push(variableWithTempId);
+        newList.push(variable);
       }
       return newList;
     });
@@ -66,20 +67,19 @@ export const useVariableSelection = ({
   };
 
   const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
-    const variableWithTempId = {
-      ...variable,
-      tempId: variable.tempId || `temp_id_${variable.columnIndex}`
-    };
-    setSelectedVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
+    if (variable.id === undefined) return;
+
+    setSelectedVariables(prev => prev.filter(v => v.id !== variable.id));
     setAvailableVariables(prev => {
-      if (prev.some(v => v.tempId === variableWithTempId.tempId)) {
+      if (prev.some(v => v.id === variable.id)) {
         return prev;
       }
+
       const newList = [...prev];
       if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
-        newList.splice(targetIndex, 0, variableWithTempId);
+        newList.splice(targetIndex, 0, variable);
       } else {
-        newList.push(variableWithTempId);
+        newList.push(variable);
       }
       newList.sort((a, b) => (a.columnIndex || 0) - (b.columnIndex || 0));
       return newList;
@@ -96,12 +96,8 @@ export const useVariableSelection = ({
   };
 
   const resetVariableSelection = () => {
-    const allVariablesWithTempId = variables.map(v => ({
-      ...v,
-      tempId: v.tempId || `temp_id_${v.columnIndex}`
-    }));
     setSelectedVariables([]);
-    setAvailableVariables(allVariablesWithTempId.filter(v => v.name !== ""));
+    setAvailableVariables(variables.filter(v => v.name !== "" && v.id !== undefined));
     setHighlightedVariable(null);
   };
 

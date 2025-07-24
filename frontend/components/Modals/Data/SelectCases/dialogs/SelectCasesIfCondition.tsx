@@ -29,9 +29,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Variable } from "@/types/Variable";
 import {
     Search,
-    HelpCircle,
+    ArrowLeft,
     Trash2,
-    ArrowLeft
 } from "lucide-react";
 import { getVariableIcon, getDisplayName } from "../utils/variableUtils";
 
@@ -275,30 +274,18 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
         <DialogContent
             className="w-full p-0 border border-border rounded-md"
             style={{ 
-                maxWidth: "700px",
+                maxWidth: "800px",
                 width: "100%",
-                maxHeight: "550px",
+                maxHeight: "900px",
                 display: "flex",
                 flexDirection: "column",
-                overflow: "hidden"
+                overflow: "auto"
             }}
         >
             <div className="px-3 py-2 flex-shrink-0">
                 <DialogHeader className="p-0">
-                    <DialogTitle className="text-sm font-semibold flex items-center">
+                    <DialogTitle className="text-base font-semibold flex items-center">
                         <span>Select Cases: If Condition</span>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
-                                        <HelpCircle size={14} />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">
-                                    <p className="text-xs">Create a logical expression to filter cases.</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
                     </DialogTitle>
                 </DialogHeader>
             </div>
@@ -306,9 +293,9 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
             <div className="p-3 flex-grow overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                     {/* Left Column - Variables List */}
-                    <div className="md:col-span-3">
-                        <Label className="mb-1 block text-xs">Variables:</Label>
-                        <div className="border rounded-md bg-card h-[150px] overflow-hidden">
+                    <div className="md:col-span-3 flex flex-col">
+                        <Label className="mb-1 block text-sm">Variables:</Label>
+                        <div className="border rounded-md bg-card flex-grow overflow-hidden">
                             <ScrollArea className="h-full w-full">
                                 <div className="p-1">
                                     {variables.map((variable) => (
@@ -316,7 +303,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             key={variable.columnIndex}
                                             className={`
                                                 flex items-center p-1.5 border rounded-md cursor-pointer mb-1
-                                                hover:bg-accent text-xs
+                                                hover:bg-accent text-sm
                                                 ${selectedVariable === variable.name ? "bg-primary/5 border-primary/40" : "border-border"}
                                             `}
                                             onClick={() => handleVariableClick(variable)}
@@ -339,7 +326,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                             {/* Expression Input */}
                             <div className="mb-2">
                                 <div className="flex justify-between items-center mb-1">
-                                    <Label className="text-xs">Expression:</Label>
+                                    <Label className="text-sm">Expression:</Label>
                                     <div className="flex gap-1">
                                         <Button 
                                             variant="ghost" 
@@ -363,7 +350,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                     ref={textareaRef}
                                     value={condition}
                                     onChange={(e) => setCondition(e.target.value)}
-                                    className="min-h-[60px] h-[60px] p-2 bg-muted/50 font-mono resize-none text-xs"
+                                    className="min-h-[60px] h-[60px] p-2 bg-muted/50 font-mono resize-none text-sm"
                                     placeholder="Enter condition expression..."
                                     spellCheck={false}
                                     style={{ lineHeight: 1.5 }}
@@ -378,7 +365,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             key={idx}
                                             variant="outline"
                                             size="sm"
-                                            className="h-6 text-xs bg-muted/30 hover:bg-muted px-1"
+                                            className="h-6 text-sm bg-muted/30 hover:bg-muted px-1"
                                             onClick={() => handleOperatorClick(op.value)}
                                         >
                                             {op.label}
@@ -389,7 +376,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             key={idx}
                                             variant="outline"
                                             size="sm"
-                                            className="h-6 text-xs bg-muted/30 hover:bg-muted px-1"
+                                            className="h-6 text-sm bg-muted/30 hover:bg-muted px-1"
                                             onClick={() => handleOperatorClick(op.value)}
                                         >
                                             {op.label}
@@ -416,7 +403,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             key={idx}
                                             variant="outline"
                                             size="sm"
-                                            className="h-6 text-xs bg-muted/30 hover:bg-muted px-1"
+                                            className="h-6 text-sm bg-muted/30 hover:bg-muted px-1"
                                             onClick={() => insertAtCursor(btn.value)}
                                         >
                                             {btn.label}
@@ -427,14 +414,14 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
 
                             {/* Common Expression Examples */}
                             <div className="border rounded-md p-2 bg-muted/50 flex-grow">
-                                <Label className="mb-1 block text-xs">Examples:</Label>
+                                <Label className="mb-1 block text-sm">Examples:</Label>
                                 <div className="overflow-hidden">
                                     <ScrollArea className="h-[60px] w-full">
                                         <div className="space-y-1">
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 text-xs justify-start px-2 font-mono w-full" 
+                                                className="h-6 text-sm justify-start px-2 font-mono w-full" 
                                                 onClick={() => setCondition("age > 25")}
                                             >
                                                 age {">"} 25
@@ -442,7 +429,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 text-xs justify-start px-2 font-mono w-full"
+                                                className="h-6 text-sm justify-start px-2 font-mono w-full"
                                                 onClick={() => setCondition("income >= 50000 & education > 12")}
                                             >
                                                 income {">="} 50000 & education {">"} 12
@@ -450,7 +437,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 text-xs justify-start px-2 font-mono w-full"
+                                                className="h-6 text-sm justify-start px-2 font-mono w-full"
                                                 onClick={() => setCondition("gender == \"F\" | gender == \"f\"")}
                                             >
                                                 gender == &quot;F&quot; | gender == &quot;f&quot;
@@ -463,20 +450,20 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </div>
 
                     {/* Right Column - Function Groups */}
-                    <div className="md:col-span-4">
+                    <div className="md:col-span-4 flex flex-col">
                         <div className="flex flex-col h-full">
                             <div className="mb-2">
-                                <Label className="mb-1 block text-xs">Function group:</Label>
+                                <Label className="mb-1 block text-sm">Function group:</Label>
                                 <Select
                                     value={selectedFunctionGroup}
                                     onValueChange={setSelectedFunctionGroup}
                                 >
-                                    <SelectTrigger className="h-7 text-xs">
+                                    <SelectTrigger className="h-7 text-sm">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {functionGroups.map((group) => (
-                                            <SelectItem key={group} value={group} className="text-xs">
+                                            <SelectItem key={group} value={group} className="text-sm">
                                                 {group}
                                             </SelectItem>
                                         ))}
@@ -485,21 +472,21 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                             </div>
 
                             <div className="mb-2">
-                                <Label className="mb-1 block text-xs">Search functions:</Label>
+                                <Label className="mb-1 block text-sm">Search functions:</Label>
                                 <div className="relative">
                                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                     <Input
                                         value={functionSearch}
                                         onChange={(e) => setFunctionSearch(e.target.value)}
-                                        className="pl-7 h-7 text-xs"
+                                        className="pl-7 h-7 text-sm"
                                         placeholder="Search for functions..."
                                     />
                                 </div>
                             </div>
 
                             <div className="flex-grow">
-                                <Label className="mb-1 block text-xs">Functions:</Label>
-                                <div className="border rounded-md bg-card overflow-hidden h-[150px]">
+                                <Label className="mb-1 block text-sm">Functions:</Label>
+                                <div className="border rounded-md bg-card overflow-hidden flex-grow">
                                     <ScrollArea className="h-full w-full">
                                         <div className="p-1">
                                             {filteredFunctions.length > 0 ? (
@@ -509,7 +496,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                                             key={idx}
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-6 text-xs justify-start px-2 font-mono w-full hover:bg-accent"
+                                                            className="h-6 text-sm justify-start px-2 font-mono w-full hover:bg-accent"
                                                             onClick={() => handleFunctionClick(func.split("(")[0])}
                                                         >
                                                             {func}
@@ -517,7 +504,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <div className="p-2 text-xs text-muted-foreground text-center">
+                                                <div className="p-2 text-sm text-muted-foreground text-center">
                                                     No functions match your search
                                                 </div>
                                             )}
@@ -533,12 +520,12 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
             <DialogFooter className="px-3 py-2 flex-shrink-0">
                 {validationError && (
                     <div className="w-full mb-1">
-                        <p className="text-xs text-destructive">{validationError}</p>
+                        <p className="text-sm text-destructive">{validationError}</p>
                     </div>
                 )}
                 <div className="flex gap-2 ml-auto">
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onClose}>Cancel</Button>
-                    <Button size="sm" className="h-7 text-xs" onClick={handleContinue}>Continue</Button>
+                    <Button variant="outline" size="sm" className="h-7 text-sm" onClick={onClose}>Cancel</Button>
+                    <Button size="sm" className="h-7 text-sm" onClick={handleContinue}>Continue</Button>
                 </div>
             </DialogFooter>
         </DialogContent>

@@ -91,15 +91,6 @@ const baseTourSteps: TourStep[] = [
     icon: "🔍",
     requiredTab: TABS.CELLS
   },
-   {
-    title: "Noninteger Weights",
-    content: "Specify how to handle cases with noninteger weights if you are using a weight variable.",
-    targetId: "crosstabs-noninteger-weights-section",
-    defaultPosition: 'top',
-    defaultHorizontalPosition: null,
-    icon: "⚖️",
-    requiredTab: TABS.CELLS
-  },
   {
     title: "Run Analysis",
     content: "Once you have configured your analysis, click OK to see the results.",

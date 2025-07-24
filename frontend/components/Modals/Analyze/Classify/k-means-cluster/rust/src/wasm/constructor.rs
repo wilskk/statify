@@ -1,18 +1,18 @@
 use wasm_bindgen::prelude::*;
 
 use crate::models::{
-    config::ClusterConfig,
-    data::{ AnalysisData, DataRecord, VariableDefinition },
-    result::ClusteringResult,
+    config::KMeansConfig,
+    data::{ AnalysisData, DataRecord, VariableDefinition, DataValue },
+    result::KMeansResult,
 };
 use crate::utils::{ converter::string_to_js_error, error::ErrorCollector, log::FunctionLogger };
 use crate::wasm::function;
 
 #[wasm_bindgen]
 pub struct KMeansClusterAnalysis {
-    config: ClusterConfig,
+    config: KMeansConfig,
     data: AnalysisData,
-    result: Option<ClusteringResult>,
+    result: Option<KMeansResult>,
     error_collector: ErrorCollector,
     logger: FunctionLogger,
 }
@@ -32,6 +32,17 @@ impl KMeansClusterAnalysis {
 
         // Initialize function logger
         let logger = FunctionLogger::default();
+
+        let is_all_null = |data: &Vec<Vec<DataRecord>>| -> bool {
+            if data.is_empty() || data[0].is_empty() {
+                return false;
+            }
+            data.iter().all(|row| {
+                row.iter().all(|record| {
+                    record.values.values().all(|value| matches!(value, DataValue::Null))
+                })
+            })
+        };
 
         // Parse input data using serde_wasm_bindgen
         let target_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(target_data) {
@@ -74,13 +85,25 @@ impl KMeansClusterAnalysis {
             }
         };
 
+        if is_all_null(&target_data) {
+            let msg = "Target data contains all null values".to_string();
+            error_collector.add_error("Constructor : Target Data Validation", &msg);
+            return Err(string_to_js_error(msg));
+        }
+
+        if is_all_null(&case_data) {
+            let msg = "Case data contains all null values".to_string();
+            error_collector.add_error("Constructor : Case Data Validation", &msg);
+            return Err(string_to_js_error(msg));
+        }
+
         if target_data.is_empty() {
             let msg = "Target data cannot be empty".to_string();
             error_collector.add_error("Constructor : Target Data Validation", &msg);
             return Err(string_to_js_error(msg));
         }
 
-        let config: ClusterConfig = match serde_wasm_bindgen::from_value(config_data.clone()) {
+        let config: KMeansConfig = match serde_wasm_bindgen::from_value(config_data.clone()) {
             Ok(data) => data,
             Err(e) => {
                 let msg =

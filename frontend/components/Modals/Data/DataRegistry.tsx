@@ -16,7 +16,6 @@ const Aggregate = lazy(() => import('@/components/Modals/Data/Aggregate'));
 const WeightCases = lazy(() => import('@/components/Modals/Data/WeightCases'));
 const DuplicateCases = lazy(() => import('@/components/Modals/Data/DuplicateCases'));
 const SelectCases = lazy(() => import('@/components/Modals/Data/SelectCases'));
-const UnusualCases = lazy(() => import('@/components/Modals/Data/UnusualCases'));
 
 /**
  * LoadingModal - Displayed while modal components are loading
@@ -57,7 +56,6 @@ export const DATA_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseModal
   // Case operations
   [ModalType.SortCases]: withSuspense(SortCases as any),
   [ModalType.DuplicateCases]: withSuspense(DuplicateCases as any),
-  [ModalType.UnusualCases]: withSuspense(UnusualCases as any),
   [ModalType.SelectCases]: withSuspense(SelectCases as any),
   [ModalType.WeightCases]: withSuspense(WeightCases as any),
   
@@ -101,7 +99,6 @@ export const DATA_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog
   // Case operations - typically forms with selection lists
   [ModalType.SortCases]: "sidebar",
   [ModalType.DuplicateCases]: "sidebar",
-  [ModalType.UnusualCases]: "sidebar",
   [ModalType.SelectCases]: "sidebar",
   [ModalType.WeightCases]: "sidebar",
   

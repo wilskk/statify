@@ -81,6 +81,11 @@ sequenceDiagram
         Hook->>Store: `addStatistic(analyticId, { output_data })`
     end
     
+    alt Jika grafik diminta
+        Hook->>Hook: Memproses & menambahkan grafik (`processAndAddCharts`)
+        Note right of Hook: Ini juga akan memanggil `addStatistic` untuk setiap grafik.
+    end
+    
     end
 
     Hook->>Hook: `isCalculating = false`

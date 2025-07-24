@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use ndarray::{ Array1, ArrayView1 };
 
 use statrs::distribution::{ FisherSnedecor, ContinuousCDF };
 
@@ -36,39 +35,6 @@ pub fn sum_squared_deviations(values: &[f64], from_value: f64) -> f64 {
         .iter()
         .map(|x| (x - from_value).powi(2))
         .sum()
-}
-
-/**
- * Menghitung varians (variance) dari sebuah slice f64.
- * Varians adalah ukuran seberapa jauh data tersebar dari rata-rata.
- *
- * # Arguments
- * * `values` - Slice yang berisi nilai-nilai data.
- *
- * # Returns
- * Nilai varians.
- */
-pub fn variance(values: &[f64]) -> f64 {
-    if values.len() <= 1 {
-        return 0.0;
-    }
-    let m = mean(values);
-    sum_squared_deviations(values, m) / ((values.len() - 1) as f64)
-}
-
-/**
- * Menghitung deviasi standar (standard deviation) dari sebuah slice f64.
- * Deviasi standar adalah akar kuadrat dari varians, dan mengukur jumlah variasi atau
- * dispersi dari sekumpulan nilai data dalam unit yang sama dengan data aslinya.
- *
- * # Arguments
- * * `values` - Slice yang berisi sampel data.
- *
- * # Returns
- * Nilai deviasi standar.
- */
-pub fn standard_deviation(values: &[f64]) -> f64 {
-    variance(values).sqrt()
 }
 
 /**
@@ -116,24 +82,6 @@ pub fn euclidean_distance(a: &[f64], b: &[f64]) -> f64 {
 }
 
 /**
- * Menghitung jarak Euclidean antara dua vektor `ndarray`.
- * Versi ini dioptimalkan untuk performa menggunakan operasi vektor dari `ndarray`.
- *
- * # Arguments
- * * `a` - Vektor pertama (`ArrayView1`).
- * * `b` - Vektor kedua (`ArrayView1`).
- *
- * # Returns
- * Jarak Euclidean antara vektor a dan b.
- */
-pub fn euclidean_distance_ndarray(a: ArrayView1<f64>, b: ArrayView1<f64>) -> f64 {
-    (&a - &b)
-        .mapv(|x| x.powi(2))
-        .sum()
-        .sqrt()
-}
-
-/**
  * Menemukan cluster terdekat untuk sebuah titik data dari daftar pusat cluster.
  *
  * # Arguments
@@ -152,20 +100,6 @@ pub fn find_nearest_cluster(point: &[f64], centers: &[Vec<f64>]) -> (usize, f64)
         .map(|(i, center)| (i, euclidean_distance(point, center)))
         .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
         .unwrap_or((0, f64::MAX))
-}
-
-/**
- * Fungsi pembantu (helper function) untuk menemukan indeks cluster terdekat.
- *
- * # Arguments
- * * `point` - Titik data.
- * * `centers` - Slice dari pusat-pusat cluster.
- *
- * # Returns
- * Indeks dari cluster terdekat.
- */
-pub fn find_closest_cluster(point: &[f64], centers: &[Vec<f64>]) -> usize {
-    find_nearest_cluster(point, centers).0
 }
 
 /**
@@ -273,35 +207,4 @@ pub fn convert_map_to_matrix(
     }
 
     matrix
-}
-
-/**
- * Mengonversi data dari slice `Vec<f64>` ke format `Vec<Array1<f64>>` dari `ndarray`.
- * Berguna untuk mempersiapkan data untuk operasi numerik yang efisien.
- *
- * # Arguments
- * * `data` - Data dalam format `Vec<Vec<f64>>`.
- *
- * # Returns
- * Data dalam format `Vec<Array1<f64>>`.
- */
-pub fn to_ndarray(data: &[Vec<f64>]) -> Vec<Array1<f64>> {
-    data.iter()
-        .map(|v| Array1::from_vec(v.to_vec()))
-        .collect()
-}
-
-/**
- * Mengonversi data dari format `ndarray` (`Vec<Array1<f64>>`) kembali ke `Vec<Vec<f64>>`.
- *
- * # Arguments
- * * `data` - Data dalam format `Vec<Array1<f64>>`.
- *
- * # Returns
- * Data dalam format `Vec<Vec<f64>>`.
- */
-pub fn from_ndarray(data: &[Array1<f64>]) -> Vec<Vec<f64>> {
-    data.iter()
-        .map(|a| a.to_vec())
-        .collect()
 }

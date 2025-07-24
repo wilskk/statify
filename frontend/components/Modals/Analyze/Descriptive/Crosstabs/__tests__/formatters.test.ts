@@ -6,7 +6,9 @@ const mockParams: CrosstabsAnalysisParams = {
     rowVariables: [{ name: 'gender', label: 'Gender' } as Variable],
     columnVariables: [{ name: 'jobcat', label: 'Job Category' } as Variable],
     options: {
-        cells: { observed: true, expected: false, row: false, column: false, total: false },
+        cells: { observed: true, expected: false, row: false, column: false, total: false, hideSmallCounts: false, hideSmallCountsThreshold: 5 },
+        residuals: { unstandardized: false, standardized: false, adjustedStandardized: false },
+        nonintegerWeights: 'roundCell',
     },
 };
 

@@ -16,13 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
 import { Separator } from "@/components/ui/separator";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+// Help icon and tooltip imports removed
 import { VariableType } from '@/types/Variable';
 
 interface DateFormatOption {
@@ -206,20 +200,8 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
             >
                 <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
                     <DialogHeader className="p-0">
-                        <DialogTitle className="text-sm font-semibold flex items-center">
-                            <span>Variable Type</span>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
-                                            <HelpCircle size={14} />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p className="text-xs">Set the type and format properties for this variable.</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                        <DialogTitle className="text-base font-semibold">
+                            Variable Type
                         </DialogTitle>
                     </DialogHeader>
                 </div>
@@ -333,13 +315,8 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex items-start mt-3 text-xs bg-blue-50 dark:bg-blue-950/30 p-2 rounded-md border-l-2 border-blue-500">
-                        <div className="text-blue-600 mr-2 flex-shrink-0">
-                            <HelpCircle size={14} />
-                        </div>
-                        <div>
-                            The Numeric type honors the digit grouping setting, while the Restricted Numeric never uses digit grouping.
-                        </div>
+                    <div className="mt-3 text-sm bg-blue-50 dark:bg-blue-950/30 p-2 rounded-md border-l-2 border-blue-500">
+                        The Numeric type honors the digit grouping setting, while the Restricted Numeric never uses digit grouping.
                     </div>
                 </div>
 
@@ -349,14 +326,14 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            className="h-7 text-xs" 
+                            className="h-7 text-sm" 
                             onClick={() => onOpenChange(false)}
                         >
                             Cancel
                         </Button>
                         <Button 
                             size="sm" 
-                            className="h-7 text-xs bg-primary hover:bg-primary/90" 
+                            className="h-7 text-sm bg-primary hover:bg-primary/90" 
                             onClick={handleSave}
                         >
                             OK

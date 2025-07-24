@@ -1,6 +1,6 @@
-import {UnivariateType} from "./univariate";
-import {ResultJson} from "@/types/Table";
-import {Variable} from "@/types/Variable";
+import { UnivariateType } from "./univariate";
+import { ResultJson } from "@/types/Table";
+import { Variable } from "@/types/Variable";
 
 export type UnivariateAnalysisType = {
     configData: UnivariateType;

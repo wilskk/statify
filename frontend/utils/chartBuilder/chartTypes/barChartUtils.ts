@@ -190,13 +190,14 @@ export const createVerticalBarChart2 = (
           const dataPoint = processedData.find((item) => item.uniqueId === d);
           return dataPoint ? truncateText(dataPoint.displayLabel, 12) : d;
         },
-        maxValueLength: 12,
+        maxValueLength: 8,
         showGridLines: true,
       },
       yAxisOptions: {
         customFormat: formatAxisNumber,
         showGridLines: false,
         showTicks: true,
+        maxValueLength: 8,
       },
     });
   }
@@ -459,6 +460,7 @@ export const createVerticalStackedBarChart = (
     categories,
     hasLegend: true,
     legendPosition: "right",
+    itemCount: subcategories.length,
   });
 
   // Skala untuk sumbu X
@@ -553,6 +555,7 @@ export const createVerticalStackedBarChart = (
       chartType: "vertical",
       xAxisOptions: {
         showGridLines: true,
+        maxValueLength: 8,
       },
       yAxisOptions: {
         tickValues: yAxisMajorIncrement
@@ -560,6 +563,7 @@ export const createVerticalStackedBarChart = (
           : undefined,
         customFormat: formatAxisNumber,
         showGridLines: false,
+        maxValueLength: 8,
       },
     });
 
@@ -679,6 +683,7 @@ export const createHorizontalStackedBarChart = (
     hasLegend: true,
     legendPosition: "right",
     isHorizontalChart: true,
+    itemCount: subcategories.length,
   });
 
   // X scale with axis options
@@ -778,9 +783,11 @@ export const createHorizontalStackedBarChart = (
           : undefined,
         customFormat: formatAxisNumber,
         showGridLines: false,
+        maxValueLength: 6,
       },
       yAxisOptions: {
         showGridLines: true,
+        maxValueLength: 6,
       },
     });
 
@@ -894,6 +901,7 @@ export const createClusteredBarChart = (
     categories,
     hasLegend: true,
     legendPosition: "right",
+    itemCount: subcategories.length,
   });
 
   // Skala untuk sumbu X
@@ -993,6 +1001,7 @@ export const createClusteredBarChart = (
       chartType: "vertical",
       xAxisOptions: {
         showGridLines: true,
+        maxValueLength: 6,
       },
       yAxisOptions: {
         tickValues: yAxisMajorIncrement
@@ -1000,6 +1009,7 @@ export const createClusteredBarChart = (
           : undefined,
         customFormat: formatAxisNumber,
         showGridLines: false,
+        maxValueLength: 6,
       },
     });
 

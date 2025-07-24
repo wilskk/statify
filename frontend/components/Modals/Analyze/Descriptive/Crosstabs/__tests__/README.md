@@ -46,4 +46,20 @@ This directory contains all tests for the Crosstabs modal component and its rela
     - **`formatCrosstabulationTable`**:
         - Ensures the main crosstabulation table is formatted correctly with dynamic headers based on variable categories.
         - Checks that the main data rows and the final "Total" row are structured and calculated properly.
-        - Verifies that `null` is returned when result data is missing. 
+        - Verifies that `null` is returned when result data is missing.
+
+### 5. `CellsTab.test.tsx`
+
+- **Purpose**: Tests the standalone `CellsTab` component that allows users to specify which statistics appear in each cell of the crosstabulation table.
+- **Coverage**:
+    - Renders all major option groups (Counts, Percentages, Residuals).
+    - Conditionally renders the **Noninteger Weights** group when a weight variable is active.
+    - Confirms that toggling a checkbox (e.g., *Observed*) triggers the `setOptions` callback, ensuring state updates propagate correctly. 
+
+## Areas Not Explicitly Tested Yet
+
+Although the current suite covers the primary user flows, beberapa bagian berikut belum memiliki test khusus:
+
+1. **`VariablesTab` component** – Komponen ini tidak memiliki file test tersendiri, namun perilaku intinya (memindahkan atau mengatur ulang variabel antar-list) sudah tercakup secara tidak langsung melalui `Crosstabs.test.tsx`.
+2. **Interface / type-only utilities (`helpers.ts`)** – File ini hanya berisi tipe dan konstanta sehingga wajar tidak dites.
+3. **Opsi minor di `CellsTab`** – Misalnya `hideSmallCountsThreshold` dan rendering *Non-integer Weights* ketika variabel bobot aktif. Test tambahan dapat ditulis apabila menargetkan cakupan 100 %. 

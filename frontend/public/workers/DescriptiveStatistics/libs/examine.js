@@ -173,7 +173,7 @@ class ExamineCalculator {
             mEstimators: {
                 huber: this.getMEstimator('huber'),
                 hampel: this.getMEstimator('hampel'),
-                andrew: this.getMEstimator('andrew'),
+                andrews: this.getMEstimator('andrew'),
                 tukey: this.getMEstimator('tukey'),
             },
             percentiles: {
@@ -225,6 +225,11 @@ class ExamineCalculator {
             }
         };
 
+        // Append extreme values if requested
+        if (this.options.showOutliers) {
+            results.extremeValues = this.getExtremeValues(this.options.extremeCount || 5);
+        }
+
         // Correctly calculate confidence interval using the right stats
         const { Mean: mean, SEMean: seMean } = descStatsResult.stats;
         if (seMean !== null && mean !== null) {
@@ -237,6 +242,129 @@ class ExamineCalculator {
         }
         
         return results;
+    }
+
+    getExtremeValues(extremeCount = 5) {
+        this.#initialize();
+
+        // Collect valid numeric values with their original case numbers
+        const entries = [];
+        for (let i = 0; i < this.data.length; i++) {
+            const val = this.data[i];
+            const weight = this.weights ? (this.weights[i] ?? 1) : 1;
+            if (!isNumeric(val) || typeof weight !== 'number' || weight <= 0) continue;
+            entries.push({ caseNumber: i + 1, value: parseFloat(val) });
+        }
+
+        if (entries.length === 0) return null;
+
+        // ==== 1. Compute quartiles & IQR (using waverage percentiles like SPSS) ====
+        const q1 = this.freqCalc.getPercentile(25, 'waverage');
+        const q3 = this.freqCalc.getPercentile(75, 'waverage');
+        if (q1 === null || q3 === null) return null;
+        const iqr = q3 - q1;
+
+        // Guard against zero IQR (no spread)
+        if (iqr === 0) {
+            // Fall back to simple min/max selection
+            const sortedAsc = [...entries].sort((a, b) => a.value - b.value);
+            const sortedDesc = [...entries].sort((a, b) => b.value - a.value);
+            return buildExtremeValueObject(sortedAsc, sortedDesc, extremeCount);
+        }
+
+        const step = 1.5 * iqr;
+        const lowerInner = q1 - step;
+        const upperInner = q3 + step;
+        const lowerOuter = q1 - 2 * step; // 3.0 * IQR total
+        const upperOuter = q3 + 2 * step;
+
+        // ==== 2. Identify candidate outliers/extremes ====
+        const isExtreme = (v) => v < lowerOuter || v > upperOuter;
+        const isOutlier = (v) => (v < lowerInner || v > upperInner) && !isExtreme(v);
+
+        const sortedAsc = [...entries].sort((a, b) => a.value - b.value);
+        const sortedDesc = [...entries].sort((a, b) => b.value - a.value);
+
+        // Helper to pick up to extremeCount from a source array filtering by predicate
+        function pickCandidates(source, predicate) {
+            const arr = [];
+            for (const item of source) {
+                if (predicate(item.value)) {
+                    arr.push(item);
+                    if (arr.length === extremeCount) break;
+                }
+            }
+            return arr;
+        }
+
+        let lowest = pickCandidates(sortedAsc, isExtreme);
+        let highest = pickCandidates(sortedDesc, isExtreme);
+
+        // If not enough extremes, fill with mild outliers
+        if (lowest.length < extremeCount) {
+            const additional = pickCandidates(sortedAsc, isOutlier).filter(it => !lowest.includes(it));
+            lowest = [...lowest, ...additional.slice(0, extremeCount - lowest.length)];
+        }
+        if (highest.length < extremeCount) {
+            const additional = pickCandidates(sortedDesc, isOutlier).filter(it => !highest.includes(it));
+            highest = [...highest, ...additional.slice(0, extremeCount - highest.length)];
+        }
+
+        // Still not enough? fill with regular extremes by value (closest to fence)
+        const fillByValue = (list, source) => {
+            if (list.length >= extremeCount) return list;
+            for (const item of source) {
+                if (!list.includes(item)) {
+                    list.push(item);
+                    if (list.length === extremeCount) break;
+                }
+            }
+            return list;
+        };
+
+        lowest = fillByValue(lowest, sortedAsc);
+        highest = fillByValue(highest, sortedDesc);
+
+        // Mark partial lists if ties at boundary
+        const checkPartial = (sourceArray, fullSorted, direction) => {
+            if (sourceArray.length === 0) return;
+            const lastIncluded = sourceArray[sourceArray.length - 1];
+            const lastValue = lastIncluded.value;
+            const indexInFull = fullSorted.findIndex(e => e.caseNumber === lastIncluded.caseNumber);
+            const nextIndex = indexInFull + 1;
+            if (nextIndex < fullSorted.length && fullSorted[nextIndex].value === lastValue) {
+                lastIncluded.isPartial = true; // footnote handled by formatter
+            }
+        };
+
+        checkPartial(lowest, sortedAsc, 'lowest');
+        checkPartial(highest, sortedDesc, 'highest');
+
+        // Helper to tag each entry type
+        const tagType = (arr) => arr.map(item => ({ ...item, type: isExtreme(item.value) ? 'extreme' : (isOutlier(item.value) ? 'outlier' : 'normal') }));
+
+        return {
+            highest: tagType(highest),
+            lowest: tagType(lowest),
+            isTruncated: extremeCount > entries.length,
+            fences: {
+                lowerInner,
+                upperInner,
+                lowerOuter,
+                upperOuter,
+            },
+        };
+
+        // === local helper ===
+        function buildExtremeValueObject(sortedAsc, sortedDesc, count) {
+            const lo = sortedAsc.slice(0, count);
+            const hi = sortedDesc.slice(0, count);
+            return {
+                highest: hi,
+                lowest: lo,
+                isTruncated: count > entries.length
+            };
+        }
     }
 }
 

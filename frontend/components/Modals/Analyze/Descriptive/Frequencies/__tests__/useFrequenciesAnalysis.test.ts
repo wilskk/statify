@@ -50,6 +50,9 @@ describe('useFrequenciesAnalysis', () => {
         
         mockAddLog.mockResolvedValue('log-789');
         mockAddAnalytic.mockResolvedValue('analytic-789');
+
+        // Ensure getState returns our mocked addStatistic for utilities that access the store directly
+        (useResultStore as any).getState = () => ({ addStatistic: mockAddStatistic });
     });
 
     const defaultParams: Omit<FrequenciesAnalysisParams, 'onClose'> = {
@@ -72,6 +75,8 @@ describe('useFrequenciesAnalysis', () => {
         act(() => {
             runPromise = result.current.runAnalysis();
         });
+
+        await act(async () => { if (runPromise) await runPromise; });
 
         expect(result.current.isLoading).toBe(true);
         expect(mockPostMessage).toHaveBeenCalledTimes(1);
@@ -118,6 +123,8 @@ describe('useFrequenciesAnalysis', () => {
             runPromise = result.current.runAnalysis();
         });
 
+        await act(async () => { if (runPromise) await runPromise; });
+
         const mockWorkerResult = {
             success: true,
             results: {
@@ -151,6 +158,8 @@ describe('useFrequenciesAnalysis', () => {
             runPromise = result.current.runAnalysis();
         });
 
+        await act(async () => { if (runPromise) await runPromise; });
+
         const mockWorkerError = { success: false, error: 'Frequency calculation failed' };
 
         await act(async () => {
@@ -166,16 +175,19 @@ describe('useFrequenciesAnalysis', () => {
     it('should handle critical worker instantiation errors', async () => {
         const { result } = renderTestHook();
         
+        let runPromise: Promise<void> | undefined;
         act(() => {
-            result.current.runAnalysis();
+            runPromise = result.current.runAnalysis();
         });
+
+        await act(async () => { if (runPromise) await runPromise; });
 
         const errorEvent = new ErrorEvent('error', {
             error: new Error('Script failed'),
             message: 'Worker died'
         });
 
-        act(() => {
+        await act(async () => {
             workerOnError(errorEvent);
         });
 

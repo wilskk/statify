@@ -17,6 +17,7 @@ interface TableData {
     title: string;
     columnHeaders: ColumnHeader[];
     rows: TableRowData[];
+    footer?: string | string[]; // optional footer support
 }
 
 interface DataTableProps {
@@ -84,7 +85,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                             rowSpan={rowSpan}
                             className="border border-border bg-muted px-2 py-1 text-center text-sm font-medium"
                         >
-                            {col.header}
+                            {renderContent(col.header)}
                         </th>
                     );
                 })}
@@ -171,7 +172,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                     colSpan={2}
                     className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal"
                 >
-                    {current}
+                    {renderContent(current)}
                 </th>
             );
         }
@@ -195,10 +196,19 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                     rowSpan={rowSpan}
                     className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal"
                 >
-                    {current}
+                    {renderContent(current)}
                 </th>
             );
         });
+    };
+
+    // Helper to optionally render content that may include <sup>/<sub> tags
+    const renderContent = (value: any): React.ReactNode => {
+        if (value === null || value === undefined) return "";
+        if (typeof value === "string" && /<\/?(sup|sub)>/i.test(value)) {
+            return <span dangerouslySetInnerHTML={{ __html: value }} />;
+        }
+        return value as React.ReactNode;
     };
 
     return (
@@ -213,9 +223,9 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 const allLeafCols = getLeafColumnKeys(columnHeaders);
                 const leafCols = allLeafCols.slice(rowHeaderCount);
                 return (
+                    <React.Fragment key={tableIndex}>
                     <table
-                        key={tableIndex}
-                        className="border-collapse border border-border text-sm mb-3"
+                        className="border-collapse border border-border text-sm mb-4 rounded-md"
                     >
                         <thead>
                         <tr>
@@ -223,7 +233,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                                 colSpan={rowHeaderCount + leafCols.length}
                                 className="border border-border bg-muted px-2 py-2 text-center font-semibold"
                             >
-                                {title}
+                                {renderContent(title)}
                             </th>
                         </tr>
                         {levels.map((cols, lvlIndex) =>
@@ -242,14 +252,43 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                                             key={i}
                                             className="border border-border px-2 py-1 text-center text-sm"
                                         >
-                                            {row[colKey] ?? ""}
+                                            {renderContent(row[colKey] ?? "")}
                                         </td>
                                     ))}
                                 </tr>
                             );
                         })}
                         </tbody>
+
+                        {/* Footer rendered inside the table so it scrolls together */}
+                        {table.footer && (
+                            <tfoot>
+                                {(() => {
+                                    // Normalize footer lines
+                                    const lines: string[] =
+                                        typeof table.footer === "string"
+                                            ? table.footer.split("\n")
+                                            : Array.isArray(table.footer)
+                                            ? table.footer
+                                            : [];
+
+                                    return (
+                                        <tr>
+                                            <td
+                                                colSpan={rowHeaderCount + leafCols.length}
+                                                className="border-0 border-t border-border px-3 py-2 text-left text-xs text-muted-foreground leading-5"
+                                            >
+                                                {lines.map((line, idx) => (
+                                                    <p key={`footer-line-${idx}`}>{renderContent(line)}</p>
+                                                ))}
+                                            </td>
+                                        </tr>
+                                    );
+                                })()}
+                            </tfoot>
+                        )}
                     </table>
+                    </React.Fragment>
                 );
             })}
         </div>

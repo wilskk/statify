@@ -1,5 +1,4 @@
 import { format } from "date-fns";
-import { da, id } from 'date-fns/locale';
 
 const months = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",

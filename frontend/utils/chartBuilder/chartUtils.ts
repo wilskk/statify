@@ -155,7 +155,7 @@ export const addXAxisLabel = (config: AxisLabelConfig) => {
     default:
       // For vertical charts, X label goes below the chart (bottom axis)
       xPosition = (width + marginLeft - marginRight) / 2;
-      yPosition = height - marginBottom / 3;
+      yPosition = height - marginBottom / 6; // Posisi lebih ke bawah untuk menghindari overlap
 
       // + calculateDynamicOffset(marginBottom, height);
       break;
@@ -325,8 +325,8 @@ export function addLegend({
   const ctx = document.createElement("canvas").getContext("2d")!;
   ctx.font = `${fontSize}px sans-serif`;
 
-  // Function to truncate text with ellipsis
-  const truncateText = (text: string, maxLength: number = 18) => {
+  // Function to truncate text with ellipsis - increased maxLength for better readability
+  const truncateText = (text: string, maxLength: number = 25) => {
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength - 3) + "...";
   };
@@ -338,7 +338,7 @@ export function addLegend({
 
   // Calculate adaptive spacing based on text width and legend position
   const minSpacing =
-    itemWidth + 6 + maxTextWidth + (legendPosition === "right" ? 10 : 30);
+    itemWidth + 8 + maxTextWidth + (legendPosition === "right" ? 15 : 30);
   const adaptiveSpacing = Math.max(
     legendPosition === "right" ? minSpacing : itemSpacing,
     minSpacing
@@ -404,14 +404,26 @@ export function addLegend({
       }
     });
   } else {
-    // For right position, stack items vertically
+    // For right position, implement multi-column layout to prevent overflow
+    const maxHeight = 300; // Maximum height for legend
+    const itemHeightWithSpacing = itemHeight + 8;
+    const maxItemsPerColumn = Math.floor(maxHeight / itemHeightWithSpacing);
+
+    // Calculate number of columns needed
+    const numColumns = Math.ceil(domain.length / maxItemsPerColumn);
+    const columnWidth = Math.max(adaptiveSpacing, 140); // Ensure minimum column width
+
     domain.forEach((item: string, index: number) => {
-      const yOffset = index * (itemHeight + 8);
+      const column = Math.floor(index / maxItemsPerColumn);
+      const row = index % maxItemsPerColumn;
+
+      const xOffset = column * columnWidth;
+      const yOffset = row * itemHeightWithSpacing;
 
       // Create swatch rectangle
       legendGroup
         .append("rect")
-        .attr("x", 0)
+        .attr("x", xOffset)
         .attr("y", yOffset)
         .attr("width", itemWidth)
         .attr("height", itemHeight)
@@ -422,7 +434,7 @@ export function addLegend({
       // Create label text with truncation
       const text = legendGroup
         .append("text")
-        .attr("x", itemWidth + 6)
+        .attr("x", xOffset + itemWidth + 6)
         .attr("y", yOffset + itemHeight / 2)
         .attr("dy", "0.35em")
         .attr("fill", "hsl(var(--foreground))")
@@ -486,6 +498,17 @@ export function calculateLegendPosition({
     case "right": {
       // ✅ Geser lebih jauh ke kanan jika dual axes
       const legendOffset = dualAxes ? 60 : 20;
+
+      // Calculate space needed for multi-column legend
+      const maxHeight = 300; // Same as in addLegend function
+      const itemHeightWithSpacing = 27; // itemHeight (19) + spacing (8)
+      const maxItemsPerColumn = Math.floor(maxHeight / itemHeightWithSpacing);
+      const numColumns = Math.ceil(itemCount / maxItemsPerColumn);
+
+      // Adjust x position to accommodate multiple columns
+      const columnWidth = 120; // Approximate width per column
+      const totalLegendWidth = numColumns * columnWidth;
+
       return {
         x: width - marginRight + legendOffset,
         y: marginTop,

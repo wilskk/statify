@@ -1,105 +1,87 @@
 # Arsitektur & Panduan Worker Statistik Deskriptif
 
-Dokumen ini menjelaskan arsitektur dan cara penggunaan sistem worker untuk analisis statistik deskriptif, termasuk prosedur `Descriptives`, `Frequencies`, `Examine`, dan `Crosstabs`.
+Dokumen ini menjelaskan arsitektur dan cara penggunaan sistem *Web Worker* untuk analisis statistik deskriptif—meliputi prosedur `Descriptives`, `Frequencies`, `Examine`, dan `Crosstabs`.
+
+## Perubahan Arsitektur (2025-07)
+Sejak refaktor terbaru, tiap jenis analisis kini memiliki *worker* terpisah (lebih ringan dan modular):
+
+| Tipe Analisis | Worker Script |
+| ------------- | ------------- |
+| Descriptives  | `/workers/DescriptiveStatistics/descriptives.worker.js` |
+| Frequencies   | `/workers/DescriptiveStatistics/frequencies.worker.js`  |
+| Examine       | `/workers/DescriptiveStatistics/examine.worker.js`      |
+| Crosstabs     | `/workers/DescriptiveStatistics/crosstabs.worker.js`    |
+
+Dengan pemisahan ini, file `manager.js` sudah **dihapus**.
+
+---
 
 ## Cara Menggunakan Worker
 
-Sistem ini diakses melalui satu entry point, `manager.js`. Dari main thread, Anda membuat instance worker dan mengirim pesan dengan format tertentu.
-
 ### 1. Inisiasi Worker
+Contoh inisialisasi *worker* untuk analisis Descriptives di dalam React Hook atau komponen:
 ```javascript
-// Contoh di dalam React Hook atau komponen
-const worker = new Worker(new URL('/workers/DescriptiveStatistics/manager.js', import.meta.url));
+import { createPooledWorkerClient } from "@/utils/workerClient";
+
+const workerClient = createPooledWorkerClient("descriptives");
+```
+> `createPooledWorkerClient()` otomatis memilih worker script yang tepat sesuai tabel di atas.
+
+Jika Anda ingin membuat *worker* manual:
+```javascript
+const worker = new Worker(
+  new URL("/workers/DescriptiveStatistics/descriptives.worker.js", import.meta.url)
+);
 ```
 
 ### 2. Mengirim Tugas Analisis
-Gunakan `worker.postMessage()` untuk mengirim tugas. Objek pesan harus berisi `analysisType` dan `payload` yang sesuai dengan analisis yang diminta.
+Gunakan `workerClient.post()` (atau `worker.postMessage()`) sesuai format masing-masing analisis.
 
-#### Skenario 1: Descriptives, Frequencies, atau Examine (Satu Variabel)
-Untuk analisis univariat, kirim definisi satu variabel dan array data mentah.
-
-**Contoh (`analysisType: 'descriptives'`)**:
+#### Descriptives / Examine / Frequencies (single-variable)
 ```javascript
-worker.postMessage({
-  analysisType: 'descriptives',
-  payload: {
-    variable: { name: 'Age', measure: 'scale', type: 'numeric' },
-    data: [25, 30, 35, 40, null],
-    weights: [1, 1, 1, 1, 1] // opsional, kirim null jika tidak ada
-  }
-});
-```
-*   **Struktur yang sama berlaku untuk `frequencies` dan `examine`.** Cukup ubah nilai `analysisType`.
-
-#### Skenario 2: Crosstabs (Tabulasi Silang)
-Untuk tabulasi silang, `payload.variable` harus berisi definisi variabel baris (`row`) dan kolom (`col`). `payload.data` harus berupa array objek, di mana setiap objek merepresentasikan satu kasus.
-
-**Contoh (`analysisType: 'crosstabs'`)**:
-```javascript
-worker.postMessage({
-  analysisType: 'crosstabs',
-  payload: {
-    variable: { 
-      row: { name: 'Gender', measure: 'nominal' },
-      col: { name: 'Vote', measure: 'nominal' }
-    },
-    data: [ // Array of objects
-      { Gender: 'Male', Vote: 'Yes' },
-      { Gender: 'Female', Vote: 'No' },
-      { Gender: 'Male', Vote: 'No' },
-      { Gender: 'Female', Vote: 'Yes' },
-    ],
-    weights: null // opsional
-  }
+workerClient.post({
+  variable: { name: "Age", measure: "scale", type: "numeric" },
+  data: [25, 30, 35, 40, null],
+  weights: [1, 1, 1, 1, 1], // opsional
+  options: { /* ... */ }
 });
 ```
 
-#### Skenario 3: Analisis Batch (Banyak Variabel)
-Worker ini dirancang untuk memproses satu analisis per panggilan untuk menjaga responsivitas UI. Untuk menganalisis beberapa variabel (misalnya, menghitung deskriptif untuk 'Age', 'Income', dan 'Education'), **lakukan iterasi di main thread** dan kirim beberapa pesan.
-
-**Contoh Pola Iterasi di Main Thread**:
+#### Crosstabs (tabulasi silang)
 ```javascript
-const variablesToAnalyze = [
-  { name: 'Age', measure: 'scale', type: 'numeric' },
-  { name: 'Income', measure: 'scale', type: 'numeric' },
-  { name: 'Education', measure: 'ordinal', type: 'numeric' }
-];
-
-const allData = [ /* ... array data lengkap ... */ ];
-const allWeights = [ /* ... array bobot ... */ ];
-
-variablesToAnalyze.forEach(variable => {
-  // Ekstrak data yang relevan untuk variabel ini jika perlu
-  const dataForVar = allData.map(row => row[variable.name]);
-  
-  console.log(`Mengirim tugas untuk variabel: ${variable.name}`);
-  worker.postMessage({
-    analysisType: 'descriptives',
-    payload: {
-      variable: variable,
-      data: dataForVar,
-      weights: allWeights 
-    }
-  });
+workerClient.post({
+  variable: {
+    row: { name: "Gender", measure: "nominal" },
+    col: { name: "Vote",   measure: "nominal" }
+  },
+  data: [
+    { Gender: "Male",   Vote: "Yes" },
+    { Gender: "Female", Vote: "No"  },
+    // ...
+  ],
+  weights: null,
+  options: { /* ... */ }
 });
 ```
-Pola ini memastikan bahwa setiap hasil analisis yang berat dikerjakan secara independen dan hasilnya dapat ditampilkan ke UI satu per satu saat sudah siap.
+
+#### Frequencies Batch Mode
+```javascript
+workerClient.post({
+  variableData: [
+    { variable: ageVarDef, data: ageDataArray },
+    { variable: incomeVarDef, data: incomeDataArray }
+  ],
+  weightVariableData: weightsArray,
+  options: { displayFrequency: true, displayDescriptive: true }
+});
+```
 
 ### 3. Menerima Hasil
-Dengarkan event `message` dari worker untuk menerima hasil atau error. Pesan balasan akan berisi `variableName` untuk membantu Anda mencocokkan hasil dengan permintaan aslinya.
+`workerClient.onMessage(result => { /* ... */ })` – struktur balasan tetap sama seperti sebelumnya.
 
-```javascript
-worker.onmessage = (event) => {
-  const { status, variableName, results, error } = event.data;
+---
 
-  if (status === 'success') {
-    console.log(`Hasil untuk ${variableName}:`, results);
-    // Update state React untuk variabel yang sesuai
-  } else {
-    console.error(`Error pada ${variableName}:`, error);
-  }
-};
-```
+*(Bagian selanjutnya tentang struktur `results` dipertahankan tanpa perubahan.)*
 
 ## Struktur Hasil Analisis
 
