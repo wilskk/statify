@@ -9,7 +9,8 @@ import {
     MenubarSubTrigger,
     MenubarSubContent,
 } from "@/components/ui/menubar";
-import { ModalType, useModal } from "@/hooks/useModal";
+import { ModalType } from "@/types/modalTypes";
+import { useModal } from "@/hooks/useModal";
 
 const NonparametricTestsMenu: FC = () => {
     const { openModal } = useModal();
@@ -30,24 +31,24 @@ const NonparametricTestsMenu: FC = () => {
                 <MenubarSub>
                       <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
                       <MenubarSubContent>
-                        {/* <MenubarItem onClick={() => openModal(ModalType.ChiSquare)}>
+                        <MenubarItem onClick={() => openModal(ModalType.ChiSquare)}>
                             Chi-square...
-                        </MenubarItem> */}
-                        {/* <MenubarItem onClick={() => openModal(ModalType.Runs)}>
+                        </MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.Runs)}>
                             Runs...
-                        </MenubarItem> */}
-                        {/* <MenubarItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>
+                        </MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>
                             2 Independent Samples...
-                        </MenubarItem> */}
-                        {/* <MenubarItem onClick={() => openModal(ModalType.KIndependentSamples)}>
+                        </MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.KIndependentSamples)}>
                             K Independent Samples...
-                        </MenubarItem> */}
-                        {/* <MenubarItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>
+                        </MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>
                             2 Related Samples...
-                        </MenubarItem> */}
-                        {/* <MenubarItem onClick={() => openModal(ModalType.KRelatedSamples)}>
+                        </MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.KRelatedSamples)}>
                             K Related Samples...
-                        </MenubarItem> */}
+                        </MenubarItem>
                       </MenubarSubContent>
                     </MenubarSub>
             </MenubarContent>

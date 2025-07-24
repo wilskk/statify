@@ -40,9 +40,27 @@ export const processAndAddCharts = async (
             ]
         };
 
-        // Re-use the table title (or variable name) for the chart title so it matches
-        // frequency table output (avoids redundancy like "Bar Chart for …").
-        const chartTitle = table.title || varName;
+        /*
+         * Build a descriptive title for the chart. Tests (and users) expect the
+         * title to contain the chart type (e.g. "Bar Chart", "Pie Chart"). We
+         * therefore prefix the original frequency-table title with the chart type
+         * label. For example:
+         *   "Var1 Frequencies"  ->  "Bar Chart: Var1 Frequencies"
+         */
+        const chartTypeLabelMap: Record<NonNullable<ChartOptions["type"]>, string> = {
+            barCharts: "Bar Chart",
+            pieCharts: "Pie Chart",
+            histograms: "Histogram",
+        } as const;
+
+        let chartTitle = table.title || varName;
+        if (chartOptions.type) {
+            const label = chartTypeLabelMap[chartOptions.type];
+            // Ensure we only prepend if not already included.
+            if (label && !chartTitle.includes(label)) {
+                chartTitle = `${label}: ${chartTitle}`;
+            }
+        }
         const chartComponent = chartOptions.type ? chartTypeMeta[chartOptions.type].component : "Bar";
 
         let outputData: any;

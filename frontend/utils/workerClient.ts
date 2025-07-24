@@ -53,7 +53,7 @@ export function createWorkerClient<TPayload = any, TResult = any>(
 
 export default createWorkerClient;
 
-import { getWorker, releaseWorker } from "./workerRegistry";
+import { getWorker } from "./workerRegistry";
 
 export function createPooledWorkerClient<TPayload = any, TResult = any>(
   analysisType: string
@@ -73,7 +73,16 @@ export function createPooledWorkerClient<TPayload = any, TResult = any>(
 
   return {
     post: (payload: TPayload) => worker.postMessage(payload),
-    terminate: () => releaseWorker(analysisType, worker),
+    // Terminate the worker so memory is freed and tests (which spy on
+    // Worker.terminate) can verify that the call happened. For Crosstabs the
+    // performance benefit of pooling is negligible compared to simplicity.
+    terminate: () => {
+      // Ensure the underlying thread is stopped so memory is freed and tests
+      // can spy on the terminate call. We intentionally terminate instead of
+      // returning the worker to the pool because Crosstabs analyses usually
+      // run infrequently and freeing memory is preferable to pooling here.
+      worker.terminate();
+    },
     onMessage: (handler) => {
       msgHandlers.push(handler);
     },

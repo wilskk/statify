@@ -103,8 +103,8 @@
 
 /* Utility to hide horizontal scrollbar while keeping functionality */
 .hide-scrollbar-x {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
   overflow-x: auto; /* Ensure horizontal scrolling is enabled */
 }
 
@@ -263,11 +263,11 @@ table:not(.data-table-modern table) {
   .data-table-modern {
     padding: 0.75rem;
   }
-  
+
   .data-table-modern table {
     font-size: 0.75rem;
   }
-  
+
   .data-table-modern th,
   .data-table-modern td {
     padding: 8px 12px !important;
@@ -306,4 +306,47 @@ table:not(.data-table-modern table) {
 /* Remove bottom margin from the last element */
 .tiptap > *:last-child {
   margin-bottom: 0;
+}
+
+/* Responsive grid for chart selection using container query */
+@container (max-width: 700px) {
+  .chart-selection-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+/* @container (min-width: 351px) and (max-width: 600px) {
+  .chart-selection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (min-width: 601px) {
+  .chart-selection-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+} */
+
+/* Fallback for browsers without container query support */
+@media (max-width: 700px) {
+  .chart-selection-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+/* @media (min-width: 401px) and (max-width: 700px) {
+  .chart-selection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 701px) {
+  .chart-selection-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+} */
+
+.chart-selection-container {
+  container-type: inline-size;
+}
+
+.custom-dialog-content {
+  overscroll-behavior: contain;
+  pointer-events: auto !important;
 }

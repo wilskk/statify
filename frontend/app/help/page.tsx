@@ -1,14 +1,61 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, cloneElement } from "react";
 import {
 	GettingStarted,
 	FAQ,
 	Feedback,
 	HelpContent,
 	StatisticsGuide,
+	FileGuide,
 	type SectionItem,
 } from "@/app/help/components";
+import {
+	AggregateGuide,
+	DefineDateTimeGuide,
+	DefineVarPropsGuide,
+	DuplicateCasesGuide,
+	RestructureGuide,
+	SelectCasesGuide,
+	SetMeasurementLevelGuide,
+	SortCasesGuide,
+	SortVarsGuide,
+	TransposeGuide,
+	UnusualCasesGuide,
+	WeightCasesGuide,
+} from "@/app/help/components/data-guide";
+
+const DataGuide = ({ section }: { section?: string }) => {
+	switch (section) {
+		case "aggregate":
+			return <AggregateGuide />;
+		case "define-datetime":
+			return <DefineDateTimeGuide />;
+		case "define-var-props":
+			return <DefineVarPropsGuide />;
+		case "duplicate-cases":
+			return <DuplicateCasesGuide />;
+		case "restructure":
+			return <RestructureGuide />;
+		case "select-cases":
+			return <SelectCasesGuide />;
+		case "set-measurement-level":
+			return <SetMeasurementLevelGuide />;
+		case "sort-cases":
+			return <SortCasesGuide />;
+		case "sort-vars":
+			return <SortVarsGuide />;
+		case "transpose":
+			return <TransposeGuide />;
+		case "unusual-cases":
+			return <UnusualCasesGuide />;
+		case "weight-cases":
+			return <WeightCasesGuide />;
+		default:
+			return <AggregateGuide />; // Show a default guide
+	}
+};
+
 
 export default function HelpPage() {
 	const [selected, setSelected] = useState("getting-started");
@@ -31,21 +78,48 @@ export default function HelpPage() {
 			content: <GettingStarted />
 		},
 		{
-			key: 'statistics-guide',
-			label: 'Statistics Guide',
-			content: <StatisticsGuide />,
+			key: "file-guide",
+			label: "File Management",
+			content: <FileGuide section={activeChild || undefined} />,
 			children: [
-				{
-					key: 'descriptive-stats',
-					label: 'Descriptive Statistics',
-					parentKey: 'statistics-guide',
-					children: [
-						{ key: 'frequencies', label: 'Frequencies', parentKey: 'descriptive-stats', childContent: 'frequencies' },
-						{ key: 'descriptives', label: 'Descriptives', parentKey: 'descriptive-stats', childContent: 'descriptives' },
-						{ key: 'explore', label: 'Explore', parentKey: 'descriptive-stats', childContent: 'explore' },
-						{ key: 'crosstabs', label: 'Crosstabs', parentKey: 'descriptive-stats', childContent: 'crosstabs' },
-					]
-				}
+				{ key: 'import-sav', label: 'Import .sav', parentKey: 'file-guide', childContent: 'import-sav' },
+				{ key: 'import-csv', label: 'Import CSV', parentKey: 'file-guide', childContent: 'import-csv' },
+				{ key: 'import-excel', label: 'Import Excel', parentKey: 'file-guide', childContent: 'import-excel' },
+				{ key: 'import-clipboard', label: 'Import from Clipboard', parentKey: 'file-guide', childContent: 'import-clipboard' },
+				{ key: 'export-csv', label: 'Export CSV', parentKey: 'file-guide', childContent: 'export-csv' },
+				{ key: 'export-excel', label: 'Export Excel', parentKey: 'file-guide', childContent: 'export-excel' },
+				{ key: 'example-data', label: 'Example Data', parentKey: 'file-guide', childContent: 'example-data' },
+				{ key: 'print', label: 'Print', parentKey: 'file-guide', childContent: 'print' },
+			]
+		},
+		{
+			key: "data-guide",
+			label: "Data Management",
+			content: <DataGuide section={activeChild || undefined} />,
+			children: [
+				{ key: 'aggregate', label: 'Aggregate', parentKey: 'data-guide', childContent: 'aggregate' },
+				{ key: 'define-datetime', label: 'Define Date and Time', parentKey: 'data-guide', childContent: 'define-datetime' },
+				{ key: 'define-var-props', label: 'Define Variable Properties', parentKey: 'data-guide', childContent: 'define-var-props' },
+				{ key: 'duplicate-cases', label: 'Identify Duplicate Cases', parentKey: 'data-guide', childContent: 'duplicate-cases' },
+				{ key: 'restructure', label: 'Restructure', parentKey: 'data-guide', childContent: 'restructure' },
+				{ key: 'select-cases', label: 'Select Cases', parentKey: 'data-guide', childContent: 'select-cases' },
+				{ key: 'set-measurement-level', label: 'Set Measurement Level', parentKey: 'data-guide', childContent: 'set-measurement-level' },
+				{ key: 'sort-cases', label: 'Sort Cases', parentKey: 'data-guide', childContent: 'sort-cases' },
+				{ key: 'sort-vars', label: 'Sort Variables', parentKey: 'data-guide', childContent: 'sort-vars' },
+				{ key: 'transpose', label: 'Transpose', parentKey: 'data-guide', childContent: 'transpose' },
+				{ key: 'unusual-cases', label: 'Identify Unusual Cases', parentKey: 'data-guide', childContent: 'unusual-cases' },
+				{ key: 'weight-cases', label: 'Weight Cases', parentKey: 'data-guide', childContent: 'weight-cases' },
+			]
+		},
+		{
+			key: "statistics-guide",
+			label: "Statistics Guide",
+			content: <StatisticsGuide section={activeChild || undefined} />,
+			children: [
+				{ key: 'frequencies', label: 'Frequencies', parentKey: 'statistics-guide', childContent: 'frequencies' },
+				{ key: 'descriptives', label: 'Descriptives', parentKey: 'statistics-guide', childContent: 'descriptives' },
+				{ key: 'explore', label: 'Explore', parentKey: 'statistics-guide', childContent: 'explore' },
+				{ key: 'crosstabs', label: 'Crosstabs', parentKey: 'statistics-guide', childContent: 'crosstabs' },
 			]
 		},
 		{
@@ -147,6 +221,13 @@ export default function HelpPage() {
 
 	const sectionsToDisplayInSidebar = search ? filteredSectionsResult : sectionsData;
 
+	// This is a new block to correctly pass the active child content to the main component
+	const selectedSection = sectionsData.find(s => s.key === selected);
+	const contentToRender = selectedSection && selectedSection.content
+		? cloneElement(selectedSection.content, { section: activeChild || undefined }) 
+		: null;
+
+
 	return (
 		<div className={`bg-background h-screen overflow-hidden transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
 			<HelpContent
@@ -159,6 +240,9 @@ export default function HelpPage() {
 				displaySections={sectionsToDisplayInSidebar}
 				expandedKeys={expandedKeys}
 			/>
+			<div className="flex-1 overflow-y-auto p-6 md:p-8">
+        {contentToRender}
+      </div>
 		</div>
 	);
 }

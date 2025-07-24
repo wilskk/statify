@@ -60,7 +60,8 @@ export const createHistogram = (
   titleOptions?: ChartTitleOptions,
   axisLabels?: AxisLabels,
   axisScaleOptions?: AxisScaleOptions,
-  chartColors?: string[]
+  chartColors?: string[],
+  showNormalCurve: boolean = false
 ) => {
   console.log("Creating histogram with data:", data);
 
@@ -135,14 +136,26 @@ export const createHistogram = (
     ) ?? 0;
 
   // Use responsive margin utility with label measurements
-  const margin = calculateResponsiveMargin({
+  // Jika normal curve ditampilkan, tambahkan margin kanan untuk box statistik
+  // Hitung margin dengan pertimbangan khusus untuk normal curve
+  const baseMargin = calculateResponsiveMargin({
     width,
     height,
     useAxis,
     titleOptions,
     axisLabels,
     maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+    hasLegend: showNormalCurve, // Tambahkan legend space jika normal curve ditampilkan
+    legendPosition: showNormalCurve ? "right" : undefined, // Posisi legend di kanan
   });
+
+  // Tambahkan margin ekstra untuk statistics box jika normal curve ditampilkan
+  const margin = {
+    ...baseMargin,
+    right: showNormalCurve
+      ? Math.max(baseMargin.right, 140) // Pastikan ada ruang untuk statistics box (120px + padding)
+      : baseMargin.right,
+  };
 
   // Menentukan skala untuk sumbu X
   const x = d3
@@ -192,6 +205,96 @@ export const createHistogram = (
     .attr("width", (d) => x(d.x1 || 0) - x(d.x0 || 0) - 2)
     .attr("y", (d) => y(d.length))
     .attr("height", (d) => y(0) - y(d.length));
+
+  // Tambahkan kurva normal jika diminta
+  if (showNormalCurve) {
+    // Hitung mean dan standar deviasi dari data
+    const mean = d3.mean(validData) ?? 0;
+    const stdDev = d3.deviation(validData) ?? 1;
+
+    // Buat data kurva normal berdasarkan skala X
+    const normalCurveData = d3
+      .range(x0Value, x1Value, (x1Value - x0Value) / 100)
+      .map((xVal) => {
+        const pdf =
+          (1 / (stdDev * Math.sqrt(2 * Math.PI))) *
+          Math.exp(-0.5 * Math.pow((xVal - mean) / stdDev, 2));
+        return {
+          x: xVal,
+          y: (pdf * validData.length * (x1Value - x0Value)) / thresholds, // penskalaan tinggi
+        };
+      });
+
+    // Tambahkan path untuk kurva normal
+    const line = d3
+      .line<{ x: number; y: number }>()
+      .x((d) => x(d.x))
+      .y((d) => y(d.y))
+      .curve(d3.curveBasis); // bikin halus
+
+    svg
+      .append("path")
+      .datum(normalCurveData)
+      .attr("fill", "none")
+      .attr("stroke", "black")
+      .attr("stroke-width", 2)
+      .attr("d", line);
+
+    // Tambahkan informasi statistik menggunakan fungsi calculateLegendPosition
+    const statsGroup = svg.append("g").attr("class", "statistics-info");
+
+    // Hitung posisi legend yang tepat
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft: margin.left,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginTop: margin.top,
+      legendPosition: "right",
+      itemCount: 3, // 3 item: Mean, Std Dev, N
+    });
+
+    // Background box untuk statistik
+    const statsBox = statsGroup
+      .append("rect")
+      .attr("x", legendPosition.x)
+      .attr("y", legendPosition.y)
+      .attr("width", 120)
+      .attr("height", 70)
+      .attr("fill", "white")
+      .attr("stroke", "black")
+      .attr("stroke-width", 1)
+      .attr("rx", 3);
+
+    // Text untuk statistik
+    statsGroup
+      .append("text")
+      .attr("x", legendPosition.x + 5)
+      .attr("y", legendPosition.y + 15)
+      .attr("font-size", "12px")
+      .attr("font-weight", "bold")
+      .attr("fill", "black")
+      .text(`Mean = ${mean.toFixed(3)}`);
+
+    statsGroup
+      .append("text")
+      .attr("x", legendPosition.x + 5)
+      .attr("y", legendPosition.y + 30)
+      .attr("font-size", "12px")
+      .attr("font-weight", "bold")
+      .attr("fill", "black")
+      .text(`Std. Dev. = ${stdDev.toFixed(5)}`);
+
+    statsGroup
+      .append("text")
+      .attr("x", legendPosition.x + 5)
+      .attr("y", legendPosition.y + 45)
+      .attr("font-size", "12px")
+      .attr("font-weight", "bold")
+      .attr("fill", "black")
+      .text(`N = ${validData.length}`);
+  }
 
   // Add standardized axes
   if (useAxis) {
@@ -885,5 +988,537 @@ export const createStackedHistogram = (
   }
 
   // Return the SVG node
+  return svg.node();
+};
+
+export const createSPSSStyleHistogram = (
+  data: number[],
+  width: number,
+  height: number,
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: AxisLabels,
+  axisScaleOptions?: AxisScaleOptions,
+  chartColors?: string[],
+  showNormalCurve: boolean = true
+) => {
+  console.log("Creating SPSS-style histogram with data:", data);
+
+  // Filter data
+  const validData = data.filter(
+    (d) => d !== null && d !== undefined && !Number.isNaN(d)
+  );
+
+  if (validData.length === 0) {
+    console.error("No valid data available for histogram");
+    return null;
+  }
+
+  console.log("Creating SPSS-style histogram with valid data:", validData);
+
+  // Hitung statistik deskriptif
+  const mean = d3.mean(validData) ?? 0;
+  const stdDev = d3.deviation(validData) ?? 1;
+  const min = d3.min(validData) ?? 0;
+  const max = d3.max(validData) ?? 10;
+
+  // Menentukan jumlah bins menggunakan Sturges' formula (seperti SPSS)
+  const n = validData.length;
+  const binCount = Math.max(5, Math.ceil(1 + 3.322 * Math.log10(n)));
+
+  // Membuat bins dengan range yang lebih lebar untuk kurva normal
+  const dataRange = max - min;
+  const binWidth = dataRange / binCount;
+
+  // Extend range untuk kurva normal (3 standard deviations)
+  const extendedMin = Math.min(min, mean - 3 * stdDev);
+  const extendedMax = Math.max(max, mean + 3 * stdDev);
+  const extendedRange = extendedMax - extendedMin;
+
+  // Apply axis scale options if provided
+  let x0Value = extendedMin;
+  let x1Value = extendedMax;
+
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      x0Value = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      x1Value = Number(axisScaleOptions.x.max);
+  }
+
+  // Membuat bins dengan d3
+  const bins = d3
+    .bin()
+    .domain([x0Value, x1Value])
+    .thresholds(d3.thresholdScott(validData, x0Value, x1Value))
+    .value((d: any) => d)(validData);
+
+  // Calculate label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Calculate Y domain
+  let yMin = 0;
+  let yMax = d3.max(bins, (d) => d.length) || 0;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  // Calculate nice tick values
+  const tickCount = Math.min(10, Math.floor(height / 50));
+  const yTicks = d3.scaleLinear().domain([yMin, yMax]).nice().ticks(tickCount);
+
+  // Calculate max label widths for margin
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+  const maxXLabelWidth =
+    d3.max(
+      bins,
+      (d) => ctx.measureText((d.x0 ?? 0).toFixed(1).toString()).width
+    ) ?? 0;
+
+  // Use responsive margin utility with label measurements
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+  });
+
+  // Menentukan skala untuk sumbu X
+  const x = d3
+    .scaleLinear()
+    .domain([x0Value, x1Value])
+    .range([margin.left, width - margin.right]);
+
+  // Y scale with nice values
+  const y = d3
+    .scaleLinear()
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
+
+  // Add title with responsive positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Menambahkan rectangle untuk setiap bin
+  svg
+    .append("g")
+    .attr(
+      "fill",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : "steelblue"
+    )
+    .selectAll("rect")
+    .data(bins)
+    .join("rect")
+    .attr("x", (d) => x(d.x0 || 0) + 1)
+    .attr("width", (d) => Math.max(1, x(d.x1 || 0) - x(d.x0 || 0) - 2))
+    .attr("y", (d) => y(d.length))
+    .attr("height", (d) => Math.max(0, y(0) - y(d.length)));
+
+  // Tambahkan kurva normal jika diminta
+  if (showNormalCurve) {
+    // Buat data kurva normal dengan penskalaan yang tepat seperti SPSS
+    const normalCurveData = d3
+      .range(x0Value, x1Value, (x1Value - x0Value) / 200)
+      .map((xVal) => {
+        // Normal PDF
+        const pdf =
+          (1 / (stdDev * Math.sqrt(2 * Math.PI))) *
+          Math.exp(-0.5 * Math.pow((xVal - mean) / stdDev, 2));
+
+        // Penskalaan seperti SPSS: area di bawah kurva = area histogram
+        // Area histogram = total frekuensi * bin width
+        const totalFrequency = d3.sum(bins, (d) => d.length);
+        const averageBinWidth = (x1Value - x0Value) / bins.length;
+        const scaledPdf = pdf * totalFrequency * averageBinWidth;
+
+        return {
+          x: xVal,
+          y: scaledPdf,
+        };
+      });
+
+    // Tambahkan path untuk kurva normal
+    const line = d3
+      .line<{ x: number; y: number }>()
+      .x((d) => x(d.x))
+      .y((d) => y(d.y))
+      .curve(d3.curveBasis);
+
+    svg
+      .append("path")
+      .datum(normalCurveData)
+      .attr("fill", "none")
+      .attr("stroke", "red")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "5,5")
+      .attr("d", line);
+
+    // Tambahkan legend untuk kurva normal
+    const legendGroup = svg.append("g").attr("class", "normal-curve-legend");
+
+    // Legend line
+    legendGroup
+      .append("line")
+      .attr("x1", width - margin.right - 80)
+      .attr("x2", width - margin.right - 60)
+      .attr("y1", margin.top + 20)
+      .attr("y2", margin.top + 20)
+      .attr("stroke", "red")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "5,5");
+
+    // Legend text
+    legendGroup
+      .append("text")
+      .attr("x", width - margin.right - 55)
+      .attr("y", margin.top + 25)
+      .attr("font-size", "12px")
+      .attr("fill", "black")
+      .text("Normal");
+  }
+
+  // Add standardized axes
+  if (useAxis) {
+    // Generate tick values based on majorIncrement or calculated tick count
+    const tickValues = axisScaleOptions?.y?.majorIncrement
+      ? getMajorTicks(yMin, yMax, Number(axisScaleOptions.y.majorIncrement))
+      : yTicks;
+
+    // Generate categories from bin boundaries
+    const categories = bins.map((d) => (d.x0?.toFixed(1) || "0").toString());
+
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 8,
+        tickFormat: (d: any) => formatAxisNumber(d),
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+        maxValueLength: 6,
+        tickValues,
+        showAxis: true,
+        showTicks: true,
+        showValues: true,
+        showAxisLabel: true,
+      },
+    });
+  }
+
+  return svg.node();
+};
+
+export const createSPSSNormalCurveHistogram = (
+  data: number[],
+  width: number,
+  height: number,
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: AxisLabels,
+  axisScaleOptions?: AxisScaleOptions,
+  chartColors?: string[],
+  showNormalCurve: boolean = true
+) => {
+  console.log("Creating SPSS normal curve histogram with data:", data);
+
+  // Filter data
+  const validData = data.filter(
+    (d) => d !== null && d !== undefined && !Number.isNaN(d)
+  );
+
+  if (validData.length === 0) {
+    console.error("No valid data available for histogram");
+    return null;
+  }
+
+  // Hitung statistik deskriptif
+  const mean = d3.mean(validData) ?? 0;
+  const stdDev = d3.deviation(validData) ?? 1;
+  const min = d3.min(validData) ?? 0;
+  const max = d3.max(validData) ?? 10;
+
+  // SPSS menggunakan formula yang lebih kompleks untuk binning
+  // Menggunakan Scott's rule untuk bin width
+  const binWidth = (3.5 * stdDev) / Math.pow(validData.length, 1 / 3);
+  const binCount = Math.ceil((max - min) / binWidth);
+
+  // Pastikan minimal 5 bins dan maksimal 20 bins
+  const adjustedBinCount = Math.max(5, Math.min(20, binCount));
+
+  // Extend range untuk kurva normal (4 standard deviations seperti SPSS)
+  const extendedMin = Math.min(min, mean - 4 * stdDev);
+  const extendedMax = Math.max(max, mean + 4 * stdDev);
+
+  // Apply axis scale options if provided
+  let x0Value = extendedMin;
+  let x1Value = extendedMax;
+
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      x0Value = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      x1Value = Number(axisScaleOptions.x.max);
+  }
+
+  // Membuat bins dengan d3 menggunakan threshold yang lebih presisi
+  const thresholds = d3.range(x0Value, x1Value + binWidth, binWidth);
+  const bins = d3
+    .bin()
+    .domain([x0Value, x1Value])
+    .thresholds(thresholds)
+    .value((d: any) => d)(validData);
+
+  // Calculate label widths for margin calculation
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif";
+
+  // Calculate Y domain
+  let yMin = 0;
+  let yMax = d3.max(bins, (d) => d.length) || 0;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
+  // Calculate nice tick values
+  const tickCount = Math.min(10, Math.floor(height / 50));
+  const yTicks = d3.scaleLinear().domain([yMin, yMax]).nice().ticks(tickCount);
+
+  // Calculate max label widths for margin
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(1)).width)) ?? 0;
+  const maxXLabelWidth =
+    d3.max(
+      bins,
+      (d) => ctx.measureText((d.x0 ?? 0).toFixed(1).toString()).width
+    ) ?? 0;
+
+  // Use responsive margin utility with label measurements
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: Math.max(maxYLabelWidth, maxXLabelWidth),
+  });
+
+  // Menentukan skala untuk sumbu X
+  const x = d3
+    .scaleLinear()
+    .domain([x0Value, x1Value])
+    .range([margin.left, width - margin.right]);
+
+  // Y scale with nice values
+  const y = d3
+    .scaleLinear()
+    .domain([yMin, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+  });
+
+  // Add title with responsive positioning
+  if (titleOptions) {
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop: margin.top,
+      useResponsivePositioning: true,
+    });
+  }
+
+  // Menambahkan rectangle untuk setiap bin
+  svg
+    .append("g")
+    .attr(
+      "fill",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : "steelblue"
+    )
+    .selectAll("rect")
+    .data(bins)
+    .join("rect")
+    .attr("x", (d) => x(d.x0 || 0) + 1)
+    .attr("width", (d) => Math.max(1, x(d.x1 || 0) - x(d.x0 || 0) - 2))
+    .attr("y", (d) => y(d.length))
+    .attr("height", (d) => Math.max(0, y(0) - y(d.length)));
+
+  // Tambahkan kurva normal jika diminta
+  if (showNormalCurve) {
+    // Buat data kurva normal dengan penskalaan yang sangat akurat seperti SPSS
+    const normalCurveData = d3
+      .range(x0Value, x1Value, (x1Value - x0Value) / 300)
+      .map((xVal) => {
+        // Normal PDF
+        const pdf =
+          (1 / (stdDev * Math.sqrt(2 * Math.PI))) *
+          Math.exp(-0.5 * Math.pow((xVal - mean) / stdDev, 2));
+
+        // Penskalaan SPSS yang akurat:
+        // Area di bawah kurva normal = total frekuensi * bin width
+        const totalFrequency = d3.sum(bins, (d) => d.length);
+        const actualBinWidth = (x1Value - x0Value) / bins.length;
+
+        // SPSS menggunakan penskalaan ini untuk memastikan area kurva = area histogram
+        const scaledPdf = pdf * totalFrequency * actualBinWidth;
+
+        return {
+          x: xVal,
+          y: scaledPdf,
+        };
+      });
+
+    // Tambahkan path untuk kurva normal
+    const line = d3
+      .line<{ x: number; y: number }>()
+      .x((d) => x(d.x))
+      .y((d) => y(d.y))
+      .curve(d3.curveBasis);
+
+    svg
+      .append("path")
+      .datum(normalCurveData)
+      .attr("fill", "none")
+      .attr("stroke", "red")
+      .attr("stroke-width", 2.5)
+      .attr("stroke-dasharray", "6,3")
+      .attr("d", line);
+
+    // Tambahkan legend untuk kurva normal dengan posisi yang lebih baik
+    const legendGroup = svg.append("g").attr("class", "normal-curve-legend");
+
+    // Legend line
+    legendGroup
+      .append("line")
+      .attr("x1", width - margin.right - 100)
+      .attr("x2", width - margin.right - 70)
+      .attr("y1", margin.top + 25)
+      .attr("y2", margin.top + 25)
+      .attr("stroke", "red")
+      .attr("stroke-width", 2.5)
+      .attr("stroke-dasharray", "6,3");
+
+    // Legend text
+    legendGroup
+      .append("text")
+      .attr("x", width - margin.right - 65)
+      .attr("y", margin.top + 30)
+      .attr("font-size", "12px")
+      .attr("fill", "black")
+      .attr("font-weight", "500")
+      .text("Normal Curve");
+
+    // Tambahkan statistik deskriptif di legend
+    legendGroup
+      .append("text")
+      .attr("x", width - margin.right - 100)
+      .attr("y", margin.top + 45)
+      .attr("font-size", "10px")
+      .attr("fill", "gray")
+      .text(`Mean: ${mean.toFixed(2)}, Std Dev: ${stdDev.toFixed(2)}`);
+  }
+
+  // Add standardized axes
+  if (useAxis) {
+    // Generate tick values based on majorIncrement or calculated tick count
+    const tickValues = axisScaleOptions?.y?.majorIncrement
+      ? getMajorTicks(yMin, yMax, Number(axisScaleOptions.y.majorIncrement))
+      : yTicks;
+
+    // Generate categories from bin boundaries
+    const categories = bins.map((d) => (d.x0?.toFixed(1) || "0").toString());
+
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        maxValueLength: 8,
+        tickFormat: (d: any) => formatAxisNumber(d),
+        showGridLines: true,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: false,
+        maxValueLength: 6,
+        tickValues,
+        showAxis: true,
+        showTicks: true,
+        showValues: true,
+        showAxisLabel: true,
+      },
+    });
+  }
+
   return svg.node();
 };

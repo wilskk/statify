@@ -1,6 +1,6 @@
 import React, { cloneElement } from "react";
 import { Input } from "@/components/ui/input";
-import { Search, BookOpen, HelpCircle, MessageSquare, ChevronRight, Book, Home, ArrowLeft } from "lucide-react";
+import { Search, BookOpen, HelpCircle, MessageSquare, ChevronRight, Book, Home, ArrowLeft, Archive, Clipboard, Printer, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
   Accordion,
@@ -39,12 +39,20 @@ const getSectionIcon = (key: string) => {
   switch(key) {
     case 'getting-started':
       return <BookOpen className="w-4 h-4 mr-2" />;
+    case 'file-guide':
+      return <Archive className="w-4 h-4 mr-2" />;
+    case 'data-guide':
+      return <Database className="w-4 h-4 mr-2" />;
     case 'statistics-guide':
       return <Book className="w-4 h-4 mr-2" />;
     case 'faq':
       return <HelpCircle className="w-4 h-4 mr-2" />;
     case 'feedback':
       return <MessageSquare className="w-4 h-4 mr-2" />;
+    case 'import-clipboard':
+        return <Clipboard className="w-4 h-4 mr-2" />;
+    case 'print':
+        return <Printer className="w-4 h-4 mr-2" />;
     default:
       return null;
   }

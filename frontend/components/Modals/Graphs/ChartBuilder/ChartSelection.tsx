@@ -1,3 +1,16 @@
+/**
+ * ChartSelection Component
+ *
+ * This component renders chart previews for the chart selection grid.
+ *
+ * 3D Chart Improvements:
+ * - For small preview sizes (< 100x100px), 3D charts now render simplified 2D representations
+ * - This provides better visual clarity and performance in the chart selection interface
+ * - Full 3D charts are still used for larger preview sizes
+ *
+ * See README.md for detailed documentation of the improvements.
+ */
+
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
@@ -261,26 +274,18 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
       ];
 
       const data21 = [
-        { category: "A", value0: 62.7, value1: 63.4 },
-        { category: "B", value0: 59.9, value1: 58 },
-        { category: "C", value0: 59.1, value1: 53.3 },
-        { category: "D", value0: 58.8, value1: 55.7 },
-        { category: "E", value0: 58.7, value1: 64.2 },
-        { category: "F", value0: 57, value1: 58.8 },
-        { category: "G", value0: 56.7, value1: 57.9 },
-        { category: "H", value0: 56.8, value1: 61.8 },
-        { category: "I", value0: 56.7, value1: 69.3 },
-        { category: "J", value0: 60.1, value1: 71.2 },
-        { category: "K", value0: 61.1, value1: 68.7 },
-        { category: "L", value0: 61.5, value1: 61.8 },
-        { category: "M", value0: 64.3, value1: 63 },
-        { category: "N", value0: 67.1, value1: 66.9 },
-        { category: "O", value0: 64.6, value1: 61.7 },
-        { category: "P", value0: 61.6, value1: 61.8 },
-        { category: "Q", value0: 61.1, value1: 62.8 },
-        { category: "R", value0: 59.2, value1: 60.8 },
-        { category: "S", value0: 58.9, value1: 62.1 },
-        { category: "T", value0: 57.2, value1: 65.1 },
+        { category: "A", value0: 30, value1: 45 },
+        { category: "B", value0: 25, value1: 35 },
+        { category: "C", value0: 40, value1: 30 },
+        { category: "D", value0: 35, value1: 50 },
+        { category: "E", value0: 20, value1: 40 },
+        { category: "F", value0: 50, value1: 35 },
+        { category: "G", value0: 45, value1: 60 },
+        { category: "H", value0: 30, value1: 25 },
+        { category: "I", value0: 55, value1: 70 },
+        { category: "J", value0: 40, value1: 30 },
+        { category: "K", value0: 35, value1: 45 },
+        { category: "L", value0: 25, value1: 40 },
       ];
 
       const data22 = [
@@ -569,12 +574,7 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
       } else if (chartType === "Line Chart") {
         chartNode = chartUtils.createLineChart(data2, width, height, useaxis);
       } else if (chartType === "Pie Chart") {
-        chartNode = chartUtils.createPieChart(
-          data1,
-          width * 0.8,
-          height * 0.8,
-          false
-        );
+        chartNode = chartUtils.createPieChart(data1, width, height, useaxis);
       } else if (chartType === "Area Chart") {
         chartNode = chartUtils.createAreaChart(data2, width, height, useaxis);
       } else if (chartType === "Histogram") {
@@ -589,6 +589,40 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           width,
           height,
           useaxis
+        );
+      } else if (chartType === "Scatter Plot With Multiple Fit Line") {
+        // Define multiple fit functions for preview
+        const fitFunctions = [
+          {
+            fn: "x => parameters.a * x + parameters.b",
+            equation: "Linear",
+            color: "#ff6b6b",
+            parameters: { a: 2, b: 1 },
+          },
+          {
+            fn: "x => parameters.a * x * x + parameters.b",
+            equation: "Quadratic",
+            color: "#4ecdc4",
+            parameters: { a: 0.5, b: 1 },
+          },
+          {
+            fn: "x => Math.exp(parameters.a * x)",
+            equation: "Exponential",
+            color: "#45b7d1",
+            parameters: { a: 0.5, b: 0 },
+          },
+        ];
+
+        chartNode = chartUtils.createScatterPlotWithMultipleFitLine(
+          data4,
+          width,
+          height,
+          useaxis,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          fitFunctions
         );
       } else if (chartType === "Vertical Stacked Bar Chart") {
         chartNode = chartUtils.createVerticalStackedBarChart(
@@ -741,14 +775,6 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           height,
           useaxis
         );
-      } else if (chartType === "Vertical Bar & Line Chart2") {
-        chartNode = chartUtils.createBarAndLineChart2(
-          data26,
-          width,
-          height,
-          useaxis,
-          "stacked"
-        );
       } else if (chartType === "Stem And Leaf Plot") {
         chartNode = chartUtils.createStemAndLeafPlot(
           data27,
@@ -760,164 +786,96 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         chartNode = chartUtils.createViolinPlot(data28, width, height, false);
       } else if (chartType === "Density Chart") {
         chartNode = chartUtils.createDensityChart(data29, width, height, false);
-      } else if (chartType === "3D Bar Chart2") {
-        chartNode = chartUtils.create3DBarChart2(
-          [
-            { x: -5, y: 2, z: -5 },
-            { x: -4, y: 3, z: 6 },
-            { x: -3, y: 5, z: 4 },
-            { x: -2, y: 7, z: -6 },
-            { x: 0, y: 0, z: 0 },
-            { x: 2, y: 2, z: -6 },
-            { x: 2, y: 4, z: 7 },
-            { x: 3, y: 6, z: -5 },
-            { x: 4, y: 3, z: 2 },
-            { x: 5, y: 5, z: -9 },
-            { x: 6, y: 4, z: -2 },
-            { x: 7, y: 3, z: 5 },
-            { x: -7, y: 2, z: -6 },
-            { x: -6, y: 4, z: -2 },
-            { x: -5, y: 5, z: 5 },
-          ],
-          width,
-          height
-        );
-      } else if (chartType === "3D Scatter Plot") {
-        chartNode = chartUtils.create3DScatterPlot(
-          [
-            { x: -5, y: 2, z: -5 },
-            { x: -4, y: 3, z: 6 },
-            { x: -3, y: 5, z: 4 },
-            { x: -2, y: 7, z: -6 },
-            { x: 0, y: 0, z: 0 },
-            { x: 2, y: 2, z: -6 },
-            { x: 2, y: 4, z: 7 },
-            { x: 3, y: 6, z: -5 },
-            { x: 4, y: 3, z: 2 },
-            { x: 5, y: 5, z: -9 },
-            { x: 6, y: 4, z: -2 },
-            { x: 7, y: 3, z: 5 },
-            { x: -7, y: 2, z: -6 },
-            { x: -6, y: 4, z: -2 },
-            { x: -5, y: 5, z: 5 },
-          ],
-          width,
-          height
-        );
-      } else if (chartType === "Grouped 3D Scatter Plot") {
-        chartNode = chartUtils.createGrouped3DScatterPlot(
-          [
-            { x: 1, y: 2, z: 3, category: "A" },
-            { x: 1, y: 2, z: 3, category: "B" },
-            { x: 1, y: 2, z: 3, category: "C" },
-            { x: 1, y: 4, z: 3, category: "D" },
-            { x: 2, y: 4, z: 1, category: "A" },
-            { x: 3, y: 1, z: 2, category: "B" },
-            { x: 4, y: 3, z: 4, category: "B" },
-            { x: 5, y: 2, z: 5, category: "C" },
-            { x: 6, y: 5, z: 3, category: "C" },
-            { x: 7, y: 3, z: 2, category: "D" },
-            { x: 8, y: 4, z: 1, category: "D" },
-          ],
-          width,
-          height
-        );
-      } else if (chartType === "Clustered 3D Bar Chart") {
-        chartNode = chartUtils.createClustered3DBarChart(
-          [
-            { x: 1, z: 1, y: 6, category: "A" },
-            { x: 2, z: 1, y: 7, category: "A" },
-            { x: 2, z: 1, y: 6, category: "B" },
-            { x: 2, z: 1, y: 5, category: "C" },
-            { x: 2, z: 1, y: 6, category: "D" },
-            { x: 6, z: 4, y: 7, category: "A" },
-            { x: 6, z: 4, y: 6, category: "B" },
-            { x: 6, z: 4, y: 5, category: "C" },
-            { x: 6, z: 4, y: 6, category: "D" },
-            { x: 4, z: 7, y: 5, category: "A" },
-            { x: -4, z: 6, y: 3, category: "A" },
-            { x: -4, z: 6, y: 6, category: "B" },
-            { x: -4, z: 6, y: 7, category: "C" },
-            { x: -4, z: 6, y: 1, category: "D" },
-            { x: -4, z: 6, y: 4, category: "E" },
-            { x: -9, z: 8, y: 4, category: "A" },
-            { x: -9, z: 8, y: 6, category: "B" },
-            { x: -9, z: 8, y: 2, category: "E" },
-            { x: 8, z: -6, y: 3, category: "A" },
-            { x: 8, z: -6, y: 4, category: "B" },
-            { x: 8, z: -6, y: 9, category: "C" },
-            { x: 8, z: -6, y: 2, category: "D" },
-            { x: 8, z: -6, y: 5, category: "E" },
-            { x: -8, z: -2, y: 3, category: "A" },
-            { x: -8, z: -2, y: 6, category: "B" },
-            { x: -8, z: -2, y: 3, category: "C" },
-            { x: -8, z: -2, y: 1, category: "D" },
-            { x: -8, z: -2, y: 4, category: "E" },
-          ],
-          width,
-          height
-        );
-      } else if (chartType === "Stacked 3D Bar Chart") {
-        chartNode = chartUtils.createStacked3DBarChart(
-          [
-            { x: 1, z: 1, y: 6, category: "A" },
-            { x: 2, z: 6, y: 2, category: "A" },
-            { x: 2, z: 6, y: 3, category: "B" },
-            { x: 2, z: 6, y: 2, category: "C" },
-            { x: 2, z: 6, y: 1, category: "D" },
-            { x: 5, z: 4, y: 1, category: "A" },
-            { x: 5, z: 4, y: 2, category: "B" },
-            { x: 5, z: 4, y: 3, category: "C" },
-            { x: 5, z: 4, y: 1, category: "D" },
-            { x: 9, z: 7, y: 7, category: "A" },
-            { x: -4, z: 6, y: 3, category: "A" },
-            { x: -4, z: 6, y: 1, category: "B" },
-            { x: -4, z: 6, y: 2, category: "C" },
-            { x: -4, z: 6, y: 2, category: "D" },
-            { x: -4, z: 6, y: 1, category: "E" },
-            { x: -9, z: 8, y: 1, category: "A" },
-            { x: -9, z: 8, y: 2, category: "B" },
-            { x: -9, z: 8, y: 2, category: "E" },
-            { x: 8, z: -6, y: 3, category: "A" },
-            { x: 8, z: -6, y: 2, category: "B" },
-            { x: 8, z: -6, y: 1, category: "C" },
-            { x: 8, z: -6, y: 2, category: "D" },
-            { x: 8, z: -6, y: 2, category: "E" },
-            { x: -8, z: -2, y: 3, category: "A" },
-            { x: -8, z: -2, y: 2, category: "B" },
-            { x: -8, z: -2, y: 3, category: "C" },
-            { x: -8, z: -2, y: 1, category: "D" },
-            { x: -8, z: -2, y: 1, category: "E" },
-          ],
-          width,
-          height
-        );
       } else if (chartType === "3D Bar Chart (ECharts)") {
-        chartNode = chartUtils.createECharts3DBarChart(data32, width, height);
+        // For small preview sizes, use a simplified 2D representation
+        if (width < 100 || height < 100) {
+          chartNode = chartUtils.createSimplified2DRepresentation(
+            "3D Bar Chart",
+            width,
+            height,
+            useaxis
+          );
+        } else {
+          // Use full 3D chart for larger sizes
+          chartNode = chartUtils.createECharts3DBarChart(data32, width, height);
+        }
       } else if (chartType === "Stacked 3D Bar Chart (ECharts)") {
-        chartNode = chartUtils.createEChartsStacked3DBarChart(
-          data30,
-          width,
-          height
-        );
-      } else if (chartType === "Clustered 3D Bar Charts (ECharts)") {
-        chartNode = chartUtils.createEChartsClustered3DBarChart(
-          data30,
-          width,
-          height
-        );
+        // For small preview sizes, use a simplified 2D representation
+        if (width < 100 || height < 100) {
+          chartNode = chartUtils.createSimplified2DRepresentation(
+            "3D Stacked Bar Chart",
+            width,
+            height,
+            useaxis
+          );
+        } else {
+          chartNode = chartUtils.createEChartsStacked3DBarChart(
+            data30,
+            width,
+            height
+          );
+        }
+      } else if (chartType === "Clustered 3D Bar Chart (ECharts)") {
+        // For small preview sizes, use a simplified 2D representation
+        if (width < 100 || height < 100) {
+          chartNode = chartUtils.createSimplified2DRepresentation(
+            "3D Clustered Bar Chart",
+            width,
+            height,
+            useaxis
+          );
+        } else {
+          chartNode = chartUtils.createEChartsClustered3DBarChart(
+            data30,
+            width,
+            height
+          );
+        }
       } else if (chartType === "Grouped 3D Scatter Plot (ECharts)") {
-        chartNode = chartUtils.createEChartsGrouped3DScatterPlot(
-          data30,
-          width,
-          height
-        );
+        // For small preview sizes, use a simplified 2D representation
+        if (width < 100 || height < 100) {
+          chartNode = chartUtils.createSimplified2DRepresentation(
+            "3D Grouped Scatter Plot",
+            width,
+            height,
+            useaxis
+          );
+        } else {
+          chartNode = chartUtils.createEChartsGrouped3DScatterPlot(
+            data30,
+            width,
+            height
+          );
+        }
       } else if (chartType === "3D Scatter Plot (ECharts)") {
-        chartNode = chartUtils.createECharts3DScatterPlot(
-          data31,
+        // For small preview sizes, use a simplified 2D representation
+        if (width < 100 || height < 100) {
+          chartNode = chartUtils.createSimplified2DRepresentation(
+            "3D Scatter Plot",
+            width,
+            height,
+            useaxis
+          );
+        } else {
+          chartNode = chartUtils.createECharts3DScatterPlot(
+            data31,
+            width,
+            height
+          );
+        }
+      } else if (chartType === "Q-Q Plot") {
+        // Example data for Q-Q plot
+        const sampleData = [1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2];
+        chartNode = chartUtils.createNormalQQPlot(
+          sampleData,
           width,
-          height
+          height,
+          useaxis
         );
+      } else if (chartType === "P-P Plot") {
+        // Example data for P-P plot
+        const sampleData = [1.2, 2.1, 2.9, 4.2, 5.1, 6.3, 7.0, 8.1, 9.5, 10.2];
+        chartNode = chartUtils.createPPPlot(sampleData, width, height, useaxis);
       }
 
       // Append chart node to container if valid

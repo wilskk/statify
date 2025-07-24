@@ -1,12 +1,12 @@
 import * as d3 from "d3";
-import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import {
-  CSS2DRenderer,
-  CSS2DObject,
-} from "three/examples/jsm/renderers/CSS2DRenderer.js";
-import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
-import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+// import * as THREE from "three";
+// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+// import {
+//   CSS2DRenderer,
+//   CSS2DObject,
+// } from "three/examples/jsm/renderers/CSS2DRenderer.js";
+// import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+// import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import * as echarts from "echarts";
 import "echarts-gl";
 
@@ -83,1077 +83,1077 @@ const createImprovedScaling = (
   };
 };
 
-export const create3DBarChart2 = (
-  data: { x: any; y: number; z: any }[], // x dan z bisa string atau number
-  width: number,
-  height: number
-) => {
-  console.log("create 3d bar chart with data", data);
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(25, 25, 25);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(15, 20, 15);
-  scene.add(pointLight);
-
-  // Use improved scaling
-  const {
-    xScale,
-    yScale,
-    zScale,
-    gridSize,
-    xIsCategorical,
-    zIsCategorical,
-    xValues,
-    zValues,
-  } = createImprovedScaling(data, "x", "y", "z");
-
-  // Fixed size grid helper
-  const gridHelper = new THREE.GridHelper(gridSize, 20);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1,
-      gapSize: 0.5,
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-
-    return line;
-  };
-
-  const axisLength = gridSize / 2;
-
-  // Garis Sumbu X (Merah)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-axisLength, 0, 0),
-      new THREE.Vector3(axisLength, 0, 0),
-      0xff0000
-    )
-  );
-
-  // Garis Sumbu Y (Hijau)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0, 12, 0),
-      0x00ff00
-    )
-  );
-
-  // Garis Sumbu Z (Biru)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -axisLength),
-      new THREE.Vector3(0, 0, axisLength),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Fungsi untuk menambahkan teks label
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 0.5,
-          depth: 0.05,
-        });
-        textGeometry.computeBoundingBox();
-        textGeometry.center();
-
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  // Render bars
-  data.forEach((d) => {
-    const barHeight = yScale(d.y);
-    const barWidth = xIsCategorical ? (xScale as any).bandwidth() * 0.8 : 1.2;
-    const barDepth = zIsCategorical ? (zScale as any).bandwidth() * 0.8 : 1.2;
-
-    const geometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x007bff,
-      metalness: 0.3,
-      roughness: 0.7,
-    });
-    const bar = new THREE.Mesh(geometry, material);
-
-    const xPos = xIsCategorical
-      ? (xScale as any)(d.x) + (xScale as any).bandwidth() / 2
-      : xScale(d.x);
-    const zPos = zIsCategorical
-      ? (zScale as any)(d.z) + (zScale as any).bandwidth() / 2
-      : zScale(d.z);
-
-    bar.position.set(xPos, barHeight / 2, zPos);
-    scene.add(bar);
-
-    // Add value label above bar
-    addLabel(d.y.toString(), new THREE.Vector3(xPos, barHeight + 1, zPos));
-  });
-
-  // Add axis labels
-  addLabel("X", new THREE.Vector3(axisLength + 2, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, 14, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, axisLength + 2));
-
-  // Add axis tick labels for categorical data
-  if (xIsCategorical) {
-    xValues.forEach((value: any) => {
-      const pos = (xScale as any)(value) + (xScale as any).bandwidth() / 2;
-      addLabel(value.toString(), new THREE.Vector3(pos, -1, axisLength + 1));
-    });
-  }
-
-  if (zIsCategorical) {
-    zValues.forEach((value: any) => {
-      const pos = (zScale as any)(value) + (zScale as any).bandwidth() / 2;
-      addLabel(value.toString(), new THREE.Vector3(axisLength + 1, -1, pos));
-    });
-  }
-
-  let animationId: number;
-  const animate = () => {
-    animationId = requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  // Add cleanup function to container
-  (container as any).cleanup = () => {
-    // Cancel animation
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-    }
-
-    // Dispose controls
-    controls.dispose();
-
-    // Dispose renderer and WebGL context
-    renderer.dispose();
-    renderer.forceContextLoss();
-
-    // Clear scene
-    while (scene.children.length > 0) {
-      const object = scene.children[0];
-      if (object.type === "Mesh") {
-        const mesh = object as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) {
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((material) => material.dispose());
-          } else {
-            mesh.material.dispose();
-          }
-        }
-      }
-      scene.remove(object);
-    }
-
-    // Remove canvas from container
-    if (container.children.length > 0) {
-      container.removeChild(container.children[0]);
-    }
-  };
-
-  return container;
-};
-
-export const create3DScatterPlot = (
-  data: { x: any; y: number; z: any }[], // x dan z bisa string atau number
-  width: number,
-  height: number
-) => {
-  console.log("create 3d scatter plot with data", data);
-  // Fungsi untuk menambahkan teks label
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 0.5,
-          depth: 0.05,
-        });
-        textGeometry.computeBoundingBox();
-        textGeometry.center();
-
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(25, 25, 25);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(15, 20, 15);
-  scene.add(pointLight);
-
-  // Use improved scaling
-  const {
-    xScale,
-    yScale,
-    zScale,
-    gridSize,
-    xIsCategorical,
-    zIsCategorical,
-    xValues,
-    zValues,
-  } = createImprovedScaling(data, "x", "y", "z");
-
-  // Fixed size grid helper
-  const gridHelper = new THREE.GridHelper(gridSize, 20);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1,
-      gapSize: 0.5,
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-
-    return line;
-  };
-
-  const axisLength = gridSize / 2;
-
-  //Garis Sumbu X (Merah)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-axisLength, 0, 0),
-      new THREE.Vector3(axisLength, 0, 0),
-      0xff0000
-    )
-  );
-
-  // Garis Sumbu Y (Hijau)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0, 12, 0),
-      0x00ff00
-    )
-  );
-
-  // Garis Sumbu Z (Biru)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -axisLength),
-      new THREE.Vector3(0, 0, axisLength),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Menambahkan titik-titik (scatter) pada plot 3D
-  data.forEach((d) => {
-    const geometry = new THREE.SphereGeometry(0.5, 8, 8);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x007bff,
-      metalness: 0.3,
-      roughness: 0.7,
-    });
-    const point = new THREE.Mesh(geometry, material);
-
-    const xPos = xIsCategorical
-      ? (xScale as any)(d.x) + (xScale as any).bandwidth() / 2
-      : xScale(d.x);
-    const zPos = zIsCategorical
-      ? (zScale as any)(d.z) + (zScale as any).bandwidth() / 2
-      : zScale(d.z);
-
-    // Posisi titik berdasarkan data dan skala
-    point.position.set(xPos, yScale(d.y), zPos);
-    scene.add(point);
-
-    addLabel(` ${d.y}`, new THREE.Vector3(xPos, yScale(d.y) + 1, zPos));
-  });
-
-  // Add axis labels
-  addLabel("X", new THREE.Vector3(axisLength + 2, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, 14, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, axisLength + 2));
-
-  // Add axis tick labels for categorical data
-  if (xIsCategorical) {
-    xValues.forEach((value: any) => {
-      const pos = (xScale as any)(value) + (xScale as any).bandwidth() / 2;
-      addLabel(value.toString(), new THREE.Vector3(pos, -1, axisLength + 1));
-    });
-  }
-
-  if (zIsCategorical) {
-    zValues.forEach((value: any) => {
-      const pos = (zScale as any)(value) + (zScale as any).bandwidth() / 2;
-      addLabel(value.toString(), new THREE.Vector3(axisLength + 1, -1, pos));
-    });
-  }
-
-  let animationId: number;
-  const animate = () => {
-    animationId = requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  // Add cleanup function to container
-  (container as any).cleanup = () => {
-    // Cancel animation
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-    }
-
-    // Dispose controls
-    controls.dispose();
-
-    // Dispose renderer and WebGL context
-    renderer.dispose();
-    renderer.forceContextLoss();
-
-    // Clear scene
-    while (scene.children.length > 0) {
-      const object = scene.children[0];
-      if (object.type === "Mesh") {
-        const mesh = object as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) {
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((material) => material.dispose());
-          } else {
-            mesh.material.dispose();
-          }
-        }
-      }
-      scene.remove(object);
-    }
-
-    // Remove canvas from container
-    if (container.children.length > 0) {
-      container.removeChild(container.children[0]);
-    }
-  };
-
-  return container;
-};
-
-export const createGrouped3DScatterPlot = (
-  data: { x: number; y: number; z: number; category: string }[],
-  width: number,
-  height: number
-) => {
-  console.log("create 3d grouped scatter with data", data);
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-  // scene.background = new THREE.Color(0xffffff);
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(20, 20, 30);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(10, 20, 30);
-  scene.add(pointLight);
-
-  // Dapatkan kategori unik
-  const uniqueCategories = Array.from(new Set(data.map((d) => d.category)));
-
-  // Skema warna kategori
-  const colorScale = d3
-    .scaleOrdinal(d3.schemeCategory10)
-    .domain(uniqueCategories);
-
-  // Menentukan rentang data
-  const xExtent = d3.extent(data, (d) => d.x)!;
-  const yExtent = d3.extent(data, (d) => d.y)!;
-  const zExtent = d3.extent(data, (d) => d.z)!;
-
-  const xMax = Math.max(Math.abs(xExtent[0]!), Math.abs(xExtent[1]!));
-  const yMax = Math.max(Math.abs(yExtent[0]!), Math.abs(yExtent[1]!));
-  const zMax = Math.max(Math.abs(zExtent[0]!), Math.abs(zExtent[1]!));
-
-  const gridSizeX = 2 * xMax;
-  const gridSizeZ = 2 * zMax;
-  const gridSize = Math.max(gridSizeX, gridSizeZ);
-
-  // Membuat GridHelper
-  const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1,
-      gapSize: 0.5,
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-
-    return line;
-  };
-
-  // Garis sumbu
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-gridSize, 0, 0),
-      new THREE.Vector3(gridSize, 0, 0),
-      0xff0000
-    )
-  );
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, -gridSize, 0),
-      new THREE.Vector3(0, gridSize, 0),
-      0x00ff00
-    )
-  );
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -gridSize),
-      new THREE.Vector3(0, 0, gridSize),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Skala data
-  const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-  const yScale = d3.scaleLinear().domain([-yMax, yMax]).range([-yMax, yMax]);
-  const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-  // Fungsi menambahkan label teks
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 0.5,
-          depth: 0.05,
-        });
-        textGeometry.computeBoundingBox();
-        textGeometry.center();
-
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  // Menambahkan titik berdasarkan kategori
-  // Hitung jumlah titik di setiap posisi (x, z)
-  const pointMap = new Map<string, number>();
-  data.forEach((d) => {
-    const key = `${d.x},${d.y},${d.z}`;
-    pointMap.set(key, (pointMap.get(key) || 0) + 1);
-  });
-
-  // Skala ukuran titik berdasarkan jumlah titik di satu koordinat (x, z)
-  const sizeScale = d3.scaleLinear().domain([1, 5]).range([0.5, 0.2]);
-
-  const groupedData = d3.group(data, (d) => `${d.x},${d.y},${d.z}`);
-
-  groupedData.forEach((group, key) => {
-    const numPoints = group.length;
-    const baseSize = sizeScale(Math.min(numPoints, 5));
-
-    group.forEach((d, index) => {
-      const size = baseSize;
-      const color = new THREE.Color(colorScale(d.category) as string);
-      const geometry = new THREE.SphereGeometry(size, 8, 8);
-      const material = new THREE.MeshStandardMaterial({
-        color: color,
-        // transparent: true,
-        // opacity: 0.8,
-        metalness: 0.3,
-        roughness: 0.7,
-      });
-
-      const point = new THREE.Mesh(geometry, material);
-
-      // Offset posisi
-      const xOffset = (index - (numPoints - 1) / 2) * (size * 0.8);
-      const zOffset = (index % 2 === 0 ? 1 : -1) * (size * 0.8);
-
-      const xPos = xScale(d.x)! + xOffset;
-      const yPos = yScale(d.y);
-      const zPos = zScale(d.z)! + zOffset;
-
-      point.position.set(xPos, yPos, zPos);
-      scene.add(point);
-    });
-  });
-
-  // Menambahkan label untuk sumbu
-  addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-  let animationId: number;
-  const animate = () => {
-    animationId = requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  // Add cleanup function to container
-  (container as any).cleanup = () => {
-    // Cancel animation
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-    }
-
-    // Dispose controls
-    controls.dispose();
-
-    // Dispose renderer and WebGL context
-    renderer.dispose();
-    renderer.forceContextLoss();
-
-    // Clear scene
-    while (scene.children.length > 0) {
-      const object = scene.children[0];
-      if (object.type === "Mesh") {
-        const mesh = object as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) {
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((material) => material.dispose());
-          } else {
-            mesh.material.dispose();
-          }
-        }
-      }
-      scene.remove(object);
-    }
-
-    // Remove canvas from container
-    if (container.children.length > 0) {
-      container.removeChild(container.children[0]);
-    }
-  };
-
-  return container;
-};
-
-export const createClustered3DBarChart = (
-  data: { x: number; z: number; y: number; category: string }[],
-  width: number,
-  height: number
-) => {
-  console.log("create clustered 3d bar chart with data", data);
-  // Fungsi untuk menambahkan teks label
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 1,
-          depth: 0.1,
-        });
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-  // scene.background = new THREE.Color(0xffffff);
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(20, 20, 30);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(10, 20, 30);
-  scene.add(pointLight);
-
-  // Menentukan rentang koordinat
-  const xExtent = d3.extent(data, (d) => d.x) as [number, number];
-  const yExtent = d3.extent(data, (d) => d.y) as [number, number];
-  const zExtent = d3.extent(data, (d) => d.z) as [number, number];
-
-  const xMax = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]));
-  const yMax = Math.max(Math.abs(yExtent[0]), Math.abs(yExtent[1]));
-  const zMax = Math.max(Math.abs(zExtent[0]), Math.abs(zExtent[1]));
-
-  const gridSize = Math.max(2 * xMax, 2 * zMax);
-
-  // Membuat GridHelper
-  const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1,
-      gapSize: 0.5,
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-
-    return line;
-  };
-
-  //Garis Sumbu X (Merah)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-gridSize, 0, 0),
-      new THREE.Vector3(gridSize, 0, 0),
-      0xff0000
-    )
-  );
-
-  // Garis Sumbu Y (Hijau)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, -gridSize, 0),
-      new THREE.Vector3(0, gridSize, 0),
-      0x00ff00
-    )
-  );
-
-  // Garis Sumbu Z (Biru)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -gridSize),
-      new THREE.Vector3(0, 0, gridSize),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Skala koordinat
-  const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-  const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
-  const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-  // Kelompokkan berdasarkan koordinat (x, z)
-  const groupedData = d3.group(data, (d) => `${d.x},${d.z}`);
-
-  const colors = d3.scaleOrdinal(d3.schemeCategory10);
-
-  groupedData.forEach((group, key) => {
-    const numBars = group.length;
-
-    const barSpacing = 0.005; // Jarak antar batang dalam cluster
-    const maxBarWidth = 0.95 - barSpacing * (numBars - 1);
-    const barWidth = Math.min(0.95, maxBarWidth / numBars);
-
-    group.forEach((d, index) => {
-      const geometry = new THREE.BoxGeometry(barWidth, yScale(d.y), 0.95);
-      const material = new THREE.MeshStandardMaterial({
-        color: colors(d.category),
-        metalness: 0.3,
-        roughness: 0.7,
-      });
-      const bar = new THREE.Mesh(geometry, material);
-
-      // Hitung posisi X agar sejajar dalam satu garis horizontal
-      const xOffset = (index - (numBars - 1) / 2) * (barWidth + barSpacing);
-      const xPos = xScale(d.x) + xOffset;
-      const yPos = yScale(d.y) / 2;
-      const zPos = zScale(d.z);
-
-      bar.position.set(xPos, yPos, zPos);
-      scene.add(bar);
-    });
-  });
-
-  // Menambahkan label untuk sumbu
-  addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-  let animationId: number;
-  const animate = () => {
-    animationId = requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  // Add cleanup function to container
-  (container as any).cleanup = () => {
-    // Cancel animation
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-    }
-
-    // Dispose controls
-    controls.dispose();
-
-    // Dispose renderer and WebGL context
-    renderer.dispose();
-    renderer.forceContextLoss();
-
-    // Clear scene
-    while (scene.children.length > 0) {
-      const object = scene.children[0];
-      if (object.type === "Mesh") {
-        const mesh = object as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) {
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((material) => material.dispose());
-          } else {
-            mesh.material.dispose();
-          }
-        }
-      }
-      scene.remove(object);
-    }
-
-    // Remove canvas from container
-    if (container.children.length > 0) {
-      container.removeChild(container.children[0]);
-    }
-  };
-
-  return container;
-};
-
-export const createStacked3DBarChart = (
-  data: { x: number; z: number; y: number; category: string }[],
-  width: number,
-  height: number
-) => {
-  console.log("create stacked 3d bar chart with data", data);
-  // Fungsi untuk menambahkan teks label
-  const addLabel = (text: string, position: THREE.Vector3) => {
-    const loader = new FontLoader();
-    loader.load(
-      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-      (font) => {
-        const textGeometry = new TextGeometry(text, {
-          font: font,
-          size: 0.5,
-          depth: 0.05,
-        });
-        textGeometry.computeBoundingBox();
-        textGeometry.center();
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-        textMesh.position.set(position.x, position.y, position.z);
-        scene.add(textMesh);
-      }
-    );
-  };
-
-  const container = document.createElement("div");
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.position = "relative";
-  container.style.overflow = "hidden";
-
-  const scene = new THREE.Scene();
-  // scene.background = new THREE.Color(0xffffff);
-
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(20, 20, 30);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  scene.background = null;
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-  pointLight.position.set(10, 20, 30);
-  scene.add(pointLight);
-
-  // Menentukan rentang koordinat
-  const xExtent = d3.extent(data, (d) => d.x) as [number, number];
-  const yExtent = d3.extent(data, (d) => d.y) as [number, number];
-  const zExtent = d3.extent(data, (d) => d.z) as [number, number];
-
-  const xMax = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]));
-  const yMax = Math.max(Math.abs(yExtent[0]), Math.abs(yExtent[1]));
-  const zMax = Math.max(Math.abs(zExtent[0]), Math.abs(zExtent[1]));
-
-  const gridSize = Math.max(2 * xMax, 2 * zMax);
-
-  // Membuat GridHelper
-  const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-  scene.add(gridHelper);
-
-  const createAxisLine = (
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    color: number
-  ) => {
-    const material = new THREE.LineDashedMaterial({
-      color: color,
-      dashSize: 1,
-      gapSize: 0.5,
-    });
-
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-
-    return line;
-  };
-
-  //Garis Sumbu X (Merah)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(-gridSize, 0, 0),
-      new THREE.Vector3(gridSize, 0, 0),
-      0xff0000
-    )
-  );
-
-  // Garis Sumbu Y (Hijau)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, -gridSize, 0),
-      new THREE.Vector3(0, gridSize, 0),
-      0x00ff00
-    )
-  );
-
-  // Garis Sumbu Z (Biru)
-  scene.add(
-    createAxisLine(
-      new THREE.Vector3(0, 0, -gridSize),
-      new THREE.Vector3(0, 0, gridSize),
-      0x0000ff
-    )
-  );
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  // Skala koordinat
-  const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-  const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
-  const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-  // Kelompokkan berdasarkan koordinat (x, z)
-  const groupedData = d3.group(data, (d) => `${d.x},${d.z}`);
-
-  const colors = d3.scaleOrdinal(d3.schemeCategory10);
-
-  groupedData.forEach((group, key) => {
-    let accumulatedHeight = 0;
-    let totalHeight = d3.sum(group, (d) => yScale(d.y));
-
-    group.forEach((d, index) => {
-      const barWidth = 1;
-      const barHeight = yScale(d.y);
-
-      const geometry = new THREE.BoxGeometry(barWidth, barHeight, barWidth);
-      const material = new THREE.MeshStandardMaterial({
-        color: colors(d.category),
-        metalness: 0.3,
-        roughness: 0.7,
-      });
-      const bar = new THREE.Mesh(geometry, material);
-
-      const xPos = xScale(d.x);
-      const yPos = accumulatedHeight + barHeight / 2;
-      const zPos = zScale(d.z);
-
-      bar.position.set(xPos, yPos, zPos);
-      scene.add(bar);
-
-      accumulatedHeight += barHeight;
-    });
-
-    // Tambahkan label total tinggi di atas batang terakhir
-    addLabel(
-      totalHeight.toFixed(1),
-      new THREE.Vector3(
-        xScale(group[0].x),
-        totalHeight + 0.5,
-        zScale(group[0].z)
-      )
-    );
-  });
-
-  // Menambahkan label untuk sumbu
-  addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-  addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-  addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-  let animationId: number;
-  const animate = () => {
-    animationId = requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  };
-  animate();
-
-  // Add cleanup function to container
-  (container as any).cleanup = () => {
-    // Cancel animation
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-    }
-
-    // Dispose controls
-    controls.dispose();
-
-    // Dispose renderer and WebGL context
-    renderer.dispose();
-    renderer.forceContextLoss();
-
-    // Clear scene
-    while (scene.children.length > 0) {
-      const object = scene.children[0];
-      if (object.type === "Mesh") {
-        const mesh = object as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) {
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((material) => material.dispose());
-          } else {
-            mesh.material.dispose();
-          }
-        }
-      }
-      scene.remove(object);
-    }
-
-    // Remove canvas from container
-    if (container.children.length > 0) {
-      container.removeChild(container.children[0]);
-    }
-  };
-
-  return container;
-};
+// export const create3DBarChart2 = (
+//   data: { x: any; y: number; z: any }[], // x dan z bisa string atau number
+//   width: number,
+//   height: number
+// ) => {
+//   console.log("create 3d bar chart with data", data);
+
+//   const container = document.createElement("div");
+//   container.style.width = `${width}px`;
+//   container.style.height = `${height}px`;
+//   container.style.position = "relative";
+//   container.style.overflow = "hidden";
+
+//   const scene = new THREE.Scene();
+
+//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+//   camera.position.set(25, 25, 25);
+//   camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+//   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+//   scene.background = null;
+
+//   renderer.setSize(width, height);
+//   container.appendChild(renderer.domElement);
+
+//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+//   scene.add(ambientLight);
+
+//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+//   pointLight.position.set(15, 20, 15);
+//   scene.add(pointLight);
+
+//   // Use improved scaling
+//   const {
+//     xScale,
+//     yScale,
+//     zScale,
+//     gridSize,
+//     xIsCategorical,
+//     zIsCategorical,
+//     xValues,
+//     zValues,
+//   } = createImprovedScaling(data, "x", "y", "z");
+
+//   // Fixed size grid helper
+//   const gridHelper = new THREE.GridHelper(gridSize, 20);
+//   scene.add(gridHelper);
+
+//   const createAxisLine = (
+//     start: THREE.Vector3,
+//     end: THREE.Vector3,
+//     color: number
+//   ) => {
+//     const material = new THREE.LineDashedMaterial({
+//       color: color,
+//       dashSize: 1,
+//       gapSize: 0.5,
+//     });
+
+//     const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+//     const line = new THREE.Line(geometry, material);
+//     line.computeLineDistances();
+
+//     return line;
+//   };
+
+//   const axisLength = gridSize / 2;
+
+//   // Garis Sumbu X (Merah)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(-axisLength, 0, 0),
+//       new THREE.Vector3(axisLength, 0, 0),
+//       0xff0000
+//     )
+//   );
+
+//   // Garis Sumbu Y (Hijau)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, 0, 0),
+//       new THREE.Vector3(0, 12, 0),
+//       0x00ff00
+//     )
+//   );
+
+//   // Garis Sumbu Z (Biru)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, 0, -axisLength),
+//       new THREE.Vector3(0, 0, axisLength),
+//       0x0000ff
+//     )
+//   );
+
+//   const controls = new OrbitControls(camera, renderer.domElement);
+//   controls.enableDamping = true;
+
+//   // Fungsi untuk menambahkan teks label
+//   const addLabel = (text: string, position: THREE.Vector3) => {
+//     const loader = new FontLoader();
+//     loader.load(
+//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+//       (font) => {
+//         const textGeometry = new TextGeometry(text, {
+//           font: font,
+//           size: 0.5,
+//           depth: 0.05,
+//         });
+//         textGeometry.computeBoundingBox();
+//         textGeometry.center();
+
+//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+//         textMesh.position.set(position.x, position.y, position.z);
+//         scene.add(textMesh);
+//       }
+//     );
+//   };
+
+//   // Render bars
+//   data.forEach((d) => {
+//     const barHeight = yScale(d.y);
+//     const barWidth = xIsCategorical ? (xScale as any).bandwidth() * 0.8 : 1.2;
+//     const barDepth = zIsCategorical ? (zScale as any).bandwidth() * 0.8 : 1.2;
+
+//     const geometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
+//     const material = new THREE.MeshStandardMaterial({
+//       color: 0x007bff,
+//       metalness: 0.3,
+//       roughness: 0.7,
+//     });
+//     const bar = new THREE.Mesh(geometry, material);
+
+//     const xPos = xIsCategorical
+//       ? (xScale as any)(d.x) + (xScale as any).bandwidth() / 2
+//       : xScale(d.x);
+//     const zPos = zIsCategorical
+//       ? (zScale as any)(d.z) + (zScale as any).bandwidth() / 2
+//       : zScale(d.z);
+
+//     bar.position.set(xPos, barHeight / 2, zPos);
+//     scene.add(bar);
+
+//     // Add value label above bar
+//     addLabel(d.y.toString(), new THREE.Vector3(xPos, barHeight + 1, zPos));
+//   });
+
+//   // Add axis labels
+//   addLabel("X", new THREE.Vector3(axisLength + 2, 0, 0));
+//   addLabel("Y", new THREE.Vector3(0, 14, 0));
+//   addLabel("Z", new THREE.Vector3(0, 0, axisLength + 2));
+
+//   // Add axis tick labels for categorical data
+//   if (xIsCategorical) {
+//     xValues.forEach((value: any) => {
+//       const pos = (xScale as any)(value) + (xScale as any).bandwidth() / 2;
+//       addLabel(value.toString(), new THREE.Vector3(pos, -1, axisLength + 1));
+//     });
+//   }
+
+//   if (zIsCategorical) {
+//     zValues.forEach((value: any) => {
+//       const pos = (zScale as any)(value) + (zScale as any).bandwidth() / 2;
+//       addLabel(value.toString(), new THREE.Vector3(axisLength + 1, -1, pos));
+//     });
+//   }
+
+//   let animationId: number;
+//   const animate = () => {
+//     animationId = requestAnimationFrame(animate);
+//     controls.update();
+//     renderer.render(scene, camera);
+//   };
+//   animate();
+
+//   // Add cleanup function to container
+//   (container as any).cleanup = () => {
+//     // Cancel animation
+//     if (animationId) {
+//       cancelAnimationFrame(animationId);
+//     }
+
+//     // Dispose controls
+//     controls.dispose();
+
+//     // Dispose renderer and WebGL context
+//     renderer.dispose();
+//     renderer.forceContextLoss();
+
+//     // Clear scene
+//     while (scene.children.length > 0) {
+//       const object = scene.children[0];
+//       if (object.type === "Mesh") {
+//         const mesh = object as THREE.Mesh;
+//         if (mesh.geometry) mesh.geometry.dispose();
+//         if (mesh.material) {
+//           if (Array.isArray(mesh.material)) {
+//             mesh.material.forEach((material) => material.dispose());
+//           } else {
+//             mesh.material.dispose();
+//           }
+//         }
+//       }
+//       scene.remove(object);
+//     }
+
+//     // Remove canvas from container
+//     if (container.children.length > 0) {
+//       container.removeChild(container.children[0]);
+//     }
+//   };
+
+//   return container;
+// };
+
+// export const create3DScatterPlot = (
+//   data: { x: any; y: number; z: any }[], // x dan z bisa string atau number
+//   width: number,
+//   height: number
+// ) => {
+//   console.log("create 3d scatter plot with data", data);
+//   // Fungsi untuk menambahkan teks label
+//   const addLabel = (text: string, position: THREE.Vector3) => {
+//     const loader = new FontLoader();
+//     loader.load(
+//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+//       (font) => {
+//         const textGeometry = new TextGeometry(text, {
+//           font: font,
+//           size: 0.5,
+//           depth: 0.05,
+//         });
+//         textGeometry.computeBoundingBox();
+//         textGeometry.center();
+
+//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+//         textMesh.position.set(position.x, position.y, position.z);
+//         scene.add(textMesh);
+//       }
+//     );
+//   };
+
+//   const container = document.createElement("div");
+//   container.style.width = `${width}px`;
+//   container.style.height = `${height}px`;
+//   container.style.position = "relative";
+//   container.style.overflow = "hidden";
+
+//   const scene = new THREE.Scene();
+
+//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+//   camera.position.set(25, 25, 25);
+//   camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+//   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+//   scene.background = null;
+//   renderer.setSize(width, height);
+//   container.appendChild(renderer.domElement);
+
+//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+//   scene.add(ambientLight);
+
+//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+//   pointLight.position.set(15, 20, 15);
+//   scene.add(pointLight);
+
+//   // Use improved scaling
+//   const {
+//     xScale,
+//     yScale,
+//     zScale,
+//     gridSize,
+//     xIsCategorical,
+//     zIsCategorical,
+//     xValues,
+//     zValues,
+//   } = createImprovedScaling(data, "x", "y", "z");
+
+//   // Fixed size grid helper
+//   const gridHelper = new THREE.GridHelper(gridSize, 20);
+//   scene.add(gridHelper);
+
+//   const createAxisLine = (
+//     start: THREE.Vector3,
+//     end: THREE.Vector3,
+//     color: number
+//   ) => {
+//     const material = new THREE.LineDashedMaterial({
+//       color: color,
+//       dashSize: 1,
+//       gapSize: 0.5,
+//     });
+
+//     const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+//     const line = new THREE.Line(geometry, material);
+//     line.computeLineDistances();
+
+//     return line;
+//   };
+
+//   const axisLength = gridSize / 2;
+
+//   //Garis Sumbu X (Merah)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(-axisLength, 0, 0),
+//       new THREE.Vector3(axisLength, 0, 0),
+//       0xff0000
+//     )
+//   );
+
+//   // Garis Sumbu Y (Hijau)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, 0, 0),
+//       new THREE.Vector3(0, 12, 0),
+//       0x00ff00
+//     )
+//   );
+
+//   // Garis Sumbu Z (Biru)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, 0, -axisLength),
+//       new THREE.Vector3(0, 0, axisLength),
+//       0x0000ff
+//     )
+//   );
+
+//   const controls = new OrbitControls(camera, renderer.domElement);
+//   controls.enableDamping = true;
+
+//   // Menambahkan titik-titik (scatter) pada plot 3D
+//   data.forEach((d) => {
+//     const geometry = new THREE.SphereGeometry(0.5, 8, 8);
+//     const material = new THREE.MeshStandardMaterial({
+//       color: 0x007bff,
+//       metalness: 0.3,
+//       roughness: 0.7,
+//     });
+//     const point = new THREE.Mesh(geometry, material);
+
+//     const xPos = xIsCategorical
+//       ? (xScale as any)(d.x) + (xScale as any).bandwidth() / 2
+//       : xScale(d.x);
+//     const zPos = zIsCategorical
+//       ? (zScale as any)(d.z) + (zScale as any).bandwidth() / 2
+//       : zScale(d.z);
+
+//     // Posisi titik berdasarkan data dan skala
+//     point.position.set(xPos, yScale(d.y), zPos);
+//     scene.add(point);
+
+//     addLabel(` ${d.y}`, new THREE.Vector3(xPos, yScale(d.y) + 1, zPos));
+//   });
+
+//   // Add axis labels
+//   addLabel("X", new THREE.Vector3(axisLength + 2, 0, 0));
+//   addLabel("Y", new THREE.Vector3(0, 14, 0));
+//   addLabel("Z", new THREE.Vector3(0, 0, axisLength + 2));
+
+//   // Add axis tick labels for categorical data
+//   if (xIsCategorical) {
+//     xValues.forEach((value: any) => {
+//       const pos = (xScale as any)(value) + (xScale as any).bandwidth() / 2;
+//       addLabel(value.toString(), new THREE.Vector3(pos, -1, axisLength + 1));
+//     });
+//   }
+
+//   if (zIsCategorical) {
+//     zValues.forEach((value: any) => {
+//       const pos = (zScale as any)(value) + (zScale as any).bandwidth() / 2;
+//       addLabel(value.toString(), new THREE.Vector3(axisLength + 1, -1, pos));
+//     });
+//   }
+
+//   let animationId: number;
+//   const animate = () => {
+//     animationId = requestAnimationFrame(animate);
+//     controls.update();
+//     renderer.render(scene, camera);
+//   };
+//   animate();
+
+//   // Add cleanup function to container
+//   (container as any).cleanup = () => {
+//     // Cancel animation
+//     if (animationId) {
+//       cancelAnimationFrame(animationId);
+//     }
+
+//     // Dispose controls
+//     controls.dispose();
+
+//     // Dispose renderer and WebGL context
+//     renderer.dispose();
+//     renderer.forceContextLoss();
+
+//     // Clear scene
+//     while (scene.children.length > 0) {
+//       const object = scene.children[0];
+//       if (object.type === "Mesh") {
+//         const mesh = object as THREE.Mesh;
+//         if (mesh.geometry) mesh.geometry.dispose();
+//         if (mesh.material) {
+//           if (Array.isArray(mesh.material)) {
+//             mesh.material.forEach((material) => material.dispose());
+//           } else {
+//             mesh.material.dispose();
+//           }
+//         }
+//       }
+//       scene.remove(object);
+//     }
+
+//     // Remove canvas from container
+//     if (container.children.length > 0) {
+//       container.removeChild(container.children[0]);
+//     }
+//   };
+
+//   return container;
+// };
+
+// export const createGrouped3DScatterPlot = (
+//   data: { x: number; y: number; z: number; category: string }[],
+//   width: number,
+//   height: number
+// ) => {
+//   console.log("create 3d grouped scatter with data", data);
+
+//   const container = document.createElement("div");
+//   container.style.width = `${width}px`;
+//   container.style.height = `${height}px`;
+//   container.style.position = "relative";
+//   container.style.overflow = "hidden";
+
+//   const scene = new THREE.Scene();
+//   // scene.background = new THREE.Color(0xffffff);
+
+//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+//   camera.position.set(20, 20, 30);
+//   camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+//   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+//   scene.background = null;
+//   renderer.setSize(width, height);
+//   container.appendChild(renderer.domElement);
+
+//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+//   scene.add(ambientLight);
+
+//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+//   pointLight.position.set(10, 20, 30);
+//   scene.add(pointLight);
+
+//   // Dapatkan kategori unik
+//   const uniqueCategories = Array.from(new Set(data.map((d) => d.category)));
+
+//   // Skema warna kategori
+//   const colorScale = d3
+//     .scaleOrdinal(d3.schemeCategory10)
+//     .domain(uniqueCategories);
+
+//   // Menentukan rentang data
+//   const xExtent = d3.extent(data, (d) => d.x)!;
+//   const yExtent = d3.extent(data, (d) => d.y)!;
+//   const zExtent = d3.extent(data, (d) => d.z)!;
+
+//   const xMax = Math.max(Math.abs(xExtent[0]!), Math.abs(xExtent[1]!));
+//   const yMax = Math.max(Math.abs(yExtent[0]!), Math.abs(yExtent[1]!));
+//   const zMax = Math.max(Math.abs(zExtent[0]!), Math.abs(zExtent[1]!));
+
+//   const gridSizeX = 2 * xMax;
+//   const gridSizeZ = 2 * zMax;
+//   const gridSize = Math.max(gridSizeX, gridSizeZ);
+
+//   // Membuat GridHelper
+//   const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
+//   scene.add(gridHelper);
+
+//   const createAxisLine = (
+//     start: THREE.Vector3,
+//     end: THREE.Vector3,
+//     color: number
+//   ) => {
+//     const material = new THREE.LineDashedMaterial({
+//       color: color,
+//       dashSize: 1,
+//       gapSize: 0.5,
+//     });
+
+//     const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+//     const line = new THREE.Line(geometry, material);
+//     line.computeLineDistances();
+
+//     return line;
+//   };
+
+//   // Garis sumbu
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(-gridSize, 0, 0),
+//       new THREE.Vector3(gridSize, 0, 0),
+//       0xff0000
+//     )
+//   );
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, -gridSize, 0),
+//       new THREE.Vector3(0, gridSize, 0),
+//       0x00ff00
+//     )
+//   );
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, 0, -gridSize),
+//       new THREE.Vector3(0, 0, gridSize),
+//       0x0000ff
+//     )
+//   );
+
+//   const controls = new OrbitControls(camera, renderer.domElement);
+//   controls.enableDamping = true;
+
+//   // Skala data
+//   const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
+//   const yScale = d3.scaleLinear().domain([-yMax, yMax]).range([-yMax, yMax]);
+//   const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
+
+//   // Fungsi menambahkan label teks
+//   const addLabel = (text: string, position: THREE.Vector3) => {
+//     const loader = new FontLoader();
+//     loader.load(
+//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+//       (font) => {
+//         const textGeometry = new TextGeometry(text, {
+//           font: font,
+//           size: 0.5,
+//           depth: 0.05,
+//         });
+//         textGeometry.computeBoundingBox();
+//         textGeometry.center();
+
+//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+//         textMesh.position.set(position.x, position.y, position.z);
+//         scene.add(textMesh);
+//       }
+//     );
+//   };
+
+//   // Menambahkan titik berdasarkan kategori
+//   // Hitung jumlah titik di setiap posisi (x, z)
+//   const pointMap = new Map<string, number>();
+//   data.forEach((d) => {
+//     const key = `${d.x},${d.y},${d.z}`;
+//     pointMap.set(key, (pointMap.get(key) || 0) + 1);
+//   });
+
+//   // Skala ukuran titik berdasarkan jumlah titik di satu koordinat (x, z)
+//   const sizeScale = d3.scaleLinear().domain([1, 5]).range([0.5, 0.2]);
+
+//   const groupedData = d3.group(data, (d) => `${d.x},${d.y},${d.z}`);
+
+//   groupedData.forEach((group, key) => {
+//     const numPoints = group.length;
+//     const baseSize = sizeScale(Math.min(numPoints, 5));
+
+//     group.forEach((d, index) => {
+//       const size = baseSize;
+//       const color = new THREE.Color(colorScale(d.category) as string);
+//       const geometry = new THREE.SphereGeometry(size, 8, 8);
+//       const material = new THREE.MeshStandardMaterial({
+//         color: color,
+//         // transparent: true,
+//         // opacity: 0.8,
+//         metalness: 0.3,
+//         roughness: 0.7,
+//       });
+
+//       const point = new THREE.Mesh(geometry, material);
+
+//       // Offset posisi
+//       const xOffset = (index - (numPoints - 1) / 2) * (size * 0.8);
+//       const zOffset = (index % 2 === 0 ? 1 : -1) * (size * 0.8);
+
+//       const xPos = xScale(d.x)! + xOffset;
+//       const yPos = yScale(d.y);
+//       const zPos = zScale(d.z)! + zOffset;
+
+//       point.position.set(xPos, yPos, zPos);
+//       scene.add(point);
+//     });
+//   });
+
+//   // Menambahkan label untuk sumbu
+//   addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
+//   addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
+//   addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
+
+//   let animationId: number;
+//   const animate = () => {
+//     animationId = requestAnimationFrame(animate);
+//     controls.update();
+//     renderer.render(scene, camera);
+//   };
+//   animate();
+
+//   // Add cleanup function to container
+//   (container as any).cleanup = () => {
+//     // Cancel animation
+//     if (animationId) {
+//       cancelAnimationFrame(animationId);
+//     }
+
+//     // Dispose controls
+//     controls.dispose();
+
+//     // Dispose renderer and WebGL context
+//     renderer.dispose();
+//     renderer.forceContextLoss();
+
+//     // Clear scene
+//     while (scene.children.length > 0) {
+//       const object = scene.children[0];
+//       if (object.type === "Mesh") {
+//         const mesh = object as THREE.Mesh;
+//         if (mesh.geometry) mesh.geometry.dispose();
+//         if (mesh.material) {
+//           if (Array.isArray(mesh.material)) {
+//             mesh.material.forEach((material) => material.dispose());
+//           } else {
+//             mesh.material.dispose();
+//           }
+//         }
+//       }
+//       scene.remove(object);
+//     }
+
+//     // Remove canvas from container
+//     if (container.children.length > 0) {
+//       container.removeChild(container.children[0]);
+//     }
+//   };
+
+//   return container;
+// };
+
+// export const createClustered3DBarChart = (
+//   data: { x: number; z: number; y: number; category: string }[],
+//   width: number,
+//   height: number
+// ) => {
+//   console.log("create clustered 3d bar chart with data", data);
+//   // Fungsi untuk menambahkan teks label
+//   const addLabel = (text: string, position: THREE.Vector3) => {
+//     const loader = new FontLoader();
+//     loader.load(
+//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+//       (font) => {
+//         const textGeometry = new TextGeometry(text, {
+//           font: font,
+//           size: 1,
+//           depth: 0.1,
+//         });
+//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+//         textMesh.position.set(position.x, position.y, position.z);
+//         scene.add(textMesh);
+//       }
+//     );
+//   };
+
+//   const container = document.createElement("div");
+//   container.style.width = `${width}px`;
+//   container.style.height = `${height}px`;
+//   container.style.position = "relative";
+//   container.style.overflow = "hidden";
+
+//   const scene = new THREE.Scene();
+//   // scene.background = new THREE.Color(0xffffff);
+
+//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+//   camera.position.set(20, 20, 30);
+//   camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+//   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+//   scene.background = null;
+//   renderer.setSize(width, height);
+//   container.appendChild(renderer.domElement);
+
+//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+//   scene.add(ambientLight);
+
+//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+//   pointLight.position.set(10, 20, 30);
+//   scene.add(pointLight);
+
+//   // Menentukan rentang koordinat
+//   const xExtent = d3.extent(data, (d) => d.x) as [number, number];
+//   const yExtent = d3.extent(data, (d) => d.y) as [number, number];
+//   const zExtent = d3.extent(data, (d) => d.z) as [number, number];
+
+//   const xMax = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]));
+//   const yMax = Math.max(Math.abs(yExtent[0]), Math.abs(yExtent[1]));
+//   const zMax = Math.max(Math.abs(zExtent[0]), Math.abs(zExtent[1]));
+
+//   const gridSize = Math.max(2 * xMax, 2 * zMax);
+
+//   // Membuat GridHelper
+//   const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
+//   scene.add(gridHelper);
+
+//   const createAxisLine = (
+//     start: THREE.Vector3,
+//     end: THREE.Vector3,
+//     color: number
+//   ) => {
+//     const material = new THREE.LineDashedMaterial({
+//       color: color,
+//       dashSize: 1,
+//       gapSize: 0.5,
+//     });
+
+//     const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+//     const line = new THREE.Line(geometry, material);
+//     line.computeLineDistances();
+
+//     return line;
+//   };
+
+//   //Garis Sumbu X (Merah)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(-gridSize, 0, 0),
+//       new THREE.Vector3(gridSize, 0, 0),
+//       0xff0000
+//     )
+//   );
+
+//   // Garis Sumbu Y (Hijau)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, -gridSize, 0),
+//       new THREE.Vector3(0, gridSize, 0),
+//       0x00ff00
+//     )
+//   );
+
+//   // Garis Sumbu Z (Biru)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, 0, -gridSize),
+//       new THREE.Vector3(0, 0, gridSize),
+//       0x0000ff
+//     )
+//   );
+
+//   const controls = new OrbitControls(camera, renderer.domElement);
+//   controls.enableDamping = true;
+
+//   // Skala koordinat
+//   const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
+//   const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
+//   const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
+
+//   // Kelompokkan berdasarkan koordinat (x, z)
+//   const groupedData = d3.group(data, (d) => `${d.x},${d.z}`);
+
+//   const colors = d3.scaleOrdinal(d3.schemeCategory10);
+
+//   groupedData.forEach((group, key) => {
+//     const numBars = group.length;
+
+//     const barSpacing = 0.005; // Jarak antar batang dalam cluster
+//     const maxBarWidth = 0.95 - barSpacing * (numBars - 1);
+//     const barWidth = Math.min(0.95, maxBarWidth / numBars);
+
+//     group.forEach((d, index) => {
+//       const geometry = new THREE.BoxGeometry(barWidth, yScale(d.y), 0.95);
+//       const material = new THREE.MeshStandardMaterial({
+//         color: colors(d.category),
+//         metalness: 0.3,
+//         roughness: 0.7,
+//       });
+//       const bar = new THREE.Mesh(geometry, material);
+
+//       // Hitung posisi X agar sejajar dalam satu garis horizontal
+//       const xOffset = (index - (numBars - 1) / 2) * (barWidth + barSpacing);
+//       const xPos = xScale(d.x) + xOffset;
+//       const yPos = yScale(d.y) / 2;
+//       const zPos = zScale(d.z);
+
+//       bar.position.set(xPos, yPos, zPos);
+//       scene.add(bar);
+//     });
+//   });
+
+//   // Menambahkan label untuk sumbu
+//   addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
+//   addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
+//   addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
+
+//   let animationId: number;
+//   const animate = () => {
+//     animationId = requestAnimationFrame(animate);
+//     controls.update();
+//     renderer.render(scene, camera);
+//   };
+//   animate();
+
+//   // Add cleanup function to container
+//   (container as any).cleanup = () => {
+//     // Cancel animation
+//     if (animationId) {
+//       cancelAnimationFrame(animationId);
+//     }
+
+//     // Dispose controls
+//     controls.dispose();
+
+//     // Dispose renderer and WebGL context
+//     renderer.dispose();
+//     renderer.forceContextLoss();
+
+//     // Clear scene
+//     while (scene.children.length > 0) {
+//       const object = scene.children[0];
+//       if (object.type === "Mesh") {
+//         const mesh = object as THREE.Mesh;
+//         if (mesh.geometry) mesh.geometry.dispose();
+//         if (mesh.material) {
+//           if (Array.isArray(mesh.material)) {
+//             mesh.material.forEach((material) => material.dispose());
+//           } else {
+//             mesh.material.dispose();
+//           }
+//         }
+//       }
+//       scene.remove(object);
+//     }
+
+//     // Remove canvas from container
+//     if (container.children.length > 0) {
+//       container.removeChild(container.children[0]);
+//     }
+//   };
+
+//   return container;
+// };
+
+// export const createStacked3DBarChart = (
+//   data: { x: number; z: number; y: number; category: string }[],
+//   width: number,
+//   height: number
+// ) => {
+//   console.log("create stacked 3d bar chart with data", data);
+//   // Fungsi untuk menambahkan teks label
+//   const addLabel = (text: string, position: THREE.Vector3) => {
+//     const loader = new FontLoader();
+//     loader.load(
+//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+//       (font) => {
+//         const textGeometry = new TextGeometry(text, {
+//           font: font,
+//           size: 0.5,
+//           depth: 0.05,
+//         });
+//         textGeometry.computeBoundingBox();
+//         textGeometry.center();
+//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+//         textMesh.position.set(position.x, position.y, position.z);
+//         scene.add(textMesh);
+//       }
+//     );
+//   };
+
+//   const container = document.createElement("div");
+//   container.style.width = `${width}px`;
+//   container.style.height = `${height}px`;
+//   container.style.position = "relative";
+//   container.style.overflow = "hidden";
+
+//   const scene = new THREE.Scene();
+//   // scene.background = new THREE.Color(0xffffff);
+
+//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+//   camera.position.set(20, 20, 30);
+//   camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+//   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+//   scene.background = null;
+//   renderer.setSize(width, height);
+//   container.appendChild(renderer.domElement);
+
+//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+//   scene.add(ambientLight);
+
+//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+//   pointLight.position.set(10, 20, 30);
+//   scene.add(pointLight);
+
+//   // Menentukan rentang koordinat
+//   const xExtent = d3.extent(data, (d) => d.x) as [number, number];
+//   const yExtent = d3.extent(data, (d) => d.y) as [number, number];
+//   const zExtent = d3.extent(data, (d) => d.z) as [number, number];
+
+//   const xMax = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]));
+//   const yMax = Math.max(Math.abs(yExtent[0]), Math.abs(yExtent[1]));
+//   const zMax = Math.max(Math.abs(zExtent[0]), Math.abs(zExtent[1]));
+
+//   const gridSize = Math.max(2 * xMax, 2 * zMax);
+
+//   // Membuat GridHelper
+//   const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
+//   scene.add(gridHelper);
+
+//   const createAxisLine = (
+//     start: THREE.Vector3,
+//     end: THREE.Vector3,
+//     color: number
+//   ) => {
+//     const material = new THREE.LineDashedMaterial({
+//       color: color,
+//       dashSize: 1,
+//       gapSize: 0.5,
+//     });
+
+//     const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+//     const line = new THREE.Line(geometry, material);
+//     line.computeLineDistances();
+
+//     return line;
+//   };
+
+//   //Garis Sumbu X (Merah)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(-gridSize, 0, 0),
+//       new THREE.Vector3(gridSize, 0, 0),
+//       0xff0000
+//     )
+//   );
+
+//   // Garis Sumbu Y (Hijau)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, -gridSize, 0),
+//       new THREE.Vector3(0, gridSize, 0),
+//       0x00ff00
+//     )
+//   );
+
+//   // Garis Sumbu Z (Biru)
+//   scene.add(
+//     createAxisLine(
+//       new THREE.Vector3(0, 0, -gridSize),
+//       new THREE.Vector3(0, 0, gridSize),
+//       0x0000ff
+//     )
+//   );
+
+//   const controls = new OrbitControls(camera, renderer.domElement);
+//   controls.enableDamping = true;
+
+//   // Skala koordinat
+//   const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
+//   const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
+//   const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
+
+//   // Kelompokkan berdasarkan koordinat (x, z)
+//   const groupedData = d3.group(data, (d) => `${d.x},${d.z}`);
+
+//   const colors = d3.scaleOrdinal(d3.schemeCategory10);
+
+//   groupedData.forEach((group, key) => {
+//     let accumulatedHeight = 0;
+//     let totalHeight = d3.sum(group, (d) => yScale(d.y));
+
+//     group.forEach((d, index) => {
+//       const barWidth = 1;
+//       const barHeight = yScale(d.y);
+
+//       const geometry = new THREE.BoxGeometry(barWidth, barHeight, barWidth);
+//       const material = new THREE.MeshStandardMaterial({
+//         color: colors(d.category),
+//         metalness: 0.3,
+//         roughness: 0.7,
+//       });
+//       const bar = new THREE.Mesh(geometry, material);
+
+//       const xPos = xScale(d.x);
+//       const yPos = accumulatedHeight + barHeight / 2;
+//       const zPos = zScale(d.z);
+
+//       bar.position.set(xPos, yPos, zPos);
+//       scene.add(bar);
+
+//       accumulatedHeight += barHeight;
+//     });
+
+//     // Tambahkan label total tinggi di atas batang terakhir
+//     addLabel(
+//       totalHeight.toFixed(1),
+//       new THREE.Vector3(
+//         xScale(group[0].x),
+//         totalHeight + 0.5,
+//         zScale(group[0].z)
+//       )
+//     );
+//   });
+
+//   // Menambahkan label untuk sumbu
+//   addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
+//   addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
+//   addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
+
+//   let animationId: number;
+//   const animate = () => {
+//     animationId = requestAnimationFrame(animate);
+//     controls.update();
+//     renderer.render(scene, camera);
+//   };
+//   animate();
+
+//   // Add cleanup function to container
+//   (container as any).cleanup = () => {
+//     // Cancel animation
+//     if (animationId) {
+//       cancelAnimationFrame(animationId);
+//     }
+
+//     // Dispose controls
+//     controls.dispose();
+
+//     // Dispose renderer and WebGL context
+//     renderer.dispose();
+//     renderer.forceContextLoss();
+
+//     // Clear scene
+//     while (scene.children.length > 0) {
+//       const object = scene.children[0];
+//       if (object.type === "Mesh") {
+//         const mesh = object as THREE.Mesh;
+//         if (mesh.geometry) mesh.geometry.dispose();
+//         if (mesh.material) {
+//           if (Array.isArray(mesh.material)) {
+//             mesh.material.forEach((material) => material.dispose());
+//           } else {
+//             mesh.material.dispose();
+//           }
+//         }
+//       }
+//       scene.remove(object);
+//     }
+
+//     // Remove canvas from container
+//     if (container.children.length > 0) {
+//       container.removeChild(container.children[0]);
+//     }
+//   };
+
+//   return container;
+// };
 
 // Test data examples for improved 3D charts
 export const getTest3DData = () => {
@@ -2390,4 +2390,377 @@ export function createEChartsClustered3DBarChart(
 
     return fallback;
   }
+}
+
+/**
+ * Creates a simplified 2D representation for 3D charts when used in small preview sizes
+ * This function provides better visual representation for chart selection previews
+ */
+export function createSimplified2DRepresentation(
+  chartType: string,
+  width: number,
+  height: number,
+  useAxis: boolean = false
+): HTMLDivElement {
+  const container = document.createElement("div");
+  container.style.width = width + "px";
+  container.style.height = height + "px";
+  container.style.display = "flex";
+  container.style.alignItems = "center";
+  container.style.justifyContent = "center";
+  container.style.backgroundColor = "white";
+  container.style.borderRadius = "4px";
+  container.style.overflow = "hidden";
+
+  // Create SVG for 2D representation
+  const svg = d3
+    .select(container)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .style("background", "white");
+
+  const margin = { top: 5, right: 5, bottom: 5, left: 5 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+
+  // Create chart group
+  const g = svg
+    .append("g")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+  // Different representations based on chart type
+  if (chartType.includes("Bar")) {
+    if (chartType.includes("Clustered")) {
+      // Create simplified clustered bar chart representation
+      const categories = ["A", "B", "C"];
+      const groups = ["X", "Y"];
+      const data = [
+        { category: "A", group: "X", value: 30 },
+        { category: "A", group: "Y", value: 20 },
+        { category: "B", group: "X", value: 45 },
+        { category: "B", group: "Y", value: 35 },
+        { category: "C", group: "X", value: 60 },
+        { category: "C", group: "Y", value: 50 },
+      ];
+
+      const xScale = d3
+        .scaleBand()
+        .domain(categories)
+        .range([0, chartWidth])
+        .padding(0.2);
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([0, d3.max(data, (d) => d.value) || 100])
+        .range([chartHeight, 0]);
+
+      const groupScale = d3
+        .scaleBand()
+        .domain(groups)
+        .range([0, xScale.bandwidth()])
+        .padding(0.1);
+
+      // Create clustered bars
+      g.selectAll(".category")
+        .data(categories)
+        .enter()
+        .append("g")
+        .attr("class", "category")
+        .attr("transform", (d) => `translate(${xScale(d)}, 0)`)
+        .selectAll("rect")
+        .data((d) =>
+          groups.map((group) => ({
+            category: d,
+            group,
+            value:
+              data.find((item) => item.category === d && item.group === group)
+                ?.value || 0,
+          }))
+        )
+        .enter()
+        .append("rect")
+        .attr("x", (d) => groupScale(d.group) || 0)
+        .attr("y", (d) => yScale(d.value))
+        .attr("width", groupScale.bandwidth())
+        .attr("height", (d) => chartHeight - yScale(d.value))
+        .attr("fill", (d, i) => d3.schemeCategory10[i % 10])
+        .attr("opacity", 0.8);
+    } else if (chartType.includes("Stacked")) {
+      // Create simplified stacked bar chart representation
+      const categories = ["A", "B", "C"];
+      const groups = ["X", "Y", "Z"];
+      const data = [
+        { category: "A", group: "X", value: 20 },
+        { category: "A", group: "Y", value: 15 },
+        { category: "A", group: "Z", value: 10 },
+        { category: "B", group: "X", value: 25 },
+        { category: "B", group: "Y", value: 20 },
+        { category: "B", group: "Z", value: 15 },
+        { category: "C", group: "X", value: 30 },
+        { category: "C", group: "Y", value: 25 },
+        { category: "C", group: "Z", value: 20 },
+      ];
+
+      const xScale = d3
+        .scaleBand()
+        .domain(categories)
+        .range([0, chartWidth])
+        .padding(0.2);
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([
+          0,
+          d3.max(
+            categories.map((cat) =>
+              data
+                .filter((d) => d.category === cat)
+                .reduce((sum, d) => sum + d.value, 0)
+            )
+          ) || 100,
+        ])
+        .range([chartHeight, 0]);
+
+      // Create stacked bars
+      categories.forEach((category, catIndex) => {
+        let yOffset = 0;
+        groups.forEach((group, groupIndex) => {
+          const value =
+            data.find((d) => d.category === category && d.group === group)
+              ?.value || 0;
+          if (value > 0) {
+            g.append("rect")
+              .attr("x", xScale(category) || 0)
+              .attr("y", yScale(yOffset + value))
+              .attr("width", xScale.bandwidth())
+              .attr("height", chartHeight - yScale(value))
+              .attr("fill", d3.schemeCategory10[groupIndex % 10])
+              .attr("opacity", 0.8);
+            yOffset += value;
+          }
+        });
+      });
+    } else {
+      // Create simplified regular bar chart representation
+      const data = [30, 60, 45, 80, 35];
+      const barWidth = (chartWidth / data.length) * 0.8;
+      const barSpacing = (chartWidth / data.length) * 0.2;
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([0, d3.max(data) || 100])
+        .range([chartHeight, 0]);
+
+      g.selectAll("rect")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr("x", (d, i) => i * (barWidth + barSpacing))
+        .attr("y", (d) => yScale(d))
+        .attr("width", barWidth)
+        .attr("height", (d) => chartHeight - yScale(d))
+        .attr("fill", (d, i) => d3.schemeCategory10[i % 10])
+        .attr("opacity", 0.8);
+    }
+
+    // Add 3D effect with gradient for all bar types
+    g.selectAll("rect").each(function () {
+      const rect = d3.select(this);
+      const fill = rect.attr("fill");
+
+      // Create gradient for 3D effect
+      const gradient = svg
+        .append("defs")
+        .append("linearGradient")
+        .attr("id", `grad-${Math.random().toString(36).substr(2, 9)}`);
+
+      gradient
+        .append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", d3.color(fill)?.brighter(0.3)?.toString() || fill);
+
+      gradient
+        .append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", d3.color(fill)?.darker(0.3)?.toString() || fill);
+
+      rect.attr("fill", `url(#${gradient.attr("id")})`);
+    });
+  } else if (chartType.includes("Scatter")) {
+    if (chartType.includes("Grouped")) {
+      // Create simplified grouped scatter plot representation
+      const groups = ["A", "B", "C"];
+      const data = [
+        { x: 20, y: 30, group: "A" },
+        { x: 40, y: 60, group: "A" },
+        { x: 60, y: 40, group: "B" },
+        { x: 80, y: 70, group: "B" },
+        { x: 30, y: 50, group: "C" },
+        { x: 70, y: 20, group: "C" },
+        { x: 25, y: 45, group: "A" },
+        { x: 55, y: 35, group: "B" },
+        { x: 65, y: 55, group: "C" },
+      ];
+
+      const xScale = d3.scaleLinear().domain([0, 100]).range([0, chartWidth]);
+      const yScale = d3.scaleLinear().domain([0, 100]).range([chartHeight, 0]);
+
+      // Create scatter points with different colors for each group
+      g.selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("cx", (d) => xScale(d.x))
+        .attr("cy", (d) => yScale(d.y))
+        .attr("r", 3)
+        .attr("fill", (d) => {
+          const groupIndex = groups.indexOf(d.group);
+          return d3.schemeCategory10[groupIndex % 10];
+        })
+        .attr("opacity", 0.7);
+
+      // Add legend-like indicators
+      groups.forEach((group, index) => {
+        const legendX = chartWidth - 20;
+        const legendY = 10 + index * 8;
+
+        g.append("circle")
+          .attr("cx", legendX)
+          .attr("cy", legendY)
+          .attr("r", 2)
+          .attr("fill", d3.schemeCategory10[index % 10])
+          .attr("opacity", 0.8);
+      });
+    } else {
+      // Create simplified regular scatter plot representation
+      const data = [
+        { x: 20, y: 30 },
+        { x: 40, y: 60 },
+        { x: 60, y: 40 },
+        { x: 80, y: 70 },
+        { x: 30, y: 50 },
+        { x: 70, y: 20 },
+        { x: 25, y: 45 },
+        { x: 55, y: 35 },
+        { x: 65, y: 55 },
+      ];
+
+      const xScale = d3.scaleLinear().domain([0, 100]).range([0, chartWidth]);
+      const yScale = d3.scaleLinear().domain([0, 100]).range([chartHeight, 0]);
+
+      g.selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("cx", (d) => xScale(d.x))
+        .attr("cy", (d) => yScale(d.y))
+        .attr("r", 3)
+        .attr("fill", (d, i) => d3.schemeCategory10[i % 10])
+        .attr("opacity", 0.7);
+    }
+  } else if (chartType.includes("Line")) {
+    // Create simplified line chart representation
+    const data = [30, 60, 45, 80, 35, 70, 50];
+
+    const xScale = d3
+      .scaleLinear()
+      .domain([0, data.length - 1])
+      .range([0, chartWidth]);
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, d3.max(data) || 100])
+      .range([chartHeight, 0]);
+
+    const line = d3
+      .line<number>()
+      .x((d, i) => xScale(i))
+      .y((d) => yScale(d))
+      .curve(d3.curveMonotoneX);
+
+    g.append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", "#1f77b4")
+      .attr("stroke-width", 2)
+      .attr("d", line);
+  } else {
+    // Default representation - simple geometric shapes
+    const centerX = chartWidth / 2;
+    const centerY = chartHeight / 2;
+    const size = Math.min(chartWidth, chartHeight) * 0.3;
+
+    // Create a 3D-like cube representation
+    const cube = g
+      .append("g")
+      .attr("transform", `translate(${centerX}, ${centerY})`);
+
+    // Front face
+    cube
+      .append("rect")
+      .attr("x", -size / 2)
+      .attr("y", -size / 2)
+      .attr("width", size)
+      .attr("height", size)
+      .attr("fill", "#1f77b4")
+      .attr("opacity", 0.8);
+
+    // Top face (for 3D effect)
+    cube
+      .append("polygon")
+      .attr(
+        "points",
+        `${-size / 2},${-size / 2} ${size / 2},${-size / 2} ${
+          size / 2 + size * 0.3
+        },${-size / 2 - size * 0.3} ${-size / 2 + size * 0.3},${
+          -size / 2 - size * 0.3
+        }`
+      )
+      .attr("fill", "#1f77b4")
+      .attr("opacity", 0.6);
+
+    // Right face (for 3D effect)
+    cube
+      .append("polygon")
+      .attr(
+        "points",
+        `${size / 2},${-size / 2} ${size / 2},${size / 2} ${
+          size / 2 + size * 0.3
+        },${size / 2 - size * 0.3} ${size / 2 + size * 0.3},${
+          -size / 2 - size * 0.3
+        }`
+      )
+      .attr("fill", "#1f77b4")
+      .attr("opacity", 0.4);
+  }
+
+  // Add subtle grid lines for better visual context
+  if (useAxis && width > 60 && height > 60) {
+    const gridSize = 20;
+
+    // Vertical grid lines
+    for (let i = 0; i <= chartWidth; i += gridSize) {
+      g.append("line")
+        .attr("x1", i)
+        .attr("y1", 0)
+        .attr("x2", i)
+        .attr("y2", chartHeight)
+        .attr("stroke", "#f0f0f0")
+        .attr("stroke-width", 0.5);
+    }
+
+    // Horizontal grid lines
+    for (let i = 0; i <= chartHeight; i += gridSize) {
+      g.append("line")
+        .attr("x1", 0)
+        .attr("y1", i)
+        .attr("x2", chartWidth)
+        .attr("y2", i)
+        .attr("stroke", "#f0f0f0")
+        .attr("stroke-width", 0.5);
+    }
+  }
+
+  return container;
 }
