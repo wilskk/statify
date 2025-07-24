@@ -74,6 +74,8 @@ export async function analyzeUnivariate({
     const results = univariate.get_formatted_results();
     const errorsString = univariate.get_all_errors();
 
+    console.log(results);
+
     let errors: string[] = [];
     if (errorsString) {
         errors = errorsString
