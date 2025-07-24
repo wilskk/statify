@@ -1,5 +1,5 @@
 use crate::models::{
-    config::ClusterConfig,
+    config::KMeansConfig,
     result::{ IterationHistory, IterationStep, ProcessedData },
 };
 
@@ -12,7 +12,7 @@ use super::core::*;
 /// iterasi terlampaui.
 pub fn generate_iteration_history(
     data: &ProcessedData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<IterationHistory, String> {
     let num_clusters = config.main.cluster as usize; // Jumlah cluster yang diinginkan.
     let max_iterations = config.iterate.maximum_iterations; // Batas maksimum iterasi.

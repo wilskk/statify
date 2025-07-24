@@ -89,6 +89,38 @@ export const RecodeDifferentVariablesModal: FC<
     description: string;
   } | null>(null);
 
+  // Helper function untuk mengkonversi VariableType ke tipe yang didukung recode
+  const getRecodeType = (
+    variableType: VariableType | undefined
+  ): "NUMERIC" | "STRING" => {
+    if (!variableType) return "STRING";
+
+    // Tipe yang dianggap NUMERIC untuk recode
+    const numericTypes: VariableType[] = [
+      "NUMERIC",
+      "COMMA",
+      "DOT",
+      "SCIENTIFIC",
+      "DOLLAR",
+      "RESTRICTED_NUMERIC",
+      "DATE",
+      "ADATE",
+      "EDATE",
+      "SDATE",
+      "JDATE",
+      "QYR",
+      "MOYR",
+      "WKYR",
+      "DATETIME",
+      "TIME",
+      "DTIME",
+      "WKDAY",
+      "MONTH",
+    ];
+
+    return numericTypes.includes(variableType) ? "NUMERIC" : "STRING";
+  };
+
   useEffect(() => {
     const recodeVarTempIds = new Set(
       recodeMappings.map((m) => m.sourceVariable.tempId)
@@ -104,12 +136,6 @@ export const RecodeDifferentVariablesModal: FC<
       setRecodeListType(null);
     }
   }, [allVariablesFromStore, recodeMappings, recodeListType]);
-
-  useEffect(() => {
-    if (outputType !== recodeListType && recodeListType !== null) {
-      setRecodeListType(outputType);
-    }
-  }, [outputType, recodeListType]);
 
   const moveToRightPane = useCallback(
     (variable: Variable, targetIndex?: number) => {
@@ -239,49 +265,30 @@ export const RecodeDifferentVariablesModal: FC<
   // Fungsi untuk mengevaluasi nilai berdasarkan aturan recode
   const evaluateValueWithRules = (
     value: string | number,
-    rules: RecodeRule[]
+    rules: RecodeRule[],
+    sourceVariableType: "NUMERIC" | "STRING"
   ): string | number => {
     if (value === "") {
       return value;
     }
 
     const numericValue = typeof value === "string" ? parseFloat(value) : value;
-    const isNumericType = recodeListType === "NUMERIC";
+    const isNumericType = sourceVariableType === "NUMERIC";
     const isValidNumber = !isNaN(numericValue);
 
     const isSystemMissing =
       value === null ||
       value === undefined ||
       (typeof value === "number" && isNaN(value)) ||
-      (recodeListType === "NUMERIC" &&
-        typeof value === "string" &&
-        value.trim() === "");
+      (isNumericType && typeof value === "string" && value.trim() === "");
 
     for (const rule of rules) {
       switch (rule.oldValueType) {
         case "value":
           if (value == rule.oldValue) {
-            console.log(
-              "RECODE",
-              value,
-              "->",
-              rule.newValue,
-              "(rule:",
-              rule.oldValue,
-              ")"
-            );
             return rule.newValue ?? "";
           }
           if (isNumericType && isValidNumber && numericValue == rule.oldValue) {
-            console.log(
-              "RECODE NUMERIC",
-              value,
-              "->",
-              rule.newValue,
-              "(rule:",
-              rule.oldValue,
-              ")"
-            );
             return rule.newValue ?? "";
           }
           break;
@@ -367,9 +374,10 @@ export const RecodeDifferentVariablesModal: FC<
       const variableStore = useVariableStore.getState();
       let currentColumnIndex = allVariablesFromStore.length;
 
-      // Step 1: Add all variables first (sama seperti ComputeVariable)
+      // Step 1: Add all variables first
       const newVariablesToAdd: Partial<Variable>[] = [];
       const initialUpdates: CellUpdate[] = [];
+
       for (const mapping of recodeMappings) {
         // Tentukan tipe output efektif
         let effectiveOutputType = outputType;
@@ -382,7 +390,7 @@ export const RecodeDifferentVariablesModal: FC<
         const newVariable: Partial<Variable> = {
           name: mapping.targetName,
           label: mapping.targetLabel,
-          type: effectiveOutputType, // gunakan tipe efektif
+          type: effectiveOutputType,
           columnIndex: currentColumnIndex,
           width: effectiveOutputType === "STRING" ? stringWidth : 8,
           decimals: 2,
@@ -407,7 +415,7 @@ export const RecodeDifferentVariablesModal: FC<
         await variableStore.addVariables(newVariablesToAdd, initialUpdates);
       }
 
-      // Step 2: Prepare cell updates (sama seperti ComputeVariable)
+      // Step 2: Prepare cell updates
       const bulkUpdates: CellUpdate[] = [];
       let columnOffset = allVariablesFromStore.length;
 
@@ -428,7 +436,11 @@ export const RecodeDifferentVariablesModal: FC<
         // Apply recode rules to create new data
         const newData = data.map((value) => {
           const safeValue = value === null ? "" : value;
-          let recodedValue = evaluateValueWithRules(safeValue, recodeRules);
+          let recodedValue = evaluateValueWithRules(
+            safeValue,
+            recodeRules,
+            getRecodeType(mapping.sourceVariable.type)
+          );
 
           if (effectiveOutputType === "STRING") {
             return recodedValue === "" ? "" : String(recodedValue);
@@ -458,28 +470,6 @@ export const RecodeDifferentVariablesModal: FC<
           });
         });
 
-        // Tipe variable baru juga ikut effectiveOutputType
-        const newVariable: Partial<Variable> = {
-          name: mapping.targetName,
-          label: mapping.targetLabel,
-          type: effectiveOutputType, // gunakan tipe efektif
-          columnIndex: currentColumnIndex,
-          width: effectiveOutputType === "STRING" ? stringWidth : 8,
-          decimals: 2,
-          values: [],
-          missing: {
-            discrete: [],
-            range: { min: undefined, max: undefined },
-          },
-          columns: 100,
-          align: effectiveOutputType === "STRING" ? "left" : ("right" as const),
-          measure: (effectiveOutputType === "NUMERIC"
-            ? "scale"
-            : "nominal") as Variable["measure"],
-          role: "input" as Variable["role"],
-        };
-        newVariablesToAdd.push(newVariable);
-        currentColumnIndex++;
         columnOffset++;
       }
 
@@ -682,6 +672,7 @@ export const RecodeDifferentVariablesModal: FC<
             setRecodeRules={setRecodeRules}
             onCloseSetup={() => {}}
             variableCount={variablesToRecode.length}
+            outputType={outputType}
           />
         </TabsContent>
       </Tabs>

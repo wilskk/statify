@@ -7,11 +7,11 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
 import { useTimeHook } from "../timeSeriesTimeHook";
-import { useAnalyzeHook } from "./hook/analyzeHook";
-import { useOptionHook } from "./hook/optionHook";
-import VariablesTab from "./VariablesTab";
+import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel/hooks/analyzeHook";
+import { useOptionHook } from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel/hooks/optionHook";
+import VariablesTab from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel/VariablesTab";
 import TimeTab from "../TimeSeriesTimeTab";
-import OptionTab from "./OptionTab";
+import OptionTab from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel/OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 import { DataRow } from "@/types/Data";
 import { toast } from "sonner";
@@ -159,11 +159,6 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
     }, [availableVariables, selectedVariables, saveAsVariable, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
-        if (selectedVariables.length > 0) {
-            setErrorMsg("You may only select one variable.");
-            return;
-        }
-        setErrorMsg(null); // clear error if successful
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setSelectedVariables(prev => {
             if (prev.some(v => v.columnIndex === variable.columnIndex)) {
@@ -307,6 +302,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         disabled={isCalculating}
+                        onClick={() => window.open("https://drive.google.com/file/d/1RkrwpeQQqO3YDJdSKxtcos2fdMax49ML/view?usp=sharing", "_blank")}
                     >
                         Help
                     </Button>

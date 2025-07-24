@@ -30,10 +30,6 @@ pub fn calculate_heteroscedasticity_tests(
     let dep_var_name = config.main.dep_var.clone().unwrap_or_else(|| "Unknown".to_string());
     let design_string = generate_design_string(&design_info);
 
-    if design_info.n_samples == 0 {
-        return Err("No data for main model fitting in heteroscedasticity tests.".to_string());
-    }
-
     // Langkah 2: Buat matriks cross-product (Z'WZ) untuk model utama.
     let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e|
         format!("Failed to create Z'WZ matrix for main model: {}", e)
@@ -81,9 +77,7 @@ pub fn calculate_heteroscedasticity_tests(
                 statistic: f64::NAN,
                 df: 0,
                 p_value: f64::NAN,
-                note: Some(
-                    "BP Test (on Z_pred): Failed to construct aux matrix from predicted values.".to_string()
-                ),
+                note: None,
                 interpretation: Some(
                     "The test could not be performed because the auxiliary matrix, which is based on the model's predicted values, could not be created.".to_string()
                 ),
@@ -99,9 +93,7 @@ pub fn calculate_heteroscedasticity_tests(
                 statistic: f64::NAN,
                 df: 0,
                 p_value: f64::NAN,
-                note: Some(
-                    "Modified BP (N*R-sq on Z_pred): Failed to construct aux matrix.".to_string()
-                ),
+                note: None,
                 interpretation: Some(
                     "The test could not be performed because the auxiliary matrix, which is based on the model's predicted values, could not be created.".to_string()
                 ),
@@ -118,9 +110,7 @@ pub fn calculate_heteroscedasticity_tests(
                 df1: 0,
                 df2: 0,
                 p_value: f64::NAN,
-                note: Some(
-                    "F-Test (on Z_pred): Failed to construct aux matrix from predicted values.".to_string()
-                ),
+                note: None,
                 interpretation: Some(
                     "The test could not be performed because the auxiliary matrix, which is based on the model's predicted values, could not be created.".to_string()
                 ),
@@ -128,27 +118,19 @@ pub fn calculate_heteroscedasticity_tests(
         }
     }
 
-    // Langkah 8: Tambahkan metadata ke catatan hasil untuk konsumsi di frontend.
-    let note_suffix = format!("\nDependent Variable:{}.\n{}.", dep_var_name, design_string);
+    // Langkah 8: Tambahkan metadata ke catatan
+    let note_string = format!("Dependent Variable: {}. {}", dep_var_name, design_string);
     if let Some(ref mut test) = white_test_result {
-        if let Some(note) = test.note.as_mut() {
-            note.push_str(&note_suffix);
-        }
+        test.note = Some(note_string.clone());
     }
     if let Some(ref mut test) = bp_test_result {
-        if let Some(note) = test.note.as_mut() {
-            note.push_str(&note_suffix);
-        }
+        test.note = Some(note_string.clone());
     }
     if let Some(ref mut test) = modified_bp_test_result {
-        if let Some(note) = test.note.as_mut() {
-            note.push_str(&note_suffix);
-        }
+        test.note = Some(note_string.clone());
     }
     if let Some(ref mut test) = f_test_kb_result {
-        if let Some(note) = test.note.as_mut() {
-            note.push_str(&note_suffix);
-        }
+        test.note = Some(note_string.clone());
     }
 
     Ok(HeteroscedasticityTests {
@@ -406,9 +388,7 @@ fn calculate_white_test(
             statistic: 0.0,
             df: 0,
             p_value: 1.0,
-            note: Some(
-                "White test not applicable: No non-intercept predictors in the main model.".to_string()
-            ),
+            note: None,
             interpretation: Some(
                 "The White test requires at least one non-intercept predictor in the model to check for heteroscedasticity. Since none were found, the test was not performed.".to_string()
             ),
@@ -423,9 +403,7 @@ fn calculate_white_test(
                     statistic: 0.0,
                     df: 0,
                     p_value: 1.0,
-                    note: Some(
-                        "White test: Auxiliary model only contains an intercept.".to_string()
-                    ),
+                    note: None,
                     interpretation: Some(
                         "The auxiliary regression for the White test has no predictors to test, so the test statistic is zero and the null hypothesis of homoscedasticity is not rejected.".to_string()
                     ),
@@ -446,9 +424,7 @@ fn calculate_white_test(
                             statistic: lm_statistic_white,
                             df: df_chi_sq_white,
                             p_value: p_value_white,
-                            note: Some(
-                                "Auxiliary regression on original predictors, their squares, and cross-products.".to_string()
-                            ),
+                            note: None,
                             interpretation: Some(
                                 "A significant p-value (< 0.05) suggests that the variance of the errors is not constant, violating the assumption of homoscedasticity.".to_string()
                             ),
@@ -458,33 +434,31 @@ fn calculate_white_test(
                             statistic: 0.0,
                             df: 0,
                             p_value: 1.0,
-                            note: Some(
-                                "White test: No non-intercept regressors in aux model.".to_string()
-                            ),
+                            note: None,
                             interpretation: Some(
                                 "The auxiliary regression for the White test has no predictors to test, so the test statistic is zero and the null hypothesis of homoscedasticity is not rejected.".to_string()
                             ),
                         })
                     }
                 }
-                Err(e) =>
+                Err(_) =>
                     Some(WhiteTest {
                         statistic: f64::NAN,
                         df: 0,
                         p_value: f64::NAN,
-                        note: Some(format!("White test aux regression failed: {}", e)),
+                        note: None,
                         interpretation: Some(
                             "The White test could not be performed due to an error in the auxiliary regression.".to_string()
                         ),
                     }),
             }
         }
-        Err(e) =>
+        Err(_) =>
             Some(WhiteTest {
                 statistic: f64::NAN,
                 df: 0,
                 p_value: f64::NAN,
-                note: Some(format!("Failed to create White test aux matrix: {}", e)),
+                note: None,
                 interpretation: Some(
                     "The White test could not be performed because the auxiliary design matrix could not be created.".to_string()
                 ),
@@ -516,9 +490,7 @@ fn calculate_bp_test(
             statistic: 0.0,
             df: 0,
             p_value: 1.0,
-            note: Some(
-                "BP Test (on Z_pred): Aux model (intercept, y_hat) has < 2 distinct columns.".to_string()
-            ),
+            note: None,
             interpretation: Some(
                 "The auxiliary model for the Breusch-Pagan test requires at least two distinct columns (intercept and predicted values). As this condition was not met, the test was not performed.".to_string()
             ),
@@ -540,9 +512,7 @@ fn calculate_bp_test(
                     statistic: f64::NAN,
                     df: k_total_aux.saturating_sub(1),
                     p_value: f64::NAN,
-                    note: Some(
-                        "BP Test: Main model sigma^2 (MLE) is zero or NaN. Test cannot be computed.".to_string()
-                    ),
+                    note: None,
                     interpretation: Some(
                         "The test could not be computed because the estimated error variance from the main model was zero or not a number, which prevents the calculation of the test statistic.".to_string()
                     ),
@@ -561,9 +531,7 @@ fn calculate_bp_test(
                     statistic: bp_statistic_val,
                     df: df_chi_sq_bp_val,
                     p_value: p_value_bp_val,
-                    note: Some(
-                        "Breusch-Pagan test. Auxiliary regression on an intercept and predicted values.".to_string()
-                    ),
+                    note: None,
                     interpretation: Some(
                         "A significant p-value (< 0.05) suggests that the variance of the errors is related to the predicted values, indicating heteroscedasticity.".to_string()
                     ),
@@ -573,21 +541,19 @@ fn calculate_bp_test(
                     statistic: 0.0,
                     df: 0,
                     p_value: 1.0,
-                    note: Some(
-                        "BP Test: No non-intercept regressors in auxiliary model.".to_string()
-                    ),
+                    note: None,
                     interpretation: Some(
                         "The auxiliary regression for the Breusch-Pagan test has no predictors to test, so the test statistic is zero and the null hypothesis of homoscedasticity is not rejected.".to_string()
                     ),
                 })
             }
         }
-        Err(e) =>
+        Err(_) =>
             Some(BPTest {
                 statistic: f64::NAN,
                 df: 0,
                 p_value: f64::NAN,
-                note: Some(format!("BP test auxiliary regression failed: {}", e)),
+                note: None,
                 interpretation: Some(
                     "The Breusch-Pagan test could not be performed due to an error in the auxiliary regression.".to_string()
                 ),
@@ -616,9 +582,7 @@ fn calculate_modified_bp_test(
             statistic: 0.0,
             df: 0,
             p_value: 1.0,
-            note: Some(
-                "ModBP (N*R-sq on Z_pred): Aux model (intercept,y_hat) has < 2 distinct columns.".to_string()
-            ),
+            note: None,
             interpretation: Some(
                 "The auxiliary model for the Modified Breusch-Pagan test requires at least two distinct columns (intercept and predicted values). As this condition was not met, the test was not performed.".to_string()
             ),
@@ -639,9 +603,7 @@ fn calculate_modified_bp_test(
                     statistic: lm_statistic_modbp,
                     df: df_chi_sq_modbp,
                     p_value: p_value_modbp,
-                    note: Some(
-                        "Modified Breusch-Pagan (N*R-sq). Auxiliary regression on an intercept and predicted values.".to_string()
-                    ),
+                    note: None,
                     interpretation: Some(
                         "This test is robust to non-normal errors. A significant p-value (< 0.05) suggests that the variance of the errors is related to the predicted values, indicating heteroscedasticity.".to_string()
                     ),
@@ -651,21 +613,19 @@ fn calculate_modified_bp_test(
                     statistic: 0.0,
                     df: 0,
                     p_value: 1.0,
-                    note: Some(
-                        "Modified BP Test: No non-intercept terms in auxiliary model.".to_string()
-                    ),
+                    note: None,
                     interpretation: Some(
                         "The auxiliary regression for the Modified Breusch-Pagan test has no predictors to test, so the test statistic is zero and the null hypothesis of homoscedasticity is not rejected.".to_string()
                     ),
                 })
             }
         }
-        Err(e) =>
+        Err(_) =>
             Some(ModifiedBPTest {
                 statistic: f64::NAN,
                 df: 0,
                 p_value: f64::NAN,
-                note: Some(format!("Modified BP (N*R-sq) auxiliary regression failed: {}", e)),
+                note: None,
                 interpretation: Some(
                     "The Modified Breusch-Pagan test could not be performed due to an error in the auxiliary regression.".to_string()
                 ),
@@ -691,9 +651,7 @@ fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -
             df1: 0,
             df2: n_obs.saturating_sub(z_pred.ncols()),
             p_value: f64::NAN,
-            note: Some(
-                "F-Test (on Z_pred): Aux model (intercept,y_hat) has < 2 distinct columns.".to_string()
-            ),
+            note: None,
             interpretation: Some(
                 "The auxiliary model for the F-test requires at least two distinct columns (intercept and predicted values). As this condition was not met, the test was not performed.".to_string()
             ),
@@ -715,9 +673,7 @@ fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -
                     df1: df1_f,
                     df2: df2_f,
                     p_value: p_value_f_val,
-                    note: Some(
-                        "F-test. Auxiliary regression on an intercept and predicted values.".to_string()
-                    ),
+                    note: None,
                     interpretation: Some(
                         "This test is an alternative to the Chi-square based tests and may perform better in small samples. A significant p-value (< 0.05) suggests heteroscedasticity.".to_string()
                     ),
@@ -728,20 +684,20 @@ fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -
                     df1: df1_f,
                     df2: df2_f,
                     p_value: f64::NAN,
-                    note: Some("F-Test: Degrees of freedom for the test are invalid.".to_string()),
+                    note: None,
                     interpretation: Some(
                         "The F-test could not be performed because the degrees of freedom were invalid (e.g., zero or negative), which can happen with very small sample sizes.".to_string()
                     ),
                 })
             }
         }
-        Err(e) =>
+        Err(_) =>
             Some(FTest {
                 statistic: f64::NAN,
                 df1: 0,
                 df2: 0,
                 p_value: f64::NAN,
-                note: Some(format!("F-test auxiliary regression failed: {}", e)),
+                note: None,
                 interpretation: Some(
                     "The F-test could not be performed due to an error in the auxiliary regression.".to_string()
                 ),

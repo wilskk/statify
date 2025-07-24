@@ -98,6 +98,12 @@ const RecodeSameVariablesContent: React.FC<RecodeSameVariablesContentProps> = ({
             <p className="text-sm text-muted-foreground">
               Current variable type:{" "}
               <span className="font-medium">{recodeListType}</span>
+              {recodeListType && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  (Output will remain {recodeListType.toLowerCase()})
+                </span>
+              )}
             </p>
           </div>
         )}
@@ -109,6 +115,7 @@ const RecodeSameVariablesContent: React.FC<RecodeSameVariablesContentProps> = ({
             setRecodeRules={setRecodeRules}
             onCloseSetup={handleHideOldNewSetup}
             variableCount={variablesToRecode.length}
+            outputType={recodeListType || undefined} // Di recode same variables, output type sama dengan recodeListType
           />
         ) : (
           <RecodeVariablesTab
@@ -628,6 +635,7 @@ export const RecodeSameVariablesModal: React.FC<
             setRecodeRules={setRecodeRules}
             onCloseSetup={() => {}}
             variableCount={variablesToRecode.length}
+            outputType={recodeListType || undefined} // Di recode same variables, output type sama dengan recodeListType
           />
         </TabsContent>
       </Tabs>

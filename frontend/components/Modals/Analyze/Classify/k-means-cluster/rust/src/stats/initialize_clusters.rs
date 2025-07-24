@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::models::{ config::ClusterConfig, result::{ InitialClusterCenters, ProcessedData } };
+use crate::models::{ config::KMeansConfig, result::{ InitialClusterCenters, ProcessedData } };
 
 use super::core::*;
 
@@ -13,7 +13,7 @@ use super::core::*;
 ///    pusat-pusat yang lebih tersebar dan representatif.
 pub fn initialize_clusters(
     data: &ProcessedData,
-    config: &ClusterConfig
+    config: &KMeansConfig
 ) -> Result<InitialClusterCenters, String> {
     let num_clusters = config.main.cluster as usize;
 

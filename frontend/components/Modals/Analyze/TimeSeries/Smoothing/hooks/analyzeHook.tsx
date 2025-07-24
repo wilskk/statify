@@ -78,8 +78,8 @@ export function useAnalyzeHook(
     const prepareData = () => {
         // Ambil variabel data yang dipilih user (biasanya 1 variabel)
         const dataVarDef = storeVariables[0];
-        if (!dataVarDef) throw new Error("Selected variable not found");
-        if (dataVarDef.type !== "NUMERIC") throw new Error("Selected variable is not numeric");
+        // if (!dataVarDef) throw new Error("Selected variable not found.");
+        if (dataVarDef.type !== "NUMERIC") throw new Error("Selected variable is not numeric.");
 
         const dataValues = data.map((row: any) => {
             const val = row[dataVarDef.columnIndex];
@@ -109,7 +109,7 @@ export function useAnalyzeHook(
                 throw new Error("Data length must be at least 20 observations.");
             }
             if (selectedMethod[0] === "dma" && dataValues.length < parameters[0] * 3) {
-                throw new Error(`Data length is too short for ${parameters[0]} Double Moving Average.`);
+                throw new Error(`Data length is too short for distance ${parameters[0]} Double Moving Average.`);
             }
             
             // Jalankan smoothing

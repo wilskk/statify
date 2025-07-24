@@ -30,29 +30,6 @@ pub fn parse_parameter_name(param_str: &str) -> HashMap<String, String> {
     factors
 }
 
-/// Fungsi pembantu untuk menemukan posisi kurung tutup ')' yang sesuai dengan
-/// kurung buka '(' pada posisi yang diberikan dalam sebuah string.
-pub fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
-    let chars: Vec<char> = text.chars().collect();
-    let mut depth = 0;
-
-    for i in open_pos..chars.len() {
-        match chars[i] {
-            '(' => {
-                depth += 1;
-            }
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(i);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
-}
-
 /// Mengambil semua level unik untuk sebuah faktor dari data analisis.
 ///
 /// # Arguments

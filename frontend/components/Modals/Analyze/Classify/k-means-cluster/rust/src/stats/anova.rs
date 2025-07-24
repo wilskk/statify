@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::models::{ config::ClusterConfig, result::{ ANOVACluster, ANOVATable, ProcessedData } };
+use crate::models::{ config::KMeansConfig, result::{ ANOVACluster, ANOVATable, ProcessedData } };
 
 use super::core::*;
 
@@ -11,7 +11,7 @@ use super::core::*;
  * Tujuannya adalah untuk menilai seberapa baik setiap variabel dapat membedakan (memisahkan) antar cluster yang terbentuk.
  * Fungsi ini menghasilkan tabel ANOVA yang merangkum statistik penting untuk setiap variabel.
  */
-pub fn calculate_anova(data: &ProcessedData, config: &ClusterConfig) -> Result<ANOVATable, String> {
+pub fn calculate_anova(data: &ProcessedData, config: &KMeansConfig) -> Result<ANOVATable, String> {
     // Mendapatkan jumlah cluster dari konfigurasi.
     let num_clusters = config.main.cluster as usize;
 
