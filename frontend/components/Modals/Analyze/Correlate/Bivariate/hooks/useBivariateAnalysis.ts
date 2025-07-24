@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
@@ -30,14 +30,21 @@ export const useBivariateAnalysis = ({
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { data: analysisData } = useAnalysisData();
 
-    const options = {
+    const options = useMemo(() => ({
         testOfSignificance,
         flagSignificantCorrelations,
         showOnlyTheLowerTriangle,
         showDiagonal,
         statisticsOptions,
         partialCorrelationKendallsTauB
-    };
+    }), [
+        testOfSignificance,
+        flagSignificantCorrelations,
+        showOnlyTheLowerTriangle,
+        showDiagonal,
+        statisticsOptions,
+        partialCorrelationKendallsTauB
+    ]);
 
     const [isCalculating, setIsCalculating] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -298,7 +305,7 @@ export const useBivariateAnalysis = ({
                 workerRef.current = null;
             }
         };
-    }, [testVariables, correlationCoefficient, testOfSignificance, flagSignificantCorrelations, showOnlyTheLowerTriangle, showDiagonal, statisticsOptions, partialCorrelationKendallsTauB, addLog, addAnalytic, addStatistic, onClose, analysisData]);
+    }, [testVariables, correlationCoefficient, testOfSignificance, flagSignificantCorrelations, showOnlyTheLowerTriangle, showDiagonal, statisticsOptions, partialCorrelationKendallsTauB, options, addLog, addAnalytic, addStatistic, onClose, analysisData]);
 
     const cancelCalculation = useCallback(() => {
         if (workerRef.current) {

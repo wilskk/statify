@@ -13,7 +13,7 @@ export const useTestSettings = ({
   const resetTestSettings = useCallback(() => {
     setTestValue(initialTestValue);
     setEstimateEffectSize(initialEstimateEffectSize);
-  }, []);
+  }, [initialTestValue, initialEstimateEffectSize]);
 
   return {
     testValue,
