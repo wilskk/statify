@@ -238,7 +238,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             );
         }
         return null;
-    }, [defineGroups, group1, group2, cutPointValue, estimateEffectSize, setDefineGroups, setGroup1, setGroup2, setCutPointValue, setEstimateEffectSize]);
+    }, [defineGroups, group1, group2, cutPointValue, isTourElementActive, tourActive,estimateEffectSize, setDefineGroups, setGroup1, setGroup2, setCutPointValue, setEstimateEffectSize]);
 
     // --- Render the manager component and error message ---
     return (

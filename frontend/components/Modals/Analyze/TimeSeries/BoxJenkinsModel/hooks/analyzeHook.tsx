@@ -4,7 +4,7 @@ import { useResultStore } from "@/stores/useResultStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
-import { handleBoxJenkinsModel } from "../analyze/analyze";
+import { handleBoxJenkinsModel } from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel/analyze/analyze";
 
 export function useAnalyzeHook(
     storeVariables: Variable[],

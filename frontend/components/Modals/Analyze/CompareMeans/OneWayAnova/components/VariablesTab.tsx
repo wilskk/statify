@@ -150,7 +150,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             );
         }
         return null;
-    }, [estimateEffectSize, setEstimateEffectSize]);
+    }, [estimateEffectSize, setEstimateEffectSize, tourActive, isTourElementActive]);
 
     // --- Render the manager component and error message ---
     return (

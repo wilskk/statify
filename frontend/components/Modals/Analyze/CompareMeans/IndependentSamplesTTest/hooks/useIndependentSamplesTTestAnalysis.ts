@@ -268,7 +268,7 @@ export const useIndependentSamplesTTestAnalysis = ({
                 workerRef.current = null;
             }
         };
-    }, [testVariables, groupingVariable, defineGroups, group1, group2, cutPointValue, estimateEffectSize, onClose]);
+    }, [testVariables, groupingVariable, defineGroups, group1, group2, cutPointValue, estimateEffectSize, addLog, addStatistic, addAnalytic, analysisData, onClose]);
 
     const cancelCalculation = useCallback(() => {
         if (workerRef.current) {

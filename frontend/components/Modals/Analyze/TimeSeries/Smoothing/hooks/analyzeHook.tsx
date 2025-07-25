@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { handleSmoothing } from "../analyze/analyze";
+import { handleSmoothing } from "@/components/Modals/Analyze/TimeSeries/Smoothing/analyze/analyze";
 import { useResultStore } from "@/stores/useResultStore"; // Untuk log dan statistik
 import { useVariableStore } from "@/stores/useVariableStore"; // Untuk akses variabel
 import { useDataStore } from "@/stores/useDataStore";
@@ -58,19 +58,19 @@ export function useAnalyzeHook(
             return "Double Exponential Smoothing alpha parameter must be between 0 and 1.";
         }
         if (selectedMethod[0] === "holt" && (parameters[0] < 0 || parameters[0] > 1)) {
-            return "Holt's method alpha parameter must be between 0 and 1.";
+            return "Holt's Method alpha parameter must be between 0 and 1.";
         }
         if (selectedMethod[0] === "holt" && (parameters[1] < 0 || parameters[1] > 1)) {
-            return "Holt's method beta parameter must be between 0 and 1.";
+            return "Holt's Method beta parameter must be between 0 and 1.";
         }
         if (selectedMethod[0] === "winter" && (parameters[0] < 0 || parameters[0] > 1)) {
-            return "Winter's method alpha parameter must be between 0 and 1.";
+            return "Winter's Method alpha parameter must be between 0 and 1.";
         }
         if (selectedMethod[0] === "winter" && (parameters[1] < 0 || parameters[1] > 1)) {
-            return "Winter's method beta parameter must be between 0 and 1.";
+            return "Winter's Method beta parameter must be between 0 and 1.";
         }
         if (selectedMethod[0] === "winter" && (parameters[2] < 0 || parameters[2] > 1)) {
-            return "Winter's method gamma parameter must be between 0 and 1.";
+            return "Winter's Method gamma parameter must be between 0 and 1.";
         }
         return null;
     };

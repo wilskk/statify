@@ -380,7 +380,7 @@ export const useOneWayAnovaAnalysis = ({
                 workerRef.current = null;
             }
         };
-    }, [testVariables, factorVariable, estimateEffectSize, equalVariancesAssumed, statisticsOptions, onClose]);
+    }, [testVariables, factorVariable, estimateEffectSize, equalVariancesAssumed, statisticsOptions, addLog, addStatistic, addAnalytic, analysisData, onClose]);
 
     const cancelCalculation = useCallback(() => {
         if (workerRef.current) {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { InputRow } from "./TimeSeriesInput";
+import { InputRow } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesInput";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 
@@ -26,7 +26,7 @@ const periods: PeriodOption[] = [
 
 export function useTimeHook(
 ) {
-    const { getTypeDate, getYear, getMonth, getDay, getHour, getMaximumDay, getDayName, setTypeDate, setYear, setMonth, setDay, setHour } = useTimeSeriesStore();
+    const { getTypeDate, getYear, getMonth, getDay, getHour, getMaximumDay, setTypeDate, setYear, setMonth, setDay, setHour } = useTimeSeriesStore();
     const [year, setYearState] = useState<number>(getYear());
     const [month, setMonthState] = useState<number>(getMonth());
     const [day, setDayState] = useState<number>(getDay());

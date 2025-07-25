@@ -41,7 +41,7 @@ export const useTestSettings = ({
         setShowDiagonal(initialShowDiagonal);
         setPartialCorrelationKendallsTauB(initialPartialCorrelationKendallsTauB);
         setStatisticsOptions(initialStatisticsOptions);
-    }, [initialCorrelationCoefficient, initialTestOfSignificance, initialFlagSignificantCorrelations, initialShowOnlyTheLowerTriangle, initialShowDiagonal, initialStatisticsOptions]);
+    }, [initialCorrelationCoefficient, initialTestOfSignificance, initialFlagSignificantCorrelations, initialShowOnlyTheLowerTriangle, initialShowDiagonal, initialStatisticsOptions, initialPartialCorrelationKendallsTauB]);
     
     return {
         correlationCoefficient,

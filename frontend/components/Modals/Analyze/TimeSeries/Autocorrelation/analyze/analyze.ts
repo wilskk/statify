@@ -1,4 +1,4 @@
-import init, {Autocorrelation} from '../../wasm/pkg/wasm.js';
+import init, {Autocorrelation} from '@/components/Modals/Analyze/TimeSeries/wasm/pkg/wasm';
 
 export async function handleAutocorrelation(
     data: (number)[], 
