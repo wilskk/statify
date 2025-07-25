@@ -23,7 +23,6 @@ const createMockVar = (type: "NUMERIC" | "STRING" = "NUMERIC"): Variable => ({
 
 const periodNotDated = ["0", "Not Dated"];
 const periodMonthly = ["12", "Years-Months"];
-
 const dataEmpty: any[][] = [];
 const dataBelow20Obs = Array.from({ length: 5 }, () => [3]);
 const data25Obs = Array.from({ length: 25 }, () => [3]);
@@ -41,11 +40,9 @@ const runAnalyzeError = async (selectedMethod: string[], parameters: number[], p
             jest.fn()
         )
     );
-
     await act(async () => {
         await result.current.handleAnalyzes();
     });
-
     return result;
 };
 
@@ -186,7 +183,6 @@ const assertStatistic = (methodCode: string, seriesLength: string = "25") => {
     const call = mockAddStatistic.mock.calls.find(
         ([, stat]) => stat?.title === 'Description Table'
     );
-
     expect(call).toBeDefined();
     expect(call[1].components).toBe('Description Table');
     expect(call[1].output_data.tables[0].rows).toEqual(
