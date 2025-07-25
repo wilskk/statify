@@ -33,18 +33,6 @@ export function useAnalyzeHook(
         if (selectedPeriod[1] === "Not Dated") {
             return "Please select another time specification.";
         } 
-        if ((getDayName() === "Saturday" || getDayName() === "Sunday") && getTypeDate() === "wwd5") {
-            return "5 Work days only available on weekdays (Monday to Friday).";
-        }
-        if (getDayName() === "Sunday" && getTypeDate() === "wwd6") {
-            return "6 Work days only available on weekdays (Monday to Saturday).";
-        }
-        if ((getHour() < 8 || getHour() > 15) && getTypeDate() === "dwh") {
-            return "Work hours only available between 8:00 and 15:00."; 
-        }
-        if (getHour() < 0 || getHour() > 23) {
-            return "Hour must be between 0 and 23.";
-        }
         if (selectedMethod[0] === "sma" && (parameters[0] < 2 || parameters[0] > 11)) {
             return "Simple Moving Average period must be between 2 and 11.";
         }
