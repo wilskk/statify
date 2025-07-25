@@ -415,13 +415,13 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                             {/* Common Expression Examples */}
                             <div className="border rounded-md p-2 bg-muted/50 flex-grow">
                                 <Label className="mb-1 block text-sm">Examples:</Label>
-                                <div className="overflow-hidden">
+                                <div>
                                     <ScrollArea className="h-[60px] w-full">
                                         <div className="space-y-1">
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 text-sm justify-start px-2 font-mono w-full" 
+                                                className="h-auto text-left text-sm justify-start px-2 font-mono w-full whitespace-normal" 
                                                 onClick={() => setCondition("age > 25")}
                                             >
                                                 age {">"} 25
@@ -429,7 +429,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 text-sm justify-start px-2 font-mono w-full"
+                                                className="h-auto text-left text-sm justify-start px-2 font-mono w-full whitespace-normal"
                                                 onClick={() => setCondition("income >= 50000 & education > 12")}
                                             >
                                                 income {">="} 50000 & education {">"} 12
@@ -437,7 +437,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 text-sm justify-start px-2 font-mono w-full"
+                                                className="h-auto text-left text-sm justify-start px-2 font-mono w-full whitespace-normal"
                                                 onClick={() => setCondition("gender == \"F\" | gender == \"f\"")}
                                             >
                                                 gender == &quot;F&quot; | gender == &quot;f&quot;
