@@ -452,6 +452,7 @@ describe("KMeansCluster Analysis Error Handling", () => {
         } catch (e: any) {
             // Expected to throw
         }
+        
         expect(runWasmAnalysis).toHaveBeenCalled();
     });
 });

@@ -78,7 +78,6 @@ pub fn calculate_parameter_estimates(
     let mse = if df_error_val > 0.0 { rss / df_error_val } else { f64::NAN };
     let mut estimates = Vec::new();
     let sig_level = config.options.sig_level;
-    let sig_level_opt = Some(sig_level);
 
     // Langkah 4: Menghitung statistik untuk setiap parameter
     // Mendapatkan semua nama parameter yang akan diestimasi, diurutkan untuk konsistensi.
@@ -172,7 +171,7 @@ pub fn calculate_parameter_estimates(
                 let t_crit = if df_error_usize == 0 {
                     f64::NAN
                 } else {
-                    calculate_t_critical(sig_level_opt, df_error_usize)
+                    calculate_t_critical(Some(sig_level), df_error_usize)
                 };
 
                 // Interval Kepercayaan (Confidence Interval) untuk beta:
@@ -215,7 +214,7 @@ pub fn calculate_parameter_estimates(
                     let obs_power = if t_val.is_nan() || df_error_usize == 0 {
                         f64::NAN
                     } else {
-                        calculate_observed_power_t(t_val.abs(), df_error_usize, sig_level_opt)
+                        calculate_observed_power_t(t_val.abs(), df_error_usize, Some(sig_level))
                     };
                     (non_cent_param, obs_power)
                 } else {
