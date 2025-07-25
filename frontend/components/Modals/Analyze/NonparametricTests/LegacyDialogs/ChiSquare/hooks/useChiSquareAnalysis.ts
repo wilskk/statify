@@ -217,13 +217,13 @@ export const useChiSquareAnalysis = ({
 
                         // Save to database
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "Chi-Square Test" });
+                        const analyticId = await addAnalytic(logId, { title: "NPar Tests" });
                             
                                                     
                         // Add descriptive statistics table
                         if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
                             await addStatistic(analyticId, {
-                                title: "Chi-Square Test",
+                                title: "Descriptive Statistics",
                                 output_data: JSON.stringify({ tables: [formattedDescriptiveStatisticsTable] }),
                                 components: "Descriptive Statistics",
                                 description: ""
@@ -235,7 +235,7 @@ export const useChiSquareAnalysis = ({
                         if (Array.isArray(formattedFrequenciesTable)) {
                             for (const table of formattedFrequenciesTable) {
                                 await addStatistic(analyticId, {
-                                    title: "Chi-Square Test",
+                                    title: "Frequencies",
                                     output_data: JSON.stringify({ tables: [table] }),
                                     components: "Frequencies",
                                     description: ""
@@ -243,7 +243,7 @@ export const useChiSquareAnalysis = ({
                             }
                         } else if (formattedFrequenciesTable) {
                             await addStatistic(analyticId, {
-                                title: "Chi-Square Test",
+                                title: "Frequencies",
                                 output_data: JSON.stringify({ tables: [formattedFrequenciesTable] }),
                                 components: "Frequencies",
                                 description: ""

@@ -206,12 +206,25 @@ class OneSampleTTestCalculator {
      * @returns {Object} Objek hasil yang berisi statistik sampel dan hasil uji.
      */
     getOutput() {
+        this.#initialize();
+        
+        // Check if we have sufficient valid data
+        const hasInsufficientData = this.validData.length === 0 || this.validData.length <= 1;
+        const totalData = this.data.length;
+        const validData = this.validData.length;
+        
         const oneSampleStatistics = this.getOneSampleStatistics();
         const oneSampleTest = this.getOneSampleTest();
         
         return {
             oneSampleStatistics,
-            oneSampleTest
+            oneSampleTest,
+            metadata: {
+                hasInsufficientData,
+                totalData,
+                validData,
+                variableName: this.variable.name
+            }
         };
     }
 }

@@ -795,10 +795,7 @@ fn generate_pairwise_comparisons_table(
             };
 
             // Hitung CI menggunakan alpha yang telah disesuaikan
-            let t_crit_pairwise = calculate_t_critical(
-                Some(alpha_pairwise_sig / 2.0),
-                df_error as usize
-            );
+            let t_crit_pairwise = calculate_t_critical(Some(alpha_pairwise_sig), df_error as usize);
             let ci_width_diff = if !t_crit_pairwise.is_nan() && !std_error_diff.is_nan() {
                 std_error_diff * t_crit_pairwise
             } else {

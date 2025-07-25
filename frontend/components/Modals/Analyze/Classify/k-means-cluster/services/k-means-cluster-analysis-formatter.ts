@@ -39,17 +39,20 @@ export function transformKMeansResult(
         };
 
         // Fill data rows
-        data.initial_centers.centers.forEach((center: any) => {
-            const rowData: any = {
-                rowHeader: [center.variable],
-            };
+        data.initial_centers.centers
+            .sort((a: any, b: any) => a.variable.localeCompare(b.variable))
+            .forEach((center: any) => {
+                const rowData: any = {
+                    rowHeader: [center.variable],
+                };
 
-            center.values.forEach((value: number, index: number) => {
-                rowData[`cluster_${index + 1}`] = formatDisplayNumber(value);
+                center.values.forEach((value: number, index: number) => {
+                    rowData[`cluster_${index + 1}`] =
+                        formatDisplayNumber(value);
+                });
+
+                table.rows.push(rowData);
             });
-
-            table.rows.push(rowData);
-        });
 
         resultJson.tables.push(table);
     }
@@ -184,17 +187,20 @@ export function transformKMeansResult(
         };
 
         // Fill data rows
-        data.final_cluster_centers.centers.forEach((center: any) => {
-            const rowData: any = {
-                rowHeader: [center.variable],
-            };
+        data.final_cluster_centers.centers
+            .sort((a: any, b: any) => a.variable.localeCompare(b.variable))
+            .forEach((center: any) => {
+                const rowData: any = {
+                    rowHeader: [center.variable],
+                };
 
-            center.values.forEach((value: number, index: number) => {
-                rowData[`cluster_${index + 1}`] = formatDisplayNumber(value);
+                center.values.forEach((value: number, index: number) => {
+                    rowData[`cluster_${index + 1}`] =
+                        formatDisplayNumber(value);
+                });
+
+                table.rows.push(rowData);
             });
-
-            table.rows.push(rowData);
-        });
 
         resultJson.tables.push(table);
     }
@@ -269,19 +275,21 @@ export function transformKMeansResult(
         };
 
         // Fill data rows
-        data.anova.clusters.forEach((cluster: any) => {
-            table.rows.push({
-                rowHeader: [cluster.variable],
-                mean_square: formatDisplayNumber(cluster.mean_square),
-                df: formatDisplayNumber(cluster.df),
-                error_mean_square: formatDisplayNumber(
-                    cluster.error_mean_square
-                ),
-                error_df: formatDisplayNumber(cluster.error_df),
-                f: formatDisplayNumber(cluster.f),
-                significance: formatDisplayNumber(cluster.significance),
+        data.anova.clusters
+            .sort((a: any, b: any) => a.variable.localeCompare(b.variable))
+            .forEach((cluster: any) => {
+                table.rows.push({
+                    rowHeader: [cluster.variable],
+                    mean_square: formatDisplayNumber(cluster.mean_square),
+                    df: formatDisplayNumber(cluster.df),
+                    error_mean_square: formatDisplayNumber(
+                        cluster.error_mean_square
+                    ),
+                    error_df: formatDisplayNumber(cluster.error_df),
+                    f: formatDisplayNumber(cluster.f),
+                    significance: formatDisplayNumber(cluster.significance),
+                });
             });
-        });
 
         // Add ANOVA footnote
         table.rows.push({

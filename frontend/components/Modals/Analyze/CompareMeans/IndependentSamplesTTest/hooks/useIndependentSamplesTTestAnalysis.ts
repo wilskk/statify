@@ -36,6 +36,7 @@ export const useIndependentSamplesTTestAnalysis = ({
     const resultsRef = useRef<IndependentSamplesTTestResult[]>([]);
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
+    const insufficientDataVarsRef = useRef<string[]>([]);
     
     const runAnalysis = useCallback(async (): Promise<void> => {
         if (testVariables.length === 0) {
@@ -69,6 +70,7 @@ export const useIndependentSamplesTTestAnalysis = ({
         resultsRef.current = [];
         errorCountRef.current = 0;
         processedCountRef.current = 0;
+        insufficientDataVarsRef.current = [];
 
         const worker = new Worker('/workers/CompareMeans/manager.js', { type: 'module' });
         workerRef.current = worker;
@@ -100,6 +102,12 @@ export const useIndependentSamplesTTestAnalysis = ({
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
+                // Check for metadata about insufficient data
+                if (results.metadata && results.metadata.hasInsufficientData) {
+                    insufficientDataVarsRef.current.push(results.metadata.variableName);
+                    console.warn(`Insufficient valid data for variable: ${results.metadata.variableName}. Total: ${results.metadata.totalData}, Valid: ${results.metadata.validData}`);
+                }
+
                 if (results.groupStatistics) {
                     const { variable, group1, group2 } = results.groupStatistics;
 
@@ -111,12 +119,13 @@ export const useIndependentSamplesTTestAnalysis = ({
                                 group2
                             }
                         });
-                    } else {
-                        console.error(`Error processing group statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for group statistics for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
                     }
+                    // else {
+                    //     console.error(`Error processing group statistics for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for group statistics for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
                 
                 if (results.independentSamplesTest) {
@@ -131,12 +140,13 @@ export const useIndependentSamplesTTestAnalysis = ({
                                 unequalVariances
                             }
                         });
-                    } else {
-                        console.error(`Error processing independent samples test for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for independent samples test for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
                     }
+                    // else {
+                    //     console.error(`Error processing independent samples test for ${variableName}:`, workerError);
+                    //     const errorMsg = `Calculation failed for independent samples test for ${variableName}: ${workerError || 'Unknown error'}`;
+                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                    //     errorCountRef.current += 1;
+                    // }
                 }
 
                 // if (results.independentSamplesEffectSize) {
@@ -164,7 +174,7 @@ export const useIndependentSamplesTTestAnalysis = ({
             processedCountRef.current += 1;
 
             if (processedCountRef.current === testVariables.length) {
-                if (resultsRef.current.length > 0) {
+                // if (resultsRef.current.length > 0) {
                     try {
                         const groupStatistics = resultsRef.current.filter(r => 'group1' in (r.stats as any));
                         const independentSamplesTest = resultsRef.current.filter(r => 'levene' in (r.stats as any));
@@ -176,18 +186,22 @@ export const useIndependentSamplesTTestAnalysis = ({
                             // independentSamplesEffectSize
                         };
 
+                        console.log('results to format', JSON.stringify(results));
+
+
                         // Format tables
                         const formattedGroupStatisticsTable = formatGroupStatisticsTable(results, groupingVariable.label || groupingVariable.name);
                         const formattedIndependentSamplesTestTable = formatIndependentSamplesTestTable(results);
                         // const formattedIndependentSamplesEffectSizeTable = formatEffectSizeTable(results);
+                        
 
                         const variableNames = testVariables.map(v => v.name);
                         let logMsg = `T-TEST`;
 
                         if (defineGroups.useSpecifiedValues) {
-                            logMsg += `GROUPS=${groupingVariable.name}(${group1} ${group2}) {${variableNames.join(" ")}}`;
+                            logMsg += ` GROUPS=${groupingVariable.name}(${group1} ${group2}) {VARIABLES=${variableNames.join(" ")}}`;
                         } else {
-                            logMsg += `GROUPS=${groupingVariable.name}(${cutPointValue}) {${variableNames.join(" ")}}`;
+                            logMsg += ` GROUPS=${groupingVariable.name}(${cutPointValue}) {VARIABLES=${variableNames.join(" ")}}`;
                         }
 
                         // Only add tests that are enabled
@@ -200,23 +214,32 @@ export const useIndependentSamplesTTestAnalysis = ({
                         logMsg += `{CRITERIA=0.95}`;
 
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "T-Test", note: "" });
+
+                                  // Prepare note about insufficient data if needed
+                        let note = "";
+                        if (insufficientDataVarsRef.current.length > 0) {
+                            note = `Note: The following variables did not have sufficient valid data for analysis: ${insufficientDataVarsRef.current.join(', ')}. These variables require at least two valid numeric values in each group for T-Test calculation.`;
+                        }
+
+                        const analyticId = await addAnalytic(logId, { title: "T-Test", note: note || undefined });
 
                         // Add group statistics table
                         await addStatistic(analyticId, {
-                            title: "Independent Samples T-Test",
+                            title: "Group Statistics",
                             output_data: JSON.stringify({ tables: [formattedGroupStatisticsTable] }),
                             components: "Group Statistics",
                             description: ""
                         });
 
                         // Add test statistics table
-                        await addStatistic(analyticId, {
-                            title: "Independent Samples T-Test",
-                            output_data: JSON.stringify({ tables: [formattedIndependentSamplesTestTable] }),
-                            components: "Independent Samples Test",
-                            description: ""
-                        });
+                        if (insufficientDataVarsRef.current.length < testVariables.length) {
+                            await addStatistic(analyticId, {
+                                title: "Independent Samples Test",
+                                output_data: JSON.stringify({ tables: [formattedIndependentSamplesTestTable] }),
+                                    components: "Independent Samples Test",
+                                    description: ""
+                                });
+                        }
 
                         if (onClose) {
                             onClose();
@@ -225,7 +248,7 @@ export const useIndependentSamplesTTestAnalysis = ({
                         console.error("Error saving results:", err);
                         setErrorMsg("Error saving results.");
                     }
-                }
+                // }
 
                 setIsCalculating(false);
                 worker.terminate();

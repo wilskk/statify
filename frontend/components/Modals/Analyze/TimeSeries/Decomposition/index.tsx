@@ -87,7 +87,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                     setPrevDataRef(savedData.prevDataRef);
                     if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
                         // Clear saved state if previous data doesn't match current
-                        await clearFormData("Autocorrelation");
+                        await clearFormData("Decomposition");
                         setAvailableVariables(filteredVariables);
                         setSelectedVariables([]);
                         return;

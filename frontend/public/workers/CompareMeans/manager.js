@@ -32,7 +32,7 @@ const calculators = {
  * @param {MessageEvent} event - Event pesan yang diterima.
  */
 onmessage = (event) => {
-    const { analysisType, variable, variable1, variable2, data, data1, data2, factorVariable, factorData, groupingVariable, groupingData, options } = event.data;
+    const { analysisType, pair, variable, variable1, variable2, data, data1, data2, factorVariable, factorData, groupingVariable, groupingData, options } = event.data;
     
     // --- Start of Debugging ---
     console.log(`[Worker] Received analysis request: ${analysisType}`);
@@ -79,6 +79,7 @@ onmessage = (event) => {
                 console.log('[Worker] One Sample Test Results:', JSON.stringify(calculator.getOutput().oneSampleTest));
                 results.oneSampleStatistics = calculator.getOutput().oneSampleStatistics;
                 results.oneSampleTest = calculator.getOutput().oneSampleTest;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'independentSamplesTTest') {
                 calculator = new CalculatorClass({ 
                     variable,
@@ -93,10 +94,12 @@ onmessage = (event) => {
                 console.log('[Worker] Independent Samples Test Results:', JSON.stringify(calculator.getOutput().independentSamplesTest));
                 results.groupStatistics = calculator.getOutput().groupStatistics;
                 results.independentSamplesTest = calculator.getOutput().independentSamplesTest;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'pairedSamplesTTest') {
                 calculator = new CalculatorClass({ 
+                    pair,
                     variable1, 
-                    variable2, 
+                    variable2,
                     data1, 
                     data2, 
                     options 
@@ -109,6 +112,7 @@ onmessage = (event) => {
                 results.pairedSamplesStatistics = calculator.getOutput().pairedSamplesStatistics;
                 results.pairedSamplesCorrelation = calculator.getOutput().pairedSamplesCorrelation;
                 results.pairedSamplesTest = calculator.getOutput().pairedSamplesTest;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'oneWayAnova') {
                 calculator = new CalculatorClass({ 
                     variable, 
@@ -128,6 +132,7 @@ onmessage = (event) => {
                 results.homogeneityOfVariances = calculator.getOutput().homogeneityOfVariances;
                 results.multipleComparisons = calculator.getOutput().multipleComparisons;
                 results.homogeneousSubsets = calculator.getOutput().homogeneousSubsets;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'effectSize') {
                 calculator = new CalculatorClass({ 
                     variable, 
