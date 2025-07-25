@@ -80,7 +80,6 @@ export const useOneSampleTTestAnalysis = ({
     });
 
     worker.onmessage = async (event) => {
-      console.log('event.data', JSON.stringify(event.data));
       const { variableName, results, status, error: workerError } = event.data;
 
       if (status === 'success' && results) {
@@ -93,7 +92,7 @@ export const useOneSampleTTestAnalysis = ({
         if (results.oneSampleStatistics) {
           const { variable, N, Mean, StdDev, SEMean } = results.oneSampleStatistics;
 
-          if (variable && N && Mean && StdDev && SEMean) {
+          if (variable && N && Mean !== undefined && StdDev !== undefined && SEMean !== undefined) {
             resultsRef.current.push({
               variable,
               stats: {
@@ -104,18 +103,13 @@ export const useOneSampleTTestAnalysis = ({
               }
             });
           }
-          // else {
-          //   console.error(`Error processing oneSampleStatistics for ${variableName}:`, workerError);
-          //   const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-          //   setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-          //   errorCountRef.current += 1;
-          // }
         }
 
         if (results.oneSampleTest) {
           const { variable, T, DF, PValue, MeanDifference, Lower, Upper } = results.oneSampleTest;
           
-          if (variable && T && DF && PValue !== null && MeanDifference && Lower && Upper) {
+          if (variable && T !== undefined && DF !== undefined && PValue !== undefined && 
+              MeanDifference !== undefined && Lower !== undefined && Upper !== undefined) {
             resultsRef.current.push({
               variable,
               testValue,
@@ -129,12 +123,6 @@ export const useOneSampleTTestAnalysis = ({
               }
             });
           }
-          // else {
-          //   console.error(`Error processing oneSampleTest for ${variableName}:`, workerError);
-          //   const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-          //   setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-          //   errorCountRef.current += 1;
-          // }
         }
       } else {
         console.error(`Error processing ${variableName}:`, workerError);
@@ -175,64 +163,56 @@ export const useOneSampleTTestAnalysis = ({
             note: note || undefined 
           });
 
-          if (resultsRef.current.length > 0) {
-            // We have some valid results
-            const oneSampleStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
-            const oneSampleTest = resultsRef.current.filter(r => 'T' in (r.stats as any));
+          // Check if we have any valid results
+          const oneSampleStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
+          const oneSampleTest = resultsRef.current.filter(r => 'T' in (r.stats as any));
+          
+          const results: OneSampleTTestResults = {
+            oneSampleStatistics,
+            oneSampleTest
+          };
 
-            const results: OneSampleTTestResults = {
-              oneSampleStatistics,
-              oneSampleTest
-            };
-
-            console.log('Results to format:', JSON.stringify(results));
-
+          // If we have valid results and not all variables have insufficient data
+          if (resultsRef.current.length > 0 && insufficientDataVarsRef.current.length < testVariables.length) {
             // Format tables
             const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(results);
             const formattedOneSampleTestTable = formatOneSampleTestTable(results);
 
-            if (insufficientDataVarsRef.current.length < testVariables.length) {
-              await addStatistic(analyticId, {
-                title: "One-Sample Statistics",
-                output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
-                components: "One-Sample Statistics",
-                description: ""
-              });
-
-              await addStatistic(analyticId, {
-                title: "One-Sample Test",
-                output_data: JSON.stringify({ tables: [formattedOneSampleTestTable] }),
-                components: "One-Sample Test",
-                description: ""
-              });
-            }
-          }
-          
-          // If no valid results or all variables have insufficient data, show error table
-          if (resultsRef.current.length === 0 || insufficientDataVarsRef.current.length === testVariables.length) {
-            const formattedErrorTable = formatErrorTable();
-            console.log('formattedErrorTable', JSON.stringify(formattedErrorTable));
             await addStatistic(analyticId, {
-              title: "Error",
+              title: "One-Sample Statistics",
+              output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
+              components: "One-Sample Statistics",
+              description: ""
+            });
+
+            await addStatistic(analyticId, {
+              title: "One-Sample Test",
+              output_data: JSON.stringify({ tables: [formattedOneSampleTestTable] }),
+              components: "One-Sample Test",
+              description: ""
+            });
+          } 
+          // If no valid results or all variables have insufficient data, show error table
+          else {
+            const formattedErrorTable = formatErrorTable();
+            await addStatistic(analyticId, {
+              title: "One-Sample T Test Error",
               output_data: JSON.stringify({ tables: [formattedErrorTable] }),
               components: "Error",
               description: ""
             });
           }
 
-          if (onClose) {
-            onClose();
-          }
+          setIsCalculating(false);
+          worker.terminate();
+          workerRef.current = null;
+          onClose?.();
         } catch (err) {
           console.error("Error saving results:", err);
           setErrorMsg("Error saving results.");
-        }
-
-        setIsCalculating(false);
-        worker.terminate();
-        workerRef.current = null;
-        if (errorCountRef.current === 0) {
-          onClose?.();
+          setIsCalculating(false);
+          worker.terminate();
+          workerRef.current = null;
         }
       }
     };
@@ -248,7 +228,7 @@ export const useOneSampleTTestAnalysis = ({
     };
   }, [testVariables, testValue, estimateEffectSize, analysisData, addLog, addAnalytic, addStatistic, onClose]);
 
-  const cancelCalculation = useCallback(() => {
+  const cancelAnalysis = useCallback(() => {
     if (workerRef.current) {
       workerRef.current.terminate();
       workerRef.current = null;
@@ -259,15 +239,15 @@ export const useOneSampleTTestAnalysis = ({
 
   useEffect(() => {
     return () => {
-      cancelCalculation();
+      cancelAnalysis();
     };
-  }, [cancelCalculation]);
+  }, [cancelAnalysis]);
   
   return {
     isCalculating,
     errorMsg,
     runAnalysis,
-    cancelAnalysis: cancelCalculation
+    cancelAnalysis
   };
 };
 

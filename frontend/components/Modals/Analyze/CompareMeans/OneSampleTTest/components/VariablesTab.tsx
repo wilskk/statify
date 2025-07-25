@@ -117,7 +117,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                 <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
                             )}
                         </div>
-                        <div id="estimate-effect-size-section" className="flex items-center">
+                        <div id="estimate-effect-size-section" className="flex items-center relative">
                             <Checkbox
                                 id="estimate-effect-size"
                                 checked={estimateEffectSize}
@@ -141,7 +141,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const renderExtraInfo = () => (
         <>
-            <div className="flex items-center mt-2 p-1.5">
+            <div id="allow-unknown-section" className="flex items-center mt-2 p-1.5 relative">
                 <Checkbox
                     id="allowUnknown"
                     checked={allowUnknown}
@@ -151,34 +151,39 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
                     Treat &apos;unknown&apos; as Scale and allow selection
                 </Label>
+                {tourActive && isTourElementActive("allow-unknown-section") && (
+                    <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                )}
             </div>
         </>
     );
 
     return (
-        <>
-            <VariableListManager
-                availableVariables={availableVariables}
-                targetLists={targetLists}
-                variableIdKey={variableIdKeyToUse}
-                highlightedVariable={managerHighlightedVariable}
-                setHighlightedVariable={setManagerHighlightedVariable}
-                onMoveVariable={handleMoveVariable}
-                onReorderVariable={handleReorderVariables}
-                onVariableDoubleClick={handleDoubleClick}
-                getDisplayName={getDisplayName}
-                isVariableDisabled={isVariableDisabled}
-                showArrowButtons={true}
-                renderListFooter={renderTestFooter}
-                renderExtraInfoContent={renderExtraInfo}
-            />
-            <div id="one-sample-t-test-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-sample-t-test-available-variables')} />
+        <div className="space-y-4">
+            <div className="relative">
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    onVariableDoubleClick={handleDoubleClick}
+                    getDisplayName={getDisplayName}
+                    isVariableDisabled={isVariableDisabled}
+                    showArrowButtons={true}
+                    renderListFooter={renderTestFooter}
+                    renderExtraInfoContent={renderExtraInfo}
+                />
+                <div id="one-sample-t-test-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-sample-t-test-available-variables')} />
+                </div>
+                <div id="one-sample-t-test-test-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-sample-t-test-test-variables')} />
+                </div>
             </div>
-            <div id="one-sample-t-test-test-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-sample-t-test-test-variables')} />
-            </div>
-        </>
+        </div>
     );
 };
 

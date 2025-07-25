@@ -206,6 +206,7 @@ const OneSampleTTestContent: FC<BaseModalProps> = ({ onClose, containerType = "d
                                     variant="ghost" 
                                     size="icon" 
                                     onClick={startTour}
+                                    aria-label="Start feature tour"
                                     className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
                                 >
                                     <HelpCircle className="h-4 w-4" />
