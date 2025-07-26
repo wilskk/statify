@@ -14,6 +14,7 @@ export interface PlotsLinearParams {
   selectedY: string | null;
   selectedX: string | null;
   histogramForXChecked: boolean;
+  histogramVariable?: string | null;
 }
 
 interface PlotVariable {
