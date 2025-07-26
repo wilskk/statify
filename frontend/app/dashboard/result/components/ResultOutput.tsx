@@ -107,7 +107,7 @@ const ResultOutput: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 w-full max-w-full overflow-x-auto">
+    <div className="p-4 md:p-6 w-full max-w-full">
       {logs.length === 0 ? (
         <div className="text-center text-muted-foreground py-10">
           No data available

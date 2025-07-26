@@ -1,4 +1,4 @@
-// public/workers/anovaWorker.js
+// public/workers/anova.js
 
 console.log("[ANOVA Worker] Worker script started loading");
 
