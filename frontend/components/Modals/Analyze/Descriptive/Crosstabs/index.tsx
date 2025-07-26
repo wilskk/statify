@@ -242,6 +242,8 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                         <CellsTab
                             options={options}
                             setOptions={setOptions}
+                            rowVariables={rowVariables}
+                            columnVariables={columnVariables}
                             containerType={containerType}
                             tourActive={tourActive}
                             currentStep={currentStep}

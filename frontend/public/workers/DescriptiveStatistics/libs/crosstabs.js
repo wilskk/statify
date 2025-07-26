@@ -116,7 +116,8 @@ class CrosstabsCalculator {
     _getExpectedCount(i, j) {
         this.#initialize();
         if (this.W === 0) return null;
-        return (this.rowTotals[i] * this.colTotals[j]) / this.W;
+        const expected = (this.rowTotals[i] * this.colTotals[j]) / this.W;
+        return toSPSSFixed(expected, 1);
     }
     
     /**
@@ -513,20 +514,22 @@ class CrosstabsCalculator {
             for(let j=0; j<this.C; j++) {
                 const f_ij = this.table[i][j];
                 const expected = this._getExpectedCount(i, j);
-                const residual = expected !== null ? f_ij - expected : null; // Unstandardized residual
+                const residual = expected !== null ? toSPSSFixed(f_ij - expected, 1) : null;
 
                 let standardizedResidual = null;
                 let adjustedResidual = null;
 
                 if (expected && expected > 0) {
-                    standardizedResidual = residual / Math.sqrt(expected);
+                    const unroundedStandardized = (f_ij - expected) / Math.sqrt(expected);
+                    standardizedResidual = toSPSSFixed(unroundedStandardized, 3);
 
                     if (this.W > 0) {
                         const rowProp = this.rowTotals[i] / this.W;
                         const colProp = this.colTotals[j] / this.W;
                         const denom = Math.sqrt(expected * (1 - rowProp) * (1 - colProp));
                         if (denom !== 0) {
-                            adjustedResidual = residual / denom;
+                            const unroundedAdjusted = (f_ij - expected) / denom;
+                            adjustedResidual = toSPSSFixed(unroundedAdjusted, 3);
                         }
                     }
                 }

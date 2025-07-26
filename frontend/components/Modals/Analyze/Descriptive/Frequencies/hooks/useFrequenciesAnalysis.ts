@@ -206,7 +206,10 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
         
         const workerInput: WorkerInput = {
             variableData: selectedVariables.map(variable => ({
-                variable,
+                variable: {
+                    ...variable,
+                    decimals: typeof variable.decimals === 'number' ? variable.decimals : 3,
+                },
                 data: allData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
             })),
             weightVariableData: weights,

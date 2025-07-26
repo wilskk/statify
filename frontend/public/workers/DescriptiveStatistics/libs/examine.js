@@ -41,12 +41,14 @@ class ExamineCalculator {
      * @param {object} payload.variable - Objek definisi variabel.
      * @param {Array<any>} payload.data - Array data untuk variabel ini.
      * @param {Array<number>|null} payload.weights - Array bobot yang sesuai dengan data.
+     * @param {Array<number>|null} payload.caseNumbers - Array nomor kasus asli.
      * @param {object} payload.options - Opsi untuk analisis.
      */
-    constructor({ variable, data, weights = null, options = {} }) {
+    constructor({ variable, data, weights = null, caseNumbers = null, options = {} }) {
         this.variable = variable;
         this.data = data;
         this.weights = weights;
+        this.caseNumbers = caseNumbers;
         this.options = options;
         this.initialized = false;
 
@@ -253,7 +255,10 @@ class ExamineCalculator {
             const val = this.data[i];
             const weight = this.weights ? (this.weights[i] ?? 1) : 1;
             if (!isNumeric(val) || typeof weight !== 'number' || weight <= 0) continue;
-            entries.push({ caseNumber: i + 1, value: parseFloat(val) });
+            
+            // Gunakan caseNumber dari array jika tersedia, jika tidak, gunakan i + 1
+            const caseNumber = this.caseNumbers && this.caseNumbers[i] ? this.caseNumbers[i] : i + 1;
+            entries.push({ caseNumber, value: parseFloat(val) });
         }
 
         if (entries.length === 0) return null;
@@ -275,12 +280,14 @@ class ExamineCalculator {
         const step = 1.5 * iqr;
         const lowerInner = q1 - step;
         const upperInner = q3 + step;
-        const lowerOuter = q1 - 2 * step; // 3.0 * IQR total
-        const upperOuter = q3 + 2 * step;
+        const lowerOuter = q1 - (2 * step); // 3.0 * IQR total
+        const upperOuter = q3 + (2 * step);
 
         // ==== 2. Identify candidate outliers/extremes ====
-        const isExtreme = (v) => v < lowerOuter || v > upperOuter;
-        const isOutlier = (v) => (v < lowerInner || v > upperInner) && !isExtreme(v);
+        const isHighExtreme = (v) => v > upperOuter;
+        const isLowExtreme = (v) => v < lowerOuter;
+        const isHighOutlier = (v) => v > upperInner && v <= upperOuter;
+        const isLowOutlier = (v) => v < lowerInner && v >= lowerOuter;
 
         const sortedAsc = [...entries].sort((a, b) => a.value - b.value);
         const sortedDesc = [...entries].sort((a, b) => b.value - a.value);
@@ -297,24 +304,29 @@ class ExamineCalculator {
             return arr;
         }
 
-        let lowest = pickCandidates(sortedAsc, isExtreme);
-        let highest = pickCandidates(sortedDesc, isExtreme);
+        // --- Refactored logic for picking extremes and outliers ---
 
-        // If not enough extremes, fill with mild outliers
-        if (lowest.length < extremeCount) {
-            const additional = pickCandidates(sortedAsc, isOutlier).filter(it => !lowest.includes(it));
-            lowest = [...lowest, ...additional.slice(0, extremeCount - lowest.length)];
-        }
+        // 1. Find Highest values: start with extremes, then outliers
+        let highest = pickCandidates(sortedDesc, isHighExtreme);
         if (highest.length < extremeCount) {
-            const additional = pickCandidates(sortedDesc, isOutlier).filter(it => !highest.includes(it));
-            highest = [...highest, ...additional.slice(0, extremeCount - highest.length)];
+            const additional = pickCandidates(sortedDesc, isHighOutlier);
+            highest.push(...additional.slice(0, extremeCount - highest.length));
         }
 
-        // Still not enough? fill with regular extremes by value (closest to fence)
+        // 2. Find Lowest values: start with extremes, then outliers
+        let lowest = pickCandidates(sortedAsc, isLowExtreme);
+        if (lowest.length < extremeCount) {
+            const additional = pickCandidates(sortedAsc, isLowOutlier);
+            lowest.push(...additional.slice(0, extremeCount - lowest.length));
+        }
+
+        // 3. Still not enough? Fill with regular values from the sorted lists.
         const fillByValue = (list, source) => {
+            const existingCaseNumbers = new Set(list.map(item => item.caseNumber));
             if (list.length >= extremeCount) return list;
+
             for (const item of source) {
-                if (!list.includes(item)) {
+                if (!existingCaseNumbers.has(item.caseNumber)) {
                     list.push(item);
                     if (list.length === extremeCount) break;
                 }
@@ -341,6 +353,9 @@ class ExamineCalculator {
         checkPartial(highest, sortedDesc, 'highest');
 
         // Helper to tag each entry type
+        const isOutlier = (v) => (v < lowerInner && v >= lowerOuter) || (v > upperInner && v <= upperOuter);
+        const isExtreme = (v) => v < lowerOuter || v > upperOuter;
+        
         const tagType = (arr) => arr.map(item => ({ ...item, type: isExtreme(item.value) ? 'extreme' : (isOutlier(item.value) ? 'outlier' : 'normal') }));
 
         return {

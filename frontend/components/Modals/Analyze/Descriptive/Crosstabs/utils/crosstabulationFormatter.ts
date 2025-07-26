@@ -241,7 +241,7 @@ export const formatCrosstabulationTable = (
       } else if (stat.type === 'colPct') {
         rowData['total'] = pct(rowTotals[rowIdx] / totalCases); // overall contribution of row to grand total
       } else if (stat.type === 'unstdResid' || stat.type === 'stdResid' || stat.type === 'adjStdResid') {
-        rowData['total'] = stat.type === 'unstdResid' ? '0' : '';
+        rowData['total'] = '';
       }
 
       dataRows.push(rowData);
@@ -269,9 +269,7 @@ export const formatCrosstabulationTable = (
         totalRow[`c${colIdx + 1}`] = '100.0%';
       } else if (stat.type === 'totPct') {
         totalRow[`c${colIdx + 1}`] = pct(colTotals[colIdx] / totalCases);
-      } else if (stat.type === 'unstdResid') {
-         totalRow[`c${colIdx + 1}`] = '0';
-      } else if (stat.type === 'stdResid' || stat.type === 'adjStdResid') {
+      } else if (stat.type === 'unstdResid' || stat.type === 'stdResid' || stat.type === 'adjStdResid') {
          totalRow[`c${colIdx + 1}`] = '';
       }
     });
@@ -286,9 +284,7 @@ export const formatCrosstabulationTable = (
       totalRow['total'] = '100.0%';
     } else if (stat.type === 'totPct') {
       totalRow['total'] = '100.0%';
-    } else if (stat.type === 'unstdResid') {
-       totalRow['total'] = '0';
-    } else if (stat.type === 'stdResid' || stat.type === 'adjStdResid') {
+    } else if (stat.type === 'unstdResid' || stat.type === 'stdResid' || stat.type === 'adjStdResid') {
        totalRow['total'] = '';
     }
 

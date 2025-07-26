@@ -116,74 +116,66 @@ class FrequencyCalculator {
         const n = W; // Gunakan total bobot sebagai n
 
         switch (method.toLowerCase()) {
-            case 'waverage': { // Weighted Average (SPSS)
-                // SPSS defines the weighted-average percentile as:
-                // rank = 1 + p/100 * (n - 1)
-                // k    = floor(rank)
-                // g    = rank - k
-                // P    = y_k + g * (y_{k+1} - y_k)
+            case 'waverage': { // Weighted Average (SPSS Definition 1)
+                if (W <= 1) return null; // Need more than 1 observation
+                const rank = p / 100 * W;
+                const i = cc.findIndex(cumulativeWeight => cumulativeWeight > rank);
+            
+                if (i === -1) return y[y.length - 1]; // p=100
+                if (i === 0) return y[0]; // p is very small
 
-                const rank = 1 + (p / 100) * (n - 1);
-                const k = Math.floor(rank);
-                const g = rank - k;
-
-                // Boundary conditions
-                if (k <= 1) return y[0];
-                if (k >= n) return y[y.length - 1];
-
-                // Locate y_k and y_{k+1} in cumulative counts (1-based ranks)
-                const idx_k = cc.findIndex(total => total >= k);
-                const idx_k1 = cc.findIndex(total => total >= k + 1);
-
-                const y_k = y[idx_k];
-                const y_k1 = idx_k1 !== -1 ? y[idx_k1] : y_k; // fallback if k+1 exceeds
-
-                return y_k + g * (y_k1 - y_k);
+                const prev_y = y[i - 1];
+                const current_y = y[i];
+                const prev_cc = cc[i - 1];
+                
+                // Linear interpolation
+                const g = (rank - prev_cc) / (cc[i] - prev_cc);
+                return prev_y + g * (current_y - prev_y);
             }
-            case 'haverage': { // Weighted Average (Harrell-Davis)
-                const rank = (n + 1) * (p / 100);
+            case 'haverage': { // Weighted Average (SPSS Definition 3, used for Tukey's Hinges)
+                if (W === 0) return null;
+                const rank = (p / 100) * (W + 1);
                 const k = Math.floor(rank);
                 const g = rank - k;
-                
-                if (k === 0) return y[0];
-                if (k >= n) return y[y.length - 1];
 
-                const w_k = cc[cc.findIndex(val => val >= k)];
-                const w_k_plus_1 = cc[cc.findIndex(val => val >= k + 1)];
+                if (k < 1) return y[0];
+                if (k >= y.length) return y[y.length - 1];
 
-                if (w_k === undefined || w_k_plus_1 === undefined) return null;
+                const y_k = y[k - 1];
+                const y_k_plus_1 = y[k];
 
-                const i_k = cc.indexOf(w_k);
-                const i_k_plus_1 = cc.indexOf(w_k_plus_1);
-                
-                return (1 - g) * y[i_k] + g * y[i_k_plus_1];
+                return (1 - g) * y_k + g * y_k_plus_1;
             }
-            case 'aempirical': { // Empirical with Averaging
-                const rank = n * (p / 100);
+            case 'aempirical': { // Empirical with Averaging (SPSS Definition 4)
+                if (W === 0) return null;
+                const rank = (p / 100) * W;
                 const k = Math.floor(rank);
                 const g = rank - k;
                 
-                if (g > 0) {
-                     const i = cc.findIndex(val => val > k);
-                     return i !== -1 ? y[i] : y[y.length - 1];
-                } else { // g === 0
-                    const i = cc.findIndex(val => val > k);
-                    const j = cc.findIndex(val => val === k);
-                    if (j === -1) return y[i];
-                    return (y[j] + y[i]) / 2;
+                if (g === 0) {
+                     if (k < 1 || k > y.length) return null;
+                     const y_k = y[k - 1];
+                     const y_k_plus_1 = (k < y.length) ? y[k] : y_k;
+                     return (y_k + y_k_plus_1) / 2;
+                } else {
+                     if (k + 1 > y.length) return y[y.length - 1];
+                     return y[k];
                 }
             }
-             case 'empirical': { // Empirical Distribution Function
-                const rank = n * (p / 100);
+             case 'empirical': { // Empirical Distribution Function (SPSS Definition 2)
+                if (W === 0) return null;
+                const rank = (p / 100) * W;
                 const k = Math.ceil(rank);
-                const i = cc.findIndex(val => val >= k);
-                return i !== -1 ? y[i] : y[y.length - 1];
+                if (k < 1) return y[0];
+                if (k > y.length) return y[y.length - 1];
+                return y[k-1];
             }
-            case 'round': { // Round to nearest observation
-                 const rank = Math.round(n * (p / 100));
-                 if (rank === 0) return y[0];
-                 const i = cc.findIndex(val => val >= rank);
-                 return i !== -1 ? y[i] : y[y.length - 1];
+            case 'round': { // Round to nearest observation (SPSS Definition 5)
+                 if (W === 0) return null;
+                 const rank = Math.round((p / 100) * W);
+                 if (rank < 1) return y[0];
+                 if (rank > y.length) return y[y.length - 1];
+                 return y[rank - 1];
             }
             default:
                 return null;

@@ -10,7 +10,7 @@ import { useAnalysisData } from '@/hooks/useAnalysisData';
 interface GroupedData {
     [key: string]: {
         factorLevels: Record<string, string | number>;
-        data: any[];
+        data: { rowData: any, caseNum: number }[];
     };
 }
 
@@ -23,10 +23,11 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
 
     const groupDataByFactors = useCallback((currentData: any[], factorVariables: Variable[]): GroupedData => {
         if (factorVariables.length === 0 || factorVariables.every(v => v === null)) {
-            return { 'all_data': { factorLevels: {}, data: currentData } };
+            const dataWithCaseNumbers = currentData.map((row, index) => ({ rowData: row, caseNum: index + 1 }));
+            return { 'all_data': { factorLevels: {}, data: dataWithCaseNumbers } };
         }
         const grouped: GroupedData = {};
-        currentData.forEach((row: any) => {
+        currentData.forEach((row: any, index: number) => {
             const key = factorVariables.map(v => row[v.columnIndex]).join(' | ');
             if (!grouped[key]) {
                 grouped[key] = {
@@ -37,7 +38,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                     data: []
                 };
             }
-            grouped[key].data.push(row);
+            grouped[key].data.push({ rowData: row, caseNum: index + 1 });
         });
         return grouped;
     }, []);
@@ -160,12 +161,14 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                             workerClient.terminate();
                         });
 
-                        const dataForVar = group.data.map((d: any) => d[depVar.columnIndex]);
+                        const dataForVar = group.data.map((d: any) => d.rowData[depVar.columnIndex]);
+                        const caseNumbers = group.data.map((d: any) => d.caseNum);
 
                         workerClient.post({
                             analysisType: 'examine',
                             variable: depVar,
                             data: dataForVar,
+                            caseNumbers,
                             weights: weights,
                             options: {
                                 confidenceInterval: parseFloat(localParams.confidenceInterval) || 95,

@@ -55,6 +55,15 @@ class DescriptiveCalculator {
 
         const isNumericType = ['scale', 'date'].includes(this.variable.measure);
         
+        // --- Pass 1: Calculate Mean ---
+        this.W = 0;
+        this.S = 0;
+        this.N = 0;
+        this.min = Infinity;
+        this.max = -Infinity;
+        
+        const validData = [];
+
         for (let i = 0; i < this.data.length; i++) {
             const value = this.data[i];
             const weight = this.weights ? (this.weights[i] ?? 1) : 1;
@@ -66,33 +75,34 @@ class DescriptiveCalculator {
             const x = parseFloat(value);
             const w = weight;
 
-            if (this.N === 0) { // Kasus pertama
-                this.M1 = x;
-                this.W = w;
-                this.W2 = w * w;
-                this.S = x * w;
-                this.min = x;
-                this.max = x;
-                this.N = 1;
-                continue;
-            }
-            
-            const old_W = this.W;
-            const new_W = old_W + w;
-            const delta = x - this.M1;
-            const R = delta * (w / new_W);
-            
-            this.M1 += R;
-            this.M4 += R * (R * R * R * old_W * w * (old_W * old_W - old_W * w + w * w) / (new_W * new_W * new_W)) + 6 * R * R * this.M2 - 4 * R * this.M3;
-            this.M3 += R * (R * R * old_W * w * (old_W - w) / (new_W * new_W)) - 3 * R * this.M2;
-            this.M2 += old_W * delta * R;
-
-            this.W = new_W;
-            this.W2 += w * w;
+            this.W += w;
             this.S += x * w;
+            this.N++;
             this.min = Math.min(this.min, x);
             this.max = Math.max(this.max, x);
-            this.N++;
+            validData.push({ value: x, weight: w });
+        }
+
+        if (this.W > 0) {
+            this.M1 = this.S / this.W; // Mean
+        } else {
+            this.M1 = null;
+        }
+
+        // --- Pass 2: Calculate M2, M3, M4 (sum of powered deviations from the mean) ---
+        this.M2 = 0;
+        this.M3 = 0;
+        this.M4 = 0;
+        this.W2 = 0;
+
+        if (this.M1 !== null) {
+            for (const item of validData) {
+                const delta = item.value - this.M1;
+                this.M2 += item.weight * Math.pow(delta, 2);
+                this.M3 += item.weight * Math.pow(delta, 3);
+                this.M4 += item.weight * Math.pow(delta, 4);
+                this.W2 += item.weight * item.weight;
+            }
         }
         
         this.initialized = true;
@@ -111,7 +121,8 @@ class DescriptiveCalculator {
         this.#initialize();
         if (this.W <= 1) return null;
         
-        const denominator = this.W2 < this.W * this.W ? this.W - (this.W2 / this.W) : this.W - 1;
+        // Unbiased weighted variance (n-1 method)
+        const denominator = this.W - 1;
         if (denominator <= 0) return null;
 
         this.memo.variance = this.M2 / denominator;
@@ -141,7 +152,13 @@ class DescriptiveCalculator {
         if (variance === null || variance === 0 || this.W < 3) return null;
         
         const n = this.W;
-        const g1 = (n * this.M3) / ((n - 1) * (n - 2) * Math.pow(variance, 1.5));
+        // Adjusted Fisher-Pearson coefficient of skewness (g1)
+        const numerator = (n * this.M3);
+        const denominator = ((n - 1) * (n - 2) * Math.pow(this.getStdDev(), 3));
+
+        if (denominator === 0) return null;
+
+        const g1 = numerator / denominator;
         this.memo.skewness = g1;
         return g1;
     }
@@ -160,9 +177,14 @@ class DescriptiveCalculator {
         if (variance === null || variance === 0 || this.W < 4) return null;
         
         const n = this.W;
-        const term1 = (n * (n + 1) * this.M4) / ((n - 1) * (n - 2) * (n - 3) * variance * variance);
-        const term2 = (3 * (n - 1) * (n - 1)) / ((n - 2) * (n - 3));
-        const g2 = term1 - term2;
+        const stdDev = this.getStdDev();
+
+        const numerator = n * (n + 1) * this.M4 - 3 * this.M2 * this.M2 * (n - 1);
+        const denominator = (n - 1) * (n - 2) * (n - 3) * Math.pow(stdDev, 4);
+
+        if (denominator === 0) return null;
+
+        const g2 = numerator / denominator;
         
         this.memo.kurtosis = g2;
         return g2;
@@ -213,6 +235,10 @@ class DescriptiveCalculator {
                 : (validValues[mid - 1] + validValues[mid]) / 2;
         }
 
+        // Percentiles are now calculated in FrequencyCalculator
+        // to handle options correctly. Median is left here for now,
+        // but should ideally be unified.
+        
         const shouldSaveZScores = this.options.saveStandardized && stats.stdDev && stats.stdDev > 0;
         let zScores = null;
 
@@ -240,7 +266,7 @@ class DescriptiveCalculator {
             SESkewness: stats.seSkewness,
             Kurtosis: stats.kurtosis,
             SEKurtosis: stats.seKurtosis,
-            Median: median,
+            Median: median, // Note: This median is UNWEIGHTED. Weighted percentiles are in Freq calc.
         };
 
         // Rounding handled at worker layer for display; keep raw values here

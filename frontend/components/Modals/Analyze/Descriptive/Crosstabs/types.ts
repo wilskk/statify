@@ -32,6 +32,8 @@ export interface VariablesTabProps extends TourProps {
 export interface CellsTabProps extends TourProps {
     options: CrosstabsAnalysisParams['options'];
     setOptions: Dispatch<SetStateAction<CrosstabsAnalysisParams['options']>>;
+    rowVariables: Variable[];
+    columnVariables: Variable[];
     containerType?: "dialog" | "sidebar";
 }
 

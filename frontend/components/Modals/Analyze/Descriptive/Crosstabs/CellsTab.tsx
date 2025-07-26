@@ -9,6 +9,8 @@ import { useMetaStore } from "@/stores/useMetaStore";
 const CellsTab: FC<CellsTabProps> = ({
     options,
     setOptions,
+    rowVariables,
+    columnVariables,
     tourActive = false,
     currentStep = 0,
     tourSteps = [],
@@ -22,6 +24,9 @@ const CellsTab: FC<CellsTabProps> = ({
     const percentagesStep = getStepIndex('crosstabs-percentages-section');
     const residualsStep = getStepIndex('crosstabs-residuals-section');
     // const nonintegerWeightsStep = getStepIndex('crosstabs-noninteger-weights-section'); // Removed as Noninteger Weights section is eliminated
+
+    const rowVarName = rowVariables.length > 0 ? rowVariables[0].name : "Row Variable";
+    const colVarName = columnVariables.length > 0 ? columnVariables[0].name : "Column Variable";
 
     const handleCellChange = (key: keyof typeof options.cells, value: boolean) => {
         setOptions(prev => ({
@@ -114,15 +119,15 @@ const CellsTab: FC<CellsTabProps> = ({
                     <div className="space-y-2">
                         <div className="flex items-center">
                             <Checkbox id="rowPercentages" checked={options.cells.row} onCheckedChange={(checked) => handleCellChange('row', !!checked)} className="mr-2" />
-                            <Label htmlFor="rowPercentages" className="text-sm cursor-pointer">Row</Label>
+                            <Label htmlFor="rowPercentages" className="text-sm cursor-pointer">{`% within ${rowVarName}`}</Label>
                         </div>
                         <div className="flex items-center">
                             <Checkbox id="columnPercentages" checked={options.cells.column} onCheckedChange={(checked) => handleCellChange('column', !!checked)} className="mr-2" />
-                            <Label htmlFor="columnPercentages" className="text-sm cursor-pointer">Column</Label>
+                            <Label htmlFor="columnPercentages" className="text-sm cursor-pointer">{`% within ${colVarName}`}</Label>
                         </div>
                         <div className="flex items-center">
                             <Checkbox id="totalPercentages" checked={options.cells.total} onCheckedChange={(checked) => handleCellChange('total', !!checked)} className="mr-2" />
-                            <Label htmlFor="totalPercentages" className="text-sm cursor-pointer">Total</Label>
+                            <Label htmlFor="totalPercentages" className="text-sm cursor-pointer">% of Total</Label>
                         </div>
                     </div>
                     <ActiveElementHighlight active={tourActive && currentStep === percentagesStep} />
@@ -137,11 +142,11 @@ const CellsTab: FC<CellsTabProps> = ({
                         </div>
                         <div className="flex items-center">
                             <Checkbox id="standardizedResiduals" checked={options.residuals.standardized} onCheckedChange={(checked) => handleResidualChange('standardized', !!checked)} className="mr-2" />
-                            <Label htmlFor="standardizedResiduals" className="text-sm cursor-pointer">Standardized</Label>
+                            <Label htmlFor="standardizedResiduals" className="text-sm cursor-pointer">Standardized Residual</Label>
                         </div>
                         <div className="flex items-center">
                             <Checkbox id="adjStandardizedResiduals" checked={options.residuals.adjustedStandardized} onCheckedChange={(checked) => handleResidualChange('adjustedStandardized', !!checked)} className="mr-2" />
-                            <Label htmlFor="adjStandardizedResiduals" className="text-sm cursor-pointer">Adjusted standardized</Label>
+                            <Label htmlFor="adjStandardizedResiduals" className="text-sm cursor-pointer">Adjusted Residual</Label>
                         </div>
                     </div>
                     <ActiveElementHighlight active={tourActive && currentStep === residualsStep} />
