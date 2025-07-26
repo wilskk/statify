@@ -12,25 +12,36 @@ importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 
 // Fungsi bobot untuk M-Estimators didefinisikan di luar kelas untuk efisiensi
 const M_ESTIMATOR_WEIGHT_FUNCTIONS = {
-    huber: (u) => { const abs_u = Math.abs(u); return abs_u <= 1.339 ? 1 : 1.339 / abs_u; },
+    huber: (u) => { 
+        const abs_u = Math.abs(u); 
+        const k = 1.339; // Default parameter
+        return abs_u <= k ? 1 : k / abs_u; 
+    },
     hampel: (u) => {
         const abs_u = Math.abs(u);
-        if (abs_u <= 1.7) return 1;
-        if (abs_u <= 3.4) return 1.7 / abs_u;
-        if (abs_u <= 8.5) return (1.7 * (8.5 - abs_u)) / ((8.5 - 3.4) * abs_u);
+        const a = 1.7, b = 3.4, c = 8.5; // Default parameters
+        if (abs_u <= a) return 1;
+        if (abs_u <= b) return a / abs_u;
+        if (abs_u <= c) return (a * (c - abs_u)) / (abs_u * (c - b));
         return 0;
     },
     andrew: (u) => {
         const abs_u = Math.abs(u);
-        const c = 1.34 * Math.PI;
-        // Gunakan batas untuk menghindari pembagian dengan nol saat u -> 0
-        if (abs_u <= c) return abs_u < 1e-9 ? 1 : Math.sin(u / 1.34) / (u / 1.34);
+        const c = 1.34 * Math.PI; // Default: c = 1.34π
+        if (abs_u <= c) {
+            // Untuk u mendekati 0, gunakan limit: lim(u→0) sin(πu/c)/(πu/c) = 1
+            if (abs_u < 1e-9) return 1;
+            return (c / Math.PI) * Math.sin(Math.PI * u / c) / u;
+        }
         return 0;
     },
     tukey: (u) => {
         const abs_u = Math.abs(u);
-        const c = 4.685;
-        if (abs_u <= c) return Math.pow(1 - Math.pow(u / c, 2), 2);
+        const c = 4.685; // Default parameter
+        if (abs_u <= c) {
+            const ratio = u / c;
+            return Math.pow(1 - ratio * ratio, 2);
+        }
         return 0;
     }
 };
@@ -106,47 +117,101 @@ class ExamineCalculator {
     
     /**
      * Menghitung M-Estimator untuk lokasi, sebuah statistik robust yang kurang sensitif terhadap outlier.
+     * Implementasi sesuai dengan spesifikasi SPSS EXAMINE algorithms.
+     * 
      * @param {string} method - Metode bobot: 'huber', 'hampel', 'andrew', 'tukey'.
-     * @returns {number|null} Nilai M-Estimator.
+     * @returns {number|null} Nilai M-Estimator atau null jika perhitungan gagal.
      */
     getMEstimator(method) {
         this.#initialize();
+        
+        // Validasi input method
+        const validMethods = ['huber', 'hampel', 'andrew', 'tukey'];
+        if (!validMethods.includes(method.toLowerCase())) {
+            console.warn(`Invalid M-estimator method: ${method}. Using Huber instead.`);
+            method = 'huber';
+        }
+        
         const y_tilde = this.freqCalc.getPercentile(50, 'haverage');
         if (y_tilde === null) return null;
         
-        // Hitung Median Absolute Deviation (MAD) secara efisien
-        const deviations = this.data.filter(v => isNumeric(v)).map(val => Math.abs(parseFloat(val) - y_tilde));
-        const madCalc = new FrequencyCalculator({ variable: { ...this.variable, measure: 'scale'}, data: deviations, weights: this.weights, options: this.options });
-        const s = madCalc.getPercentile(50, 'haverage');
+        // Hitung Median Absolute Deviation (MAD) dengan faktor skala SPSS
+        // Untuk M-estimator, kita membutuhkan median klasik dari absolute deviations individual
+        const absoluteDeviations = [];
+        for (let i = 0; i < this.data.length; i++) {
+            const val = this.data[i];
+            const weight = this.weights ? (this.weights[i] ?? 1) : 1;
+            if (isNumeric(val) && typeof weight === 'number' && weight > 0) {
+                // Expand data berdasarkan weight untuk mendapatkan classical median
+                for (let w = 0; w < weight; w++) {
+                    absoluteDeviations.push(Math.abs(parseFloat(val) - y_tilde));
+                }
+            }
+        }
         
-        if (s === null || s === 0) return y_tilde;
+        if (absoluteDeviations.length === 0) return y_tilde;
+        
+        // Hitung median klasik (bukan weighted median)
+        absoluteDeviations.sort((a, b) => a - b);
+        const n = absoluteDeviations.length;
+        const mad = n % 2 === 0 
+            ? (absoluteDeviations[n/2 - 1] + absoluteDeviations[n/2]) / 2 
+            : absoluteDeviations[Math.floor(n/2)];
+        
+        // Untuk M-estimator, SPSS menggunakan MAD dengan faktor skala 1.4826
+        // untuk konsistensi dengan standard normal distribution
+        let s = mad !== null && mad > 0 ? mad * 1.4826 : null;
+        
+        // Jika MAD = 0, gunakan standard deviation sebagai fallback
+        if (s === null || s === 0) {
+            const stdDev = this.descCalc.getStdDev();
+            s = stdDev && stdDev > 0 ? stdDev : 1.0; // Fallback terakhir ke 1.0
+        }
+        
+        // Additional safety check for very small scale values
+        if (s <= 1e-10) return y_tilde;
 
         const getWeight = M_ESTIMATOR_WEIGHT_FUNCTIONS[method.toLowerCase()] || (() => 1);
         let T_k = y_tilde;
-        const epsilon = 1e-5;
+        const epsilon = 1e-4; // Toleransi konvergensi sesuai SPSS (lebih longgar)
         const maxIter = 30;
 
         for (let iter = 0; iter < maxIter; iter++) {
-            let num = 0, den = 0;
-            for(let i=0; i < this.data.length; i++) {
+            let numerator = 0, denominator = 0;
+            
+            for (let i = 0; i < this.data.length; i++) {
                 const value = this.data[i];
                 const weight = this.weights ? (this.weights[i] ?? 1) : 1;
                 
                 if (!isNumeric(value) || typeof weight !== 'number' || weight <= 0) continue;
 
-                const u_i = (parseFloat(value) - T_k) / s;
-                const w_i = getWeight(u_i);
+                // Calculate the standardized residual for the weight function
+                const residual = (parseFloat(value) - T_k) / s;
+                const w_i = getWeight(residual);
 
-                num += weight * parseFloat(value) * w_i;
-                den += weight * w_i;
+                numerator += weight * parseFloat(value) * w_i;
+                denominator += weight * w_i;
             }
-            const T_k_plus_1 = den === 0 ? T_k : num / den;
-            if (Math.abs(T_k_plus_1 - T_k) <= epsilon * (Math.abs(T_k_plus_1) + Math.abs(T_k)) / 2) {
-                return T_k_plus_1;
+            
+            if (denominator === 0) return T_k;
+            
+            const T_k_plus_1 = numerator / denominator;
+            
+            // Kriteria konvergensi yang sesuai dengan SPSS
+            const absChange = Math.abs(T_k_plus_1 - T_k);
+            // SPSS menggunakan toleransi relatif yang lebih longgar
+            const relTolerance = Math.max(epsilon, Math.abs(T_k_plus_1) * epsilon);
+            const absTolerance = epsilon * 10; // Toleransi absolut yang lebih longgar
+            
+            
+            if (absChange <= absTolerance || absChange <= relTolerance) {
+                return Math.round(T_k_plus_1 * 1000000) / 1000000;
             }
+            
             T_k = T_k_plus_1;
         }
-        return T_k;
+        
+        return Math.round(T_k * 1000000) / 1000000;
     }
 
     /**
@@ -161,14 +226,29 @@ class ExamineCalculator {
         // Combine stats from both calculators. Descriptive is the base, Frequency adds Mode/Percentiles.
         const combinedStats = {
             ...descStatsResult.stats,
-            ...freqStatsResult.stats,
+            ...(freqStatsResult.stats || {}), // Handle case where freqStatsResult.stats is null
         };
+
+        // For EXAMINE, use haverage (Tukey's hinges) for median to match SPSS
+        const medianHaverage = this.freqCalc.getPercentile(50, 'haverage');
+        if (medianHaverage !== null) {
+            combinedStats.Median = medianHaverage;
+        }
+
+        // Re-compute Q1, Q3, and IQR using Tukey's hinges (haverage) to match SPSS Explore
+        const q1_hinge = this.freqCalc.getPercentile(25, 'haverage');
+        const q3_hinge = this.freqCalc.getPercentile(75, 'haverage');
+        if (q1_hinge !== null && q3_hinge !== null) {
+            combinedStats.Q1 = q1_hinge;
+            combinedStats.Q3 = q3_hinge;
+            combinedStats.IQR = q3_hinge - q1_hinge;
+        }
 
         const results = {
             summary: {
-                valid: descStatsResult.stats.Valid,
-                missing: descStatsResult.stats.Missing,
-                total: descStatsResult.stats.N,
+                valid: descStatsResult?.stats?.Valid || 0,
+                missing: descStatsResult?.stats?.Missing || 0,
+                total: descStatsResult?.stats?.N || 0,
             },
             descriptives: combinedStats,
             trimmedMean: this.getTrimmedMean(),
@@ -233,8 +313,8 @@ class ExamineCalculator {
         }
 
         // Correctly calculate confidence interval using the right stats
-        const { Mean: mean, SEMean: seMean } = descStatsResult.stats;
-        if (seMean !== null && mean !== null) {
+        const { Mean: mean, SEMean: seMean } = descStatsResult?.stats || {};
+        if (seMean !== null && mean !== null && seMean !== undefined && mean !== undefined) {
             const t_value = 1.96; // Approximation for 95% CI
             results.descriptives.confidenceInterval = {
                 lower: mean - (t_value * seMean),
@@ -264,8 +344,9 @@ class ExamineCalculator {
         if (entries.length === 0) return null;
 
         // ==== 1. Compute quartiles & IQR (using waverage percentiles like SPSS) ====
-        const q1 = this.freqCalc.getPercentile(25, 'waverage');
-        const q3 = this.freqCalc.getPercentile(75, 'waverage');
+        // Recompute quartiles using Tukey's hinges (haverage) for consistency with SPSS Explore
+        const q1 = this.freqCalc.getPercentile(25, 'haverage');
+        const q3 = this.freqCalc.getPercentile(75, 'haverage');
         if (q1 === null || q3 === null) return null;
         const iqr = q3 - q1;
 

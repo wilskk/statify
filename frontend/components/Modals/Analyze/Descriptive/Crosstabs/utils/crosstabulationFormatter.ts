@@ -43,14 +43,10 @@ export const formatCrosstabulationTable = (
   // Helper functions for percentage formatting
   const pct = (value: number): string => (isFinite(value) ? (value * 100).toFixed(1) + '%' : '');
 
-  // Helper untuk formatting desimal: satu posisi, hilangkan 0 depan jika |val|<1
+  // Helper untuk formatting desimal: satu posisi
   const dec = (value: number): string => {
     if (!isFinite(value)) return '';
-    const fixed = value.toFixed(1);
-    if (Math.abs(value) > 0 && Math.abs(value) < 1) {
-      return fixed.replace(/^0/, '').replace(/^-0/, '-.');
-    }
-    return fixed;
+    return value.toFixed(1);
   };
 
   // Convert nullable numeric value to string | number for display
@@ -79,7 +75,8 @@ export const formatCrosstabulationTable = (
   if (params.options.cells.row) {
     selectedStats.push({
       type: 'rowPct',
-      label: 'Row %',
+      // SPSS style: "% within <row variable label>"
+      label: `% within ${rowVarLabel}`,
       compute: (obs, rowTot) => pct(obs / rowTot),
     });
   }
@@ -87,7 +84,8 @@ export const formatCrosstabulationTable = (
   if (params.options.cells.column) {
     selectedStats.push({
       type: 'colPct',
-      label: 'Column %',
+      // SPSS style: "% within <column variable label>"
+      label: `% within ${colVarLabel}`,
       compute: (obs, _rowTot, colTot) => pct(obs / colTot),
     });
   }
@@ -95,7 +93,7 @@ export const formatCrosstabulationTable = (
   if (params.options.cells.total) {
     selectedStats.push({
       type: 'totPct',
-      label: 'Total %',
+      label: '% of Total',
       compute: (obs, _rowTot, _colTot, grandTot) => pct(obs / grandTot),
     });
   }
@@ -112,7 +110,7 @@ export const formatCrosstabulationTable = (
   if (params.options.residuals?.standardized) {
     selectedStats.push({
       type: 'stdResid',
-      label: 'Std. Residual',
+      label: 'Standardized Residual',
       compute: () => 0,
     });
   }
@@ -120,7 +118,7 @@ export const formatCrosstabulationTable = (
   if (params.options.residuals?.adjustedStandardized) {
     selectedStats.push({
       type: 'adjStdResid',
-      label: 'Adj. Std. Residual',
+      label: 'Adjusted Residual',
       compute: () => 0,
     });
   }
@@ -194,13 +192,13 @@ export const formatCrosstabulationTable = (
                );
                break;
              case 'rowPct':
-               value = pct(observed / rowTotals[rowIdx]);
+               value = rowTotals[rowIdx] > 0 ? pct(observed / rowTotals[rowIdx]) : '0.0%';
                break;
              case 'colPct':
-               value = pct(observed / colTotals[colIdx]);
+               value = colTotals[colIdx] > 0 ? pct(observed / colTotals[colIdx]) : '';
                break;
              case 'totPct':
-               value = pct(observed / totalCases);
+               value = totalCases > 0 ? pct(observed / totalCases) : '';
                break;
              case 'unstdResid':
                value = dec(
@@ -233,13 +231,13 @@ export const formatCrosstabulationTable = (
       if (stat.type === 'observed') {
         rowData['total'] = String(rowTotals[rowIdx]);
       } else if (stat.type === 'rowPct') {
-        rowData['total'] = '100.0%';
+        rowData['total'] = '100.0%'; // Always show 100.0% for valid rows
       } else if (stat.type === 'totPct') {
-        rowData['total'] = pct(rowTotals[rowIdx] / totalCases);
+        rowData['total'] = totalCases > 0 ? pct(rowTotals[rowIdx] / totalCases) : '';
       } else if (stat.type === 'expected') {
         rowData['total'] = dec(rowTotals[rowIdx]); // expected total format 1 decimal
       } else if (stat.type === 'colPct') {
-        rowData['total'] = pct(rowTotals[rowIdx] / totalCases); // overall contribution of row to grand total
+        rowData['total'] = totalCases > 0 ? pct(rowTotals[rowIdx] / totalCases) : ''; // overall contribution of row to grand total
       } else if (stat.type === 'unstdResid' || stat.type === 'stdResid' || stat.type === 'adjStdResid') {
         rowData['total'] = '';
       }
@@ -256,7 +254,10 @@ export const formatCrosstabulationTable = (
 
   // --- Build grand-total rows ---
   const totalRows: any[] = [];
+  const residualTypes = ['unstdResid', 'stdResid', 'adjStdResid']; // types that should not appear in Total rows
   selectedStats.forEach(stat => {
+    // Skip residual related statistics for the grand-total rows as their values are always empty
+    if (residualTypes.includes(stat.type)) return;
     const totalRow: any = { rowHeader: selectedStats.length === 1 ? ['Total', null] : ['Total', null, stat.label] };
     colCategories.forEach((_, colIdx) => {
       if (stat.type === 'observed') {
@@ -264,11 +265,11 @@ export const formatCrosstabulationTable = (
       } else if (stat.type === 'expected') {
         totalRow[`c${colIdx + 1}`] = String(colTotals[colIdx]); // expected = observed for marginal totals
       } else if (stat.type === 'rowPct') {
-        totalRow[`c${colIdx + 1}`] = ''; // not applicable
+        totalRow[`c${colIdx + 1}`] = totalCases > 0 ? pct(colTotals[colIdx] / totalCases) : ''; // Show column percentage of total
       } else if (stat.type === 'colPct') {
         totalRow[`c${colIdx + 1}`] = '100.0%';
       } else if (stat.type === 'totPct') {
-        totalRow[`c${colIdx + 1}`] = pct(colTotals[colIdx] / totalCases);
+        totalRow[`c${colIdx + 1}`] = totalCases > 0 ? pct(colTotals[colIdx] / totalCases) : '';
       } else if (stat.type === 'unstdResid' || stat.type === 'stdResid' || stat.type === 'adjStdResid') {
          totalRow[`c${colIdx + 1}`] = '';
       }

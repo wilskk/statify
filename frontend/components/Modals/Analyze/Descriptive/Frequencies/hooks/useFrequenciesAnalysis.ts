@@ -208,7 +208,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
             variableData: selectedVariables.map(variable => ({
                 variable: {
                     ...variable,
-                    decimals: typeof variable.decimals === 'number' ? variable.decimals : 3,
+                    decimals: 2, // Use consistent 2 decimal places for all statistics
                 },
                 data: allData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
             })),

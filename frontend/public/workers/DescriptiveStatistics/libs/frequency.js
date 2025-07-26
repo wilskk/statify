@@ -117,33 +117,74 @@ class FrequencyCalculator {
 
         switch (method.toLowerCase()) {
             case 'waverage': { // Weighted Average (SPSS Definition 1)
-                if (W <= 1) return null; // Need more than 1 observation
-                const rank = p / 100 * W;
-                const i = cc.findIndex(cumulativeWeight => cumulativeWeight > rank);
-            
-                if (i === -1) return y[y.length - 1]; // p=100
-                if (i === 0) return y[0]; // p is very small
-
-                const prev_y = y[i - 1];
-                const current_y = y[i];
-                const prev_cc = cc[i - 1];
-                
-                // Linear interpolation
-                const g = (rank - prev_cc) / (cc[i] - prev_cc);
-                return prev_y + g * (current_y - prev_y);
-            }
-            case 'haverage': { // Weighted Average (SPSS Definition 3, used for Tukey's Hinges)
                 if (W === 0) return null;
+
+                // SPSS Definition 1 (Weighted Average) - Formula from EXAMINE Algorithms
+                // tc₁ = W * p / 100
+                const tc1 = W * p / 100;
+                
+                // Handle edge cases first
+                if (tc1 <= 0) return y[0];
+                if (tc1 >= W) return y[y.length - 1];
+                
+                // Find k₁ where cc[k₁-1] ≤ tc₁ < cc[k₁]
+                let k1 = -1;
+                for (let i = 0; i < cc.length; i++) {
+                    if (cc[i] >= tc1) {
+                        k1 = i;
+                        break;
+                    }
+                }
+                
+                if (k1 === -1) return y[y.length - 1];
+                
+                // Get values and cumulative frequencies
+                const cc_k1_minus_1 = k1 > 0 ? cc[k1 - 1] : 0;
+                const c_k1_plus_1 = c[k1]; // Weight of observation at position k1
+                const y_k1 = k1 > 0 ? y[k1 - 1] : y[0]; // Value at position k1-1
+                const y_k1_plus_1 = y[k1]; // Value at position k1
+                
+                // Calculate g₁* = tc₁ - cc[k₁-1]
+                const g1_star = tc1 - cc_k1_minus_1;
+                
+                // Calculate g₁ = g₁* / c[k₁]
+                const g1 = c_k1_plus_1 > 0 ? g1_star / c_k1_plus_1 : 0;
+                
+                // Apply SPSS EXAMINE conditional formula
+                // The key insight: g1* represents how far into the current weight group we are
+                if (g1_star >= c_k1_plus_1) {
+                    // We've gone past the current observation, use next value
+                    return y_k1_plus_1;
+                } else if (c_k1_plus_1 >= 1) {
+                    // Integer weights: use g1_star directly for interpolation
+                    return (1 - g1_star) * y_k1 + g1_star * y_k1_plus_1;
+                } else {
+                    // Fractional weights: use normalized g1 for interpolation
+                    return (1 - g1) * y_k1 + g1_star * y_k1_plus_1;
+                }
+            }
+            case 'haverage': { // Tukey's Hinges (SPSS Definition 3 - Simplified Implementation)
+                if (W === 0) return null;
+                
+                // Simplified Tukey's Hinges: use (W+1) formula which is more commonly used
+                // This is actually closer to the classical definition and more compatible
                 const rank = (p / 100) * (W + 1);
                 const k = Math.floor(rank);
                 const g = rank - k;
-
+                
+                // Handle edge cases
                 if (k < 1) return y[0];
                 if (k >= y.length) return y[y.length - 1];
-
-                const y_k = y[k - 1];
-                const y_k_plus_1 = y[k];
-
+                
+                // For exact ranks, return the value directly
+                if (g === 0) {
+                    return y[k - 1]; // k is 1-based, array is 0-based
+                }
+                
+                // Linear interpolation between adjacent values
+                const y_k = y[k - 1];     // Value at position k (1-based)
+                const y_k_plus_1 = y[k]; // Value at position k+1 (1-based)
+                
                 return (1 - g) * y_k + g * y_k_plus_1;
             }
             case 'aempirical': { // Empirical with Averaging (SPSS Definition 4)
@@ -232,9 +273,9 @@ class FrequencyCalculator {
         // Fallback to default quartiles if none requested / computed
         if (Object.keys(percentileObj).length === 0) {
             percentileObj = {
-                '25': this.getPercentile(25, 'waverage'),
-                '50': this.getPercentile(50, 'waverage'),
-                '75': this.getPercentile(75, 'waverage'),
+                '25': this.getPercentile(25, 'haverage'),  // Use haverage for Q1 (SPSS consistency)
+                '50': this.getPercentile(50, 'haverage'),  // Use haverage for Q2/Median (SPSS consistency)
+                '75': this.getPercentile(75, 'haverage'),  // Use haverage for Q3 (SPSS consistency)
             };
         }
 
@@ -244,6 +285,11 @@ class FrequencyCalculator {
             Mode: this.getMode(),
             Percentiles: percentileObj,
         };
+
+        // Ensure internal consistency: set Median equal to the 50th percentile (if available)
+        if (percentileObj['50'] !== undefined) {
+            allStatistics.Median = percentileObj['50'];
+        }
 
         // === Add Interquartile Range (IQR) ===
         const q1 = percentileObj['25'];

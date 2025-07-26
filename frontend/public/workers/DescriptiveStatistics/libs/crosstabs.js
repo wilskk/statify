@@ -508,27 +508,32 @@ class CrosstabsCalculator {
      */
     getStatistics() {
         this.#initialize();
-        
+        // Build cell-level statistics
         const cellStats = Array(this.R).fill(0).map(() => Array(this.C).fill(0));
-        for(let i=0; i<this.R; i++) {
-            for(let j=0; j<this.C; j++) {
+        for (let i = 0; i < this.R; i++) {
+            for (let j = 0; j < this.C; j++) {
                 const f_ij = this.table[i][j];
-                const expected = this._getExpectedCount(i, j);
-                const residual = expected !== null ? toSPSSFixed(f_ij - expected, 1) : null;
+
+                // 1) Expected count – keep both exact (for computation) and rounded (for display)
+                const expectedExact = (this.rowTotals[i] * this.colTotals[j]) / this.W;
+                const expectedRounded = toSPSSFixed(expectedExact, 1);
+
+                // 2) Residuals based on the *exact* expected count (matches SPSS behaviour)
+                const residual = toSPSSFixed(f_ij - expectedExact, 1);
 
                 let standardizedResidual = null;
                 let adjustedResidual = null;
 
-                if (expected && expected > 0) {
-                    const unroundedStandardized = (f_ij - expected) / Math.sqrt(expected);
+                if (expectedExact && expectedExact > 0) {
+                    const unroundedStandardized = (f_ij - expectedExact) / Math.sqrt(expectedExact);
                     standardizedResidual = toSPSSFixed(unroundedStandardized, 3);
 
                     if (this.W > 0) {
                         const rowProp = this.rowTotals[i] / this.W;
                         const colProp = this.colTotals[j] / this.W;
-                        const denom = Math.sqrt(expected * (1 - rowProp) * (1 - colProp));
+                        const denom = Math.sqrt(expectedExact * (1 - rowProp) * (1 - colProp));
                         if (denom !== 0) {
-                            const unroundedAdjusted = (f_ij - expected) / denom;
+                            const unroundedAdjusted = (f_ij - expectedExact) / denom;
                             adjustedResidual = toSPSSFixed(unroundedAdjusted, 3);
                         }
                     }
@@ -536,10 +541,10 @@ class CrosstabsCalculator {
 
                 cellStats[i][j] = {
                     count: f_ij,
-                    expected,
-                    residual, // Unstandardized residual
-                    standardizedResidual,
-                    adjustedResidual,
+                    expected: expectedRounded,      // display value (1-decimal rounded)
+                    residual,                       // unstandardized residual (1-dec)
+                    standardizedResidual,           // 3-dec
+                    adjustedResidual,               // 3-dec
                     rowPercent: this.rowTotals[i] > 0 ? 100 * (f_ij / this.rowTotals[i]) : 0,
                     colPercent: this.colTotals[j] > 0 ? 100 * (f_ij / this.colTotals[j]) : 0,
                     totalPercent: this.W > 0 ? 100 * (f_ij / this.W) : 0,

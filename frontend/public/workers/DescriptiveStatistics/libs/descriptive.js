@@ -227,14 +227,59 @@ class DescriptiveCalculator {
             .map(value => parseFloat(value));
         validValues.sort((a, b) => a - b);
 
+        // --- Median (50th percentile) using Weighted Average (SPSS Definition 1) ---
         let median = null;
         if (validValues.length > 0) {
-            const mid = Math.floor(validValues.length / 2);
-            median = validValues.length % 2 !== 0 
-                ? validValues[mid] 
-                : (validValues[mid - 1] + validValues[mid]) / 2;
-        }
+            // Build map of value → aggregated weight (handles duplicates & case-weights)
+            const weightMap = new Map();
+            for (let i = 0; i < this.data.length; i++) {
+                const value = this.data[i];
+                const weight = this.weights ? (this.weights[i] ?? 1) : 1;
 
+                if (!isNumeric(value) || weight <= 0) continue;
+
+                const numVal = parseFloat(value);
+                weightMap.set(numVal, (weightMap.get(numVal) || 0) + weight);
+            }
+
+            // Sort unique values
+            const y = Array.from(weightMap.keys()).sort((a, b) => a - b);
+            const c = y.map(v => weightMap.get(v));
+            // Cumulative weights
+            const cc = c.reduce((acc, w) => {
+                acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + w);
+                return acc;
+            }, []);
+
+            const W = cc[cc.length - 1];
+            if (W > 0) {
+                // SPSS Definition 1 (Weighted Average) - Exact formula for median (p=50)
+                // tp = (W + 1) * p / 100 = (W + 1) * 50 / 100 = (W + 1) * 0.5
+                const tp = (W + 1) * 0.5;
+
+                // Find x1 and x2 where x2 is the first value with cumulative frequency >= tp
+                const i = cc.findIndex(cumulativeWeight => cumulativeWeight >= tp);
+
+                if (i === -1) return y[y.length - 1]; // tp >= all cumulative frequencies
+                if (i === 0) return y[0]; // tp <= first cumulative frequency
+
+                const x1 = y[i - 1]; // Value before x2
+                const x2 = y[i];     // First value with cumulative frequency >= tp
+                const cc1 = cc[i - 1]; // Cumulative frequency up to x1
+
+                // Check if tp - cp1 >= 100/W (where cp1 = cc1/W * 100)
+                const cp1 = (cc1 / W) * 100;
+                const threshold = 100 / W;
+
+                if (tp - cp1 >= threshold) {
+                    median = x2; // Use x2 directly
+                } else {
+                    // Linear interpolation: {1 - [(W+1)p/100 - cc1]}x1 + [(W+1)p/100 - cc1]x2
+                    const weight = (tp - cc1);
+                    median = (1 - weight) * x1 + weight * x2;
+                }
+            }
+        }
         // Percentiles are now calculated in FrequencyCalculator
         // to handle options correctly. Median is left here for now,
         // but should ideally be unified.

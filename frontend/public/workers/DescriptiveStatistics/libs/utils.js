@@ -4,7 +4,7 @@
  * Berisi fungsi-fungsi utilitas umum yang digunakan oleh berbagai kalkulator statistik.
  */
 
-var STATS_DECIMAL_PLACES = 2;
+var STATS_DECIMAL_PLACES = 3;
 
 /**
  * Memeriksa apakah sebuah nilai dianggap 'missing' berdasarkan definisi variabel.
