@@ -514,14 +514,16 @@ class OneWayAnovaCalculator {
                     const stdError = Math.sqrt(MSE * ((1 / n1) + (1 / n2)));
 
                     // Calculate q statistic
-                    const q = Math.abs(meanDifference) / stdError;
+                    const q = Math.abs(meanDifference) / (stdError / Math.sqrt(2));
 
                     // Calculate p-value using studentized range distribution
                     const pValue = 1 - stdlibstatsBaseDistsStudentizedRangeCdf(q, n_groups, df);
 
                     // Calculate confidence interval using studentized range quantile
+                    // For Tukey HSD, we use the critical value from the studentized range distribution
+                    // but we need to divide by sqrt(2) to get the correct confidence interval
                     const criticalQ = stdlibstatsBaseDistsStudentizedRangeQuantile(0.95, n_groups, df);
-                    const marginOfError = criticalQ * stdError;
+                    const marginOfError = (criticalQ / Math.sqrt(2)) * stdError;
                     const lowerBound = meanDifference - marginOfError;
                     const upperBound = meanDifference + marginOfError;
 
@@ -717,8 +719,15 @@ class OneWayAnovaCalculator {
      * @returns {Object} Analysis results
      */
     getOutput() {
+        this.#initialize();
         if (this.memo.finalOutput) return this.memo.finalOutput;
         
+        // Perbaikan: cek groupedData sebagai objek, bukan array, dan gunakan Object.keys untuk menghitung jumlah grup
+        const groupedData = this.groupDataByFactor();
+        const hasInsufficientData = 
+            this.validData.length === 0 ||
+            this.validFactorData.length === 0 ||
+            Object.keys(groupedData).length === 0;
         const oneWayAnova = this.calculateAnovaStatistics();
 
         let descriptives = [];
@@ -767,7 +776,12 @@ class OneWayAnovaCalculator {
             descriptives,
             homogeneityOfVariances,
             multipleComparisons,
-            homogeneousSubsets
+            homogeneousSubsets,
+            metadata: {
+                hasInsufficientData,
+                variableName: this.variable.name,
+                factorVariableName: this.factorVariable.name
+            }
         };
         
         this.memo.finalOutput = result;

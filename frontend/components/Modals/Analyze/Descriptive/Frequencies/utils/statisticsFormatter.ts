@@ -65,7 +65,7 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     variableNames.forEach(name => {
         const modes = statsMap.get(name)?.Mode;
         if (modes && Array.isArray(modes) && modes.length > 0) {
-            modeRow[name] = modes[0].toFixed(2) + (modes.length > 1 ? 'a' : '');
+            modeRow[name] = modes[0].toFixed(2) + (modes.length > 1 ? '<sup>a</sup>' : '');
         } else {
             modeRow[name] = '';
         }
@@ -119,12 +119,15 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         });
     }
 
+    const hasMultipleModes = statsResults.some(r => r.stats && Array.isArray(r.stats.Mode) && r.stats.Mode.length > 1);
+
     return {
         tables: [
             {
                 title: 'Statistics',
                 columnHeaders: columnHeaders.map(h => ({ header: h.header, key: h.key })), // Match desired output
                 rows,
+                ...(hasMultipleModes && { footer: '<sup>a</sup>. Multiple modes exist. The smallest value is shown.' }),
             },
         ],
     };

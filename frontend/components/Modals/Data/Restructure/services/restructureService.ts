@@ -113,9 +113,12 @@ function longToWide(
   variables: Variable[],
   config: RestructureConfig
 ): { data: DataRow[]; variables: Variable[] } {
-  const origStubVar = variables.find(v => v.columnIndex === config.selectedVariables[0].columnIndex);
+  const origStubVars = config.selectedVariables.map(sv => {
+    const o = variables.find(v => v.columnIndex === sv.columnIndex);
+    if (!o) throw new Error(`Selected variable not found: ${sv.name}`);
+    return o;
+  });
   const origIdVar = variables.find(v => v.columnIndex === config.identifierVariables[0].columnIndex);
-  if (!origStubVar) throw new Error(`Selected variable not found: ${config.selectedVariables[0].name}`);
   if (!origIdVar) throw new Error(`Identifier variable not found: ${config.identifierVariables[0].name}`);
   const dropEmpty = config.options.dropEmptyVariables;
 
@@ -125,32 +128,65 @@ function longToWide(
   );
   const groupCols = groupVars.map(v => v.columnIndex);
 
-  const map = new Map<string, { keyValues: DataRow; values: Map<any, any> }>();
+  const map = new Map<string, { keyValues: DataRow; values: Map<any, DataRow> }>();
   data.forEach(row => {
     const keyValues = groupCols.map(ci => row[ci]);
     const key = JSON.stringify(keyValues);
-    if (!map.has(key)) map.set(key, { keyValues, values: new Map<any, any>() });
-    map.get(key)!.values.set(row[origIdVar.columnIndex], row[origStubVar.columnIndex]);
+    if (!map.has(key)) map.set(key, { keyValues, values: new Map<any, DataRow>() });
+
+    const idValue = row[origIdVar.columnIndex];
+    const stubValues = origStubVars.reduce((acc, v) => {
+        acc[v.columnIndex] = row[v.columnIndex];
+        return acc;
+    }, {} as DataRow);
+    
+    map.get(key)!.values.set(idValue, stubValues);
   });
 
-  const uniqueIds = Array.from(new Set(data.map(r => r[origIdVar.columnIndex]))).sort((a,b)=> (a as any) - (b as any));
+  const uniqueIds = Array.from(new Set(data.map(r => r[origIdVar.columnIndex])))
+    .filter(id => id !== null && id !== undefined && id !== "")
+    .sort((a,b)=> String(a).localeCompare(String(b)));
 
   const newVars: Variable[] = [];
-  groupVars.forEach(v => newVars.push({ ...v, columnIndex: newVars.length }));
-  uniqueIds.forEach(uid => newVars.push({ ...origStubVar, columnIndex: newVars.length, name: `${origStubVar.name}_${uid}` }));
+  groupVars.forEach((v, index) => {
+    newVars.push({ ...v, columnIndex: index });
+  });
+
+  const existingNames = new Set(newVars.map(v => v.name));
+
+  uniqueIds.forEach(uid => {
+    origStubVars.forEach(stubVar => {
+      const { id, ...restOfStubVar } = stubVar; // Exclude the original id
+      const safeUid = String(uid).replace(/[^a-zA-Z0-9_]/g, '_');
+      let baseName = `${restOfStubVar.name}_${safeUid}`;
+      let finalName = baseName;
+      let counter = 1;
+      while (existingNames.has(finalName)) {
+        finalName = `${baseName}_${counter}`;
+        counter++;
+      }
+      existingNames.add(finalName);
+      newVars.push({ ...restOfStubVar, columnIndex: newVars.length, name: finalName });
+    });
+  });
 
   const newData: DataRow[] = [];
   map.forEach(({ keyValues, values }) => {
     const row: DataRow = [...keyValues];
-    uniqueIds.forEach(uid => row.push(values.has(uid) ? values.get(uid)! : ""));
+    uniqueIds.forEach(uid => {
+      const stubValues = values.get(uid);
+      origStubVars.forEach(stubVar => {
+        row.push(stubValues ? stubValues[stubVar.columnIndex] : "");
+      });
+    });
     newData.push(row);
   });
 
   if (dropEmpty) {
     const dropIndices: number[] = [];
     for (let i = groupVars.length; i < newVars.length; i++) {
-      const hasMissing = newData.some(r => r[i] === "" || r[i] === null || r[i] === undefined);
-      if (hasMissing) dropIndices.push(i);
+      const allMissing = newData.every(r => r[i] === "" || r[i] === null || r[i] === undefined);
+      if (allMissing) dropIndices.push(i);
     }
     dropIndices.sort((a, b) => b - a).forEach(i => {
       newVars.splice(i, 1);

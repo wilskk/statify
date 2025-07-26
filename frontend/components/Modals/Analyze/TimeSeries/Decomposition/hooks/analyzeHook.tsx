@@ -28,27 +28,17 @@ export function useAnalyzeHook(
             return "Please select at least one variable.";
         if (!selectedTrendedMethod[0]) 
             return "Please select a method.";
+        if (selectedPeriod[1] === "Not Dated") 
+            return "Please select another time specification.";
         if (selectedPeriod[0] === "0") 
             return "Selected time specification doesn't have periodicity.";
-        if ((getDayName() === "Saturday" || getDayName() === "Sunday") && getTypeDate() === "wwd5") {
-            return "5 Work days only available on weekdays (Monday to Friday).";
-        }
-        if (getDayName() === "Sunday" && getTypeDate() === "wwd6") {
-            return "6 Work days only available on weekdays (Monday to Saturday).";
-        }
-        if ((getHour() < 8 || getHour() > 15) && getTypeDate() === "dwh") {
-            return "Work hours only available between 8:00 and 15:00."; 
-        }
-        if (getHour() < 0 || getHour() > 23) {
-            return "Hour must be between 0 and 23.";
-        }
         return null;
     };
 
     const prepareData = () => {
         const dataVarDef = storeVariables[0];
         if (!dataVarDef) throw new Error("Selected variables not found");
-        if (dataVarDef.type !== "NUMERIC") throw new Error("Selected variable is not numeric");
+        if (dataVarDef.type !== "NUMERIC") throw new Error("Selected variable is not numeric.");
         
         // Extract numeric data values only
         const dataValues = data
@@ -58,8 +48,6 @@ export function useAnalyzeHook(
             return isNaN(num) ? null : num;
         })
         .filter(v => v !== null);
-
-        if (dataValues.length === 0) throw new Error("No numeric data available for selected variable.");
 
         return { dataValues, dataVarDef };
     };
@@ -82,9 +70,11 @@ export function useAnalyzeHook(
             }
             // Validate periodicity and data length
             const periodicity = Number(selectedPeriod[0]);
+            
             if (dataValues.length < 4 * periodicity) {
                 throw new Error("Data length is less than 4 times the periodicity.");
             }
+
             if (dataValues.length % periodicity !== 0) {
                 throw new Error("Data length is not a multiple of the periodicity.");
             }

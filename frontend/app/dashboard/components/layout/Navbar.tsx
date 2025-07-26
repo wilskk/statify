@@ -101,7 +101,7 @@ const Navbar: React.FC = () => {
                 </MenubarSubContent>
               </MenubarSub>
                 <MenubarSub>
-                    <MenubarSubTrigger>Nonparametric Test</MenubarSubTrigger>
+                    <MenubarSubTrigger>Nonparametric Tests</MenubarSubTrigger>
                     <MenubarSubContent>
                         <MenubarItem >One Sample...</MenubarItem>
                         <MenubarItem >Independent Samples...</MenubarItem>
@@ -149,15 +149,6 @@ const Navbar: React.FC = () => {
                   </MenubarItem>
                 </MenubarSubContent>
               </MenubarSub>
-                <MenubarSub>
-                    <MenubarSubTrigger>Correlate</MenubarSubTrigger>
-                    <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.Bivariate)}>Bivariate...</MenubarItem>
-                        <MenubarItem disabled>Partial...</MenubarItem>
-                        <MenubarItem disabled>Distances...</MenubarItem>
-                        <MenubarItem disabled>Canonical Correlation...</MenubarItem>
-                    </MenubarSubContent>
-                </MenubarSub>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>

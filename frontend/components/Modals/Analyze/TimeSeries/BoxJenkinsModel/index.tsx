@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
-import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/timeSeriesTimeHook";
+import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeHook";
 import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel/hooks/analyzeHook";
 import { useOptionHook } from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel/hooks/optionHook";
 import VariablesTab from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel/VariablesTab";

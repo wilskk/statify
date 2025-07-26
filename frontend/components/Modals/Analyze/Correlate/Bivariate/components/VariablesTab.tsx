@@ -51,7 +51,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const targetLists: TargetListConfig[] = [
         {
             id: 'test',
-            title: 'Test Variables:',
+            title: 'Test Variable(s):',
             variables: testVariables,
             height: '300px'
         }

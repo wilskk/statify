@@ -47,6 +47,7 @@ COPY --from=builder /app/backend/.env ./.env
 
 # Create temp directory
 RUN mkdir -p ./temp
+RUN chown -R node:node ./temp
 
 # Healthcheck for container
 HEALTHCHECK CMD wget -qO- http://localhost:5000/ || exit 1

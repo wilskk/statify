@@ -31,29 +31,14 @@ export function useAnalyzeHook(
         if (selectedPeriod[1] === "Not Dated") {
             return "Please select another time specification.";
         }
-        if ((getDayName() === "Saturday" || getDayName() === "Sunday") && getTypeDate() === "wwd5") {
-            return "5 Work days only available on weekdays (Monday to Friday).";
+        if (arOrder < 0 || arOrder > 5) {
+            return "AR order must be between 0 and 5.";
         }
-        if (getDayName() === "Sunday" && getTypeDate() === "wwd6") {
-            return "6 Work days only available on weekdays (Monday to Saturday).";
+        if (diffOrder < 0 || diffOrder > 2) {
+            return "Differencing order must be between 0 and 2.";
         }
-        if ((getHour() < 8 || getHour() > 15) && getTypeDate() === "dwh") {
-            return "Work hours only available between 8:00 and 15:00."; 
-        }
-        if (getHour() < 0 || getHour() > 23) {
-            return "Hour must be between 0 and 23.";
-        }
-        if (arOrder < 0 || diffOrder < 0 || maOrder < 0) {
-            return "AR, differencing, and MA orders must be non-negative.";
-        }
-        if (diffOrder > 2) {
-            return "Differencing order cannot exceed 2.";
-        }
-        if (arOrder > 5) {
-            return "AR order cannot exceed 5.";
-        }
-        if (maOrder > 5) {
-            return "MA order cannot exceed 5.";
+        if (maOrder < 0 || maOrder > 5) {
+            return "MA order must be between 0 and 5.";
         }
         return null;
     };

@@ -1,7 +1,5 @@
-import { se } from 'date-fns/locale';
 import init, {Decomposition} from '@/components/Modals/Analyze/TimeSeries/wasm/pkg/wasm';
-import {generateDate} from '@/components/Modals/Analyze/TimeSeries/timeSeriesGenerateDate';
-import { title } from 'process';
+import {generateDate} from '@/components/Modals/Analyze/TimeSeries/TimeSeriesGenerateDate';
 
 export async function handleDecomposition(
     data: (number)[],

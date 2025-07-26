@@ -3,20 +3,29 @@ import { TABS, TourStep } from '../types';
 export const baseTourSteps: TourStep[] = [
     {
         title: "Variable Selection",
-        content: "Select variables from the available list to analyze with One-Sample T Test. Only numeric variables are shown.",
-        targetId: "variable-list-manager",
+        content: "Select numeric variables from this list to analyze with One-Sample T Test.",
+        targetId: "one-sample-t-test-available-variables",
         defaultPosition: 'bottom',
-        defaultHorizontalPosition: null,
+        defaultHorizontalPosition: 'left',
         icon: "📊",
         requiredTab: TABS.VARIABLES
     },
     {
         title: "Test Variables",
-        content: "Variables in this list will be analyzed. You can reorder them by dragging.",
-        targetId: "test-variables-list",
+        content: "Variables moved to this list will be analyzed. You can reorder them by dragging.",
+        targetId: "one-sample-t-test-test-variables",
         defaultPosition: 'bottom',
-        defaultHorizontalPosition: 'left',
+        defaultHorizontalPosition: 'right',
         icon: "📋",
+        requiredTab: TABS.VARIABLES
+    },
+    {
+        title: "Allow Unknown Variables",
+        content: "Check this option to treat variables with 'unknown' measurement level as Scale variables, allowing them to be selected for analysis.",
+        targetId: "allow-unknown-section",
+        defaultPosition: 'bottom',
+        defaultHorizontalPosition: null,
+        icon: "🔍",
         requiredTab: TABS.VARIABLES
     },
     {
@@ -29,21 +38,12 @@ export const baseTourSteps: TourStep[] = [
         requiredTab: TABS.VARIABLES
     },
     {
-        title: "Effect Size",
-        content: "Check this option to include effect size calculations in your results.",
+        title: "Estimate Effect Size",
+        content: "This option is currently disabled as the effect size calculation feature is not yet available in this version. When implemented, it will allow you to include effect size calculations in your results.",
         targetId: "estimate-effect-size-section",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
         icon: "📏",
-        requiredTab: TABS.VARIABLES
-    },
-    {
-        title: "Run Analysis",
-        content: "Click OK to run the analysis with your selected variables and settings.",
-        targetId: "one-sample-t-test-ok-button",
-        defaultPosition: 'top',
-        defaultHorizontalPosition: null,
-        icon: "▶️",
         requiredTab: TABS.VARIABLES
     }
 ];

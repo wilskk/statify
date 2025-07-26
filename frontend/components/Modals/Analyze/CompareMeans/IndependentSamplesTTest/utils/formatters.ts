@@ -44,14 +44,14 @@ export function formatGroupStatisticsTable(
     // Process each result
     results.groupStatistics.forEach((result) => {
         const stats = result.stats as GroupStatistics;
-        const decimals = result.variable.decimals || 2;
+        const decimals = result.variable.decimals;
 
         table.rows.push(
             {
                 rowHeader: [result.variable.name],
                 label: stats.group1.label,
                 N: stats.group1.N,
-                Mean: formatNumber(stats.group1.Mean, decimals + 3),
+                Mean: formatNumber(stats.group1.Mean, decimals + 2),
                 StdDev: formatNumber(stats.group1.StdDev, decimals + 3),
                 SEMean: formatNumber(stats.group1.SEMean, decimals + 3)
             },
@@ -59,7 +59,7 @@ export function formatGroupStatisticsTable(
                 rowHeader: [result.variable.name],
                 label: stats.group2.label,
                 N: stats.group2.N,
-                Mean: formatNumber(stats.group2.Mean, decimals + 3),
+                Mean: formatNumber(stats.group2.Mean, decimals + 2),
                 StdDev: formatNumber(stats.group2.StdDev, decimals + 3),
                 SEMean: formatNumber(stats.group2.SEMean, decimals + 3)
             }
@@ -124,7 +124,11 @@ export function formatIndependentSamplesTestTable (
     // Process each result
     results.independentSamplesTest.forEach((result) => {
         const stats = result.stats as IndependentSamplesTest;
-        const decimals = result.variable.decimals || 2;
+        const decimals = result.variable.decimals;
+
+        if (isNaN(stats.equalVariances.t) || isNaN(stats.unequalVariances.t)) {
+            return;
+        }
         
         table.rows.push(
             {

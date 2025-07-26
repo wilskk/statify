@@ -124,6 +124,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 setFlagSignificantCorrelations(!!checked)
                             }
                             className="mr-2"
+                            disabled
                         />
                         <Label htmlFor="flag-significant-correlations" className="text-sm cursor-pointer">Flag Significant Correlations</Label>
                         <ActiveElementHighlight active={tourActive && currentStep === flagSignificantCorrelationsStepIndex} />

@@ -467,8 +467,18 @@ export function getModalTitle(type: ModalType): string {
             return "Go To Case";
         case ModalType.GoToVariable:
             return "Go To Variable";
+        case ModalType.OneSampleTTest:
+            return "One-Sample T Test";
+        case ModalType.IndependentSamplesTTest:
+            return "Independent-Samples T Test";
+        case ModalType.PairedSamplesTTest:
+            return "Paired-Samples T Test";
+        case ModalType.OneWayANOVA:
+            return "One-Way ANOVA";
+        case ModalType.Bivariate:
+            return "Bivariate Correlations";
         case ModalType.ChiSquare:
-            return "Chi-Square Test";
+            return "Chi-square Test";
         case ModalType.Runs:
             return "Runs Test";
         case ModalType.TwoIndependentSamples:

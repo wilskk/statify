@@ -34,24 +34,7 @@ type InputYearProps = {
     label: string;
     id: string;
     value: number;
+    min: string;
+    max: string;
     onChange: (value: number) => void;
 };
-
-const InputYear: React.FC<InputYearProps> = ({ label, id, value, onChange }) => {
-    return (
-        <div className="flex flex-row">
-            <label className="text-sm font-semibold py-2" htmlFor={id}>
-                {label} :
-            </label>
-            <input
-                className="w-[70px] text-sm font-semibold rounded-lg border p-2 ml-2"
-                type="number"
-                id={id}
-                value={value}
-                onChange={(e) => onChange(Number(e.target.value))}
-            />
-        </div>
-    );
-};
-
-export { InputYear };

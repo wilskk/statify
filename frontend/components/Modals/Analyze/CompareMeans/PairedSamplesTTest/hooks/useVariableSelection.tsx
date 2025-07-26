@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import type { Variable } from "@/types/Variable";
+import { toast } from "sonner";
 
 export type HighlightedVariable = {
     tempId: string;
@@ -15,44 +16,162 @@ export const useVariableSelection = () => {
     );
     const [testVariables1, setTestVariables1] = useState<Variable[]>([]);
     const [testVariables2, setTestVariables2] = useState<Variable[]>([]);
+    const [pairNumbers, setPairNumbers] = useState<number[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariable | null>(null);
     const [highlightedPair, setHighlightedPair] = useState<{ id: number } | null>(null);
 
     // Move a variable to test variables (either list1 or list2)
     const moveToTestVariables = useCallback((variable: Variable, targetList?: 'test1' | 'test2') => {
-        // Auto-determine which list needs a variable if targetList not specified
-        const targetListToUse = targetList || (testVariables1.length <= testVariables2.length ? 'test1' : 'test2');
+        // Determine if we have incomplete pairs
+        const hasUndefinedInTest1 = testVariables1.some(v => v === undefined);
+        const hasUndefinedInTest2 = testVariables2.some(v => v === undefined);
+        const hasIncompletePair = hasUndefinedInTest1 || hasUndefinedInTest2;
         
-        if (targetListToUse === 'test1') {
-            // Check if variable already exists in list2 at same index
-            if (testVariables2.length > testVariables1.length) {
-                const matchingIndex = testVariables1.length;
-                const potentialMatch = testVariables2[matchingIndex];
+        // Find the index of the first undefined value in each list
+        const undefinedIndexInTest1 = testVariables1.findIndex(v => v === undefined);
+        const undefinedIndexInTest2 = testVariables2.findIndex(v => v === undefined);
+        
+        let targetListToUse = targetList;
+        
+        // Handle incomplete pairs (with undefined values)
+        if (hasIncompletePair) {
+            // If both lists have undefined values, prioritize the first one
+            if (hasUndefinedInTest1 && hasUndefinedInTest2) {
+                const firstUndefinedIndex = Math.min(
+                    undefinedIndexInTest1 !== -1 ? undefinedIndexInTest1 : Infinity,
+                    undefinedIndexInTest2 !== -1 ? undefinedIndexInTest2 : Infinity
+                );
                 
+                // Determine which list has the first undefined
+                if (undefinedIndexInTest1 === firstUndefinedIndex) {
+                    targetListToUse = 'test1';
+                    
+                    // Check if this would create a pair with the same variable
+                    const potentialMatch = testVariables2[firstUndefinedIndex];
+                    if (potentialMatch && potentialMatch.columnIndex === variable.columnIndex) {
+                        toast.error("Pasangan harus berisi dua variabel yang berbeda.");
+                        return;
+                    }
+                } else {
+                    targetListToUse = 'test2';
+                    
+                    // Check if this would create a pair with the same variable
+                    const potentialMatch = testVariables1[firstUndefinedIndex];
+                    if (potentialMatch && potentialMatch.columnIndex === variable.columnIndex) {
+                        toast.error("Pasangan harus berisi dua variabel yang berbeda.");
+                        return;
+                    }
+                }
+                
+                // If targetList is specified but doesn't match our determined target
+                if (targetList && targetList !== targetListToUse) {
+                    toast.warning("Menyelesaikan pasangan yang belum lengkap terlebih dahulu.");
+                }
+            } else if (hasUndefinedInTest1) {
+                // Only test1 has undefined values
+                targetListToUse = 'test1';
+                
+                // Check if this would create a pair with the same variable
+                const potentialMatch = testVariables2[undefinedIndexInTest1];
                 if (potentialMatch && potentialMatch.columnIndex === variable.columnIndex) {
-                    console.warn("Cannot add the same variable to both sides of a pair");
+                    toast.error("The pair must contain two different variables.");
                     return;
                 }
+                
+                // If targetList is specified but doesn't match our determined target
+                if (targetList && targetList !== targetListToUse) {
+                    toast.warning("Menyelesaikan pasangan yang belum lengkap terlebih dahulu.");
+                }
+            } else {
+                // Only test2 has undefined values
+                targetListToUse = 'test2';
+                
+                // Check if this would create a pair with the same variable
+                const potentialMatch = testVariables1[undefinedIndexInTest2];
+                if (potentialMatch && potentialMatch.columnIndex === variable.columnIndex) {
+                    toast.error("The pair must contain two different variables.");
+                    return;
+                }
+                
+                // If targetList is specified but doesn't match our determined target
+                if (targetList && targetList !== targetListToUse) {
+                    toast.warning("Menyelesaikan pasangan yang belum lengkap terlebih dahulu.");
+                }
             }
-            
-            setTestVariables1(prev => [...prev, variable]);
         } else {
-            // Check if variable already exists in list1 at same index
-            if (testVariables2.length < testVariables1.length) {
-                const matchingIndex = testVariables2.length;
-                const potentialMatch = testVariables1[matchingIndex];
+            // Handle uneven lists (different lengths but no undefined values)
+            const hasUnevenLists = testVariables1.length !== testVariables2.length;
+            
+            if (hasUnevenLists) {
+                // Determine which list needs completion
+                const shorterList = testVariables1.length < testVariables2.length ? 'test1' : 'test2';
+                const longerList = shorterList === 'test1' ? 'test2' : 'test1';
+                const matchingIndex = Math.min(testVariables1.length, testVariables2.length);
                 
-                if (potentialMatch && potentialMatch.columnIndex === variable.columnIndex) {
-                    console.warn("Cannot add the same variable to both sides of a pair");
+                // Get the variable from the longer list
+                const existingVariable = longerList === 'test1' 
+                    ? testVariables1[matchingIndex] 
+                    : testVariables2[matchingIndex];
+                
+                // Check if the variable being added is the same as the existing one
+                if (existingVariable && existingVariable.columnIndex === variable.columnIndex) {
+                    toast.error("The pair must contain two different variables.");
                     return;
                 }
+                
+                targetListToUse = shorterList;
+                
+                // If targetList is specified but doesn't match the list that needs completion
+                if (targetList && targetList !== shorterList) {
+                    toast.warning("Menyelesaikan pasangan yang belum lengkap terlebih dahulu.");
+                }
+            } else if (!targetListToUse) {
+                // If lists are even and no targetList specified, determine based on balance
+                targetListToUse = testVariables1.length <= testVariables2.length ? 'test1' : 'test2';
             }
-            
-            setTestVariables2(prev => [...prev, variable]);
+        }
+        
+        // Now add the variable to the appropriate list
+        if (targetListToUse === 'test1') {
+            if (hasUndefinedInTest1) {
+                // Replace the first undefined value
+                setTestVariables1(prev => {
+                    const newArray = [...prev];
+                    newArray[undefinedIndexInTest1] = variable;
+                    return newArray;
+                });
+            } else {
+                // Add to the end
+                setTestVariables1(prev => [...prev, variable]);
+                
+                // Add pair number if this completes a pair
+                if (testVariables2.length > testVariables1.length) {
+                    const newPairNumber = pairNumbers.length > 0 ? Math.max(...pairNumbers) + 1 : 1;
+                    setPairNumbers(prev => [...prev, newPairNumber]);
+                }
+            }
+        } else { // targetListToUse === 'test2'
+            if (hasUndefinedInTest2) {
+                // Replace the first undefined value
+                setTestVariables2(prev => {
+                    const newArray = [...prev];
+                    newArray[undefinedIndexInTest2] = variable;
+                    return newArray;
+                });
+            } else {
+                // Add to the end
+                setTestVariables2(prev => [...prev, variable]);
+                
+                // Add pair number if this completes a pair
+                if (testVariables1.length > testVariables2.length) {
+                    const newPairNumber = pairNumbers.length > 0 ? Math.max(...pairNumbers) + 1 : 1;
+                    setPairNumbers(prev => [...prev, newPairNumber]);
+                }
+            }
         }
         
         setHighlightedVariable(null);
-    }, [testVariables1, testVariables2]);
+    }, [testVariables1, testVariables2, pairNumbers]);
 
     // Remove a variable from a test list
     const removeVariable = useCallback((sourceList: 'test1' | 'test2', rowIndex: number) => {
@@ -70,6 +189,11 @@ export const useVariableSelection = () => {
                 setTestVariables2(prev => {
                     const newArray = [...prev];
                     newArray.splice(rowIndex, 1);
+                    return newArray;
+                });
+                setPairNumbers(prev => {
+                    const newArray = [...prev];
+                    newArray.pop();
                     return newArray;
                 });
             } else {
@@ -96,6 +220,11 @@ export const useVariableSelection = () => {
                     newArray.splice(rowIndex, 1);
                     return newArray;
                 });
+                setPairNumbers(prev => {
+                    const newArray = [...prev];
+                    newArray.pop();
+                    return newArray;
+                });
             } else {
                 // If variable1 is not empty, just empty this slot
                 setTestVariables2(prev => {
@@ -111,6 +240,13 @@ export const useVariableSelection = () => {
 
     // Move variable between lists (swap variable1 and variable2)
     const moveVariableBetweenLists = useCallback((index: number) => {
+        // Check if swapping would create a pair with the same variable
+        if (testVariables1[index] && testVariables2[index] && 
+            testVariables1[index].columnIndex === testVariables2[index].columnIndex) {
+            toast.error("The pair must contain two different variables.");
+            return;
+        }
+        
         // Move variable from list1 to list2 or vice versa
         const temp = testVariables1[index];
         setTestVariables1(prev => {
@@ -140,6 +276,12 @@ export const useVariableSelection = () => {
                 return newArray;
             });
             
+            setPairNumbers(prev => {
+                const newArray = [...prev];
+                [newArray[index], newArray[index - 1]] = [newArray[index - 1], newArray[index]];
+                return newArray;
+            });
+            
             setHighlightedPair({ id: index - 1 });
         }
     }, []);
@@ -159,6 +301,12 @@ export const useVariableSelection = () => {
                 return newArray;
             });
             
+            setPairNumbers(prev => {
+                const newArray = [...prev];
+                [newArray[index], newArray[index + 1]] = [newArray[index + 1], newArray[index]];
+                return newArray;
+            });
+            
             setHighlightedPair({ id: index + 1 });
         }
     }, [testVariables1.length]);
@@ -167,6 +315,7 @@ export const useVariableSelection = () => {
     const removePair = useCallback((index: number) => {
         setTestVariables1(prev => prev.filter((_, i) => i !== index));
         setTestVariables2(prev => prev.filter((_, i) => i !== index));
+        setPairNumbers(prev => prev.filter((_, i) => i !== index));
         setHighlightedPair(null);
     }, []);
 
@@ -174,15 +323,18 @@ export const useVariableSelection = () => {
     const reorderPairs = useCallback((pairs: [Variable, Variable][]) => {
         const newVariables1: Variable[] = [];
         const newVariables2: Variable[] = [];
+        const newPairNumbers: number[] = [];
         
-        pairs.forEach(pair => {
+        pairs.forEach((pair, index) => {
             newVariables1.push(pair[0]);
             newVariables2.push(pair[1]);
+            newPairNumbers.push(pairNumbers[index] || index + 1);
         });
         
         setTestVariables1(newVariables1);
         setTestVariables2(newVariables2);
-    }, []);
+        setPairNumbers(newPairNumbers);
+    }, [pairNumbers]);
 
     // Check if a pair is valid
     const isPairValid = useCallback((index: number): boolean => {
@@ -243,6 +395,7 @@ export const useVariableSelection = () => {
         setAvailableVariables(variables.filter(v => v.name !== ""));
         setTestVariables1([]);
         setTestVariables2([]);
+        setPairNumbers([]);
         setHighlightedVariable(null);
         setHighlightedPair(null);
     }, [variables]);
@@ -251,6 +404,7 @@ export const useVariableSelection = () => {
         availableVariables,
         testVariables1,
         testVariables2,
+        pairNumbers,
         highlightedVariable,
         setHighlightedVariable,
         highlightedPair,
