@@ -31,7 +31,7 @@
     "backend"
   ],
   "dependencies": {
-    "jstat": "^1.9.6"
+    "jstat": "^1.9.6",
     "react-dropzone": "^14.3.8"
   }
 }

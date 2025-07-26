@@ -22,6 +22,8 @@ import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useResultStore } from '@/stores/useResultStore';
 import { Variable, VariableType } from '@/types/Variable';
 import { Chart, registerables } from 'chart.js';
+// Import ChartService for generating scatter plot JSON with multiple fit lines
+import { ChartService } from '@/services/chart/ChartService';
 import { Separator } from '@/components/ui/separator';
 
 // Import our custom tab components (menggunakan struktur baru)
@@ -269,7 +271,142 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
             try {
               await addStatistic(analyticId, regressionSummaryStat);
               console.log("[CurveEstimation OLD CALC] Statistics saved successfully");
-              onClose(); // Tetap tutup modal setelah sukses
+
+              // ============================================================
+              // Generate Scatter Plot With Multiple Fit Line (NEW)
+              // ============================================================
+
+              // 1. Prepare scatter data [{x, y}]
+              const scatterData = X_data.map((xVal, idx) => ({ x: xVal, y: Y_data[idx] }));
+
+              // 2. Build fitFunctions array based on worker results
+              const buildFitFunctions = (rows: any[]) => {
+                  const colors = [
+                      "#ff6b6b",
+                      "#6a4c93",
+                      "#4ecdc4",
+                      "#f9c74f",
+                      "#90be6d",
+                      "#577590",
+                      "#ffbe0b",
+                      "#8338ec",
+                      "#3a86ff",
+                      "#ff006e",
+                  ];
+                  let colorIdx = 0;
+                  const fits: any[] = [];
+
+                  rows.forEach((row: any) => {
+                      const model = row.rowHeader?.[0] || row["Equation"] || "Unknown";
+                      // Skip rows without constant (failed fit)
+                      if (!row["Constant"] || row["Constant"] === "") return;
+
+                      const a = parseFloat(row["Constant"]);
+                      const b1 = row["b1"] !== "" ? parseFloat(row["b1"]) : undefined;
+                      const b2 = row["b2"] !== "" ? parseFloat(row["b2"]) : undefined;
+                      const b3 = row["b3"] !== "" ? parseFloat(row["b3"]) : undefined;
+
+                      let fn = "x => x"; // default placeholder
+                      let parameters: Record<string, number> = { a };
+
+                      switch (model) {
+                          case "Linear":
+                              fn = "x => parameters.a + parameters.b * x";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Logarithmic":
+                              fn = "x => parameters.a + parameters.b * Math.log(x)";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Inverse":
+                              fn = "x => parameters.a + parameters.b / x";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Quadratic":
+                              fn = "x => parameters.a + parameters.b * x + parameters.c * Math.pow(x, 2)";
+                              parameters = { a, b: b1 as number, c: b2 as number };
+                              break;
+                          case "Cubic":
+                              fn = "x => parameters.a + parameters.b * x + parameters.c * Math.pow(x, 2) + parameters.d * Math.pow(x, 3)";
+                              parameters = { a, b: b1 as number, c: b2 as number, d: b3 as number };
+                              break;
+                          case "Compound":
+                              fn = "x => parameters.a * Math.pow(parameters.b, x)";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Power":
+                              fn = "x => parameters.a * Math.pow(x, parameters.b)";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "S":
+                              fn = "x => parameters.a / (1 + Math.exp(parameters.b + parameters.c * x))";
+                              parameters = { a, b: b1 as number, c: b2 as number };
+                              break;
+                          case "Growth":
+                          case "Exponential":
+                              fn = "x => parameters.a * Math.exp(parameters.b * x)";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Logistic":
+                              fn = "x => parameters.c / (1 + parameters.a * Math.pow(parameters.b, x))";
+                              parameters = { a: a, b: b1 as number, c: b2 as number };
+                              break;
+                          default:
+                              fn = "x => 0";
+                              parameters = { a: 0, b: 0 };
+                      }
+
+                      fits.push({
+                          fn,
+                          equation: model,
+                          color: colors[colorIdx % colors.length],
+                          parameters,
+                      });
+                      colorIdx += 1;
+                  });
+
+                  return fits;
+              };
+
+              const regressionRows = workerData.result?.tables?.[0]?.rows || [];
+              const fitFunctions = buildFitFunctions(regressionRows);
+
+              const chartJSON = ChartService.createChartJSON({
+                  chartType: "Scatter Plot With Multiple Fit Line",
+                  chartData: scatterData,
+                  chartVariables: {
+                      x: independentVarNames,
+                      y: [dependentVarName],
+                  },
+                  chartMetadata: {
+                      title: `Scatter Plot: ${dependentVarName} vs ${independentVarNames[0]}`,
+                      subtitle: "With Multiple Regression Fit Lines",
+                      description: "Scatter plot showing data points with regression fit lines for each selected model",
+                  },
+                  chartConfig: {
+                      fitFunctions,
+                      axisLabels: {
+                          x: independentVarNames[0],
+                          y: dependentVarName,
+                      },
+                  },
+              });
+
+              const scatterStat = {
+                  title: "Scatter Plot With Multiple Fit Lines",
+                  output_data: JSON.stringify(chartJSON),
+                  components: "ScatterPlotWithMultipleFitLine",
+                  description: "Scatter plot with multiple regression fit lines",
+              };
+
+              try {
+                  await addStatistic(analyticId, scatterStat);
+                  console.log("[CurveEstimation OLD CALC] Scatter plot statistic saved successfully");
+              } catch (error) {
+                  console.error("[CurveEstimation OLD CALC] Failed to save scatter plot statistic:", error);
+              }
+
+              onClose(); // Close modal after saving statistics
             } catch (error) {
               console.error("[CurveEstimation OLD CALC] Failed to save statistics:", error);
               setErrorMessage("Failed to save regression results.");
