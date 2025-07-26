@@ -11,12 +11,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     setShowDescriptives,
     confidenceInterval,
     setConfidenceInterval,
-    showMEstimators,
-    setShowMEstimators,
+
     showOutliers,
     setShowOutliers,
-    showPercentiles,
-    setShowPercentiles,
     containerType = "dialog",
     tourActive = false,
     currentStep = 0,
@@ -62,19 +59,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             </div>
 
             <div id="explore-additional-stats-section" className="p-4 border rounded-md space-y-2 relative">
-                {/* M-estimators Checkbox */}
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="mEstimators"
-                        checked={showMEstimators}
-                        onCheckedChange={(checked) => setShowMEstimators(checked as boolean)}
-                        className="h-4 w-4"
-                    />
-                    <Label htmlFor="mEstimators" className="text-sm font-medium cursor-pointer">
-                        M-estimators
-                    </Label>
-                </div>
-
                 {/* Outliers Checkbox */}
                 <div className="flex items-center space-x-2">
                     <Checkbox
@@ -88,18 +72,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     </Label>
                 </div>
 
-                {/* Percentiles Checkbox */}
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="percentiles"
-                        checked={showPercentiles}
-                        onCheckedChange={(checked) => setShowPercentiles(checked as boolean)}
-                        className="h-4 w-4"
-                    />
-                    <Label htmlFor="percentiles" className="text-sm font-medium cursor-pointer">
-                        Percentiles
-                    </Label>
-                </div>
+
                 <ActiveElementHighlight active={tourActive && currentStep === additionalStatsStep} />
             </div>
         </div>

@@ -10,41 +10,7 @@
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 // Calculator lain dimuat oleh manager.js
 
-// Fungsi bobot untuk M-Estimators didefinisikan di luar kelas untuk efisiensi
-const M_ESTIMATOR_WEIGHT_FUNCTIONS = {
-    huber: (u) => { 
-        const abs_u = Math.abs(u); 
-        const k = 1.339; // Default parameter
-        return abs_u <= k ? 1 : k / abs_u; 
-    },
-    hampel: (u) => {
-        const abs_u = Math.abs(u);
-        const a = 1.7, b = 3.4, c = 8.5; // Default parameters
-        if (abs_u <= a) return 1;
-        if (abs_u <= b) return a / abs_u;
-        if (abs_u <= c) return (a * (c - abs_u)) / (abs_u * (c - b));
-        return 0;
-    },
-    andrew: (u) => {
-        const abs_u = Math.abs(u);
-        const c = 1.34 * Math.PI; // Default: c = 1.34π
-        if (abs_u <= c) {
-            // Untuk u mendekati 0, gunakan limit: lim(u→0) sin(πu/c)/(πu/c) = 1
-            if (abs_u < 1e-9) return 1;
-            return (c / Math.PI) * Math.sin(Math.PI * u / c) / u;
-        }
-        return 0;
-    },
-    tukey: (u) => {
-        const abs_u = Math.abs(u);
-        const c = 4.685; // Default parameter
-        if (abs_u <= c) {
-            const ratio = u / c;
-            return Math.pow(1 - ratio * ratio, 2);
-        }
-        return 0;
-    }
-};
+
 
 class ExamineCalculator {
     /**
@@ -116,54 +82,6 @@ class ExamineCalculator {
     }
     
     /**
-     * Menghitung M-Estimator untuk lokasi, sebuah statistik robust yang kurang sensitif terhadap outlier.
-     * Implementasi sesuai dengan spesifikasi SPSS EXAMINE algorithms.
-     * 
-     * @param {string} method - Metode bobot: 'huber', 'hampel', 'andrew', 'tukey'.
-     * @returns {number|null} Nilai M-Estimator atau null jika perhitungan gagal.
-     */
-    getMEstimator(method) {
-        this.#initialize();
-        
-        // Validasi input method
-        const validMethods = ['huber', 'hampel', 'andrew', 'tukey'];
-        if (!validMethods.includes(method.toLowerCase())) {
-            console.warn(`Invalid M-estimator method: ${method}. Using Huber instead.`);
-            method = 'huber';
-        }
-        
-        const y_tilde = this.freqCalc.getPercentile(50, 'haverage');
-        if (y_tilde === null) return null;
-        
-        // Hitung Median Absolute Deviation (MAD) dengan faktor skala SPSS
-        // Untuk M-estimator, kita membutuhkan median klasik dari absolute deviations individual
-        const absoluteDeviations = [];
-        for (let i = 0; i < this.data.length; i++) {
-            const val = this.data[i];
-            const weight = this.weights ? (this.weights[i] ?? 1) : 1;
-            if (isNumeric(val) && typeof weight === 'number' && weight > 0) {
-                // Expand data berdasarkan weight untuk mendapatkan classical median
-                for (let w = 0; w < weight; w++) {
-                    absoluteDeviations.push(Math.abs(parseFloat(val) - y_tilde));
-                }
-            }
-        }
-        
-        if (absoluteDeviations.length === 0) return y_tilde;
-        
-        // Hitung median klasik (bukan weighted median)
-        absoluteDeviations.sort((a, b) => a - b);
-        const n = absoluteDeviations.length;
-        const mad = n % 2 === 0 
-            ? (absoluteDeviations[n/2 - 1] + absoluteDeviations[n/2]) / 2 
-            : absoluteDeviations[Math.floor(n/2)];
-        
-        // Untuk M-estimator, SPSS menggunakan MAD dengan faktor skala 1.4826
-        // untuk konsistensi dengan standard normal distribution
-        let s = mad !== null && mad > 0 ? mad * 1.4826 : null;
-        
-        // Jika MAD = 0, gunakan standard deviation sebagai fallback
-        if (s === null || s === 0) {
             const stdDev = this.descCalc.getStdDev();
             s = stdDev && stdDev > 0 ? stdDev : 1.0; // Fallback terakhir ke 1.0
         }
@@ -252,58 +170,9 @@ class ExamineCalculator {
             },
             descriptives: combinedStats,
             trimmedMean: this.getTrimmedMean(),
-            mEstimators: {
-                huber: this.getMEstimator('huber'),
-                hampel: this.getMEstimator('hampel'),
-                andrews: this.getMEstimator('andrew'),
-                tukey: this.getMEstimator('tukey'),
-            },
-            percentiles: {
-                waverage: { 
-                    '5': this.freqCalc.getPercentile(5, 'waverage'),
-                    '10': this.freqCalc.getPercentile(10, 'waverage'),
-                    '25': this.freqCalc.getPercentile(25, 'waverage'), 
-                    '50': this.freqCalc.getPercentile(50, 'waverage'), 
-                    '75': this.freqCalc.getPercentile(75, 'waverage'),
-                    '90': this.freqCalc.getPercentile(90, 'waverage'),
-                    '95': this.freqCalc.getPercentile(95, 'waverage')
-                },
-                round: { 
-                    '5': this.freqCalc.getPercentile(5, 'round'),
-                    '10': this.freqCalc.getPercentile(10, 'round'),
-                    '25': this.freqCalc.getPercentile(25, 'round'), 
-                    '50': this.freqCalc.getPercentile(50, 'round'), 
-                    '75': this.freqCalc.getPercentile(75, 'round'),
-                    '90': this.freqCalc.getPercentile(90, 'round'),
-                    '95': this.freqCalc.getPercentile(95, 'round')
-                },
-                empirical: { 
-                    '5': this.freqCalc.getPercentile(5, 'empirical'),
-                    '10': this.freqCalc.getPercentile(10, 'empirical'),
-                    '25': this.freqCalc.getPercentile(25, 'empirical'), 
-                    '50': this.freqCalc.getPercentile(50, 'empirical'), 
-                    '75': this.freqCalc.getPercentile(75, 'empirical'),
-                    '90': this.freqCalc.getPercentile(90, 'empirical'),
-                    '95': this.freqCalc.getPercentile(95, 'empirical')
-                },
-                aempirical: {
-                    '5': this.freqCalc.getPercentile(5, 'aempirical'),
-                    '10': this.freqCalc.getPercentile(10, 'aempirical'),
-                    '25': this.freqCalc.getPercentile(25, 'aempirical'), 
-                    '50': this.freqCalc.getPercentile(50, 'aempirical'), 
-                    '75': this.freqCalc.getPercentile(75, 'aempirical'),
-                    '90': this.freqCalc.getPercentile(90, 'aempirical'),
-                    '95': this.freqCalc.getPercentile(95, 'aempirical')
-                },
-                haverage: {
-                    '5': this.freqCalc.getPercentile(5, 'haverage'),
-                    '10': this.freqCalc.getPercentile(10, 'haverage'),
-                    '25': this.freqCalc.getPercentile(25, 'haverage'), 
-                    '50': this.freqCalc.getPercentile(50, 'haverage'), 
-                    '75': this.freqCalc.getPercentile(75, 'haverage'),
-                    '90': this.freqCalc.getPercentile(90, 'haverage'),
-                    '95': this.freqCalc.getPercentile(95, 'haverage')
-                },
+
+            // Append extreme values if requested
+            ...(this.options.showOutliers && { extremeValues: this.getExtremeValues(this.options.extremeCount || 5) }),
             }
         };
 
