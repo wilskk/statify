@@ -26,7 +26,7 @@ class DescriptiveCalculator {
         this.variable = variable;
         this.data = data;
         this.weights = weights;
-        this.options = options; // Simpan options untuk penggunaan nanti
+        this.options = options || {}; // Simpan options untuk penggunaan nanti
         this.initialized = false;
         
         // Properti yang dihitung selama inisialisasi (algoritma provisional)

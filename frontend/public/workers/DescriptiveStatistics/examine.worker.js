@@ -35,29 +35,24 @@ onmessage = function (event) {
     const calculator = new self.ExamineCalculator({ variable, data, caseNumbers, weights, options });
     const results = calculator.getStatistics();
 
-    // Apply rounding if decimals specified
-    if (typeof variable?.decimals === 'number' && variable.decimals >= 0) {
-      const dec = variable.decimals;
-      const STATS_PRECISION = 2; // Use 2 decimal places for calculated statistics
-
-      // Round basic descriptives and percentiles based on the variable's defined decimals
-      if (results.descriptives) {
-        results.descriptives = roundDeep(results.descriptives, dec);
-      }
-      
-      // Percentiles, robust stats, and CI should always use higher precision
-      if (results.percentiles) {
-        results.percentiles = roundDeep(results.percentiles, STATS_PRECISION);
-      }
-      if (results.trimmedMean !== undefined) {
-        results.trimmedMean = roundDeep(results.trimmedMean, STATS_PRECISION);
-      }
-      if (results.mEstimators) {
-        results.mEstimators = roundDeep(results.mEstimators, STATS_PRECISION);
-      }
-      if (results.descriptives?.confidenceInterval) {
-        results.descriptives.confidenceInterval = roundDeep(results.descriptives.confidenceInterval, STATS_PRECISION);
-      }
+    // Apply rounding
+    // Round basic descriptives and percentiles
+    if (results.descriptives) {
+      results.descriptives = roundDeep(results.descriptives, STATS_DECIMAL_PLACES);
+    }
+    
+    // Percentiles, robust stats, and CI should always use higher precision
+    if (results.percentiles) {
+      results.percentiles = roundDeep(results.percentiles, STATS_DECIMAL_PLACES);
+    }
+    if (results.trimmedMean !== undefined) {
+      results.trimmedMean = roundDeep(results.trimmedMean, STATS_DECIMAL_PLACES);
+    }
+    if (results.mEstimators) {
+      results.mEstimators = roundDeep(results.mEstimators, STATS_DECIMAL_PLACES);
+    }
+    if (results.descriptives?.confidenceInterval) {
+      results.descriptives.confidenceInterval = roundDeep(results.descriptives.confidenceInterval, STATS_DECIMAL_PLACES);
     }
 
     console.log('[ExamineWorker] Calculation success – posting results');

@@ -52,8 +52,8 @@ onmessage = function (event) {
     const results = calculator.getStatistics();
 
     // Apply rounding before sending to main thread
-    if (results && results.stats && typeof variable?.decimals === 'number' && variable.decimals >= 0) {
-      results.stats = roundStatsObject(results.stats, variable.decimals);
+    if (results && results.stats) {
+      results.stats = roundStatsObject(results.stats, STATS_DECIMAL_PLACES);
     }
 
     postMessage({

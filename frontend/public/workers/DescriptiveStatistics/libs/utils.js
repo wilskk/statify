@@ -4,6 +4,8 @@
  * Berisi fungsi-fungsi utilitas umum yang digunakan oleh berbagai kalkulator statistik.
  */
 
+const STATS_DECIMAL_PLACES = 2;
+
 /**
  * Memeriksa apakah sebuah nilai dianggap 'missing' berdasarkan definisi variabel.
  * @param {*} value - Nilai yang akan diperiksa.
@@ -127,4 +129,5 @@ if (typeof globalThis !== 'undefined') {
   globalThis.roundToDecimals = roundToDecimals;
   globalThis.mapValueLabel = mapValueLabel;
   globalThis.applyValueLabels = applyValueLabels;
+  globalThis.STATS_DECIMAL_PLACES = STATS_DECIMAL_PLACES;
 } 
