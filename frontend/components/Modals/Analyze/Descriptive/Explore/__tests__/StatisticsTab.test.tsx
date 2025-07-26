@@ -16,9 +16,12 @@ describe('StatisticsTab Component', () => {
     setShowDescriptives: jest.fn(),
     confidenceInterval: '95',
     setConfidenceInterval: jest.fn(),
-
+    showMEstimators: false,
+    setShowMEstimators: jest.fn(),
     showOutliers: false,
     setShowOutliers: jest.fn(),
+    showPercentiles: false,
+    setShowPercentiles: jest.fn(),
   } as any;
 
   beforeEach(() => {
@@ -44,12 +47,14 @@ describe('StatisticsTab Component', () => {
     await user.click(screen.getByLabelText(/descriptives/i));
     expect(defaultProps.setShowDescriptives).toHaveBeenCalledWith(true);
 
-
+    await user.click(screen.getByLabelText(/m-estimators/i));
+    expect(defaultProps.setShowMEstimators).toHaveBeenCalledWith(true);
 
     await user.click(screen.getByLabelText(/outliers/i));
     expect(defaultProps.setShowOutliers).toHaveBeenCalledWith(true);
 
-
+    await user.click(screen.getByLabelText(/percentiles/i));
+    expect(defaultProps.setShowPercentiles).toHaveBeenCalledWith(true);
   });
 
   it('calls setConfidenceInterval on input change', async () => {

@@ -3,7 +3,7 @@ import { useResultStore } from '@/stores/useResultStore';
 import type { Variable } from '@/types/Variable';
 import { ExploreAnalysisParams } from '../types';
 import { createWorkerClient } from '@/utils/workerClient';
-import { formatCaseProcessingSummary, formatDescriptivesTable, formatExtremeValuesTable } from '../utils';
+import { formatCaseProcessingSummary, formatDescriptivesTable, formatMEstimatorsTable, formatPercentilesTable, formatExtremeValuesTable } from '../utils';
 import { processAndAddPlots } from '../utils/plotProcessor';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 
@@ -69,9 +69,15 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 lines.push('  /COMPARE GROUPS');
             }
 
+            // M-Estimators
+            if (params.showMEstimators) {
+                lines.push('  /MESTIMATORS HUBER(1.339) ANDREW(1.34) HAMPEL(1.7,3.4,8.5) TUKEY(4.685)');
+            }
 
-
-
+            // Percentiles
+            if (params.showPercentiles) {
+                lines.push('  /PERCENTILES(5,10,25,50,75,90,95) HAVERAGE');
+            }
 
             // Statistics line
             const stats: string[] = [];
@@ -166,8 +172,8 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                             weights: weights,
                             options: {
                                 confidenceInterval: parseFloat(localParams.confidenceInterval) || 95,
-
-
+                                showMEstimators: localParams.showMEstimators,
+                                showPercentiles: localParams.showPercentiles,
                                 showOutliers: localParams.showOutliers,
                             },
                         });
@@ -201,8 +207,8 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 const outputSections = [
                     { formatter: formatCaseProcessingSummary, componentName: 'Case Processing Summary' },
                     { formatter: formatDescriptivesTable, componentName: 'Descriptives' },
-
-
+                    { formatter: formatMEstimatorsTable, componentName: 'M-Estimators' },
+                    { formatter: formatPercentilesTable, componentName: 'Percentiles' },
                     { formatter: formatExtremeValuesTable, componentName: 'Extreme Values' },
                 ];
 

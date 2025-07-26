@@ -62,8 +62,9 @@ export interface ExploreAnalysisParams {
     labelVariable: Variable | null;
     confidenceInterval: string;
     showDescriptives: boolean;
-
+    showMEstimators: boolean;
     showOutliers: boolean;
+    showPercentiles: boolean;
     boxplotType: 'none' | 'dependents-together' | 'factor-levels-together';
     showStemAndLeaf: boolean;
     showHistogram: boolean;

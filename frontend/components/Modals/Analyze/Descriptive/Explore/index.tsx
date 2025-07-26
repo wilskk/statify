@@ -82,11 +82,15 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
             if (typeof saved.confidenceInterval === "string") {
                 statisticsSettings.setConfidenceInterval(saved.confidenceInterval);
             }
-
+            if (typeof saved.showMEstimators === "boolean") {
+                statisticsSettings.setShowMEstimators(saved.showMEstimators);
+            }
             if (typeof saved.showOutliers === "boolean") {
                 statisticsSettings.setShowOutliers(saved.showOutliers);
             }
-
+            if (typeof saved.showPercentiles === "boolean") {
+                statisticsSettings.setShowPercentiles(saved.showPercentiles);
+            }
 
             // Restore plots settings
             if (saved.boxplotType) {
@@ -163,8 +167,9 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
             // statistics settings
             showDescriptives: statisticsSettings.showDescriptives,
             confidenceInterval: statisticsSettings.confidenceInterval,
+            showMEstimators: statisticsSettings.showMEstimators,
             showOutliers: statisticsSettings.showOutliers,
-    
+            showPercentiles: statisticsSettings.showPercentiles,
             // plots settings
             boxplotType: plotsSettings.boxplotType,
             showStemAndLeaf: plotsSettings.showStemAndLeaf,

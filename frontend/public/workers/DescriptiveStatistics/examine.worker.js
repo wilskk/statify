@@ -36,16 +36,21 @@ onmessage = function (event) {
     const results = calculator.getStatistics();
 
     // Apply rounding
-    // Round basic descriptives
+    // Round basic descriptives and percentiles
     if (results.descriptives) {
       results.descriptives = roundDeep(results.descriptives, STATS_DECIMAL_PLACES);
     }
     
-
+    // Percentiles, robust stats, and CI should always use higher precision
+    if (results.percentiles) {
+      results.percentiles = roundDeep(results.percentiles, STATS_DECIMAL_PLACES);
+    }
     if (results.trimmedMean !== undefined) {
       results.trimmedMean = roundDeep(results.trimmedMean, STATS_DECIMAL_PLACES);
     }
-
+    if (results.mEstimators) {
+      results.mEstimators = roundDeep(results.mEstimators, STATS_DECIMAL_PLACES);
+    }
     if (results.descriptives?.confidenceInterval) {
       results.descriptives.confidenceInterval = roundDeep(results.descriptives.confidenceInterval, STATS_DECIMAL_PLACES);
     }
