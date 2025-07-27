@@ -499,77 +499,100 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                   return maxNum + 1;
                 };
                 
-                const newVariables = [];
+                // 1. Prepare metadata and values for each requested predicted type
+                interface NewPredictedVar { meta: Partial<Variable>; values: number[]; }
+
+                const newPredictedVars: NewPredictedVar[] = [];
 
                 if (saveParams.predictedUnstandardized) {
                   const preNumber = findNextNumber("PRE");
-                  newVariables.push({
-                    name: `PRE_${preNumber}`,
-                    label: `Predicted Values (Unstandardized) - ${selectedDependentVariable.name}`,
-                    values: predictedValues.map(v => v.unstandardized)
-                  });
-                }
-                
-                if (saveParams.predictedAdjusted) {
-                  const adjNumber = findNextNumber("ADJ");
-                  newVariables.push({
-                    name: `ADJ_${adjNumber}`,
-                    label: `Predicted Values (Adjusted) - ${selectedDependentVariable.name}`,
-                    values: predictedValues.map(v => v.adjusted)
+                  newPredictedVars.push({
+                    meta: {
+                      name: `PRE_${preNumber}`,
+                      label: `Predicted Values (Unstandardized) - ${selectedDependentVariable.name}`,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                    },
+                    values: predictedValues.map(v => v.unstandardized),
                   });
                 }
 
                 if (saveParams.predictedStandardized) {
                   const zprNumber = findNextNumber("ZPR");
-                  newVariables.push({
-                    name: `ZPR_${zprNumber}`,
-                    label: `Predicted Values (Standardized) - ${selectedDependentVariable.name}`,
-                    values: predictedValues.map(v => v.standardized)
+                  newPredictedVars.push({
+                    meta: {
+                      name: `ZPR_${zprNumber}`,
+                      label: `Predicted Values (Standardized) - ${selectedDependentVariable.name}`,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                    },
+                    values: predictedValues.map(v => v.standardized),
+                  });
+                }
+
+                if (saveParams.predictedAdjusted) {
+                  const adjNumber = findNextNumber("ADJ");
+                  newPredictedVars.push({
+                    meta: {
+                      name: `ADJ_${adjNumber}`,
+                      label: `Predicted Values (Adjusted) - ${selectedDependentVariable.name}`,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                    },
+                    values: predictedValues.map(v => v.adjusted),
                   });
                 }
 
                 if (saveParams.predictedSE) {
                   const sepNumber = findNextNumber("SEP");
-                  newVariables.push({
-                    name: `SEP_${sepNumber}`,
-                    label: `S.E. of mean predictions - ${selectedDependentVariable.name}`,
-                    values: predictedValues.map(v => v.se)
+                  newPredictedVars.push({
+                    meta: {
+                      name: `SEP_${sepNumber}`,
+                      label: `S.E. of mean predictions - ${selectedDependentVariable.name}`,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                    },
+                    values: predictedValues.map(v => v.se),
                   });
                 }
 
-                // Add each variable to the store
-                for (const newVar of newVariables) {
-                  const variable: Variable = {
-                    tempId: uuidv4(),
-                    columnIndex: variablesFromStore.length + newVariables.indexOf(newVar),
-                    name: newVar.name,
-                    type: "NUMERIC",
-                    width: 12,
-                    decimals: 5,
-                    label: newVar.label,
-                    values: [],
-                    missing: null,
-                    columns: 64,
-                    align: "right",
-                    measure: "scale",
-                    role: "input"
-                  };
-                  
-                  console.log("[Analyze] Created new variable:", variable);
-                  await useVariableStore.getState().addVariable(variable);
+                if (newPredictedVars.length === 0) {
+                  console.warn("[Analyze] No predicted variables selected, skipping variable creation.");
+                } else {
+                  // 2. Convert to structures expected by addVariables and aggregate cell updates
+                  const currentVarCount = variablesFromStore.length;
+                  const varsForStore: Partial<Variable>[] = [];
+                  const aggregatedUpdates: CellUpdate[] = [];
 
-                  // Update the data store with the predicted values
-                  const updates: CellUpdate[] = newVar.values.map((value: number, rowIndex: number) => ({
-                    row: rowIndex,
-                    col: variable.columnIndex,
-                    value: Number(value.toFixed(5))
-                  }));
-                  
-                  console.log("[Analyze] Updating data store for", variable.name);
-                  await useDataStore.getState().updateCells(updates);
+                  newPredictedVars.forEach((nv, idx) => {
+                    const columnIndex = currentVarCount + idx;
+                    varsForStore.push({
+                      ...nv.meta,
+                      columnIndex,
+                    });
+
+                    nv.values.forEach((value, rowIndex) => {
+                      aggregatedUpdates.push({
+                        row: rowIndex,
+                        col: columnIndex,
+                        value: Number(value.toFixed(5)),
+                      });
+                    });
+                  });
+
+                  // 3. Add all variables in a single operation and apply updates
+                  await useVariableStore.getState().addVariables(varsForStore, aggregatedUpdates);
+                  console.log("[Analyze] Predicted variables added:", varsForStore.map(v => v.name));
                 }
 
-                console.log("[Analyze] All selected predicted values saved as new variables");
               } catch (error) {
                 console.error("[Analyze] Error saving predicted values:", error);
                 alert("Failed to save predicted values as new variables");
