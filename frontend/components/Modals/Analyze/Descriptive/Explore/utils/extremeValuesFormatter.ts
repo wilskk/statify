@@ -52,7 +52,9 @@ export const formatExtremeValuesTable = (
     }
 
     if (ex.lowest && ex.lowest.length > 0) {
-      const lowestChildren = ex.lowest.map((val: any, i: number) => {
+      // Sort lowest values by case number in descending order (highest case numbers first)
+      const sortedLowest = [...ex.lowest].sort((a, b) => b.caseNumber - a.caseNumber);
+      const lowestChildren = sortedLowest.map((val: any, i: number) => {
         if (val.isPartial) isPartialB = true;
         return {
           rowHeader: buildRowHeader(null, (i + 1).toString()),

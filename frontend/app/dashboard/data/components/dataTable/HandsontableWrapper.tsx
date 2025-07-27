@@ -13,7 +13,8 @@ const defaultProps: Partial<HandsontableWrapperProps> = {
   rowHeaders: true,
   width: '100%',
   height: '100%',
-  manualColumnResize: true,
+  manualColumnResize: true,  // Biarkan aktif untuk resize manual
+  autoColumnSize: true,      // Aktifkan fitur auto width
   manualRowResize: false,
   manualColumnMove: false,
   manualRowMove: false,

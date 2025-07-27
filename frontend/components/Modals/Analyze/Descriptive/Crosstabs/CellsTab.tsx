@@ -25,8 +25,9 @@ const CellsTab: FC<CellsTabProps> = ({
     const residualsStep = getStepIndex('crosstabs-residuals-section');
     // const nonintegerWeightsStep = getStepIndex('crosstabs-noninteger-weights-section'); // Removed as Noninteger Weights section is eliminated
 
-    const rowVarName = rowVariables.length > 0 ? rowVariables[0].name : "Row Variable";
-    const colVarName = columnVariables.length > 0 ? columnVariables[0].name : "Column Variable";
+    // Use generic labels instead of specific variable names when multiple variables are present
+    const rowVarName = rowVariables.length === 1 ? rowVariables[0].name : "Row Variable";
+    const colVarName = columnVariables.length === 1 ? columnVariables[0].name : "Column Variable";
 
     const handleCellChange = (key: keyof typeof options.cells, value: boolean) => {
         setOptions(prev => ({

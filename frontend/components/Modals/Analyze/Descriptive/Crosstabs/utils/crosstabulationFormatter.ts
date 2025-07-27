@@ -30,8 +30,9 @@ export const formatCrosstabulationTable = (
     return String(value);
   };
 
-  const rowVarLabel = rowVar?.label || rowVar?.name;
-  const colVarLabel = colVar?.label || colVar?.name;
+  // For formatter output, always show specific variable names for clarity in statistical results
+  const rowVarLabel = rowVar?.label || rowVar?.name || "Row Variable";
+  const colVarLabel = colVar?.label || colVar?.name || "Column Variable";
 
   // Determine which cell statistics need to be displayed based on the user-selected options
   const selectedStats: Array<{

@@ -235,13 +235,13 @@ class ExamineCalculator {
             combinedStats.Median = medianHaverage;
         }
 
-        // Re-compute Q1, Q3, and IQR using Tukey's hinges (haverage) to match SPSS Explore
-        const q1_hinge = this.freqCalc.getPercentile(25, 'haverage');
-        const q3_hinge = this.freqCalc.getPercentile(75, 'haverage');
-        if (q1_hinge !== null && q3_hinge !== null) {
-            combinedStats.Q1 = q1_hinge;
-            combinedStats.Q3 = q3_hinge;
-            combinedStats.IQR = q3_hinge - q1_hinge;
+        // Re-compute Q1, Q3, and IQR using weighted average (waverage) to match SPSS Explore
+        const q1_waverage = this.freqCalc.getPercentile(25, 'waverage');
+        const q3_waverage = this.freqCalc.getPercentile(75, 'waverage');
+        if (q1_waverage !== null && q3_waverage !== null) {
+            combinedStats.Q1 = q1_waverage;
+            combinedStats.Q3 = q3_waverage;
+            combinedStats.IQR = q3_waverage - q1_waverage;
         }
 
         const results = {
@@ -344,9 +344,9 @@ class ExamineCalculator {
         if (entries.length === 0) return null;
 
         // ==== 1. Compute quartiles & IQR (using waverage percentiles like SPSS) ====
-        // Recompute quartiles using Tukey's hinges (haverage) for consistency with SPSS Explore
-        const q1 = this.freqCalc.getPercentile(25, 'haverage');
-        const q3 = this.freqCalc.getPercentile(75, 'haverage');
+        // Use waverage method for consistency with SPSS Explore
+        const q1 = this.freqCalc.getPercentile(25, 'waverage');
+        const q3 = this.freqCalc.getPercentile(75, 'waverage');
         if (q1 === null || q3 === null) return null;
         const iqr = q3 - q1;
 

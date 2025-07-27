@@ -273,9 +273,9 @@ class FrequencyCalculator {
         // Fallback to default quartiles if none requested / computed
         if (Object.keys(percentileObj).length === 0) {
             percentileObj = {
-                '25': this.getPercentile(25, 'haverage'),  // Use haverage for Q1 (SPSS consistency)
-                '50': this.getPercentile(50, 'haverage'),  // Use haverage for Q2/Median (SPSS consistency)
-                '75': this.getPercentile(75, 'haverage'),  // Use haverage for Q3 (SPSS consistency)
+                '25': this.getPercentile(25, 'waverage'),  // Use waverage for Q1 (SPSS consistency)
+                '50': this.getPercentile(50, 'waverage'),  // Use waverage for Q2/Median (SPSS consistency)
+                '75': this.getPercentile(75, 'waverage'),  // Use waverage for Q3 (SPSS consistency)
             };
         }
 

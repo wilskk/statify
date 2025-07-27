@@ -148,7 +148,7 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
                                     rows: caseProcessingSummary.rows 
                                 }] 
                             }),
-                            components: "DataTableRenderer",
+                            components: "Case Processing",
                             description: "Case processing summary statistics"
                         });
                     }
@@ -164,7 +164,7 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
                                     rows: crosstabulationTable.rows 
                                 }] 
                             }),
-                            components: "DataTableRenderer",
+                            components: "Crosstabs",
                             description: "Crosstabulation results"
                         });
                     }
