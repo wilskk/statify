@@ -1488,7 +1488,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                         chartVariables: { x: [xVarName], y: [yVarName] },
                         chartMetadata: {
                             title: 'Scatterplot',
-                            subtitle: `${yVarName} vs ${xVarName}`,
+                            subtitle: `Dependent Variable: ${selectedDependentVariable.label ? selectedDependentVariable.label : selectedDependentVariable.name}`,
                             axisInfo: processedData.axisInfo
                         },
                         chartConfig: {
@@ -1500,7 +1500,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                         title: 'Scatterplot',
                         output_data: JSON.stringify(chartJSON),
                         components: 'Chart',
-                        description: `Scatterplot of ${yVarName} vs ${xVarName}`
+                        description: `Dependent Variable: ${selectedDependentVariable.label ? selectedDependentVariable.label : selectedDependentVariable.name}`
                     });
                 } catch(chartError) {
                     console.error("[Analyze] Error creating scatterplot with ChartService:", chartError);
@@ -1534,6 +1534,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                           chartVariables: { y: [histVarName] },
                           chartMetadata: {
                               title: `Histogram of ${histVarName}`,
+                              subtitle: `Dependent Variable: ${selectedDependentVariable.label ? selectedDependentVariable.label : selectedDependentVariable.name}`,
                               axisInfo: processedData.axisInfo
                           },
                           chartConfig: {
@@ -1545,7 +1546,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                           title: 'Histogram',
                           output_data: JSON.stringify(chartJSON),
                           components: 'Chart',
-                          description: `Histogram for ${histVarName}.`
+                          description: `Dependent Variable: ${selectedDependentVariable.label ? selectedDependentVariable.label : selectedDependentVariable.name}`
                       });
                   } catch(chartError) {
                       console.error("[Analyze] Error creating histogram with ChartService:", chartError);
