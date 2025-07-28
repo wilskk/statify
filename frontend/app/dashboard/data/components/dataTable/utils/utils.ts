@@ -76,16 +76,17 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
     const type = variable.type;
     let config: Handsontable.ColumnSettings = {};
 
+    // Create value map for O(1) lookup instead of find()
+    const valueMap = variable.values ? new Map(variable.values.map(v => [v.value, v])) : null;
+
     // Prevent matching empty string to numeric zero when searching for labels
     const mapValueToLabel = (rawValue: any) => {
         // Do not attempt to find a label for truly empty cells
         if (rawValue === '' || rawValue === null || rawValue === undefined) {
             return undefined;
         }
-        // Loose comparison is useful for strings like '1' vs numeric 1, but we
-        // want to avoid JS quirk where '' == 0 is true. At this point rawValue
-        // is guaranteed not to be an empty string, so this comparison is safe.
-        return variable.values?.find(v => v.value == rawValue);
+        // Use Map for O(1) lookup instead of find()
+        return valueMap?.get(rawValue);
     };
 
     const valueLabelRenderer = (baseRenderer: Function) => nullSafeRenderer((
