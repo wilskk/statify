@@ -34,7 +34,6 @@ import OptionsLinear, { OptionsLinearParams } from './OptionsLinear';
 import VariablesLinearTab from './VariablesLinearTab';
 import AssumptionTest, { AssumptionTestParams } from './AssumptionTest';
 import { Variable } from '@/types/Variable';
-import { v4 as uuidv4 } from 'uuid';
 import { CellUpdate } from '@/stores/useDataStore';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
@@ -364,6 +363,23 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       let filteredDependentData: number[] = [];
       let filteredIndependentData: number[][] = [];
 
+      // Flags indicating whether user ticked SAVE checkboxes for predicted and/or residual variables.
+      const predictedSaveSelected =
+        saveParams.predictedUnstandardized ||
+        saveParams.predictedStandardized ||
+        saveParams.predictedAdjusted ||
+        saveParams.predictedSE;
+
+      const residualSaveSelected =
+        saveParams.residualUnstandardized ||
+        saveParams.residualStandardized ||
+        saveParams.residualStudentized ||
+        saveParams.residualDeleted ||
+        saveParams.residualStudentizedDeleted;
+
+      // Will hold the residuals processing function, defined later.
+      let processResiduals: () => Promise<void>;
+
       /* --------------------------------------------------------------------------------
          Helper functions so we can reuse the same worker-push code multiple times and
          keep the correct left-to-right order requested by the user.
@@ -627,7 +643,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                 const predictedValues = Array.isArray(response) ? response : [];
                 console.log("[Analyze] Predicted values array:", predictedValues);
                 
-                const existingVars = variablesFromStore.map(v => v.name);
+                const existingVars = useVariableStore.getState().variables.map(v => v.name);
                 
                 const findNextNumber = (prefix: string) => {
                   const pattern = new RegExp(`^${prefix}_(\\d+)$`);
@@ -713,7 +729,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                   console.warn("[Analyze] No predicted variables selected, skipping variable creation.");
                 } else {
                   // 2. Convert to structures expected by addVariables and aggregate cell updates
-                  const currentVarCount = variablesFromStore.length;
+                  const currentVarCount = useVariableStore.getState().variables.length;
                   const varsForStore: Partial<Variable>[] = [];
                   const aggregatedUpdates: CellUpdate[] = [];
 
@@ -736,6 +752,12 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                   // 3. Add all variables in a single operation and apply updates
                   await useVariableStore.getState().addVariables(varsForStore, aggregatedUpdates);
                   console.log("[Analyze] Predicted variables added:", varsForStore.map(v => v.name));
+
+                  // After predicted variables are safely added, run residuals
+                  // if the user requested them.
+                  if (residualSaveSelected) {
+                    await processResiduals();
+                  }
                 }
 
               } catch (error) {
@@ -744,7 +766,10 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
               }
             }
             predictedValuesWorker.terminate();
-            console.log("[Analyze] Worker terminated");
+            
+            // Resolve helper promise in case someone wants to await completion
+            // (currently not used but kept for future sequencing needs)
+            // resolvePredicted?.();
           };
 
           predictedValuesWorker.onerror = (error: ErrorEvent) => {
@@ -765,10 +790,18 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       }
       // End of SaveLinear options processing example
 
-      // Process residuals options
-      if (saveParams.residualUnstandardized || saveParams.residualStandardized || 
-          saveParams.residualStudentized || saveParams.residualDeleted || 
-          saveParams.residualStudentizedDeleted) {
+      // ------------------------------------------------------------------
+      // Residuals processing is wrapped into an async helper so we can call
+      // it after predicted values finish (to prevent column index overlap).
+      // ------------------------------------------------------------------
+      processResiduals = async () => {
+        if (!(saveParams.residualUnstandardized || saveParams.residualStandardized || 
+              saveParams.residualStudentized || saveParams.residualDeleted || 
+              saveParams.residualStudentizedDeleted)) {
+          return; // nothing to do
+        }
+
+        // ----- (original block content begins) -----
         if (regressionResults && regressionResults.coefficients) {
           console.log("[Analyze] Starting Residuals calculation...");
           console.log("[Analyze] Regression results:", regressionResults);
@@ -799,143 +832,151 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependentDataLength: workerData.dependentData.length
           });
           
-          residualsWorker.postMessage(workerData);
-          console.log("[Analyze] Data sent to residuals worker");
+          return new Promise<void>((resolve, reject) => {
+            residualsWorker.postMessage(workerData);
 
-          residualsWorker.onmessage = async (e: MessageEvent) => {
-            console.log("[Analyze] Received response from residuals worker:", e.data);
-            const response = e.data;
-            
-            if (response && response.error) {
-              console.error("[Analyze] Residuals worker error:", response.error);
-              alert(`Error in Residuals worker: ${response.error}`);
-            } else {
-              console.log("[Analyze] Processing residuals worker response...");
+            residualsWorker.onmessage = async (e: MessageEvent) => {
+              console.log("[Analyze] Received response from residuals worker:", e.data);
+              const response = e.data;
               
-              try {
-                // Pastikan response adalah array objek dengan nilai residual
-                const residualValues = Array.isArray(response) ? response : [];
-                console.log("[Analyze] Residual values array:", residualValues);
+              if (response && response.error) {
+                console.error("[Analyze] Residuals worker error:", response.error);
+                alert(`Error in Residuals worker: ${response.error}`);
+              } else {
+                console.log("[Analyze] Processing residuals worker response...");
                 
-                // Get the next save sequence number for each residual type
-                const existingVars = variablesFromStore.map(v => v.name);
-                
-                // Find the highest number for each prefix
-                const findNextNumber = (prefix: string) => {
-                  const pattern = new RegExp(`^${prefix}_(\\d+)$`);
-                  let maxNum = 0;
+                try {
+                  // Pastikan response adalah array objek dengan nilai residual
+                  const residualValues = Array.isArray(response) ? response : [];
+                  console.log("[Analyze] Residual values array:", residualValues);
                   
-                  existingVars.forEach(name => {
-                    const match = name.match(pattern);
-                    if (match) {
-                      const num = parseInt(match[1], 10);
-                      if (num > maxNum) maxNum = num;
-                    }
-                  });
+                  // Get the next save sequence number for each residual type
+                  const existingVars = useVariableStore.getState().variables.map(v => v.name);
                   
-                  return maxNum + 1;
-                };
-                
-                // Create new variables for each type of residual
-                const newVariables = [];
-                
-                if (saveParams.residualUnstandardized) {
-                  const resNumber = findNextNumber("RES");
-                  newVariables.push({
-                    name: `RES_${resNumber}`,
-                    label: `Residuals (Unstandardized) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.unstandardized)
-                  });
-                }
-                
-                if (saveParams.residualStandardized) {
-                  const zresNumber = findNextNumber("ZRE");
-                  newVariables.push({
-                    name: `ZRE_${zresNumber}`,
-                    label: `Residuals (Standardized) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.standardized)
-                  });
-                }
-                
-                if (saveParams.residualStudentized) {
-                  const sreNumber = findNextNumber("SRE");
-                  newVariables.push({
-                    name: `SRE_${sreNumber}`,
-                    label: `Residuals (Studentized) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.studentized)
-                  });
-                }
-                
-                if (saveParams.residualDeleted) {
-                  const dreNumber = findNextNumber("DRE");
-                  newVariables.push({
-                    name: `DRE_${dreNumber}`,
-                    label: `Residuals (Deleted) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.deleted)
-                  });
-                }
-                
-                if (saveParams.residualStudentizedDeleted) {
-                  const sdreNumber = findNextNumber("SDR");
-                  newVariables.push({
-                    name: `SDR_${sdreNumber}`,
-                    label: `Residuals (Studentized Deleted) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.studentizedDeleted)
-                  });
-                }
-
-                console.log("[Analyze] New residual variables to create:", newVariables);
-
-                // Add each variable to the store
-                for (const newVar of newVariables) {
-                  const variable: Variable = {
-                    tempId: uuidv4(),
-                    columnIndex: variablesFromStore.length + newVariables.indexOf(newVar),
-                    name: newVar.name,
-                    type: "NUMERIC",
-                    width: 12,
-                    decimals: 5,
-                    label: newVar.label,
-                    values: [],
-                    missing: null,
-                    columns: 64,
-                    align: "right",
-                    measure: "scale",
-                    role: "input"
+                  // Find the highest number for each prefix
+                  const findNextNumber = (prefix: string) => {
+                    const pattern = new RegExp(`^${prefix}_(\\d+)$`);
+                    let maxNum = 0;
+                    
+                    existingVars.forEach(name => {
+                      const match = name.match(pattern);
+                      if (match) {
+                        const num = parseInt(match[1], 10);
+                        if (num > maxNum) maxNum = num;
+                      }
+                    });
+                    
+                    return maxNum + 1;
                   };
                   
-                  console.log("[Analyze] Created new residual variable:", variable);
-                  await useVariableStore.getState().addVariable(variable);
-
-                  // Update the data store with the residual values
-                  const updates: CellUpdate[] = newVar.values.map((value: number, rowIndex: number) => ({
-                    row: rowIndex,
-                    col: variable.columnIndex,
-                    value: Number(value.toFixed(5))
-                  }));
+                  // Create new variables for each type of residual
+                  const newVariables = [];
                   
-                  console.log("[Analyze] Updating data store for", variable.name);
-                  await useDataStore.getState().updateCells(updates);
+                  if (saveParams.residualUnstandardized) {
+                    const resNumber = findNextNumber("RES");
+                    newVariables.push({
+                      name: `RES_${resNumber}`,
+                      label: `Residuals (Unstandardized) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.unstandardized)
+                    });
+                  }
+                  
+                  if (saveParams.residualStandardized) {
+                    const zresNumber = findNextNumber("ZRE");
+                    newVariables.push({
+                      name: `ZRE_${zresNumber}`,
+                      label: `Residuals (Standardized) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.standardized)
+                    });
+                  }
+                  
+                  if (saveParams.residualStudentized) {
+                    const sreNumber = findNextNumber("SRE");
+                    newVariables.push({
+                      name: `SRE_${sreNumber}`,
+                      label: `Residuals (Studentized) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.studentized)
+                    });
+                  }
+                  
+                  if (saveParams.residualDeleted) {
+                    const dreNumber = findNextNumber("DRE");
+                    newVariables.push({
+                      name: `DRE_${dreNumber}`,
+                      label: `Residuals (Deleted) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.deleted)
+                    });
+                  }
+                  
+                  if (saveParams.residualStudentizedDeleted) {
+                    const sdreNumber = findNextNumber("SDR");
+                    newVariables.push({
+                      name: `SDR_${sdreNumber}`,
+                      label: `Residuals (Studentized Deleted) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.studentizedDeleted)
+                    });
+                  }
+
+                  console.log("[Analyze] New residual variables to create:", newVariables);
+
+                  // --------------------------------------------------------------
+                  // Bulk-insert all residual variables in a single operation
+                  // --------------------------------------------------------------
+                  if (newVariables.length > 0) {
+                    const currentVarCount = useVariableStore.getState().variables.length;
+
+                    // 1. Build metadata for each new variable
+                    const varsForStore: Partial<Variable>[] = newVariables.map((nv, idx) => ({
+                      name: nv.name,
+                      label: nv.label,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                      columnIndex: currentVarCount + idx,
+                    }));
+
+                    // 2. Aggregate all cell updates across variables
+                    const aggregatedUpdates: CellUpdate[] = [];
+                    newVariables.forEach((nv, varIdx) => {
+                      const colIdx = currentVarCount + varIdx;
+                      nv.values.forEach((value: number, rowIndex: number) => {
+                        aggregatedUpdates.push({
+                          row: rowIndex,
+                          col: colIdx,
+                          value: Number(value.toFixed(5)),
+                        });
+                      });
+                    });
+
+                    // 3. Persist variables and data in one shot
+                    await useVariableStore.getState().addVariables(varsForStore, aggregatedUpdates);
+
+                    console.log("[Analyze] Residual variables successfully saved (bulk)");
+                  } else {
+                    console.warn("[Analyze] No residual variables selected, skipping save step.");
+                  }
+
+                } catch (error) {
+                  console.error("[Analyze] Error saving residual values:", error);
+                  alert("Failed to save residual values as new variables");
                 }
-
-                console.log("[Analyze] All residual values saved as new variables");
-              } catch (error) {
-                console.error("[Analyze] Error saving residual values:", error);
-                alert("Failed to save residual values as new variables");
               }
-            }
-            residualsWorker.terminate();
-            console.log("[Analyze] Residuals worker terminated");
-          };
+              residualsWorker.terminate();
+              console.log("[Analyze] Residuals worker terminated");
+              resolve(); // Resolve the promise
+            };
 
-          residualsWorker.onerror = (error: ErrorEvent) => {
-            console.error("[Analyze] Residuals worker error:", {
-              message: error.message,
-              error: error
-            });
-            alert(`Failed to run Residuals worker: ${error.message}`);
-            residualsWorker.terminate();
-          };
+            residualsWorker.onerror = (error: ErrorEvent) => {
+              console.error("[Analyze] Residuals worker error:", {
+                message: error.message,
+                error: error
+              });
+              alert(`Failed to run Residuals worker: ${error.message}`);
+              residualsWorker.terminate();
+              reject(error); // Reject the promise
+            };
+          });
         } else {
           console.error("[Analyze] Missing regression results:", {
             hasResults: !!regressionResults,
@@ -943,6 +984,14 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           });
           alert("Regression results or coefficients not available to calculate residuals.");
         }
+      }; // end processResiduals
+      // ------------------------------------------------------------------
+      // When only residuals are requested (no predicted values), run now.
+      // If predicted values are also requested, residuals will be triggered
+      // from inside predicted worker after it completes.
+      // ------------------------------------------------------------------
+      if (!predictedSaveSelected && residualSaveSelected) {
+        await processResiduals();
       }
 
       // 1. Variables & Coefficients (Estimates)
