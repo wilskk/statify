@@ -360,6 +360,154 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       // Array to hold all statistic-generating promises
       const statisticPromises: Promise<any>[] = [];
 
+      // Declare filtered data arrays ahead so helper functions can reference them
+      let filteredDependentData: number[] = [];
+      let filteredIndependentData: number[][] = [];
+
+      /* --------------------------------------------------------------------------------
+         Helper functions so we can reuse the same worker-push code multiple times and
+         keep the correct left-to-right order requested by the user.
+      ---------------------------------------------------------------------------------*/
+
+      // Flags to prevent duplicate queuing of shared workers
+      let modelSummaryQueued = false;
+      let variablesQueued = false;
+      let anovaQueued = false;
+      let coefficientsQueued = false;
+
+      //  H1. Variables Entered/Removed (variables.js)
+      const pushVariablesWorker = () => {
+        if (variablesQueued) return;
+        variablesQueued = true;
+        statisticPromises.push(new Promise((resolve, reject) => {
+          const variablesWorker = new Worker('/workers/Regression/variables.js');
+          variablesWorker.postMessage({
+            dependent: filteredDependentData,
+            independent: filteredIndependentData,
+            dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
+            independentVariableInfos: independentVariableInfos
+          });
+
+          variablesWorker.onmessage = async (e: MessageEvent) => {
+            const variablesResults = e.data;
+            await addStatistic(analyticId, {
+              title: 'Variables Entered/Removed',
+              output_data: JSON.stringify(variablesResults),
+              components: 'VariablesEnteredRemoved',
+              description: 'Variables entered/removed in the regression analysis'
+            });
+            variablesWorker.terminate();
+            resolve(true);
+          };
+
+          variablesWorker.onerror = (err: ErrorEvent) => {
+            variablesWorker.terminate();
+            reject(err);
+          };
+        }));
+      };
+
+      //  H2. Model Summary (model_summary.js)
+      const pushModelSummaryWorker = () => {
+        if (modelSummaryQueued) return; // prevent duplicate queueing
+        modelSummaryQueued = true;
+        statisticPromises.push(new Promise((resolve, reject) => {
+          const modelSummaryWorker = new Worker('/workers/Regression/model_summary.js');
+          modelSummaryWorker.postMessage({
+            dependent: filteredDependentData,
+            independent: filteredIndependentData
+          });
+
+          modelSummaryWorker.onmessage = async (e: MessageEvent) => {
+            const modelSummaryResults = e.data;
+            await addStatistic(analyticId, {
+              title: 'Model Summary',
+              output_data: JSON.stringify(modelSummaryResults),
+              components: 'ModelSummary',
+              description: 'Summary of the regression model'
+            });
+            modelSummaryWorker.terminate();
+            resolve(true);
+          };
+
+          modelSummaryWorker.onerror = (err: ErrorEvent) => {
+            modelSummaryWorker.terminate();
+            reject(err);
+          };
+        }));
+      };
+
+      //  H3. ANOVA (anova.js)
+      const pushAnovaWorker = () => {
+        if (anovaQueued) return;
+        anovaQueued = true;
+        statisticPromises.push(new Promise((resolve, reject) => {
+          const anovaWorker = new Worker('/workers/Regression/anova.js');
+          anovaWorker.postMessage({
+            dependentData: filteredDependentData,
+            independentData: filteredIndependentData
+          });
+
+          anovaWorker.onmessage = async (e: MessageEvent) => {
+            const anovaStat = e.data;
+            if (anovaStat.error) {
+              anovaWorker.terminate();
+              reject(new Error(anovaStat.error));
+              return;
+            }
+            await addStatistic(analyticId, {
+              title: anovaStat.title,
+              output_data: anovaStat.output_data,
+              components: anovaStat.components,
+              description: 'ANOVA analysis results'
+            });
+            anovaWorker.terminate();
+            resolve(true);
+          };
+
+          anovaWorker.onerror = (err: ErrorEvent) => {
+            anovaWorker.terminate();
+            reject(err);
+          };
+        }));
+      };
+
+      //  H4. Coefficients (coefficients.js)
+      const pushCoefficientsWorker = () => {
+        if (coefficientsQueued) return;
+        coefficientsQueued = true;
+        statisticPromises.push(new Promise((resolve, reject) => {
+          const coefficientsWorker = new Worker('/workers/Regression/coefficients.js');
+          coefficientsWorker.postMessage({
+            dependentData: filteredDependentData,
+            independentData: filteredIndependentData,
+            independentVariableInfos: independentVariableInfos
+          });
+
+          coefficientsWorker.onmessage = async (e: MessageEvent) => {
+            const { success, result, error } = e.data;
+            if (success) {
+              await addStatistic(analyticId, {
+                title: 'Coefficients',
+                output_data: JSON.stringify(result),
+                components: 'Coefficients',
+                description: 'Coefficients of the regression model'
+              });
+              coefficientsWorker.terminate();
+              resolve(true);
+            } else {
+              coefficientsWorker.terminate();
+              reject(new Error(error));
+            }
+          };
+
+          coefficientsWorker.onerror = (err: ErrorEvent) => {
+            coefficientsWorker.terminate();
+            reject(err);
+          };
+        }));
+      };
+
       // Persiapkan data dan variabel
       const allVariables = variablesFromStore;
       const dataRows = data;
@@ -382,9 +530,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       const independentData = indepVarIndices.map(index => dataRows.map(row => parseFloat(String(row[index]))));
       console.log("[Analyze] Data awal - Dependent:", dependentData);
       console.log("[Analyze] Data awal - Independent (per variable):", independentData);
-
-      let filteredDependentData: number[];
-      let filteredIndependentData: number[][];
 
       if (optionsParams.replaceWithMean) {
         console.log("[Analyze] Missing value strategy: Replace with mean.");
@@ -800,123 +945,26 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
         }
       }
 
-      // 1. Variables Entered/Removed Worker
-      statisticPromises.push(new Promise((resolve, reject) => {
-        const variablesEnteredRemovedWorker = new Worker('/workers/Regression/variables.js');
-        console.log("[Analyze] Mengirim data ke Worker untuk Variables Entered/Removed...");
-        variablesEnteredRemovedWorker.postMessage({
-          dependent: filteredDependentData,
-          independent: filteredIndependentData,
-          dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-          independentVariableInfos: independentVariableInfos
-        });
+      // 1. Variables & Coefficients (Estimates)
+      if (currentStatsParams.estimates) {
+        pushVariablesWorker();
+      }
 
-        variablesEnteredRemovedWorker.onmessage = async (e: MessageEvent) => {
-          const variablesEnteredRemovedResults = e.data;
-          console.log("[Analyze] Hasil dari Worker Variables Entered/Removed:", variablesEnteredRemovedResults);
-
-          const variablesEnteredRemovedStat = {
-            title: "Variables Entered/Removed",
-            output_data: JSON.stringify(variablesEnteredRemovedResults),
-            components: "VariablesEnteredRemoved",
-            description: "Variables entered/removed in the regression analysis"
-          };
-
-          await addStatistic(analyticId, variablesEnteredRemovedStat);
-          console.log("[Analyze] Statistik Variables Entered/Removed disimpan.");
-          variablesEnteredRemovedWorker.terminate();
-          resolve(true);
-        };
-
-        variablesEnteredRemovedWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] Worker Variables Entered/Removed error:", error);
-          variablesEnteredRemovedWorker.terminate();
-          reject(error);
-        };
-      }));
-
-      // 2. ANOVA Worker
-      statisticPromises.push(new Promise((resolve, reject) => {
-        const anovaWorker = new Worker('/workers/Regression/anova.js');
-        console.log("[Analyze] Sending data to ANOVA Worker...");
-        anovaWorker.postMessage({
-          dependentData: filteredDependentData,
-          independentData: filteredIndependentData
-        });
-
-        anovaWorker.onmessage = async (e: MessageEvent) => {
-          const anovaStat = e.data;
-          if (anovaStat.error) {
-            console.error("[Analyze] ANOVA Worker Error:", anovaStat.error);
-            alert(`ANOVA Worker Error: ${anovaStat.error}`);
-            reject(anovaStat.error);
-          } else {
-            const completeStats = {
-              title: anovaStat.title,
-              output_data: anovaStat.output_data,
-              components: anovaStat.components,
-              description: "ANOVA analysis results"
-            };
-            await addStatistic(analyticId, completeStats);
-            console.log("[Analyze] ANOVA statistics saved.");
-            resolve(true);
-          }
-          anovaWorker.terminate();
-        };
-
-        anovaWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] ANOVA Worker error:", error, error.message);
-          alert("An error occurred in the ANOVA Worker: " + (error.message || "Unknown error"));
-          anovaWorker.terminate();
-          reject(error);
-        };
-      }));
+      // 2. Model Fit group: variables -> model summary -> anova
+      if (currentStatsParams.modelFit) {
+        pushVariablesWorker();
+        pushModelSummaryWorker();
+        pushAnovaWorker();
+      }
       
-      // 3. Coefficients Worker
-      statisticPromises.push(new Promise((resolve, reject) => {
-        const coefficientsWorker = new Worker('/workers/Regression/coefficients.js');
-        console.log("[Analyze] Sending data to Coefficients Worker...");
-
-        coefficientsWorker.postMessage({
-          dependentData: filteredDependentData,
-          independentData: filteredIndependentData,
-          independentVariableInfos: independentVariableInfos
-        });
-
-        coefficientsWorker.onmessage = async (e: MessageEvent) => {
-          const { success, result, error } = e.data;
-
-          if (success) {
-            const coefficientsTable = result;
-            const coefficientsStat = {
-              title: "Coefficients",
-              output_data: JSON.stringify(coefficientsTable),
-              components: "Coefficients",
-              description: "Coefficients of the regression model"
-            };
-
-            await addStatistic(analyticId, coefficientsStat);
-            console.log("[Analyze] Coefficients statistics saved.");
-            resolve(true);
-          } else {
-            console.error("[Analyze] Coefficients Worker error:", error);
-            alert(`Coefficients Worker Error: ${error}`);
-            reject(error);
-          }
-
-          coefficientsWorker.terminate();
-        };
-
-        coefficientsWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] Coefficients Worker error:", error, error.message);
-          alert("An error occurred in the Coefficients Worker: " + (error.message || "Unknown error"));
-          coefficientsWorker.terminate();
-          reject(error);
-        };
-      }));
+      // 3. Coefficients Worker (needed by estimates, descriptives, casewiseDiagnostics)
+      if (currentStatsParams.estimates || currentStatsParams.descriptives || currentStatsParams.casewiseDiagnostics) {
+        pushCoefficientsWorker();
+      }
 
       // 4. R-Square Change (Conditional)
       if (currentStatsParams.rSquaredChange) {
+        pushVariablesWorker(); // mapping requires variables.js first
         statisticPromises.push(new Promise((resolve, reject) => {
           const worker = new Worker('/workers/Regression/rsquare.js');
           console.log("[Analyze] Mengirim data ke Worker untuk perhitungan regresi (squared changes)...");
@@ -953,6 +1001,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 5. Confidence Intervals (Conditional)
       if (currentStatsParams.confidenceIntervals) {
+        pushVariablesWorker();
         statisticPromises.push(new Promise((resolve, reject) => {
           const confidenceWorker = new Worker('/workers/Regression/confidence_interval.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Confidence Interval...");
@@ -999,6 +1048,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 6. Part and Partial Correlations (Conditional)
       if (currentStatsParams.partAndPartial) {
+        // Ensure Variables table precedes part & partial worker
+        pushVariablesWorker();
         statisticPromises.push(new Promise((resolve, reject) => {
           const partAndPartialWorker = new Worker('/workers/Regression/coefficients_partandpartial.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Coefficients Part & Partial Correlations...");
@@ -1035,6 +1086,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 7. Collinearity Diagnostics (Conditional)
       if (currentStatsParams.collinearityDiagnostics) {
+        pushVariablesWorker();
         // 7a. Coefficients Collinearity
         statisticPromises.push(new Promise((resolve, reject) => {
           const collinearityWorker = new Worker('/workers/Regression/coefficients_collinearity.js');
@@ -1105,6 +1157,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 8. Durbin-Watson (Conditional)
       if (currentStatsParams.durbinWatson) {
+        pushVariablesWorker();
         statisticPromises.push(new Promise((resolve, reject) => {
           const modelDurbinWorker = new Worker('/workers/Regression/model_durbin.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Model Durbin...");
@@ -1134,6 +1187,10 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             reject(error);
           };
         }));
+
+        // After Durbin Worker, queue ANOVA then Coefficients then Residual Statistics will come later
+        pushAnovaWorker();
+        pushCoefficientsWorker();
       } else {
         console.log("[Analyze] Skipping Durbin-Watson test (not selected).");
       }
@@ -1174,7 +1231,13 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       }
   
       // 10. Casewise Diagnostics (Conditional)
-      if (currentStatsParams.casewiseDiagnostics && currentStatsParams.selectedResidualOption === 'allCases') {
+      if (currentStatsParams.casewiseDiagnostics) {
+        // Variables, Model Summary, ANOVA should always precede any casewise diagnostics tables
+        pushVariablesWorker();
+        pushModelSummaryWorker();
+        pushAnovaWorker();
+
+        if (currentStatsParams.selectedResidualOption === 'allCases') {
         statisticPromises.push(new Promise((resolve, reject) => {
           const casewiseDiagnosticsWorker = new Worker('/workers/Regression/casewise_diagnostics.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Casewise Diagnostics (All Cases selected)...");
@@ -1200,6 +1263,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             };
             await addStatistic(analyticId, casewiseDiagnosticsStat);
             console.log("[Analyze] Statistik Casewise Diagnostics disimpan.");
+            // ANOVA & Coefficients after Casewise Diagnostics
             casewiseDiagnosticsWorker.terminate();
             resolve(true);
           };
@@ -1210,6 +1274,9 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             reject(error);
           };
         }));
+        } else {
+          console.log("[Analyze] Skipping Casewise Diagnostics table (Outliers outside selected). Variables/ModelSummary/ANOVA already queued.");
+        }
       } else if (currentStatsParams.casewiseDiagnostics && currentStatsParams.selectedResidualOption === 'outliers') {
         console.log("[Analyze] Skipping Casewise Diagnostics table (Outliers outside selected).");
       } else {
@@ -1218,6 +1285,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 11. Covariance Matrix (Conditional)
       if (currentStatsParams.covarianceMatrix) {
+        pushVariablesWorker();
         statisticPromises.push(new Promise((resolve, reject) => {
           const coefficientCorrelationsWorker = new Worker('/workers/Regression/coefficient_correlations.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Coefficient Correlations...");
@@ -1320,42 +1388,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             reject(error);
           };
         }));
-  
+
+        // 12c. Variables Entered/Removed (after correlations)
+        pushVariablesWorker();
+        // 12d. Model Summary follows variables
+        pushModelSummaryWorker();
+        // 12e. ANOVA after model summary
+        pushAnovaWorker();
+
       } else {
         console.log("[Analyze] Skipping Descriptive Statistics (not selected).");
       }
   
-      // 13. Model Fit / Model Summary (Conditional)
-      if (currentStatsParams.modelFit || currentStatsParams.descriptives) {
-        statisticPromises.push(new Promise((resolve, reject) => {
-          const modelSummaryWorker = new Worker('/workers/Regression/model_summary.js');
-          console.log("[Analyze] Mengirim data ke Worker untuk Model Summary...");
-          modelSummaryWorker.postMessage({
-            dependent: filteredDependentData,
-            independent: filteredIndependentData
-          });
-    
-          modelSummaryWorker.onmessage = async (e: MessageEvent) => {
-            const modelSummaryResults = e.data;
-            console.log("[Analyze] Hasil dari Worker Model Summary:", modelSummaryResults);
-            const modelSummaryStat = {
-              title: "Model Summary",
-              output_data: JSON.stringify(modelSummaryResults),
-              components: "ModelSummary",
-              description: "Summary of the regression model"
-            };
-            await addStatistic(analyticId, modelSummaryStat);
-            console.log("[Analyze] Statistik Model Summary disimpan.");
-            modelSummaryWorker.terminate();
-            resolve(true);
-          };
-    
-          modelSummaryWorker.onerror = (error: ErrorEvent) => {
-            console.error("[Analyze] Worker Model Summary error:", error);
-            modelSummaryWorker.terminate();
-            reject(error);
-          };
-        }));
+      // 13. Model Summary fallback (queue only if not already queued)
+      if (!modelSummaryQueued && (currentStatsParams.modelFit || currentStatsParams.descriptives || currentStatsParams.casewiseDiagnostics)) {
+        pushModelSummaryWorker();
       } else {
         console.log("[Analyze] Skipping Model Summary (model fit not selected).");
       }
@@ -1624,6 +1671,4 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   );
 };
 
-// Export the component with both names for backward compatibility
-export { ModalLinear };
 export default ModalLinear;
