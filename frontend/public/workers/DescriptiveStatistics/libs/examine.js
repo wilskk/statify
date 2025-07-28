@@ -313,13 +313,24 @@ class ExamineCalculator {
         }
 
         // Correctly calculate confidence interval using the right stats
-        const { Mean: mean, SEMean: seMean } = descStatsResult?.stats || {};
-        if (seMean !== null && mean !== null && seMean !== undefined && mean !== undefined) {
-            const t_value = 1.96; // Approximation for 95% CI
+        const { Mean: mean, SEMean: seMean, Valid: n } = descStatsResult?.stats || {};
+        if (seMean !== null && mean !== null && seMean !== undefined && mean !== undefined && n > 1) {
+            // Use proper t-critical value based on degrees of freedom (n-1)
+            const df = n - 1;
+            
+            // Get confidence level from options (default to 95%)
+            const confidenceLevel = this.options.confidenceInterval || 95;
+            const alpha = (100 - confidenceLevel) / 100; // Convert to alpha level
+            
+            // Calculate t-critical value using degrees of freedom
+            // For large samples (n >= 30), t approaches z
+            // For smaller samples, use t-distribution approximation
+            const t_critical = getTCriticalApproximation(df, alpha);
+            
             results.descriptives.confidenceInterval = {
-                lower: mean - (t_value * seMean),
-                upper: mean + (t_value * seMean),
-                level: 95
+                lower: mean - (t_critical * seMean),
+                upper: mean + (t_critical * seMean),
+                level: confidenceLevel
             };
         }
         
@@ -464,4 +475,93 @@ class ExamineCalculator {
     }
 }
 
-self.ExamineCalculator = ExamineCalculator; 
+self.ExamineCalculator = ExamineCalculator;
+
+/**
+ * Calculate t-critical value approximation for confidence intervals
+ * This is a simplified approximation - for exact values, use a proper t-distribution library
+ * @param {number} df - degrees of freedom
+ * @param {number} alpha - significance level (0.01 for 99% CI, 0.05 for 95% CI, 0.1 for 90% CI)
+ * @returns {number} t-critical value
+ */
+function getTCriticalApproximation(df, alpha = 0.05) {
+    // Two-tailed test
+    const p = 1 - alpha / 2;
+    
+    // T-critical tables for different alpha levels
+    const tTables = {
+        // Alpha = 0.01 (99% confidence interval)
+        0.01: {
+            1: 63.657, 2: 9.925, 3: 5.841, 4: 4.604, 5: 4.032,
+            6: 3.707, 7: 3.499, 8: 3.355, 9: 3.250, 10: 3.169,
+            11: 3.106, 12: 3.055, 13: 3.012, 14: 2.977, 15: 2.947,
+            16: 2.921, 17: 2.898, 18: 2.878, 19: 2.861, 20: 2.845,
+            21: 2.831, 22: 2.819, 23: 2.807, 24: 2.797, 25: 2.787,
+            26: 2.779, 27: 2.771, 28: 2.763, 29: 2.756, 30: 2.750
+        },
+        // Alpha = 0.05 (95% confidence interval)
+        0.05: {
+            1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
+            6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+            11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
+            16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+            21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
+            26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042
+        },
+        // Alpha = 0.1 (90% confidence interval)
+        0.1: {
+            1: 6.314, 2: 2.920, 3: 2.353, 4: 2.132, 5: 2.015,
+            6: 1.943, 7: 1.895, 8: 1.860, 9: 1.833, 10: 1.812,
+            11: 1.796, 12: 1.782, 13: 1.771, 14: 1.761, 15: 1.753,
+            16: 1.746, 17: 1.740, 18: 1.734, 19: 1.729, 20: 1.725,
+            21: 1.721, 22: 1.717, 23: 1.714, 24: 1.711, 25: 1.708,
+            26: 1.706, 27: 1.703, 28: 1.701, 29: 1.699, 30: 1.697
+        }
+    };
+    
+    // Find the closest alpha level we have tables for
+    const availableAlphas = Object.keys(tTables).map(Number);
+    const closestAlpha = availableAlphas.reduce((prev, curr) => 
+        Math.abs(curr - alpha) < Math.abs(prev - alpha) ? curr : prev);
+    
+    const tTable = tTables[closestAlpha];
+    
+    // If exact df is in table, return it
+    if (tTable[df]) {
+        return tTable[df];
+    }
+    
+    // For df > 30, use approximation that approaches z values
+    if (df > 30) {
+        const zValues = {
+            0.01: 2.576,  // 99% CI
+            0.05: 1.96,   // 95% CI  
+            0.1: 1.645    // 90% CI
+        };
+        const z = zValues[closestAlpha] || 1.96;
+        const t30 = tTable[30] || z;
+        return z + (t30 - z) * Math.exp(-0.1 * (df - 30));
+    }
+    
+    // For other cases, interpolate or use closest value
+    if (df < 1) return tTable[1] || 12.706; // Use df=1 as minimum
+    
+    // Find closest values for interpolation
+    const lowerDf = Math.floor(df);
+    const upperDf = Math.ceil(df);
+    
+    if (lowerDf === upperDf) {
+        // Integer df, find closest in table
+        const keys = Object.keys(tTable).map(Number).sort((a, b) => a - b);
+        const closest = keys.reduce((prev, curr) => 
+            Math.abs(curr - df) < Math.abs(prev - df) ? curr : prev);
+        return tTable[closest];
+    }
+    
+    // Linear interpolation
+    const lowerT = tTable[lowerDf] || (closestAlpha === 0.05 ? 2.0 : (closestAlpha === 0.01 ? 2.8 : 1.7));
+    const upperT = tTable[upperDf] || (closestAlpha === 0.05 ? 2.0 : (closestAlpha === 0.01 ? 2.8 : 1.7));
+    const fraction = df - lowerDf;
+    
+    return lowerT + fraction * (upperT - lowerT);
+}

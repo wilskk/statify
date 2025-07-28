@@ -19,12 +19,14 @@ const renderFileList = (
             <Button
                 key={file.path}
                 variant="outline"
-                className="w-full justify-start text-left h-auto py-3"
+                className="w-full justify-start text-left h-auto py-3 hover:bg-accent/50 transition-colors group"
                 onClick={() => handleFileClick(file.path)}
                 disabled={isLoading}
             >
                 <File className="mr-3 h-5 w-5 flex-shrink-0" />
-                <span className="truncate text-sm">{file.name}</span>
+                <span className="text-sm truncate group-hover:whitespace-normal group-hover:break-words">
+                    {file.name}
+                </span>
             </Button>
         ))}
     </div>
@@ -32,6 +34,11 @@ const renderFileList = (
 
 export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
     const { isLoading, error, loadDataset } = useExampleDatasetLogic({ onClose });
+    const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+
+    const filteredFiles = exampleFiles.sav.filter(file =>
+        selectedTags.length === 0 || selectedTags.some(tag => file.tags?.includes(tag))
+    );
 
     return (
         <div className="flex flex-col h-full">
@@ -50,7 +57,25 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
 
             {/* Content */}
             <div className="relative p-6 flex-grow overflow-y-auto">
-                 {isLoading && (
+                <div className="flex flex-wrap gap-2 mb-4 overflow-x-auto pb-2">
+                    {Array.from(new Set(exampleFiles.sav.flatMap(f => f.tags))).map(tag => (
+                        <Button 
+                            key={tag}
+                            variant={selectedTags.includes(tag) ? "default" : "outline"}
+                            size="sm"
+                            className="whitespace-nowrap"
+                            onClick={() => setSelectedTags(prev =>
+                                prev.includes(tag) 
+                                    ? prev.filter(t => t !== tag) 
+                                    : [...prev, tag]
+                            )}
+                        >
+                            {tag}
+                        </Button>
+                    ))}
+                </div>
+                
+                {isLoading && (
                     <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-10">
                         {/* Added testing attributes for accessibility and testing purposes */}
                         <Loader2
@@ -72,7 +97,7 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
                 <p className="text-sm text-muted-foreground mb-4">
                     Select one of the example datasets to start your analysis.
                 </p>
-                {renderFileList(exampleFiles.sav, loadDataset, isLoading)}
+                {renderFileList(filteredFiles, loadDataset, isLoading)}
             </div>
 
             {/* Footer */}
