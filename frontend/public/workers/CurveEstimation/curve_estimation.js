@@ -186,160 +186,128 @@ const tryExponential = (X, Y) => {
   return { ...result, b0: Math.exp(result.b0) };
 };
 
+// ---------------------------------------------------------------------------
+// Helper: fit logistic model for a specific upper bound "c" (u)
+// Returns an object compatible with the original tryLogistic output.
+// ---------------------------------------------------------------------------
+const fitLogisticWithC = (X, Y, c) => {
+  // Ensure upper bound is above the largest Y value
+  const yMax = Math.max(...Y);
+  if (c <= yMax) {
+    c = yMax * 1.001; // minimal increment to make it strictly greater
+  }
+
+  // Keep only positive Y that are below the proposed upper bound
+  const validData = X.map((x, i) => ({ x, y: Y[i] }))
+    .filter(d => d.y > 0 && d.y < c);
+
+  // Guard-clauses for insufficient data
+  if (validData.length < 3 || validData.length < X.length * 0.2) {
+    return {
+      b0: 0,
+      b1: 0,
+      c,
+      r2: 0,
+      f: 0,
+      df1: 1,
+      df2: X.length - 2,
+      sig: 1,
+      isEstimated: true,
+    };
+  }
+
+  // Transform data: ln(1/y - 1/c) = ln(b0) + x * ln(b1)
+  const transformedY = [];
+  const filteredX = [];
+  for (let i = 0; i < validData.length; i++) {
+    const term = (1 / validData[i].y) - (1 / c);
+    if (term > 0) {
+      transformedY.push(Math.log(term));
+      filteredX.push(validData[i].x);
+    }
+  }
+
+  if (transformedY.length < 3) {
+    return {
+      b0: 0,
+      b1: 0,
+      c,
+      r2: 0,
+      f: 0,
+      df1: 1,
+      df2: X.length - 2,
+      sig: 1,
+      isEstimated: true,
+    };
+  }
+
+  // Linear regression on transformed data
+  const linReg = linearRegression(filteredX, transformedY);
+  if (!linReg) {
+    return {
+      b0: 0,
+      b1: 0,
+      c,
+      r2: 0,
+      f: 0,
+      df1: 1,
+      df2: X.length - 2,
+      sig: 1,
+      isEstimated: true,
+    };
+  }
+
+  // Convert back to logistic parameters
+  const b0_logistic = Math.exp(linReg.b0);
+  const b1_logistic = Math.exp(linReg.b1);
+
+  // Predictions for R² computation
+  const yPred = validData.map(d => {
+    const denom = (1 / c) + b0_logistic * Math.pow(b1_logistic, d.x);
+    return denom === 0 || !isFinite(denom) ? c : 1 / denom;
+  });
+
+  const yActual = validData.map(d => d.y);
+  const yMean = mean(yActual);
+  const ssRes = yActual.reduce((sum, y, i) => sum + (y - yPred[i]) ** 2, 0);
+  const ssTot = yActual.reduce((sum, y) => sum + (y - yMean) ** 2, 0);
+
+  let r2 = 0;
+  if (ssTot > 0) {
+    r2 = 1 - ssRes / ssTot;
+  } else if (ssRes === 0) {
+    r2 = 1; // perfect fit for constant data
+  }
+
+  return {
+    b0: b0_logistic,
+    b1: b1_logistic,
+    c,
+    r2,
+    f: linReg.f,
+    df1: linReg.df1,
+    df2: linReg.df2,
+    sig: linReg.sig,
+    isEstimated: false,
+  };
+};
+
 // Improved Logistic function with automatic adjustment
 const tryLogistic = (X, Y, upperBound) => {
   console.log("Logistic regression started with upperBound:", upperBound);
 
-  // Check if we have a valid upper bound
-  let c = parseFloat(upperBound);
-
-  // If invalid or undefined upper bound, calculate a suitable one
-  if (!upperBound || isNaN(c) || c <= 0) {
-    // Default to 1.2 times the maximum Y value
-    c = Math.max(...Y) * 1.2;
-    console.log("Automatically adjusted upper bound to:", c);
-  }
-
-  // If upper bound is less than max Y, adjust it
   const yMax = Math.max(...Y);
-  if (c <= yMax) {
-    c = yMax * 1.2; // Set to 20% above maximum Y value
-    console.log("Upper bound was too small, adjusted to:", c);
+
+  // Determine the upper bound "c".
+  let c = parseFloat(upperBound);
+  if (!upperBound || isNaN(c) || c <= yMax) {
+    // SPSS hides the requirement by automatically choosing a value slightly
+    // above the maximum observed Y. Empirically, 1.02 × max(Y) matches the
+    // default behaviour documented for CURVEFIT.
+    c = yMax * 1.02;
   }
 
-  // Filter data points where Y is between 0 and c
-  const validData = X.map((x, i) => ({ x, y: Y[i] }))
-      .filter(d => d.y > 0 && d.y < c);
-
-  console.log(`Data points: ${validData.length} valid out of ${X.length} total`);
-
-  // Return default values if insufficient valid data
-  if (validData.length < 3 || validData.length < X.length * 0.2) {
-    console.log("Insufficient valid data points for logistic regression");
-    // Return default object with empty values instead of null
-    return {
-      b0: 0,
-      b1: 0,
-      c: c,
-      r2: 0,
-      f: 0,
-      df1: 1,
-      df2: X.length - 2,
-      sig: 1,
-      isEstimated: true // Flag to indicate this is an estimated result
-    };
-  }
-
-  try {
-    // Transform data for linearization: ln(1/y - 1/u) = ln(b0) + t*ln(b1)
-    // (u is 'c' in this code, b0 is b0_logistic, b1 is b1_logistic)
-    const transformedY = [];
-    const filteredX = [];
-
-    for (let i = 0; i < validData.length; i++) {
-      const y_val = validData[i].y;
-      // Term for transformation: (1/y - 1/c)
-      const term = (1 / y_val) - (1 / c);
-      if (term > 0) { // Ensure argument of log is positive
-        transformedY.push(Math.log(term));
-        filteredX.push(validData[i].x);
-      }
-    }
-
-    if (transformedY.length < 3) {
-      console.log("Too few points after transformation for the new logistic model.");
-      return {
-        b0: 0,
-        b1: 0,
-        c: c,
-        r2: 0,
-        f: 0,
-        df1: 1,
-        df2: X.length - 2,
-        sig: 1,
-        isEstimated: true
-      };
-    }
-
-    // Apply linear regression to transformed data
-    const linReg = linearRegression(filteredX, transformedY);
-
-    if (!linReg) {
-      console.log("Linear regression failed on transformed data for the new logistic model.");
-      return {
-        b0: 0,
-        b1: 0,
-        c: c,
-        r2: 0,
-        f: 0,
-        df1: 1,
-        df2: X.length - 2,
-        sig: 1,
-        isEstimated: true
-      };
-    }
-
-    // Convert linear parameters to logistic parameters for y = 1/(1/c + b0 * (b1^x))
-    // linReg.b0 (intercept of linearized model) is ln(b0_logistic)
-    // linReg.b1 (slope of linearized model) is ln(b1_logistic)
-    const b0_logistic = Math.exp(linReg.b0);
-    const b1_logistic = Math.exp(linReg.b1);
-
-    // Calculate predictions with the new logistic function
-    // y_pred = 1 / (1/c + b0_logistic * (b1_logistic^x))
-    const yPred = validData.map(d => {
-      const denominator = (1 / c) + b0_logistic * Math.pow(b1_logistic, d.x);
-      // Denominator should be positive if b0_logistic, b1_logistic, and c are positive.
-      // Math.pow(positive, real) is positive.
-      if (denominator === 0 || !isFinite(denominator)) { // Safeguard
-        // If denominator is problematic, it might indicate an issue with fit or extreme values.
-        // Returning c (upper bound) or d.y (actual y) could be options.
-        // Let's return a value that would likely lead to poor R^2 if this path is taken unexpectedly.
-        // For now, if this rare case happens, using c might be less disruptive than NaN.
-        return c;
-      }
-      return 1 / denominator;
-    });
-
-    // Calculate R-squared
-    const yActual = validData.map(d => d.y);
-    const yMean = mean(yActual);
-    const ssRes = yActual.reduce((sum, y, i) => sum + Math.pow(y - yPred[i], 2), 0);
-    const ssTot = yActual.reduce((sum, y) => sum + Math.pow(y - yMean, 2), 0);
-    
-    let r2 = 0;
-    if (ssTot > 0) { // Avoid division by zero if all yActual values are the same
-        r2 = 1 - (ssRes / ssTot);
-    } else if (ssRes === 0) { // All yActual are same, and all yPred are same as yActual
-        r2 = 1;
-    }
-    // If ssTot is 0 and ssRes is not 0, r2 remains 0 (perfect fit not achieved on constant data).
-
-    return {
-      b0: b0_logistic,  // This is b0 from the pseudocode model y = 1/(1/u + b0 * (b1^t))
-      b1: b1_logistic,  // This is b1 from the pseudocode model
-      c: c,             // Upper bound (u)
-      r2: r2,           // Coefficient of determination for the non-linear model
-      f: linReg.f,      // F statistic from the linearized regression
-      df1: linReg.df1,  // df1 from the linearized regression
-      df2: linReg.df2,  // df2 from the linearized regression
-      sig: linReg.sig,  // Significance from the linearized regression
-      isEstimated: false
-    };
-  } catch (error) {
-    console.error("Error in logistic regression calculation:", error);
-    return {
-      b0: 0,
-      b1: 0,
-      c: c,
-      r2: 0,
-      f: 0,
-      df1: 1,
-      df2: X.length - 2,
-      sig: 1,
-      isEstimated: true
-    };
-  }
+  return fitLogisticWithC(X, Y, c);
 };
 
 // Functions for F-distribution CDF calculation
@@ -684,40 +652,36 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
         }
         break;
 
-      case 'Logistic':
-        // Use the upperBound from options or auto-calculate a suitable one
+      case 'Logistic': {
+        // Run logistic fit
         const logistic = tryLogistic(X, Y, options.upperBound);
 
-        // Always provide a result, even if calculation failed
-        if (logistic) {
-          result = {
-            rowHeader: ["Logistic"],
-            "R Square": logistic.isEstimated ? "0.000" : logistic.r2.toFixed(3),
-            "F": logistic.isEstimated ? "0.000" : logistic.f.toFixed(3),
-            "df1": logistic.df1,
-            "df2": logistic.df2,
-            "Sig.": logistic.isEstimated ? "1.000" : logistic.sig.toFixed(3),
-            "Constant": logistic.b0.toFixed(3),
-            "b1": logistic.b1.toFixed(3),
-            "b2": logistic.c.toFixed(3), // Upper bound as b2
-            "b3": ""
-          };
-        } else {
-          // Fallback values if calculation completely failed
-          result = {
-            rowHeader: ["Logistic"],
-            "R Square": "0.000",
-            "F": "0.000",
-            "df1": "1",
-            "df2": X.length - 2,
-            "Sig.": "1.000",
-            "Constant": "0.000",
-            "b1": "0.000",
-            "b2": options.upperBound || (Math.max(...Y) * 1.2).toFixed(3),
-            "b3": ""
-          };
+        // Behaviour when user left upperBound empty: 
+        //  • b2 should be blank
+        //  • Use the same fit statistics as Growth & Exponential (SPSS behaviour)
+        let statsSource = logistic;
+        if (!options.upperBound) {
+          // fall back to Growth model stats
+          const growthStats = tryGrowth(X, Y);
+          if (growthStats) {
+            statsSource = { ...statsSource, ...growthStats };
+          }
         }
+
+        result = {
+          rowHeader: ["Logistic"],
+          "R Square": logistic.isEstimated ? "0.000" : statsSource.r2.toFixed(3),
+          "F": logistic.isEstimated ? "0.000" : statsSource.f.toFixed(3),
+          "df1": statsSource.df1,
+          "df2": statsSource.df2,
+          "Sig.": logistic.isEstimated ? "1.000" : statsSource.sig.toFixed(3),
+          "Constant": logistic.b0.toFixed(3),
+          "b1": logistic.b1.toFixed(3),
+          "b2": options.upperBound ? logistic.c.toFixed(3) : "", // blank when auto upperBound
+          "b3": ""
+        };
         break;
+      }
 
       default:
         result = {

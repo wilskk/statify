@@ -187,8 +187,11 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
       return;
     }
 
-    if (selectedModels.includes('Logistic') && (upperBound === '' || isNaN(parseFloat(upperBound)))) {
-        showAlert("Invalid Input", "Please provide a valid numeric upper bound for the Logistic model.");
+    // Validate upper bound for Logistic model only if the user provided a value.
+    // Allow empty input (""), which will trigger automatic upper-bound estimation in the worker—
+    // mimicking SPSS behaviour.
+    if (selectedModels.includes('Logistic') && upperBound !== '' && isNaN(parseFloat(upperBound))) {
+        showAlert("Invalid Input", "Upper bound must be a valid numeric value.");
         return;
     }
 
