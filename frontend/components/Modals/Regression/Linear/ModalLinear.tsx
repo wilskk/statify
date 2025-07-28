@@ -1292,7 +1292,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           console.log("[Analyze] Mengirim data ke Worker untuk Casewise Diagnostics (All Cases selected)...");
           casewiseDiagnosticsWorker.postMessage({
             dependent: filteredDependentData,
-            independent: filteredIndependentData[0],
+            independent: filteredIndependentData,
             // Threshold is only relevant if "outliers" was selected, but worker might still use it.
             // For "all cases", threshold isn't directly used for filtering by this component,
             // but the worker itself might have logic based on it, or it might be ignored.

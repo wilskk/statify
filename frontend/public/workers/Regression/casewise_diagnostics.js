@@ -1,83 +1,115 @@
 // casewise_diagnostics.js
 
 self.onmessage = function(e) {
-    const { dependent, independent, dependentVariableInfo, threshold } = e.data;
-    
-    // Validasi input
-    if (!dependent || !independent || !dependentVariableInfo) {
-      self.postMessage({ error: "Data dependent, independent, dan dependentVariableInfo harus disediakan." });
-      return;
-    }
-    if (!Array.isArray(dependent) || !Array.isArray(independent)) {
-      self.postMessage({ error: "Data dependent dan independent harus berupa array." });
-      return;
-    }
-    if (dependent.length !== independent.length) {
-      self.postMessage({ error: "Panjang data dependent dan independent harus sama." });
-      return;
-    }
-    
-    const y = dependent;
-    const x = independent;
-    const n = y.length; // Jumlah observasi
-    
-    // Fungsi bantu: menghitung rata-rata
-    const mean = (arr) => arr.reduce((sum, v) => sum + v, 0) / arr.length;
-    
-    const meanX = mean(x);
-    const meanY = mean(y);
-    
-    // Hitung kovarians dan variansi x (dengan pembagi n-1)
-    let cov = 0, varX = 0;
-    for (let i = 0; i < n; i++) {
-      const dx = x[i] - meanX;
-      const dy = y[i] - meanY;
-      cov += dx * dy;
-      varX += dx * dx;
-    }
-    cov /= (n - 1);
-    varX /= (n - 1);
-    
-    // Hitung slope dan intercept (OLS)
-    const slope = cov / varX;               // Dihitung = 0.4 (contoh)
-    const intercept = meanY - slope * meanX;  // Dihitung = 1.75 (contoh)
-    
-    // Hitung nilai prediksi tiap kasus
-    const predicted = x.map(xi => intercept + slope * xi);
-    // Hitung residual tiap kasus: e = y - predicted
-    const residuals = y.map((yi, i) => yi - predicted[i]);
-    
-    // Hitung SSE (Sum of Squared Errors)
-    const SSE = residuals.reduce((sum, e) => sum + e * e, 0);
-    // Standar error (s) dengan df = n - 2
-    const s = Math.sqrt(SSE / (n - 2));
-    
-    // Hitung standardized residual: e / s
-    const stdResiduals = residuals.map(e => e / s);
-    
-    // Fungsi pembulatan
-    function round(val, decimals) {
-      return Number(val.toFixed(decimals));
-    }
-    
-    // Bangun data casewise diagnostics
-    const cases = [];
-    const depVarName = dependentVariableInfo.name;
+  const { dependent, independent, dependentVariableInfo, threshold } = e.data;
 
+  /* -------------------------------------------------------------------------
+     1. Validation & normalization
+  -------------------------------------------------------------------------*/
+  if (!Array.isArray(dependent) || !Array.isArray(independent) || !dependentVariableInfo) {
+    self.postMessage({ error: "Data dependent, independent, dan dependentVariableInfo harus disediakan dengan format array." });
+    return;
+  }
+
+  // Pastikan independent berupa array of arrays [p][n]
+  const independents = Array.isArray(independent[0]) ? independent : [independent];
+  const n = dependent.length;
+  const p = independents.length; // jumlah prediktor
+
+  if (independents.some(arr => !Array.isArray(arr) || arr.length !== n)) {
+    self.postMessage({ error: "Setiap variabel independent harus memiliki panjang yang sama dengan dependent." });
+    return;
+  }
+
+  try {
+    /* -----------------------------------------------------------------------
+       2. Hitung koefisien regresi OLS
+    -----------------------------------------------------------------------*/
+    // Bangun matriks X (dengan kolom intercept)
+    const X = [];
     for (let i = 0; i < n; i++) {
-      const caseData = {
-        caseNumber: (i + 1).toString(),
-        predictedValue: round(predicted[i], 4),
-        residual: round(residuals[i], 4),
-        stdResidual: round(stdResiduals[i], 3)
-      };
-      caseData[depVarName] = round(y[i], 2);
-      cases.push(caseData);
+      const row = [1];
+      for (let j = 0; j < p; j++) {
+        row.push(independents[j][i]);
+      }
+      X.push(row);
     }
-    
-    const depVarHeader = (dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') 
-      ? dependentVariableInfo.label 
-      : dependentVariableInfo.name;
+
+    // Helper matrix functions (mini implementation)
+    const transpose = m => m[0].map((_, col) => m.map(row => row[col]));
+
+    const multiplyMatrices = (A, B) => {
+      const rowsA = A.length, colsA = A[0].length, colsB = B[0].length;
+      const result = Array.from({ length: rowsA }, () => Array(colsB).fill(0));
+      for (let i = 0; i < rowsA; i++) {
+        for (let j = 0; j < colsB; j++) {
+          for (let k = 0; k < colsA; k++) {
+            result[i][j] += A[i][k] * B[k][j];
+          }
+        }
+      }
+      return result;
+    };
+
+    const multiplyMatrixVector = (M, v) => M.map(row => row.reduce((sum, val, idx) => sum + val * v[idx], 0));
+
+    const invertMatrix = (matrix) => {
+      const n = matrix.length;
+      const augmented = matrix.map((row, i) => row.concat(row.map((_, j) => (i === j ? 1 : 0))));
+      for (let i = 0; i < n; i++) {
+        // pivot
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) maxRow = k;
+        if (maxRow !== i) [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+        const pivot = augmented[i][i];
+        if (Math.abs(pivot) < 1e-12) throw new Error("Matrix singular");
+        for (let j = 0; j < 2 * n; j++) augmented[i][j] /= pivot;
+        for (let r = 0; r < n; r++) {
+          if (r !== i) {
+            const factor = augmented[r][i];
+            for (let c = 0; c < 2 * n; c++) augmented[r][c] -= factor * augmented[i][c];
+          }
+        }
+      }
+      return augmented.map(row => row.slice(n));
+    };
+
+    const Xt = transpose(X);
+    const XtX = multiplyMatrices(Xt, X);
+    const XtX_inv = invertMatrix(XtX);
+    const Xty = multiplyMatrixVector(Xt, dependent);
+    const beta = multiplyMatrixVector(XtX_inv, Xty);
+
+    /* -----------------------------------------------------------------------
+       3. Predicted values & residuals
+    -----------------------------------------------------------------------*/
+    const predicted = X.map(row => row.reduce((sum, val, idx) => sum + val * beta[idx], 0));
+    const residuals = dependent.map((y, i) => y - predicted[i]);
+
+    const SSE = residuals.reduce((sum, e) => sum + e * e, 0);
+    const df = n - p - 1;
+    const s = Math.sqrt(SSE / df);
+
+    const stdResiduals = residuals.map(e => e / s);
+
+    const round = (val, dec) => Number(val.toFixed(dec));
+
+    /* -----------------------------------------------------------------------
+       4. Build table rows (SPSS style)
+    -----------------------------------------------------------------------*/
+    const depVarName = dependentVariableInfo.name;
+    const depVarHeader = (dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') ? dependentVariableInfo.label : dependentVariableInfo.name;
+
+    const cases = [];
+    for (let i = 0; i < n; i++) {
+      cases.push({
+        caseNumber: (i + 1).toString(),
+        stdResidual: round(stdResiduals[i], 3),
+        [depVarName]: round(dependent[i], 2),
+        predictedValue: round(predicted[i], 4),
+        residual: round(residuals[i], 4)
+      });
+    }
 
     const result = {
       tables: [
@@ -90,17 +122,21 @@ self.onmessage = function(e) {
             { header: "Predicted Value", key: "predictedValue" },
             { header: "Residual", key: "residual" }
           ],
-          rows: cases.map(item => ({
-            rowHeader: [item.caseNumber],
-            stdResidual: item.stdResidual,
-            [depVarName]: item[depVarName],
-            predictedValue: item.predictedValue,
-            residual: item.residual
+          rows: cases.map(c => ({
+            rowHeader: [c.caseNumber],
+            stdResidual: c.stdResidual,
+            [depVarName]: c[depVarName],
+            predictedValue: c.predictedValue,
+            residual: c.residual
           }))
         }
       ]
     };
-    
+
     self.postMessage(result);
-  };
+  } catch (err) {
+    console.error("Casewise Diagnostics Worker error:", err);
+    self.postMessage({ error: err.message || "Unknown error in casewise_diagnostics.js" });
+  }
+};
   
