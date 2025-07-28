@@ -36,11 +36,8 @@ pub struct DesignMatrixInfo {
 
 #[derive(Debug, Clone)]
 pub struct SweptMatrixInfo {
-    /// G: p×p symmetric g₂ general inverse of X'WX (after negation of swept result)
     pub g_inv: DMatrix<f64>,
-    /// B̂: p×r matrix of parameter estimates
     pub beta_hat: DVector<f64>,
-    /// S: symmetric r×r matrix of residual sums of squares and cross-products
     pub s_rss: f64,
 }
 
@@ -102,16 +99,16 @@ pub struct LeveneTestEntry {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SourceEntry {
-    pub name: String,
-    pub effect: TestEffectEntry,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TestsBetweenSubjectsEffects {
     pub sources: Vec<SourceEntry>,
     pub note: Option<String>,
     pub interpretation: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SourceEntry {
+    pub name: String,
+    pub effect: TestEffectEntry,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -244,6 +241,14 @@ pub struct GeneralEstimableFunction {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GeneralEstimableFunctionEntry {
+    pub parameter: Vec<String>,
+    pub l_label: Vec<String>,
+    pub l_matrix: Vec<Vec<i32>>,
+    pub contrast_information: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HypothesisLMatrices {
     pub matrices: Vec<TermMatrix>,
     pub note: Option<String>,
@@ -258,14 +263,6 @@ pub struct TermMatrix {
     pub matrix: Vec<Vec<f64>>,
     pub note: Option<String>,
     pub interpretation: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct GeneralEstimableFunctionEntry {
-    pub parameter: Vec<String>,
-    pub l_label: Vec<String>,
-    pub l_matrix: Vec<Vec<i32>>,
-    pub contrast_information: Vec<String>,
 }
 
 #[derive(Debug)]

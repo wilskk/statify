@@ -27,6 +27,8 @@ pub fn calculate_tests_between_subjects_effects(
         format!("Failed to create design matrix for Between Subjects Effects: {}", e)
     })?;
 
+    web_sys::console::log_1(&format!("design_info: {:?}", design_info).into());
+
     // Membuat matriks cross-product (Z'WZ) untuk perhitungan statistik
     let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e| {
         format!("Failed to create cross-product matrix: {}", e)
@@ -174,6 +176,20 @@ pub fn calculate_tests_between_subjects_effects(
         &design_info,
         config
     );
+
+    // Mengurutkan hasil sesuai urutan
+    // Urutan: Corrected Model, Intercept, Main Effects, Interaction, Error, Total, Corrected Total
+    final_sources.sort_by_key(|s| {
+        match s.name.as_str() {
+            "Corrected Model" | "Model" => 0,
+            "Intercept" => 1,
+            s if s.contains('*') => 3, // Efek interaksi
+            "Error" => 4,
+            "Total" => 5,
+            "Corrected Total" => 6,
+            _ => 2, // Efek utama
+        }
+    });
 
     // Menyiapkan catatan dan metadata
     let mut notes = Vec::new();
