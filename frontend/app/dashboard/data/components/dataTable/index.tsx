@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import HandsontableWrapper from './HandsontableWrapper';
 import { registerAllModules } from 'handsontable/registry';
 import { useDataStore } from '@/stores/useDataStore';
-import { useDataTableLogic } from './hooks/useDataTableLogic';
+import { useDataTableLogic } from './hooks';
 import { useColumnSizing } from './hooks/useColumnSizing';
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useVariableStore } from '@/stores/useVariableStore';

@@ -1,61 +1,39 @@
-/**
- * @file /libs/descriptive.js
- * @class DescriptiveCalculator
- * @description
- * Melakukan perhitungan statistik deskriptif menggunakan algoritma provisional (one-pass).
- * Metode ini sangat efisien dalam penggunaan memori, karena tidak perlu menyimpan
- * seluruh data di memori untuk menghitung varians, skewness, atau kurtosis.
- * Mendukung data berbobot dan menangani missing values secara internal.
- */
-/* global importScripts, isNumeric, checkIsMissing */
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-// Helper function to round numeric values according to the variable's decimals setting
+
 function roundToDecimals(number, decimals) {
     if (typeof number !== 'number' || isNaN(number) || !isFinite(number)) return number;
     return parseFloat(number.toFixed(decimals));
 }
 
 class DescriptiveCalculator {
-    /**
-     * @param {object} variable - Objek definisi variabel.
-     * @param {Array<any>} data - Array data untuk variabel ini.
-     * @param {Array<number>|null} weights - Array bobot yang sesuai dengan data.
-     * @param {object} options - Opsi tambahan dari main thread.
-     */
+    
     constructor({ variable, data, weights = null, options = {} }) {
         this.variable = variable;
         this.data = data;
         this.weights = weights;
-        this.options = options || {}; // Simpan options untuk penggunaan nanti
+        this.options = options || {}; 
         this.initialized = false;
         
-        // Properti yang dihitung selama inisialisasi (algoritma provisional)
-        this.W = 0;   // Sum of weights
-        this.W2 = 0;  // Sum of weights squared
-        this.M1 = 0;  // 1st moment (mean * W)
-        this.M2 = 0;  // 2nd moment (sum of squared deviations from mean)
-        this.M3 = 0;  // 3rd moment
-        this.M4 = 0;  // 4th moment
-        this.S = 0;   // Sum of values
+        this.W = 0;
+        this.W2 = 0;
+        this.M1 = 0;
+        this.M2 = 0;
+        this.M3 = 0;
+        this.M4 = 0;
+        this.S = 0;
         this.min = Infinity;
         this.max = -Infinity;
-        this.N = 0;   // Total valid cases count
-
-        /** @private */
+        this.N = 0; 
+        
         this.memo = {};
     }
 
-    /**
-     * @private
-     * Menginisialisasi kalkulasi menggunakan algoritma provisional.
-     * Metode one-pass ini menghitung semua momen yang diperlukan dalam satu iterasi.
-     */
+    
     #initialize() {
         if (this.initialized) return;
 
         const isNumericType = ['scale', 'date'].includes(this.variable.measure);
         
-        // --- Pass 1: Calculate Mean ---
         this.W = 0;
         this.S = 0;
         this.N = 0;
@@ -84,12 +62,12 @@ class DescriptiveCalculator {
         }
 
         if (this.W > 0) {
-            this.M1 = this.S / this.W; // Mean
+            this.M1 = this.S / this.W; 
         } else {
             this.M1 = null;
         }
 
-        // --- Pass 2: Calculate M2, M3, M4 (sum of powered deviations from the mean) ---
+
         this.M2 = 0;
         this.M3 = 0;
         this.M4 = 0;
@@ -109,7 +87,7 @@ class DescriptiveCalculator {
     }
     
     getN() { this.#initialize(); return this.data.length; }
-    getValidN() { this.#initialize(); return this.W; } // For weighted, validN is sum of weights
+    getValidN() { this.#initialize(); return this.W; } 
     getSum() { this.#initialize(); return this.N > 0 ? this.S : null; }
     getMean() { this.#initialize(); return this.N > 0 ? this.M1 : null; }
     getMin() { this.#initialize(); return this.N > 0 ? this.min : null; }
@@ -121,7 +99,6 @@ class DescriptiveCalculator {
         this.#initialize();
         if (this.W <= 1) return null;
         
-        // Unbiased weighted variance (n-1 method)
         const denominator = this.W - 1;
         if (denominator <= 0) return null;
 
@@ -152,7 +129,6 @@ class DescriptiveCalculator {
         if (variance === null || variance === 0 || this.W < 3) return null;
         
         const n = this.W;
-        // Adjusted Fisher-Pearson coefficient of skewness (g1)
         const numerator = (n * this.M3);
         const denominator = ((n - 1) * (n - 2) * Math.pow(this.getStdDev(), 3));
 
@@ -197,10 +173,7 @@ class DescriptiveCalculator {
         return Math.sqrt((24 * n * (n - 1) * (n - 1)) / ((n - 3) * (n - 2) * (n + 3) * (n + 5)));
     }
 
-    /**
-     * Mengembalikan ringkasan lengkap statistik deskriptif.
-     * @returns {object} Objek hasil analisis.
-     */
+    
     getStatistics() {
         this.#initialize();
         const stats = {
@@ -311,10 +284,10 @@ class DescriptiveCalculator {
             SESkewness: stats.seSkewness,
             Kurtosis: stats.kurtosis,
             SEKurtosis: stats.seKurtosis,
-            Median: median, // Note: This median is UNWEIGHTED. Weighted percentiles are in Freq calc.
+            Median: median,
         };
 
-        // Rounding handled at worker layer for display; keep raw values here
+        
 
         return {
             variable: this.variable,

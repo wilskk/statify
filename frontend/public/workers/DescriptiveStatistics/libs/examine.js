@@ -1,25 +1,15 @@
-/**
- * @file /libs/examine.js
- * @class ExamineCalculator
- * @description
- * Menyediakan analisis eksplorasi data yang mendalam, menggabungkan statistik deskriptif,
- * statistik robust (M-Estimators, Trimmed Mean), dan metode persentil canggih.
- * Menggunakan DescriptiveCalculator dan FrequencyCalculator secara internal (Komposisi).
- */
-/* global importScripts, isNumeric, DescriptiveCalculator, FrequencyCalculator */
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-// Calculator lain dimuat oleh manager.js
 
-// Fungsi bobot untuk M-Estimators didefinisikan di luar kelas untuk efisiensi
+// M-estimator weight functions
 const M_ESTIMATOR_WEIGHT_FUNCTIONS = {
     huber: (u) => { 
         const abs_u = Math.abs(u); 
-        const k = 1.339; // Default parameter
+        const k = 1.339; 
         return abs_u <= k ? 1 : k / abs_u; 
     },
     hampel: (u) => {
         const abs_u = Math.abs(u);
-        const a = 1.7, b = 3.4, c = 8.5; // Default parameters
+        const a = 1.7, b = 3.4, c = 8.5; 
         if (abs_u <= a) return 1;
         if (abs_u <= b) return a / abs_u;
         if (abs_u <= c) return (a * (c - abs_u)) / (abs_u * (c - b));
@@ -27,9 +17,8 @@ const M_ESTIMATOR_WEIGHT_FUNCTIONS = {
     },
     andrew: (u) => {
         const abs_u = Math.abs(u);
-        const c = 1.34 * Math.PI; // Default: c = 1.34π
+        const c = 1.34 * Math.PI; 
         if (abs_u <= c) {
-            // Untuk u mendekati 0, gunakan limit: lim(u→0) sin(πu/c)/(πu/c) = 1
             if (abs_u < 1e-9) return 1;
             return (c / Math.PI) * Math.sin(Math.PI * u / c) / u;
         }
@@ -37,7 +26,7 @@ const M_ESTIMATOR_WEIGHT_FUNCTIONS = {
     },
     tukey: (u) => {
         const abs_u = Math.abs(u);
-        const c = 4.685; // Default parameter
+        const c = 4.685; 
         if (abs_u <= c) {
             const ratio = u / c;
             return Math.pow(1 - ratio * ratio, 2);
@@ -47,14 +36,6 @@ const M_ESTIMATOR_WEIGHT_FUNCTIONS = {
 };
 
 class ExamineCalculator {
-    /**
-     * @param {object} payload - Payload dari manager.
-     * @param {object} payload.variable - Objek definisi variabel.
-     * @param {Array<any>} payload.data - Array data untuk variabel ini.
-     * @param {Array<number>|null} payload.weights - Array bobot yang sesuai dengan data.
-     * @param {Array<number>|null} payload.caseNumbers - Array nomor kasus asli.
-     * @param {object} payload.options - Opsi untuk analisis.
-     */
     constructor({ variable, data, weights = null, caseNumbers = null, options = {} }) {
         this.variable = variable;
         this.data = data;
@@ -67,19 +48,13 @@ class ExamineCalculator {
         this.freqCalc = new FrequencyCalculator({ variable, data, weights, options: { ...options, displayDescriptive: true } });
     }
 
-    /** @private */
     #initialize() {
         if (this.initialized) return;
-        // Inisialisasi kalkulator anak
         this.descCalc.getN(); 
         this.freqCalc.getMode();
         this.initialized = true;
     }
 
-    /**
-     * Menghitung 5% Trimmed Mean, yaitu rata-rata setelah membuang 5% data terkecil dan 5% data terbesar.
-     * @returns {number|null} Nilai 5% Trimmed Mean.
-     */
     getTrimmedMean() {
         this.#initialize();
         const sortedData = this.freqCalc.getSortedData();
@@ -115,34 +90,22 @@ class ExamineCalculator {
         return denominator > 0 ? total_sum / denominator : null;
     }
     
-    /**
-     * Menghitung M-Estimator untuk lokasi, sebuah statistik robust yang kurang sensitif terhadap outlier.
-     * Implementasi sesuai dengan spesifikasi SPSS EXAMINE algorithms.
-     * 
-     * @param {string} method - Metode bobot: 'huber', 'hampel', 'andrew', 'tukey'.
-     * @returns {number|null} Nilai M-Estimator atau null jika perhitungan gagal.
-     */
     getMEstimator(method) {
         this.#initialize();
         
-        // Validasi input method
         const validMethods = ['huber', 'hampel', 'andrew', 'tukey'];
         if (!validMethods.includes(method.toLowerCase())) {
-            console.warn(`Invalid M-estimator method: ${method}. Using Huber instead.`);
             method = 'huber';
         }
         
         const y_tilde = this.freqCalc.getPercentile(50, 'haverage');
         if (y_tilde === null) return null;
         
-        // Hitung Median Absolute Deviation (MAD) dengan faktor skala SPSS
-        // Untuk M-estimator, kita membutuhkan median klasik dari absolute deviations individual
         const absoluteDeviations = [];
         for (let i = 0; i < this.data.length; i++) {
             const val = this.data[i];
             const weight = this.weights ? (this.weights[i] ?? 1) : 1;
             if (isNumeric(val) && typeof weight === 'number' && weight > 0) {
-                // Expand data berdasarkan weight untuk mendapatkan classical median
                 for (let w = 0; w < weight; w++) {
                     absoluteDeviations.push(Math.abs(parseFloat(val) - y_tilde));
                 }
@@ -151,29 +114,24 @@ class ExamineCalculator {
         
         if (absoluteDeviations.length === 0) return y_tilde;
         
-        // Hitung median klasik (bukan weighted median)
         absoluteDeviations.sort((a, b) => a - b);
         const n = absoluteDeviations.length;
         const mad = n % 2 === 0 
             ? (absoluteDeviations[n/2 - 1] + absoluteDeviations[n/2]) / 2 
             : absoluteDeviations[Math.floor(n/2)];
         
-        // Untuk M-estimator, SPSS menggunakan MAD dengan faktor skala 1.4826
-        // untuk konsistensi dengan standard normal distribution
         let s = mad !== null && mad > 0 ? mad * 1.4826 : null;
         
-        // Jika MAD = 0, gunakan standard deviation sebagai fallback
         if (s === null || s === 0) {
             const stdDev = this.descCalc.getStdDev();
-            s = stdDev && stdDev > 0 ? stdDev : 1.0; // Fallback terakhir ke 1.0
+            s = stdDev && stdDev > 0 ? stdDev : 1.0; 
         }
         
-        // Additional safety check for very small scale values
         if (s <= 1e-10) return y_tilde;
 
         const getWeight = M_ESTIMATOR_WEIGHT_FUNCTIONS[method.toLowerCase()] || (() => 1);
         let T_k = y_tilde;
-        const epsilon = 1e-4; // Toleransi konvergensi sesuai SPSS (lebih longgar)
+        const epsilon = 1e-4; 
         const maxIter = 30;
 
         for (let iter = 0; iter < maxIter; iter++) {
@@ -185,7 +143,6 @@ class ExamineCalculator {
                 
                 if (!isNumeric(value) || typeof weight !== 'number' || weight <= 0) continue;
 
-                // Calculate the standardized residual for the weight function
                 const residual = (parseFloat(value) - T_k) / s;
                 const w_i = getWeight(residual);
 
@@ -197,12 +154,9 @@ class ExamineCalculator {
             
             const T_k_plus_1 = numerator / denominator;
             
-            // Kriteria konvergensi yang sesuai dengan SPSS
             const absChange = Math.abs(T_k_plus_1 - T_k);
-            // SPSS menggunakan toleransi relatif yang lebih longgar
             const relTolerance = Math.max(epsilon, Math.abs(T_k_plus_1) * epsilon);
-            const absTolerance = epsilon * 10; // Toleransi absolut yang lebih longgar
-            
+            const absTolerance = epsilon * 10; 
             
             if (absChange <= absTolerance || absChange <= relTolerance) {
                 return Math.round(T_k_plus_1 * 1000000) / 1000000;
@@ -214,28 +168,21 @@ class ExamineCalculator {
         return Math.round(T_k * 1000000) / 1000000;
     }
 
-    /**
-     * Mengembalikan ringkasan lengkap statistik Examine.
-     * @returns {object} Objek hasil analisis.
-     */
     getStatistics() {
         this.#initialize();
         const descStatsResult = this.descCalc.getStatistics();
         const freqStatsResult = this.freqCalc.getStatistics();
         
-        // Combine stats from both calculators. Descriptive is the base, Frequency adds Mode/Percentiles.
         const combinedStats = {
             ...descStatsResult.stats,
-            ...(freqStatsResult.stats || {}), // Handle case where freqStatsResult.stats is null
+            ...(freqStatsResult.stats || {}), 
         };
 
-        // For EXAMINE, use haverage (Tukey's hinges) for median to match SPSS
         const medianHaverage = this.freqCalc.getPercentile(50, 'haverage');
         if (medianHaverage !== null) {
             combinedStats.Median = medianHaverage;
         }
 
-        // Re-compute Q1, Q3, and IQR using weighted average (waverage) to match SPSS Explore
         const q1_waverage = this.freqCalc.getPercentile(25, 'waverage');
         const q3_waverage = this.freqCalc.getPercentile(75, 'waverage');
         if (q1_waverage !== null && q3_waverage !== null) {
@@ -307,24 +254,17 @@ class ExamineCalculator {
             }
         };
 
-        // Append extreme values if requested
         if (this.options.showOutliers) {
             results.extremeValues = this.getExtremeValues(this.options.extremeCount || 5);
         }
 
-        // Correctly calculate confidence interval using the right stats
         const { Mean: mean, SEMean: seMean, Valid: n } = descStatsResult?.stats || {};
         if (seMean !== null && mean !== null && seMean !== undefined && mean !== undefined && n > 1) {
-            // Use proper t-critical value based on degrees of freedom (n-1)
             const df = n - 1;
             
-            // Get confidence level from options (default to 95%)
             const confidenceLevel = this.options.confidenceInterval || 95;
-            const alpha = (100 - confidenceLevel) / 100; // Convert to alpha level
+            const alpha = (100 - confidenceLevel) / 100; 
             
-            // Calculate t-critical value using degrees of freedom
-            // For large samples (n >= 30), t approaches z
-            // For smaller samples, use t-distribution approximation
             const t_critical = getTCriticalApproximation(df, alpha);
             
             results.descriptives.confidenceInterval = {
@@ -340,30 +280,24 @@ class ExamineCalculator {
     getExtremeValues(extremeCount = 5) {
         this.#initialize();
 
-        // Collect valid numeric values with their original case numbers
         const entries = [];
         for (let i = 0; i < this.data.length; i++) {
             const val = this.data[i];
             const weight = this.weights ? (this.weights[i] ?? 1) : 1;
             if (!isNumeric(val) || typeof weight !== 'number' || weight <= 0) continue;
             
-            // Gunakan caseNumber dari array jika tersedia, jika tidak, gunakan i + 1
             const caseNumber = this.caseNumbers && this.caseNumbers[i] ? this.caseNumbers[i] : i + 1;
             entries.push({ caseNumber, value: parseFloat(val) });
         }
 
         if (entries.length === 0) return null;
 
-        // ==== 1. Compute quartiles & IQR (using waverage percentiles like SPSS) ====
-        // Use waverage method for consistency with SPSS Explore
         const q1 = this.freqCalc.getPercentile(25, 'waverage');
         const q3 = this.freqCalc.getPercentile(75, 'waverage');
         if (q1 === null || q3 === null) return null;
         const iqr = q3 - q1;
 
-        // Guard against zero IQR (no spread)
         if (iqr === 0) {
-            // Fall back to simple min/max selection
             const sortedAsc = [...entries].sort((a, b) => a.value - b.value);
             const sortedDesc = [...entries].sort((a, b) => b.value - a.value);
             return buildExtremeValueObject(sortedAsc, sortedDesc, extremeCount);
@@ -372,10 +306,9 @@ class ExamineCalculator {
         const step = 1.5 * iqr;
         const lowerInner = q1 - step;
         const upperInner = q3 + step;
-        const lowerOuter = q1 - (2 * step); // 3.0 * IQR total
+        const lowerOuter = q1 - (2 * step); 
         const upperOuter = q3 + (2 * step);
 
-        // ==== 2. Identify candidate outliers/extremes ====
         const isHighExtreme = (v) => v > upperOuter;
         const isLowExtreme = (v) => v < lowerOuter;
         const isHighOutlier = (v) => v > upperInner && v <= upperOuter;
@@ -384,7 +317,6 @@ class ExamineCalculator {
         const sortedAsc = [...entries].sort((a, b) => a.value - b.value);
         const sortedDesc = [...entries].sort((a, b) => b.value - a.value);
 
-        // Helper to pick up to extremeCount from a source array filtering by predicate
         function pickCandidates(source, predicate) {
             const arr = [];
             for (const item of source) {
@@ -396,23 +328,18 @@ class ExamineCalculator {
             return arr;
         }
 
-        // --- Refactored logic for picking extremes and outliers ---
-
-        // 1. Find Highest values: start with extremes, then outliers
         let highest = pickCandidates(sortedDesc, isHighExtreme);
         if (highest.length < extremeCount) {
             const additional = pickCandidates(sortedDesc, isHighOutlier);
             highest.push(...additional.slice(0, extremeCount - highest.length));
         }
 
-        // 2. Find Lowest values: start with extremes, then outliers
         let lowest = pickCandidates(sortedAsc, isLowExtreme);
         if (lowest.length < extremeCount) {
             const additional = pickCandidates(sortedAsc, isLowOutlier);
             lowest.push(...additional.slice(0, extremeCount - lowest.length));
         }
 
-        // 3. Still not enough? Fill with regular values from the sorted lists.
         const fillByValue = (list, source) => {
             const existingCaseNumbers = new Set(list.map(item => item.caseNumber));
             if (list.length >= extremeCount) return list;
@@ -429,7 +356,6 @@ class ExamineCalculator {
         lowest = fillByValue(lowest, sortedAsc);
         highest = fillByValue(highest, sortedDesc);
 
-        // Mark partial lists if ties at boundary
         const checkPartial = (sourceArray, fullSorted, direction) => {
             if (sourceArray.length === 0) return;
             const lastIncluded = sourceArray[sourceArray.length - 1];
@@ -437,14 +363,13 @@ class ExamineCalculator {
             const indexInFull = fullSorted.findIndex(e => e.caseNumber === lastIncluded.caseNumber);
             const nextIndex = indexInFull + 1;
             if (nextIndex < fullSorted.length && fullSorted[nextIndex].value === lastValue) {
-                lastIncluded.isPartial = true; // footnote handled by formatter
+                lastIncluded.isPartial = true; 
             }
         };
 
         checkPartial(lowest, sortedAsc, 'lowest');
         checkPartial(highest, sortedDesc, 'highest');
 
-        // Helper to tag each entry type
         const isOutlier = (v) => (v < lowerInner && v >= lowerOuter) || (v > upperInner && v <= upperOuter);
         const isExtreme = (v) => v < lowerOuter || v > upperOuter;
         
@@ -462,7 +387,6 @@ class ExamineCalculator {
             },
         };
 
-        // === local helper ===
         function buildExtremeValueObject(sortedAsc, sortedDesc, count) {
             const lo = sortedAsc.slice(0, count);
             const hi = sortedDesc.slice(0, count);
@@ -477,18 +401,9 @@ class ExamineCalculator {
 
 self.ExamineCalculator = ExamineCalculator;
 
-/**
- * Calculate t-critical value approximation for confidence intervals
- * This is a simplified approximation - for exact values, use a proper t-distribution library
- * @param {number} df - degrees of freedom
- * @param {number} alpha - significance level (0.01 for 99% CI, 0.05 for 95% CI, 0.1 for 90% CI)
- * @returns {number} t-critical value
- */
 function getTCriticalApproximation(df, alpha = 0.05) {
-    // Two-tailed test
     const p = 1 - alpha / 2;
     
-    // T-critical tables for different alpha levels
     const tTables = {
         // Alpha = 0.01 (99% confidence interval)
         0.01: {

@@ -1,22 +1,6 @@
-/**
- * @file /libs/crosstabs.js
- * @class CrosstabsCalculator
- * @description
- * Melakukan analisis tabulasi silang (crosstabs) antara dua variabel.
- * Menghitung berbagai statistik untuk mengukur asosiasi, kesepakatan, dan signifikansi.
- * Desain kelas ini memungkinkan penambahan statistik baru secara modular.
- */
-/* global importScripts, checkIsMissing, isNumeric */
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 
 class CrosstabsCalculator {
-    /**
-     * @param {object} payload - Payload dari manager.
-     * @param {object} payload.variable - Variabel baris dan kolom { row: varDef, col: varDef }.
-     * @param {Array<object>} payload.data - Array data, setiap objek adalah satu kasus.
-     * @param {Array<number>|null} payload.weights - Array bobot.
-     * @param {object} payload.options - Opsi untuk statistik mana yang akan dihitung.
-     */
     constructor({ variable, data, weights, options }) {
         if (!variable || !variable.row || !variable.col) {
             throw new Error("Definisi variabel baris dan kolom diperlukan.");
@@ -30,27 +14,18 @@ class CrosstabsCalculator {
         this.initialized = false;
         this.memo = {};
 
-        // Properti inti tabel kontingensi
-        this.table = []; // Matriks f_ij
-        this.rowTotals = []; // r_i
-        this.colTotals = []; // c_j
-        this.rowCategories = []; // Label untuk setiap baris
-        this.colCategories = []; // Label untuk setiap kolom
-        this.W = 0; // Total bobot/kasus (Grand Total)
-        // Tambahan: pelacakan jumlah kasus valid dan missing berbobot
-        this.validWeight = 0; // Sum of weights untuk kasus valid (digunakan pada Case Processing Summary)
-        this.missingWeight = 0; // Sum of weights untuk kasus yang memiliki missing pada setidaknya salah satu variabel
-        this.R = 0; // Jumlah baris
-        this.C = 0; // Jumlah kolom
+        this.table = []; 
+        this.rowTotals = []; 
+        this.colTotals = []; 
+        this.rowCategories = []; 
+        this.colCategories = []; 
+        this.W = 0; 
+        this.validWeight = 0; 
+        this.missingWeight = 0; 
+        this.R = 0; 
+        this.C = 0;
     }
 
-    // --- Metode Inti & Privat ---
-
-    /**
-     * @private
-     * Metode inti. Membangun tabel kontingensi (f_ij) dari data mentah
-     * dan menghitung total marginal (r_i, c_j) serta total keseluruhan (W).
-     */
     #initialize() {
         if (this.initialized) return;
 
@@ -70,10 +45,8 @@ class CrosstabsCalculator {
             if (!isRowMissing && !isColMissing) {
                 rowCatSet.add(rowData[i]);
                 colCatSet.add(colData[i]);
-                // Hitung berat kasus valid
                 this.validWeight += weight;
             } else {
-                // Kasus dengan missing pada setidaknya satu variabel
                 this.missingWeight += weight;
             }
         }
@@ -101,18 +74,13 @@ class CrosstabsCalculator {
                 this.table[rowIndex][colIndex] += weight;
                 this.rowTotals[rowIndex] += weight;
                 this.colTotals[colIndex] += weight;
-                this.W += weight; // Total bobot/kasus valid
+                this.W += weight; 
             }
         }
 
         this.initialized = true;
     }
     
-    /**
-     * @private
-     * Menghitung jumlah yang diharapkan (expected count) untuk sebuah sel.
-     * Rumus: E_ij = (r_i * c_j) / W
-     */
     _getExpectedCount(i, j) {
         this.#initialize();
         if (this.W === 0) return null;
@@ -120,18 +88,10 @@ class CrosstabsCalculator {
         return toSPSSFixed(expected, 1);
     }
     
-    /**
-     * @private
-     * Menghitung jumlah pasangan Konkordan (P) dan Diskordan (Q) secara efisien
-     * menggunakan tabel jumlah kumulatif (O(R*C)). Ini adalah optimisasi
-     * signifikan dari pendekatan brute-force (O(N^2)).
-     */
     _calculateConcordantDiscordant() {
         if (this.memo.concordantDiscordant) return this.memo.concordantDiscordant;
         this.#initialize();
 
-        // Tabel S untuk menghitung P (Konkordan)
-        // S[i][j] = jumlah semua f_hk di mana h >= i dan k >= j
         const S = Array(this.R + 1).fill(0).map(() => Array(this.C + 1).fill(0));
         for (let i = this.R - 1; i >= 0; i--) {
             for (let j = this.C - 1; j >= 0; j--) {
@@ -148,8 +108,6 @@ class CrosstabsCalculator {
             }
         }
 
-        // Tabel T untuk menghitung Q (Diskordan)
-        // T[i][j] = jumlah semua f_hk di mana h >= i dan k <= j
         const T = Array(this.R + 1).fill(0).map(() => Array(this.C + 1).fill(0));
         for (let i = this.R - 1; i >= 0; i--) {
             for (let j = 0; j < this.C; j++) {
@@ -176,13 +134,6 @@ class CrosstabsCalculator {
         return this.memo.concordantDiscordant;
     }
 
-    // --- Statistik Chi-Square ---
-    
-    /**
-     * Menghitung statistik Chi-Square Pearson, menguji apakah ada hubungan
-     * signifikan antara variabel baris dan kolom.
-     * @returns {{value: number, df: number}|null} Nilai Chi-Square dan derajat kebebasan (df).
-     */
     getPearsonChiSquare() {
         if (this.memo.pearsonChi2) return this.memo.pearsonChi2;
         this.#initialize();
@@ -206,10 +157,6 @@ class CrosstabsCalculator {
         return this.memo.pearsonChi2;
     }
 
-    /**
-     * Menghitung Chi-Square Likelihood Ratio, alternatif dari Pearson's Chi-Square.
-     * @returns {{value: number, df: number}|null}
-     */
     getLikelihoodRatioChiSquare() {
         if (this.memo.lrChi2) return this.memo.lrChi2;
         this.#initialize();
@@ -233,32 +180,18 @@ class CrosstabsCalculator {
         return this.memo.lrChi2;
     }
     
-    // --- Ukuran Asosiasi Nominal ---
-    
-    /**
-     * Menghitung koefisien Phi. Ukuran asosiasi untuk tabel 2x2.
-     * @returns {number|null}
-     */
     getPhi() {
         const chi2 = this.getPearsonChiSquare();
         if (!chi2 || this.W === 0) return null;
         return Math.sqrt(chi2.value / this.W);
     }
     
-    /**
-     * Menghitung koefisien Kontingensi. Ukuran asosiasi berbasis Chi-Square.
-     * @returns {number|null}
-     */
     getContingencyCoefficient() {
         const chi2 = this.getPearsonChiSquare();
         if (!chi2 || this.W === 0) return null;
         return Math.sqrt(chi2.value / (chi2.value + this.W));
     }
 
-    /**
-     * Menghitung Cramer's V. Modifikasi dari Phi untuk tabel yang lebih besar dari 2x2.
-     * @returns {number|null}
-     */
     getCramersV() {
         const chi2 = this.getPearsonChiSquare();
         if (!chi2 || this.W === 0) return null;
@@ -269,34 +202,18 @@ class CrosstabsCalculator {
         return Math.sqrt(chi2.value / (this.W * (q - 1)));
     }
     
-    // --- Ukuran Asosiasi Ordinal ---
-
-    /**
-     * Menghitung Gamma. Mengukur asosiasi antara dua variabel ordinal.
-     * Mengabaikan pasangan yang terikat (tied). Nilai berkisar -1 hingga 1.
-     * @returns {number|null}
-     */
     getGamma() {
         const { P, Q } = this._calculateConcordantDiscordant();
         const denominator = P + Q;
         return denominator === 0 ? null : (P - Q) / denominator;
     }
     
-    /**
-     * Menghitung Kendall's Tau-b. Mirip dengan Gamma, tetapi memasukkan penyesuaian
-     * untuk pasangan terikat. Cocok untuk tabel persegi.
-     * @returns {number|null}
-     */
     getKendallsTauB() {
         const { P, Q, D_r, D_c } = this._calculateConcordantDiscordant();
         const denominator = Math.sqrt(D_r * D_c);
         return denominator === 0 ? null : (P - Q) / denominator;
     }
 
-    /**
-     * Menghitung Kendall's Tau-c. Modifikasi dari Tau-b untuk tabel non-persegi.
-     * @returns {number|null}
-     */
     getKendallsTauC() {
         const { P, Q } = this._calculateConcordantDiscordant();
         const q = Math.min(this.R, this.C);
@@ -307,10 +224,6 @@ class CrosstabsCalculator {
         return denominator === 0 ? null : numerator / denominator;
     }
     
-    /**
-     * Menghitung Somers' d. Ukuran asosiasi asimetris untuk variabel ordinal.
-     * @returns {{rowDependent: number|null, colDependent: number|null, symmetric: number|null}}
-     */
     getSomersD() {
         const { P, Q, D_r, D_c } = this._calculateConcordantDiscordant();
         return {
@@ -320,13 +233,6 @@ class CrosstabsCalculator {
         };
     }
     
-    // --- Ukuran Pengurangan Kesalahan Prediksi Proporsional (PRE) ---
-
-    /**
-     * Menghitung Lambda. Mengukur sejauh mana error dalam memprediksi satu variabel
-     * dapat dikurangi dengan mengetahui nilai variabel lainnya.
-     * @returns {object}
-     */
     getLambda() {
         if (this.memo.lambda) return this.memo.lambda;
         this.#initialize();
@@ -362,10 +268,6 @@ class CrosstabsCalculator {
         return this.memo.lambda;
     }
 
-    /**
-     * Menghitung Goodman and Kruskal's Tau. Ukuran PRE alternatif dari Lambda.
-     * @returns {object}
-     */
     getGoodmanKruskalTau() {
         if (this.memo.gkTau) return this.memo.gkTau;
         this.#initialize();
@@ -402,12 +304,6 @@ class CrosstabsCalculator {
         return this.memo.gkTau;
     }
 
-    // --- Korelasi ---
-
-    /**
-     * Menghitung korelasi Pearson's r dan Spearman's rho.
-     * @returns {{pearson: number|null, spearman: number|null}}
-     */
     getCorrelations() {
         if (this.memo.correlations) return this.memo.correlations;
         this.#initialize();
@@ -472,13 +368,6 @@ class CrosstabsCalculator {
         return this.memo.correlations;
     }
     
-    // --- Ukuran Kesepakatan ---
-
-    /**
-     * Menghitung Cohen's Kappa. Mengukur kesepakatan antara dua penilai.
-     * Hanya valid untuk tabel persegi (jumlah kategori baris dan kolom sama).
-     * @returns {number|null}
-     */
     getKappa() {
         if (this.memo.kappa) return this.memo.kappa;
         this.#initialize();
@@ -502,13 +391,8 @@ class CrosstabsCalculator {
         return this.memo.kappa;
     }
     
-    /**
-     * Metode utama untuk mengumpulkan semua statistik yang diminta.
-     * @returns {object} Objek berisi hasil analisis.
-     */
     getStatistics() {
         this.#initialize();
-        // Build cell-level statistics
         const cellStats = Array(this.R).fill(0).map(() => Array(this.C).fill(0));
         for (let i = 0; i < this.R; i++) {
             for (let j = 0; j < this.C; j++) {

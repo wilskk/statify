@@ -1,8 +1,3 @@
-/**
- * @file crosstabs.worker.js
- * Dedicated Web Worker for Crosstabs analysis.
- */
-
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 importScripts('/workers/DescriptiveStatistics/libs/crosstabs.js');
 

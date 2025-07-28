@@ -1,28 +1,11 @@
-/**
- * @file /libs/frequency.js
- * @class FrequencyCalculator
- * @description
- * Melakukan perhitungan statistik frekuensi dan persentil.
- * Kelas ini menangani data tunggal, data berbobot, dan dapat menghitung
- * persentil menggunakan lima metode berbeda (sesuai standar SPSS).
- * Menggunakan DescriptiveCalculator untuk beberapa statistik dasar (Komposisi).
- */
-/* global importScripts, isNumeric, DescriptiveCalculator */
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-// Helper to round numbers based on variable.decimals
+
 function roundToDecimals(number, decimals) {
     if (typeof number !== 'number' || isNaN(number) || !isFinite(number)) return number;
     return parseFloat(number.toFixed(decimals));
 }
 
 class FrequencyCalculator {
-    /**
-     * @param {object} payload - Payload dari manager.
-     * @param {object} payload.variable - Objek definisi variabel.
-     * @param {Array<any>} payload.data - Array data untuk variabel ini.
-     * @param {Array<number>|null} payload.weights - Array bobot yang sesuai dengan data.
-     * @param {object} payload.options - Opsi untuk analisis.
-     */
     constructor({ variable, data, weights = null, options = {} }) {
         this.variable = variable;
         this.data = data;
@@ -30,22 +13,10 @@ class FrequencyCalculator {
         this.options = options || {};
 
         this.descCalc = new DescriptiveCalculator({ variable, data, weights, options });
-        
-        // Memoization cache
-        /** @private */
+
         this.memo = {};
     }
 
-    /**
-     * Mengembalikan data yang telah diurutkan, dikelompokkan, dan diagregasi.
-     * Ini adalah langkah inti untuk sebagian besar perhitungan frekuensi dan persentil.
-     * Hasilnya di-cache untuk efisiensi.
-     * @returns {{y: number[], c: number[], cc: number[], W: number}|null}
-     * - `y`: Nilai unik yang diurutkan.
-     * - `c`: Bobot kumulatif untuk setiap nilai unik.
-     * - `cc`: Bobot kumulatif (cumulative sum of c).
-     * - `W`: Total bobot (atau jumlah kasus jika tidak ada bobot).
-     */
     getSortedData() {
         if (this.memo.sortedData) return this.memo.sortedData;
 
@@ -80,11 +51,6 @@ class FrequencyCalculator {
         return this.memo.sortedData;
     }
 
-    /**
-     * Menghitung modus (nilai yang paling sering muncul).
-     * Jika ada beberapa modus, semua akan dikembalikan dalam array.
-     * @returns {number[]|null} Array nilai modus, atau null jika tidak ada data valid.
-     */
     getMode() {
         if (this.memo.mode) return this.memo.mode;
         
@@ -102,12 +68,6 @@ class FrequencyCalculator {
         return this.memo.mode;
     }
 
-    /**
-     * Menghitung persentil ke-p menggunakan salah satu dari lima metode.
-     * @param {number} p - Persentil yang diinginkan (0-100).
-     * @param {'waverage'|'haverage'|'aempirical'|'empirical'|'round'} method - Metode perhitungan.
-     * @returns {number|null} Nilai persentil.
-     */
     getPercentile(p, method) {
         const sortedData = this.getSortedData();
         if (!sortedData) return null;
@@ -223,27 +183,20 @@ class FrequencyCalculator {
         }
     }
     
-    /**
-     * Mengembalikan ringkasan statistik frekuensi dasar.
-     * @returns {object} Objek hasil analisis.
-     */
     getStatistics() {
         if (this.memo.allStats) return this.memo.allStats;
 
         const descStatsResults = this.descCalc.getStatistics();
         const descStats = descStatsResults.stats;
 
-        // === NEW: Build percentile list based on UI options ===
         let percentileObj = {};
         const statOpts = (this.options && this.options.statisticsOptions) ? this.options.statisticsOptions : null;
         if (statOpts && statOpts.percentileValues) {
             const { quartiles, cutPoints, cutPointsN, enablePercentiles, percentilesList } = statOpts.percentileValues;
             let pctList = [];
 
-            // Quartiles → 25, 50, 75
             if (quartiles) pctList.push(25, 50, 75);
 
-            // Cut points for N equal groups → (100 / N) * i  where i = 1..N-1
             if (cutPoints) {
                 const n = parseInt(cutPointsN, 10);
                 if (!isNaN(n) && n > 1) {
@@ -253,7 +206,6 @@ class FrequencyCalculator {
                 }
             }
 
-            // Custom percentiles entered by user
             if (enablePercentiles && Array.isArray(percentilesList)) {
                 percentilesList.forEach(pStr => {
                     const p = parseFloat(pStr);
@@ -261,7 +213,6 @@ class FrequencyCalculator {
                 });
             }
 
-            // Sanitize: keep 0 < p < 100, unique, sorted
             pctList = Array.from(new Set(pctList.filter(p => p >= 0 && p <= 100)));
             pctList.sort((a, b) => a - b);
 
@@ -270,35 +221,29 @@ class FrequencyCalculator {
             });
         }
 
-        // Fallback to default quartiles if none requested / computed
         if (Object.keys(percentileObj).length === 0) {
             percentileObj = {
-                '25': this.getPercentile(25, 'waverage'),  // Use waverage for Q1 (SPSS consistency)
-                '50': this.getPercentile(50, 'waverage'),  // Use waverage for Q2/Median (SPSS consistency)
-                '75': this.getPercentile(75, 'waverage'),  // Use waverage for Q3 (SPSS consistency)
+                '25': this.getPercentile(25, 'waverage'),  
+                '50': this.getPercentile(50, 'waverage'),  
+                '75': this.getPercentile(75, 'waverage'),  
             };
         }
 
-        // Combine descriptive statistics with frequency-specific statistics
         const allStatistics = {
             ...descStats,
             Mode: this.getMode(),
             Percentiles: percentileObj,
         };
 
-        // Ensure internal consistency: set Median equal to the 50th percentile (if available)
         if (percentileObj['50'] !== undefined) {
             allStatistics.Median = percentileObj['50'];
         }
 
-        // === Add Interquartile Range (IQR) ===
         const q1 = percentileObj['25'];
         const q3 = percentileObj['75'];
         if (q1 !== undefined && q1 !== null && q3 !== undefined && q3 !== null) {
             allStatistics.IQR = q3 - q1;
         }
-
-        // Display rounding now handled in worker.js files
 
         const finalResult = {
             variable: this.variable,
@@ -310,17 +255,14 @@ class FrequencyCalculator {
         return finalResult;
     }
 
-    /**
-     * Menghasilkan tabel frekuensi lengkap.
-     * @returns {object|null}
-     */
     getFrequencyTable() {
         if (this.memo.frequencyTable) return this.memo.frequencyTable;
 
         const sortedData = this.getSortedData();
         const descStats = this.descCalc.getStatistics().stats;
-        const totalN = descStats.N;            // Total cases
-        const validN = descStats.Valid;        // Valid (non-missing) cases
+        const totalN = descStats.N;            
+        const validN = descStats.Valid;        
+        
         const missingN = descStats.Missing;
 
         if (!sortedData || validN === 0) return null;
