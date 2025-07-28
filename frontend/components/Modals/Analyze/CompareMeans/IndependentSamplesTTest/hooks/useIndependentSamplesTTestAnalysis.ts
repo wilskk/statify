@@ -5,14 +5,12 @@ import { useDataStore } from '@/stores/useDataStore';
 
 import {
     IndependentSamplesTTestAnalysisProps,
-    IndependentSamplesTTestResults,
     IndependentSamplesTTestResult
 } from '../types';
 
 import {
     formatGroupStatisticsTable,
     formatIndependentSamplesTestTable,
-    // formatEffectSizeTable,
 } from '../utils/formatters';
 
 export const useIndependentSamplesTTestAnalysis = ({
@@ -25,12 +23,12 @@ export const useIndependentSamplesTTestAnalysis = ({
     estimateEffectSize,
     onClose
 }: IndependentSamplesTTestAnalysisProps) => {
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
-    const { data: analysisData } = useAnalysisData();
-    
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    
+
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
+    const { data: analysisData } = useAnalysisData();
+
     const workerRef = useRef<Worker | null>(null);
 
     const resultsRef = useRef<IndependentSamplesTTestResult[]>([]);
@@ -39,24 +37,8 @@ export const useIndependentSamplesTTestAnalysis = ({
     const insufficientDataVarsRef = useRef<string[]>([]);
     
     const runAnalysis = useCallback(async (): Promise<void> => {
-        if (testVariables.length === 0) {
-            setErrorMsg("Please select at least one test variable.");
-            return;
-        }
-        
-        if (!groupingVariable) {
-            setErrorMsg("Please select a grouping variable.");
-            return;
-        }
-        
-        if ((defineGroups.useSpecifiedValues && (!group1 || !group2)) || 
-            (!defineGroups.useSpecifiedValues && !cutPointValue)) {
-            setErrorMsg("Please define groups for the grouping variable.");
-            return;
-        }
-        
-        setErrorMsg(null);
         setIsCalculating(true);
+        setErrorMsg(null);
 
         try {
             await useDataStore.getState().checkAndSave();
@@ -85,13 +67,13 @@ export const useIndependentSamplesTTestAnalysis = ({
 
         testVariables.forEach(variable => {
             const dataForVar = analysisData.map(row => row[variable.columnIndex]);
-            const dataForGroupingVar = analysisData.map(row => row[groupingVariable.columnIndex]);
+            const dataForGroupingVar = analysisData.map(row => row[groupingVariable!.columnIndex]);
             const payload = {
                 analysisType: analysisTypes,
-                variable,
-                data: dataForVar,
-                groupingVariable,
-                groupingData: dataForGroupingVar,
+                variable1: variable,
+                data1: dataForVar,
+                variable2: groupingVariable,
+                data2: dataForGroupingVar,
                 options: { defineGroups, group1, group2, cutPointValue, estimateEffectSize }
             };
             console.log("payload", JSON.stringify(payload));
@@ -105,49 +87,52 @@ export const useIndependentSamplesTTestAnalysis = ({
                 // Check for metadata about insufficient data
                 if (results.metadata && results.metadata.hasInsufficientData) {
                     insufficientDataVarsRef.current.push(results.metadata.variableName);
-                    console.warn(`Insufficient valid data for variable: ${results.metadata.variableName}. Total: ${results.metadata.totalData}, Valid: ${results.metadata.validData}`);
+                    console.warn(`Insufficient valid data for variable: ${results.metadata.variableName}. Total: ${results.metadata.totalData}, Valid: ${results.metadata.validData}, Group1: ${results.metadata.group1N}, Group2: ${results.metadata.group2N}`);
                 }
 
-                if (results.groupStatistics) {
-                    const { variable, group1, group2 } = results.groupStatistics;
+                const { group1, group2 } = results.groupStatistics;
+                const { levene, equalVariances, unequalVariances } = results.independentSamplesTest;
 
-                    if (variable && group1 && group2) {
-                        resultsRef.current.push({
-                            variable,
-                            stats: {
-                                group1,
-                                group2
-                            }
-                        });
+                resultsRef.current.push({
+                    variable1: results.variable1,
+                    groupStatistics: {
+                        group1,
+                        group2
+                    },
+                    independentSamplesTest: {
+                        levene,
+                        equalVariances,
+                        unequalVariances
                     }
+                });
                     // else {
                     //     console.error(`Error processing group statistics for ${variableName}:`, workerError);
                     //     const errorMsg = `Calculation failed for group statistics for ${variableName}: ${workerError || 'Unknown error'}`;
                     //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
                     //     errorCountRef.current += 1;
                     // }
-                }
-                
-                if (results.independentSamplesTest) {
-                    const { variable, levene, equalVariances, unequalVariances } = results.independentSamplesTest;
 
-                    if (variable && levene && equalVariances && unequalVariances) {
-                        resultsRef.current.push({
-                            variable,
-                            stats: {
-                                levene,
-                                equalVariances,
-                                unequalVariances
-                            }
-                        });
-                    }
-                    // else {
-                    //     console.error(`Error processing independent samples test for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for independent samples test for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
+                
+                // if (results.independentSamplesTest) {
+                //     const { variable, levene, equalVariances, unequalVariances } = results.independentSamplesTest;
+
+                //     if (variable && levene && equalVariances && unequalVariances) {
+                //         resultsRef.current.push({
+                //             variable,
+                //             stats: {
+                //                 levene,
+                //                 equalVariances,
+                //                 unequalVariances
+                //             }
+                //         });
+                //     }
+                //     // else {
+                //     //     console.error(`Error processing independent samples test for ${variableName}:`, workerError);
+                //     //     const errorMsg = `Calculation failed for independent samples test for ${variableName}: ${workerError || 'Unknown error'}`;
+                //     //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                //     //     errorCountRef.current += 1;
+                //     // }
+                // }
 
                 // if (results.independentSamplesEffectSize) {
                 //     const { variable, stats } = results.independentSamplesEffectSize;
@@ -176,22 +161,9 @@ export const useIndependentSamplesTTestAnalysis = ({
             if (processedCountRef.current === testVariables.length) {
                 // if (resultsRef.current.length > 0) {
                     try {
-                        const groupStatistics = resultsRef.current.filter(r => 'group1' in (r.stats as any));
-                        const independentSamplesTest = resultsRef.current.filter(r => 'levene' in (r.stats as any));
-                        // const independentSamplesEffectSize = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
-
-                        const results: IndependentSamplesTTestResults = {
-                            groupStatistics,
-                            independentSamplesTest,
-                            // independentSamplesEffectSize
-                        };
-
-                        console.log('results to format', JSON.stringify(results));
-
-
                         // Format tables
-                        const formattedGroupStatisticsTable = formatGroupStatisticsTable(results, groupingVariable.label || groupingVariable.name);
-                        const formattedIndependentSamplesTestTable = formatIndependentSamplesTestTable(results);
+                        const formattedGroupStatisticsTable = formatGroupStatisticsTable(resultsRef.current, groupingVariable!.label || groupingVariable!.name);
+                        const formattedIndependentSamplesTestTable = formatIndependentSamplesTestTable(resultsRef.current);
                         // const formattedIndependentSamplesEffectSizeTable = formatEffectSizeTable(results);
                         
 
@@ -199,9 +171,9 @@ export const useIndependentSamplesTTestAnalysis = ({
                         let logMsg = `T-TEST`;
 
                         if (defineGroups.useSpecifiedValues) {
-                            logMsg += ` GROUPS=${groupingVariable.name}(${group1} ${group2}) {VARIABLES=${variableNames.join(" ")}}`;
+                            logMsg += ` GROUPS=${groupingVariable!.name}(${group1} ${group2}) {VARIABLES=${variableNames.join(" ")}}`;
                         } else {
-                            logMsg += ` GROUPS=${groupingVariable.name}(${cutPointValue}) {VARIABLES=${variableNames.join(" ")}}`;
+                            logMsg += ` GROUPS=${groupingVariable!.name}(${cutPointValue}) {VARIABLES=${variableNames.join(" ")}}`;
                         }
 
                         // Only add tests that are enabled

@@ -103,6 +103,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const handlePairClick = (index: number) => {
         setHighlightedPair(highlightedPair?.id === index ? null : { id: index });
+        // console.log('highlightedPair after pair click:', highlightedPair);
+        // console.log('highlightedPair?.id after pair click:', highlightedPair?.id);
         setHighlightedVariable(null);
     };
 
@@ -200,7 +202,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     }, [tourActive, currentStep, tourSteps]);
 
     const renderAllowUnknown = () => (
-        <div className="flex items-center mt-2">
+        <div id="allow-unknown-section" className="flex items-center mt-2 p-1.5 relative">
             <Checkbox
                 id="allowUnknown"
                 checked={allowUnknown}
@@ -210,6 +212,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
             <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
                 Treat &apos;unknown&apos; as Scale and allow selection
             </Label>
+            {tourActive && isTourElementActive("allow-unknown-section") && (
+                <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+            )}
         </div>
     );
 
@@ -263,22 +268,25 @@ const VariablesTab: FC<VariablesTabProps> = ({
     return (
         <div className="flex gap-8 items-start relative">
             {/* Left column - Available Variables */}
-            <div className="w-[30%] flex flex-col">
+            <div id="paired-samples-t-test-available-variables" className="w-[30%] flex flex-col relative">
                 <div className="text-sm font-medium mb-1.5 px-1 flex items-center h-6">
                     <span className="truncate">Available Variables</span>
                 </div>
                 {renderVariableList(availableVariables, '300px')}
-                <div className="flex flex-col mt-2 space-y-2">
+                <div className="flex flex-col mt-2 space-y-2 relative">
                     <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
                         <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
                         <span>Double-click to move variables between lists.</span>
                     </div>
                     {renderAllowUnknown()}
                 </div>
+                {tourActive && isTourElementActive("paired-samples-t-test-available-variables") && (
+                    <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                )}
             </div>
 
             {/* Right column - Paired Variables */}
-            <div className="w-[60%] flex flex-col">
+            <div id="paired-samples-t-test-test-variables" className="w-[60%] flex flex-col relative">
                 <div className="text-sm font-medium mb-1.5 px-1 flex items-center h-6">
                     {renderMoveButtonToLeft()}
                     {renderMoveButtonToRight()}
@@ -575,42 +583,65 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         </TableBody>
                     </Table>
                 </div>
-                <div className="flex flex-row gap-1 justify-end">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => moveUpPair(highlightedPair?.id || 0)}
-                        disabled={highlightedPair?.id === 0 || highlightedPair?.id === undefined}
-                    >
-                        <ArrowBigUp size={16} />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => moveDownPair(highlightedPair?.id || 0)}
-                        disabled={highlightedPair?.id === Math.max(testVariables1.length, testVariables2.length) - 1 || highlightedPair?.id === undefined}
-                    >
-                        <ArrowBigDown size={16} />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => moveVariableBetweenLists(highlightedPair?.id || 0)}
-                        disabled={highlightedPair?.id === undefined}
-                    >
-                        <MoveHorizontal size={16} />
-                    </Button>
+                <div
+                    id="paired-samples-t-test-move-button"
+                    className="flex flex-row gap-1 justify-end relative"
+                >
+                    <div className="relative">
+                        <Button
+                            id="paired-samples-t-test-move-up-button"
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => moveUpPair(highlightedPair?.id || 0)}
+                            disabled={highlightedPair?.id === 0 || highlightedPair?.id === undefined}
+                        >
+                            <ArrowBigUp size={16} />
+                        </Button>
+                        {tourActive && isTourElementActive("paired-samples-t-test-move-up-button") && (
+                            <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <Button
+                            id="paired-samples-t-test-move-down-button"
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => moveDownPair(highlightedPair?.id || 0)}
+                            disabled={
+                                highlightedPair?.id === Math.max(testVariables1.length, testVariables2.length) - 1 ||
+                                highlightedPair?.id === undefined
+                            }
+                        >
+                            <ArrowBigDown size={16} />
+                        </Button>
+                        {tourActive && isTourElementActive("paired-samples-t-test-move-down-button") && (
+                            <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <Button
+                            id="paired-samples-t-test-change-button"
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => moveVariableBetweenLists(highlightedPair?.id || 0)}
+                            disabled={highlightedPair?.id === undefined}
+                        >
+                            <MoveHorizontal size={16} />
+                        </Button>
+                        {tourActive && isTourElementActive("paired-samples-t-test-change-button") && (
+                            <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                        )}
+                    </div>
+                    {tourActive && isTourElementActive("paired-samples-t-test-move-button") && (
+                        <div className="absolute right-0 top-0 w-20 h-full pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                    )}
                 </div>
-            </div>
-            
-            <div id="paired-samples-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={isTourElementActive('paired-samples-available-variables')} />
-            </div>
-            <div id="paired-samples-test-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={isTourElementActive('paired-samples-test-variables')} />
+                {tourActive && isTourElementActive("paired-samples-t-test-test-variables") && (
+                    <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                )}
             </div>
         </div>
     );

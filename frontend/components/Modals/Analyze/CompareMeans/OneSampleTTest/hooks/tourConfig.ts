@@ -11,21 +11,21 @@ export const baseTourSteps: TourStep[] = [
         requiredTab: TABS.VARIABLES
     },
     {
-        title: "Test Variables",
-        content: "Variables moved to this list will be analyzed. You can reorder them by dragging.",
-        targetId: "one-sample-t-test-test-variables",
-        defaultPosition: 'bottom',
-        defaultHorizontalPosition: 'right',
-        icon: "📋",
-        requiredTab: TABS.VARIABLES
-    },
-    {
         title: "Allow Unknown Variables",
         content: "Check this option to treat variables with 'unknown' measurement level as Scale variables, allowing them to be selected for analysis.",
         targetId: "allow-unknown-section",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
         icon: "🔍",
+        requiredTab: TABS.VARIABLES
+    },
+    {
+        title: "Test Variables",
+        content: "Variables moved to this list will be analyzed. You can reorder them by dragging.",
+        targetId: "one-sample-t-test-test-variables",
+        defaultPosition: 'bottom',
+        defaultHorizontalPosition: 'right',
+        icon: "📋",
         requiredTab: TABS.VARIABLES
     },
     {

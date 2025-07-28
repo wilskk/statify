@@ -1,5 +1,5 @@
 import { 
-    OneWayAnovaResults, 
+    OneWayAnovaResult, 
     OneWayAnovaTable, 
     TableColumnHeader, 
     TableRow, 
@@ -11,13 +11,13 @@ import { Variable } from '@/types/Variable';
 
 /**
  * Formats the ANOVA table
- * @param results OneWayAnova results
+ * @param results Array of OneWayAnova results for each variable
  * @returns Formatted table
  */
 export function formatOneWayAnovaTable(
-    results: OneWayAnovaResults
+    results: OneWayAnovaResult[]
 ): OneWayAnovaTable {
-    if (!results || !results.oneWayAnova || results.oneWayAnova.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "ANOVA",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -40,10 +40,10 @@ export function formatOneWayAnovaTable(
     };
 
     // Process each result
-    results.oneWayAnova.forEach((result) => {
-        const { variable, oneWayAnova } = result;
+    results.forEach((result) => {
+        const { variable1, oneWayAnova } = result;
         const { SumOfSquares, df, MeanSquare, F, Sig, withinGroupsSumOfSquares, withinGroupsDf, withinGroupsMeanSquare, totalSumOfSquares, totalDf } = oneWayAnova as OneWayAnova;
-        const decimals = variable.decimals;
+        const decimals = variable1.decimals;
 
         if (isNaN(Sig)) {
             return;
@@ -51,7 +51,7 @@ export function formatOneWayAnovaTable(
 
         // Between Groups row
         table.rows.push({
-            rowHeader: [variable.label || variable.name],
+            rowHeader: [variable1.label || variable1.name],
             type: 'Between Groups',
             SumOfSquares: formatNumber(SumOfSquares, decimals + 3),
             df: df,
@@ -62,7 +62,7 @@ export function formatOneWayAnovaTable(
 
         // Within Groups row (assuming these values are available)
         table.rows.push({
-            rowHeader: [variable.label || variable.name],
+            rowHeader: [variable1.label || variable1.name],
             type: 'Within Groups',
             SumOfSquares: formatNumber(withinGroupsSumOfSquares, decimals + 3),
             df: withinGroupsDf,
@@ -71,7 +71,7 @@ export function formatOneWayAnovaTable(
 
         // Total row
         table.rows.push({
-            rowHeader: [variable.label || variable.name],
+            rowHeader: [variable1.label || variable1.name],
             type: 'Total',
             SumOfSquares: formatNumber(totalSumOfSquares, decimals + 3),
             df: totalDf
@@ -83,13 +83,13 @@ export function formatOneWayAnovaTable(
 
 /**
  * Formats the descriptive statistics table
- * @param results OneWayAnova results
+ * @param results Array of OneWayAnova results for each variable
  * @returns Formatted table
  */
 export function formatDescriptiveStatisticsTable(
-    results: OneWayAnovaResults
+    results: OneWayAnovaResult[]
 ): OneWayAnovaTable {
-    if (!results || !results.descriptives || results.descriptives.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Descriptives",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -121,12 +121,12 @@ export function formatDescriptiveStatisticsTable(
     };
 
     // Process each variable's descriptive statistics
-    results.descriptives.forEach((result) => {
-        const { variable, descriptives } = result;
-        const variableName = variable.label || variable.name;
-        const decimals = variable.decimals;
+    results.forEach((result) => {
+        const { variable1, descriptives } = result;
+        const variableName = variable1.label || variable1.name;
+        const decimals = variable1.decimals;
 
-        // Check if descriptives is an array (new format) or a single object (old format)
+        // Check if descriptives is an array (new format)
         if (Array.isArray(descriptives)) {
             // New format - array of descriptives
             descriptives.forEach((stat) => {
@@ -143,22 +143,6 @@ export function formatDescriptiveStatisticsTable(
                     Maximum: formatNumber(stat.Maximum, decimals)
                 });
             });
-        } else if (descriptives) {
-            // Old format - single descriptives object
-            const { factor, N, Mean, StdDeviation, StdError, LowerBound, UpperBound, Minimum, Maximum } = descriptives;
-            
-            table.rows.push({
-                rowHeader: [variableName],
-                factor: factor || 'Group',
-                N: N,
-                Mean: formatNumber(Mean, decimals),
-                StdDeviation: formatNumber(StdDeviation, decimals),
-                StdError: formatNumber(StdError, decimals),
-                LowerBound: formatNumber(LowerBound, decimals),
-                UpperBound: formatNumber(UpperBound, decimals),
-                Minimum: formatNumber(Minimum, decimals),
-                Maximum: formatNumber(Maximum, decimals)
-            });
         }
     });
 
@@ -167,13 +151,13 @@ export function formatDescriptiveStatisticsTable(
 
 /**
  * Formats the homogeneity of variance table
- * @param results OneWayAnova results
+ * @param results Array of OneWayAnova results for each variable
  * @returns Formatted table
  */
 export function formatHomogeneityOfVarianceTable(
-    results: OneWayAnovaResults
+    results: OneWayAnovaResult[]
 ): OneWayAnovaTable {
-    if (!results || !results.homogeneityOfVariance || results.homogeneityOfVariance.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Test of Homogeneity of Variances",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -194,16 +178,16 @@ export function formatHomogeneityOfVarianceTable(
         rows: []
     };
 
-    // Process each variable's descriptive statistics
-    results.homogeneityOfVariance.forEach((result) => {
-        const { variable, homogeneityOfVariance } = result;
-        const variableName = variable.label || variable.name;
-        const decimals = variable.decimals;
+    // Process each variable's homogeneity of variance statistics
+    results.forEach((result) => {
+        const { variable1, homogeneityOfVariances } = result;
+        const variableName = variable1.label || variable1.name;
+        const decimals = variable1.decimals;
 
-        // Check if descriptives is an array (new format) or a single object (old format)
-        if (Array.isArray(homogeneityOfVariance)) {
-            // New format - array of descriptives
-            homogeneityOfVariance.forEach((stat) => {
+        // Check if homogeneityOfVariances is an array (new format)
+        if (Array.isArray(homogeneityOfVariances)) {
+            // New format - array of homogeneity of variances
+            homogeneityOfVariances.forEach((stat) => {
                 table.rows.push({
                     rowHeader: [variableName],
                     type: stat.type,
@@ -213,9 +197,9 @@ export function formatHomogeneityOfVarianceTable(
                     Sig: formatPValue(stat.Sig)
                 });
             });
-        } else if (homogeneityOfVariance) {
-            // Old format - single descriptives object
-            const { type, LeveneStatistic, df1, df2, Sig } = homogeneityOfVariance;
+        } else if (homogeneityOfVariances) {
+            // Handle single object case if needed
+            const { type, LeveneStatistic, df1, df2, Sig } = homogeneityOfVariances;
             
             table.rows.push({
                 rowHeader: [variableName],
@@ -233,14 +217,14 @@ export function formatHomogeneityOfVarianceTable(
 
 /**
  * Formats the multiple comparisons table
- * @param results OneWayAnova results
+ * @param results Array of OneWayAnova results for each variable
  * @returns Formatted table
  */
 export function formatMultipleComparisonsTable(
-    results: OneWayAnovaResults,
+    results: OneWayAnovaResult[],
     factorLabel: string
 ): OneWayAnovaTable {
-    if (!results || !results.multipleComparisons || results.multipleComparisons.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Multiple Comparisons",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -263,54 +247,30 @@ export function formatMultipleComparisonsTable(
         rows: []
     };
 
-    // Group by method
-    const groupedByMethod = results.multipleComparisons.reduce((acc, curr) => {
-        const { variable } = curr;
-        const method = Array.isArray(curr.multipleComparisons) && curr.multipleComparisons.length > 0 
-            ? curr.multipleComparisons[0].method 
-            : (curr.multipleComparisons as MultipleComparisons)?.method;
-        
-        if (!method) return acc;
-        
-        const key = `${variable.name}_${method}`;
-        if (!acc[key]) {
-            acc[key] = {
-                variable,
-                method,
-                comparisons: []
-            };
-        }
-        
-        // Add comparisons to the group
-        if (Array.isArray(curr.multipleComparisons)) {
-            acc[key].comparisons.push(...curr.multipleComparisons);
-        } else {
-            acc[key].comparisons.push(curr.multipleComparisons as MultipleComparisons);
-        }
-        
-        return acc;
-    }, {} as Record<string, { variable: Variable, method: string, comparisons: MultipleComparisons[] }>);
+    // Process each variable's multiple comparisons
+    results.forEach((result) => {
+        const { variable1, multipleComparisons } = result;
+        const variableName = variable1.label || variable1.name;
+        const decimals = variable1.decimals || 3;
 
-    // Process each method group
-    Object.values(groupedByMethod).forEach(({ variable, method, comparisons }) => {
-        const variableName = variable.label || variable.name;
-        const decimals = variable.decimals || 3;
-
-        // Add rows for each comparison
-        comparisons.forEach((comparison) => {
-            const { factor1, factor2, meanDifference, stdError, Sig, lowerBound, upperBound } = comparison;
-            
-            table.rows.push({
-                rowHeader: [`${variableName} (${method})`],
-                factor1: factor1,
-                factor2: factor2,
-                meanDifference: formatNumber(meanDifference, decimals),
-                stdError: formatNumber(stdError, decimals),
-                Sig: formatPValue(Sig),
-                lowerBound: formatNumber(lowerBound, decimals),
-                upperBound: formatNumber(upperBound, decimals)
+        // Check if multipleComparisons is an array (new format)
+        if (Array.isArray(multipleComparisons)) {
+            // New format - array of multiple comparisons
+            multipleComparisons.forEach((comparison) => {
+                const { factor1, factor2, meanDifference, stdError, Sig, lowerBound, upperBound } = comparison;
+                
+                table.rows.push({
+                    rowHeader: [variableName],
+                    factor1: factor1,
+                    factor2: factor2,
+                    meanDifference: formatNumber(meanDifference, decimals),
+                    stdError: formatNumber(stdError, decimals),
+                    Sig: formatPValue(Sig),
+                    lowerBound: formatNumber(lowerBound, decimals),
+                    upperBound: formatNumber(upperBound, decimals)
+                });
             });
-        });
+        }
     });
 
     return table;
@@ -318,17 +278,17 @@ export function formatMultipleComparisonsTable(
 
 /**
  * Formats the homogeneous subsets table
- * @param results OneWayAnova results
+ * @param results Array of OneWayAnova results for each variable
  * @param index Index of the variable in the results
- * @param variableName Name of the variable to format
+ * @param variable Variable to format
  * @returns Formatted table
  */
 export function formatHomogeneousSubsetsTable(
-    results: OneWayAnovaResults,
+    results: OneWayAnovaResult[],
     index: number,
     variable: Variable
 ): OneWayAnovaTable {
-    if (!results || !results.homogeneousSubsets || results.homogeneousSubsets.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: variable.label || variable.name,
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -336,14 +296,34 @@ export function formatHomogeneousSubsetsTable(
         };
     }
 
-    // Ambil semua subset untuk variable ini (bisa lebih dari satu, misal Tukey dan Duncan)
-    const variableSubsets = results.homogeneousSubsets.filter(
-        (v) => v.variable && (v.variable.name === variable.name || v.variable.label === variable.label)
+    // Find the result for this specific variable
+    const variableResult = results.find(result => 
+        result.variable1.name === variable.name || result.variable1.label === variable.label
     );
 
-    // mencari subsetCount terbesar
-    const maxSubset = Math.max(...variableSubsets.map(v => v.subsetCount || 1));
+    if (!variableResult || !variableResult.homogeneousSubsets) {
+        return {
+            title: variable.label || variable.name,
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        };
+    }
 
+    // Handle both single object and array cases
+    const homogeneousSubsetsArray = Array.isArray(variableResult.homogeneousSubsets) 
+        ? variableResult.homogeneousSubsets 
+        : [variableResult.homogeneousSubsets];
+
+    if (homogeneousSubsetsArray.length === 0) {
+        return {
+            title: variable.label || variable.name,
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        };
+    }
+
+    // mencari subsetCount terbesar
+    const maxSubset = Math.max(...homogeneousSubsetsArray.map(v => v.subsetCount || 1));
 
     // Determine the number of subsets
     const numSubsets = maxSubset || 1;
@@ -369,30 +349,30 @@ export function formatHomogeneousSubsetsTable(
         rows: []
     };
 
-    // Gabungkan semua homogeneousSubsets untuk variable ini, group by method
-    if (variableSubsets.length > 0) {
+    // Process homogeneous subsets for this variable
+    if (homogeneousSubsetsArray.length > 0) {
         // Group by method
         const methodGroups: Record<string, any[]> = {};
 
-        // Cast to any[] to handle both array and single object cases
-        const subsets = variableSubsets.map(v => v.homogeneousSubsets).flat();
-
-        for (const item of subsets as any[]) {
-            const method = item.method;
-            if (!method) continue;
+        // Based on the JSON structure, each homogeneousSubsets item has method, output, and subsetCount
+        for (const subsetItem of homogeneousSubsetsArray as any[]) {
+            const method = subsetItem.method;
+            const output = subsetItem.output;
+            
+            if (!method || !output || !Array.isArray(output)) continue;
 
             if (!methodGroups[method]) {
                 methodGroups[method] = [];
             }
 
-            methodGroups[method].push(item);
+            methodGroups[method].push(...output);
         }
 
         // Untuk urutan output: urutkan method by urutan kemunculan di results.homogeneousSubsets
         const methodOrder: string[] = [];
-        for (const item of subsets as any[]) {
-            if (item.method && !methodOrder.includes(item.method)) {
-                methodOrder.push(item.method);
+        for (const subsetItem of homogeneousSubsetsArray as any[]) {
+            if (subsetItem.method && !methodOrder.includes(subsetItem.method)) {
+                methodOrder.push(subsetItem.method);
             }
         }
 

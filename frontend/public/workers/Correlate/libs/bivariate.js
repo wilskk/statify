@@ -31,6 +31,9 @@ class BivariateCalculator {
         this.showDiagonal = options.showDiagonal || false;
         this.statisticsOptions = options.statisticsOptions || false;
         this.partialCorrelationKendallsTauB = options.partialCorrelationKendallsTauB || false;
+        this.missingValuesOptions = options.missingValuesOptions || false;
+        this.controlVariables = options.controlVariables || [];
+        this.controlData = options.controlData || [];
 
         // Properti yang akan dihitung
         this.validData = [];
@@ -47,15 +50,50 @@ class BivariateCalculator {
     #initialize() {
         if (this.initialized) return;
 
-        // Filter data yang valid
-        this.validData = this.data.map((varData, varIndex) => {
-            const currentVar = this.variable[varIndex];
-            const isNumericType = ['scale', 'date'].includes(currentVar.measure);
-            
-            return varData.filter((value) => {
-                return !checkIsMissing(value, currentVar.missing, isNumericType) && isNumeric(value);
-            }).map(value => parseFloat(value));
-        });
+        // Filter data yang valid, tergantung missingValuesOptions
+        if (
+            this.missingValuesOptions &&
+            this.missingValuesOptions.excludeCasesListwise
+        ) {
+            // Listwise deletion: hanya baris di mana semua variabel valid
+            // Gabungkan semua variabel menjadi array baris
+            const numVars = this.data.length;
+            const numRows = this.data[0]?.length || 0;
+            this.validData = Array.from({ length: numVars }, () => []);
+            for (let row = 0; row < numRows; row++) {
+                let isValid = true;
+                for (let varIdx = 0; varIdx < numVars; varIdx++) {
+                    const currentVar = this.variable[varIdx];
+                    const value = this.data[varIdx][row];
+                    const isNumericType = ['scale', 'date'].includes(currentVar.measure);
+                    if (
+                        checkIsMissing(value, currentVar.missing, isNumericType) ||
+                        !isNumeric(value)
+                    ) {
+                        isValid = false;
+                        break;
+                    }
+                }
+                if (isValid) {
+                    for (let varIdx = 0; varIdx < numVars; varIdx++) {
+                        this.validData[varIdx].push(parseFloat(this.data[varIdx][row]));
+                    }
+                }
+            }
+        } else {
+            // Pairwise deletion (default): filter per variabel
+            this.validData = this.data.map((varData, varIndex) => {
+                const currentVar = this.variable[varIndex];
+                const isNumericType = ['scale', 'date'].includes(currentVar.measure);
+                return varData
+                    .filter(
+                        (value) =>
+                            !checkIsMissing(value, currentVar.missing, isNumericType) &&
+                            isNumeric(value)
+                    )
+                    .map((value) => parseFloat(value));
+            });
+        }
 
         // Hitung Total N
         this.N = this.validData[0] ? this.validData[0].length : 0;
@@ -553,23 +591,32 @@ class BivariateCalculator {
         }
 
         // Partial Correlation
-        if (this.correlationCoefficient.kendallsTauB && this.partialCorrelationKendallsTauB && this.variable.length > 2) {
-            const controlVar = this.variable[0].name;
-            for (let i = 1; i < this.variable.length; i++) {
-                for (let j = i; j < this.variable.length; j++) {
-                    if (!this.showDiagonal && i === j) continue;
+        if (this.correlationCoefficient.kendallsTauB && this.partialCorrelationKendallsTauB && this.missingValuesOptions.excludeCasesListwise && this.variable.length > 2) {
+            // Untuk setiap variabel sebagai controlVar, lakukan partial correlation pada kombinasi dua variabel lain
+            // Misal: var1, var2, var3 -> controlVar: var1, pair: var2-var3; controlVar: var2, pair: var1-var3; dst.
+            const allVars = this.variable.map(v => v.name);
+            // Jika controlVariables diberikan, gunakan itu, jika tidak, gunakan semua variabel
+            const controlVars = (this.controlVariables && this.controlVariables.length > 0)
+                ? this.controlVariables.map(v => v.name)
+                : allVars;
 
-                    const v1 = this.variable[i].name;
-                    const v2 = this.variable[j].name;
-                    const result = this.getPartialCorrelation(controlVar, v1, v2);
-                    
-                    if (result) {
-                        partialCorrelation.push({
-                            controlVariable: controlVar,
-                            variable1: v1,
-                            variable2: v2,
-                            partialCorrelation: result.PartialCorrelation
-                        });
+            for (const controlVar of controlVars) {
+                // Ambil variabel lain selain controlVar
+                const otherVars = allVars.filter(v => v !== controlVar);
+                // Untuk semua pasangan unik dari otherVars
+                for (let i = 0; i < otherVars.length; i++) {
+                    for (let j = i + 1; j < otherVars.length; j++) {
+                        const v1 = otherVars[i];
+                        const v2 = otherVars[j];
+                        const result = this.getPartialCorrelation(controlVar, v1, v2);
+                        if (result) {
+                            partialCorrelation.push({
+                                controlVariable: controlVar,
+                                variable1: v1,
+                                variable2: v2,
+                                partialCorrelation: result.PartialCorrelation
+                            });
+                        }
                     }
                 }
             }

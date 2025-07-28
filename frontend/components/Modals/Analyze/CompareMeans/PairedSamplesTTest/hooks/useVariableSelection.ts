@@ -144,11 +144,10 @@ export const useVariableSelection = () => {
                 // Add to the end
                 setTestVariables1(prev => [...prev, variable]);
                 
-                // Add pair number if this completes a pair
-                if (testVariables2.length > testVariables1.length) {
-                    const newPairNumber = pairNumbers.length > 0 ? Math.max(...pairNumbers) + 1 : 1;
-                    setPairNumbers(prev => [...prev, newPairNumber]);
-                }
+                setPairNumbers(prev => {
+                    const newPairNumber = prev.length > 0 ? Math.max(...prev) + 1 : 1;
+                    return [...prev, newPairNumber];
+                });
             }
         } else { // targetListToUse === 'test2'
             if (hasUndefinedInTest2) {
@@ -161,12 +160,6 @@ export const useVariableSelection = () => {
             } else {
                 // Add to the end
                 setTestVariables2(prev => [...prev, variable]);
-                
-                // Add pair number if this completes a pair
-                if (testVariables1.length > testVariables2.length) {
-                    const newPairNumber = pairNumbers.length > 0 ? Math.max(...pairNumbers) + 1 : 1;
-                    setPairNumbers(prev => [...prev, newPairNumber]);
-                }
             }
         }
         
@@ -276,15 +269,11 @@ export const useVariableSelection = () => {
                 return newArray;
             });
             
-            setPairNumbers(prev => {
-                const newArray = [...prev];
-                [newArray[index], newArray[index - 1]] = [newArray[index - 1], newArray[index]];
-                return newArray;
-            });
+            setPairNumbers(Array.from({ length: Math.max(testVariables1.length, testVariables2.length) }).map((_, i) => i + 1));
             
             setHighlightedPair({ id: index - 1 });
         }
-    }, []);
+    }, [testVariables1, testVariables2]);
 
     // Move a pair down in the list
     const moveDownPair = useCallback((index: number) => {
@@ -301,21 +290,17 @@ export const useVariableSelection = () => {
                 return newArray;
             });
             
-            setPairNumbers(prev => {
-                const newArray = [...prev];
-                [newArray[index], newArray[index + 1]] = [newArray[index + 1], newArray[index]];
-                return newArray;
-            });
+            setPairNumbers(Array.from({ length: Math.max(testVariables1.length, testVariables2.length) }).map((_, i) => i + 1));
             
             setHighlightedPair({ id: index + 1 });
         }
-    }, [testVariables1.length]);
+    }, [testVariables1, testVariables2]);
 
     // Remove a pair
     const removePair = useCallback((index: number) => {
         setTestVariables1(prev => prev.filter((_, i) => i !== index));
         setTestVariables2(prev => prev.filter((_, i) => i !== index));
-        setPairNumbers(prev => prev.filter((_, i) => i !== index));
+        setPairNumbers(Array.from({ length: Math.max(testVariables1.length, testVariables2.length) }).map((_, i) => i + 1));
         setHighlightedPair(null);
     }, []);
 

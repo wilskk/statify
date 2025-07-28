@@ -5,7 +5,6 @@ import { useDataStore } from '@/stores/useDataStore';
 
 import {
   OneSampleTTestAnalysisProps,
-  OneSampleTTestResults,
   OneSampleTTestResult
 } from '../types';
 
@@ -21,11 +20,11 @@ export const useOneSampleTTestAnalysis = ({
   estimateEffectSize,
   onClose
 }: OneSampleTTestAnalysisProps) => {
-  const { addLog, addAnalytic, addStatistic } = useResultStore();
-  const { data: analysisData } = useAnalysisData();
-
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { addLog, addAnalytic, addStatistic } = useResultStore();
+  const { data: analysisData } = useAnalysisData();
 
   const workerRef = useRef<Worker | null>(null);
 
@@ -35,13 +34,8 @@ export const useOneSampleTTestAnalysis = ({
   const insufficientDataVarsRef = useRef<string[]>([]);
 
   const runAnalysis = useCallback(async () => {
-    if (testVariables.length === 0) {
-      setErrorMsg("Please select at least one variable.");
-      return;
-    }
-    
-    setErrorMsg(null);
     setIsCalculating(true);
+    setErrorMsg(null);
 
     try {
       await useDataStore.getState().checkAndSave();
@@ -72,8 +66,8 @@ export const useOneSampleTTestAnalysis = ({
       const dataForVar = analysisData.map(row => row[variable.columnIndex]);
       const payload = {
         analysisType: analysisTypes,
-        variable,
-        data: dataForVar,
+        variable1: variable,
+        data1: dataForVar,
         options: { testValue, estimateEffectSize }
       };
       worker.postMessage(payload);
@@ -89,40 +83,26 @@ export const useOneSampleTTestAnalysis = ({
           console.warn(`Insufficient valid data for variable: ${results.metadata.variableName}. Total: ${results.metadata.totalData}, Valid: ${results.metadata.validData}`);
         }
         
-        if (results.oneSampleStatistics) {
-          const { variable, N, Mean, StdDev, SEMean } = results.oneSampleStatistics;
-
-          if (variable && N && Mean !== undefined && StdDev !== undefined && SEMean !== undefined) {
-            resultsRef.current.push({
-              variable,
-              stats: {
-                N,
-                Mean,
-                StdDev,
-                SEMean
-              }
-            });
-          }
-        }
-
-        if (results.oneSampleTest) {
-          const { variable, T, DF, PValue, MeanDifference, Lower, Upper } = results.oneSampleTest;
-          
-          if (variable && T !== undefined && DF !== undefined && PValue !== undefined && 
-              MeanDifference !== undefined && Lower !== undefined && Upper !== undefined) {
-            resultsRef.current.push({
-              variable,
-              testValue,
-              stats: {
-                T,
-                DF,
-                PValue,
-                MeanDifference,
-                Lower,
-                Upper
-              }
-            });
-          }
+        if (results.oneSampleStatistics && results.oneSampleTest) {
+          const { N, Mean, StdDev, SEMean } = results.oneSampleStatistics;
+          const { T, DF, PValue, MeanDifference, Lower, Upper } = results.oneSampleTest;
+          resultsRef.current.push({
+            variable1: results.variable1,
+            oneSampleStatistics: {
+              N,
+              Mean,
+              StdDev,
+              SEMean
+            },
+            oneSampleTest: {
+              T,
+              DF,
+              PValue,
+              MeanDifference,
+              Lower,
+              Upper
+            }
+          });
         }
       } else {
         console.error(`Error processing ${variableName}:`, workerError);
@@ -135,6 +115,7 @@ export const useOneSampleTTestAnalysis = ({
 
       if (processedCountRef.current === testVariables.length) {
         try {
+          console.log(`resultsRef.current: ${JSON.stringify(resultsRef.current)}`);
           // Prepare log message
           const variableNames = testVariables.map(v => v.name).join(" ");
           let logMsg = `T-TEST {TESTVAL=${testValue}} {VARIABLES=${variableNames}}`;
@@ -163,20 +144,11 @@ export const useOneSampleTTestAnalysis = ({
             note: note || undefined 
           });
 
-          // Check if we have any valid results
-          const oneSampleStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
-          const oneSampleTest = resultsRef.current.filter(r => 'T' in (r.stats as any));
-          
-          const results: OneSampleTTestResults = {
-            oneSampleStatistics,
-            oneSampleTest
-          };
-
           // If we have valid results and not all variables have insufficient data
           if (resultsRef.current.length > 0 && insufficientDataVarsRef.current.length < testVariables.length) {
             // Format tables
-            const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(results);
-            const formattedOneSampleTestTable = formatOneSampleTestTable(results);
+            const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(resultsRef.current);
+            const formattedOneSampleTestTable = formatOneSampleTestTable(resultsRef.current, testValue);
 
             await addStatistic(analyticId, {
               title: "One-Sample Statistics",

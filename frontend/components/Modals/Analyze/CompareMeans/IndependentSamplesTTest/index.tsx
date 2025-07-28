@@ -38,9 +38,10 @@ import {
 
 import VariablesTab from "./components/VariablesTab";
 // import OptionsTab from "./components/OptionsTab";
+import { toast } from "sonner";
 
 const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
-    const [activeTab, setActiveTab] = useState<"variables" | "options">("variables");
+    const [activeTab, setActiveTab] = useState<"variables">("variables");
     const isVariablesLoading = useVariableStore((state: any) => state.isLoading);
     const variablesError = useVariableStore((state: any) => state.error);
 
@@ -112,7 +113,7 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose, container
     }, [resetVariableSelection, resetGroupSettings, cancelCalculation]);
 
     const handleTabChange = useCallback((value: string) => {
-        if (value === 'variables' || value === 'options') {
+        if (value === 'variables') {
             setActiveTab(value);
         }
     }, [setActiveTab]);
@@ -122,6 +123,14 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose, container
             cancelCalculation();
         };
     }, [cancelCalculation]);
+
+    const handleOkClick = useCallback(() => {
+        if (defineGroups.useSpecifiedValues && group1 === group2) {
+            toast.error("Group 1 and Group 2 must be different.");
+            return;
+        }
+        runAnalysis();
+    }, [defineGroups, group1, group2, runAnalysis]);
 
     const renderContent = () => {
         if (isVariablesLoading) {
@@ -201,12 +210,12 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose, container
                         >
                             Variables
                         </TabsTrigger>
-                        <TabsTrigger
+                        {/* <TabsTrigger
                             id="options-tab-trigger"
                             value="options"
                         >
                             Options
-                        </TabsTrigger>
+                        </TabsTrigger> */}
                     </TabsList>
                 </div>
 
@@ -255,7 +264,7 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose, container
                     </Button>
                     <Button
                         id="independent-samples-t-test-ok-button"
-                        onClick={runAnalysis}
+                        onClick={handleOkClick}
                         disabled={
                             isCalculating ||
                             testVariables.length < 1 ||

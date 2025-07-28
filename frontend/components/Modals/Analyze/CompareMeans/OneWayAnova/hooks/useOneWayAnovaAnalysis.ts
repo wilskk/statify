@@ -5,7 +5,6 @@ import { useDataStore } from '@/stores/useDataStore';
 
 import {
     OneWayAnovaAnalysisProps,
-    OneWayAnovaResults,
     OneWayAnovaResult,
     Descriptives,
     HomogeneityOfVariance,
@@ -29,11 +28,11 @@ export const useOneWayAnovaAnalysis = ({
     statisticsOptions,
     onClose
 }: OneWayAnovaAnalysisProps) => {
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
-    const { data: analysisData } = useAnalysisData();
-    
     const [isCalculating, setIsCalculating] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
+    const { data: analysisData } = useAnalysisData();
     
     const workerRef = useRef<Worker | null>(null);
 
@@ -43,18 +42,8 @@ export const useOneWayAnovaAnalysis = ({
     const insufficientDataVarsRef = useRef<string[]>([]);
 
     const runAnalysis = useCallback(async (): Promise<void> => {
-        if (testVariables.length === 0) {
-            setErrorMsg("Please select at least one test variable.");
-            return;
-        }
-        
-        if (!factorVariable) {
-            setErrorMsg("Please select a factor variable.");
-            return;
-        }
-        
-        setErrorMsg(null);
         setIsCalculating(true);
+        setErrorMsg(null);
 
         try {
             await useDataStore.getState().checkAndSave();
@@ -68,153 +57,38 @@ export const useOneWayAnovaAnalysis = ({
         resultsRef.current = [];
         errorCountRef.current = 0;
         processedCountRef.current = 0;
+        insufficientDataVarsRef.current = [];
 
         const worker = new Worker('/workers/CompareMeans/manager.js', { type: 'module' });
         workerRef.current = worker;
 
         testVariables.forEach(variable => {
             const dataForVar = analysisData.map(row => row[variable.columnIndex]);
-            const dataForFactorVar = analysisData.map(row => row[factorVariable.columnIndex]);
+            const dataForFactorVar = analysisData.map(row => row[factorVariable!.columnIndex]);
             const payload = {
                 analysisType: ['oneWayAnova'],
-                variable,
-                data: dataForVar,
-                factorVariable,
-                factorData: dataForFactorVar,
+                variable1: variable,
+                data1: dataForVar,
+                variable2: factorVariable,
+                data2: dataForFactorVar,
                 options: { equalVariancesAssumed, statisticsOptions, estimateEffectSize }
             };
-            console.log("payload", JSON.stringify(payload));
+            // console.log("payload", JSON.stringify(payload));
             worker.postMessage(payload);
         });
 
         worker.onmessage = async (event) => {
-            console.log("Received message:", JSON.stringify(event.data));
+            // console.log("Received message:", JSON.stringify(event.data));
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
                 if (results.metadata.hasInsufficientData) {
-                    insufficientDataVarsRef.current.push(results.metadata.variableName);
-                    console.warn(`Insufficient valid data for ${results.metadata.variableName}`);
+                    insufficientDataVarsRef.current.push(results.metadata.variable1Name);
+                    console.warn(`Insufficient valid data for: ${results.metadata.variable1Name} & ${results.metadata.variable2Name}. Total1: ${results.metadata.totalData1}, Total2: ${results.metadata.totalData2}, Valid1: ${results.metadata.validData1}, Valid2: ${results.metadata.validData2}`);
                 }
 
-                if (results.oneWayAnova) {
-                    const { variable, SumOfSquares, df, MeanSquare, F, Sig, 
-                            withinGroupsSumOfSquares, withinGroupsDf, withinGroupsMeanSquare,
-                            totalSumOfSquares, totalDf } = results.oneWayAnova;
-                    
-                    if (variable) {
-                        resultsRef.current.push({
-                            variable,
-                            oneWayAnova: {
-                                SumOfSquares,
-                                df,
-                                MeanSquare,
-                                F,
-                                Sig,
-                                withinGroupsSumOfSquares,
-                                withinGroupsDf,
-                                withinGroupsMeanSquare,
-                                totalSumOfSquares,
-                                totalDf
-                            }
-                        });
-                    }
-                    // else {
-                    //     console.error(`Error processing ANOVA results for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
-
-                // Process Descriptive Statistics
-                if (statisticsOptions.descriptive && results.descriptives) {
-                    const { variable, descriptive } = results.descriptives;
-
-                    if (variable && descriptive && Array.isArray(descriptive)) {
-                        // Add all descriptive statistics for this variable as a single entry
-                        resultsRef.current.push({
-                            variable,
-                            descriptives: descriptive as Descriptives[]
-                        });
-                    }
-                    // else {
-                    //     console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
-
-                // Process Homogeneity of Variance
-                if (statisticsOptions.homogeneityOfVariance && results.homogeneityOfVariances) {
-                    const { variable, homogeneityOfVariances } = results.homogeneityOfVariances;
-
-                    if (variable && homogeneityOfVariances && Array.isArray(homogeneityOfVariances)) {
-                        resultsRef.current.push({
-                            variable,
-                            homogeneityOfVariance: homogeneityOfVariances as HomogeneityOfVariance[]
-                        });
-                    }
-                    // else {
-                    //     console.error(`Error processing homogeneity of variance for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
-
-                // Process Multiple Comparisons
-                if (equalVariancesAssumed.tukey && results.multipleComparisons) {
-                    const { variable, multipleComparisons } = results.multipleComparisons;
-
-                    if (variable && multipleComparisons && Array.isArray(multipleComparisons)) {
-                        resultsRef.current.push({
-                            variable,
-                            multipleComparisons: multipleComparisons
-                        });
-                    }
-                    // else {
-                    //     console.error(`Error processing multiple comparisons for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
-
-                // Process Homogeneous Subsets
-                // Support multiple homogeneousSubsets per variable (e.g., Tukey, Duncan, etc.)
-                if ((equalVariancesAssumed.tukey || equalVariancesAssumed.duncan) && results.homogeneousSubsets) {
-                    let homogeneousSubsetsArr: any[] = [];
-
-                    // If results.homogeneousSubsets is an array (multiple methods), use as is, else wrap in array
-                    if (Array.isArray(results.homogeneousSubsets)) {
-                        homogeneousSubsetsArr = results.homogeneousSubsets;
-                    } else if (results.homogeneousSubsets && typeof results.homogeneousSubsets === 'object') {
-                        // Sometimes the worker returns a single object, not an array
-                        homogeneousSubsetsArr = [results.homogeneousSubsets];
-                    }
-
-                    // For each method's homogeneousSubsets for this variable, push a result entry
-                    for (const subsetObj of homogeneousSubsetsArr) {
-                        const { variable, subsetCount, homogeneousSubsets } = subsetObj;
-                        console.log("results.homogeneousSubsets (per method)", JSON.stringify(subsetObj));
-
-                        if (variable && subsetCount && homogeneousSubsets && Array.isArray(homogeneousSubsets)) {
-                            resultsRef.current.push({
-                                variable,
-                                subsetCount,
-                                homogeneousSubsets: homogeneousSubsets as HomogeneousSubsets[]
-                            });
-                        }
-                        // else {
-                        //     console.error(`Error processing homogeneous subsets for ${variableName}:`, workerError);
-                        //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        //     errorCountRef.current += 1;
-                        // }
-                    }
-                }
+                // Since the worker now returns simplified structure, we can directly push the results
+                resultsRef.current.push(results);
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
                 const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
@@ -227,26 +101,12 @@ export const useOneWayAnovaAnalysis = ({
             if (processedCountRef.current === testVariables.length) {
 
                 try {
-                    console.log('resultsRef.current:', JSON.stringify(resultsRef.current));
-                    const oneWayAnova = resultsRef.current.filter(r => 'oneWayAnova' in (r as any));
-                    const descriptives = resultsRef.current.filter(r => 'descriptives' in (r as any));
-                    const homogeneityOfVariance = resultsRef.current.filter(r => 'homogeneityOfVariance' in (r as any));
-                    const multipleComparisons = resultsRef.current.filter(r => 'multipleComparisons' in (r as any));
-                    const homogeneousSubsets = resultsRef.current.filter(r => 'subsetCount' in (r as any));
-                    
-                    const results: OneWayAnovaResults = {
-                        oneWayAnova,
-                        descriptives,
-                        homogeneityOfVariance,
-                        multipleComparisons,
-                        homogeneousSubsets
-                    };
-                    console.log('results to format:', JSON.stringify(results));
-                    // Format tables
-                    const formattedOneWayAnovaTable = formatOneWayAnovaTable(results);
+                    // Format tables - now resultsRef.current contains array of results for each variable
+                    // console.log("resultsRef.current", JSON.stringify(resultsRef.current));
+                    const formattedOneWayAnovaTable = formatOneWayAnovaTable(resultsRef.current);
                     
                     const variableNames = testVariables.map(v => v.name);
-                    let logMsg = `ONEWAY ${variableNames.join(' ')} BY ${factorVariable.name}`;
+                    let logMsg = `ONEWAY ${variableNames.join(' ')} BY ${factorVariable!.name}`;
                     
 
                     if (statisticsOptions.descriptive && statisticsOptions.homogeneityOfVariance) {
@@ -281,8 +141,8 @@ export const useOneWayAnovaAnalysis = ({
 
                     if (insufficientDataVarsRef.current.length < testVariables.length) {
                         // Add Descriptive Statistics table if enabled
-                        if (statisticsOptions.descriptive && results.descriptives) {
-                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results);
+                        if (statisticsOptions.descriptive) {
+                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current);
                             await addStatistic(analyticId, {
                                 title: "Descriptives",
                                 output_data: JSON.stringify({ tables: [formattedDescriptiveStatisticsTable] }),
@@ -293,8 +153,9 @@ export const useOneWayAnovaAnalysis = ({
 
                         if (insufficientDataVarsRef.current.length === 0) {
                             // Add Homogeneity of Variance table if enabled
-                            if (statisticsOptions.homogeneityOfVariance && results.homogeneityOfVariance) {
-                                const formattedHomogeneityOfVarianceTable = formatHomogeneityOfVarianceTable(results);
+                            if (statisticsOptions.homogeneityOfVariance) {
+                                const formattedHomogeneityOfVarianceTable = formatHomogeneityOfVarianceTable(resultsRef.current);
+                                // console.log("formattedHomogeneityOfVarianceTable", JSON.stringify(formattedHomogeneityOfVarianceTable));
                                 await addStatistic(analyticId, {
                                     title: "Test of Homogeneity of Variances",
                                     output_data: JSON.stringify({ tables: [formattedHomogeneityOfVarianceTable] }),
@@ -313,9 +174,9 @@ export const useOneWayAnovaAnalysis = ({
                         });
 
                         // Add Multiple Comparisons table if post hoc tests are enabled
-                        if (equalVariancesAssumed.tukey && results.multipleComparisons) {
-                            const formattedMultipleComparisonsTable = formatMultipleComparisonsTable(results, factorVariable.label || factorVariable.name);
-                            console.log("formattedMultipleComparisonsTable", JSON.stringify(formattedMultipleComparisonsTable));
+                        if (equalVariancesAssumed.tukey) {
+                            const formattedMultipleComparisonsTable = formatMultipleComparisonsTable(resultsRef.current, factorVariable!.label || factorVariable!.name);
+                            // console.log("formattedMultipleComparisonsTable", JSON.stringify(formattedMultipleComparisonsTable));
                             await addStatistic(analyticId, {
                                 title: "Multiple Comparisons",
                                 output_data: JSON.stringify({ tables: [formattedMultipleComparisonsTable] }),
@@ -325,14 +186,14 @@ export const useOneWayAnovaAnalysis = ({
                         }
 
                         // Add Homogeneous Subsets tables if post hoc tests are enabled
-                        if ((equalVariancesAssumed.tukey || equalVariancesAssumed.duncan) && results.homogeneousSubsets) {
+                        if (equalVariancesAssumed.tukey || equalVariancesAssumed.duncan) {
                             // Create separate tables for each test variable
                             testVariables.forEach(async (variable, index) => {
                                 if (insufficientDataVarsRef.current.includes(variable.name)) {
                                     return;
                                 }
-                                const formattedHomogeneousSubsetsTable = formatHomogeneousSubsetsTable(results, index, variable);
-                                console.log("formattedHomogeneousSubsetsTable", JSON.stringify(formattedHomogeneousSubsetsTable));
+                                const formattedHomogeneousSubsetsTable = formatHomogeneousSubsetsTable(resultsRef.current, index, variable);
+                                // console.log("formattedHomogeneousSubsetsTable", JSON.stringify(formattedHomogeneousSubsetsTable));
                                 await addStatistic(analyticId, {
                                     title: "Homogeneous Subsets",
                                     output_data: JSON.stringify({ tables: [formattedHomogeneousSubsetsTable] }),
@@ -345,7 +206,7 @@ export const useOneWayAnovaAnalysis = ({
 
                     if (resultsRef.current.length === 0 || insufficientDataVarsRef.current.length === testVariables.length) {
                         const formattedErrorTable = formatErrorTable();
-                        console.log('formattedErrorTable', JSON.stringify(formattedErrorTable));
+                        // console.log('formattedErrorTable', JSON.stringify(formattedErrorTable));
                         await addStatistic(analyticId, {
                             title: "Error",
                             output_data: JSON.stringify({ tables: [formattedErrorTable] }),

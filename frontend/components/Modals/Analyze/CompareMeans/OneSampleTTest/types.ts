@@ -94,33 +94,28 @@ export interface UseTourGuideResult {
 
 // OneSampleStatistics Result
 export interface OneSampleStatistics {
-  N: number;
-  Mean: number;
-  StdDev: number;
-  SEMean: number;
+  N: number | null;
+  Mean: number | null;
+  StdDev: number | null;
+  SEMean: number | null;
 }
 
 // OneSampleTest Result
 export interface OneSampleTest {
-  T: number;
-  DF: number;
-  PValue: number;
-  MeanDifference: number;
-  Lower: number;
-  Upper: number;
+  T: number | null;
+  DF: number | null;
+  PValue: number | null;
+  MeanDifference: number | null;
+  Lower: number | null;
+  Upper: number | null;
 }
 
 // OneSampleTTest Result
 export interface OneSampleTTestResult {
-  variable: Variable;
+  variable1?: Variable;
   testValue?: number;
-  stats: OneSampleStatistics | OneSampleTest;
-}
-
-// OneSampleTTest Results Collection
-export interface OneSampleTTestResults {
-  oneSampleStatistics?: OneSampleTTestResult[];
-  oneSampleTest?: OneSampleTTestResult[];
+  oneSampleStatistics?: OneSampleStatistics;
+  oneSampleTest?: OneSampleTest;
 }
 
 // ---------------------------------

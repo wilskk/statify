@@ -6,7 +6,6 @@ import { useDataStore } from '@/stores/useDataStore';
 import {
     BivariateAnalysisProps,
     BivariateResults,
-    BivariateResult,
     BivariateTable
 } from '../types';
 
@@ -25,6 +24,8 @@ export const useBivariateAnalysis = ({
     showDiagonal,
     partialCorrelationKendallsTauB,
     statisticsOptions,
+    missingValuesOptions,
+    controlVariables,
     onClose
 }: BivariateAnalysisProps) => {
     const { addLog, addAnalytic, addStatistic } = useResultStore();
@@ -36,14 +37,18 @@ export const useBivariateAnalysis = ({
         showOnlyTheLowerTriangle,
         showDiagonal,
         statisticsOptions,
-        partialCorrelationKendallsTauB
+        partialCorrelationKendallsTauB,
+        missingValuesOptions,
+        controlVariables
     }), [
         testOfSignificance,
         flagSignificantCorrelations,
         showOnlyTheLowerTriangle,
         showDiagonal,
         statisticsOptions,
-        partialCorrelationKendallsTauB
+        partialCorrelationKendallsTauB,
+        missingValuesOptions,
+        controlVariables
     ]);
 
     const [isCalculating, setIsCalculating] = useState(false);
@@ -51,7 +56,7 @@ export const useBivariateAnalysis = ({
     
     const workerRef = useRef<Worker | null>(null);
     
-    const resultsRef = useRef<BivariateResult[]>([]);
+    const resultsRef = useRef<BivariateResults>();
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
 
@@ -73,7 +78,6 @@ export const useBivariateAnalysis = ({
         }
 
         // Reset refs for new analysis run
-        resultsRef.current = [];
         errorCountRef.current = 0;
         processedCountRef.current = 0;
 
@@ -81,6 +85,11 @@ export const useBivariateAnalysis = ({
         workerRef.current = worker;
 
         const batch = testVariables.map(variable => ({
+            variable,
+            data: analysisData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
+        }));
+
+        const batchControl = controlVariables.map(variable => ({
             variable,
             data: analysisData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
         }));
@@ -96,97 +105,20 @@ export const useBivariateAnalysis = ({
                 showOnlyTheLowerTriangle,
                 showDiagonal,
                 statisticsOptions,
-                partialCorrelationKendallsTauB
+                partialCorrelationKendallsTauB,
+                missingValuesOptions,
+                controlVariables: batchControl.map(vd => vd.variable),
+                controlData: batchControl.map(vd => vd.data)
             }
         };
         worker.postMessage(payload);
 
         worker.onmessage = async (event) => {
-            console.log('Received message:', JSON.stringify(event.data));
+            // console.log('Received message:', JSON.stringify(event.data));
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
-                // Handle descriptive statistics
-                if (results.descriptiveStatistics && Array.isArray(results.descriptiveStatistics)) {
-                    for (const stats of results.descriptiveStatistics) {
-                        const { variable, N, Mean, StdDev } = stats;
-                        
-                        if (variable && N !== undefined && Mean !== undefined && StdDev !== undefined) {
-                            // Find the corresponding variable object
-                            const variableObj = testVariables.find(v => v.name === variable);
-                            if (variableObj) {
-                                resultsRef.current.push({
-                                    variable1: variableObj,
-                                    descriptiveStatistics: {
-                                        N,
-                                        Mean,
-                                        StdDev
-                                    },
-                                });
-                            }
-                        }
-                    }
-                }
-
-                // Handle correlations
-                if (results.correlation && Array.isArray(results.correlation)) {
-                    for (const correlation of results.correlation) {
-                        const { variable1, variable2, pearsonCorrelation, kendallsTauBCorrelation, spearmanCorrelation } = correlation;
-
-                        if (variable1 && variable2 && (pearsonCorrelation !== undefined || kendallsTauBCorrelation !== undefined || spearmanCorrelation !== undefined)) {
-                            // Find the corresponding variable object
-                            const variableObj = testVariables.find(v => v.name === variable1);
-                            if (variableObj) {
-                                resultsRef.current.push({
-                                    variable1,
-                                    variable2,
-                                    correlation: {
-                                        pearsonCorrelation,
-                                        kendallsTauBCorrelation,
-                                        spearmanCorrelation
-                                    }
-                                });
-                            }
-                        } else {
-                            console.error(`Error processing correlation:`, correlation);
-                            const errorMsg = `Calculation failed for correlation: ${workerError || 'Missing data'}`;
-                            setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                            errorCountRef.current += 1;
-                        }
-                    }
-                }
-
-                // Handle partial correlation
-                if (results.partialCorrelation && Array.isArray(results.partialCorrelation)) {
-                    for (const partial of results.partialCorrelation) {
-                        const { controlVariable, variable1, variable2, partialCorrelation } = partial;
-
-                        if (controlVariable && variable1 && variable2 && partialCorrelation) {
-                            // Find the corresponding variable objects
-                            const controlVarObj = testVariables.find(v => v.name === controlVariable);
-                            const var1Obj = testVariables.find(v => v.name === variable1);
-                            const var2Obj = testVariables.find(v => v.name === variable2);
-                            
-                            if (controlVarObj && var1Obj && var2Obj) {
-                                resultsRef.current.push({
-                                    controlVariable: controlVarObj,
-                                    variable1: var1Obj,
-                                    variable2: var2Obj,
-                                    partialCorrelation: {
-                                        PartialCorrelation: partialCorrelation.Correlation,
-                                        PValue: partialCorrelation.PValue,
-                                        df: partialCorrelation.df
-                                    }
-                                });
-                            }
-                        } else {
-                            console.error(`Error processing partial correlation:`, partial);
-                            const errorMsg = `Calculation failed for partial correlation: ${workerError || 'Missing data'}`;
-                            setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                            errorCountRef.current += 1;
-                        }
-                    }
-                }
+                resultsRef.current = results;
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
                 const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
@@ -195,23 +127,10 @@ export const useBivariateAnalysis = ({
             }
 
             processedCountRef.current += 1;
-            console.log('Processed count:', processedCountRef.current);
-            console.log('Results ref:', JSON.stringify(resultsRef.current));
             if (processedCountRef.current === 1) {
-                if (resultsRef.current.length > 0) {
+                if (resultsRef.current) {
                     try {
-                        const descriptiveStatistics = resultsRef.current.filter(r => r.descriptiveStatistics);
-                        const correlation = resultsRef.current.filter(r => r.correlation);
-                        const partialCorrelation = resultsRef.current.filter(r => r.partialCorrelation);
-                        
-                        const results: BivariateResults = {
-                            descriptiveStatistics,
-                            correlation,
-                            partialCorrelation
-                        };
-
-                        console.log('Results to format:', JSON.stringify(results));
-
+                        // console.log('Results ref:', JSON.stringify(resultsRef.current));
                         // Prepare log message
                         const variableNames = testVariables.map(v => v.name).join(" ");
                         let logMsg = `CORRELATIONS {VARIABLES=${variableNames}}`;
@@ -222,8 +141,7 @@ export const useBivariateAnalysis = ({
 
                         // Add descriptive statistics table
                         if (statisticsOptions.meansAndStandardDeviations) {
-                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results);
-                            console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
+                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current);
                        
                             await addStatistic(analyticId, {
                                 title: "Descriptive Statistics",
@@ -234,9 +152,7 @@ export const useBivariateAnalysis = ({
                         }
 
                         if (correlationCoefficient.pearson) {
-                            console.log(`const formattedCorrelationTable = formatCorrelationTable(results:${JSON.stringify(results)}, options:${JSON.stringify(options)}, testVariables:${JSON.stringify(testVariables)}, correlationType:["Pearson"])`);
-                            const formattedCorrelationTable = formatCorrelationTable(results, options, testVariables, ["Pearson"]);
-                            console.log('Formatted correlation table:', JSON.stringify(formattedCorrelationTable));
+                            const formattedCorrelationTable = formatCorrelationTable(resultsRef.current, options, testVariables, ["Pearson"]);
 
                             await addStatistic(analyticId, {
                                 title: "Correlation",
@@ -254,9 +170,7 @@ export const useBivariateAnalysis = ({
                             if (correlationCoefficient.spearman) {
                                 correlationType.push("Spearman's rho");
                             }
-                            console.log(`const formattedCorrelationTable = formatCorrelationTable(results:${JSON.stringify(results)}, options:${JSON.stringify(options)}, testVariables:${JSON.stringify(testVariables)}, correlationType:${JSON.stringify(correlationType)})`);
-                            const formattedCorrelationTable = formatCorrelationTable(results, options, testVariables, correlationType);
-                            console.log('Formatted nonparametric correlation table:', JSON.stringify(formattedCorrelationTable));
+                            const formattedCorrelationTable = formatCorrelationTable(resultsRef.current, options, testVariables, correlationType);
 
                             await addStatistic(analyticId, {
                                 title: "Nonparametric Correlation",
@@ -265,9 +179,9 @@ export const useBivariateAnalysis = ({
                                 description: ""
                             });
 
-                            if (partialCorrelationKendallsTauB && correlationCoefficient.kendallsTauB && partialCorrelation.length > 0) {
-                                const formattedPartialCorrelationTable = formatPartialCorrelationTable(results, options, testVariables);
-                                console.log('Formatted partial correlation table:', JSON.stringify(formattedPartialCorrelationTable));
+                            if (partialCorrelationKendallsTauB && correlationCoefficient.kendallsTauB && testVariables.length > 2 && missingValuesOptions.excludeCasesListwise) {
+                                const formattedPartialCorrelationTable = formatPartialCorrelationTable(resultsRef.current, options, testVariables);
+                                // console.log('Formatted partial correlation table:', JSON.stringify(formattedPartialCorrelationTable));
 
                                 await addStatistic(analyticId, {
                                     title: "Partial Correlation",
@@ -305,7 +219,7 @@ export const useBivariateAnalysis = ({
                 workerRef.current = null;
             }
         };
-    }, [testVariables, correlationCoefficient, testOfSignificance, flagSignificantCorrelations, showOnlyTheLowerTriangle, showDiagonal, statisticsOptions, partialCorrelationKendallsTauB, options, addLog, addAnalytic, addStatistic, onClose, analysisData]);
+    }, [testVariables, correlationCoefficient, testOfSignificance, flagSignificantCorrelations, showOnlyTheLowerTriangle, showDiagonal, statisticsOptions, partialCorrelationKendallsTauB, missingValuesOptions, controlVariables, options, addLog, addAnalytic, addStatistic, onClose, analysisData]);
 
     const cancelCalculation = useCallback(() => {
         if (workerRef.current) {

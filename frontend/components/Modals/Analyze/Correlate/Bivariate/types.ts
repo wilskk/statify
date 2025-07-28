@@ -27,10 +27,22 @@ export type TourStep = BaseTourStep & {
     forceChangeTab?: boolean;
 };
 
+// Statistics
+export interface StatisticsOptions {
+    meansAndStandardDeviations: boolean;
+    crossProductDeviationsAndCovariances: boolean;
+}
+
+// Missing Values Options
+export interface MissingValuesOptions {
+    excludeCasesPairwise: boolean;
+    excludeCasesListwise: boolean;
+}
+
 // Highlighted Variable
 export type HighlightedVariable = {
   tempId: string;
-  source: 'available' | 'test';
+  source: 'available' | 'test' | 'control';
 };
 
 // Test Type
@@ -44,12 +56,6 @@ export type TestOfSignificance = {
     oneTailed: boolean;
     twoTailed: boolean;
 };
-
-// Statistics
-export interface StatisticsOptions {
-    meansAndStandardDeviations: boolean;
-    crossProductDeviationsAndCovariances: boolean;
-}
 
 // ---------------------------------
 // Props
@@ -71,13 +77,7 @@ export interface VariablesTabProps {
     moveToAvailableVariables: (variable: Variable) => void;
     moveToTestVariables: (variable: Variable, targetIndex?: number) => void;
     reorderVariables: (source: 'available' | 'test', variables: Variable[]) => void;
-    tourActive?: boolean;
-    currentStep?: number;
-    tourSteps?: TourStep[];
-}
-
-// OptionsTab Props
-export interface OptionsTabProps {
+    // Moved from OptionsTab
     correlationCoefficient: CorrelationCoefficient;
     setCorrelationCoefficient: Dispatch<SetStateAction<CorrelationCoefficient>>;
     testOfSignificance: TestOfSignificance;
@@ -88,14 +88,33 @@ export interface OptionsTabProps {
     setShowOnlyTheLowerTriangle: Dispatch<SetStateAction<boolean>>;
     showDiagonal: boolean;
     setShowDiagonal: Dispatch<SetStateAction<boolean>>;
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
+}
+
+// OptionsTab Props
+export interface OptionsTabProps {
+    // Removed options moved to VariablesTab
     partialCorrelationKendallsTauB: boolean;
     setPartialCorrelationKendallsTauB: Dispatch<SetStateAction<boolean>>;
     statisticsOptions: StatisticsOptions;
     setStatisticsOptions: Dispatch<SetStateAction<StatisticsOptions>>;
+    // Added missing properties
+    missingValuesOptions: MissingValuesOptions;
+    setMissingValuesOptions: Dispatch<SetStateAction<MissingValuesOptions>>;
+    highlightedVariable: HighlightedVariable | null;
+    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
+    moveToKendallsTauBControlVariables: (variable: Variable) => void;
+    moveToKendallsTauBAvailableVariables: (variable: Variable) => void;
+    controlVariables: Variable[];
+    reorderVariables: (source: 'available' | 'test' | 'control', variables: Variable[]) => void;
     tourActive?: boolean;
     currentStep?: number;
     tourSteps?: TourStep[];
     testVariables: Variable[];
+    // Added back for dependency
+    correlationCoefficient: CorrelationCoefficient;
 }
 
 // TestSettings Props
@@ -107,6 +126,7 @@ export interface TestSettingsProps {
     initialShowDiagonal?: boolean;
     initialPartialCorrelationKendallsTauB?: boolean;
     initialStatisticsOptions?: StatisticsOptions;
+    initialMissingValuesOptions?: MissingValuesOptions;
 }
 
 // VariableSelection Props
@@ -124,6 +144,8 @@ export interface BivariateAnalysisProps extends Pick<BaseModalProps, 'onClose'> 
     showDiagonal: boolean;
     partialCorrelationKendallsTauB: boolean;
     statisticsOptions: StatisticsOptions;
+    missingValuesOptions: MissingValuesOptions;
+    controlVariables: Variable[];
 }
 
 // ---------------------------------
@@ -175,21 +197,45 @@ export interface Correlation {
   
 
 // Bivariate Result
-export interface BivariateResult {
-    controlVariable?: Variable;
-    variable1: Variable;
-    variable2?: Variable;
-    descriptiveStatistics?: DescriptiveStatistics;
-    correlation?: Correlation;
-    partialCorrelation?: PartialCorrelation;
-}
-  
-  // Bivariate Results Collection
   export interface BivariateResults {
-    descriptiveStatistics?: BivariateResult[];
-    correlation?: BivariateResult[];
-    partialCorrelation?: BivariateResult[];
-  }
+    descriptiveStatistics: Array<{
+        variable: string;
+        Mean: number;
+        StdDev: number;
+        N: number;
+    }>;
+    correlation: Array<{
+        variable1: string;
+        variable2: string;
+        pearsonCorrelation?: {
+            Pearson: number;
+            PValue: number | null;
+            SumOfSquares?: number;
+            Covariance?: number;
+            N: number;
+        };
+        kendallsTauBCorrelation?: {
+            KendallsTauB: number;
+            PValue: number | null;
+            N: number;
+        };
+        spearmanCorrelation?: {
+            Spearman: number;
+            PValue: number | null;
+            N: number;
+        };
+    }>;
+    partialCorrelation: Array<{
+        controlVariable: string;
+        variable1: string;
+        variable2: string;
+        partialCorrelation: {
+            Correlation: number;
+            PValue: number;
+            df: number;
+        };
+    }>;
+}
   
   // ---------------------------------
   // Table Types

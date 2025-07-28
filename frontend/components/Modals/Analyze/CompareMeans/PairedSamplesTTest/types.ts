@@ -147,10 +147,10 @@ export interface PairedSamplesStatistics {
 
 // PairedSamplesCorrelation
 export interface PairedSamplesCorrelation {
-  Label: String;
+  correlationLabel: String;
   N: number;
   Correlation: number;
-  PValue: number;
+  correlationPValue: number;
 }
 
 // PairedSamplesTestStatistics
@@ -174,13 +174,6 @@ export interface PairedSamplesTTestResult {
   pairedSamplesStatistics?: PairedSamplesStatistics;
   pairedSamplesCorrelation?: PairedSamplesCorrelation;
   pairedSamplesTest?: PairedSamplesTest;
-}
-  
-// PairedSamplesTTestResults
-export interface PairedSamplesTTestResults {
-  pairedSamplesStatistics?: PairedSamplesTTestResult[];
-  pairedSamplesCorrelation?: PairedSamplesTTestResult[];
-  pairedSamplesTest?: PairedSamplesTTestResult[];
 }
   
 // ---------------------------------

@@ -31,12 +31,12 @@ class OneWayAnovaCalculator {
      * @param {Array} params.factorData - Data array for the factor variable
      * @param {Object} params.options - Analysis options
      */
-    constructor({ variable, data, factorVariable, factorData, options }) {
+    constructor({ variable1, data1, variable2, data2, options }) {
         console.log('OneWayAnovaCalculator constructor');
-        this.variable = variable;
-        this.data = data;
-        this.factorVariable = factorVariable;
-        this.factorData = factorData;
+        this.variable1 = variable1;
+        this.data1 = data1;
+        this.variable2 = variable2;
+        this.data2 = data2;
         this.options = options || {};
         this.initialized = false;
 
@@ -63,28 +63,25 @@ class OneWayAnovaCalculator {
         if (this.initialized) return;
 
         // Filter data yang valid
-        const isNumericType = ['scale', 'date'].includes(this.variable.measure);
-        const isNumericFactorType = ['scale', 'date'].includes(this.factorVariable.measure);
+        const isNumericType = ['scale', 'date'].includes(this.variable1.measure);
+        const isNumericFactorType = ['scale', 'date'].includes(this.variable2.measure);
 
         // Filter data yang valid dan hanya untuk grup1 atau grup2
-        this.validData = this.data
+        this.validData = this.data1
             .filter((value, index) => {
-                const isValidData = !checkIsMissing(value, this.variable.missing, isNumericType) && isNumeric(value);
-                const isValidFactor = index < this.factorData.length && 
-                    !checkIsMissing(this.factorData[index], this.factorVariable.missing, isNumericFactorType);
+                const isValidData = !checkIsMissing(value, this.variable1.missing, isNumericType) && isNumeric(value);
+                const isValidFactor = index < this.data2.length && 
+                    !checkIsMissing(this.data2[index], this.variable2.missing, isNumericFactorType);
                 return isValidData && isValidFactor;
             })
             .map(value => parseFloat(value));
-        
-        this.validFactorData = this.factorData
+        this.validFactorData = this.data2
             .filter((value, index) => {
-                const isValidData = index < this.data.length && 
-                    !checkIsMissing(this.data[index], this.variable.missing, isNumericType) && 
-                    isNumeric(this.data[index]);
-                const isValidFactor = !checkIsMissing(value, this.factorVariable.missing, isNumericFactorType);
+                const isValidData = index < this.data1.length && 
+                    !checkIsMissing(this.data1[index], this.variable1.missing, isNumericType) && isNumeric(this.data1[index]);
+                const isValidFactor = !checkIsMissing(value, this.variable2.missing, isNumericFactorType) && isNumeric(value);
                 return isValidData && isValidFactor;
             });
-
         // Hitung statistik dasar
         this.factorN = this.validFactorData.length;
         this.N = this.validData.length;
@@ -105,12 +102,24 @@ class OneWayAnovaCalculator {
         
         this.#initialize();
         
+        // Check for insufficient data
+        if (this.validData.length === 0 || this.validFactorData.length === 0) {
+            this.memo.groupedData = {};
+            return {};
+        }
+        
         const groupedData = {};
         const uniqueFactors = [...new Set(this.validFactorData)];
         
+        // Check if we have at least 2 groups
+        if (uniqueFactors.length < 2) {
+            this.memo.groupedData = {};
+            return {};
+        }
+        
         const factorLabels = {};
-        if (Array.isArray(this.factorVariable.values)) {
-            this.factorVariable.values.forEach(item => {
+        if (Array.isArray(this.variable2.values)) {
+            this.variable2.values.forEach(item => {
                 factorLabels[item.value] = item.label;
             });
         } else {
@@ -142,6 +151,12 @@ class OneWayAnovaCalculator {
         if (this.memo.anovaStats) return this.memo.anovaStats;
         
         const groupedData = this.groupDataByFactor();
+        
+        // Check for insufficient data
+        if (Object.keys(groupedData).length < 2) {
+            this.memo.anovaStats = {};
+            return {};
+        }
         
         // Calculate group means and overall mean
         const groupMeans = {};
@@ -198,7 +213,6 @@ class OneWayAnovaCalculator {
         
         // Store results
         const result = {
-            variable: this.variable,
             SumOfSquares: betweenGroupsSS,
             df: betweenGroupsDF,
             MeanSquare: betweenGroupsMS,
@@ -223,13 +237,17 @@ class OneWayAnovaCalculator {
         if (this.memo.descriptiveStats) return this.memo.descriptiveStats;
 
         const groupedData = this.groupDataByFactor();
-        console.log('groupedData:', JSON.stringify(groupedData));
+        
+        // Check for insufficient data
+        if (Object.keys(groupedData).length < 2) {
+            this.memo.descriptiveStats = [];
+            return [];
+        }
+        
         const stats = [];
 
         // Hitung statistik deskriptif per grup
         Object.entries(groupedData).forEach(([group, values]) => {
-            console.log('group:', group);
-            console.log('values:', JSON.stringify(values));
             const n = values.length;
             const mean = n > 0 ? values.reduce((acc, val) => acc + val, 0) / n : NaN;
 
@@ -319,6 +337,13 @@ class OneWayAnovaCalculator {
         if (this.memo.homogeneityStats) return this.memo.homogeneityStats;
         
         const groupedData = this.groupDataByFactor();
+        
+        // Check for insufficient data
+        if (Object.keys(groupedData).length < 2) {
+            this.memo.homogeneityStats = [];
+            return [];
+        }
+        
         const results = [];
         
         // Convert grouped data to arrays for Levene's test
@@ -482,6 +507,12 @@ class OneWayAnovaCalculator {
         const n_groups = groups.length;
         const results = [];
 
+        // Check for insufficient data
+        if (n_groups < 2) {
+            this.memo.tukeyHSDResults = [];
+            return [];
+        }
+
         // Calculate group means and sizes
         const groupMeans = {};
         const groupSizes = {};
@@ -556,6 +587,12 @@ class OneWayAnovaCalculator {
         // you would need the full Duncan test calculation
         const groupedData = this.groupDataByFactor();
         
+        // Check for insufficient data
+        if (Object.keys(groupedData).length < 2) {
+            this.memo.duncanResults = [];
+            return [];
+        }
+
         // For now, we'll just calculate homogeneous subsets for Duncan
         const subsets = this.calculateHomogeneousSubsets(groupedData, 'Duncan');
         
@@ -577,6 +614,12 @@ class OneWayAnovaCalculator {
             groupedData = this.groupDataByFactor();
         }
 
+        // Check for insufficient data
+        if (Object.keys(groupedData).length < 2) {
+            this.memo[key] = { output: [], subsetCount: 0 };
+            return { output: [], subsetCount: 0 };
+        }
+
         const groups = Object.entries(groupedData);
         const k = groups.length;
 
@@ -591,30 +634,30 @@ class OneWayAnovaCalculator {
             mean: values.reduce((acc, val) => acc + val, 0) / values.length,
             n: values.length
         }));
-        console.log('groupStats', JSON.stringify(groupStats));
+        // console.log('groupStats', JSON.stringify(groupStats));
         groupStats.sort((a, b) => a.mean - b.mean);
-        console.log('groupStats sorted', JSON.stringify(groupStats));
+        // console.log('groupStats sorted', JSON.stringify(groupStats));
 
         // --- STEP-DOWN PROCEDURE TO FIND SUBSETS ---
         const subsets = [];
         for (let i = 0; i < k; i++) {
             for (let j = i; j < k; j++) {
                 const currentRangeGroups = groupStats.slice(i, j + 1);
-                console.log(`currentRangeGroups ${i} ${j}`, JSON.stringify(currentRangeGroups));
+                // console.log(`currentRangeGroups ${i} ${j}`, JSON.stringify(currentRangeGroups));
                 const r = currentRangeGroups.length;
 
                 if (r < 2) continue;
 
                 const minMean = currentRangeGroups[0].mean;
-                console.log('minMean', minMean);
+                // console.log('minMean', minMean);
                 const maxMean = currentRangeGroups[r - 1].mean;
-                console.log('maxMean', maxMean);
+                // console.log('maxMean', maxMean);
 
                 // Use harmonic mean for the groups in the current range
                 const harmonicMeanN = r / currentRangeGroups.reduce((acc, g) => acc + (1 / g.n), 0);
-                console.log('harmonicMeanN', harmonicMeanN);
+                // console.log('harmonicMeanN', harmonicMeanN);
                 const stdError = Math.sqrt(MSE / harmonicMeanN);
-                console.log('stdError', stdError);
+                // console.log('stdError', stdError);
 
                 let criticalValue;
                 if (method === 'Tukey HSD') {
@@ -625,11 +668,11 @@ class OneWayAnovaCalculator {
                 } else {
                     criticalValue = stdlibstatsBaseDistsStudentizedRangeQuantile(0.95, k, df);
                 }
-                console.log('criticalValue', criticalValue);
-                console.log('maxMean - minMean', maxMean - minMean);
-                console.log('criticalValue * stdError', criticalValue * stdError);
+                // console.log('criticalValue', criticalValue);
+                // console.log('maxMean - minMean', maxMean - minMean);
+                // console.log('criticalValue * stdError', criticalValue * stdError);
                 if ((maxMean - minMean) <= (criticalValue * stdError)) {
-                    console.log('subsets.push', currentRangeGroups.map(g => g.name));
+                    // console.log('subsets.push', currentRangeGroups.map(g => g.name));
                     subsets.push(currentRangeGroups.map(g => g.name));
                 }
                 // else if (i === k - 2 && j === k - 1) {
@@ -638,7 +681,7 @@ class OneWayAnovaCalculator {
                 // }
             }
         }
-        console.log('subsets', JSON.stringify(subsets));
+        // console.log('subsets', JSON.stringify(subsets));
         // Filter subsets to keep only maximal subsets
         // Maksimal subset adalah subset yang tidak sepenuhnya terkandung dalam subset lain
         // (tidak ada subset lain yang berisi semua elemen subset ini dan lebih besar)
@@ -666,7 +709,7 @@ class OneWayAnovaCalculator {
                     maximalSubsets.push([name]);
                 });
         }
-        console.log('maximalSubsets', JSON.stringify(maximalSubsets));
+        // console.log('maximalSubsets', JSON.stringify(maximalSubsets));
 
 
         // --- FORMATTING THE OUTPUT ---
@@ -723,64 +766,67 @@ class OneWayAnovaCalculator {
         if (this.memo.finalOutput) return this.memo.finalOutput;
         
         // Perbaikan: cek groupedData sebagai objek, bukan array, dan gunakan Object.keys untuk menghitung jumlah grup
+        // Penjelasan:
+        // groupedData menyimpan data yang telah dikelompokkan berdasarkan faktor (misal: grup perlakuan).
+        // hasInsufficientData adalah variabel boolean yang bernilai true jika:
+        //   - Tidak ada data valid pada variabel utama (this.validData)
+        //   - Tidak ada data valid pada variabel faktor (this.validFactorData)
+        //   - Tidak ada grup yang terbentuk dari proses pengelompokan (groupedData)
+        // Jika salah satu kondisi di atas terpenuhi, maka analisis tidak dapat dilakukan.
+        // oneWayAnova menyimpan hasil perhitungan statistik ANOVA satu arah.
+
         const groupedData = this.groupDataByFactor();
         const hasInsufficientData = 
             this.validData.length === 0 ||
             this.validFactorData.length === 0 ||
-            Object.keys(groupedData).length === 0;
+            Object.keys(groupedData).length < 2;
         const oneWayAnova = this.calculateAnovaStatistics();
 
         let descriptives = [];
         if (this.statisticsOptions && this.statisticsOptions.descriptive) {
-            descriptives = {
-                variable: this.variable,
-                descriptive: this.calculateDescriptiveStatistics()
-            };
+            descriptives = this.calculateDescriptiveStatistics();
         }
         
         let homogeneityOfVariances = [];
         if (this.statisticsOptions && this.statisticsOptions.homogeneityOfVariance) {
-            homogeneityOfVariances = {
-                variable: this.variable,
-                homogeneityOfVariances: this.calculateHomogeneityOfVariance()
-            };
+            homogeneityOfVariances = this.calculateHomogeneityOfVariance();
         }
         
         let multipleComparisons = [];
         let homogeneousSubsets = [];
         if (this.equalVariancesAssumed && this.equalVariancesAssumed.tukey) {
-            multipleComparisons = {
-                variable: this.variable,
-                multipleComparisons: this.calculateTukeyHSD()
-            };
+            multipleComparisons = this.calculateTukeyHSD();
             
             const tukeySubsets = this.calculateHomogeneousSubsets(null, 'Tukey HSD');
             homogeneousSubsets.push({
-                variable: this.variable,
-                subsetCount: tukeySubsets.subsetCount,
-                homogeneousSubsets: tukeySubsets.output
+                method: 'Tukey HSD',
+                ...tukeySubsets
             });
         }
 
         if (this.equalVariancesAssumed && this.equalVariancesAssumed.duncan) {
             const duncanSubsets = this.calculateHomogeneousSubsets(null, 'Duncan');
             homogeneousSubsets.push({
-                variable: this.variable,
-                subsetCount: duncanSubsets.subsetCount,
-                homogeneousSubsets: duncanSubsets.output
+                method: 'Duncan',
+                ...duncanSubsets
             });
         }
         
         const result = {
+            variable1: this.variable1,
             oneWayAnova,
-            descriptives,
-            homogeneityOfVariances,
-            multipleComparisons,
+            descriptives: this.statisticsOptions && this.statisticsOptions.descriptive ? descriptives : [],
+            homogeneityOfVariances: this.statisticsOptions && this.statisticsOptions.homogeneityOfVariance ? homogeneityOfVariances : [],
+            multipleComparisons: this.equalVariancesAssumed && this.equalVariancesAssumed.tukey ? multipleComparisons : [],
             homogeneousSubsets,
             metadata: {
                 hasInsufficientData,
-                variableName: this.variable.name,
-                factorVariableName: this.factorVariable.name
+                totalData1: this.data1.length,
+                totalData2: this.data2.length,
+                validData1: this.validData.length,
+                validData2: this.validFactorData.length,
+                variable1Name: this.variable1.name,
+                variable2Name: this.variable2.name
             }
         };
         

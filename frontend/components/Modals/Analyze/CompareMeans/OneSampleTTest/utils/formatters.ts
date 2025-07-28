@@ -1,11 +1,12 @@
 import {
-    OneSampleTTestResults,
     OneSampleTTestTable,
     TableColumnHeader,
     TableRow,
-    OneSampleStatistics,
     OneSampleTest,
+    OneSampleTTestResult,
+    OneSampleStatistics,
 } from '../types';
+import { Variable } from '@/types/Variable';
 
 /**
  * Formats frequencies table based on the specified range option
@@ -14,9 +15,9 @@ import {
  * @returns Formatted table
  */
 export function formatOneSampleStatisticsTable(
-    results: OneSampleTTestResults,
+    results: OneSampleTTestResult[],
 ): OneSampleTTestTable {
-    if (!results || !results.oneSampleStatistics || results.oneSampleStatistics.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "One-Sample Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -37,17 +38,17 @@ export function formatOneSampleStatisticsTable(
     };
 
     // Process each result
-    results.oneSampleStatistics.forEach((result) => {
-        const stats = result.stats as OneSampleStatistics;
-        const decimals = result.variable.decimals
+    results.forEach((result) => {
+        const stats = result.oneSampleStatistics as OneSampleStatistics;
+        const decimals = result.variable1?.decimals;
 
         table.rows.push(
             {
-                rowHeader: [result.variable.label || result.variable.name],
+                rowHeader: [result.variable1?.label || result.variable1?.name],
                 N: stats.N,
-                Mean: formatNumber(stats.Mean, decimals + 2),
-                StdDev: formatNumber(stats.StdDev, decimals + 3),
-                SEMean: formatNumber(stats.SEMean, decimals + 3)
+                Mean: formatNumber(stats.Mean, decimals! + 2),
+                StdDev: formatNumber(stats.StdDev, decimals! + 3),
+                SEMean: formatNumber(stats.SEMean, decimals! + 3)
             }
         );
     });
@@ -61,9 +62,10 @@ export function formatOneSampleStatisticsTable(
  * @returns Formatted table
  */
 export function formatOneSampleTestTable (
-    results: OneSampleTTestResults
+    results: OneSampleTTestResult[],
+    testValue: number,
 ): OneSampleTTestTable {
-    if (!results || !results.oneSampleTest || results.oneSampleTest.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "One-Sample Test",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -71,7 +73,7 @@ export function formatOneSampleTestTable (
         };
     }
     
-    const testValueLabel = 'Test Value = ' + results.oneSampleTest[0].testValue;
+    const testValueLabel = 'Test Value = ' + testValue;
 
     const table: OneSampleTTestTable = {
         title: 'One-Sample Test',
@@ -100,19 +102,19 @@ export function formatOneSampleTestTable (
     };
 
     // Process each result
-    results.oneSampleTest.forEach((result) => {
-        const stats = result.stats as OneSampleTest;
-        const decimals = result.variable.decimals;
-        
+    results.forEach((result) => {
+        const stats = result.oneSampleTest as OneSampleTest;
+        const decimals = result.variable1?.decimals;
+
         table.rows.push(
             {
-                rowHeader: [result.variable.label || result.variable.name],
-                T: formatNumber(stats.T, decimals + 3),
+                rowHeader: [result.variable1?.label || result.variable1?.name],
+                T: formatNumber(stats.T, decimals! + 3),
                 DF: formatDF(stats.DF),
                 PValue: formatPValue(stats.PValue),
-                MeanDifference: formatNumber(stats.MeanDifference, decimals + 3),
-                Lower: formatNumber(stats.Lower, decimals + 2),
-                Upper: formatNumber(stats.Upper, decimals + 2)
+                MeanDifference: formatNumber(stats.MeanDifference, decimals! + 3),
+                Lower: formatNumber(stats.Lower, decimals! + 2),
+                Upper: formatNumber(stats.Upper, decimals! + 2)
             }
         );
     });

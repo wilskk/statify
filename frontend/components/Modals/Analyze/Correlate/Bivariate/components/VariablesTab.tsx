@@ -5,6 +5,7 @@ import VariableListManager, { TargetListConfig } from '@/components/Common/Varia
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { Variable } from "@/types/Variable";
 import { VariablesTabProps } from "../types";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,
@@ -14,6 +15,17 @@ const VariablesTab: FC<VariablesTabProps> = ({
     moveToAvailableVariables,
     moveToTestVariables,
     reorderVariables,
+    // Moved from OptionsTab
+    correlationCoefficient,
+    setCorrelationCoefficient,
+    testOfSignificance,
+    setTestOfSignificance,
+    flagSignificantCorrelations,
+    setFlagSignificantCorrelations,
+    showOnlyTheLowerTriangle,
+    setShowOnlyTheLowerTriangle,
+    showDiagonal,
+    setShowDiagonal,
     tourActive = false,
     currentStep = 0,
     tourSteps = [],
@@ -92,9 +104,17 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return tourSteps[currentStep]?.targetId === elementId;
     }, [tourActive, currentStep, tourSteps]);
 
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+
+    const correlationCoefficientStepIndex = getStepIndex("correlation-coefficient-section");
+    const testOfSignificanceStepIndex = getStepIndex("test-of-significance-section");
+    const flagSignificantCorrelationsStepIndex = getStepIndex("flag-significant-correlations-section");
+    const showOnlyTheLowerTriangleStepIndex = getStepIndex("show-only-the-lower-triangle-section");
+    const showDiagonalStepIndex = getStepIndex("show-diagonal-section");
+    
     const renderAllowUnknown = () => (
         <>
-            <div className="flex items-center mt-2 p-1.5">
+            <div id="allow-unknown-section" className="flex items-center mt-2 p-1.5 relative">
                 <Checkbox
                     id="allowUnknown"
                     checked={allowUnknown}
@@ -104,34 +124,160 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
                     Treat &apos;unknown&apos; as Scale and allow selection
                 </Label>
+                {tourActive && isTourElementActive("allow-unknown-section") && (
+                    <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                )}
             </div>
         </>
     );
 
     // --- Render the manager component and error message ---
     return (
-        <div className="space-y-2">
-            <VariableListManager
-                availableVariables={availableVariables}
-                targetLists={targetLists}
-                variableIdKey={variableIdKeyToUse}
-                highlightedVariable={managerHighlightedVariable}
-                setHighlightedVariable={setManagerHighlightedVariable}
-                onMoveVariable={handleMoveVariable}
-                onReorderVariable={handleReorderVariables}
-                onVariableDoubleClick={handleDoubleClick}
-                availableListHeight={'273.5px'}
-                getDisplayName={getDisplayName}
-                isVariableDisabled={isVariableDisabled}
-                showArrowButtons={true}
-                renderExtraInfoContent={renderAllowUnknown}
-            />
+        <div className="space-y-4">
+            <div className="relative">
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    onVariableDoubleClick={handleDoubleClick}
+                    availableListHeight={'273.5px'}
+                    getDisplayName={getDisplayName}
+                    isVariableDisabled={isVariableDisabled}
+                    showArrowButtons={true}
+                    renderExtraInfoContent={renderAllowUnknown}
+                />
 
-            <div id="two-independent-samples-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'two-independent-samples-available-variables')} />
+                <div id="bivariate-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'bivariate-available-variables')} />
+                </div>
+                <div id="bivariate-test-variables" className="absolute top-0 right-0 w-[48%] h-[75%] pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'bivariate-test-variables')} />
+                </div>
             </div>
-            <div id="two-independent-samples-test-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'two-independent-samples-test-variables')} />
+
+            {/* Moved from OptionsTab */}
+            <div id="correlation-coefficient-section" className="bg-card border border-border rounded-md p-5 relative">
+                <div className="text-sm font-medium mb-3">Correlation Coefficient</div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    <div className="flex items-center">
+                        <Checkbox
+                            id="pearson"
+                            checked={correlationCoefficient.pearson}
+                            onCheckedChange={(checked) => 
+                                setCorrelationCoefficient({ ...correlationCoefficient, pearson: !!checked })
+                            }
+                            className="mr-2"
+                        />
+                        <Label htmlFor="pearson" className="text-sm cursor-pointer">Pearson</Label>
+                    </div>
+                    <div className="flex items-center">
+                        <Checkbox
+                            id="kendalls-tau-b"
+                            checked={correlationCoefficient.kendallsTauB}
+                            onCheckedChange={(checked) => 
+                                setCorrelationCoefficient({ ...correlationCoefficient, kendallsTauB: !!checked })
+                            }
+                            className="mr-2"
+                        />
+                        <Label htmlFor="kendalls-tau-b" className="text-sm cursor-pointer">Kendalls Tau-b</Label>
+                    </div>
+                    <div className="flex items-center">
+                        <Checkbox
+                            id="spearman"
+                            checked={correlationCoefficient.spearman}
+                            onCheckedChange={(checked) => 
+                                setCorrelationCoefficient({ ...correlationCoefficient, spearman: !!checked })
+                            }
+                            className="mr-2"
+                        />
+                        <Label htmlFor="spearman" className="text-sm cursor-pointer">Spearman</Label>
+                    </div>
+                </div>
+                <ActiveElementHighlight active={tourActive && currentStep === correlationCoefficientStepIndex} />
+            </div>
+
+            <div id="test-of-significance-section" className="bg-card border border-border rounded-md p-5 relative">
+                <div className="text-sm font-medium mb-3">Test of Significance</div>    
+                    <RadioGroup
+                        value={testOfSignificance.twoTailed ? "twoTailed" : "oneTailed"}
+                        className="grid grid-cols-2 gap-x-6 gap-y-3"
+                        onValueChange={(value) => {
+                            setTestOfSignificance({
+                                ...testOfSignificance,
+                                twoTailed: value === "twoTailed",
+                                oneTailed: value === "oneTailed"
+                            });
+                        }}
+                    >
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem
+                                value="twoTailed"
+                                id="twoTailed"
+                                className="h-4 w-4 text-blue-600"
+                            />
+                            <Label htmlFor="twoTailed" className="text-sm font-medium text-gray-700">
+                                Two-tailed
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem
+                                value="oneTailed"
+                                id="oneTailed"
+                                className="h-4 w-4 text-blue-600"
+                            />
+                            <Label htmlFor="oneTailed" className="text-sm font-medium text-gray-700">
+                                One-tailed
+                            </Label>
+                        </div>
+                    </RadioGroup>
+                <ActiveElementHighlight active={tourActive && currentStep === testOfSignificanceStepIndex} />
+            </div>
+
+            <div className="bg-card border border-border rounded-md p-5 relative">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    <div id="flag-significant-correlations-section" className="flex items-center">
+                        <Checkbox
+                            id="flag-significant-correlations"
+                            checked={flagSignificantCorrelations}
+                            onCheckedChange={(checked) => 
+                                setFlagSignificantCorrelations(!!checked)
+                            }
+                            className="mr-2"
+                            disabled
+                        />
+                        <Label htmlFor="flag-significant-correlations" className="text-sm cursor-pointer">Flag Significant Correlations</Label>
+                        <ActiveElementHighlight active={tourActive && currentStep === flagSignificantCorrelationsStepIndex} />
+                    </div>
+                    <div id="show-only-the-lower-triangle-section" className="flex items-center">
+                        <Checkbox
+                            id="show-only-the-lower-triangle"
+                            checked={showOnlyTheLowerTriangle}
+                            onCheckedChange={(checked) => 
+                                setShowOnlyTheLowerTriangle(!!checked)
+                            }
+                            className="mr-2"
+                        />
+                        <Label htmlFor="show-only-the-lower-triangle" className="text-sm cursor-pointer">Show Only the Lower Triangle</Label>
+                        <ActiveElementHighlight active={tourActive && currentStep === showOnlyTheLowerTriangleStepIndex} />
+                    </div>
+                    <div id="show-diagonal-section" className="flex items-center">
+                        <Checkbox
+                            id="show-diagonal"
+                            checked={showDiagonal}
+                            onCheckedChange={(checked) => 
+                                setShowDiagonal(!!checked)
+                            }
+                            className="mr-2"
+                            disabled={!showOnlyTheLowerTriangle}
+                        />
+                        <Label htmlFor="show-diagonal" className="text-sm cursor-pointer">Show Diagonal</Label>
+                        <ActiveElementHighlight active={tourActive && currentStep === showDiagonalStepIndex} />
+                    </div>
+                </div>
             </div>
         </div>
     );

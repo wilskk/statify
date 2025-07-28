@@ -111,7 +111,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const renderAllowUnknown = () => (
         <>
-            <div className="flex items-center mt-2 p-1.5">
+            <div id="allow-unknown-section" className="flex items-center mt-2 p-1.5 relative">
                 <Checkbox
                     id="allowUnknown"
                     checked={allowUnknown}
@@ -121,6 +121,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
                     Treat &apos;unknown&apos; as Scale and allow selection
                 </Label>
+                {tourActive && isTourElementActive("allow-unknown-section") && (
+                    <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                )}
             </div>
         </>
     );
@@ -142,7 +145,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                 Estimate effect size
                             </Label>
                             {tourActive && isTourElementActive("estimate-effect-size-section") && (
-                                <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                                <div className="absolute bottom-0 right-0 w-full h-6 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
                             )}
                         </div>
                     </div>
@@ -154,29 +157,34 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     // --- Render the manager component and error message ---
     return (
-        <div className="space-y-2">
-            <VariableListManager
-                availableVariables={availableVariables}
-                targetLists={targetLists}
-                variableIdKey={variableIdKeyToUse}
-                highlightedVariable={managerHighlightedVariable}
-                setHighlightedVariable={setManagerHighlightedVariable}
-                onMoveVariable={handleMoveVariable}
-                onReorderVariable={handleReorderVariables}
-                onVariableDoubleClick={handleDoubleClick}
-                availableListHeight={'273.5px'}
-                getDisplayName={getDisplayName}
-                isVariableDisabled={isVariableDisabled}
-                renderListFooter={estimateEffectSizeFooter}
-                showArrowButtons={true}
-                renderExtraInfoContent={renderAllowUnknown}
-            />
+        <div className="space-y-4">
+            <div className="relative">
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    onVariableDoubleClick={handleDoubleClick}
+                    availableListHeight={'273.5px'}
+                    getDisplayName={getDisplayName}
+                    isVariableDisabled={isVariableDisabled}
+                    renderListFooter={estimateEffectSizeFooter}
+                    showArrowButtons={true}
+                    renderExtraInfoContent={renderAllowUnknown}
+                />
 
-            <div id="one-way-anova-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-way-anova-available-variables')} />
-            </div>
-            <div id="one-way-anova-test-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-way-anova-test-variables')} />
+                <div id="one-way-anova-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-way-anova-available-variables')} />
+                </div>
+                <div id="one-way-anova-test-variables" className="absolute top-0 right-0 w-[48%] h-[75%] pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-way-anova-test-variables')} />
+                </div>
+                <div id="factor-variable-section" className="absolute top-[52%] right-0 w-[48%] h-[22%] pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'factor-variable-section')} />
+                </div>
             </div>
         </div>
     );
