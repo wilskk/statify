@@ -1251,7 +1251,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           console.log("[Analyze] Mengirim data ke Worker untuk Residuals Statistics...");
           residualsStatisticsWorker.postMessage({
             dependent: filteredDependentData,
-            independent: filteredIndependentData[0]
+            independent: filteredIndependentData
           });
     
           residualsStatisticsWorker.onmessage = async (e: MessageEvent) => {
