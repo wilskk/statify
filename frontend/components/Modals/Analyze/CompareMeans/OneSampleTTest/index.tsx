@@ -1,9 +1,11 @@
 "use client";
-import React, { useState, useEffect, FC } from "react";
+
+import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { HelpCircle, Loader2 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
-    DialogFooter,
     DialogHeader,
     DialogTitle
 } from "@/components/ui/dialog";
@@ -13,222 +15,214 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import { useDataStore } from "@/stores/useDataStore";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useResultStore } from "@/stores/useResultStore";
-import type { Variable } from "@/types/Variable";
+import { BaseModalProps } from "@/types/modalTypes";
+import { toast } from "sonner";
+import {
+    useVariableSelection,
+    useTestSettings,
+    useOneSampleTTestAnalysis,
+    useTourGuide,
+    baseTourSteps,
+} from "./hooks";
+import {
+    TabControlProps,
+    TabType,
+} from "./types";
 
-import VariablesTab from "./VariablesTab";
+import VariablesTab from "./components/VariablesTab";
+// import OptionsTab from "./components/OptionsTab";
 
-interface OneSampleTTestModalProps {
-    onClose: () => void;
-}
+const OneSampleTTestContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
+    const [activeTab, setActiveTab] = useState<TabType>("variables");
+    const isVariablesLoading = useVariableStore((state: any) => state.isLoading);
+    const variablesError = useVariableStore((state: any) => state.error);
+    
+    const {
+        availableVariables,
+        testVariables,
+        highlightedVariable,
+        setHighlightedVariable,
+        moveToTestVariables,
+        moveToAvailableVariables,
+        reorderVariables,
+        resetVariableSelection
+    } = useVariableSelection();
 
-const Index: FC<OneSampleTTestModalProps> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState("variables");
-    const [listVariables, setListVariables] = useState<Variable[]>([]);
-    const [testVariables, setTestVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'selected'} | null>(null);
-    const [testValue, setTestValue] = useState<number>(0);
-    const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(false);
+    const {
+        testValue,
+        setTestValue,
+        estimateEffectSize,
+        setEstimateEffectSize,
+        resetTestSettings
+    } = useTestSettings();
 
-    const [isCalculating, setIsCalculating] = useState<boolean>(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const { 
+        isCalculating,
+        errorMsg, 
+        runAnalysis,
+        cancelAnalysis
+    } = useOneSampleTTestAnalysis({
+        testVariables,
+        testValue,
+        estimateEffectSize,
+        onClose
+    });
 
-    const variables = useVariableStore.getState().variables;
-    const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab: (tab: string) => {
+            setActiveTab(tab as TabType);
+        },
+        currentActiveTab: activeTab
+    }), [activeTab]);
 
-    // Initialize available variables on component mount
-    useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "");
-        setListVariables(validVars);
-    }, [variables]);
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour
+    } = useTourGuide(baseTourSteps, containerType, tabControl);
 
-    const handleSelectedVariable = (variable: Variable) => {
-        setTestVariables(prev => [...prev, variable]);
-        setListVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setHighlightedVariable(null);
-    };
+    const handleReset = useCallback(() => {
+        resetVariableSelection();
+        resetTestSettings();
+        cancelAnalysis();
+    }, [resetVariableSelection, resetTestSettings, cancelAnalysis]);
 
-    const handleDeselectVariable = (variable: Variable) => {
-        setListVariables((prev) => {
-            const newList = [...prev, variable];
-            return newList.sort((a, b) => {
-                const indexA = variables.findIndex(v => v.columnIndex === a.columnIndex);
-                const indexB = variables.findIndex(v => v.columnIndex === b.columnIndex);
-                return indexA - indexB;
-            });
-        });
-        setTestVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setHighlightedVariable(null);
-    };
+    const handleTabChange = useCallback((value: string) => {
+        if (value === 'variables') {
+            setActiveTab(value);
+        }
+    }, [setActiveTab]);
 
-    const handleReset = () => {
-        setListVariables(variables.filter(v => v.name !== ""));
-        setTestVariables([]);
-        setHighlightedVariable(null);
-        setTestValue(0);
-        setEstimateEffectSize(false);
-        setErrorMsg(null);
-    };
-
-    const handleRunTest = async () => {
+    const handleContinue = useCallback(() => {
         if (testVariables.length === 0) {
-            setErrorMsg("Please select at least one variable.");
+            toast.warning("Please select at least one variable for testing.");
             return;
         }
-        setErrorMsg(null);
-        setIsCalculating(true);
-    
-        try {
-            // 1. Prepare variable data using useDataStore's getVariableData
-            const variableDataPromises = [];
-            for (const varDef of testVariables) {
-                variableDataPromises.push(useDataStore.getState().getVariableData(varDef));
-            }
-            const variableData = await Promise.all(variableDataPromises);
-
-            // 2. Create worker and set up handlers
-            const worker = new Worker("/workers/OneSampleTTest/index.js",  { type: 'module' });
-
-            // Set a timeout to prevent worker hanging
-            const timeoutId = setTimeout(() => {
-                worker.terminate();
-                setErrorMsg("Analysis timed out. Please try again with fewer variables.");
-                setIsCalculating(false);
-            }, 60000); // 60 second timeout
-
-            worker.onmessage = async (e) => {
-                clearTimeout(timeoutId);
-                const wData = e.data;
-
-                if (wData.success) {
-                    try {
-                        // Save results to database
-                        const variableNames = testVariables.map(v => v.name);
-                        let logParts = [`T-TEST {TESTVAL=${testValue}} {VARIABLES=${variableNames.join(" ")}}`];
-                        
-                        if (estimateEffectSize) {
-                            logParts.push(`{ES DISPLAY (TRUE)}`);
-                        } else {
-                            logParts.push(`{ES DISPLAY (FALSE)}`);
-                        }
-
-                        logParts.push(`{CRITERIA=0.95}`);
-
-                        // Join all parts with spaces
-                        let logMsg = logParts.join(' ');
-
-                        const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "T-Test", note: "" });
-
-                        if(wData.statistics) {
-                            await addStatistic(analyticId, {
-                                title: "One-Sample Statistics",
-                                output_data: wData.statistics,
-                                components: "One-Sample Statistics",
-                                description: ""
-                            });
-                        }
-
-                        if(wData.test) {
-                            await addStatistic(analyticId, {
-                                title: "One-Sample Test",
-                                output_data: wData.test,
-                                components: "One-Sample Test",
-                                description: ""
-                            });
-                        }
-                        
-                        setIsCalculating(false);
-                        worker.terminate();
-                        onClose();
-                    } catch (err) {
-                        console.error(err);
-                        setErrorMsg(`Error saving results.`);
-                        setIsCalculating(false);
-                        worker.terminate();
-                    }
-                } else {
-                    setErrorMsg(wData.error || "Worker returned an error.");
-                    setIsCalculating(false);
-                    worker.terminate();
-                }
-            };
-
-            worker.onerror = (event) => {
-                clearTimeout(timeoutId);
-                console.error("Worker error:", event);
-                setIsCalculating(false);
-                setErrorMsg("Worker error occurred. Check console for details.");
-                worker.terminate();
-            };
-
-            // 3. Send data to worker - using the new format with variableData
-            worker.postMessage({
-                variableData: variableData,
-                testValue: testValue,
-                estimateEffectSize: estimateEffectSize
-            });
         
-        } catch (ex) {
-            console.error(ex);
-            setErrorMsg("Something went wrong.");
-            setIsCalculating(false);
+        runAnalysis();
+    }, [testVariables, runAnalysis]);
+
+    useEffect(() => {
+        return () => {
+            cancelAnalysis();
+        };
+    }, [cancelAnalysis]);
+
+    const renderContent = () => {
+        if (isVariablesLoading) {
+            return (
+                <div className="flex items-center justify-center p-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Loading variables...</span>
+                </div>
+            );
         }
-    };
+
+        if (variablesError) {
+            return (
+                <div className="p-10 text-destructive text-center">
+                    <p>Error loading variables:</p>
+                    <p className="text-sm">{variablesError.message}</p>
+                </div>
+            )
+        }
+
+        return (
+            <>
+                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
+                    <VariablesTab
+                        availableVariables={availableVariables}
+                        testVariables={testVariables}
+                        testValue={testValue}
+                        setTestValue={setTestValue}
+                        estimateEffectSize={estimateEffectSize}
+                        setEstimateEffectSize={setEstimateEffectSize}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToTestVariables={moveToTestVariables}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
+                    />
+                </TabsContent>
+            </>
+        );
+    }
 
     return (
-        <DialogContent className="max-w-[800px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">One-Sample T Test</DialogTitle>
-            </DialogHeader>
+        <>
+            <AnimatePresence>
+                {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList>
                         <TabsTrigger
+                            id="variables-tab-trigger"
                             value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                         >
                             Variables
                         </TabsTrigger>
                     </TabsList>
                 </div>
 
-                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                    <VariablesTab
-                        listVariables={listVariables}
-                        testVariables={testVariables}
-                        highlightedVariable={highlightedVariable}
-                        setHighlightedVariable={setHighlightedVariable}
-                        testValue={testValue}
-                        setTestValue={setTestValue}
-                        estimateEffectSize={estimateEffectSize}
-                        setEstimateEffectSize={setEstimateEffectSize}
-                        handleSelectedVariable={handleSelectedVariable}
-                        handleDeselectVariable={handleDeselectVariable}
-                    />
-                </TabsContent>
+                {renderContent()}
             </Tabs>
 
-            {errorMsg && <div className="px-6 py-2 text-red-600">{errorMsg}</div>}
-            
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleRunTest}
-                        disabled={
-                            isCalculating ||
-                            testVariables.length === 0
-                        }
-                    >
-                        {isCalculating ? "Calculating..." : "OK"}
-                    </Button>
+            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
+
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div className="flex items-center text-muted-foreground">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={startTour}
+                                    aria-label="Start feature tour"
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+
+                <div>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="mr-2"
                         onClick={handleReset}
                         disabled={isCalculating}
                     >
@@ -236,16 +230,49 @@ const Index: FC<OneSampleTTestModalProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="mr-2"
                         onClick={onClose}
                         disabled={isCalculating}
                     >
                         Cancel
                     </Button>
+                    <Button
+                        id="one-sample-t-test-ok-button"
+                        onClick={handleContinue}
+                        disabled={isCalculating || testVariables.length < 1}
+                    >
+                        {isCalculating ? "Processing..." : "OK"}
+                    </Button>
                 </div>
-            </DialogFooter>
-        </DialogContent>
+            </div>
+        </>
     );
 };
 
-export default Index;
+// Komponen OneSampleTTest yang menjadi titik masuk utama
+const OneSampleTTest: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <OneSampleTTestContent onClose={onClose} containerType={containerType} {...props} />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">One-Sample T Test</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <OneSampleTTestContent onClose={onClose} containerType={containerType} {...props} />
+            </div>
+        </DialogContent>
+    );
+}
+
+export default OneSampleTTest;
+export { OneSampleTTestContent };

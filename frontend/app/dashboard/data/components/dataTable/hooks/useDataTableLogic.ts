@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTableLayout } from './useTableLayout';
 import { useTableUpdates } from './useTableUpdates';
 import { useContextMenuLogic } from './useContextMenuLogic';
@@ -41,9 +41,8 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<any>) => {
         actualNumCols,
     });
 
-    // 5. Return all necessary values and handlers
-    return {
-        // Layout & Data
+    // 5. Memoize layout data separately from handlers to reduce re-computation
+    const layoutData = useMemo(() => ({
         colHeaders,
         columns,
         displayData,
@@ -51,15 +50,26 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<any>) => {
         displayNumCols,
         actualNumRows,
         actualNumCols,
+    }), [colHeaders, columns, displayData, displayNumRows, displayNumCols, actualNumRows, actualNumCols]);
 
-        // Event Handlers
+    // 6. Memoize handlers separately as they change less frequently
+    const handlers = useMemo(() => ({
         handleBeforeChange,
         handleAfterColumnResize,
         handleAfterValidate,
         handleAfterChange,
+    }), [handleBeforeChange, handleAfterColumnResize, handleAfterValidate, handleAfterChange]);
 
-        // Context Menu
+    // 7. Memoize context menu data separately
+    const contextMenuData = useMemo(() => ({
         contextMenuConfig,
         isRangeSelected,
-    };
+    }), [contextMenuConfig, isRangeSelected]);
+
+    // 8. Return combined object with minimal re-creation
+    return useMemo(() => ({
+        ...layoutData,
+        ...handlers,
+        ...contextMenuData,
+    }), [layoutData, handlers, contextMenuData]);
 };

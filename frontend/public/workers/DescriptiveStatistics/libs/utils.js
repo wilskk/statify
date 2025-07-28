@@ -1,52 +1,97 @@
 /**
  * @file /libs/utils.js
  * @description
- * Kumpulan fungsi utilitas terpusat yang digunakan oleh berbagai worker statistik.
+ * Berisi fungsi-fungsi utilitas umum yang digunakan oleh berbagai kalkulator statistik.
  */
 
+var STATS_DECIMAL_PLACES = 3;
+
 /**
- * Memeriksa apakah sebuah nilai dapat dianggap numerik.
- * Mendukung angka dan string yang merepresentasikan angka.
+ * Memeriksa apakah sebuah nilai dianggap 'missing' berdasarkan definisi variabel.
  * @param {*} value - Nilai yang akan diperiksa.
- * @returns {boolean} True jika numerik, false jika tidak.
+ * @param {object} missingValuesDef - Definisi nilai hilang dari variabel.
+ * @param {boolean} isNumeric - Apakah nilai tersebut bertipe numerik.
+ * @returns {boolean} - True jika nilai adalah missing.
  */
-function isNumeric(value) {
-    if (typeof value === 'number' && !isNaN(value)) return true;
-    if (typeof value === 'string' && value.trim() !== '') {
-        return !isNaN(parseFloat(value));
+function checkIsMissing(value, missingValuesDef, isNumeric) {
+    if (value === null || value === undefined || (isNumeric && isNaN(value))) {
+        return true;
+    }
+    if (!missingValuesDef) return false;
+
+    if (missingValuesDef.type === 'none') {
+        return false;
+    }
+    if (missingValuesDef.type === 'discrete') {
+        // Hati-hati dengan perbandingan tipe data
+        return (missingValuesDef.values || []).some(missingVal => 
+            String(missingVal) === String(value)
+        );
+    }
+    if (missingValuesDef.type === 'range') {
+        const numericValue = Number(value);
+        if (isNaN(numericValue)) return false; // Non-numeric cannot be in a range
+        
+        const { low, high } = missingValuesDef;
+        // Low and high are inclusive
+        return numericValue >= low && numericValue <= high;
+    }
+    if (missingValuesDef.type === 'range_discrete') {
+        const numericValue = Number(value);
+        if (isNaN(numericValue)) {
+            // Check against discrete non-numeric values
+            return (missingValuesDef.values || []).some(missingVal => 
+                String(missingVal) === String(value)
+            );
+        }
+        // Check against discrete numeric values
+        if ((missingValuesDef.values || []).includes(numericValue)) {
+            return true;
+        }
+        // Check against range
+        const { low, high } = missingValuesDef;
+        return numericValue >= low && numericValue <= high;
     }
     return false;
 }
 
 /**
- * Memeriksa apakah sebuah nilai dianggap 'missing' berdasarkan definisi variabel.
- * Mendukung missing diskrit (misal: [99, 98]) dan rentang missing (misal: {min: 90, max: 99}).
+ * Memeriksa apakah suatu nilai dapat diinterpretasikan sebagai numerik.
  * @param {*} value - Nilai yang akan diperiksa.
- * @param {object} definition - Objek definisi missing values dari variabel.
- * @param {boolean} isNumericType - True jika tipe variabel adalah numerik.
- * @returns {boolean} True jika nilai dianggap missing.
+ * @returns {boolean}
  */
-function checkIsMissing(value, definition, isNumericType) {
-    if (value === null || value === undefined || (isNumericType && value === '')) return true;
-    if (!definition) return false;
+function isNumeric(value) {
+    if (value === null || value === undefined || value === '') return false;
+    // The second condition handles cases like "  123  " and rejects "" or "   "
+    return !isNaN(parseFloat(value)) && isFinite(value);
+}
 
-    if (definition.discrete && Array.isArray(definition.discrete)) {
-        const valueToCompare = isNumericType && typeof value !== 'number' ? parseFloat(value) : value;
-        for (const missingVal of definition.discrete) {
-            const discreteMissingToCompare = isNumericType && typeof missingVal === 'string' ? parseFloat(missingVal) : missingVal;
-            if (valueToCompare === discreteMissingToCompare || String(value) === String(missingVal)) return true;
+/**
+ * Membulatkan angka ke jumlah desimal tertentu dengan metode pembulatan
+ * "round half to even" (pembulatan bankir), yang sering digunakan dalam statistik.
+ * Ini berbeda dari Math.round() yang selalu membulatkan 0.5 ke atas.
+ * @param {number} num - Angka yang akan dibulatkan.
+ * @param {number} decimals - Jumlah angka di belakang koma.
+ * @returns {number} - Angka yang sudah dibulatkan.
+ */
+function toSPSSFixed(num, decimals) {
+    if (typeof num !== 'number' || typeof decimals !== 'number') {
+        return num; // Kembalikan nilai asli jika input tidak valid
+    }
+    const shifter = Math.pow(10, decimals);
+    const shiftedNum = num * shifter;
+    const roundedShiftedNum = Math.round(shiftedNum);
+    
+    // Deteksi kasus 'half' (cth: 2.5, 3.5)
+    if (Math.abs(shiftedNum - roundedShiftedNum) === 0.5) {
+        // Jika pembulatan standar menghasilkan angka ganjil, kurangi 1 untuk menjadikannya genap.
+        // Ini efektif membulatkan ke angka genap terdekat.
+        if (roundedShiftedNum % 2 !== 0) {
+            return (roundedShiftedNum - 1) / shifter;
         }
     }
-
-    if (isNumericType && definition.range) {
-        const numValue = typeof value === 'number' ? value : parseFloat(value);
-        if (!isNaN(numValue)) {
-            const min = parseFloat(definition.range.min);
-            const max = parseFloat(definition.range.max);
-            if (!isNaN(min) && !isNaN(max) && numValue >= min && numValue <= max) return true;
-        }
-    }
-    return false;
+    
+    return roundedShiftedNum / shifter;
 }
 
 // Membulatkan angka ke jumlah desimal tertentu (SPSS-style)

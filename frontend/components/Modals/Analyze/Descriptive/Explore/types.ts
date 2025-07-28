@@ -6,7 +6,7 @@ import { UsePlotsSettingsResult } from './hooks/usePlotsSettings';
 
 // Type for highlighted variable
 export type HighlightedVariable = {
-    tempId: string;
+    id: string | number;
     source: 'available' | 'dependent' | 'factor' | 'label';
 } | null;
 

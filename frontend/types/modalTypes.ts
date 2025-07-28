@@ -99,11 +99,20 @@ export enum ModalType {
   PPPlots = "PPPlots",
   QQPlots = "QQPlots",
 
-  // General Linear Model modals
-  ModalUnivariate = "ModalUnivariate",
-  ModalMultivariate = "ModalMultivariate",
-  ModalRepeatedMeasures = "ModalRepeatedMeasures",
-  ModalVarianceComponents = "ModalVarianceComponents",
+    // Compare Means modals
+    OneSampleTTest = "OneSampleTTest",
+    IndependentSamplesTTest = "IndependentSamplesTTest",
+    PairedSamplesTTest = "PairedSamplesTTest",
+    OneWayANOVA = "OneWayANOVA",
+
+    // Correlate modals
+    Bivariate = "Bivariate",
+
+    // General Linear Model modals
+    ModalUnivariate = "ModalUnivariate",
+    ModalMultivariate = "ModalMultivariate",
+    ModalRepeatedMeasures = "ModalRepeatedMeasures",
+    ModalVarianceComponents = "ModalVarianceComponents",
 
   // Classify modals
   ModalTwoStepCluster = "ModalTwoStepCluster",
@@ -116,13 +125,21 @@ export enum ModalType {
   ModalROCCurve = "ModalROCCurve",
   ModalROCAnalysis = "ModalROCAnalysis",
 
-  // Dimension Reduction modals
-  ModalFactor = "ModalFactor",
-  ModalCorrespondenceAnalysis = "ModalCorrespondenceAnalysis",
-  ModalDROptimalScaling = "ModalDROptimalScaling",
-  ModalOptimalScalingCATPCA = "ModalOptimalScalingCATPCA",
-  ModalOptimalScalingOVERALS = "ModalOptimalScalingOVERALS",
-  ModalOptimalScalingMCA = "ModalOptimalScalingMCA",
+    // Dimension Reduction modals
+    ModalFactor = "ModalFactor",
+    ModalCorrespondenceAnalysis = "ModalCorrespondenceAnalysis",
+    ModalDROptimalScaling = "ModalDROptimalScaling",
+    ModalOptimalScalingCATPCA = "ModalOptimalScalingCATPCA",
+    ModalOptimalScalingOVERALS = "ModalOptimalScalingOVERALS",
+    ModalOptimalScalingMCA = "ModalOptimalScalingMCA",
+    
+    // Nonparametric Tests modals
+    ChiSquare = "ChiSquare",
+    Runs = "Runs",
+    TwoIndependentSamples = "TwoIndependentSamples",
+    KIndependentSamples = "KIndependentSamples",
+    TwoRelatedSamples = "TwoRelatedSamples",
+    KRelatedSamples = "KRelatedSamples",
 }
 
 /**
@@ -275,11 +292,20 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.PPPlots]: ModalCategory.Analyze,
   [ModalType.QQPlots]: ModalCategory.Analyze,
 
-  // General Linear Model modals
-  [ModalType.ModalUnivariate]: ModalCategory.Analyze,
-  [ModalType.ModalMultivariate]: ModalCategory.Analyze,
-  [ModalType.ModalRepeatedMeasures]: ModalCategory.Analyze,
-  [ModalType.ModalVarianceComponents]: ModalCategory.Analyze,
+    // Compare Means modals
+    [ModalType.IndependentSamplesTTest]: ModalCategory.Analyze,
+    [ModalType.OneSampleTTest]: ModalCategory.Analyze,
+    [ModalType.PairedSamplesTTest]: ModalCategory.Analyze,
+    [ModalType.OneWayANOVA]: ModalCategory.Analyze,
+
+    // Correlate modals
+    [ModalType.Bivariate]: ModalCategory.Analyze,
+
+    // General Linear Model modals
+    [ModalType.ModalUnivariate]: ModalCategory.Analyze,
+    [ModalType.ModalMultivariate]: ModalCategory.Analyze,
+    [ModalType.ModalRepeatedMeasures]: ModalCategory.Analyze,
+    [ModalType.ModalVarianceComponents]: ModalCategory.Analyze,
 
   // Classify modals
   [ModalType.ModalTwoStepCluster]: ModalCategory.Analyze,
@@ -292,13 +318,21 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.ModalROCCurve]: ModalCategory.Analyze,
   [ModalType.ModalROCAnalysis]: ModalCategory.Analyze,
 
-  // Dimension Reduction modals
-  [ModalType.ModalFactor]: ModalCategory.Analyze,
-  [ModalType.ModalCorrespondenceAnalysis]: ModalCategory.Analyze,
-  [ModalType.ModalDROptimalScaling]: ModalCategory.Analyze,
-  [ModalType.ModalOptimalScalingCATPCA]: ModalCategory.Analyze,
-  [ModalType.ModalOptimalScalingOVERALS]: ModalCategory.Analyze,
-  [ModalType.ModalOptimalScalingMCA]: ModalCategory.Analyze,
+    // Dimension Reduction modals
+    [ModalType.ModalFactor]: ModalCategory.Analyze,
+    [ModalType.ModalCorrespondenceAnalysis]: ModalCategory.Analyze,
+    [ModalType.ModalDROptimalScaling]: ModalCategory.Analyze,
+    [ModalType.ModalOptimalScalingCATPCA]: ModalCategory.Analyze,
+    [ModalType.ModalOptimalScalingOVERALS]: ModalCategory.Analyze,
+    [ModalType.ModalOptimalScalingMCA]: ModalCategory.Analyze,
+    
+    // Nonparametric Tests modals
+    [ModalType.ChiSquare]: ModalCategory.Analyze,
+    [ModalType.Runs]: ModalCategory.Analyze,
+    [ModalType.TwoIndependentSamples]: ModalCategory.Analyze,
+    [ModalType.KIndependentSamples]: ModalCategory.Analyze,
+    [ModalType.TwoRelatedSamples]: ModalCategory.Analyze,
+    [ModalType.KRelatedSamples]: ModalCategory.Analyze,
 };
 
 /**
@@ -353,89 +387,109 @@ export function getModalTitle(type: ModalType): string {
     .replace(/([A-Z])/g, " $1") // Add space before capital letters
     .replace(/^./, (str) => str.toUpperCase()); // Capitalize first letter
 
-  // Handle special cases
-  switch (type) {
-    case ModalType.ImportCSV:
-      return "Import CSV";
-    case ModalType.ExportCSV:
-      return "Export CSV";
-    case ModalType.ImportExcel:
-      return "Import Excel";
-    case ModalType.ExportExcel:
-      return "Export Excel";
-    case ModalType.FindAndReplace:
-      return "Find and Replace";
-    case ModalType.GoTo:
-      return "Go To";
-    case ModalType.DefineVarProps:
-      return "Define Variable Properties";
-    case ModalType.VarPropsEditor:
-      return "Variable Properties Editor";
-    case ModalType.SortVars:
-      return "Sort Variables";
-    case ModalType.ChartBuilderModal:
-      return "Chart Builder";
-    case ModalType.SimpleBarModal:
-      return "Bar Chart";
-    case ModalType.ModalAutomaticLinearModeling:
-      return "Automatic Linear Modeling";
-    case ModalType.ModalLinear:
-      return "Linear Regression";
-    case ModalType.ModalCurveEstimation:
-      return "Curve Estimation";
-    case ModalType.ModalBinaryLogistic:
-      return "Binary Logistic Regression";
-    case ModalType.ModalMultinomialLogistic:
-      return "Multinomial Logistic Regression";
-    case ModalType.ModalOrdinal:
-      return "Ordinal Regression";
-    case ModalType.ModalProbit:
-      return "Probit Analysis";
-    case ModalType.ModalNonlinear:
-      return "Nonlinear Regression";
-    case ModalType.ModalWeightEstimation:
-      return "Weight Estimation";
-    case ModalType.ModalTwoStageLeastSquares:
-      return "Two-Stage Least Squares";
-    case ModalType.ModalPartialLeastSquares:
-      return "Partial Least Squares";
-    case ModalType.ModalQuantiles:
-      return "Quantile Regression";
-    case ModalType.ModalOptimalScaling:
-      return "Optimal Scaling";
-    case ModalType.SetMeasurementLevel:
-      return "Set Measurement Level";
-    case ModalType.DefineDateTime:
-      return "Define Date and Time";
-    case ModalType.DuplicateCases:
-      return "Identify Duplicate Cases";
-    case ModalType.UnusualCases:
-      return "Identify Unusual Cases";
-    case ModalType.Restructure:
-      return "Restructure Data";
-    case ModalType.Aggregate:
-      return "Aggregate Data";
-    case ModalType.MergeFiles:
-      return "Merge Files";
-    case ModalType.SplitFile:
-      return "Split File";
-    case ModalType.WeightCases:
-      return "Weight Cases";
-    case ModalType.MultipleResponse:
-      return "Multiple Response Sets";
-    case ModalType.NewCustomAttr:
-      return "New Custom Attribute";
-    case ModalType.SelectCases:
-      return "Select Cases";
-    case ModalType.ExampleDataset:
-      return "Example Dataset";
-    case ModalType.GoToCase:
-      return "Go To Case";
-    case ModalType.GoToVariable:
-      return "Go To Variable";
-    case ModalType.RecodeDifferentVariables:
-      return "Recode into Different Variables";
-    default:
-      return rawTitle.trim();
-  }
+    // Handle special cases
+    switch (type) {
+        case ModalType.ImportCSV:
+            return "Import CSV";
+        case ModalType.ExportCSV:
+            return "Export CSV";
+        case ModalType.ImportExcel:
+            return "Import Excel";
+        case ModalType.ExportExcel:
+            return "Export Excel";
+        case ModalType.FindAndReplace:
+            return "Find and Replace";
+        case ModalType.GoTo:
+            return "Go To";
+        case ModalType.DefineVarProps:
+            return "Define Variable Properties";
+        case ModalType.VarPropsEditor:
+            return "Variable Properties Editor";
+        case ModalType.SortVars:
+            return "Sort Variables";
+        case ModalType.ChartBuilderModal:
+            return "Chart Builder";
+        case ModalType.SimpleBarModal:
+            return "Bar Chart";
+        case ModalType.ModalAutomaticLinearModeling:
+            return "Automatic Linear Modeling";
+        case ModalType.ModalLinear:
+            return "Linear Regression";
+        case ModalType.ModalCurveEstimation:
+            return "Curve Estimation";
+        case ModalType.ModalBinaryLogistic:
+            return "Binary Logistic Regression";
+        case ModalType.ModalMultinomialLogistic:
+            return "Multinomial Logistic Regression";
+        case ModalType.ModalOrdinal:
+            return "Ordinal Regression";
+        case ModalType.ModalProbit:
+            return "Probit Analysis";
+        case ModalType.ModalNonlinear:
+            return "Nonlinear Regression";
+        case ModalType.ModalWeightEstimation:
+            return "Weight Estimation";
+        case ModalType.ModalTwoStageLeastSquares:
+            return "Two-Stage Least Squares";
+        case ModalType.ModalPartialLeastSquares:
+            return "Partial Least Squares";
+        case ModalType.ModalQuantiles:
+            return "Quantile Regression";
+        case ModalType.ModalOptimalScaling:
+            return "Optimal Scaling";
+        case ModalType.SetMeasurementLevel:
+            return "Set Measurement Level";
+        case ModalType.DefineDateTime:
+            return "Define Date and Time";
+        case ModalType.DuplicateCases:
+            return "Identify Duplicate Cases";
+        case ModalType.UnusualCases:
+            return "Identify Unusual Cases";
+        case ModalType.Restructure:
+            return "Restructure Data";
+        case ModalType.Aggregate:
+            return "Aggregate Data";
+        case ModalType.MergeFiles:
+            return "Merge Files";
+        case ModalType.SplitFile:
+            return "Split File";
+        case ModalType.WeightCases:
+            return "Weight Cases";
+        case ModalType.MultipleResponse:
+            return "Multiple Response Sets";
+        case ModalType.NewCustomAttr:
+            return "New Custom Attribute";
+        case ModalType.SelectCases:
+            return "Select Cases";
+        case ModalType.ExampleDataset:
+            return "Example Dataset";
+        case ModalType.GoToCase:
+            return "Go To Case";
+        case ModalType.GoToVariable:
+            return "Go To Variable";
+        case ModalType.OneSampleTTest:
+            return "One-Sample T Test";
+        case ModalType.IndependentSamplesTTest:
+            return "Independent-Samples T Test";
+        case ModalType.PairedSamplesTTest:
+            return "Paired-Samples T Test";
+        case ModalType.OneWayANOVA:
+            return "One-Way ANOVA";
+        case ModalType.Bivariate:
+            return "Bivariate Correlations";
+        case ModalType.ChiSquare:
+            return "Chi-square Test";
+        case ModalType.Runs:
+            return "Runs Test";
+        case ModalType.TwoIndependentSamples:
+            return "Two Independent Samples Tests";
+        case ModalType.KIndependentSamples:
+            return "K Independent Samples Tests";
+        case ModalType.TwoRelatedSamples:
+            return "Two Related Samples Tests";
+        case ModalType.KRelatedSamples:
+            return "K Related Samples Tests";
+        default:
+            return rawTitle.trim();
+    }
 }

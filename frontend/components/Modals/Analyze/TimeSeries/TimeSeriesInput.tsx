@@ -29,3 +29,12 @@ const InputRow: React.FC<InputRowProps> = ({ label, id, value, min, max, step, o
 };
 
 export { InputRow };
+
+type InputYearProps = {
+    label: string;
+    id: string;
+    value: number;
+    min: string;
+    max: string;
+    onChange: (value: number) => void;
+};

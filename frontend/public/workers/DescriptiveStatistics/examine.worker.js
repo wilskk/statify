@@ -29,23 +29,30 @@ importScripts('/workers/DescriptiveStatistics/libs/examine.js');
 
 onmessage = function (event) {
   console.log('[ExamineWorker] Message received', event.data);
-  const { variable, data, weights, options } = event.data || {};
+  const { variable, data, caseNumbers, weights, options } = event.data || {};
 
   try {
-    const calculator = new self.ExamineCalculator({ variable, data, weights, options });
+    const calculator = new self.ExamineCalculator({ variable, data, caseNumbers, weights, options });
     const results = calculator.getStatistics();
 
-    // Apply rounding if decimals specified
-    if (typeof variable?.decimals === 'number' && variable.decimals >= 0) {
-      const dec = variable.decimals;
-      // Round descriptives, trimmedMean, mEstimators, percentiles, confidenceInterval values
-      if (results.descriptives) results.descriptives = roundDeep(results.descriptives, dec);
-      if (results.trimmedMean !== undefined) results.trimmedMean = roundDeep(results.trimmedMean, dec);
-      if (results.mEstimators) results.mEstimators = roundDeep(results.mEstimators, dec);
-      if (results.percentiles) results.percentiles = roundDeep(results.percentiles, dec);
-      if (results.descriptives?.confidenceInterval) {
-        results.descriptives.confidenceInterval = roundDeep(results.descriptives.confidenceInterval, dec);
-      }
+    // Apply rounding
+    // Round basic descriptives and percentiles
+    if (results.descriptives) {
+      results.descriptives = roundDeep(results.descriptives, STATS_DECIMAL_PLACES);
+    }
+    
+    // Percentiles, robust stats, and CI should always use higher precision
+    if (results.percentiles) {
+      results.percentiles = roundDeep(results.percentiles, STATS_DECIMAL_PLACES);
+    }
+    if (results.trimmedMean !== undefined) {
+      results.trimmedMean = roundDeep(results.trimmedMean, STATS_DECIMAL_PLACES);
+    }
+    if (results.mEstimators) {
+      results.mEstimators = roundDeep(results.mEstimators, STATS_DECIMAL_PLACES);
+    }
+    if (results.descriptives?.confidenceInterval) {
+      results.descriptives.confidenceInterval = roundDeep(results.descriptives.confidenceInterval, STATS_DECIMAL_PLACES);
     }
 
     console.log('[ExamineWorker] Calculation success – posting results');

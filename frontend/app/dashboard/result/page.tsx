@@ -8,11 +8,11 @@ import { ResultsSkeleton, SidebarSkeleton } from '@/components/ui/Skeletons';
 
 export default function ResultPage() {
     return (
-        <div className="grid grid-cols-[auto_1fr] h-full w-full">
+        <div className="grid grid-cols-[auto_1fr] h-full w-full overflow-hidden">
             <Suspense fallback={<SidebarSkeleton />}>
                 <Sidebar />
             </Suspense>
-            <div className="overflow-x-auto min-w-0">
+            <div className="h-full overflow-auto">
                 <Suspense fallback={<ResultsSkeleton />}>
                     <ResultOutput />
                 </Suspense>

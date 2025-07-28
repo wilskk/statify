@@ -283,7 +283,7 @@ const HamburgerMenu: React.FC = () => {
                     Sort Variables...
                   </DrawerMenuItem>
                   {/* <DrawerMenuItem onClick={() => openModal(ModalType.Transpose)}>Transpose...</DrawerMenuItem> */}
-                  {/* <DrawerMenuItem onClick={() => openModal(ModalType.Aggregate)}>Aggregate...</DrawerMenuItem> */}
+                  <DrawerMenuItem onClick={() => openModal(ModalType.Aggregate)}>Aggregate...</DrawerMenuItem>
                   <DrawerMenuSeparator />
                   {/* <DrawerMenuItem onClick={() => openModal(ModalType.WeightCases)}>Weight Cases...</DrawerMenuItem> */}
                 </AccordionContent>

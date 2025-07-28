@@ -20,6 +20,9 @@ export const formatMEstimatorsTable = (
   const hasFactors = params.factorVariables.length > 0 && params.factorVariables.every(v => v !== null);
   const resultsByDepVar = regroupByDepVar(results);
 
+  // Konstanta untuk precision yang konsisten
+  const STATS_DECIMAL_PLACES = 2;
+
   for (const depVarName in resultsByDepVar) {
     const depVarResults = resultsByDepVar[depVarName];
     const depVarLabel = depVarResults[0]?.variable?.label || depVarName;
@@ -33,13 +36,12 @@ export const formatMEstimatorsTable = (
           const factorValue = result.factorLevels[factorVar.name];
           const factorLabel = getFactorLabel(factorVar, factorValue);
 
-          const dec = result.variable?.decimals ?? 2;
           return {
             rowHeader: [null, factorLabel],
-            huber: formatNumber(m.huber, dec),
-            tukey: formatNumber(m.tukey, dec),
-            hampel: formatNumber(m.hampel, dec),
-            andrews: formatNumber(m.andrews, dec),
+            huber: formatNumber(m.huber, STATS_DECIMAL_PLACES),
+            tukey: formatNumber(m.tukey, STATS_DECIMAL_PLACES),
+            hampel: formatNumber(m.hampel, STATS_DECIMAL_PLACES),
+            andrews: formatNumber(m.andrews, STATS_DECIMAL_PLACES),
           };
         })
         .filter(Boolean);
@@ -51,13 +53,12 @@ export const formatMEstimatorsTable = (
       const result = depVarResults[0];
       if (result.mEstimators) {
         const m = result.mEstimators;
-        const dec = result.variable?.decimals ?? 2;
         rows.push({
           rowHeader: [depVarLabel, null],
-          huber: formatNumber(m.huber, dec),
-          tukey: formatNumber(m.tukey, dec),
-          hampel: formatNumber(m.hampel, dec),
-          andrews: formatNumber(m.andrews, dec),
+          huber: formatNumber(m.huber, STATS_DECIMAL_PLACES),
+          tukey: formatNumber(m.tukey, STATS_DECIMAL_PLACES),
+          hampel: formatNumber(m.hampel, STATS_DECIMAL_PLACES),
+          andrews: formatNumber(m.andrews, STATS_DECIMAL_PLACES),
         });
       }
     }

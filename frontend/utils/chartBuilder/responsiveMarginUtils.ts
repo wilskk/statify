@@ -36,6 +36,7 @@ export interface ResponsiveMarginOptions {
   legendPosition?: "bottom" | "right" | "top" | "left";
   hasErrorBars?: boolean;
   maxTickWidth?: number;
+  itemCount?: number; // Number of legend items for multi-column calculation
 }
 
 /**
@@ -133,7 +134,22 @@ export const calculateResponsiveMargin = (
         baseMarginPercent.bottom += 0.15;
         break;
       case "right":
-        baseMarginPercent.right += 0.1;
+        // Calculate space needed for multi-column legend
+        const maxHeight = 300;
+        const itemHeightWithSpacing = 27; // itemHeight (19) + spacing (8)
+        const maxItemsPerColumn = Math.floor(maxHeight / itemHeightWithSpacing);
+        const numColumns = Math.ceil(
+          (options.itemCount || 10) / maxItemsPerColumn
+        );
+        const columnWidth = 150; // Increased width per column for better text display
+        const totalLegendWidth = numColumns * columnWidth;
+
+        // Adjust right margin based on legend width
+        const legendMarginPercent = Math.max(
+          0.1,
+          totalLegendWidth / width + 0.05
+        );
+        baseMarginPercent.right += legendMarginPercent;
         break;
     }
   }
@@ -149,7 +165,7 @@ export const calculateResponsiveMargin = (
     left: useAxis ? 40 : 5,
     right: useAxis
       ? hasLegend && legendPosition === "right"
-        ? Math.max(100, width * 0.12)
+        ? Math.max(150, width * 0.15)
         : 10
       : 5,
   };
@@ -165,7 +181,7 @@ export const calculateResponsiveMargin = (
     left: useAxis ? 150 : 10,
     right: useAxis
       ? hasLegend && legendPosition === "right"
-        ? Math.max(150, width * 0.15)
+        ? Math.max(200, width * 0.2)
         : 40
       : 10,
   };

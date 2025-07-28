@@ -66,8 +66,8 @@ onmessage = function (event) {
         const { stats, frequencyTable } = calculator.getStatistics();
 
         let processedStats = stats;
-        if (stats && typeof varDef?.decimals === 'number' && varDef.decimals >= 0) {
-          processedStats = roundStatsObject(stats, varDef.decimals);
+        if (stats) {
+          processedStats = roundStatsObject(stats, STATS_DECIMAL_PLACES);
         }
 
         let processedFreqTbl = frequencyTable ? applyValueLabels(frequencyTable, varDef) : null;
@@ -90,8 +90,8 @@ onmessage = function (event) {
   try {
     const calculator = new self.FrequencyCalculator({ variable, data, weights, options });
     const results = calculator.getStatistics();
-    if (results && results.stats && typeof variable?.decimals === 'number' && variable.decimals >= 0) {
-       results.stats = roundStatsObject(results.stats, variable.decimals);
+    if (results && results.stats) {
+       results.stats = roundStatsObject(results.stats, STATS_DECIMAL_PLACES);
     }
     if (results && results.frequencyTable) {
        results.frequencyTable = applyValueLabels(results.frequencyTable, variable);

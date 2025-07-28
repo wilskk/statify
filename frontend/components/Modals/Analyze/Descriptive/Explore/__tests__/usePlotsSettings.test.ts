@@ -6,7 +6,7 @@ describe('usePlotsSettings Hook', () => {
     it('should initialize with default settings', () => {
         const { result } = renderHook(() => usePlotsSettings());
 
-        expect(result.current.boxplotType).toBe('dependents-together');
+        expect(result.current.boxplotType).toBe('none');
         expect(result.current.showStemAndLeaf).toBe(false);
         expect(result.current.showHistogram).toBe(false);
         expect(result.current.showNormalityPlots).toBe(false);
@@ -72,7 +72,7 @@ describe('usePlotsSettings Hook', () => {
         });
 
         // Verify they are back to default
-        expect(result.current.boxplotType).toBe('dependents-together');
+        expect(result.current.boxplotType).toBe('none');
         expect(result.current.showHistogram).toBe(false);
         expect(result.current.showNormalityPlots).toBe(false);
     });

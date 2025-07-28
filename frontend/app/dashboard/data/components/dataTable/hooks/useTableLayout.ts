@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
@@ -46,42 +46,98 @@ export const useTableLayout = () => {
     const displayNumRows = useMemo(() => targetVisualDataRows + 1, [targetVisualDataRows]);
     const displayNumCols = useMemo(() => targetVisualDataCols + 1, [targetVisualDataCols]);
 
-    // 5. Generate Column Headers
+    // Create a stable variable map for O(1) lookups
+    const variableMap = useMemo(() => {
+        const map = new Map();
+        variables.forEach(v => map.set(v.columnIndex, v));
+        return map;
+    }, [variables]);
+
+    // Cache for rendered column headers to avoid excessive DOM manipulation
+    const headerCacheRef = useRef<Map<string, string>>(new Map());
+    const lastVariablesHashRef = useRef<string>('');
+
+    // 5. Generate Column Headers with cached rendering
     const colHeaders = useMemo(() => {
+        // Create a hash of variables to detect changes
+        const variablesHash = variables.map(v => `${v.columnIndex}-${v.name}-${v.type}`).join('|');
+        
+        // Clear cache if variables changed
+        if (lastVariablesHashRef.current !== variablesHash) {
+            headerCacheRef.current.clear();
+            lastVariablesHashRef.current = variablesHash;
+        }
+
         return Array.from({ length: displayNumCols }, (_, colIndex) => {
-            const variable = variables.find(v => v.columnIndex === colIndex);
+            const variable = variableMap.get(colIndex);
             if (variable) {
+                const cacheKey = `${variable.columnIndex}-${variable.name}-${variable.type}`;
+                
+                // Check cache first
+                if (headerCacheRef.current.has(cacheKey)) {
+                    return headerCacheRef.current.get(cacheKey)!;
+                }
+                
+                // Render and cache the result
                 const icon = getVariableIcon(variable);
                 const view = renderToStaticMarkup(icon);
-                return `<div class="col-header-container">${view}<span class="colHeader">${variable.name}</span></div>`;
+                const headerHtml = `<div class="col-header-container">${view}<span class="colHeader">${variable.name}</span></div>`;
+                
+                headerCacheRef.current.set(cacheKey, headerHtml);
+                return headerHtml;
             }
             if (colIndex < targetVisualDataCols) {
                 return `var`; // Header for uninitialized but allocated columns
             }
             return ''; // Spare column header is empty
         });
-    }, [variables, displayNumCols, targetVisualDataCols]);
+    }, [variableMap, displayNumCols, targetVisualDataCols, variables]);
 
-    // 6. Generate Column Configurations for Handsontable
+    // 6. Generate Column Configurations for Handsontable with optimized lookups
     const columns = useMemo(() => {
         return Array.from({ length: displayNumCols }, (_, colIndex) => {
-            const variable = variables.find(v => v.columnIndex === colIndex);
+            const variable = variableMap.get(colIndex);
             return getColumnConfig(variable, viewMode);
         });
-    }, [variables, displayNumCols, viewMode]);
+    }, [variableMap, displayNumCols, viewMode]);
 
-    // 7. Construct the Data Matrix for Display
+    // Cache for data hash to detect actual data changes
+    const dataHashRef = useRef<string>('');
+    const cachedDisplayDataRef = useRef<DataRow[]>([]);
+    
+    // 7. Construct the Data Matrix for Display with optimized memoization
     const displayData = useMemo(() => {
-        const matrix: DataRow[] = Array(targetVisualDataRows).fill(null).map(() => Array(targetVisualDataCols).fill(null));
+        // Create a lightweight hash of the data to detect actual changes
+        const dataHash = `${actualNumRows}-${actualNumCols}-${targetVisualDataRows}-${targetVisualDataCols}-${data?.length || 0}`;
+        
+        // Only recreate matrix if dimensions or data structure actually changed
+        if (dataHashRef.current === dataHash && cachedDisplayDataRef.current.length > 0) {
+            return cachedDisplayDataRef.current;
+        }
+        
+        // Pre-allocate matrix for better performance
+        const matrix: DataRow[] = new Array(targetVisualDataRows);
+        for (let i = 0; i < targetVisualDataRows; i++) {
+            matrix[i] = new Array(targetVisualDataCols).fill(null);
+        }
+        
+        // Only copy existing data, avoid unnecessary iterations
         if (data && data.length > 0) {
-            for (let i = 0; i < actualNumRows; i++) {
+            const rowsToCopy = Math.min(actualNumRows, targetVisualDataRows);
+            for (let i = 0; i < rowsToCopy; i++) {
                 if (data[i]) {
-                    for (let j = 0; j < actualNumCols; j++) {
+                    const colsToCopy = Math.min(data[i].length, targetVisualDataCols);
+                    for (let j = 0; j < colsToCopy; j++) {
                         matrix[i][j] = data[i][j] ?? null;
                     }
                 }
             }
         }
+        
+        // Cache the result
+        dataHashRef.current = dataHash;
+        cachedDisplayDataRef.current = matrix;
+        
         return matrix;
     }, [data, actualNumRows, actualNumCols, targetVisualDataRows, targetVisualDataCols]);
 
@@ -98,4 +154,4 @@ export const useTableLayout = () => {
         columns,
         displayData,
     };
-}; 
+};

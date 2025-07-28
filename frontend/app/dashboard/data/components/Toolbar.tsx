@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useEditMenuActions } from "@/components/Modals/Edit/hooks/useEditMenuActions";
+import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
+import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
 import {
     FolderOpen,
     Save,
@@ -26,6 +29,7 @@ export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
     const pathname = usePathname();
     const { handleAction: handleFileAction } = useFileMenuActions();
+    const { handleAction: handleEditAction } = useEditMenuActions();
     const { openModal } = useModal();
     const { viewMode, toggleViewMode } = useTableRefStore();
 
@@ -35,12 +39,14 @@ export default function Toolbar() {
         { name: 'Open Data', icon: <FolderOpen size={16} />, onClick: () => openModal(ModalType.OpenData) },
         { name: 'Save Document', icon: <Save size={16} />, onClick: () => handleFileAction({ actionType: 'Save' }) },
         { name: 'Print', icon: <Printer size={16} />, onClick: () => openModal(ModalType.Print) },
+        { name: 'Undo', icon: <Undo size={16} />, onClick: () => handleEditAction("Undo") },
+        { name: 'Redo', icon: <Redo size={16} />, onClick: () => handleEditAction("Redo") },
     ];
 
     const dataTools = [
-        { name: 'Locate', icon: <Locate size={16} /> },
-        { name: 'Variable', icon: <Variable size={16} /> },
-        { name: 'Search', icon: <Search size={16} /> },
+        { name: 'Locate', icon: <Locate size={16} />, onClick: () => openModal(ModalType.GoTo, { initialMode: GoToMode.CASE }) },
+        { name: 'Variable', icon: <Variable size={16} />, onClick: () => openModal(ModalType.DefineVarProps) },
+        { name: 'Search', icon: <Search size={16} />, onClick: () => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.FIND }) },
         { name: 'Toggle View', icon: <ArrowRightLeft size={16} />, onClick: toggleViewMode },
     ];
 

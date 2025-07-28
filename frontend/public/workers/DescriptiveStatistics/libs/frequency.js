@@ -116,74 +116,107 @@ class FrequencyCalculator {
         const n = W; // Gunakan total bobot sebagai n
 
         switch (method.toLowerCase()) {
-            case 'waverage': { // Weighted Average (SPSS)
-                // SPSS defines the weighted-average percentile as:
-                // rank = 1 + p/100 * (n - 1)
-                // k    = floor(rank)
-                // g    = rank - k
-                // P    = y_k + g * (y_{k+1} - y_k)
+            case 'waverage': { // Weighted Average (SPSS Definition 1)
+                if (W === 0) return null;
 
-                const rank = 1 + (p / 100) * (n - 1);
-                const k = Math.floor(rank);
-                const g = rank - k;
-
-                // Boundary conditions
-                if (k <= 1) return y[0];
-                if (k >= n) return y[y.length - 1];
-
-                // Locate y_k and y_{k+1} in cumulative counts (1-based ranks)
-                const idx_k = cc.findIndex(total => total >= k);
-                const idx_k1 = cc.findIndex(total => total >= k + 1);
-
-                const y_k = y[idx_k];
-                const y_k1 = idx_k1 !== -1 ? y[idx_k1] : y_k; // fallback if k+1 exceeds
-
-                return y_k + g * (y_k1 - y_k);
-            }
-            case 'haverage': { // Weighted Average (Harrell-Davis)
-                const rank = (n + 1) * (p / 100);
-                const k = Math.floor(rank);
-                const g = rank - k;
+                // SPSS Definition 1 (Weighted Average) - Formula from EXAMINE Algorithms
+                // tc₁ = W * p / 100
+                const tc1 = W * p / 100;
                 
-                if (k === 0) return y[0];
-                if (k >= n) return y[y.length - 1];
-
-                const w_k = cc[cc.findIndex(val => val >= k)];
-                const w_k_plus_1 = cc[cc.findIndex(val => val >= k + 1)];
-
-                if (w_k === undefined || w_k_plus_1 === undefined) return null;
-
-                const i_k = cc.indexOf(w_k);
-                const i_k_plus_1 = cc.indexOf(w_k_plus_1);
+                // Handle edge cases first
+                if (tc1 <= 0) return y[0];
+                if (tc1 >= W) return y[y.length - 1];
                 
-                return (1 - g) * y[i_k] + g * y[i_k_plus_1];
-            }
-            case 'aempirical': { // Empirical with Averaging
-                const rank = n * (p / 100);
-                const k = Math.floor(rank);
-                const g = rank - k;
+                // Find k₁ where cc[k₁-1] ≤ tc₁ < cc[k₁]
+                let k1 = -1;
+                for (let i = 0; i < cc.length; i++) {
+                    if (cc[i] >= tc1) {
+                        k1 = i;
+                        break;
+                    }
+                }
                 
-                if (g > 0) {
-                     const i = cc.findIndex(val => val > k);
-                     return i !== -1 ? y[i] : y[y.length - 1];
-                } else { // g === 0
-                    const i = cc.findIndex(val => val > k);
-                    const j = cc.findIndex(val => val === k);
-                    if (j === -1) return y[i];
-                    return (y[j] + y[i]) / 2;
+                if (k1 === -1) return y[y.length - 1];
+                
+                // Get values and cumulative frequencies
+                const cc_k1_minus_1 = k1 > 0 ? cc[k1 - 1] : 0;
+                const c_k1_plus_1 = c[k1]; // Weight of observation at position k1
+                const y_k1 = k1 > 0 ? y[k1 - 1] : y[0]; // Value at position k1-1
+                const y_k1_plus_1 = y[k1]; // Value at position k1
+                
+                // Calculate g₁* = tc₁ - cc[k₁-1]
+                const g1_star = tc1 - cc_k1_minus_1;
+                
+                // Calculate g₁ = g₁* / c[k₁]
+                const g1 = c_k1_plus_1 > 0 ? g1_star / c_k1_plus_1 : 0;
+                
+                // Apply SPSS EXAMINE conditional formula
+                // The key insight: g1* represents how far into the current weight group we are
+                if (g1_star >= c_k1_plus_1) {
+                    // We've gone past the current observation, use next value
+                    return y_k1_plus_1;
+                } else if (c_k1_plus_1 >= 1) {
+                    // Integer weights: use g1_star directly for interpolation
+                    return (1 - g1_star) * y_k1 + g1_star * y_k1_plus_1;
+                } else {
+                    // Fractional weights: use normalized g1 for interpolation
+                    return (1 - g1) * y_k1 + g1_star * y_k1_plus_1;
                 }
             }
-             case 'empirical': { // Empirical Distribution Function
-                const rank = n * (p / 100);
-                const k = Math.ceil(rank);
-                const i = cc.findIndex(val => val >= k);
-                return i !== -1 ? y[i] : y[y.length - 1];
+            case 'haverage': { // Tukey's Hinges (SPSS Definition 3 - Simplified Implementation)
+                if (W === 0) return null;
+                
+                // Simplified Tukey's Hinges: use (W+1) formula which is more commonly used
+                // This is actually closer to the classical definition and more compatible
+                const rank = (p / 100) * (W + 1);
+                const k = Math.floor(rank);
+                const g = rank - k;
+                
+                // Handle edge cases
+                if (k < 1) return y[0];
+                if (k >= y.length) return y[y.length - 1];
+                
+                // For exact ranks, return the value directly
+                if (g === 0) {
+                    return y[k - 1]; // k is 1-based, array is 0-based
+                }
+                
+                // Linear interpolation between adjacent values
+                const y_k = y[k - 1];     // Value at position k (1-based)
+                const y_k_plus_1 = y[k]; // Value at position k+1 (1-based)
+                
+                return (1 - g) * y_k + g * y_k_plus_1;
             }
-            case 'round': { // Round to nearest observation
-                 const rank = Math.round(n * (p / 100));
-                 if (rank === 0) return y[0];
-                 const i = cc.findIndex(val => val >= rank);
-                 return i !== -1 ? y[i] : y[y.length - 1];
+            case 'aempirical': { // Empirical with Averaging (SPSS Definition 4)
+                if (W === 0) return null;
+                const rank = (p / 100) * W;
+                const k = Math.floor(rank);
+                const g = rank - k;
+                
+                if (g === 0) {
+                     if (k < 1 || k > y.length) return null;
+                     const y_k = y[k - 1];
+                     const y_k_plus_1 = (k < y.length) ? y[k] : y_k;
+                     return (y_k + y_k_plus_1) / 2;
+                } else {
+                     if (k + 1 > y.length) return y[y.length - 1];
+                     return y[k];
+                }
+            }
+             case 'empirical': { // Empirical Distribution Function (SPSS Definition 2)
+                if (W === 0) return null;
+                const rank = (p / 100) * W;
+                const k = Math.ceil(rank);
+                if (k < 1) return y[0];
+                if (k > y.length) return y[y.length - 1];
+                return y[k-1];
+            }
+            case 'round': { // Round to nearest observation (SPSS Definition 5)
+                 if (W === 0) return null;
+                 const rank = Math.round((p / 100) * W);
+                 if (rank < 1) return y[0];
+                 if (rank > y.length) return y[y.length - 1];
+                 return y[rank - 1];
             }
             default:
                 return null;
@@ -240,9 +273,9 @@ class FrequencyCalculator {
         // Fallback to default quartiles if none requested / computed
         if (Object.keys(percentileObj).length === 0) {
             percentileObj = {
-                '25': this.getPercentile(25, 'waverage'),
-                '50': this.getPercentile(50, 'waverage'),
-                '75': this.getPercentile(75, 'waverage'),
+                '25': this.getPercentile(25, 'waverage'),  // Use waverage for Q1 (SPSS consistency)
+                '50': this.getPercentile(50, 'waverage'),  // Use waverage for Q2/Median (SPSS consistency)
+                '75': this.getPercentile(75, 'waverage'),  // Use waverage for Q3 (SPSS consistency)
             };
         }
 
@@ -252,6 +285,11 @@ class FrequencyCalculator {
             Mode: this.getMode(),
             Percentiles: percentileObj,
         };
+
+        // Ensure internal consistency: set Median equal to the 50th percentile (if available)
+        if (percentileObj['50'] !== undefined) {
+            allStatistics.Median = percentileObj['50'];
+        }
 
         // === Add Interquartile Range (IQR) ===
         const q1 = percentileObj['25'];

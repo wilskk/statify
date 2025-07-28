@@ -289,6 +289,7 @@ export const useVariableStore = create<VariableStoreState>()(
             addVariables: async (variablesData, updates) => {
                 set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
+                    // Save any pending changes first to avoid data loss
                     await useDataStore.getState().checkAndSave();
             
                     const finalNewVars: Variable[] = [];
@@ -312,10 +313,18 @@ export const useVariableStore = create<VariableStoreState>()(
                         combinedVars.push(finalVar); // Add to temp array for the next iteration's uniqueness check
                     }
                     
+                    // Create variables in database
                     await sheetService.addMultipleColumns(finalNewVars);
             
-                    await get().loadVariables();
-                    await useDataStore.getState().loadData(updates);
+                    // Apply the pending updates first to ensure data is preserved
+                    if (updates && updates.length > 0) {
+                        await useDataStore.getState().updateCells(updates);
+                    }
+                    
+                    // Reload variables to get the new structure from database
+                    // This will also set isLoading to false in the success handler
+                    const variables = await variableService.getAllVariables();
+                    updateStateAfterSuccess(set, variables);
                 } catch (error: any) {
                     handleError(set, 'addVariables')(error);
                 }

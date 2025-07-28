@@ -5,6 +5,7 @@ import HandsontableWrapper from './HandsontableWrapper';
 import { registerAllModules } from 'handsontable/registry';
 import { useDataStore } from '@/stores/useDataStore';
 import { useDataTableLogic } from './hooks/useDataTableLogic';
+import { useColumnSizing } from './hooks/useColumnSizing';
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useMetaStore } from '@/stores/useMetaStore';
@@ -12,7 +13,10 @@ import './DataTable.css';
 
 registerAllModules();
 
-export default function Index() {
+// Memoized HandsontableWrapper to prevent unnecessary re-renders
+const MemoizedHandsontableWrapper = React.memo(HandsontableWrapper);
+
+function Index() {
     const hotTableRef = useRef<any>(null);
     const { viewMode, setDataTableRef } = useTableRefStore();
     
@@ -31,64 +35,119 @@ export default function Index() {
         displayNumCols,
     } = useDataTableLogic(hotTableRef);
     
+    // Column sizing optimization
+    const { shouldUseAutoColumnSize } = useColumnSizing({
+        hotTableRef: hotTableRef,
+        actualNumRows,
+        actualNumCols
+    });
+    
     const filterVarName = useMetaStore(state => state.meta.filter);
     const variables = useVariableStore(state => state.variables); // Keep for filter logic
-    const filterVarIndex = useMemo(() => 
-        variables.find(v => v.name === filterVarName)?.columnIndex,
-    [variables, filterVarName]);
+    const filterVarIndex = useMemo(() => {
+        // Create variable name map for O(1) lookup
+        const variableNameMap = new Map(variables.map(v => [v.name, v]));
+        return variableNameMap.get(filterVarName)?.columnIndex;
+    }, [variables, filterVarName]);
 
     const handleAfterGetRowHeader = useCallback((row: number, TH: HTMLTableCellElement) => {
-        TH.classList.remove('grayed-row-header', 'visual-spare-header', 'unselected-row-header');
-        if (row >= actualNumRows) {
-            TH.classList.add('grayed-row-header', 'visual-spare-header');
-            return;
-        }
-        if (filterVarIndex !== undefined) {
-            const val = displayData[row]?.[filterVarIndex];
-            if (val === 0 || val === '' || val === null || val === undefined) {
-                TH.classList.add('unselected-row-header');
-            }
-        }
+        // Efficient class toggling instead of remove/add pattern
+        const isSpareRow = row >= actualNumRows;
+        const isUnselected = !isSpareRow && filterVarIndex !== undefined && 
+            (displayData[row]?.[filterVarIndex] === 0 || 
+             displayData[row]?.[filterVarIndex] === '' || 
+             displayData[row]?.[filterVarIndex] === null || 
+             displayData[row]?.[filterVarIndex] === undefined);
+
+        TH.classList.toggle('grayed-row-header', isSpareRow);
+        TH.classList.toggle('visual-spare-header', isSpareRow);
+        TH.classList.toggle('unselected-row-header', isUnselected);
     }, [actualNumRows, filterVarIndex, displayData]);
 
     const handleAfterGetColHeader = useCallback((col: number, TH: HTMLTableCellElement) => {
-        TH.classList.remove('grayed-col-header', 'visual-spare-header');
-        if (col >= actualNumCols) {
-            TH.classList.add('grayed-col-header', 'visual-spare-header');
-        }
+        // Efficient class toggling for column headers
+        const isSpareCol = col >= actualNumCols;
+        TH.classList.toggle('grayed-col-header', isSpareCol);
+        TH.classList.toggle('visual-spare-header', isSpareCol);
     }, [actualNumCols]);
 
     useEffect(() => {
         if (hotTableRef.current) {
             setDataTableRef(hotTableRef);
         }
+        
+        // Cleanup function to prevent memory leaks
+        return () => {
+            if (hotTableRef.current?.hotInstance) {
+                try {
+                    hotTableRef.current.hotInstance.destroy();
+                } catch (error) {
+                    console.warn('Error destroying Handsontable instance:', error);
+                }
+            }
+            setDataTableRef({ current: null });
+        };
     }, [setDataTableRef]);
 
+    // Track significant changes to avoid unnecessary Handsontable updates
+    const lastUpdateRef = useRef<string>('');
+    
     useEffect(() => {
         const hotInstance = hotTableRef.current?.hotInstance;
         if (hotInstance) {
-            hotInstance.updateSettings({ colHeaders, columns: columns as any });
-            hotInstance.render();
+            // Create a hash of current state for comparison
+            const currentHash = JSON.stringify({ colHeaders, columns, viewMode });
+            
+            // Only update if there are actual structural changes
+            if (lastUpdateRef.current !== currentHash) {
+                hotInstance.updateSettings({ colHeaders, columns: columns as any });
+                hotInstance.render();
+                lastUpdateRef.current = currentHash;
+            }
         }
+        
+        // Cleanup function for settings update effect
+        return () => {
+            // Clear the hash reference on cleanup
+            lastUpdateRef.current = '';
+        };
     }, [colHeaders, columns, viewMode]);
+
+    // Memoize static props separately from dynamic data
+    const staticProps = useMemo(() => ({
+        ref: hotTableRef,
+        contextMenu: contextMenuConfig,
+        beforeChange: handleBeforeChange,
+        afterColumnResize: handleAfterColumnResize,
+        afterValidate: handleAfterValidate,
+        afterGetRowHeader: handleAfterGetRowHeader,
+        afterGetColHeader: handleAfterGetColHeader,
+        afterChange: handleAfterChange
+    }), [contextMenuConfig, handleBeforeChange, handleAfterColumnResize, 
+         handleAfterValidate, handleAfterGetRowHeader, handleAfterGetColHeader, handleAfterChange]);
+
+    // Memoize dynamic data props separately
+    const dataProps = useMemo(() => ({
+        data: displayData,
+        minRows: displayNumRows,
+        minCols: displayNumCols,
+        colHeaders,
+        columns: columns as any
+    }), [displayData, displayNumRows, displayNumCols, colHeaders, columns]);
+
+    // Combine props with minimal re-creation
+    const tableProps = useMemo(() => ({
+    ...staticProps,
+    ...dataProps,
+    autoColumnSize: shouldUseAutoColumnSize
+  }), [staticProps, dataProps, shouldUseAutoColumnSize]);
 
     return (
         <div className="h-full w-full z-0 relative hot-container overflow-hidden">
-            <HandsontableWrapper
-                ref={hotTableRef}
-                data={displayData}
-                minRows={displayNumRows}
-                minCols={displayNumCols}
-                colHeaders={colHeaders}
-                columns={columns as any}
-                contextMenu={contextMenuConfig}
-                beforeChange={handleBeforeChange}
-                afterColumnResize={handleAfterColumnResize}
-                afterValidate={handleAfterValidate}
-                afterGetRowHeader={handleAfterGetRowHeader}
-                afterGetColHeader={handleAfterGetColHeader}
-                afterChange={handleAfterChange}
-            />
+            <MemoizedHandsontableWrapper {...tableProps} />
         </div>
     );
 }
+
+// Export memoized component to prevent parent re-renders from affecting this component
+export default React.memo(Index);

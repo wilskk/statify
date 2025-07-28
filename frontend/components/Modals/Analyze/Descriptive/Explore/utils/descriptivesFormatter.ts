@@ -1,6 +1,9 @@
 import { ExploreAnalysisParams } from '../types';
 import { ColumnHeader, FormattedTable, ExploreAggregatedResults, getFactorLabel, regroupByDepVar, formatNumber } from './helpers';
 
+// Konstanta untuk precision yang konsisten
+const STATS_DECIMAL_PLACES = 2;
+
 /**
  * Build the "Descriptives" table for Explore analysis.
  */
@@ -38,7 +41,7 @@ export const formatDescriptivesTable = (
           })()
         : '';
 
-      const dec = result.variable?.decimals ?? 2;
+      const dec = STATS_DECIMAL_PLACES; // Use consistent decimal places
 
       // Helper to construct rowHeader based on presence of factors
       const buildRowHeader = (

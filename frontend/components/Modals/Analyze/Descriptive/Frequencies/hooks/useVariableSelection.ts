@@ -9,8 +9,8 @@ export interface VariableSelectionProps {
 export interface VariableSelectionResult {
   availableVariables: Variable[];
   selectedVariables: Variable[];
-  highlightedVariable: { tempId: string, source: 'available' | 'selected' } | null;
-  setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: 'available' | 'selected' } | null>>;
+  highlightedVariable: { id: number, source: 'available' | 'selected' } | null;
+  setHighlightedVariable: React.Dispatch<React.SetStateAction<{ id: number, source: 'available' | 'selected' } | null>>;
   moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
   moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
   reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
@@ -23,27 +23,42 @@ export const useVariableSelection = ({
   const { variables } = useVariableStore();
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [selectedVariables, setSelectedVariables] = useState<Variable[]>(initialVariables);
-  const [highlightedVariable, setHighlightedVariable] = useState<{ tempId: string, source: 'available' | 'selected' } | null>(null);
+  const [highlightedVariable, setHighlightedVariable] = useState<{ id: number, source: 'available' | 'selected' } | null>(null);
 
   // Update available variables when store variables change
   useEffect(() => {
-    const validVars = variables.filter(v => v.name !== "").map(v => ({
-      ...v,
-      tempId: v.tempId || `temp_${v.columnIndex}`
-    }));
-    const selectedTempIds = new Set(selectedVariables.map(v => v.tempId));
-    const finalAvailable = validVars.filter(v => v.tempId && !selectedTempIds.has(v.tempId));
+    // Prepare list of valid variables from the global store (each ensured to have a tempId)
+    const validVars = variables.filter(v => v.name !== "").map(v => {
+      // Ensure each variable has an id. If not, fall back to columnIndex.
+      const varId = (typeof v.id === 'number') ? v.id : v.columnIndex;
+      return { ...v, id: varId } as Variable;
+    });
+
+    // Build a quick-lookup set of tempIds that still exist in the global store
+    const validIds = new Set<number>(validVars
+      .map(v => v.id)
+      .filter((id): id is number => typeof id === 'number'));
+
+    // 1) Synchronize the **selectedVariables** list – remove any variable that no longer exists globally
+    if (selectedVariables.some(v => !validIds.has((v.id ?? v.columnIndex) as number))) {
+      setSelectedVariables(prev => prev.filter(v => validIds.has((v.id ?? v.columnIndex) as number)));
+    }
+
+    // 2) Recompute the **availableVariables** list (global vars minus currently selected ones)
+    const selectedIds = new Set<number>(selectedVariables.map(v => (v.id ?? v.columnIndex) as number));
+    const finalAvailable = validVars.filter(v => !selectedIds.has((v.id as number)));
     setAvailableVariables(finalAvailable);
   }, [variables, selectedVariables]);
 
   const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
-    if (!variable.tempId) {
-      console.error("Cannot move variable without tempId:", variable);
+    const varId = variable.id ?? variable.columnIndex;
+    if (varId === undefined || varId === null) {
+      console.error("Cannot move variable without id:", variable);
       return;
     }
-    setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+    setAvailableVariables(prev => prev.filter(v => ((v.id ?? v.columnIndex) as number) !== varId));
     setSelectedVariables(prev => {
-      if (prev.some(v => v.tempId === variable.tempId)) {
+      if (prev.some(v => ((v.id ?? v.columnIndex) as number) === varId)) {
         return prev;
       }
       const newList = [...prev];
@@ -58,13 +73,14 @@ export const useVariableSelection = ({
   };
 
   const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
-    if (!variable.tempId) {
-      console.error("Cannot move variable without tempId:", variable);
+    const varId = variable.id ?? variable.columnIndex;
+    if (varId === undefined || varId === null) {
+      console.error("Cannot move variable without id:", variable);
       return;
     }
-    setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+    setSelectedVariables(prev => prev.filter(v => ((v.id ?? v.columnIndex) as number) !== varId));
     setAvailableVariables(prev => {
-      if (prev.some(v => v.tempId === variable.tempId)) {
+      if (prev.some(v => ((v.id ?? v.columnIndex) as number) === varId)) {
         return prev;
       }
       const newList = [...prev];

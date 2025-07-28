@@ -1,0 +1,254 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useResultStore } from '@/stores/useResultStore';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
+import { useDataStore } from '@/stores/useDataStore';
+
+import {
+  OneSampleTTestAnalysisProps,
+  OneSampleTTestResults,
+  OneSampleTTestResult
+} from '../types';
+
+import {
+  formatOneSampleTestTable,
+  formatOneSampleStatisticsTable,
+  formatErrorTable
+} from '../utils/formatters'
+
+export const useOneSampleTTestAnalysis = ({
+  testVariables,
+  testValue,
+  estimateEffectSize,
+  onClose
+}: OneSampleTTestAnalysisProps) => {
+  const { addLog, addAnalytic, addStatistic } = useResultStore();
+  const { data: analysisData } = useAnalysisData();
+
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const workerRef = useRef<Worker | null>(null);
+
+  const resultsRef = useRef<OneSampleTTestResult[]>([]);
+  const errorCountRef = useRef<number>(0);
+  const processedCountRef = useRef<number>(0);
+  const insufficientDataVarsRef = useRef<string[]>([]);
+
+  const runAnalysis = useCallback(async () => {
+    if (testVariables.length === 0) {
+      setErrorMsg("Please select at least one variable.");
+      return;
+    }
+    
+    setErrorMsg(null);
+    setIsCalculating(true);
+
+    try {
+      await useDataStore.getState().checkAndSave();
+    } catch (e: any) {
+      setErrorMsg(`Failed to save pending changes: ${e.message}`);
+      setIsCalculating(false);
+      return;
+    }
+
+    // Reset refs for new analysis run
+    resultsRef.current = [];
+    errorCountRef.current = 0;
+    processedCountRef.current = 0;
+    insufficientDataVarsRef.current = [];
+
+    const worker = new Worker('/workers/CompareMeans/manager.js', { type: 'module' });
+    workerRef.current = worker;
+
+    let analysisTypes;
+    if (estimateEffectSize) {
+        // analysisTypes = ['oneSampleTTest', 'oneSampleTTestEffectSize'];
+        analysisTypes = ['oneSampleTTest'];
+    } else {
+        analysisTypes = ['oneSampleTTest'];
+    }
+
+    testVariables.forEach(variable => {
+      const dataForVar = analysisData.map(row => row[variable.columnIndex]);
+      const payload = {
+        analysisType: analysisTypes,
+        variable,
+        data: dataForVar,
+        options: { testValue, estimateEffectSize }
+      };
+      worker.postMessage(payload);
+    });
+
+    worker.onmessage = async (event) => {
+      const { variableName, results, status, error: workerError } = event.data;
+
+      if (status === 'success' && results) {
+        // Check for metadata about insufficient data
+        if (results.metadata && results.metadata.hasInsufficientData) {
+          insufficientDataVarsRef.current.push(results.metadata.variableName);
+          console.warn(`Insufficient valid data for variable: ${results.metadata.variableName}. Total: ${results.metadata.totalData}, Valid: ${results.metadata.validData}`);
+        }
+        
+        if (results.oneSampleStatistics) {
+          const { variable, N, Mean, StdDev, SEMean } = results.oneSampleStatistics;
+
+          if (variable && N && Mean !== undefined && StdDev !== undefined && SEMean !== undefined) {
+            resultsRef.current.push({
+              variable,
+              stats: {
+                N,
+                Mean,
+                StdDev,
+                SEMean
+              }
+            });
+          }
+        }
+
+        if (results.oneSampleTest) {
+          const { variable, T, DF, PValue, MeanDifference, Lower, Upper } = results.oneSampleTest;
+          
+          if (variable && T !== undefined && DF !== undefined && PValue !== undefined && 
+              MeanDifference !== undefined && Lower !== undefined && Upper !== undefined) {
+            resultsRef.current.push({
+              variable,
+              testValue,
+              stats: {
+                T,
+                DF,
+                PValue,
+                MeanDifference,
+                Lower,
+                Upper
+              }
+            });
+          }
+        }
+      } else {
+        console.error(`Error processing ${variableName}:`, workerError);
+        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+        errorCountRef.current += 1;
+      }
+
+      processedCountRef.current++;
+
+      if (processedCountRef.current === testVariables.length) {
+        try {
+          // Prepare log message
+          const variableNames = testVariables.map(v => v.name).join(" ");
+          let logMsg = `T-TEST {TESTVAL=${testValue}} {VARIABLES=${variableNames}}`;
+
+          if (estimateEffectSize) {
+            logMsg += `{ES DISPLAY (TRUE)}`;
+          } else {
+            logMsg += `{ES DISPLAY (FALSE)}`;
+          }
+          
+          logMsg += `{CRITERIA=0.95}`;
+
+          // Save to database
+          const logId = await addLog({ log: logMsg });
+          
+          // Prepare note about insufficient data if needed
+          let note = "";
+          if (insufficientDataVarsRef.current.length > 0) {
+            note = `Note: The following variables did not have sufficient valid data for analysis: ${insufficientDataVarsRef.current.join(', ')}. 
+                These variables require at least two valid numeric values for T-Test calculation.`;
+          }
+          
+          // Create analytic with or without note
+          const analyticId = await addAnalytic(logId, { 
+            title: "T-Test", 
+            note: note || undefined 
+          });
+
+          // Check if we have any valid results
+          const oneSampleStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
+          const oneSampleTest = resultsRef.current.filter(r => 'T' in (r.stats as any));
+          
+          const results: OneSampleTTestResults = {
+            oneSampleStatistics,
+            oneSampleTest
+          };
+
+          // If we have valid results and not all variables have insufficient data
+          if (resultsRef.current.length > 0 && insufficientDataVarsRef.current.length < testVariables.length) {
+            // Format tables
+            const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(results);
+            const formattedOneSampleTestTable = formatOneSampleTestTable(results);
+
+            await addStatistic(analyticId, {
+              title: "One-Sample Statistics",
+              output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
+              components: "One-Sample Statistics",
+              description: ""
+            });
+
+            await addStatistic(analyticId, {
+              title: "One-Sample Test",
+              output_data: JSON.stringify({ tables: [formattedOneSampleTestTable] }),
+              components: "One-Sample Test",
+              description: ""
+            });
+          } 
+          // If no valid results or all variables have insufficient data, show error table
+          else {
+            const formattedErrorTable = formatErrorTable();
+            await addStatistic(analyticId, {
+              title: "One-Sample T Test Error",
+              output_data: JSON.stringify({ tables: [formattedErrorTable] }),
+              components: "Error",
+              description: ""
+            });
+          }
+
+          setIsCalculating(false);
+          worker.terminate();
+          workerRef.current = null;
+          onClose?.();
+        } catch (err) {
+          console.error("Error saving results:", err);
+          setErrorMsg("Error saving results.");
+          setIsCalculating(false);
+          worker.terminate();
+          workerRef.current = null;
+        }
+      }
+    };
+
+    worker.onerror = (err) => {
+      console.error("A critical worker error occurred:", err);
+      setErrorMsg(`A critical worker error occurred: ${err.message}`);
+      setIsCalculating(false);
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    };
+  }, [testVariables, testValue, estimateEffectSize, analysisData, addLog, addAnalytic, addStatistic, onClose]);
+
+  const cancelAnalysis = useCallback(() => {
+    if (workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+      setIsCalculating(false);
+      console.log("One-Sample T-Test calculation cancelled.");
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cancelAnalysis();
+    };
+  }, [cancelAnalysis]);
+  
+  return {
+    isCalculating,
+    errorMsg,
+    runAnalysis,
+    cancelAnalysis
+  };
+};
+
+export default useOneSampleTTestAnalysis;

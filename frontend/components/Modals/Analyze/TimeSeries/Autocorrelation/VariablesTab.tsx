@@ -26,7 +26,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // Filter availableVariables to include only NUMERIC and DATE types
     const filteredAvailableVariables = useMemo(() => {
         return availableVariables.filter(
-            (variable) => variable.type === 'NUMERIC' || variable.type === 'DATE'
+            (variable) => variable
         );
     }, [availableVariables]);
 
@@ -37,7 +37,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
             variables: selectedVariables,
             height: '100px',
             draggableItems: true,
-            droppable: true
+            droppable: true,
+            maxItems: 1,
         }
     ];
 
@@ -80,6 +81,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             setHighlightedVariable={setManagerHighlightedVariable}
             onMoveVariable={handleMoveVariable}
             onReorderVariable={handleReorderVariables}
+            onVariableDoubleClick={() => {}}
         />
     );
 };

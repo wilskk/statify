@@ -86,7 +86,7 @@ const TransposeContent: React.FC<Omit<TransposeUIProps, 'containerType'>> = ({
                         getVariableIcon={getVariableIcon}
                         getDisplayName={getDisplayName}
                         showArrowButtons={true}
-                        availableListHeight="14rem"
+                        availableListHeight="14.5rem"
                     />
                 </div>
             </div>

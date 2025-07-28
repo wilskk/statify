@@ -26,7 +26,7 @@ class DescriptiveCalculator {
         this.variable = variable;
         this.data = data;
         this.weights = weights;
-        this.options = options; // Simpan options untuk penggunaan nanti
+        this.options = options || {}; // Simpan options untuk penggunaan nanti
         this.initialized = false;
         
         // Properti yang dihitung selama inisialisasi (algoritma provisional)
@@ -55,6 +55,15 @@ class DescriptiveCalculator {
 
         const isNumericType = ['scale', 'date'].includes(this.variable.measure);
         
+        // --- Pass 1: Calculate Mean ---
+        this.W = 0;
+        this.S = 0;
+        this.N = 0;
+        this.min = Infinity;
+        this.max = -Infinity;
+        
+        const validData = [];
+
         for (let i = 0; i < this.data.length; i++) {
             const value = this.data[i];
             const weight = this.weights ? (this.weights[i] ?? 1) : 1;
@@ -66,33 +75,34 @@ class DescriptiveCalculator {
             const x = parseFloat(value);
             const w = weight;
 
-            if (this.N === 0) { // Kasus pertama
-                this.M1 = x;
-                this.W = w;
-                this.W2 = w * w;
-                this.S = x * w;
-                this.min = x;
-                this.max = x;
-                this.N = 1;
-                continue;
-            }
-            
-            const old_W = this.W;
-            const new_W = old_W + w;
-            const delta = x - this.M1;
-            const R = delta * (w / new_W);
-            
-            this.M1 += R;
-            this.M4 += R * (R * R * R * old_W * w * (old_W * old_W - old_W * w + w * w) / (new_W * new_W * new_W)) + 6 * R * R * this.M2 - 4 * R * this.M3;
-            this.M3 += R * (R * R * old_W * w * (old_W - w) / (new_W * new_W)) - 3 * R * this.M2;
-            this.M2 += old_W * delta * R;
-
-            this.W = new_W;
-            this.W2 += w * w;
+            this.W += w;
             this.S += x * w;
+            this.N++;
             this.min = Math.min(this.min, x);
             this.max = Math.max(this.max, x);
-            this.N++;
+            validData.push({ value: x, weight: w });
+        }
+
+        if (this.W > 0) {
+            this.M1 = this.S / this.W; // Mean
+        } else {
+            this.M1 = null;
+        }
+
+        // --- Pass 2: Calculate M2, M3, M4 (sum of powered deviations from the mean) ---
+        this.M2 = 0;
+        this.M3 = 0;
+        this.M4 = 0;
+        this.W2 = 0;
+
+        if (this.M1 !== null) {
+            for (const item of validData) {
+                const delta = item.value - this.M1;
+                this.M2 += item.weight * Math.pow(delta, 2);
+                this.M3 += item.weight * Math.pow(delta, 3);
+                this.M4 += item.weight * Math.pow(delta, 4);
+                this.W2 += item.weight * item.weight;
+            }
         }
         
         this.initialized = true;
@@ -111,7 +121,8 @@ class DescriptiveCalculator {
         this.#initialize();
         if (this.W <= 1) return null;
         
-        const denominator = this.W2 < this.W * this.W ? this.W - (this.W2 / this.W) : this.W - 1;
+        // Unbiased weighted variance (n-1 method)
+        const denominator = this.W - 1;
         if (denominator <= 0) return null;
 
         this.memo.variance = this.M2 / denominator;
@@ -141,7 +152,13 @@ class DescriptiveCalculator {
         if (variance === null || variance === 0 || this.W < 3) return null;
         
         const n = this.W;
-        const g1 = (n * this.M3) / ((n - 1) * (n - 2) * Math.pow(variance, 1.5));
+        // Adjusted Fisher-Pearson coefficient of skewness (g1)
+        const numerator = (n * this.M3);
+        const denominator = ((n - 1) * (n - 2) * Math.pow(this.getStdDev(), 3));
+
+        if (denominator === 0) return null;
+
+        const g1 = numerator / denominator;
         this.memo.skewness = g1;
         return g1;
     }
@@ -160,9 +177,14 @@ class DescriptiveCalculator {
         if (variance === null || variance === 0 || this.W < 4) return null;
         
         const n = this.W;
-        const term1 = (n * (n + 1) * this.M4) / ((n - 1) * (n - 2) * (n - 3) * variance * variance);
-        const term2 = (3 * (n - 1) * (n - 1)) / ((n - 2) * (n - 3));
-        const g2 = term1 - term2;
+        const stdDev = this.getStdDev();
+
+        const numerator = n * (n + 1) * this.M4 - 3 * this.M2 * this.M2 * (n - 1);
+        const denominator = (n - 1) * (n - 2) * (n - 3) * Math.pow(stdDev, 4);
+
+        if (denominator === 0) return null;
+
+        const g2 = numerator / denominator;
         
         this.memo.kurtosis = g2;
         return g2;
@@ -205,14 +227,63 @@ class DescriptiveCalculator {
             .map(value => parseFloat(value));
         validValues.sort((a, b) => a - b);
 
+        // --- Median (50th percentile) using Weighted Average (SPSS Definition 1) ---
         let median = null;
         if (validValues.length > 0) {
-            const mid = Math.floor(validValues.length / 2);
-            median = validValues.length % 2 !== 0 
-                ? validValues[mid] 
-                : (validValues[mid - 1] + validValues[mid]) / 2;
-        }
+            // Build map of value → aggregated weight (handles duplicates & case-weights)
+            const weightMap = new Map();
+            for (let i = 0; i < this.data.length; i++) {
+                const value = this.data[i];
+                const weight = this.weights ? (this.weights[i] ?? 1) : 1;
 
+                if (!isNumeric(value) || weight <= 0) continue;
+
+                const numVal = parseFloat(value);
+                weightMap.set(numVal, (weightMap.get(numVal) || 0) + weight);
+            }
+
+            // Sort unique values
+            const y = Array.from(weightMap.keys()).sort((a, b) => a - b);
+            const c = y.map(v => weightMap.get(v));
+            // Cumulative weights
+            const cc = c.reduce((acc, w) => {
+                acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + w);
+                return acc;
+            }, []);
+
+            const W = cc[cc.length - 1];
+            if (W > 0) {
+                // SPSS Definition 1 (Weighted Average) - Exact formula for median (p=50)
+                // tp = (W + 1) * p / 100 = (W + 1) * 50 / 100 = (W + 1) * 0.5
+                const tp = (W + 1) * 0.5;
+
+                // Find x1 and x2 where x2 is the first value with cumulative frequency >= tp
+                const i = cc.findIndex(cumulativeWeight => cumulativeWeight >= tp);
+
+                if (i === -1) return y[y.length - 1]; // tp >= all cumulative frequencies
+                if (i === 0) return y[0]; // tp <= first cumulative frequency
+
+                const x1 = y[i - 1]; // Value before x2
+                const x2 = y[i];     // First value with cumulative frequency >= tp
+                const cc1 = cc[i - 1]; // Cumulative frequency up to x1
+
+                // Check if tp - cp1 >= 100/W (where cp1 = cc1/W * 100)
+                const cp1 = (cc1 / W) * 100;
+                const threshold = 100 / W;
+
+                if (tp - cp1 >= threshold) {
+                    median = x2; // Use x2 directly
+                } else {
+                    // Linear interpolation: {1 - [(W+1)p/100 - cc1]}x1 + [(W+1)p/100 - cc1]x2
+                    const weight = (tp - cc1);
+                    median = (1 - weight) * x1 + weight * x2;
+                }
+            }
+        }
+        // Percentiles are now calculated in FrequencyCalculator
+        // to handle options correctly. Median is left here for now,
+        // but should ideally be unified.
+        
         const shouldSaveZScores = this.options.saveStandardized && stats.stdDev && stats.stdDev > 0;
         let zScores = null;
 
@@ -240,7 +311,7 @@ class DescriptiveCalculator {
             SESkewness: stats.seSkewness,
             Kurtosis: stats.kurtosis,
             SEKurtosis: stats.seKurtosis,
-            Median: median,
+            Median: median, // Note: This median is UNWEIGHTED. Weighted percentiles are in Freq calc.
         };
 
         // Rounding handled at worker layer for display; keep raw values here

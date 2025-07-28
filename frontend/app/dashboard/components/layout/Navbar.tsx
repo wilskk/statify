@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Menubar,
   MenubarMenu,
@@ -24,6 +25,7 @@ import TransformMenu from "@/components/Modals/Transform/TransformMenu";
 
 const Navbar: React.FC = () => {
   const { openModal } = useModal();
+  const router = useRouter();
 
   const commonMenubarClasses = "ml-0 flex px-2 py-1 border-0";
 
@@ -58,15 +60,15 @@ const Navbar: React.FC = () => {
                   </MenubarItem>
                 </MenubarSubContent>
               </MenubarSub>
-              <MenubarSub>
-                <MenubarSubTrigger>Compare Means</MenubarSubTrigger>
-                <MenubarSubContent>
-                  <MenubarItem disabled>One-Sample T Test</MenubarItem>
-                  <MenubarItem disabled>Independent-Samples T Test</MenubarItem>
-                  <MenubarItem disabled>Paired-Samples T Test</MenubarItem>
-                  <MenubarItem disabled>One-Way ANOVA</MenubarItem>
-                </MenubarSubContent>
-              </MenubarSub>
+                <MenubarSub>
+                    <MenubarSubTrigger>Compare Means</MenubarSubTrigger>
+                    <MenubarSubContent>
+                        <MenubarItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.OneWayANOVA)}>One-Way ANOVA...</MenubarItem>
+                    </MenubarSubContent>
+                </MenubarSub>
               <MenubarSub>
                 <GeneralLinearModelMenu />
               </MenubarSub>
@@ -76,15 +78,15 @@ const Navbar: React.FC = () => {
               <MenubarSub>
                 <DimensionReductionMenu />
               </MenubarSub>
-              <MenubarSub>
-                <MenubarSubTrigger>Correlate</MenubarSubTrigger>
-                <MenubarSubContent>
-                  <MenubarItem disabled>Bivariate...</MenubarItem>
-                  <MenubarItem disabled>Partial...</MenubarItem>
-                  <MenubarItem disabled>Distances...</MenubarItem>
-                  <MenubarItem disabled>Canonical Correlation...</MenubarItem>
-                </MenubarSubContent>
-              </MenubarSub>
+                <MenubarSub>
+                    <MenubarSubTrigger>Correlate</MenubarSubTrigger>
+                    <MenubarSubContent>
+                        <MenubarItem onClick={() => openModal(ModalType.Bivariate)}>Bivariate...</MenubarItem>
+                        <MenubarItem disabled>Partial...</MenubarItem>
+                        <MenubarItem disabled>Distances...</MenubarItem>
+                        <MenubarItem disabled>Canonical Correlation...</MenubarItem>
+                    </MenubarSubContent>
+                </MenubarSub>
               <MenubarSub>
                 <MenubarSubTrigger>Regression</MenubarSubTrigger>
                 <MenubarSubContent>
@@ -98,29 +100,25 @@ const Navbar: React.FC = () => {
                   </MenubarItem>
                 </MenubarSubContent>
               </MenubarSub>
-              <MenubarSub>
-                <MenubarSubTrigger>Nonparametric Test</MenubarSubTrigger>
-                <MenubarSubContent>
-                  <MenubarItem disabled>One Sample...</MenubarItem>
-                  <MenubarItem disabled>Independent Samples...</MenubarItem>
-                  <MenubarItem disabled>Related Samples...</MenubarItem>
-                  <MenubarSub>
-                    <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
+                <MenubarSub>
+                    <MenubarSubTrigger>Nonparametric Tests</MenubarSubTrigger>
                     <MenubarSubContent>
-                      <MenubarItem disabled>Chi-square...</MenubarItem>
-                      <MenubarItem disabled>Runs...</MenubarItem>
-                      <MenubarItem disabled>
-                        2 Independent Samples...
-                      </MenubarItem>
-                      <MenubarItem disabled>
-                        K Independent Samples...
-                      </MenubarItem>
-                      <MenubarItem disabled>2 Related Samples...</MenubarItem>
-                      <MenubarItem disabled>K Related Samples...</MenubarItem>
+                        <MenubarItem >One Sample...</MenubarItem>
+                        <MenubarItem >Independent Samples...</MenubarItem>
+                        <MenubarItem >Related Samples...</MenubarItem>
+                        <MenubarSub>
+                            <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
+                            <MenubarSubContent>
+                                <MenubarItem onClick={() => openModal(ModalType.ChiSquare)}>Chi-square...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.Runs)}>Runs...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>2 Independent Samples...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.KIndependentSamples)}>K Independent Samples...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>2 Related Samples...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</MenubarItem>
+                            </MenubarSubContent>
+                        </MenubarSub>
                     </MenubarSubContent>
-                  </MenubarSub>
-                </MenubarSubContent>
-              </MenubarSub>
+                </MenubarSub>
               <MenubarSub>
                 <MenubarSubTrigger>Time Series</MenubarSubTrigger>
                 <MenubarSubContent>
@@ -188,7 +186,7 @@ const Navbar: React.FC = () => {
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger disabled>Help</MenubarTrigger>
+            <MenubarTrigger onClick={() => router.push("/help")}>Help</MenubarTrigger>
           </MenubarMenu>
         </Menubar>
         <div className="font-sans text-lg font-semibold text-foreground">

@@ -4,14 +4,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 4px; /* Add space between icon and text */
     width: 100%;
-    padding: 0 5px; /* Add some padding */
+    height: 100%; /* Ensure the container fills the header cell */
+    padding: 0 5px;
 }
 
 .col-header-container .colHeader {
     white-space: nowrap; /* Prevent text wrapping */
-    overflow: hidden; /* Hide overflow */
     text-overflow: ellipsis; /* Add ellipsis for long text */
+    line-height: normal; /* Ensure line-height doesn't clip text */
+}
+
+.col-header-container {
+    overflow: hidden; /* Let the container handle the overflow */
 }
 .handsontable th.grayed-row-header,
 .handsontable th.grayed-col-header {

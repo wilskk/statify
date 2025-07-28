@@ -1,5 +1,8 @@
 import type { DescriptiveStatistics, FrequenciesResult } from '../types';
 
+// Konstanta untuk precision yang konsisten
+const STATS_DECIMAL_PLACES = 2;
+
 /**
  * Formats the raw statistics data into a table structure for display.
  * @param results - Array of analysis results from the worker.
@@ -45,10 +48,10 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     });
 
     const statRowsConfig = [
-        { name: 'Mean', key: 'Mean', precision: 4 },
+        { name: 'Mean', key: 'Mean', precision: STATS_DECIMAL_PLACES },
         // Align key with worker output (SEMean)
-        { name: 'Std. Error of Mean', key: 'SEMean', precision: 5 },
-        { name: 'Median', key: 'Median', precision: 4 },
+        { name: 'Std. Error of Mean', key: 'SEMean', precision: STATS_DECIMAL_PLACES },
+        { name: 'Median', key: 'Median', precision: STATS_DECIMAL_PLACES },
     ];
 
     statRowsConfig.forEach(config => {
@@ -65,7 +68,7 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     variableNames.forEach(name => {
         const modes = statsMap.get(name)?.Mode;
         if (modes && Array.isArray(modes) && modes.length > 0) {
-            modeRow[name] = modes[0].toFixed(2) + (modes.length > 1 ? 'a' : '');
+            modeRow[name] = modes[0].toFixed(STATS_DECIMAL_PLACES) + (modes.length > 1 ? '<sup>a</sup>' : '');
         } else {
             modeRow[name] = '';
         }
@@ -73,17 +76,17 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     rows.push(modeRow);
 
     const remainingStatRowsConfig = [
-        { name: 'Std. Deviation', key: 'StdDev', precision: 5 },
-        { name: 'Variance', key: 'Variance', precision: 3 },
-        { name: 'Skewness', key: 'Skewness', precision: 3 },
+        { name: 'Std. Deviation', key: 'StdDev', precision: STATS_DECIMAL_PLACES },
+        { name: 'Variance', key: 'Variance', precision: STATS_DECIMAL_PLACES },
+        { name: 'Skewness', key: 'Skewness', precision: STATS_DECIMAL_PLACES },
         // Align keys with worker output (SESkewness, SEKurtosis)
-        { name: 'Std. Error of Skewness', key: 'SESkewness', precision: 3 },
-        { name: 'Kurtosis', key: 'Kurtosis', precision: 3 },
-        { name: 'Std. Error of Kurtosis', key: 'SEKurtosis', precision: 3 },
-        { name: 'Range', key: 'Range', precision: 2 },
-        { name: 'Minimum', key: 'Minimum', precision: 2 },
-        { name: 'Maximum', key: 'Maximum', precision: 2 },
-        { name: 'Sum', key: 'Sum', precision: 2 },
+        { name: 'Std. Error of Skewness', key: 'SESkewness', precision: STATS_DECIMAL_PLACES },
+        { name: 'Kurtosis', key: 'Kurtosis', precision: STATS_DECIMAL_PLACES },
+        { name: 'Std. Error of Kurtosis', key: 'SEKurtosis', precision: STATS_DECIMAL_PLACES },
+        { name: 'Range', key: 'Range', precision: STATS_DECIMAL_PLACES },
+        { name: 'Minimum', key: 'Minimum', precision: STATS_DECIMAL_PLACES },
+        { name: 'Maximum', key: 'Maximum', precision: STATS_DECIMAL_PLACES },
+        { name: 'Sum', key: 'Sum', precision: STATS_DECIMAL_PLACES },
     ];
 
     remainingStatRowsConfig.forEach(config => {
@@ -109,7 +112,7 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
             const childRow: any = { rowHeader: [null, level.toString()] };
             variableNames.forEach(name => {
                 const value = statsMap.get(name)?.Percentiles?.[level];
-                childRow[name] = typeof value === 'number' ? value.toFixed(4) : '.';
+                childRow[name] = typeof value === 'number' ? value.toFixed(STATS_DECIMAL_PLACES) : '.';
             });
             return childRow;
         });
@@ -119,12 +122,15 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         });
     }
 
+    const hasMultipleModes = statsResults.some(r => r.stats && Array.isArray(r.stats.Mode) && r.stats.Mode.length > 1);
+
     return {
         tables: [
             {
                 title: 'Statistics',
                 columnHeaders: columnHeaders.map(h => ({ header: h.header, key: h.key })), // Match desired output
                 rows,
+                ...(hasMultipleModes && { footer: '<sup>a</sup>. Multiple modes exist. The smallest value is shown.' }),
             },
         ],
     };

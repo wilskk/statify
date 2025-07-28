@@ -182,6 +182,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 </div>
             )}
 
+            {/* Percentile Values section - commented out
             <div id="percentile-values-section" className="border border-border rounded-md p-4 space-y-3 bg-card relative">
                 <div className={`text-sm font-medium ${getTextClass(!showStatistics)}`}>Percentile Values</div>
                 <div className="flex items-center">
@@ -278,6 +279,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 </div>
                 <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("percentile-values-section")} />
             </div>
+            */}
 
             <div id="central-tendency-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Central Tendency</div>
