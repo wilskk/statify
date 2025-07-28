@@ -1,4 +1,6 @@
 importScripts('/workers/DescriptiveStatistics/libs/utils.js');
+// Load jStat for statistical functions
+importScripts('https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js');
 
 // M-estimator weight functions
 const M_ESTIMATOR_WEIGHT_FUNCTIONS = {
@@ -400,6 +402,7 @@ class ExamineCalculator {
 }
 
 self.ExamineCalculator = ExamineCalculator;
+
 
 function getTCriticalApproximation(df, alpha = 0.05) {
     const p = 1 - alpha / 2;

@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useEffect } from 'react';
 import debounce from 'lodash/debounce';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
+import { useStoreMediator } from '@/stores/useStoreMediator';
 import { Variable } from '@/types/Variable';
 import { toast } from '@/hooks/use-toast';
 import Handsontable from 'handsontable';
@@ -10,6 +11,7 @@ import Handsontable from 'handsontable';
 async function handleNewColumns(
   updates: Array<{ row: number; col: number; value: string | number }>,
   currentVariables: Variable[],
+  mediator: any
 ) {
   const addVariablesAction = useVariableStore.getState().addVariables;
 
@@ -47,6 +49,12 @@ async function handleNewColumns(
   try {
     // Pass both the definitions and the data to be applied atomically
     await addVariablesAction(newVariableDefinitions, updates);
+    
+    // Notify mediator of structure change
+    mediator.emit({
+      type: 'STRUCTURE_CHANGED',
+      payload: { source: 'variables' }
+    });
   } catch (error) {
     console.error('Failed to add new variables/columns:', error);
     toast({
@@ -62,9 +70,17 @@ async function handleNewColumns(
  * It handles data validation, type enforcement, and state persistence.
  */
 export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
+    // Use selective subscription to minimize re-renders
     const variables = useVariableStore(state => state.variables);
     const updateCells = useDataStore(state => state.updateCells);
     const updateMultipleFields = useVariableStore(state => state.updateMultipleFields);
+    const mediator = useStoreMediator();
+    
+    // Memoize variable map for performance
+    const variableMap = useMemo(() => 
+        new Map(variables.map(v => [v.columnIndex, v])), 
+        [variables]
+    );
 
     // Adaptive debouncing: different delays for single vs bulk operations
     const pendingUpdatesRef = useRef<Array<{ row: number; col: number; value: any }>>([]);
@@ -100,9 +116,6 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
             if (source === 'loadData' || !changes) {
                 return;
             }
-
-            // Create variable map for O(1) lookup
-            const variableMap = new Map(variables.map(v => [v.columnIndex, v]));
 
             for (const change of changes) {
                 if (!change) continue;
@@ -142,8 +155,6 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
          }
  
              try {
-                 const variableMap = new Map<number, Variable>(variables.map(v => [v.columnIndex, v]));
- 
                  // Batch process changes for better performance
                  const changeMap = new Map<number, Map<number, any>>();
                  
@@ -186,7 +197,7 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
  
                  // Handle new column creation and their initial data atomically
                  if (updatesForNewCols.length > 0) {
-                     await handleNewColumns(updatesForNewCols, variables);
+                     await handleNewColumns(updatesForNewCols, variables, mediator);
                  }
  
                  // Handle updates for existing columns with adaptive debouncing
@@ -203,7 +214,7 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
                  });
              }
         },
-        [variables, adaptiveUpdateCells, viewMode]
+        [variableMap, adaptiveUpdateCells, viewMode, mediator]
     );
 
      const handleAfterColumnResize = useCallback((newSize: number, col: number) => {
