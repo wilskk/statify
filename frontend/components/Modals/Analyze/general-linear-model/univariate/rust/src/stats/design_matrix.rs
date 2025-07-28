@@ -29,6 +29,9 @@ use super::core::*;
 /// - intercept_column: Indeks kolom untuk intercept (jika ada)
 /// - term_names: Nama-nama istilah dalam model
 /// - case_indices_to_keep: Indeks kasus yang digunakan dalam analisis
+/// - fixed_factor_indices: Peta indeks kolom untuk faktor yang di-fix
+/// - random_factor_indices: Peta indeks kolom untuk faktor acak
+/// - covariate_indices: Peta indeks kolom untuk kovariat
 pub fn create_design_response_weights(
     data: &AnalysisData,
     config: &UnivariateConfig
@@ -79,6 +82,9 @@ pub fn create_design_response_weights(
             intercept_column: None,
             term_names: Vec::new(),
             case_indices_to_keep: Vec::new(),
+            fixed_factor_indices: HashMap::new(),
+            random_factor_indices: HashMap::new(),
+            covariate_indices: HashMap::new(),
         });
     }
 
@@ -102,6 +108,9 @@ pub fn create_design_response_weights(
     let mut current_col_idx = 0;
     let mut intercept_col_idx: Option<usize> = None;
     let mut final_term_names: Vec<String> = Vec::new();
+    let mut fixed_factor_indices: HashMap<String, Vec<usize>> = HashMap::new();
+    let mut random_factor_indices: HashMap<String, Vec<usize>> = HashMap::new();
+    let mut covariate_indices: HashMap<String, Vec<usize>> = HashMap::new();
 
     for term_name in &model_terms {
         final_term_names.push(term_name.clone());
@@ -189,6 +198,17 @@ pub fn create_design_response_weights(
         }
 
         if !term_matrix_cols.is_empty() {
+            let term_end_col = current_col_idx + term_matrix_cols.len() - 1;
+            let added_indices: Vec<usize> = (current_col_idx..=term_end_col).collect();
+
+            if config.main.fix_factor.as_ref().map_or(false, |f| f.contains(term_name)) {
+                fixed_factor_indices.insert(term_name.clone(), added_indices.clone());
+            } else if config.main.rand_factor.as_ref().map_or(false, |r| r.contains(term_name)) {
+                random_factor_indices.insert(term_name.clone(), added_indices.clone());
+            } else if config.main.covar.as_ref().map_or(false, |c| c.contains(term_name)) {
+                covariate_indices.insert(term_name.clone(), added_indices.clone());
+            }
+
             for col_vec in term_matrix_cols {
                 if col_vec.len() == n_samples_effective {
                     x_matrix_cols.push(col_vec);
@@ -246,6 +266,9 @@ pub fn create_design_response_weights(
         intercept_column: intercept_col_idx,
         term_names: final_term_names,
         case_indices_to_keep,
+        fixed_factor_indices,
+        random_factor_indices,
+        covariate_indices,
     })
 }
 
@@ -493,16 +516,45 @@ pub fn perform_sweep_and_extract_results(
 pub fn create_groups_from_design_matrix(
     design_info: &DesignMatrixInfo,
     data: &[f64],
-    indices: &[usize]
+    _indices: &[usize] // Not needed as `data` is aligned with `design_info.x`
 ) -> Vec<Vec<f64>> {
-    let mut groups: Vec<Vec<f64>> = Vec::new();
+    let n_rows = design_info.x.nrows();
+    if n_rows == 0 {
+        return Vec::new();
+    }
+
+    // Collect all column indices for BOTH fixed and random factors.
+    let mut factor_col_indices: Vec<usize> = design_info.fixed_factor_indices
+        .values()
+        .flatten()
+        .cloned()
+        .chain(design_info.random_factor_indices.values().flatten().cloned())
+        .collect();
+    factor_col_indices.sort_unstable();
+    factor_col_indices.dedup();
+
     let mut group_indices: Vec<Vec<usize>> = Vec::new();
 
-    // Initialize groups based on design matrix
-    for i in 0..design_info.x.nrows() {
+    // Initialize groups based on design matrix factor columns
+    for i in 0..n_rows {
         let mut found_group = false;
-        for (_group_idx, group) in group_indices.iter_mut().enumerate() {
-            if design_info.x.row(i) == design_info.x.row(group[0]) {
+        for group in group_indices.iter_mut() {
+            // Compare the current row `i` with the first row of an existing group.
+            // The comparison is done only on the factor columns if they are specified.
+            let first_idx_in_group = group[0];
+            let are_in_same_group = if factor_col_indices.is_empty() {
+                // If no specific factors, compare the entire rows (e.g., ANOVA without specified factors)
+                design_info.x.row(i) == design_info.x.row(first_idx_in_group)
+            } else {
+                // Compare only the values in the specified factor columns.
+                factor_col_indices
+                    .iter()
+                    .all(|&col_idx| {
+                        design_info.x[(i, col_idx)] == design_info.x[(first_idx_in_group, col_idx)]
+                    })
+            };
+
+            if are_in_same_group {
                 group.push(i);
                 found_group = true;
                 break;
@@ -513,15 +565,13 @@ pub fn create_groups_from_design_matrix(
         }
     }
 
-    // Map indices to actual data values
-    for group in group_indices {
-        let mut group_data = Vec::new();
-        for &idx in &group {
-            if idx < indices.len() {
-                let original_idx = indices[idx];
-                if original_idx < data.len() {
-                    group_data.push(data[original_idx]);
-                }
+    // Map row indices to actual data values from the `data` slice.
+    let mut groups: Vec<Vec<f64>> = Vec::new();
+    for index_list in group_indices {
+        let mut group_data: Vec<f64> = Vec::with_capacity(index_list.len());
+        for &row_idx in &index_list {
+            if row_idx < data.len() {
+                group_data.push(data[row_idx]);
             }
         }
         if !group_data.is_empty() {

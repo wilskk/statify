@@ -32,6 +32,9 @@ pub struct DesignMatrixInfo {
     pub intercept_column: Option<usize>,
     pub term_names: Vec<String>,
     pub case_indices_to_keep: Vec<usize>,
+    pub fixed_factor_indices: HashMap<String, Vec<usize>>,
+    pub random_factor_indices: HashMap<String, Vec<usize>>,
+    pub covariate_indices: HashMap<String, Vec<usize>>,
 }
 
 #[derive(Debug, Clone)]
