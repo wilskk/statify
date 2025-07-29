@@ -29,6 +29,50 @@ import { createPortal } from "react-dom";
 // Register Handsontable modules
 registerAllModules();
 
+// CSS untuk memastikan scroll horizontal berfungsi dengan baik
+const excelPreviewStyles = `
+.hot-container-excel .handsontable td {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    height: 29px !important;
+    max-height: 29px !important;
+    line-height: 29px !important;
+    vertical-align: middle !important;
+}
+
+.hot-container-excel .handsontable .htCore td {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    height: 29px !important;
+    max-height: 29px !important;
+    line-height: 29px !important;
+    vertical-align: middle !important;
+}
+
+.hot-container-excel .handsontable td *,
+.hot-container-excel .handsontable .htCore td * {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-height: 29px !important;
+    line-height: 29px !important;
+}
+
+.hot-container-excel .handsontable td input,
+.hot-container-excel .handsontable .htCore td input,
+.hot-container-excel .handsontable td textarea,
+.hot-container-excel .handsontable .htCore td textarea {
+    height: 27px !important;
+    max-height: 27px !important;
+    line-height: 27px !important;
+    padding: 0 4px !important;
+    border: none !important;
+    resize: none !important;
+}
+`;
+
 
 // Tipe data untuk tour
 type PopupPosition = 'top' | 'bottom';
@@ -397,6 +441,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
         
     return (
         <div className="flex flex-col h-full"> 
+            <style dangerouslySetInnerHTML={{ __html: excelPreviewStyles }} />
             <AnimatePresence>
                 {tourActive && (
                     <TourPopup
@@ -410,28 +455,30 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                     />
                 )}
             </AnimatePresence>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
+            {/* Header - Responsive */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border flex-shrink-0">
                 <div className="flex items-center flex-1 min-w-0">
-                    <Button variant="ghost" size="icon" onClick={onBack} className="mr-3 -ml-2 h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 sm:mr-3 -ml-1 sm:-ml-2 h-8 w-8 text-muted-foreground hover:text-foreground">
                         <ArrowLeft size={18} />
                     </Button>
-                    <FileSpreadsheet size={20} className="mr-2.5 text-primary flex-shrink-0 relative top-[-1px]" />
+                    <FileSpreadsheet size={18} className="mr-2 sm:mr-2.5 text-primary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                        <h2 className="text-lg font-semibold truncate text-popover-foreground" title={`Configure Import: ${fileName}`}>
-                            Configure: {fileName}
+                        <h2 className="text-base sm:text-lg font-semibold truncate text-popover-foreground" title={`Configure Import: ${fileName}`}>
+                            <span className="hidden sm:inline">Configure: </span>{fileName}
                         </h2>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate hidden sm:block">
                             Review and configure options for your Excel file.
                         </p>
                     </div>
                 </div>
-                <div className="w-8"></div> 
             </div>
 
-            <div className="p-6 flex-grow overflow-y-auto space-y-6">
-                <div className="space-y-3 p-4 bg-muted/30 border border-border rounded-md">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-3 sm:space-y-0">
-                        <div id="excel-config-worksheet-wrapper" className="flex-1 min-w-0 relative">
+            {/* Main Content - Responsive */}
+            <div className="p-4 sm:p-6 flex-grow overflow-y-auto space-y-4 sm:space-y-6">
+                {/* Worksheet and Range Selection */}
+                <div className="space-y-3 p-3 sm:p-4 bg-muted/30 border border-border rounded-md">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                        <div id="excel-config-worksheet-wrapper" className="relative">
                             <Label htmlFor="worksheet-select" className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 0 && "text-primary")}>Worksheet</Label>
                             <Select value={selectedSheet} onValueChange={setSelectedSheet} disabled={isLoadingPreview || isProcessing || sheetNames.length === 0}>
                                 <SelectTrigger className="w-full mt-1" data-testid="worksheet-select-trigger">
@@ -446,7 +493,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                             <ActiveElementHighlight active={tourActive && currentStep === 0} />
                         </div>
 
-                        <div className="flex-1 min-w-0">
+                        <div>
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="range-input" className="text-xs font-medium text-muted-foreground">Read range (optional)</Label>
                                 <TooltipProvider delayDuration={100}>
@@ -472,10 +519,12 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                     </div>
                 </div>
 
-                <div className="grid lg:grid-cols-3 gap-6">
-                    <div id="excel-config-options-wrapper" className="lg:col-span-1 relative">
-                        <div className="space-y-4">
-                            <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 1 && "text-primary")}>Options</Label>
+                {/* Options and Preview - Responsive Grid */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+                    {/* Options Panel */}
+                    <div id="excel-config-options-wrapper" className="xl:col-span-1 relative">
+                        <div className="space-y-4 p-3 sm:p-4 bg-muted/20 border border-border rounded-md">
+                            <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 1 && "text-primary")}>Import Options</Label>
                             <div className="space-y-3">
                                 <div className="flex items-center space-x-2">
                                     <Checkbox id="firstLineContainsExcelConfig" checked={firstLineContains} onCheckedChange={(checked) => setFirstLineContains(Boolean(checked))} disabled={isLoadingPreview || isProcessing || !selectedSheet}/>
@@ -506,10 +555,16 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                         <ActiveElementHighlight active={tourActive && currentStep === 1} />
                     </div>
 
-                    <div id="excel-config-preview-wrapper" className="lg:col-span-2 relative">
+                    {/* Data Preview Panel */}
+                    <div id="excel-config-preview-wrapper" className="xl:col-span-2 relative">
                         <div className="space-y-2">
                             <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 2 && "text-primary")}>Data Preview (max 100 rows shown)</Label>
-                            <div className="border border-border rounded-md bg-background hot-container-excel relative min-h-[220px] max-h-[220px] overflow-auto" style={{zIndex: 0}}>
+                            <div className="border border-border rounded-md bg-background hot-container-excel relative overflow-hidden" 
+                                 style={{
+                                     zIndex: 0,
+                                     minHeight: 'clamp(200px, 30vh, 300px)',
+                                     maxHeight: 'clamp(250px, 40vh, 400px)'
+                                 }}>
                                 {(isLoadingPreview && !isProcessing) ? (
                                     <div className="absolute inset-0 flex items-center justify-center h-full text-muted-foreground bg-background/80 z-10">
                                         <RefreshCw size={18} className="animate-spin mr-2" /> Loading preview...
@@ -533,13 +588,17 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                                         colHeaders={hotTableColHeaders}
                                         rowHeaders={true}
                                         width="100%"
-                                        height="220px"
+                                        height="100%"
                                         manualColumnResize={true}
-                                        manualRowResize={true}
+                                        manualRowResize={false}
+                                        autoRowSize={false}
+                                        rowHeights={29}
                                         columnSorting={false}
                                         filters={false}
                                         dropdownMenu={false}
                                         comments={false}
+                                        preventOverflow="horizontal"
+                                        outsideClickDeselects={false}
                                         licenseKey="non-commercial-and-evaluation"
                                         className="htMiddle htCenter text-sm htNoEmpty"
                                         readOnly
@@ -553,8 +612,9 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                 </div>
             </div>
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                <div className="flex items-center text-muted-foreground">
+            {/* Footer - Responsive */}
+            <div className="px-4 sm:px-6 py-3 border-t border-border flex flex-col sm:flex-row items-center justify-between bg-secondary flex-shrink-0 gap-3 sm:gap-0">
+                <div className="flex items-center text-muted-foreground order-2 sm:order-1">
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -564,17 +624,17 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
-                <div>
-                    <Button variant="outline" onClick={onBack} disabled={isProcessing} className="mr-2">Back</Button>
-                    <Button variant="outline" onClick={handleReset} disabled={isProcessing} className="mr-2">Reset</Button>
-                    <div id="excel-config-import-button-wrapper" className="relative inline-block">
+                <div className="flex flex-wrap items-center gap-2 order-1 sm:order-2">
+                    <Button variant="outline" onClick={onBack} disabled={isProcessing} className="text-sm px-3 py-1.5 h-8">Back</Button>
+                    <Button variant="outline" onClick={handleReset} disabled={isProcessing} className="text-sm px-3 py-1.5 h-8">Reset</Button>
+                    <div id="excel-config-import-button-wrapper" className="relative">
                         <Button
                             onClick={handleImport}
                             disabled={isProcessing || !!error || (parsedPreviewData.length === 0 && !previewColumnHeaders) || !selectedSheet || isLoadingPreview}
-                            className={cn(tourActive && currentStep === 3 && "focus:ring-primary")}
+                            className={cn("text-sm px-4 py-1.5 h-8", tourActive && currentStep === 3 && "focus:ring-primary")}
                             {...(isProcessing ? { loading: true } : {})}
                         >
-                            {isProcessing && <Loader2 className="mr-2 animate-spin" size={16} />}
+                            {isProcessing && <Loader2 className="mr-2 animate-spin" size={14} />}
                             Import Data
                         </Button>
                         <ActiveElementHighlight active={tourActive && currentStep === 3} />
@@ -583,4 +643,4 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             </div>
         </div>
     );
-}; 
+};

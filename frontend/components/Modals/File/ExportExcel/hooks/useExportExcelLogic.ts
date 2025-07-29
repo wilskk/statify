@@ -35,10 +35,9 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
     const handleExport = async (): Promise<void> => {
         startExportTransition(async () => {
             try {
-                // Fetch the latest persisted data, variables, and meta before exporting
                 await useVariableStore.getState().loadVariables();
                 await useDataStore.getState().loadData();
-                await useMetaStore.getState().loadMeta(); // Assuming loadMeta exists and fetches
+                await useMetaStore.getState().loadMeta();
 
                 const freshData = useDataStore.getState().data;
                 const freshVariables = useVariableStore.getState().variables;
@@ -53,7 +52,6 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
                     return;
                 }
 
-                // Map options to the format expected by the utility function
                 const utilOptions: ExcelUtilOptions = {
                     includeHeaders: exportOptions.includeHeaders,
                     includeVariablePropertiesSheet: exportOptions.includeVariableProperties,
@@ -62,13 +60,8 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
                     applyHeaderStyling: exportOptions.applyHeaderStyling
                 };
 
-                // Generate workbook from data
                 const workbook = generateExcelWorkbook(freshData, freshVariables, freshMeta, utilOptions);
-
-                // Generate safe filename
                 const filename = `${exportOptions.filename || DEFAULT_FILENAME}.${exportOptions.format}`;
-
-                // Create Excel file and trigger download
                 XLSX.writeFile(workbook, filename);
 
                 toast({

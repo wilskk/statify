@@ -83,8 +83,4 @@ const exampleSavFiles = [
 
 export const exampleFiles = {
     sav: exampleSavFiles,
-    // Add other file types here if needed in the future e.g.
-    // csv: [
-    //     { name: 'example.csv', path: '/exampleData/example.csv' },
-    // ]
 };

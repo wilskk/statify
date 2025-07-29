@@ -42,7 +42,6 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
 
     return (
         <div className="flex flex-col h-full">
-            {/* Header */}
             <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
                 <Database size={18} className="mr-2.5 flex-shrink-0 text-primary" />
                 <div className="flex-grow overflow-hidden">
@@ -55,7 +54,6 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
                 </div>
             </div>
 
-            {/* Content */}
             <div className="relative p-6 flex-grow overflow-y-auto">
                 <div className="flex flex-wrap gap-2 mb-4 overflow-x-auto pb-2">
                     {Array.from(new Set(exampleFiles.sav.flatMap(f => f.tags))).map(tag => (
@@ -77,7 +75,6 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
                 
                 {isLoading && (
                     <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-10">
-                        {/* Added testing attributes for accessibility and testing purposes */}
                         <Loader2
                             className="h-8 w-8 animate-spin text-foreground"
                             data-testid="loading-spinner"
@@ -100,8 +97,7 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
                 {renderFileList(filteredFiles, loadDataset, isLoading)}
             </div>
 
-            {/* Footer */}
-             <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
+            <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
                 <Button variant="outline" onClick={onClose} disabled={isLoading}>
                     Cancel
                 </Button>

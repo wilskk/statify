@@ -1,70 +1,210 @@
 # `useFileMenuActions` Hook
 
+This document provides a comprehensive technical overview of the `useFileMenuActions` hook for developers, detailing its implementation, architecture, and usage.
+
 ## 1. Overview
 
-The `useFileMenuActions` hook is a critical component for managing the application's core session and file operations. It provides a single, centralized `handleAction` function that orchestrates all actions typically found in a "File" menu, such as creating a new session, saving data, and exiting the application.
+The `useFileMenuActions` hook is a centralized controller for managing the application's core session and file operations. It provides a single `handleAction` function that orchestrates all actions typically found in a "File" menu, such as creating a new session, saving data, and exiting the application.
 
-This hook abstracts the complex interactions between various Zustand stores (`Data`, `Variable`, `Meta`, `Result`), API services (for file generation), and the Next.js router, ensuring these fundamental operations are handled consistently and robustly.
+The implementation follows a feature-sliced design pattern, separating concerns between UI components and business logic, and abstracting complex interactions with Zustand stores and API services.
 
-## 2. Architecture and Data Flow
+## 2. Key Features
 
-The hook acts as a high-level controller, dispatching commands to different parts of the application's infrastructure based on user actions.
+- **Centralized File Operations**:
+  - New session creation
+  - Data persistence
+  - File export (Save As)
+  - Application exit
 
-### Dependencies
+- **Robust State Management**:
+  - Integration with multiple Zustand stores
+  - Proper error handling
+  - Consistent state transitions
 
--   **`@/hooks/useModal`**: To open other modals if needed (e.g., a "Save As" dialog in the future).
--   **Zustand Stores**:
-    -   `useDataStore`: For managing the main data grid content.
-    -   `useVariableStore`: For managing variable metadata.
-    -   `useMetaStore`: For managing dataset-level metadata (e.g., file weightings).
-    -   `useResultStore`: For managing analysis outputs.
--   **`next/navigation`**: To redirect the user (e.g., on "Exit").
--   **`@/services/api`**: To interact with backend services for tasks like generating and downloading `.sav` files.
+- **File Export Capabilities**:
+  - SPSS (.sav) file generation
+  - Data sanitization and transformation
+  - Browser download triggering
 
-### Data Flow Diagram
+## 3. Architecture and Implementation
 
-The following diagram illustrates how the hook processes different types of actions:
+### 3.1. Core Responsibilities
+
+#### `useFileMenuActions` hook
+- **Role**: Business logic orchestrator
+- **Responsibilities**:
+  - Handling file menu actions (New, Save, SaveAs, Exit)
+  - Managing interactions with Zustand stores
+  - Coordinating API calls for file generation
+  - Handling navigation between application views
+- **Key Implementation Details**:
+  - Uses React hooks and TypeScript
+  - Implements async/await for asynchronous operations
+  - Integrates with Zustand stores (`useDataStore`, `useVariableStore`, `useMetaStore`, `useResultStore`)
+  - Uses Next.js router for navigation
+  - Implements data sanitization for file export
+  - Handles error boundaries with try/catch blocks
+
+### 3.2. Data Flow and Workflow
 
 ```mermaid
-graph TD
-    subgraph "UI Layer"
-        A["FileMenu Component"] -- "User clicks 'New'" --> B["handleAction({actionType: 'New'})"];
-        A -- "User clicks 'Save As'" --> C["handleAction({actionType: 'SaveAs'})"];
-    end
-
-    subgraph "Hook: useFileMenuActions"
-        B --> D{"handleAction"};
-        C --> D;
-
-        subgraph "Session Management (New, Exit)"
-             D -- "'New' or 'Exit' action" --> E["Calls .reset() on multiple stores"];
-             E --> F[("Zustand Stores<br/>Data, Variable, Meta, Result")];
-             D -- "'Exit' action also calls" --> G[Next.js Router];
+flowchart TD
+    A[User Interaction] --> B{handleAction};
+    B -- "New" --> C[Reset All Stores];
+    B -- "Save" --> D[Save All Stores];
+    B -- "SaveAs" --> E[Load Data from Stores];
+    B -- "Exit" --> F[Reset All Stores];
+    B -- "Exit" --> G[Redirect to Home];
+    
+    E --> H[Trim Data Matrix];
+    H --> I[Filter Variables];
+    I --> J[Sanitize Names];
+    J --> K[Transform Data];
+    K --> L[Call createSavFile API];
+    L --> M[Trigger Download];
+    
+    C --> N[Zustand Stores];
+    D --> N;
+    F --> N;
+    E --> N;
+    
+    N -- "State Changes" --> N;
+    
+    subgraph Legend
+        direction LR
+        subgraph Node Types
+            direction LR
+            hook[Hook]:::legend
+            store[Zustand Store]:::legend
+            api[API Service]:::legend
+            browser[Browser API]:::legend
         end
-
-        subgraph "File Generation (SaveAs)"
-            D -- "'SaveAs' action" --> H["1. Loads fresh data from stores"];
-            H --> F;
-            H --> I["2. Sanitizes & transforms data"];
-            I --> J["3. Calls API service<br/>createSavFile(payload)"];
-            J --> K["4. Calls API service<br/>downloadBlobAsFile(...)"];
-        end
-
-         subgraph "Data Persistence (Save)"
-            D -- "'Save' action" --> L["Calls .save() on multiple stores"];
-            L --> F;
-        end
     end
-
-    subgraph "Backend & State"
-        F -- "State is reset/updated" --> F;
-        G -- "Navigates to '/'" --> G;
-        J -- "Communicates with Backend" --> M["Backend Service (for .sav generation)"];
-        K -- "Triggers Browser Download" --> K;
-    end
+    
+    classDef legend fill:#f9f9f9,stroke:#333,stroke-width:1px;
+    classDef hook fill:#d5e8d4,stroke:#82b366;
+    classDef store fill:#fff2cc,stroke:#d6b656;
+    classDef api fill:#e1d5e7,stroke:#9673a6;
+    classDef browser fill:#ffe6cc,stroke:#d79b00;
+    
+    class A,B,C,D,E,F,G,H,I,J,K hook;
+    class N store;
+    class L,M api;
+    class M browser;
 ```
 
-## 3. Usage Example
+### 3.3. Detailed Workflow Steps
+
+#### New Action
+1. User triggers "New" action from UI
+2. `handleAction` is called with `actionType: "New"`
+3. All Zustand stores are reset:
+   - `useDataStore.resetData()`
+   - `useVariableStore.resetVariables()`
+   - `useMetaStore.resetMeta()`
+   - `useResultStore.clearAll()`
+4. Console log confirms session reset
+
+#### Save Action
+1. User triggers "Save" action from UI
+2. `handleAction` is called with `actionType: "Save"`
+3. Try/catch block wraps save operations
+4. All relevant stores are saved:
+   - `useMetaStore.saveMeta()`
+   - `useVariableStore.saveVariables()`
+   - `useDataStore.saveData()`
+5. Success or error feedback is provided
+
+#### SaveAs Action
+1. User triggers "SaveAs" action from UI
+2. `handleAction` is called with `actionType: "SaveAs"`
+3. Try/catch block wraps export operations
+4. Data is synced from stores:
+   - `useVariableStore.loadVariables()`
+   - `useDataStore.loadData()`
+5. Data matrix is trimmed to actual used range
+6. Variables are filtered for valid entries
+7. Variable names are sanitized for SPSS compliance
+8. Data is transformed to required JSON structure
+9. `createSavFile` API is called with transformed data
+10. `downloadBlobAsFile` triggers browser download
+11. Success or error feedback is provided
+
+#### Exit Action
+1. User triggers "Exit" action from UI
+2. `handleAction` is called with `actionType: "Exit"`
+3. Try/catch block wraps exit operations
+4. All Zustand stores are reset (same as New action)
+5. Next.js router redirects to home page (`/`)
+6. Success or error feedback is provided
+
+## 4. Hook Properties and Return Values
+
+### Input Parameters
+The `handleAction` function accepts a payload of type `FileActionPayload`:
+
+```typescript
+interface FileActionPayload {
+    actionType: FileMenuActionType;
+    data?: any;
+}
+
+type FileMenuActionType = "New" | "Save" | "SaveAs" | "Exit";
+```
+
+### Return Values
+The hook returns an object with the following properties:
+
+- `handleAction: (payload: FileActionPayload) => Promise<void>`: Function to handle file menu actions
+
+## 5. Error Handling
+
+The hook implements comprehensive error handling:
+
+- **Store Operations**:
+  - Try/catch blocks for save and reset operations
+  - Error logging to console
+  - User alerts for critical failures
+
+- **File Export**:
+  - Try/catch blocks for data processing
+  - Error logging to console
+  - User alerts with specific error messages
+
+- **Navigation**:
+  - Try/catch blocks for router operations
+  - Error logging to console
+  - User alerts for navigation failures
+
+## 6. Testing Strategy
+
+### 6.1. Hook Testing (`__tests__/useFileMenuActions.test.ts`)
+- **Focus**: Business logic in `useFileMenuActions` hook
+- **Approach**: Mock Zustand stores, router, and API services
+- **Coverage**:
+  - Action handling for all action types
+  - Store method calls
+  - API service calls
+  - Router navigation
+  - Error scenarios
+  - Unknown action handling
+
+## 7. Performance Considerations
+
+- Efficient state management with Zustand
+- Proper resource cleanup
+- Non-blocking async operations
+- Optimized data processing for file export
+- Memoization techniques where applicable
+
+## 8. Dependencies
+
+- Zustand stores (`useDataStore`, `useVariableStore`, `useMetaStore`, `useResultStore`)
+- Next.js router (`next/navigation`)
+- API services (`@/services/api`)
+- `useModal` hook (`@/hooks/useModal`)
+
+## 9. Usage Example
 
 The hook is designed to be called from UI components like a main navigation menu.
 
@@ -93,37 +233,3 @@ const FileMenu = () => {
 
 export default FileMenu;
 ```
-
-## 4. Detailed Action Explanations
-
-The `handleAction` function accepts a payload `{ actionType: FileMenuActionType; data?: any; }`.
-
-### `New`
-
--   **Purpose**: To start a fresh, clean session without leaving the main application view.
--   **Action**: Calls the `.reset()` method on the `useDataStore`, `useVariableStore`, `useMetaStore`, and `useResultStore`. This effectively clears all user data, variable definitions, metadata, and analysis results from the current session's state.
-
-### `Save`
-
--   **Purpose**: To explicitly persist the current state of the application to its storage backend (e.g., IndexedDB).
--   **Action**: Calls the `.save()` method (e.g., `saveMeta`, `saveVariables`, `saveData`) on each of the primary stores. This is intended to be a fast, client-side operation to ensure the user's work is not lost.
-
-### `SaveAs`
-
--   **Purpose**: To export the entire dataset, including data and variable metadata, into a single `.sav` (SPSS) file.
--   **Action**: This is a multi-step process:
-    1.  **Sync**: Fetches the latest data from the stores to ensure the export is up-to-date.
-    2.  **Trim**: Calculates the actual used range of the data grid to avoid exporting large amounts of empty rows and columns.
-    3.  **Sanitize & Transform**:
-        -   It filters for valid, defined variables.
-        -   It sanitizes variable names to be compliant with the `.sav` format specifications (e.g., must start with a letter, no special characters, max length of 64).
-        -   It transforms the variable metadata and data matrix into the specific JSON structure required by the backend service.
-    4.  **API Call**: Sends the transformed JSON payload to the `/api/createSavFile` endpoint.
-    5.  **Download**: Receives a `Blob` from the API and uses a helper function to trigger a file download in the user's browser.
-
-### `Exit`
-
--   **Purpose**: To end the user's session and return them to the application's landing page.
--   **Action**:
-    1.  Performs the same state-clearing action as `New`, calling `.reset()` on all major stores.
-    2.  Uses the Next.js `router` to redirect the user to the root path (`/`). 

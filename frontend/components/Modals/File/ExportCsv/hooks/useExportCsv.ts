@@ -34,94 +34,92 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
         setExportOptions(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleFilenameChange = (value: string) => {
-        const sanitized = value.replace(/[\/:*?"<>|]/g, '');
-        handleChange("filename", sanitized);
-    };
+  const handleFilenameChange = (value: string) => {
+    const sanitized = value.replace(/[\/:*?"<>|]/g, '');
+    handleChange("filename", sanitized);
+  };
 
-    const handleExport = async () => {
-        if (!data || data.length === 0) {
-            toast({
-                title: "Export Failed",
-                description: "No data available to export.",
-                variant: "destructive",
-            });
-            return;
+  const handleExport = async () => {
+    if (!data || data.length === 0) {
+      toast({
+        title: "Export Failed",
+        description: "No data available to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!exportOptions.filename.trim()) {
+      toast({
+        title: "Export Failed",
+        description: "Please enter a valid file name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    startExportTransition(async () => {
+      try {
+        await useVariableStore.getState().loadVariables();
+        await useDataStore.getState().loadData();
+
+        const freshData = useDataStore.getState().data;
+        const freshVariables = useVariableStore.getState().variables;
+
+        if (!freshData || freshData.length === 0) {
+          toast({
+            title: "Export Failed",
+            description: "No data to export after syncing with server.",
+            variant: "destructive",
+          });
+          return;
         }
-        if (!exportOptions.filename.trim()) {
-            toast({
-                title: "Export Failed",
-                description: "Please enter a valid file name.",
-                variant: "destructive",
-            });
-            return;
-        }
 
-        startExportTransition(async () => {
-            try {
-                // Fetch the latest persisted data and variables before exporting
-                await useVariableStore.getState().loadVariables();
-                await useDataStore.getState().loadData();
-                
-                const freshData = useDataStore.getState().data;
-                const freshVariables = useVariableStore.getState().variables;
+        const csvOptions: CsvExportOptions = {
+          delimiter: exportOptions.delimiter === '\\t' ? '\t' : exportOptions.delimiter,
+          includeHeaders: exportOptions.includeHeaders,
+          includeVariableProperties: exportOptions.includeVariableProperties,
+          quoteStrings: exportOptions.quoteStrings,
+        };
 
-                if (!freshData || freshData.length === 0) {
-                    toast({
-                        title: "Export Failed",
-                        description: "No data to export after syncing with server.",
-                        variant: "destructive",
-                    });
-                    return;
-                }
-
-                const csvOptions: CsvExportOptions = {
-                    delimiter: exportOptions.delimiter === '\\t' ? '\t' : exportOptions.delimiter,
-                    includeHeaders: exportOptions.includeHeaders,
-                    includeVariableProperties: exportOptions.includeVariableProperties,
-                    quoteStrings: exportOptions.quoteStrings,
-                };
-
-                const csvContent = generateCsvContent(freshData, freshVariables, csvOptions);
-
-                const blob = new Blob([csvContent], {
-                    type: `text/csv;charset=${exportOptions.encoding}`
-                });
-
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                const finalFilename = `${exportOptions.filename.trim()}.csv`;
-                link.download = finalFilename;
-                document.body.appendChild(link);
-                link.click();
-
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-
-                toast({
-                    title: "Export Successful",
-                    description: `Data successfully exported to ${finalFilename}`,
-                });
-
-                closeModal();
-
-            } catch (error) {
-                console.error("Export error:", error);
-                toast({
-                    title: "Export Failed",
-                    description: "An error occurred during export. Please check console for details.",
-                    variant: "destructive",
-                });
-            }
+        const csvContent = generateCsvContent(freshData, freshVariables, csvOptions);
+        const blob = new Blob([csvContent], {
+          type: `text/csv;charset=${exportOptions.encoding}`
         });
-    };
 
-    return {
-        exportOptions,
-        isExporting,
-        handleChange,
-        handleFilenameChange,
-        handleExport,
-    };
-}; 
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const finalFilename = `${exportOptions.filename.trim()}.csv`;
+        link.download = finalFilename;
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "Export Successful",
+          description: `Data successfully exported to ${finalFilename}`,
+        });
+
+        closeModal();
+
+      } catch (error) {
+        console.error("Export error:", error);
+        toast({
+          title: "Export Failed",
+          description: "An error occurred during export. Please check console for details.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
+  return {
+    exportOptions,
+    isExporting,
+    handleChange,
+    handleFilenameChange,
+    handleExport,
+  };
+};
