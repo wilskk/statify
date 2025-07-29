@@ -330,6 +330,7 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
                         updateFormData("model", field, value)
                     }
                     data={formData.model}
+                    covariates={formData.main.Covar}
                 />
             )}
 

@@ -362,6 +362,7 @@ export const UnivariateOptions = ({
                                 <Checkbox
                                     id="ParamEstRobStdErr"
                                     checked={optionsState.ParamEstRobStdErr}
+                                    disabled={true}
                                     onCheckedChange={(checked) =>
                                         handleChange(
                                             "ParamEstRobStdErr",

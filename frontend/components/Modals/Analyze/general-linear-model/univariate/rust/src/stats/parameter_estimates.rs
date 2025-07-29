@@ -29,21 +29,6 @@ pub fn calculate_parameter_estimates(
     // `design_info` berisi semua komponen yang diperlukan untuk perhitungan GLM.
     let design_info = create_design_response_weights(data, config)?;
 
-    // Jika tidak ada sampel data yang valid, hentikan proses.
-    if design_info.n_samples == 0 {
-        return Ok(ParameterEstimates { estimates: Vec::new(), note: None, interpretation: None });
-    }
-
-    // Jika tidak ada parameter yang perlu diestimasi (misalnya, model kosong), kembalikan hasil kosong.
-    if
-        design_info.p_parameters == 0 &&
-        !config.model.intercept &&
-        config.main.fix_factor.as_ref().map_or(true, |ff| ff.is_empty()) &&
-        config.main.covar.as_ref().map_or(true, |cv| cv.is_empty())
-    {
-        return Ok(ParameterEstimates { estimates: Vec::new(), note: None, interpretation: None });
-    }
-
     // Langkah 2: Perhitungan Inti GLM
     // Membuat matriks cross-product (Z'WZ) yang merupakan dasar untuk estimasi OLS/WLS.
     let ztwz_matrix = create_cross_product_matrix(&design_info)?;

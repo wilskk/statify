@@ -897,9 +897,9 @@ fn generate_univariate_test_table(
         mean_square: mse,
         f_value: f64::NAN,
         significance: f64::NAN,
-        partial_eta_squared: 0.0,
-        noncent_parameter: 0.0,
-        observed_power: 0.0,
+        partial_eta_squared: f64::NAN,
+        noncent_parameter: f64::NAN,
+        observed_power: f64::NAN,
     };
 
     if df_hypothesis_uni == 0 {
@@ -911,9 +911,9 @@ fn generate_univariate_test_table(
             mean_square: f64::NAN,
             f_value: f64::NAN,
             significance: f64::NAN,
-            partial_eta_squared: 0.0,
-            noncent_parameter: 0.0,
-            observed_power: 0.0,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         };
         return Some(UnivariateTests {
             entries: vec![contrast_entry, error_entry],
@@ -933,9 +933,9 @@ fn generate_univariate_test_table(
             mean_square: f64::NAN,
             f_value: f64::NAN,
             significance: f64::NAN,
-            partial_eta_squared: 0.0,
-            noncent_parameter: 0.0,
-            observed_power: 0.0,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         };
         return Some(UnivariateTests {
             entries: vec![contrast_entry, error_entry],
@@ -978,9 +978,9 @@ fn generate_univariate_test_table(
             mean_square: f64::NAN,
             f_value: f64::NAN,
             significance: f64::NAN,
-            partial_eta_squared: 0.0,
-            noncent_parameter: 0.0,
-            observed_power: 0.0,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         };
         return Some(UnivariateTests {
             entries: vec![contrast_entry, error_entry],

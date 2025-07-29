@@ -42,6 +42,7 @@ export const UnivariateModel = ({
     setIsModelOpen,
     updateFormData,
     data,
+    covariates,
 }: UnivariateModelProps) => {
     const [modelState, setModelState] = useState<UnivariateModelType>({
         ...data,
@@ -177,8 +178,8 @@ export const UnivariateModel = ({
                     /([^()\s]+)\((?:[^()\s]+\()*\{variable\}/
                 );
                 if (matches && matches[1] === selectedVariable) {
-                    // Mencegah nested variable yang sama (misalnya Age(Age) atau Age(Year(Age)))
-                    return; // Tidak melakukan apa-apa jika mencoba nested variable yang sama
+                    toast.warning("Each factor must be unique.");
+                    return; // Mencegah nested variable yang sama (misalnya Age(Age) atau Age(Year(Age)))
                 }
 
                 // Jika tidak sama, ganti placeholder dengan variabel yang dipilih
@@ -234,6 +235,13 @@ export const UnivariateModel = ({
             currentBuildTerm.trim() === "" ||
             currentBuildTerm.includes("{variable}")
         ) {
+            return;
+        }
+
+        const selectedIsCovariate =
+            covariates && covariates.includes(selectedVariable || "");
+        if (selectedIsCovariate) {
+            toast.warning("An effect may not be nested within a covariate.");
             return;
         }
 
@@ -381,6 +389,16 @@ export const UnivariateModel = ({
     };
 
     const handleContinue = () => {
+        if (
+            modelState.Custom &&
+            (!modelState.FactorsModel || modelState.FactorsModel.length === 0)
+        ) {
+            toast.warning(
+                "When specifying a custom model, you must include at least one model term."
+            );
+            return;
+        }
+
         Object.entries(modelState).forEach(([key, value]) => {
             updateFormData(key as keyof UnivariateModelType, value);
         });
@@ -423,7 +441,6 @@ export const UnivariateModel = ({
                                         <RadioGroupItem
                                             value="Custom"
                                             id="Custom"
-                                            disabled={true}
                                         />
                                         <Label htmlFor="Custom">
                                             Build Terms
@@ -433,7 +450,6 @@ export const UnivariateModel = ({
                                         <RadioGroupItem
                                             value="BuildCustomTerm"
                                             id="BuildCustomTerm"
-                                            disabled={true}
                                         />
                                         <Label htmlFor="BuildCustomTerm">
                                             Build Custom Terms
@@ -672,7 +688,14 @@ export const UnivariateModel = ({
                                                         ) &&
                                                         !currentBuildTerm.endsWith(
                                                             "("
-                                                        ))
+                                                        )) ||
+                                                    !!(
+                                                        withinParentheses &&
+                                                        selectedVariable &&
+                                                        covariates?.includes(
+                                                            selectedVariable
+                                                        )
+                                                    )
                                                 }
                                                 onClick={handleArrowClick}
                                                 title="Insert Variable"
@@ -687,7 +710,7 @@ export const UnivariateModel = ({
                                                 disabled={
                                                     !modelState.BuildCustomTerm ||
                                                     currentBuildTerm.trim() ===
-                                                        "" ||
+                                                        "" || // Periksa apakah term kosong
                                                     currentBuildTerm.includes(
                                                         "{variable}"
                                                     ) || // Tidak aktif jika ada placeholder
@@ -696,6 +719,12 @@ export const UnivariateModel = ({
                                                     ) ||
                                                     currentBuildTerm.endsWith(
                                                         "("
+                                                    ) ||
+                                                    !!(
+                                                        selectedVariable &&
+                                                        covariates?.includes(
+                                                            selectedVariable
+                                                        )
                                                     )
                                                 }
                                                 onClick={handleByClick}
@@ -720,6 +749,12 @@ export const UnivariateModel = ({
                                                     ) ||
                                                     currentBuildTerm.endsWith(
                                                         "("
+                                                    ) ||
+                                                    !!(
+                                                        selectedVariable &&
+                                                        covariates?.includes(
+                                                            selectedVariable
+                                                        )
                                                     )
                                                 }
                                                 onClick={handleWithinClick}
@@ -810,7 +845,6 @@ export const UnivariateModel = ({
                             onValueChange={(value) =>
                                 handleChange("SumOfSquareMethod", value)
                             }
-                            disabled={true}
                         >
                             <SelectTrigger>
                                 <SelectValue />

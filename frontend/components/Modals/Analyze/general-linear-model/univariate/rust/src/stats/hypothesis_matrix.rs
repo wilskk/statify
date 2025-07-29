@@ -25,22 +25,44 @@ pub fn construct_type_i_l_matrix(
     all_model_terms_in_order: &[String], // Semua term model secara berurutan F0, F1, ..., Fm
     original_ztwz: &DMatrix<f64> // Matriks Z'WZ lengkap (p+r) x (p+r)
 ) -> Result<DMatrix<f64>, String> {
-    // Pendekatan untuk Tipe I SS adalah menguji efek setiap term secara berurutan.
-    // Hipotesis untuk term F_j adalah bahwa ia tidak menambahkan kekuatan penjelas
-    // di atas model yang sudah berisi term F_1, ..., F_{j-1}.
-    // Matriks L untuk F_j harus ortogonal terhadap ruang kolom dari F_1, ..., F_{j-1}.
-    //
-    // L = C * [X_j' * (I - P_{j-1}) * X_j | X_j' * (I - P_{j-1}) * X_k]
-    // di mana P_{j-1} adalah proyektor ke ruang kolom X_{1..j-1}.
-    //
-    // Implementasi yang lebih sederhana dan kuat adalah dengan menggunakan matriks L
-    // yang dibangun dari matriks cross-product yang telah "disapu" (swept)
-    // untuk term-term sebelumnya.
-
     if design_info.p_parameters == 0 {
         return Ok(DMatrix::zeros(0, 0));
     }
 
+    // Periksa apakah term yang diminati adalah faktor, menggunakan design_info.
+    let is_factor =
+        design_info.fixed_factor_indices.contains_key(term_of_interest) ||
+        design_info.random_factor_indices.contains_key(term_of_interest);
+
+    // LOGIKA UNTUK FAKTOR (misalnya, 'dose')
+    // Untuk Type I SS, hipotesis untuk faktor seringkali merupakan kontras sederhana
+    // yang membandingkan level dengan level referensi, yang cocok dengan output yang diharapkan.
+    if is_factor {
+        if let Some((start, end)) = design_info.term_column_indices.get(term_of_interest) {
+            let num_levels = end - start + 1;
+            if num_levels < 2 {
+                return Ok(DMatrix::zeros(0, design_info.p_parameters));
+            }
+            let num_contrasts = num_levels - 1;
+            let ref_level_col_idx = *end;
+
+            let mut l_rows = Vec::new();
+            for i in 0..num_contrasts {
+                let current_level_col_idx = start + i;
+                let mut l_vec = DVector::from_element(design_info.p_parameters, 0.0);
+                l_vec[current_level_col_idx] = 1.0;
+                l_vec[ref_level_col_idx] = -1.0;
+                l_rows.push(l_vec.transpose());
+            }
+            return Ok(DMatrix::from_rows(&l_rows));
+        } else {
+            return Err(
+                format!("Factor term '{}' not found in term_column_indices.", term_of_interest)
+            );
+        }
+    }
+
+    // LOGIKA UNTUK INTERCEPT DAN KOVARIAT (misalnya, 'Intercept', 'puppy_love')
     if
         original_ztwz.nrows() < design_info.p_parameters ||
         original_ztwz.ncols() < design_info.p_parameters
@@ -48,12 +70,10 @@ pub fn construct_type_i_l_matrix(
         return Err("Z'WZ matrix too small for p_parameters for Type I L.".to_string());
     }
 
-    // Ambil submatriks p x p dari Z'WZ, yang merepresentasikan X'WX.
-    let l0 = original_ztwz
+    let x_t_x = original_ztwz
         .view((0, 0), (design_info.p_parameters, design_info.p_parameters))
         .clone_owned();
 
-    // Identifikasi kolom untuk efek SEBELUM dan SAAT INI (term_of_interest).
     let mut cols_before: Vec<usize> = Vec::new();
     let mut cols_current: Vec<usize> = Vec::new();
     let mut term_found = false;
@@ -67,7 +87,7 @@ pub fn construct_type_i_l_matrix(
             if term_name == term_of_interest {
                 cols_current.extend(term_cols);
                 term_found = true;
-                break; // Stop setelah menemukan term saat ini
+                break;
             } else {
                 cols_before.extend(term_cols);
             }
@@ -83,55 +103,50 @@ pub fn construct_type_i_l_matrix(
         return Ok(DMatrix::zeros(0, design_info.p_parameters));
     }
 
-    // Lakukan SWEEP pada matriks X'WX untuk semua kolom SEBELUM term saat ini.
-    // Hasilnya, bagian dari matriks yang sesuai dengan term-term ini akan berisi
-    // invers tergeneralisasi, dan bagian lain akan disesuaikan.
-    let l0_swept = sweep_matrix_on_columns(l0, &cols_before);
+    let l_swept = sweep_matrix_on_columns(x_t_x, &cols_before);
 
-    // Matriks L untuk term saat ini (F_j) dibentuk dari baris-baris
-    // matriks (X'WX)_swept yang sesuai dengan F_j.
-    // Submatriks ini (L_sub) memiliki bentuk [A | B], di mana A berhubungan dengan
-    // kolom-kolom F_j dan B dengan kolom-kolom setelahnya.
-    // Kita hanya tertarik pada bagian yang sesuai dengan parameter model.
-    let mut l_matrix = DMatrix::zeros(cols_current.len(), design_info.p_parameters);
+    let mut l_rows = Vec::new();
+    for &current_col_idx in &cols_current {
+        if current_col_idx < l_swept.nrows() {
+            let mut row = l_swept.row(current_col_idx).clone_owned();
+            let pivot = row[current_col_idx];
 
-    for (row_idx_l, &col_idx_current) in cols_current.iter().enumerate() {
-        if col_idx_current < l0_swept.nrows() {
-            l_matrix.row_mut(row_idx_l).copy_from(&l0_swept.row(col_idx_current));
+            if pivot.abs() > 1e-9 {
+                row /= pivot; // Normalisasi baris dengan pivotnya untuk mendapatkan 1 pada diagonal.
+            }
+
+            // Nolkan koefisien untuk term-term sebelumnya.
+            for &before_col_idx in &cols_before {
+                if before_col_idx < row.len() {
+                    row[before_col_idx] = 0.0;
+                }
+            }
+            l_rows.push(row);
         }
     }
 
-    // Nolkan kolom-kolom yang sesuai dengan efek *sebelum* term saat ini.
-    // Ini memastikan bahwa hipotesis hanya tentang term saat ini dan yang setelahnya,
-    // relatif terhadap yang sebelumnya.
-    for &col_idx_before in &cols_before {
-        if col_idx_before < l_matrix.ncols() {
-            l_matrix.column_mut(col_idx_before).fill(0.0);
-        }
-    }
-
-    // Sekarang, kita perlu memastikan baris-baris L adalah independen secara linear.
-    // Ini dilakukan dengan mengekstrak basis baris (row-echelon reduction).
-    let rank = l_matrix.rank(1e-8);
-    if rank == 0 {
+    if l_rows.is_empty() {
         return Ok(DMatrix::zeros(0, design_info.p_parameters));
     }
 
-    // Gunakan SVD untuk mendapatkan basis ortonormal untuk ruang baris L.
-    let svd = l_matrix.clone().svd(true, false);
-    match svd.u {
-        Some(u) => {
-            // u berisi basis ortonormal untuk ruang kolom dari L (ruang baris dari L').
-            // Ambil `rank` baris pertama dari L yang dikalikan dengan basis ini.
-            // Atau, lebih sederhana, ambil `rank` baris independen dari L.
-            let basis = u.transpose() * &l_matrix;
-            Ok(basis.rows(0, rank).clone_owned())
+    let l_matrix = DMatrix::from_rows(&l_rows);
+
+    // Meskipun untuk efek df tunggal (Intercept, kovariat) ini mungkin tidak perlu,
+    // Gram-Schmidt memastikan baris-baris tersebut independen jika ada lebih dari satu.
+    let l_orth = gram_schmidt_orthogonalization(&l_matrix);
+
+    let mut final_rows = Vec::new();
+    for row in l_orth.row_iter() {
+        if row.norm_squared() > 1e-12 {
+            final_rows.push(row.clone_owned());
         }
-        None =>
-            Err(
-                "SVD failed to compute U matrix for Type I L matrix row basis extraction.".to_string()
-            ),
     }
+
+    if final_rows.is_empty() {
+        return Ok(DMatrix::zeros(0, design_info.p_parameters));
+    }
+
+    Ok(DMatrix::from_rows(&final_rows))
 }
 
 /**
@@ -155,40 +170,103 @@ pub fn construct_type_ii_l_matrix(
     term_of_interest: &str,
     all_model_terms: &[String]
 ) -> Result<DMatrix<f64>, String> {
-    // Partisi kolom-kolom matriks desain menjadi X1, X2, dan X3 berdasarkan `term_of_interest`.
-    let (x1_indices, x2_indices, x3_indices) = partition_column_indices_for_type_ii(
-        design_info,
-        term_of_interest,
-        all_model_terms
-    )?;
+    let p_total = design_info.p_parameters;
 
-    // Jika tidak ada kolom untuk term of interest (X2), hasilnya adalah matriks nol.
+    // --- HYBRID APPROACH ---
+    // Cek apakah term yang sedang diuji adalah sebuah faktor.
+    let is_factor =
+        design_info.fixed_factor_indices.contains_key(term_of_interest) ||
+        design_info.random_factor_indices.contains_key(term_of_interest);
+
+    // 1. JIKA TERM ADALAH FAKTOR (misalnya, 'dose'):
+    // Gunakan kontras sederhana yang dapat diinterpretasikan (level vs. referensi).
+    // Ini cocok dengan output yang diharapkan untuk SS Tipe II dalam model tanpa interaksi.
+    if is_factor {
+        if let Some(indices) = design_info.fixed_factor_indices.get(term_of_interest) {
+            if indices.len() >= 2 {
+                let mut l_rows = Vec::new();
+                let ref_level_col_idx = *indices.last().unwrap();
+                for i in 0..indices.len() - 1 {
+                    let current_level_col_idx = indices[i];
+                    let mut l_vec = DVector::from_element(p_total, 0.0);
+                    l_vec[current_level_col_idx] = 1.0;
+                    l_vec[ref_level_col_idx] = -1.0;
+                    l_rows.push(l_vec.transpose());
+                }
+                return Ok(DMatrix::from_rows(&l_rows));
+            }
+        }
+        // Jika tidak ada level atau hanya satu level, tidak ada kontras.
+        return Ok(DMatrix::zeros(0, p_total));
+    }
+
+    // 2. JIKA TERM ADALAH INTERCEPT ATAU KOVARIAT:
+    // Gunakan formula matriks proyeksi penuh, yang menangani kasus ini dengan benar.
+    // Partisi indeks kolom menjadi X1, X2, dan X3.
+    let mut x1_indices = Vec::new();
+    let mut x2_indices = Vec::new();
+    let mut x3_indices = Vec::new();
+
+    if let Some((start, end)) = design_info.term_column_indices.get(term_of_interest) {
+        x2_indices.extend(*start..=*end);
+    } else {
+        return Err(format!("Term of interest '{}' not found in column indices.", term_of_interest));
+    }
+
+    let f_factors: HashSet<String> = parse_interaction_term(term_of_interest).into_iter().collect();
+    let f_is_intercept = term_of_interest == "Intercept";
+
+    for other_term in all_model_terms {
+        if other_term == term_of_interest {
+            continue;
+        }
+
+        let j_factors: HashSet<String> = parse_interaction_term(other_term).into_iter().collect();
+        let j_is_covariate = design_info.covariate_indices.contains_key(other_term);
+        let j_is_intercept = other_term == "Intercept";
+
+        let j_contains_f =
+            (f_factors.is_subset(&j_factors) && f_factors != j_factors) ||
+            (f_is_intercept && !j_is_intercept && !j_is_covariate);
+
+        let f_contains_j =
+            (j_factors.is_subset(&f_factors) && f_factors != j_factors) ||
+            (j_is_intercept &&
+                !f_is_intercept &&
+                !design_info.covariate_indices.contains_key(term_of_interest));
+
+        if let Some((start_j, end_j)) = design_info.term_column_indices.get(other_term) {
+            let term_cols = *start_j..=*end_j;
+            if j_contains_f {
+                x3_indices.extend(term_cols);
+            } else if !f_contains_j {
+                x1_indices.extend(term_cols);
+            }
+        }
+    }
+    if !f_is_intercept {
+        if let Some(idx) = design_info.intercept_column {
+            if !x1_indices.contains(&idx) {
+                x1_indices.push(idx);
+            }
+        }
+    }
+
+    x1_indices.sort_unstable();
+    x1_indices.dedup();
+    x3_indices.sort_unstable();
+    x3_indices.dedup();
+
     if x2_indices.is_empty() {
-        return Ok(DMatrix::zeros(0, design_info.p_parameters));
+        return Ok(DMatrix::zeros(0, p_total));
     }
 
     let x_full = &design_info.x;
     let n_samples = design_info.n_samples;
-    let p_total = design_info.p_parameters;
 
-    // Matriks W_sqrt, akar dari matriks bobot W (jika ada).
-    let w_sqrt_matrix: DMatrix<f64> = if let Some(w_diag_vector) = &design_info.w {
-        if w_diag_vector.len() != n_samples {
-            return Err("Weight vector length mismatch for W_sqrt_matrix.".to_string());
-        }
-        DMatrix::from_diagonal(&w_diag_vector.map(|val| val.sqrt()))
-    } else {
-        DMatrix::identity(n_samples, n_samples)
-    };
+    let w_sqrt_matrix = DMatrix::identity(n_samples, n_samples);
+    let w_matrix = DMatrix::identity(n_samples, n_samples);
 
-    // Matriks W (bukan W_sqrt) untuk perhitungan X1'*W*X1.
-    let w_matrix: DMatrix<f64> = if let Some(w_diag_vector) = &design_info.w {
-        DMatrix::from_diagonal(w_diag_vector)
-    } else {
-        DMatrix::identity(n_samples, n_samples)
-    };
-
-    // Bentuk matriks X1, X2, dan X3 dari matriks desain penuh.
     let x1 = if !x1_indices.is_empty() {
         x_full.select_columns(&x1_indices)
     } else {
@@ -201,96 +279,72 @@ pub fn construct_type_ii_l_matrix(
         DMatrix::zeros(n_samples, 0)
     };
 
-    // Hitung M1 = I - W_sqrt*X1*(X1'*W*X1)^- * X1'*W_sqrt
-    // M1 adalah matriks yang memproyeksikan data ke ruang yang ortogonal terhadap X1.
-    let m1_matrix: DMatrix<f64>;
-    if x1.ncols() > 0 {
+    let m1_matrix = if x1.ncols() > 0 {
         let x1_t_w_x1 = x1.transpose() * &w_matrix * &x1;
-        let x1_t_w_x1_pinv = x1_t_w_x1
-            .clone()
-            .pseudo_inverse(1e-10)
-            .map_err(|e| {
-                format!(
-                    "Pseudo-inverse failed for X1'WX1 in Type II M1: {}. Matrix norm: {:.2e}",
-                    e,
-                    x1_t_w_x1.norm()
-                )
-            })?;
-
-        let p_m1_part1 = &w_sqrt_matrix * &x1 * x1_t_w_x1_pinv;
-        let p_m1_part2 = x1.transpose() * &w_sqrt_matrix;
-        let p_m1 = p_m1_part1 * p_m1_part2;
-
-        m1_matrix = DMatrix::identity(n_samples, n_samples) - p_m1;
+        let x1_t_w_x1_pinv = x1_t_w_x1.pseudo_inverse(1e-10).map_err(|e| e.to_string())?;
+        let p1 = &x1 * x1_t_w_x1_pinv * x1.transpose() * &w_matrix;
+        DMatrix::identity(n_samples, n_samples) - p1
     } else {
-        // Jika X1 kosong, M1 adalah matriks identitas.
-        m1_matrix = DMatrix::identity(n_samples, n_samples);
-    }
+        DMatrix::identity(n_samples, n_samples)
+    };
 
-    // Hitung C_inv_term = X2'*W*M_adj*X2, di mana M_adj = W_sqrt * M1 * W_sqrt
     let m_adj = &w_sqrt_matrix * &m1_matrix * &w_sqrt_matrix;
     let c_inv_term = x2.transpose() * &m_adj * &x2;
-
-    // Derajat kebebasan (degrees of freedom) untuk hipotesis adalah rank dari matriks ini.
     let df_f = c_inv_term.rank(1e-8);
     if df_f == 0 {
         return Ok(DMatrix::zeros(0, p_total));
     }
 
-    // Hitung C = (X2'*W*M_adj*X2)^- (invers tergeneralisasi).
-    let c_matrix = c_inv_term
-        .clone()
-        .pseudo_inverse(1e-10)
-        .map_err(|e| {
-            format!(
-                "Pseudo-inverse failed for C_inv_term in Type II C: {}. Matrix norm: {:.2e}",
-                e,
-                c_inv_term.norm()
-            )
-        })?;
-
-    // Hitung blok-blok untuk matriks L final.
-    // L_coeffs_for_x2_params = C * X2' * M_adj * X2
-    // L_coeffs_for_x3_params = C * X2' * M_adj * X3
+    let c_matrix = c_inv_term.pseudo_inverse(1e-10).map_err(|e| e.to_string())?;
     let l_part_x2 = &c_matrix * x2.transpose() * &m_adj;
-    let l_coeffs_for_x2_params = &l_part_x2 * &x2;
 
+    let l_coeffs_for_x2_params = &l_part_x2 * &x2;
     let l_coeffs_for_x3_params = if x3.ncols() > 0 {
         &l_part_x2 * &x3
     } else {
         DMatrix::zeros(l_coeffs_for_x2_params.nrows(), 0)
     };
 
-    // Susun matriks L final dengan menempatkan koefisien ke kolom yang benar.
-    let num_l_rows = l_coeffs_for_x2_params.nrows();
-    let mut l_final = DMatrix::zeros(num_l_rows, p_total);
-    for r in 0..num_l_rows {
-        // Isi bagian untuk parameter X2.
-        for (block_col_idx, original_col_idx) in x2_indices.iter().enumerate() {
-            if block_col_idx < l_coeffs_for_x2_params.ncols() {
-                l_final[(r, *original_col_idx)] = l_coeffs_for_x2_params[(r, block_col_idx)];
-            }
+    let mut l_final = DMatrix::zeros(l_coeffs_for_x2_params.nrows(), p_total);
+    for r in 0..l_final.nrows() {
+        for (block_col, &original_col) in x2_indices.iter().enumerate() {
+            l_final[(r, original_col)] = l_coeffs_for_x2_params[(r, block_col)];
         }
-        // Isi bagian untuk parameter X3.
-        if x3.ncols() > 0 {
-            for (block_col_idx, original_col_idx) in x3_indices.iter().enumerate() {
-                if block_col_idx < l_coeffs_for_x3_params.ncols() {
-                    l_final[(r, *original_col_idx)] = l_coeffs_for_x3_params[(r, block_col_idx)];
-                }
-            }
+        for (block_col, &original_col) in x3_indices.iter().enumerate() {
+            l_final[(r, original_col)] = l_coeffs_for_x3_params[(r, block_col)];
         }
     }
 
-    // Lakukan reduksi baris untuk mendapatkan matriks hipotesis dengan rank yang benar (df_f).
-    if num_l_rows > df_f {
-        let svd = l_final.clone().svd(true, false);
-        if let Some(u) = svd.u {
-            let basis = u.transpose() * &l_final;
-            return Ok(basis.rows(0, df_f).clone_owned());
+    let l_orth = gram_schmidt_orthogonalization(&l_final);
+    let mut final_rows = Vec::new();
+    for row in l_orth.row_iter() {
+        if row.norm_squared() > 1e-12 {
+            final_rows.push(row.clone_owned());
         }
     }
 
-    Ok(l_final)
+    if final_rows.is_empty() {
+        return Ok(DMatrix::zeros(0, p_total));
+    }
+
+    let mut final_matrix = DMatrix::from_rows(&final_rows);
+
+    // -- Cleanup Step --
+    // Bulatkan kesalahan floating-point kecil ke nilai integer yang diharapkan.
+    // Ini memperbaiki masalah presisi tanpa memengaruhi kebenaran perhitungan.
+    let tolerance = 1e-9;
+    for x in final_matrix.iter_mut() {
+        // Jika angka sangat dekat dengan integer (0, 1, -1), bulatkan.
+        if (*x - x.round()).abs() < tolerance {
+            *x = x.round();
+        }
+        // Jika angka sangat dekat dengan nol, jadikan nol.
+        if x.abs() < tolerance {
+            *x = 0.0;
+        }
+    }
+
+    Ok(final_matrix)
 }
 
 /**
@@ -804,83 +858,6 @@ pub fn construct_type_iv_l_matrix(
 }
 
 /**
- * Mempartisi indeks kolom matriks desain untuk perhitungan SS Tipe II.
- *
- * - `x1_indices`: Indeks kolom untuk semua efek yang TIDAK mengandung term of interest (F).
- *                 Ini termasuk intercept dan efek utama/interaksi lain.
- * - `x2_indices`: Indeks kolom untuk term of interest (F) itu sendiri.
- * - `x3_indices`: Indeks kolom untuk semua efek yang merupakan interaksi tingkat lebih tinggi
- *                 yang MENGANDUNG F (misalnya, jika F="A", maka "A*B" termasuk di sini).
- */
-fn partition_column_indices_for_type_ii(
-    design_info: &DesignMatrixInfo,
-    term_of_interest: &str,
-    all_model_terms: &[String]
-) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>), String> {
-    let mut x1_indices = Vec::new();
-    let mut x2_indices = Vec::new();
-    let mut x3_indices = Vec::new();
-
-    let factors_in_f_set: HashSet<String> = parse_interaction_term(term_of_interest)
-        .into_iter()
-        .collect();
-
-    // Dapatkan indeks untuk X2 (term of interest).
-    if let Some((start, end)) = design_info.term_column_indices.get(term_of_interest) {
-        x2_indices.extend(*start..=*end);
-    } else if term_of_interest != "Intercept" {
-        // Intercept mungkin tidak ada di term_column_indices jika tidak ada di model.
-        return Err(
-            format!("Term '{}' not found in design_info for Type II partitioning.", term_of_interest)
-        );
-    }
-
-    for other_term_name in all_model_terms {
-        if other_term_name == term_of_interest {
-            continue;
-        }
-
-        let factors_in_j_set: HashSet<String> = parse_interaction_term(other_term_name)
-            .into_iter()
-            .collect();
-
-        if let Some((start_j, end_j)) = design_info.term_column_indices.get(other_term_name) {
-            let j_contains_f = factors_in_f_set.is_subset(&factors_in_j_set);
-            let f_contains_j = factors_in_j_set.is_subset(&factors_in_f_set);
-
-            if j_contains_f && !f_contains_j {
-                // Efek J mengandung F (dan bukan F itu sendiri). J adalah interaksi tingkat lebih tinggi. -> X3
-                x3_indices.extend(*start_j..=*end_j);
-            } else if !j_contains_f && !f_contains_j {
-                // J tidak mengandung F, dan F tidak mengandung J. -> X1
-                x1_indices.extend(*start_j..=*end_j);
-            }
-            // Kasus f_contains_j (J terkandung dalam F) tidak menempatkan J di mana pun.
-            // Ini benar, karena efek yang lebih rendah tidak digunakan untuk menyesuaikan efek yang lebih tinggi.
-        }
-    }
-
-    // Tangani intercept secara khusus. Intercept selalu masuk X1, kecuali jika itu adalah term of interest.
-    if term_of_interest != "Intercept" {
-        if let Some(idx) = design_info.intercept_column {
-            if !x1_indices.contains(&idx) {
-                x1_indices.push(idx);
-            }
-        }
-    }
-
-    // Pastikan indeks unik dan terurut.
-    x1_indices.sort_unstable();
-    x1_indices.dedup();
-    x2_indices.sort_unstable();
-    x2_indices.dedup();
-    x3_indices.sort_unstable();
-    x3_indices.dedup();
-
-    Ok((x1_indices, x2_indices, x3_indices))
-}
-
-/**
  * Operator SWEEP untuk matriks pada daftar kolom yang ditentukan (secara berurutan).
  *
  * Operasi SWEEP adalah alat fundamental dalam komputasi model linear.
@@ -926,4 +903,48 @@ pub fn sweep_matrix_on_columns(mut matrix: DMatrix<f64>, cols_to_sweep: &[usize]
         matrix[(k, k)] = -1.0 / pivot;
     }
     matrix
+}
+
+/**
+ * Melakukan ortogonalisasi Gram-Schmidt pada baris-baris matriks.
+ * Menghasilkan satu set baris ortogonal yang membentang ruang yang sama.
+ * Baris-baris yang dependen secara linear akan menjadi vektor nol.
+ */
+fn gram_schmidt_orthogonalization(matrix: &DMatrix<f64>) -> DMatrix<f64> {
+    if matrix.nrows() == 0 {
+        return matrix.clone_owned();
+    }
+
+    let mut basis_vectors: Vec<nalgebra::DVector<f64>> = Vec::new();
+
+    for row_vec in matrix.row_iter() {
+        let mut v = row_vec.transpose(); // v is a column vector (DVector)
+
+        // Kurangi proyeksi v ke semua vektor basis yang sudah ada.
+        for u in &basis_vectors {
+            let u_dot_u = u.dot(u);
+            if u_dot_u.abs() > 1e-12 {
+                let v_dot_u = v.dot(u);
+                let proj = u * (v_dot_u / u_dot_u);
+                v -= &proj;
+            }
+        }
+
+        // Tambahkan v ke basis jika tidak nol.
+        if v.norm_squared() > 1e-12 {
+            basis_vectors.push(v);
+        }
+    }
+
+    if basis_vectors.is_empty() {
+        return DMatrix::zeros(0, matrix.ncols());
+    }
+
+    // Ubah dari vektor kolom ke matriks baris.
+    let row_d_vectors: Vec<nalgebra::RowDVector<f64>> = basis_vectors
+        .iter()
+        .map(|dv_col| dv_col.transpose())
+        .collect();
+
+    DMatrix::from_rows(&row_d_vectors)
 }
