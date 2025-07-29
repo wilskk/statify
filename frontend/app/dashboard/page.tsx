@@ -19,7 +19,6 @@ export default function DashboardPage() {
 
     useEffect(() => {
         if (metaIsLoaded && meta.name) {
-            console.log("Navigating to /dashboard/data because project is active:", meta.name);
             router.push('/dashboard/data');
         }
     }, [metaIsLoaded, meta.name, router]);
