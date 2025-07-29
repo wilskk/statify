@@ -9,6 +9,8 @@ export interface TableRefState {
     variableTableRef: React.RefObject<any> | null;
     setDataTableRef: (ref: React.RefObject<any>) => void;
     setVariableTableRef: (ref: React.RefObject<any>) => void;
+    resetColumnSizingCache: (() => void) | null;
+    setResetColumnSizingCache: (fn: () => void) => void;
 }
 
 export const useTableRefStore = create<TableRefState>((set) => ({
@@ -19,4 +21,6 @@ export const useTableRefStore = create<TableRefState>((set) => ({
     variableTableRef: null,
     setDataTableRef: (ref) => set({ dataTableRef: ref }),
     setVariableTableRef: (ref) => set({ variableTableRef: ref }),
+    resetColumnSizingCache: null,
+    setResetColumnSizingCache: (fn) => set({ resetColumnSizingCache: fn }),
 }));

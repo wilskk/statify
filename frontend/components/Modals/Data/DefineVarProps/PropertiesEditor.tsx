@@ -234,7 +234,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
                     </div>
                     <div className="flex justify-between mt-1 text-sm text-muted-foreground">
                         <div>Cases scanned: <Input value={caseLimit} className="w-10 h-8 text-sm border border-input rounded px-2 bg-muted text-muted-foreground" readOnly /></div>
-                        <div>Value list limit: <Input value={valueLimit} className="w-10 h-8 text-sm border border-input rounded px-2 bg-muted text-muted-foreground" readOnly /></div>
+                <div>Value list limit: <Input value={valueLimit} className="w-10 h-8 text-sm border border-input rounded px-2 bg-muted text-muted-foreground" readOnly /></div>
                     </div>
                 </div>
                 <div className="col-span-8 flex flex-col">

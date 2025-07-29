@@ -153,6 +153,9 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
         config.className = `ht${variable.align.charAt(0).toUpperCase() + variable.align.slice(1)}`;
     }
 
+    // Set column width from variable configuration
+    config.width = variable.columns ?? DEFAULT_COLUMN_WIDTH;
+
     return config;
 };
 

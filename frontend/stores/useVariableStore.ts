@@ -409,7 +409,11 @@ export const useVariableStore = create<VariableStoreState>()(
             loadVariables: async () => {
                 set({ isLoading: true, error: null });
                 try {
-                    await useDataStore.getState().checkAndSave();
+                    // Only check and save if we're not in the middle of an overwrite operation
+                    const dataStore = useDataStore.getState();
+                    if (dataStore.hasUnsavedChanges && !get().isLoading) {
+                        await dataStore.checkAndSave();
+                    }
                     const variables = await variableService.getAllVariables();
                     updateStateAfterSuccess(set, variables);
                 } catch (error: any) {
@@ -454,11 +458,17 @@ export const useVariableStore = create<VariableStoreState>()(
             overwriteAll: async (variables, data) => {
                 set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    await useDataStore.getState().checkAndSave();
+                    // Replace all data without checking for unsaved changes since we're overwriting everything
                     await sheetService.replaceAll(variables, data);
                     // After success, reload everything to ensure stores are in sync
-                    await get().loadVariables();
-                    await useDataStore.getState().loadData();
+                    // Use direct service calls to avoid circular dependency
+                    const freshVariables = await variableService.getAllVariables();
+                    updateStateAfterSuccess(set, freshVariables);
+                    
+                    // Update data store directly without triggering checkAndSave
+                    const dataStore = useDataStore.getState();
+                    dataStore.setData(data);
+                    set(draft => { draft.isLoading = false; });
                 } catch (error: any) {
                     handleError(set, 'overwriteAll')(error);
                 }

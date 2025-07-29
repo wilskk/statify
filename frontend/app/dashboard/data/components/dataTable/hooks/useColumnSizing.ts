@@ -86,12 +86,13 @@ export const useColumnSizing = ({ hotTableRef, actualNumRows, actualNumCols }: U
         
         const variablesToUpdate = variables.filter(variable => {
             // Update jika:
-            // 1. Belum pernah dihitung untuk variable ini
-            // 2. Variable menggunakan default width
-            // 3. Data berubah signifikan
-            return !columnSizingCalculatedRef.current.has(variable.columnIndex) ||
-                   variable.columns === DEFAULT_COLUMN_WIDTH ||
-                   lastDataHashRef.current !== dataHash;
+            // 1. Belum pernah dihitung untuk variable ini DAN menggunakan default width
+            // 2. Data berubah signifikan DAN menggunakan default width
+            // Ini mencegah menimpa perubahan manual dari handleAutoWidth
+            return (!columnSizingCalculatedRef.current.has(variable.columnIndex) &&
+                   variable.columns === DEFAULT_COLUMN_WIDTH) ||
+                   (lastDataHashRef.current !== dataHash &&
+                   variable.columns === DEFAULT_COLUMN_WIDTH);
         });
         
         if (variablesToUpdate.length === 0) {
@@ -143,8 +144,15 @@ export const useColumnSizing = ({ hotTableRef, actualNumRows, actualNumCols }: U
         });
     }, [variables]);
     
+    // Function untuk reset cache (untuk digunakan oleh auto-width button)
+    const resetColumnSizingCache = useCallback(() => {
+        columnSizingCalculatedRef.current.clear();
+        lastDataHashRef.current = '';
+    }, []);
+
     return {
         shouldUseAutoColumnSize,
-        updateColumnWidths
+        updateColumnWidths,
+        resetColumnSizingCache
     };
 };

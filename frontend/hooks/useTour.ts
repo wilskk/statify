@@ -2,7 +2,7 @@
 
 import { useOnborda } from "onborda";
 import { useCallback } from "react";
-import { getTourByName } from "@/constants/tours";
+import { getTourByName } from "@/components/Modals/File/ExportCsv/tours";
 
 /**
  * Custom hook for managing Onborda product tours

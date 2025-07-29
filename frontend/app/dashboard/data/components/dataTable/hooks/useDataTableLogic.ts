@@ -26,30 +26,28 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<any>) => {
         displayData,
     } = useTableLayout();
 
-    // 3. Setup Update Handling with performance monitoring
-    const updateHandlers = useMemo(() => {
-        const {
-            handleBeforeChange,
-            handleAfterChange,
-            handleAfterColumnResize,
-            handleAfterValidate,
-        } = useTableUpdates(viewMode);
-        
-        // Wrap handlers with performance monitoring
-        return {
-            handleBeforeChange: (changes: any, source: string) => {
-                measureRender(() => {});
-                return handleBeforeChange(changes, source);
-            },
-            handleAfterChange: async (changes: any, source: string) => {
-                return measureUpdate(() => handleAfterChange(changes, source));
-            },
-            handleAfterColumnResize,
-            handleAfterValidate,
-        };
-    }, [measureRender, measureUpdate, viewMode]);
+    // 3. Setup Update Handling
+    const {
+        handleBeforeChange: originalHandleBeforeChange,
+        handleAfterChange: originalHandleAfterChange,
+        handleAfterColumnResize,
+        handleAfterValidate,
+    } = useTableUpdates(viewMode);
+    
+    // 4. Wrap handlers with performance monitoring
+    const updateHandlers = useMemo(() => ({
+        handleBeforeChange: (changes: any, source: string) => {
+            measureRender(() => {});
+            return originalHandleBeforeChange(changes, source);
+        },
+        handleAfterChange: async (changes: any, source: string) => {
+            return measureUpdate(() => originalHandleAfterChange(changes, source));
+        },
+        handleAfterColumnResize,
+        handleAfterValidate,
+    }), [measureRender, measureUpdate, originalHandleBeforeChange, originalHandleAfterChange, handleAfterColumnResize, handleAfterValidate]);
 
-    // 4. Setup Context Menu
+    // 5. Setup Context Menu
     const {
         contextMenuConfig,
         isRangeSelected,

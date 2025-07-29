@@ -1,4 +1,4 @@
-// Tour definitions for Onborda
+// Tour definitions for ExportCsv Modal
 
 // Define tour types locally since onborda type exports are not available
 type TourStep = {
@@ -20,7 +20,7 @@ type TourDefinition = {
 };
 
 // ExportCSV Modal Tour
-const exportCsvTour: TourDefinition = {
+export const exportCsvTour: TourDefinition = {
   tour: "exportcsv",
   steps: [
     {
@@ -89,10 +89,7 @@ const exportCsvTour: TourDefinition = {
   ]
 };
 
-// Main export with all tours
-export const dashboardTours: TourDefinition[] = [exportCsvTour];
-
 // Helper function to start specific tours
 export const getTourByName = (tourName: string): TourDefinition | undefined => {
-  return dashboardTours.find(tour => tour.tour === tourName);
-}; 
+  return tourName === "exportcsv" ? exportCsvTour : undefined;
+};
