@@ -392,14 +392,21 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
         result = {
           rowHeader: ["Linear"],
           "R Square": lin.r2.toFixed(3),
+          "R Square_raw": lin.r2,
           "F": lin.f.toFixed(3),
+          "F_raw": lin.f,
           "df1": lin.df1,
           "df2": lin.df2,
           "Sig.": lin.sig.toFixed(3),
+          "Sig_raw": lin.sig,
           "Constant": lin.b0.toFixed(3),
+          "Constant_raw": lin.b0,
           "b1": lin.b1.toFixed(3),
+          "b1_raw": lin.b1,
           "b2": "",
-          "b3": ""
+          "b2_raw": null,
+          "b3": "",
+          "b3_raw": null
         };
         break;
 
@@ -409,27 +416,41 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           result = {
             rowHeader: ["Logarithmic"],
             "R Square": log.r2.toFixed(3),
+            "R Square_raw": log.r2,
             "F": log.f.toFixed(3),
+            "F_raw": log.f,
             "df1": log.df1,
             "df2": log.df2,
             "Sig.": log.sig.toFixed(3),
+            "Sig_raw": log.sig,
             "Constant": log.b0.toFixed(3),
+            "Constant_raw": log.b0,
             "b1": log.b1.toFixed(3),
+            "b1_raw": log.b1,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         } else {
           result = {
             rowHeader: ["Logarithmic"],
             "R Square": "",
+            "R Square_raw": null,
             "F": "",
+            "F_raw": null,
             "df1": "",
             "df2": "",
             "Sig.": "",
+            "Sig_raw": null,
             "Constant": "",
+            "Constant_raw": null,
             "b1": "",
+            "b1_raw": null,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         }
         break;
@@ -440,27 +461,41 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           result = {
             rowHeader: ["Inverse"],
             "R Square": inv.r2.toFixed(3),
+            "R Square_raw": inv.r2,
             "F": inv.f.toFixed(3),
+            "F_raw": inv.f,
             "df1": inv.df1,
             "df2": inv.df2,
             "Sig.": inv.sig.toFixed(3),
+            "Sig_raw": inv.sig,
             "Constant": inv.b0.toFixed(3),
+            "Constant_raw": inv.b0,
             "b1": inv.b1.toFixed(3),
+            "b1_raw": inv.b1,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         } else {
           result = {
             rowHeader: ["Inverse"],
             "R Square": "",
+            "R Square_raw": null,
             "F": "",
+            "F_raw": null,
             "df1": "",
             "df2": "",
             "Sig.": "",
+            "Sig_raw": null,
             "Constant": "",
+            "Constant_raw": null,
             "b1": "",
+            "b1_raw": null,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         }
         break;
@@ -470,14 +505,21 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
         result = {
           rowHeader: ["Quadratic"],
           "R Square": quad.r2.toFixed(3),
+          "R Square_raw": quad.r2,
           "F": quad.f.toFixed(3),
+          "F_raw": quad.f,
           "df1": quad.df1,
           "df2": quad.df2,
           "Sig.": quad.sig.toFixed(3),
+          "Sig_raw": quad.sig,
           "Constant": quad.coefficients[0].toFixed(3),
+          "Constant_raw": quad.coefficients[0],
           "b1": quad.coefficients[1].toFixed(3),
+          "b1_raw": quad.coefficients[1],
           "b2": quad.coefficients[2].toFixed(3),
-          "b3": ""
+          "b2_raw": quad.coefficients[2],
+          "b3": "",
+          "b3_raw": null
         };
         break;
 
@@ -486,14 +528,21 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
         result = {
           rowHeader: ["Cubic"],
           "R Square": cubic.r2.toFixed(3),
+          "R Square_raw": cubic.r2,
           "F": cubic.f.toFixed(3),
+          "F_raw": cubic.f,
           "df1": cubic.df1,
           "df2": cubic.df2,
           "Sig.": cubic.sig.toFixed(3),
+          "Sig_raw": cubic.sig,
           "Constant": cubic.coefficients[0].toFixed(3),
+          "Constant_raw": cubic.coefficients[0],
           "b1": cubic.coefficients[1].toFixed(3),
+          "b1_raw": cubic.coefficients[1],
           "b2": cubic.coefficients[2].toFixed(3),
-          "b3": cubic.coefficients[3].toFixed(3)
+          "b2_raw": cubic.coefficients[2],
+          "b3": cubic.coefficients[3].toFixed(3),
+          "b3_raw": cubic.coefficients[3]
         };
         break;
 
@@ -503,27 +552,41 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           result = {
             rowHeader: ["Compound"],
             "R Square": compound.r2.toFixed(3),
+            "R Square_raw": compound.r2,
             "F": compound.f.toFixed(3),
+            "F_raw": compound.f,
             "df1": compound.df1,
             "df2": compound.df2,
             "Sig.": compound.sig.toFixed(3),
+            "Sig_raw": compound.sig,
             "Constant": compound.b0.toFixed(3),
+            "Constant_raw": compound.b0,
             "b1": compound.b1.toFixed(3),
+            "b1_raw": compound.b1,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         } else {
           result = {
             rowHeader: ["Compound"],
             "R Square": "",
+            "R Square_raw": null,
             "F": "",
+            "F_raw": null,
             "df1": "",
             "df2": "",
             "Sig.": "",
+            "Sig_raw": null,
             "Constant": "",
+            "Constant_raw": null,
             "b1": "",
+            "b1_raw": null,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         }
         break;
@@ -534,27 +597,41 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           result = {
             rowHeader: ["Power"],
             "R Square": power.r2.toFixed(3),
+            "R Square_raw": power.r2,
             "F": power.f.toFixed(3),
+            "F_raw": power.f,
             "df1": power.df1,
             "df2": power.df2,
             "Sig.": power.sig.toFixed(3),
+            "Sig_raw": power.sig,
             "Constant": power.b0.toFixed(3),
+            "Constant_raw": power.b0,
             "b1": power.b1.toFixed(3),
+            "b1_raw": power.b1,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         } else {
           result = {
             rowHeader: ["Power"],
             "R Square": "",
+            "R Square_raw": null,
             "F": "",
+            "F_raw": null,
             "df1": "",
             "df2": "",
             "Sig.": "",
+            "Sig_raw": null,
             "Constant": "",
+            "Constant_raw": null,
             "b1": "",
+            "b1_raw": null,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         }
         break;
@@ -565,27 +642,41 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           result = {
             rowHeader: ["S"],
             "R Square": sCurve.r2.toFixed(3),
+            "R Square_raw": sCurve.r2,
             "F": sCurve.f.toFixed(3),
+            "F_raw": sCurve.f,
             "df1": sCurve.df1,
             "df2": sCurve.df2,
             "Sig.": sCurve.sig.toFixed(3),
+            "Sig_raw": sCurve.sig,
             "Constant": sCurve.b0.toFixed(3),
+            "Constant_raw": sCurve.b0,
             "b1": sCurve.b1.toFixed(3),
+            "b1_raw": sCurve.b1,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         } else {
           result = {
             rowHeader: ["S"],
             "R Square": "",
+            "R Square_raw": null,
             "F": "",
+            "F_raw": null,
             "df1": "",
             "df2": "",
             "Sig.": "",
+            "Sig_raw": null,
             "Constant": "",
+            "Constant_raw": null,
             "b1": "",
+            "b1_raw": null,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         }
         break;
@@ -596,27 +687,41 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           result = {
             rowHeader: ["Growth"],
             "R Square": growth.r2.toFixed(3),
+            "R Square_raw": growth.r2,
             "F": growth.f.toFixed(3),
+            "F_raw": growth.f,
             "df1": growth.df1,
             "df2": growth.df2,
             "Sig.": growth.sig.toFixed(3),
+            "Sig_raw": growth.sig,
             "Constant": growth.b0.toFixed(3),
+            "Constant_raw": growth.b0,
             "b1": growth.b1.toFixed(3),
+            "b1_raw": growth.b1,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         } else {
           result = {
             rowHeader: ["Growth"],
             "R Square": "",
+            "R Square_raw": null,
             "F": "",
+            "F_raw": null,
             "df1": "",
             "df2": "",
             "Sig.": "",
+            "Sig_raw": null,
             "Constant": "",
+            "Constant_raw": null,
             "b1": "",
+            "b1_raw": null,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         }
         break;
@@ -627,27 +732,41 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           result = {
             rowHeader: ["Exponential"],
             "R Square": exponential.r2.toFixed(3),
+            "R Square_raw": exponential.r2,
             "F": exponential.f.toFixed(3),
+            "F_raw": exponential.f,
             "df1": exponential.df1,
             "df2": exponential.df2,
             "Sig.": exponential.sig.toFixed(3),
+            "Sig_raw": exponential.sig,
             "Constant": exponential.b0.toFixed(3),
+            "Constant_raw": exponential.b0,
             "b1": exponential.b1.toFixed(3),
+            "b1_raw": exponential.b1,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         } else {
           result = {
             rowHeader: ["Exponential"],
             "R Square": "",
+            "R Square_raw": null,
             "F": "",
+            "F_raw": null,
             "df1": "",
             "df2": "",
             "Sig.": "",
+            "Sig_raw": null,
             "Constant": "",
+            "Constant_raw": null,
             "b1": "",
+            "b1_raw": null,
             "b2": "",
-            "b3": ""
+            "b2_raw": null,
+            "b3": "",
+            "b3_raw": null
           };
         }
         break;
@@ -671,14 +790,21 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
         result = {
           rowHeader: ["Logistic"],
           "R Square": logistic.isEstimated ? "0.000" : statsSource.r2.toFixed(3),
+          "R Square_raw": logistic.isEstimated ? 0 : statsSource.r2,
           "F": logistic.isEstimated ? "0.000" : statsSource.f.toFixed(3),
+          "F_raw": logistic.isEstimated ? 0 : statsSource.f,
           "df1": statsSource.df1,
           "df2": statsSource.df2,
           "Sig.": logistic.isEstimated ? "1.000" : statsSource.sig.toFixed(3),
+          "Sig_raw": logistic.isEstimated ? 1 : statsSource.sig,
           "Constant": logistic.b0.toFixed(3),
+          "Constant_raw": logistic.b0,
           "b1": logistic.b1.toFixed(3),
-          "b2": options.upperBound ? logistic.c.toFixed(3) : "", // blank when auto upperBound
-          "b3": ""
+          "b1_raw": logistic.b1,
+          "b2": options.upperBound ? logistic.c.toFixed(3) : "",
+          "b2_raw": options.upperBound ? logistic.c : null,
+          "b3": "",
+          "b3_raw": null
         };
         break;
       }
@@ -687,14 +813,21 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
         result = {
           rowHeader: [model],
           "R Square": "",
+          "R Square_raw": null,
           "F": "",
+          "F_raw": null,
           "df1": "",
           "df2": "",
           "Sig.": "",
+          "Sig_raw": null,
           "Constant": "",
+          "Constant_raw": null,
           "b1": "",
+          "b1_raw": null,
           "b2": "",
-          "b3": ""
+          "b2_raw": null,
+          "b3": "",
+          "b3_raw": null
         };
     }
 

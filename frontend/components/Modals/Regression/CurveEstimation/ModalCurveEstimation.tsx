@@ -299,15 +299,25 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
                   let colorIdx = 0;
                   const fits: any[] = [];
 
+                  // Helper to retrieve numeric value, prioritising raw (unrounded) fields
+                  const getNum = (row: any, key: string): number | undefined => {
+                      const rawKey = `${key}_raw`;
+                      const val = row.hasOwnProperty(rawKey) && row[rawKey] !== "" && row[rawKey] !== null && row[rawKey] !== undefined
+                          ? row[rawKey]
+                          : row[key];
+                      if (val === "" || val === null || val === undefined) return undefined;
+                      return typeof val === "number" ? val : parseFloat(val);
+                  };
+
                   rows.forEach((row: any) => {
                       const model = row.rowHeader?.[0] || row["Equation"] || "Unknown";
-                      // Skip rows without constant (failed fit)
-                      if (!row["Constant"] || row["Constant"] === "") return;
+                      // Retrieve constant (a) and ensure it exists; skip if missing
+                      const a = getNum(row, "Constant");
+                      if (a === undefined || isNaN(a)) return; // failed fit
 
-                      const a = parseFloat(row["Constant"]);
-                      const b1 = row["b1"] !== "" ? parseFloat(row["b1"]) : undefined;
-                      const b2 = row["b2"] !== "" ? parseFloat(row["b2"]) : undefined;
-                      const b3 = row["b3"] !== "" ? parseFloat(row["b3"]) : undefined;
+                      const b1 = getNum(row, "b1");
+                      const b2 = getNum(row, "b2");
+                      const b3 = getNum(row, "b3");
 
                       let fn = "x => x"; // default placeholder
                       let parameters: Record<string, number> = { a };
