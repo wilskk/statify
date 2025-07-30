@@ -198,8 +198,6 @@ pub fn create_design_response_weights(
         }
     }
 
-    // --- Optimizations End ---
-
     for term_name in &model_terms {
         final_term_names.push(term_name.clone());
         let term_start_col = current_col_idx;

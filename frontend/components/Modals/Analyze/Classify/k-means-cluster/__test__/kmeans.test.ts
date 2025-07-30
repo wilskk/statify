@@ -227,13 +227,11 @@ const runAnalysisTest = async ({
     } catch (e: any) {
         // Tangkap error yang dilempar oleh konstruktor WASM
         error = e;
-        console.error(error);
     }
     return error;
 };
 
-// --- Suite Pengujian Integrasi ---
-describe("K-Means Constructor Integration Test", () => {
+describe("K-Means Constructor Test", () => {
     // Inisialisasi modul WASM satu kali sebelum semua tes berjalan
     beforeAll(async () => {
         const wasmPath = path.join(__dirname, "../rust/pkg/wasm_bg.wasm");

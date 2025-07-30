@@ -20,19 +20,6 @@ pub struct UnivariateResult {
     pub saved_variables: Option<SavedVariables>,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum DataSource {
-    FixedFactor,
-    RandomFactor,
-    Covariate,
-}
-
-#[derive(Debug, Clone)]
-pub struct FactorLocation {
-    pub source: DataSource,
-    pub group_idx: usize,
-}
-
 #[derive(Debug, Clone)]
 pub struct DesignMatrixInfo {
     pub x: DMatrix<f64>,

@@ -27,6 +27,8 @@ pub fn calculate_tests_between_subjects_effects(
         format!("Failed to create design matrix for Between Subjects Effects: {}", e)
     })?;
 
+    web_sys::console::log_1(&format!("design_info: {:?}", design_info).into());
+
     // Membuat matriks cross-product (Z'WZ) untuk perhitungan statistik
     let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e| {
         format!("Failed to create cross-product matrix: {}", e)

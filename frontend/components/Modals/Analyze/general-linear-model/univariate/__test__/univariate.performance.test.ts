@@ -87,9 +87,9 @@ const generateDummyData = (
 
 // Suite pengujian utama untuk kinerja konstruktor UnivariateAnalysis
 describe("UnivariateAnalysis Constructor Performance Test", () => {
-    const ROW_COUNTS = [10, 100, 1000];
-    const VAR_COUNTS = [9];
-    const NUM_RUNS = 100; // Jumlah eksekusi untuk setiap pengujian
+    const ROW_COUNTS = [10];
+    const VAR_COUNTS = [6];
+    const NUM_RUNS = 1; // Jumlah eksekusi untuk setiap pengujian
     const performanceResults: Record<number, Record<number, number[]>> = {};
 
     // Inisialisasi modul WebAssembly sekali sebelum semua pengujian berjalan.

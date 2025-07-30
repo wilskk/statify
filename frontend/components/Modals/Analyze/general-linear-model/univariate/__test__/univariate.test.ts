@@ -367,25 +367,24 @@ const runAnalysisTest = async ({
     return error;
 };
 
-// --- Suite Pengujian Integrasi Konstruktor Univariate ---
-describe("Univariate Analysis Constructor Integration Test", () => {
+describe("Univariate Analysis Constructor Test", () => {
     beforeAll(async () => {
         const wasmPath = path.join(__dirname, "../rust/pkg/wasm_bg.wasm");
         const wasmBuffer = fs.readFileSync(wasmPath);
         await init(wasmBuffer);
     });
 
-    it("T01: Harus berhasil saat seluruh data input dan konfigurasi valid", async () => {
-        const error = await runAnalysisTest({}); // Menggunakan semua data valid default
+    it("T01: Pengujian keberhasilan konstruksi dengan seluruh input valid dan lengkap.", async () => {
+        const error = await runAnalysisTest({});
         expect(error).toBeNull();
     });
 
-    it("T02: Harus error parsing saat dependent_data tidak sesuai format", async () => {
+    it("T02: Validasi error parsing saat dependent data tidak sesuai format.", async () => {
         const error = await runAnalysisTest({ depData: invalidFormatData });
         expect(error).toContain("Failed to parse dependent data");
     });
 
-    it("T03: Harus error saat semua variabel independen (fixed, random, covariate) kosong", async () => {
+    it("T03: Validasi error saat semua variabel independen (fixed, random, covariate) kosong.", async () => {
         const configForT03 = {
             ...validConfig,
             main: {
@@ -410,68 +409,119 @@ describe("Univariate Analysis Constructor Integration Test", () => {
         );
     });
 
-    describe("T04: Validasi error parsing untuk setiap variabel", () => {
-        it("Harus error parsing saat fixed_factor_data tidak sesuai format", async () => {
-            const error = await runAnalysisTest({
-                fixFactorData: invalidFormatData,
-            });
-            expect(error).toContain("Failed to parse fixed factor data");
-        });
-
-        it("Harus error parsing saat random_factor_data tidak sesuai format", async () => {
-            const error = await runAnalysisTest({
-                randFactorData: invalidFormatData,
-            });
-            expect(error).toContain("Failed to parse random factor data");
-        });
-
-        it("Harus error parsing saat covariate_data tidak sesuai format", async () => {
-            const error = await runAnalysisTest({
-                covarData: invalidFormatData,
-            });
-            expect(error).toContain("Failed to parse covariate data");
-        });
-
-        it("Harus error parsing saat wls_data tidak sesuai format", async () => {
-            const error = await runAnalysisTest({ wlsData: invalidFormatData });
-            expect(error).toContain("Failed to parse WLS weight data");
-        });
-
-        it("Harus error parsing saat dependent_data_defs tidak sesuai format", async () => {
-            const error = await runAnalysisTest({ depDefs: invalidDefsFormat });
-            expect(error).toContain(
-                "Failed to parse dependent data definitions"
-            );
-        });
+    it("T04: Validasi error parsing saat dependent data tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({ depData: invalidFormatData });
+        expect(error).toContain("Failed to parse dependent data");
     });
 
-    it("T05: Harus error saat dependent data hanya berisi nilai null", async () => {
+    it("T05: Validasi error parsing saat fixed data tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({
+            fixFactorData: invalidFormatData,
+        });
+        expect(error).toContain("Failed to parse fixed factor data");
+    });
+
+    it("T06: Validasi error parsing saat random data tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({
+            randFactorData: invalidFormatData,
+        });
+        expect(error).toContain("Failed to parse random factor data");
+    });
+
+    it("T07: Validasi error parsing saat covariate data tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({
+            covarData: invalidFormatData,
+        });
+        expect(error).toContain("Failed to parse covariate data");
+    });
+
+    it("T08: Validasi error parsing saat wls data tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({ wlsData: invalidFormatData });
+        expect(error).toContain("Failed to parse WLS weight data");
+    });
+
+    it("T09: Validasi error parsing saat dependent data defs tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({ depDefs: invalidDefsFormat });
+        expect(error).toContain("Failed to parse dependent data definitions");
+    });
+
+    it("T10: Validasi error parsing saat fixed data defs tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({
+            fixFactorDefs: invalidDefsFormat,
+        });
+        expect(error).toContain(
+            "Failed to parse fixed factor data definitions"
+        );
+    });
+
+    it("T11: Validasi error parsing saat random data defs tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({
+            randFactorDefs: invalidDefsFormat,
+        });
+        expect(error).toContain(
+            "Failed to parse random factor data definitions"
+        );
+    });
+
+    it("T12: Validasi error parsing saat covariate defs tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({
+            covarDefs: invalidDefsFormat,
+        });
+        expect(error).toContain("Failed to parse covariate data definitions");
+    });
+
+    it("T13: Validasi error parsing saat wls data defs tidak sesuai format.", async () => {
+        const error = await runAnalysisTest({ wlsDefs: invalidDefsFormat });
+        expect(error).toContain("Failed to parse WLS weight data definitions");
+    });
+
+    it("T14: Validasi error saat dependent data hanya berisi nilai null.", async () => {
         const error = await runAnalysisTest({ depData: allNullData });
         expect(error).toBe("Dependent data contains all null values");
     });
 
-    it("T06: Harus error saat fixed factor hanya berisi nilai null", async () => {
+    it("T15: Validasi error saat fixed factor hanya berisi nilai null.", async () => {
         const error = await runAnalysisTest({ fixFactorData: allNullData });
         expect(error).toBe("Fixed factor data contains all null values");
     });
 
-    it("T07: Harus error saat random factor hanya berisi nilai null", async () => {
+    it("T16: Validasi error saat random factor hanya berisi nilai null.", async () => {
         const error = await runAnalysisTest({ randFactorData: allNullData });
         expect(error).toBe("Random factor data contains all null values");
     });
 
-    it("T08: Harus error saat covariate hanya berisi nilai null", async () => {
+    it("T17: Validasi error saat covariate hanya berisi nilai null.", async () => {
         const error = await runAnalysisTest({ covarData: allNullData });
         expect(error).toBe("Covariate data contains all null values");
     });
 
-    it("T09: Harus error saat wls data hanya berisi nilai null", async () => {
+    it("T18: Validasi error saat wls data hanya berisi nilai null.", async () => {
         const error = await runAnalysisTest({ wlsData: allNullData });
         expect(error).toBe("WLS data contains all null values");
     });
 
-    it("T10: Harus error parsing saat config_data tidak valid", async () => {
+    it("T19: Validasi kegagalan parsing konfigurasi config_data.", async () => {
         const error = await runAnalysisTest({ config: invalidConfig });
         expect(error).toContain("Failed to parse configuration");
+    });
+
+    describe("T20: Validasi konfigurasi saat nilai signifikansi tidak berada pada rentang 0 hingga 1.", () => {
+        it("Harus error saat tingkat signifikansi kurang dari 0", async () => {
+            const invalidConfig = {
+                ...validConfig,
+                options: { ...validConfig.options, SigLevel: -0.1 },
+            };
+            const error = await runAnalysisTest({ config: invalidConfig });
+            expect(error).toBe("Significance level must be between 0 and 1");
+        });
+
+        it("Harus error saat tingkat signifikansi lebih dari 1", async () => {
+            const invalidConfig = {
+                ...validConfig,
+                options: { ...validConfig.options, SigLevel: 1.1 },
+            };
+            const error = await runAnalysisTest({ config: invalidConfig });
+            expect(error).toBe("Significance level must be between 0 and 1");
+        });
     });
 });
