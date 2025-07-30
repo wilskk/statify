@@ -240,7 +240,7 @@ test.describe('[Feature Name] - [Dataset] Workflow', () => {
     resourceMonitor.startMonitoring();
     
     // Navigate to Data Dashboard
-    await page.goto('http://localhost:3000/data-dashboard');
+    await page.goto('/data-dashboard');
     await page.waitForLoadState('networkidle');
     
     // Collect initial metrics
