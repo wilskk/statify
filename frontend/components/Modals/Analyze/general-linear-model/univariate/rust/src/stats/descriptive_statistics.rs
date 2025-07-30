@@ -156,115 +156,123 @@ pub fn calculate_descriptive_statistics(
         );
     }
 
-    // --- 3. Generasi Kombinasi Level Faktor ---
-    // Dapatkan semua level unik untuk setiap faktor dari data.
-    let mut factor_levels_with_total = Vec::new();
+    // --- 3. Pengumpulan Data dan Perhitungan Statistik dalam Satu Langkah (Optimized) ---
+    let n_obs = data.dependent_data.get(0).map_or(0, |d| d.len());
+    if n_obs == 0 {
+        return Err("Tidak ada data yang tersedia untuk statistik deskriptif".to_string());
+    }
+
+    // Buat peta lokasi untuk pencarian data faktor yang cepat, menghindari iterasi berulang.
+    let mut factor_locations: HashMap<String, (bool, usize)> = HashMap::new();
+    for factor_name in &all_factors {
+        let mut found = false;
+        // Cari di faktor tetap
+        for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
+            if def_group.iter().any(|def| &def.name == factor_name) {
+                factor_locations.insert(factor_name.clone(), (true, group_idx));
+                found = true;
+                break;
+            }
+        }
+        if found {
+            continue;
+        }
+        // Cari di faktor acak
+        if let Some(rand_defs) = &data.random_factor_data_defs {
+            for (group_idx, def_group) in rand_defs.iter().enumerate() {
+                if def_group.iter().any(|def| &def.name == factor_name) {
+                    factor_locations.insert(factor_name.clone(), (false, group_idx));
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if !found {
+            return Err(format!("Definisi untuk faktor '{}' tidak ditemukan.", factor_name));
+        }
+    }
+
+    // Agregasi nilai berdasarkan kunci kombinasi dalam satu iterasi.
+    let mut combo_values: HashMap<String, Vec<(f64, f64)>> = HashMap::new();
+
+    for i in 0..n_obs {
+        // Ambil nilai variabel dependen untuk observasi saat ini.
+        if
+            let Some(dep_val) = data.dependent_data[0]
+                .get(i)
+                .and_then(|r| r.values.get(dep_var_name))
+                .and_then(|val| data_value_to_string(val).parse::<f64>().ok())
+        {
+            let weight = 1.0; // Asumsi bobot 1.0 (OLS). Bisa diperluas untuk WLS.
+
+            // Dapatkan semua level faktor untuk observasi saat ini.
+            let mut observation_levels = HashMap::new();
+            let mut skip_obs = false;
+            for factor_name in &all_factors {
+                if let Some(&(is_fixed, group_idx)) = factor_locations.get(factor_name) {
+                    let data_source = if is_fixed {
+                        data.fix_factor_data.get(group_idx)
+                    } else {
+                        data.random_factor_data.as_ref().and_then(|d| d.get(group_idx))
+                    };
+                    if
+                        let Some(value) = data_source
+                            .and_then(|g| g.get(i))
+                            .and_then(|r| r.values.get(factor_name))
+                    {
+                        observation_levels.insert(factor_name.clone(), data_value_to_string(value));
+                    } else {
+                        skip_obs = true; // Lewati observasi jika ada data faktor yang hilang.
+                        break;
+                    }
+                }
+            }
+            if skip_obs {
+                continue;
+            }
+
+            // Hasilkan semua "super-kombinasi" (termasuk "Total") untuk observasi ini.
+            let mut super_combos: Vec<HashMap<String, String>> = vec![HashMap::new()];
+            for factor_name in &all_factors {
+                let level = observation_levels.get(factor_name).unwrap();
+                let mut next_combos = Vec::with_capacity(super_combos.len() * 2);
+                for combo in super_combos {
+                    let mut combo_with_level = combo.clone();
+                    combo_with_level.insert(factor_name.clone(), level.clone());
+                    next_combos.push(combo_with_level);
+
+                    let mut combo_with_total = combo;
+                    combo_with_total.insert(factor_name.clone(), "Total".to_string());
+                    next_combos.push(combo_with_total);
+                }
+                super_combos = next_combos;
+            }
+
+            // Tambahkan nilai ke setiap kombinasi yang relevan.
+            for combo in super_combos {
+                let combo_key = all_factors
+                    .iter()
+                    .map(|f| format!("{}={}", f, combo.get(f).unwrap()))
+                    .collect::<Vec<_>>()
+                    .join(";");
+                combo_values.entry(combo_key).or_default().push((dep_val, weight));
+            }
+        }
+    }
+
+    // Hitung statistik dari nilai-nilai yang telah dikumpulkan.
+    let stats_entries: HashMap<String, StatsEntry> = combo_values
+        .into_iter()
+        .map(|(key, values)| (key, calculate_stats_for_values(&values)))
+        .collect();
+
+    // --- Persiapan untuk membangun struktur output ---
+    // Dapatkan level-level faktor yang dibutuhkan oleh `build_groups_recursive`.
     let mut factor_levels_map = HashMap::new();
     for factor in &all_factors {
         let mut levels = get_factor_levels(data, factor)?;
         levels.sort();
-        factor_levels_map.insert(factor.clone(), levels.clone());
-        // Tambahkan "Total" untuk memungkinkan perhitungan statistik agregat per faktor.
-        levels.push("Total".to_string());
-        factor_levels_with_total.push((factor.clone(), levels));
-    }
-
-    // Buat semua kemungkinan kombinasi dari level faktor (termasuk "Total").
-    // Ini adalah dasar untuk grid statistik yang akan dihitung.
-    let mut all_combinations = Vec::new();
-    generate_level_combinations(
-        &factor_levels_with_total,
-        &mut HashMap::new(),
-        0,
-        &mut all_combinations
-    );
-
-    // --- 4. Konsolidasi Data Observasi ---
-    // Gabungkan semua data (dependen, faktor tetap, faktor acak) ke dalam satu
-    // struktur per observasi untuk mempermudah pemfilteran.
-    let n_obs = if !data.dependent_data.is_empty() && !data.dependent_data[0].is_empty() {
-        data.dependent_data[0].len()
-    } else {
-        return Err("Tidak ada data yang tersedia untuk statistik deskriptif".to_string());
-    };
-    let mut all_records: Vec<HashMap<String, String>> = Vec::with_capacity(n_obs);
-    for i in 0..n_obs {
-        let mut record = HashMap::new();
-        // Variabel dependen
-        if let Some(dep) = data.dependent_data[0].get(i) {
-            for (k, v) in &dep.values {
-                record.insert(k.clone(), data_value_to_string(v));
-            }
-        }
-        // Faktor tetap
-        for fix_set in &data.fix_factor_data {
-            if let Some(fix) = fix_set.get(i) {
-                for (k, v) in &fix.values {
-                    record.insert(k.clone(), data_value_to_string(v));
-                }
-            }
-        }
-        // Faktor acak
-        if let Some(rand_sets) = &data.random_factor_data {
-            for rand_set in rand_sets {
-                if let Some(rand) = rand_set.get(i) {
-                    for (k, v) in &rand.values {
-                        record.insert(k.clone(), data_value_to_string(v));
-                    }
-                }
-            }
-        }
-        all_records.push(record);
-    }
-
-    // --- 5. Perhitungan Statistik untuk Setiap Kombinasi ---
-    let mut stats_entries = HashMap::new();
-    for combo in &all_combinations {
-        // Buat kunci yang deterministik dan unik untuk setiap kombinasi.
-        // Urutan faktor dipertahankan agar kunci konsisten.
-        let combo_key_parts: Vec<String> = all_factors
-            .iter()
-            .map(|factor_name| {
-                let level = combo
-                    .get(factor_name)
-                    .cloned()
-                    .unwrap_or_else(|| "Total".to_string());
-                format!("{}={}", factor_name, level)
-            })
-            .collect();
-        let combo_key = combo_key_parts.join(";");
-
-        let mut values_with_weights = Vec::new();
-        for record in &all_records {
-            // Periksa apakah record cocok dengan kombinasi level faktor saat ini.
-            let mut matches = true;
-            for (factor, level) in combo {
-                if level == "Total" {
-                    continue; // "Total" berarti tidak memfilter berdasarkan faktor ini.
-                }
-                if record.get(factor) != Some(level) {
-                    matches = false;
-                    break;
-                }
-            }
-            // Jika cocok, tambahkan nilai variabel dependen dan bobotnya.
-            if matches {
-                let dep_val = record.get(dep_var_name).and_then(|s| s.parse::<f64>().ok());
-                let weight = record
-                    .get("wls_weight_value")
-                    .and_then(|s| s.parse::<f64>().ok())
-                    .unwrap_or(1.0); // Bobot default 1.0 (untuk OLS).
-                if let Some(num) = dep_val {
-                    values_with_weights.push((num, weight));
-                }
-            }
-        }
-        // Hitung statistik inti (N, rata-rata, std dev, dll.) untuk data yang telah difilter.
-        // - Rata-rata (Mean): Ukuran tendensi sentral, menunjukkan nilai "khas".
-        // - Standar Deviasi (Std Dev): Ukuran sebaran data, menunjukkan seberapa jauh
-        //   data dari rata-ratanya. Nilai kecil berarti data cenderung dekat dengan rata-rata.
-        let stats = calculate_stats_for_values(&values_with_weights);
-        stats_entries.insert(combo_key, stats);
+        factor_levels_map.insert(factor.clone(), levels);
     }
 
     // --- 6. Penyusunan Hasil Akhir ---

@@ -112,6 +112,94 @@ pub fn create_design_response_weights(
     let mut random_factor_indices: HashMap<String, Vec<usize>> = HashMap::new();
     let mut covariate_indices: HashMap<String, Vec<usize>> = HashMap::new();
 
+    // 1. Pre-cache all required data to avoid re-reading and re-filtering inside the loop.
+    let mut factor_levels_cache: HashMap<String, Vec<String>> = HashMap::new();
+    let mut covariate_cols_cache: HashMap<String, DVector<f64>> = HashMap::new();
+    let mut factor_cols_cache: HashMap<String, HashMap<String, DVector<f64>>> = HashMap::new();
+
+    let all_terms_for_cache: Vec<_> = model_terms
+        .iter()
+        .filter(|t| t.as_str() != "Intercept")
+        .flat_map(|t| parse_interaction_term(t))
+        .collect();
+
+    for term_component in all_terms_for_cache {
+        // Cache Covariate Columns
+        if
+            config.main.covar.as_ref().map_or(false, |c| c.contains(&term_component)) &&
+            !covariate_cols_cache.contains_key(&term_component)
+        {
+            let mut cov_values_filtered: Vec<f64> = Vec::with_capacity(case_indices_to_keep.len());
+
+            // Find the correct index for the covariate data
+            let mut cov_data_set_index: Option<usize> = None;
+            if let Some(cov_defs) = &data.covariate_data_defs {
+                for (i, def_group) in cov_defs.iter().enumerate() {
+                    if def_group.iter().any(|def| def.name == term_component) {
+                        cov_data_set_index = Some(i);
+                        break;
+                    }
+                }
+            }
+
+            if let Some(index) = cov_data_set_index {
+                if let Some(cov_data_sets) = &data.covariate_data {
+                    if let Some(cov_data_set) = cov_data_sets.get(index) {
+                        for &idx_to_keep in &case_indices_to_keep {
+                            if
+                                let Some(record) = cov_data_set
+                                    .get(idx_to_keep)
+                                    .and_then(|r|
+                                        extract_numeric_from_record(r, &term_component).map(|v| (
+                                            r,
+                                            v,
+                                        ))
+                                    )
+                            {
+                                cov_values_filtered.push(record.1);
+                            } else {
+                                // This case should ideally not be hit if data validation is correct
+                                // but we handle it defensively.
+                                return Err(format!("Non-numeric covariate '{}'", term_component));
+                            }
+                        }
+                    }
+                }
+            } else {
+                // This indicates a logic error - the covariate was in the config but not in defs.
+                return Err(
+                    format!("Covariate '{}' not found in data definitions.", term_component)
+                );
+            }
+
+            covariate_cols_cache.insert(
+                term_component.clone(),
+                DVector::from_vec(cov_values_filtered)
+            );
+        } else if !factor_levels_cache.contains_key(&term_component) {
+            // Cache Factor Levels and then their dummy columns
+            let levels = get_factor_levels(data, &term_component)?;
+            let mut level_cols = HashMap::with_capacity(levels.len());
+
+            for level in &levels {
+                let mut combo = HashMap::new();
+                combo.insert(term_component.clone(), level.clone());
+                let full_col = matches_combination(&combo, data);
+                let filtered_col: Vec<f64> = case_indices_to_keep
+                    .iter()
+                    .map(|&idx| full_col.get(idx).cloned().unwrap_or(0.0))
+                    .collect();
+
+                level_cols.insert(level.clone(), DVector::from_vec(filtered_col));
+            }
+
+            factor_cols_cache.insert(term_component.clone(), level_cols);
+            factor_levels_cache.insert(term_component, levels);
+        }
+    }
+
+    // --- Optimizations End ---
+
     for term_name in &model_terms {
         final_term_names.push(term_name.clone());
         let term_start_col = current_col_idx;
@@ -125,75 +213,90 @@ pub fn create_design_response_weights(
                 continue;
             }
         } else if config.main.covar.as_ref().map_or(false, |c| c.contains(term_name)) {
-            let mut cov_values_filtered: Vec<f64> = Vec::with_capacity(case_indices_to_keep.len());
-            if let Some(cov_data_set_option) = &data.covariate_data {
-                if let Some(cov_data_set) = cov_data_set_option.get(0) {
-                    for &idx_to_keep in &case_indices_to_keep {
-                        if let Some(record) = cov_data_set.get(idx_to_keep) {
-                            if let Some(val) = extract_numeric_from_record(record, term_name) {
-                                cov_values_filtered.push(val);
-                            } else {
-                                return Err(format!("Non-numeric covariate '{}'", term_name));
-                            }
-                        } else {
-                            return Err(
-                                format!("Record index {} out of bounds for covariate data (original case index)", idx_to_keep)
-                            );
-                        }
-                    }
-                } else {
-                    return Err(format!("No data found for covariate '{}'", term_name));
+            // Use cached covariate column
+            if let Some(col) = covariate_cols_cache.get(term_name) {
+                if !col.is_empty() {
+                    term_matrix_cols.push(col.clone());
                 }
-            } else {
-                return Err(
-                    format!("Covariate data structure (covariate_data) is None, but covariate '{}' was specified.", term_name)
-                );
-            }
-            if !cov_values_filtered.is_empty() {
-                term_matrix_cols.push(DVector::from_vec(cov_values_filtered));
             }
         } else if term_name.contains('*') {
-            let factors = parse_interaction_term(term_name);
-            let mut interaction_rows = Vec::new();
+            let components = parse_interaction_term(term_name);
+            let mut factors = Vec::new();
+            let mut covariates = Vec::new();
 
-            // Get all possible combinations of factor levels
-            let mut factor_levels = Vec::new();
-            for factor in &factors {
-                let levels = get_factor_levels(data, factor)?;
-                factor_levels.push((factor.clone(), levels));
-            }
-
-            let mut level_combinations = Vec::new();
-            generate_level_combinations(
-                &factor_levels,
-                &mut HashMap::new(),
-                0,
-                &mut level_combinations
-            );
-
-            // Create design matrix rows for each combination
-            for combo in &level_combinations {
-                let row = matches_combination(combo, data);
-                if !row.is_empty() {
-                    interaction_rows.push(row);
+            for comp in components {
+                if covariate_cols_cache.contains_key(&comp) {
+                    covariates.push(comp);
+                } else {
+                    factors.push(comp);
                 }
             }
 
-            if !interaction_rows.is_empty() {
-                for row in interaction_rows {
-                    term_matrix_cols.push(DVector::from_vec(row));
+            let mut factor_interaction_cols: Vec<DVector<f64>> = Vec::new();
+            if !factors.is_empty() {
+                let factor_levels: Vec<_> = factors
+                    .iter()
+                    .map(|f| (f.clone(), factor_levels_cache.get(f).unwrap().clone()))
+                    .collect();
+
+                let mut level_combinations = Vec::new();
+                generate_level_combinations(
+                    &factor_levels,
+                    &mut HashMap::new(),
+                    0,
+                    &mut level_combinations
+                );
+
+                for combo in &level_combinations {
+                    let mut combo_col = DVector::from_element(n_samples_effective, 1.0);
+                    let mut is_first = true;
+                    for (factor_name, level) in combo {
+                        if let Some(level_cols) = factor_cols_cache.get(factor_name) {
+                            if let Some(level_col) = level_cols.get(level) {
+                                if is_first {
+                                    combo_col = level_col.clone();
+                                    is_first = false;
+                                } else {
+                                    combo_col.component_mul_assign(level_col);
+                                }
+                            }
+                        }
+                    }
+                    factor_interaction_cols.push(combo_col);
                 }
+            } else {
+                factor_interaction_cols.push(DVector::from_element(n_samples_effective, 1.0));
+            }
+
+            // Get covariate columns from cache
+            let covariate_cols: Vec<_> = covariates
+                .iter()
+                .filter_map(|name| covariate_cols_cache.get(name))
+                .collect();
+
+            // Multiply factor columns by covariate columns
+            if !factor_interaction_cols.is_empty() {
+                let mut final_interaction_cols = factor_interaction_cols.clone();
+
+                for cov_col in &covariate_cols {
+                    let mut next_level_cols = Vec::new();
+                    for factor_col in &final_interaction_cols {
+                        next_level_cols.push(factor_col.component_mul(cov_col));
+                    }
+                    final_interaction_cols = next_level_cols;
+                }
+                term_matrix_cols.extend(final_interaction_cols);
             }
         } else {
-            // Handle main effects
-            let levels = get_factor_levels(data, term_name)?;
-
-            // Create columns for ALL levels observed in the data for this factor
-            for level in levels {
-                let mut combo = HashMap::new();
-                combo.insert(term_name.clone(), level);
-                let row = matches_combination(&combo, data);
-                term_matrix_cols.push(DVector::from_vec(row));
+            // Handle main effects using cached columns
+            if let Some(level_cols) = factor_cols_cache.get(term_name) {
+                if let Some(levels) = factor_levels_cache.get(term_name) {
+                    for level in levels {
+                        if let Some(col) = level_cols.get(level) {
+                            term_matrix_cols.push(col.clone());
+                        }
+                    }
+                }
             }
         }
 
@@ -254,6 +357,9 @@ pub fn create_design_response_weights(
             }
         }
     }
+
+    // Pesan sukses membuat matriks desain
+    web_sys::console::log_1(&"Design matrix created successfully".into());
 
     Ok(DesignMatrixInfo {
         x: x_nalgebra,

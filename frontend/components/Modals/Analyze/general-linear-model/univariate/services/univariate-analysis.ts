@@ -83,14 +83,16 @@ export async function analyzeUnivariate({
             .filter((line: string) => line.trim() !== "");
     }
 
+    console.log(errors);
+
     const formattedResults = transformUnivariateResult(results, errors);
 
     /*
      * 🎉 Final Result Process 🎯
      * */
-    // await resultUnivariateAnalysis({
-    //     formattedResult: formattedResults ?? [],
-    //     configData: configData,
-    //     variables: variables,
-    // });
+    await resultUnivariateAnalysis({
+        formattedResult: formattedResults ?? [],
+        configData: configData,
+        variables: variables,
+    });
 }

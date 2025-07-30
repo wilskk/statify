@@ -196,8 +196,46 @@ export const UnivariateModel = ({
             // Jika term berakhir dengan "(" atau " * ", tambahkan variabel tanpa spasi tambahan
             else if (
                 currentBuildTerm.endsWith("(") ||
-                currentBuildTerm.endsWith(" * ")
+                currentBuildTerm.endsWith("*")
             ) {
+                const isCovariate =
+                    covariates && covariates.includes(selectedVariable);
+
+                // Helper function to recursively find all unique factors
+                const getUniqueFactors = (term: string): Set<string> => {
+                    const factors = new Set<string>();
+                    const parts = term.split(/\s*\*\s*/); // Split by " * "
+                    parts.forEach((part) => {
+                        const match = part.match(/(\w+)\((.*)\)/); // Check for nesting like factor(nested)
+                        if (match) {
+                            const mainFactor = match[1];
+                            const nestedTerm = match[2];
+                            if (
+                                !covariates ||
+                                !covariates.includes(mainFactor)
+                            ) {
+                                factors.add(mainFactor);
+                            }
+                            // Recurse on the nested part
+                            getUniqueFactors(nestedTerm).forEach((f) =>
+                                factors.add(f)
+                            );
+                        } else {
+                            // It's a simple term
+                            if (!covariates || !covariates.includes(part)) {
+                                factors.add(part.trim());
+                            }
+                        }
+                    });
+                    return factors;
+                };
+
+                const existingFactors = getUniqueFactors(currentBuildTerm);
+
+                if (!isCovariate && existingFactors.has(selectedVariable)) {
+                    toast.warning("Each factor must be unique within a term.");
+                    return;
+                }
                 setCurrentBuildTerm((prev) => prev + selectedVariable);
             }
             // Jika tidak, tambahkan spasi dan variabel
@@ -221,10 +259,10 @@ export const UnivariateModel = ({
 
         // Hanya tambahkan "*" jika term tidak berakhir dengan * atau (
         if (
-            !currentBuildTerm.endsWith(" * ") &&
+            !currentBuildTerm.endsWith("*") &&
             !currentBuildTerm.endsWith("(")
         ) {
-            setCurrentBuildTerm((prev) => prev + " * ");
+            setCurrentBuildTerm((prev) => prev + "*");
         }
     };
 
@@ -238,16 +276,9 @@ export const UnivariateModel = ({
             return;
         }
 
-        const selectedIsCovariate =
-            covariates && covariates.includes(selectedVariable || "");
-        if (selectedIsCovariate) {
-            toast.warning("An effect may not be nested within a covariate.");
-            return;
-        }
-
         // Jika term tidak berakhir dengan * atau (
         if (
-            !currentBuildTerm.endsWith(" * ") &&
+            !currentBuildTerm.endsWith("*") &&
             !currentBuildTerm.endsWith("(")
         ) {
             let newTerm = currentBuildTerm;
@@ -294,7 +325,7 @@ export const UnivariateModel = ({
                 return;
             }
             if (
-                currentBuildTerm.endsWith(" * ") ||
+                currentBuildTerm.endsWith("*") ||
                 currentBuildTerm.endsWith("(")
             ) {
                 toast.warning(
@@ -390,7 +421,7 @@ export const UnivariateModel = ({
 
     const handleContinue = () => {
         if (
-            modelState.Custom &&
+            (modelState.Custom || modelState.BuildCustomTerm) &&
             (!modelState.FactorsModel || modelState.FactorsModel.length === 0)
         ) {
             toast.warning(
@@ -684,7 +715,7 @@ export const UnivariateModel = ({
                                                             "{variable}"
                                                         ) && // Aktif jika ada placeholder
                                                         !currentBuildTerm.endsWith(
-                                                            " * "
+                                                            "*"
                                                         ) &&
                                                         !currentBuildTerm.endsWith(
                                                             "("
@@ -715,16 +746,10 @@ export const UnivariateModel = ({
                                                         "{variable}"
                                                     ) || // Tidak aktif jika ada placeholder
                                                     currentBuildTerm.endsWith(
-                                                        " * "
+                                                        "*"
                                                     ) ||
                                                     currentBuildTerm.endsWith(
                                                         "("
-                                                    ) ||
-                                                    !!(
-                                                        selectedVariable &&
-                                                        covariates?.includes(
-                                                            selectedVariable
-                                                        )
                                                     )
                                                 }
                                                 onClick={handleByClick}
@@ -745,16 +770,10 @@ export const UnivariateModel = ({
                                                         "{variable}"
                                                     ) || // Tidak aktif jika ada placeholder
                                                     currentBuildTerm.endsWith(
-                                                        " * "
+                                                        "*"
                                                     ) ||
                                                     currentBuildTerm.endsWith(
                                                         "("
-                                                    ) ||
-                                                    !!(
-                                                        selectedVariable &&
-                                                        covariates?.includes(
-                                                            selectedVariable
-                                                        )
                                                     )
                                                 }
                                                 onClick={handleWithinClick}
@@ -790,7 +809,7 @@ export const UnivariateModel = ({
                                                         "{variable}"
                                                     ) || // Tidak aktif jika ada placeholder
                                                     currentBuildTerm.endsWith(
-                                                        " * "
+                                                        "*"
                                                     ) ||
                                                     currentBuildTerm.endsWith(
                                                         "("

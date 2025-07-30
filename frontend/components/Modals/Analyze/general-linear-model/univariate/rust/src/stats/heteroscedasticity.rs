@@ -4,7 +4,8 @@ use crate::models::{
     result::{ BPTest, DesignMatrixInfo, FTest, HeteroscedasticityTests, ModifiedBPTest, WhiteTest },
 };
 use nalgebra::{ DMatrix, DVector };
-use std::collections::HashSet;
+use rayon::prelude::*;
+use std::collections::BTreeSet;
 use std::f64;
 
 use super::core::*;
@@ -48,11 +49,7 @@ pub fn calculate_heteroscedasticity_tests(
     let n_obs = design_info.n_samples;
 
     // Langkah 5: Kuadratkan sisaan. Vektor ini akan menjadi variabel dependen (y_aux) untuk regresi pembantu.
-    let squared_residuals_data: Vec<f64> = residuals_vec
-        .iter()
-        .map(|e| e.powi(2))
-        .collect();
-    let y_aux_for_tests = DVector::from_vec(squared_residuals_data);
+    let y_aux_for_tests = residuals_vec.map(|e| e.powi(2));
 
     // Langkah 6: Buat matriks desain pembantu (Z_p) dari nilai prediksi (y_hat).
     // Matriks ini digunakan untuk uji Breusch-Pagan dan F-test.
@@ -69,52 +66,15 @@ pub fn calculate_heteroscedasticity_tests(
         white_test_and_names = calculate_white_test(&y_aux_for_tests, &design_info, n_obs);
     }
 
-    if config.options.brusch_pagan {
-        if let Some(z_p) = &z_pred_matrix_option {
+    if let Some(z_p) = &z_pred_matrix_option {
+        if config.options.brusch_pagan {
             bp_test_result = calculate_bp_test(&y_aux_for_tests, z_p, n_obs, swept_info.s_rss);
-        } else {
-            bp_test_result = Some(BPTest {
-                statistic: f64::NAN,
-                df: 0,
-                p_value: f64::NAN,
-                note: None,
-                interpretation: Some(
-                    "The test could not be performed because the auxiliary matrix, which is based on the model's predicted values, could not be created.".to_string()
-                ),
-            });
         }
-    }
-
-    if config.options.mod_brusch_pagan {
-        if let Some(z_p) = &z_pred_matrix_option {
+        if config.options.mod_brusch_pagan {
             modified_bp_test_result = calculate_modified_bp_test(&y_aux_for_tests, z_p, n_obs);
-        } else {
-            modified_bp_test_result = Some(ModifiedBPTest {
-                statistic: f64::NAN,
-                df: 0,
-                p_value: f64::NAN,
-                note: None,
-                interpretation: Some(
-                    "The test could not be performed because the auxiliary matrix, which is based on the model's predicted values, could not be created.".to_string()
-                ),
-            });
         }
-    }
-
-    if config.options.f_test {
-        if let Some(z_p) = &z_pred_matrix_option {
+        if config.options.f_test {
             f_test_kb_result = calculate_f_test(&y_aux_for_tests, z_p, n_obs);
-        } else {
-            f_test_kb_result = Some(FTest {
-                statistic: f64::NAN,
-                df1: 0,
-                df2: 0,
-                p_value: f64::NAN,
-                note: None,
-                interpretation: Some(
-                    "The test could not be performed because the auxiliary matrix, which is based on the model's predicted values, could not be created.".to_string()
-                ),
-            });
         }
     }
 
@@ -124,18 +84,18 @@ pub fn calculate_heteroscedasticity_tests(
     let mut white_test_result = None;
     if let Some((mut test, aux_names)) = white_test_and_names {
         if !aux_names.is_empty() {
-            let mut unique_simplified_names = HashSet::new();
-            for term in aux_names.iter().skip(1) {
-                // Skip "Intercept"
-                let simplified_term = term
-                    .split('*')
-                    .map(|part| part.split('[').next().unwrap_or(part))
-                    .collect::<Vec<_>>()
-                    .join("*");
-                unique_simplified_names.insert(simplified_term);
-            }
-            let mut sorted_terms: Vec<String> = unique_simplified_names.into_iter().collect();
-            sorted_terms.sort();
+            let unique_simplified_names: BTreeSet<String> = aux_names
+                .iter()
+                .skip(1) // Skip "Intercept"
+                .map(|term| {
+                    term.split('*')
+                        .map(|part| part.split('[').next().unwrap_or(part))
+                        .collect::<Vec<_>>()
+                        .join("*")
+                })
+                .collect();
+
+            let sorted_terms: Vec<String> = unique_simplified_names.into_iter().collect();
             let white_design = format!("Intercept + {}", sorted_terms.join(" + "));
             test.note = Some(
                 format!("Dependent Variable: {}. Design: {}", dep_var_name, white_design)
@@ -146,13 +106,13 @@ pub fn calculate_heteroscedasticity_tests(
         white_test_result = Some(test);
     }
 
-    if let Some(ref mut test) = bp_test_result {
+    if let Some(test) = &mut bp_test_result {
         test.note = Some(note_string.clone());
     }
-    if let Some(ref mut test) = modified_bp_test_result {
+    if let Some(test) = &mut modified_bp_test_result {
         test.note = Some(note_string.clone());
     }
-    if let Some(ref mut test) = f_test_kb_result {
+    if let Some(test) = &mut f_test_kb_result {
         test.note = Some(note_string.clone());
     }
 
@@ -178,61 +138,87 @@ pub fn calculate_heteroscedasticity_tests(
  *          - df_regressors_in_aux_Z: Jumlah prediktor dalam model pembantu.
  *          - df_residuals_aux: Derajat kebebasan sisaan.
  */
+struct OlsResult {
+    r_squared: f64,
+    ess: f64,
+    df_regressors: usize,
+    df_residuals: usize,
+}
+
+/// Menjalankan regresi Ordinary Least Squares (OLS) menggunakan dekomposisi QR.
+/// Metode ini lebih stabil secara numerik daripada membentuk matriks X'X secara eksplisit.
 fn run_simple_ols(
     y_aux_vec: &DVector<f64>,
     x_aux_matrix: &DMatrix<f64>
-) -> Result<(f64, f64, f64, usize, usize), String> {
-    let n_obs = y_aux_vec.len();
-    if n_obs == 0 {
-        return Ok((0.0, 0.0, 0.0, 0, 0));
-    }
+) -> Result<OlsResult, String> {
+    let n_obs = y_aux_vec.nrows();
+    let n_predictors = x_aux_matrix.ncols();
+
     if x_aux_matrix.nrows() != n_obs {
-        return Err(format!("Aux OLS: X nrows ({}) != Y len ({}).", x_aux_matrix.nrows(), n_obs));
+        return Err(
+            format!(
+                "Dimensi tidak cocok: X memiliki {} baris, Y memiliki {} baris.",
+                x_aux_matrix.nrows(),
+                n_obs
+            )
+        );
     }
 
-    // Jika tidak ada prediktor, R-kuadrat adalah 0.
-    if x_aux_matrix.ncols() == 0 {
-        let y_mean_aux = y_aux_vec.mean();
-        let rss = y_aux_vec
-            .iter()
-            .map(|&yi| (yi - y_mean_aux).powi(2))
-            .sum::<f64>();
-        return Ok((0.0, 0.0, rss, 0, n_obs));
+    // Hitung Total Sum of Squares (TSS) terlebih dahulu.
+    // Ini akan dibutuhkan di beberapa skenario.
+    let y_mean = if n_obs > 0 { y_aux_vec.mean() } else { 0.0 };
+    let centered_y = y_aux_vec.add_scalar(-y_mean);
+    let tss = centered_y.norm_squared();
+
+    // Kasus khusus: jika tidak ada prediktor (hanya intercept), R-kuadrat adalah 0.
+    if n_predictors == 0 {
+        return Ok(OlsResult {
+            r_squared: 0.0,
+            ess: 0.0,
+            df_regressors: 0,
+            df_residuals: n_obs,
+        });
     }
 
-    // Perhitungan standar OLS: beta = (X'X)^-1 * X'Y
-    let xtx = x_aux_matrix.transpose() * x_aux_matrix;
-    let xtx_inv = xtx
-        .svd(true, true)
-        .pseudo_inverse(1e-10)
-        .map_err(|e| format!("Matrix pseudo-inversion failed in run_simple_ols: {}", e))?;
-    let beta_aux = &xtx_inv * x_aux_matrix.transpose() * y_aux_vec;
-    let y_hat_aux = x_aux_matrix * beta_aux;
-    let residuals_aux_vec = y_aux_vec - &y_hat_aux;
+    // OPTIMASI 1: Menggunakan dekomposisi QR untuk stabilitas numerik.
+    // Ini menghindari pembentukan (X'X) yang bisa menjadi tidak stabil.
+    // Solusi OLS beta = (X'X)^-1 * X'Y setara dengan menyelesaikan R * beta = Q' * Y
+    // di mana X = QR.
+    let qr = x_aux_matrix.clone().qr();
+    let q = qr.q();
+    let r = qr.r();
 
-    // Hitung jumlah kuadrat (Sum of Squares)
-    let y_mean_aux = y_aux_vec.mean();
-    let ess = y_hat_aux
-        .iter()
-        .map(|&yh| (yh - y_mean_aux).powi(2))
-        .sum::<f64>(); // Explained
-    let rss = residuals_aux_vec
-        .iter()
-        .map(|&e| e.powi(2))
-        .sum::<f64>(); // Residual
-    let tss = y_aux_vec
-        .iter()
-        .map(|&yi| (yi - y_mean_aux).powi(2))
-        .sum::<f64>(); // Total
+    // Transpose dari Q dikalikan dengan y
+    let qty = q.transpose() * y_aux_vec;
+
+    // Selesaikan sistem R * beta = Q'Y. solve_upper_triangular lebih efisien.
+    let beta_aux = r
+        .solve_upper_triangular(&qty)
+        .ok_or_else(||
+            "Gagal menyelesaikan sistem linear dengan dekomposisi QR (matriks singular).".to_string()
+        )?;
+
+    // OPTIMASI 2: Menghitung RSS lebih dulu, lalu ESS dari TSS.
+    // Ini menghindari satu iterasi penuh untuk menghitung ESS secara manual.
+    let residuals = y_aux_vec - x_aux_matrix * &beta_aux;
+    let rss = residuals.norm_squared(); // Residual Sum of Squares
+    let ess = tss - rss; // Explained Sum of Squares
 
     // Hitung R-kuadrat: R^2 = ESS / TSS
-    let r_squared = if tss.abs() < 1e-9 { 0.0 } else { ess / tss };
+    let r_squared = if tss.abs() < 1e-12 {
+        0.0
+    } else {
+        (ess / tss).max(0.0).min(1.0) // Clamp untuk stabilitas floating point
+    };
 
-    // Tentukan derajat kebebasan
-    let df_regressors_in_z = x_aux_matrix.ncols();
-    let df_residuals = n_obs.saturating_sub(df_regressors_in_z);
+    let df_residuals = n_obs.saturating_sub(n_predictors);
 
-    Ok((r_squared.max(0.0).min(1.0), ess, rss, df_regressors_in_z, df_residuals))
+    Ok(OlsResult {
+        r_squared,
+        ess,
+        df_regressors: n_predictors,
+        df_residuals,
+    })
 }
 
 /**
@@ -254,51 +240,14 @@ fn create_white_aux_matrix(
         return Ok((DMatrix::zeros(0, 0), Vec::new()));
     }
 
-    let mut aux_cols: Vec<DVector<f64>> = Vec::new();
-    let mut aux_term_names: Vec<String> = Vec::new();
+    let predictors = collect_predictors(design_info);
+
+    let mut aux_cols: Vec<DVector<f64>> = Vec::with_capacity(1 + predictors.len() * 2);
+    let mut aux_term_names: Vec<String> = Vec::with_capacity(1 + predictors.len() * 2);
 
     // 1. Tambahkan Intersep
     aux_cols.push(DVector::from_element(n_obs, 1.0));
     aux_term_names.push("Intercept".to_string());
-
-    // 2. Kumpulkan semua kolom prediktor non-intersep asli.
-    // Hindari multikolinearitas dengan menghilangkan kolom terakhir dari setiap faktor jika ada intersep.
-    let mut predictors: Vec<(String, DVector<f64>)> = Vec::new();
-    let mut processed_term_names: HashSet<String> = HashSet::new();
-
-    for term_name in &design_info.term_names {
-        if term_name == "Intercept" || processed_term_names.contains(term_name) {
-            continue;
-        }
-        processed_term_names.insert(term_name.clone());
-
-        if let Some((start, end)) = design_info.term_column_indices.get(term_name) {
-            let is_factor =
-                design_info.fixed_factor_indices.contains_key(term_name) ||
-                design_info.random_factor_indices.contains_key(term_name);
-            let num_cols_for_term = *end - *start + 1;
-
-            // Untuk faktor dengan intersep dalam model, hilangkan kolom terakhir untuk menghindari kolinearitas.
-            let effective_end = if
-                is_factor &&
-                design_info.intercept_column.is_some() &&
-                num_cols_for_term > 1
-            {
-                *end - 1
-            } else {
-                *end
-            };
-
-            for i in *start..=effective_end {
-                let col_name = if num_cols_for_term > 1 {
-                    format!("{}[{}]", term_name, i - *start)
-                } else {
-                    term_name.clone()
-                };
-                predictors.push((col_name, design_info.x.column(i).into_owned()));
-            }
-        }
-    }
 
     // Tambahkan prediktor asli ke model pembantu
     for (name, col) in &predictors {
@@ -306,48 +255,100 @@ fn create_white_aux_matrix(
         aux_term_names.push(name.clone());
     }
 
-    // 3. Tambahkan kuadrat dan interaksi
-    for i in 0..predictors.len() {
-        for k in i..predictors.len() {
+    // 3. Tambahkan kuadrat dan interaksi secara paralel
+    let interaction_terms: Vec<(DVector<f64>, String)> = (0..predictors.len())
+        .into_par_iter()
+        .flat_map(|i| {
             let (name1, col1) = &predictors[i];
-            let (name2, col2) = &predictors[k];
+            let base_name1 = name1.split('[').next().unwrap();
 
-            // Ekstrak nama istilah dasar (misalnya, "dose" dari "dose[0]")
-            let base_name1 = name1.split('[').next().unwrap_or("").to_string();
-
-            // Kasus 1: Mengkuadratkan sebuah kolom (i == k)
-            if i == k {
-                // HANYA kuadratkan jika istilahnya adalah kovariat.
-                if design_info.covariate_indices.contains_key(&base_name1) {
-                    aux_cols.push(col1.component_mul(col1));
-                    aux_term_names.push(format!("{}*{}", name1, name1));
-                }
+            // Interaksi dengan diri sendiri (kuadrat)
+            let squared_term = if design_info.covariate_indices.contains_key(base_name1) {
+                vec![(col1.component_mul(col1), format!("{}*{}", name1, name1))]
             } else {
-                // Kasus 2: Interaksi antar kolom.
-                // Hindari interaksi antar kolom dari faktor yang sama (misalnya dose[0]*dose[1])
-                let base_name2 = name2.split('[').next().unwrap_or("").to_string();
-                if base_name1 == base_name2 {
-                    continue;
-                }
+                vec![]
+            };
 
-                aux_cols.push(col1.component_mul(col2));
-                // Urutkan nama untuk konsistensi
-                if name1 < name2 {
-                    aux_term_names.push(format!("{}*{}", name1, name2));
-                } else {
-                    aux_term_names.push(format!("{}*{}", name2, name1));
-                }
-            }
-        }
+            // Interaksi dengan prediktor lain
+            let other_interactions: Vec<(DVector<f64>, String)> = (i + 1..predictors.len())
+                .into_par_iter()
+                .filter_map(|k| {
+                    let (name2, col2) = &predictors[k];
+                    let base_name2 = name2.split('[').next().unwrap();
+                    if base_name1 != base_name2 {
+                        let interaction_col = col1.component_mul(col2);
+                        let term_name = format!(
+                            "{}*{}",
+                            std::cmp::min(name1, name2),
+                            std::cmp::max(name1, name2)
+                        );
+                        Some((interaction_col, term_name))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            squared_term.into_iter().chain(other_interactions).collect::<Vec<_>>()
+        })
+        .collect();
+
+    for (col, name) in interaction_terms {
+        aux_cols.push(col);
+        aux_term_names.push(name);
     }
-
-    web_sys::console::log_1(&format!("aux matrix names: {:?}", aux_term_names).into());
 
     if aux_cols.is_empty() {
         Ok((DMatrix::zeros(n_obs, 0), Vec::new()))
     } else {
         Ok((DMatrix::from_columns(&aux_cols), aux_term_names))
     }
+}
+
+/**
+ * Mengumpulkan prediktor-prediktor dari matriks desain, menangani faktor dan kovariat.
+ * Fungsi ini mengekstrak kolom-kolom relevan dari matriks desain utama,
+ * menyesuaikan untuk kolinearitas dengan menghilangkan kolom terakhir dari variabel faktor
+ * jika model memiliki intersep.
+ *
+ * @param design_info - Informasi mengenai matriks desain utama.
+ * @returns `Vec<(String, DVector<f64>)>` yang berisi nama dan data kolom untuk setiap prediktor.
+ */
+fn collect_predictors(design_info: &DesignMatrixInfo) -> Vec<(String, DVector<f64>)> {
+    let mut predictors: Vec<(String, DVector<f64>)> = Vec::new();
+    let mut processed_term_names: BTreeSet<String> = BTreeSet::new();
+
+    for term_name in &design_info.term_names {
+        if term_name == "Intercept" || !processed_term_names.insert(term_name.clone()) {
+            continue;
+        }
+
+        if let Some(&(start, end)) = design_info.term_column_indices.get(term_name) {
+            let is_factor = design_info.fixed_factor_indices.contains_key(term_name);
+            let num_cols_for_term = end - start + 1;
+
+            let num_cols_to_take = if
+                is_factor &&
+                design_info.intercept_column.is_some() &&
+                num_cols_for_term > 1
+            {
+                num_cols_for_term - 1
+            } else {
+                num_cols_for_term
+            };
+
+            for i in 0..num_cols_to_take {
+                let col_idx = start + i;
+                let col_name = if num_cols_for_term > 1 {
+                    format!("{}[{}]", term_name, i)
+                } else {
+                    term_name.clone()
+                };
+                predictors.push((col_name, design_info.x.column(col_idx).into_owned()));
+            }
+        }
+    }
+    predictors
 }
 
 /**
@@ -358,33 +359,23 @@ fn create_white_aux_matrix(
  * 2. Vektor nilai prediksi (y_hat) dari model utama.
  */
 fn create_predicted_aux_matrix(y_hat: &DVector<f64>, n_obs: usize) -> Option<DMatrix<f64>> {
-    let mut aux_cols: Vec<DVector<f64>> = Vec::new();
-    let mut existing_col_hashes: HashSet<Vec<u64>> = HashSet::new();
-
-    // Regresi pembantu untuk uji ini harus memiliki intersepnya sendiri.
-    let intercept_col = DVector::from_element(n_obs, 1.0f64);
-    let hash_repr: Vec<u64> = intercept_col
-        .iter()
-        .map(|&val| val.to_bits())
-        .collect();
-    if existing_col_hashes.insert(hash_repr) {
-        aux_cols.push(intercept_col);
+    if n_obs == 0 {
+        return Some(DMatrix::zeros(0, 0));
     }
 
-    // Tambahkan nilai prediksi (y_hat) sebagai prediktor.
-    let y_hat_hash_repr: Vec<u64> = y_hat
-        .iter()
-        .map(|&val| val.to_bits())
-        .collect();
-    if existing_col_hashes.insert(y_hat_hash_repr) {
-        aux_cols.push(y_hat.clone_owned());
+    let mut aux_cols = vec![DVector::from_element(n_obs, 1.0)];
+
+    if let Some(first) = y_hat.get(0) {
+        let is_constant = y_hat
+            .iter()
+            .skip(1)
+            .all(|&v| (v - first).abs() < 1e-9);
+        if !is_constant {
+            aux_cols.push(y_hat.clone_owned());
+        }
     }
 
-    if !aux_cols.is_empty() && aux_cols[0].len() == n_obs {
-        Some(DMatrix::from_columns(&aux_cols))
-    } else {
-        None
-    }
+    Some(DMatrix::from_columns(&aux_cols))
 }
 
 /**
@@ -437,9 +428,9 @@ fn calculate_white_test(
             }
 
             match run_simple_ols(y_aux, &z_white_matrix) {
-                Ok((r_sq_aux, _, _, k_total_aux_white, _)) => {
-                    let lm_statistic_white = (n_obs as f64) * r_sq_aux;
-                    let df_chi_sq_white = k_total_aux_white.saturating_sub(1); // df = p - 1
+                Ok(ols_result) => {
+                    let lm_statistic_white = (n_obs as f64) * ols_result.r_squared;
+                    let df_chi_sq_white = ols_result.df_regressors.saturating_sub(1); // df = p - 1
 
                     if df_chi_sq_white > 0 {
                         let p_value_white = calculate_chi_sq_significance(
@@ -536,7 +527,7 @@ fn calculate_bp_test(
     }
 
     match run_simple_ols(y_aux, z_pred) {
-        Ok((_, ess_aux, _, k_total_aux, _)) => {
+        Ok(ols_result) => {
             // sigma^2_mle = RSS / n (Maximum Likelihood Estimate dari varians error model utama)
             let sigma_sq_mle_main = if n_obs > 0 {
                 rss_main_model / (n_obs as f64)
@@ -548,7 +539,7 @@ fn calculate_bp_test(
             if sigma_sq_mle_main.is_nan() || sigma_sq_mle_main.abs() < 1e-12 {
                 return Some(BPTest {
                     statistic: f64::NAN,
-                    df: k_total_aux.saturating_sub(1),
+                    df: ols_result.df_regressors.saturating_sub(1),
                     p_value: f64::NAN,
                     note: None,
                     interpretation: Some(
@@ -557,8 +548,8 @@ fn calculate_bp_test(
                 });
             }
 
-            let bp_statistic_val = ess_aux / (2.0 * sigma_sq_mle_main.powi(2));
-            let df_chi_sq_bp_val = k_total_aux.saturating_sub(1);
+            let bp_statistic_val = ols_result.ess / (2.0 * sigma_sq_mle_main.powi(2));
+            let df_chi_sq_bp_val = ols_result.df_regressors.saturating_sub(1);
 
             if df_chi_sq_bp_val > 0 {
                 let p_value_bp_val = calculate_chi_sq_significance(
@@ -628,9 +619,9 @@ fn calculate_modified_bp_test(
     }
 
     match run_simple_ols(y_aux, z_pred) {
-        Ok((r_sq_aux, _, _, k_total_aux, _)) => {
-            let lm_statistic_modbp = (n_obs as f64) * r_sq_aux;
-            let df_chi_sq_modbp = k_total_aux.saturating_sub(1);
+        Ok(ols_result) => {
+            let lm_statistic_modbp = (n_obs as f64) * ols_result.r_squared;
+            let df_chi_sq_modbp = ols_result.df_regressors.saturating_sub(1);
 
             if df_chi_sq_modbp > 0 {
                 let p_value_modbp = calculate_chi_sq_significance(
@@ -697,13 +688,15 @@ fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -
     }
 
     match run_simple_ols(y_aux, z_pred) {
-        Ok((r_sq_aux, _, _, k_total_aux, df_res_aux)) => {
-            let df1_f = k_total_aux.saturating_sub(1); // df1 = p_aux - 1
-            let df2_f = df_res_aux; // df2 = n - p_aux
+        Ok(ols_result) => {
+            let df1_f = ols_result.df_regressors.saturating_sub(1); // df1 = p_aux - 1
+            let df2_f = ols_result.df_residuals; // df2 = n - p_aux
 
             if df1_f > 0 && df2_f > 0 {
                 let f_statistic_val =
-                    r_sq_aux / (df1_f as f64) / ((1.0 - r_sq_aux) / (df2_f as f64));
+                    ols_result.r_squared /
+                    (df1_f as f64) /
+                    ((1.0 - ols_result.r_squared) / (df2_f as f64));
                 let p_value_f_val = calculate_f_significance(df1_f, df2_f, f_statistic_val);
 
                 Some(FTest {

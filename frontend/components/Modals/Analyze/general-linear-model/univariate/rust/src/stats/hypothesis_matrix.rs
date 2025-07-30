@@ -34,7 +34,6 @@ pub fn construct_type_i_l_matrix(
         design_info.fixed_factor_indices.contains_key(term_of_interest) ||
         design_info.random_factor_indices.contains_key(term_of_interest);
 
-    // LOGIKA UNTUK FAKTOR (misalnya, 'dose')
     // Untuk Type I SS, hipotesis untuk faktor seringkali merupakan kontras sederhana
     // yang membandingkan level dengan level referensi, yang cocok dengan output yang diharapkan.
     if is_factor {
@@ -62,7 +61,6 @@ pub fn construct_type_i_l_matrix(
         }
     }
 
-    // LOGIKA UNTUK INTERCEPT DAN KOVARIAT (misalnya, 'Intercept', 'puppy_love')
     if
         original_ztwz.nrows() < design_info.p_parameters ||
         original_ztwz.ncols() < design_info.p_parameters
@@ -172,37 +170,6 @@ pub fn construct_type_ii_l_matrix(
 ) -> Result<DMatrix<f64>, String> {
     let p_total = design_info.p_parameters;
 
-    // --- HYBRID APPROACH ---
-    // Cek apakah term yang sedang diuji adalah sebuah faktor.
-    let is_factor =
-        design_info.fixed_factor_indices.contains_key(term_of_interest) ||
-        design_info.random_factor_indices.contains_key(term_of_interest);
-
-    // 1. JIKA TERM ADALAH FAKTOR (misalnya, 'dose'):
-    // Gunakan kontras sederhana yang dapat diinterpretasikan (level vs. referensi).
-    // Ini cocok dengan output yang diharapkan untuk SS Tipe II dalam model tanpa interaksi.
-    if is_factor {
-        if let Some(indices) = design_info.fixed_factor_indices.get(term_of_interest) {
-            if indices.len() >= 2 {
-                let mut l_rows = Vec::new();
-                let ref_level_col_idx = *indices.last().unwrap();
-                for i in 0..indices.len() - 1 {
-                    let current_level_col_idx = indices[i];
-                    let mut l_vec = DVector::from_element(p_total, 0.0);
-                    l_vec[current_level_col_idx] = 1.0;
-                    l_vec[ref_level_col_idx] = -1.0;
-                    l_rows.push(l_vec.transpose());
-                }
-                return Ok(DMatrix::from_rows(&l_rows));
-            }
-        }
-        // Jika tidak ada level atau hanya satu level, tidak ada kontras.
-        return Ok(DMatrix::zeros(0, p_total));
-    }
-
-    // 2. JIKA TERM ADALAH INTERCEPT ATAU KOVARIAT:
-    // Gunakan formula matriks proyeksi penuh, yang menangani kasus ini dengan benar.
-    // Partisi indeks kolom menjadi X1, X2, dan X3.
     let mut x1_indices = Vec::new();
     let mut x2_indices = Vec::new();
     let mut x3_indices = Vec::new();
@@ -213,41 +180,77 @@ pub fn construct_type_ii_l_matrix(
         return Err(format!("Term of interest '{}' not found in column indices.", term_of_interest));
     }
 
-    let f_factors: HashSet<String> = parse_interaction_term(term_of_interest).into_iter().collect();
-    let f_is_intercept = term_of_interest == "Intercept";
+    // Based on the provided images, the partitioning rules for Type II SS in this context
+    // have specific behavior for the Intercept and for factor main effects interacting with covariates.
+    if term_of_interest == "Intercept" {
+        // For the Intercept, the hypothesis is adjusted for terms involving covariates.
+        // Pure factor terms are included in the hypothesis via X3.
+        for other_term in all_model_terms {
+            if other_term == "Intercept" {
+                continue;
+            }
+            if let Some((start_j, end_j)) = design_info.term_column_indices.get(other_term) {
+                let term_cols = *start_j..=*end_j;
+                let j_components = parse_interaction_term(other_term);
+                let j_involves_covariate = j_components
+                    .iter()
+                    .any(|comp| design_info.covariate_indices.contains_key(comp));
 
-    for other_term in all_model_terms {
-        if other_term == term_of_interest {
-            continue;
-        }
-
-        let j_factors: HashSet<String> = parse_interaction_term(other_term).into_iter().collect();
-        let j_is_covariate = design_info.covariate_indices.contains_key(other_term);
-        let j_is_intercept = other_term == "Intercept";
-
-        let j_contains_f =
-            (f_factors.is_subset(&j_factors) && f_factors != j_factors) ||
-            (f_is_intercept && !j_is_intercept && !j_is_covariate);
-
-        let f_contains_j =
-            (j_factors.is_subset(&f_factors) && f_factors != j_factors) ||
-            (j_is_intercept &&
-                !f_is_intercept &&
-                !design_info.covariate_indices.contains_key(term_of_interest));
-
-        if let Some((start_j, end_j)) = design_info.term_column_indices.get(other_term) {
-            let term_cols = *start_j..=*end_j;
-            if j_contains_f {
-                x3_indices.extend(term_cols);
-            } else if !f_contains_j {
-                x1_indices.extend(term_cols);
+                if j_involves_covariate {
+                    x1_indices.extend(term_cols); // Adjust for covariate-related terms.
+                } else {
+                    x3_indices.extend(term_cols); // Include pure factor terms in hypothesis.
+                }
             }
         }
-    }
-    if !f_is_intercept {
-        if let Some(idx) = design_info.intercept_column {
-            if !x1_indices.contains(&idx) {
-                x1_indices.push(idx);
+    } else {
+        // General case for all other terms, based on Type II SS marginality principle.
+        let f_components: HashSet<_> = parse_interaction_term(term_of_interest)
+            .into_iter()
+            .collect();
+
+        // Check if the term of interest is a factor or involves only factors.
+        let f_is_purely_factor = f_components
+            .iter()
+            .all(|comp| !design_info.covariate_indices.contains_key(comp));
+
+        for other_term in all_model_terms {
+            if other_term == term_of_interest {
+                continue;
+            }
+
+            if let Some((start_j, end_j)) = design_info.term_column_indices.get(other_term) {
+                let term_cols = *start_j..=*end_j;
+                let j_components: HashSet<_> = parse_interaction_term(other_term)
+                    .into_iter()
+                    .collect();
+
+                // J contains F if F is a proper subset of J's components.
+                // e.g., J="dose*puppy_love", F="dose". J contains F.
+                let j_contains_f =
+                    f_components.is_subset(&j_components) && f_components != j_components;
+
+                if j_contains_f {
+                    // J is a higher-order term containing F.
+                    // Special SAS Type II rule: if testing a factor term F,
+                    // and J is an interaction of F with a covariate, adjust for J.
+                    let j_involves_covariate = j_components
+                        .iter()
+                        .any(|comp| design_info.covariate_indices.contains_key(comp));
+
+                    if f_is_purely_factor && j_involves_covariate {
+                        // e.g., Testing "dose" (factor), J is "dose*puppy_love" (covariate interaction). Adjust for J.
+                        x1_indices.extend(term_cols.clone());
+                    } else {
+                        // e.g., Testing "dose", J is "dose*VAR1" (factor interaction). J is part of the hypothesis.
+                        x3_indices.extend(term_cols.clone());
+                    }
+                } else {
+                    // J does not contain F. It could be lower-order, or parallel.
+                    // In Type II, we adjust for all such terms.
+                    // e.g., Testing "dose*VAR1", J is "dose", "VAR1", "puppy_love", "dose*puppy_love". Adjust for all.
+                    x1_indices.extend(term_cols.clone());
+                }
             }
         }
     }
