@@ -19,6 +19,11 @@
     "test:load:routes": "k6 run load-tests/frontend/frontend-routes-test.js",
     "test:load:sav": "k6 run load-tests/backend/sav-apis-test.js",
     "test:load:smoke": "k6 run --vus 5 --duration 10s load-tests/frontend/basic-load-test.js",
+    "test:load:comprehensive": "k6 run --out json=load-tests/dashboard/raw-metrics.json load-tests/run-comprehensive-tests.js",
+    "test:load:dashboard": "cd load-tests && powershell -ExecutionPolicy Bypass -File run-dashboard.ps1",
+    "test:load:dashboard:bat": "cd load-tests && run-dashboard.bat",
+    "dashboard:open": "start load-tests/dashboard/index.html",
+    "dashboard:serve": "cd load-tests/dashboard && python -m http.server 8080",
     "install:all": "npm install --workspaces"
   },
   "devDependencies": {

@@ -1,10 +1,39 @@
 import http from 'k6/http';
 import { sleep, check } from 'k6';
-import { Counter, Trend } from 'k6/metrics';
+import { Counter, Trend, Rate, Gauge } from 'k6/metrics';
 
-// Custom metrics
-const pageLoadTime = new Trend('page_load_time');
-const errorCounter = new Counter('frontend_errors');
+// Custom metrics - Comprehensive frontend routes monitoring
+const pageLoadTime = new Trend('routes_page_load_time');
+const errorCounter = new Counter('routes_frontend_errors');
+const throughputCounter = new Counter('routes_throughput');
+const memoryUsage = new Gauge('routes_memory_usage_mb');
+const cpuUsage = new Gauge('routes_cpu_usage_percent');
+const connectionTime = new Trend('routes_connection_time');
+const ttfb = new Trend('routes_ttfb');
+const downloadTime = new Trend('routes_download_time');
+const uploadTime = new Trend('routes_upload_time');
+const errorRate = new Rate('routes_error_rate');
+const successRate = new Rate('routes_success_rate');
+const timeoutCounter = new Counter('routes_timeout_errors');
+const serverErrorCounter = new Counter('routes_server_errors');
+const clientErrorCounter = new Counter('routes_client_errors');
+const dataTransferSize = new Trend('routes_data_transfer_size_kb');
+const concurrentUsers = new Gauge('routes_concurrent_users');
+const queueTime = new Trend('routes_queue_time');
+const processingTime = new Trend('routes_processing_time');
+const responseSize = new Trend('routes_response_size_bytes');
+const requestSize = new Trend('routes_request_size_bytes');
+const networkLatency = new Trend('routes_network_latency');
+const dnsLookupTime = new Trend('routes_dns_lookup_time');
+const tlsHandshakeTime = new Trend('routes_tls_handshake_time');
+const routeSpecificTime = new Trend('routes_specific_load_time');
+const navigationSpeed = new Trend('routes_navigation_speed');
+const userJourneyTime = new Trend('routes_user_journey_time');
+const routeErrorsByType = new Counter('routes_errors_by_type');
+const cacheEfficiency = new Rate('routes_cache_efficiency');
+const resourceLoadTime = new Trend('routes_resource_load_time');
+const interactivityTime = new Trend('routes_interactivity_time');
+const renderingTime = new Trend('routes_rendering_time');
 
 // Test options
 export const options = {
@@ -89,9 +118,50 @@ export const options = {
   
   // Define thresholds
   thresholds: {
-    http_req_duration: ['p(95)<1000'], // 95% of requests should be below 1000ms
-    page_load_time: ['p(95)<2000'],    // 95% of page loads should be below 2s
-    frontend_errors: ['count<5'],      // Allow no more than 5 errors
+    // HTTP Basic Metrics
+    http_req_duration: ['p(95)<1000', 'p(99)<2000', 'avg<600'],
+    http_req_failed: ['rate<0.05'],
+    
+    // Routes Specific Metrics
+    routes_page_load_time: ['p(95)<2000', 'avg<1200'],
+    routes_frontend_errors: ['count<5'],
+    routes_throughput: ['count>50'],
+    
+    // Performance Metrics
+    routes_connection_time: ['p(95)<200'],
+    routes_ttfb: ['p(95)<400'],
+    routes_download_time: ['p(95)<600'],
+    routes_upload_time: ['p(95)<300'],
+    
+    // Error Rates
+    routes_error_rate: ['rate<0.05'],
+    routes_success_rate: ['rate>0.95'],
+    routes_timeout_errors: ['count<3'],
+    routes_server_errors: ['count<2'],
+    routes_client_errors: ['count<3'],
+    
+    // Data Transfer
+    routes_data_transfer_size_kb: ['avg<600'],
+    routes_response_size_bytes: ['avg<120000'],
+    routes_request_size_bytes: ['avg<12000'],
+    
+    // Network Advanced
+    routes_network_latency: ['p(95)<120'],
+    routes_dns_lookup_time: ['p(95)<60'],
+    routes_tls_handshake_time: ['p(95)<120'],
+    
+    // Processing Metrics
+    routes_processing_time: ['p(95)<250'],
+    routes_queue_time: ['p(95)<60'],
+    
+    // Route Specific Performance
+    routes_specific_load_time: ['p(95)<1500'],
+    routes_navigation_speed: ['p(95)<800'],
+    routes_user_journey_time: ['p(95)<5000'],
+    routes_cache_efficiency: ['rate>0.75'],
+    routes_resource_load_time: ['p(95)<1200'],
+    routes_interactivity_time: ['p(95)<400'],
+    routes_rendering_time: ['p(95)<350']
   },
 };
 

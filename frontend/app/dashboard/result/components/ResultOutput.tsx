@@ -107,18 +107,19 @@ const ResultOutput: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 w-full max-w-full">
+    <div className="p-4 md:p-6 w-full max-w-full" data-testid="results-content">
       {logs.length === 0 ? (
-        <div className="text-center text-muted-foreground py-10">
+        <div className="text-center text-muted-foreground py-10" data-testid="no-results-message">
           No data available
         </div>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-10" data-testid="results-container">
           {logs.map((log) => (
             <div
               key={log.id}
               id={`log-${log.id}`}
               className="space-y-6 scroll-mt-20"
+              data-testid={`result-log-${log.id}`}
             >
               <div className="text-sm font-medium text-muted-foreground px-1">
                 Log {log.id}: {log.log}
@@ -127,6 +128,7 @@ const ResultOutput: React.FC = () => {
                 <Card
                   key={analytic.id}
                   className="p-4 md:p-6 shadow-lg hover:shadow-xl transition-shadow border-t-4 border-primary/20"
+                  data-testid={`result-analytic-${analytic.id}`}
                 >
                   <div className="text-xl font-bold text-card-foreground mb-4 border-b pb-2">
                     {analytic.title}
@@ -162,6 +164,7 @@ const ResultOutput: React.FC = () => {
                               className={`mb-6 rounded-md ${
                                 !isFirstAppearance ? "mt-8" : ""
                               }`}
+                              data-testid={`result-output-${analytic.id}-${stat.id}`}
                             >
                               {(() => {
                                 let parsedData;
@@ -198,6 +201,7 @@ const ResultOutput: React.FC = () => {
                                             ? "max-h-[500px] overflow-hidden"
                                             : ""
                                         } overflow-x-auto pb-2`}
+                                        data-testid={`result-table-${stat.id}`}
                                       >
                                         <DataTableRenderer data={stat.output_data} />
                                       </div>
@@ -206,6 +210,7 @@ const ResultOutput: React.FC = () => {
                                           type="button"
                                           onClick={() => toggleTable(statId)}
                                           className="mt-2 text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                                          data-testid={`toggle-table-${statId}`}
                                         >
                                           {isExpandedTable ? (
                                             <>
@@ -224,13 +229,17 @@ const ResultOutput: React.FC = () => {
                                   );
                                 } else if (parsedData.charts) {
                                   return (
-                                    <GeneralChartContainer
-                                      data={stat.output_data}
-                                    />
+                                    <div data-testid={`result-chart-${stat.id}`}>
+                                      <GeneralChartContainer
+                                        data={stat.output_data}
+                                      />
+                                    </div>
                                   );
                                 } else if (parsedData.text) {
                                   return (
-                                    <TextRenderer textData={parsedData.text} />
+                                    <div data-testid={`result-text-${stat.id}`}>
+                                      <TextRenderer textData={parsedData.text} />
+                                    </div>
                                   );
                                 } else {
                                   return (

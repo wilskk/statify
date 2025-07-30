@@ -280,6 +280,13 @@ test.describe('Crosstabs Analysis Workflow', () => {
     // Verify results are displayed
     await expect(page.locator('[data-testid="results-content"]')).toBeVisible();
     
+    // Verify specific result components are present
+    await expect(page.locator('[data-testid="results-container"]')).toBeVisible();
+    
+    // Check for crosstabs specific output
+    const resultTables = page.locator('[data-testid^="result-table-"]');
+    await expect(resultTables.first()).toBeVisible({ timeout: 10000 });
+    
     // Collect performance metrics
     const metrics = await resourceMonitor.collectMetrics(page);
     console.log('Basic workflow metrics:', {
@@ -345,12 +352,19 @@ test.describe('Crosstabs Analysis Workflow', () => {
     await page.check('[data-testid="adjusted-residuals-checkbox"]');
     await page.waitForTimeout(2000);
     
-    // Execute comprehensive analysis
+    // Execute analysis
     await page.click('button:has-text("OK")');
     await page.waitForTimeout(12000); // Allow more time for comprehensive analysis
     
     // Verify results are displayed
     await expect(page.locator('[data-testid="results-content"]')).toBeVisible();
+    
+    // Verify comprehensive analysis results
+    await expect(page.locator('[data-testid="results-container"]')).toBeVisible();
+    
+    // Check for multiple result tables from comprehensive analysis
+    const resultTables = page.locator('[data-testid^="result-table-"]');
+    await expect(resultTables.first()).toBeVisible({ timeout: 15000 });
     
     // Collect performance metrics
     const metrics = await resourceMonitor.collectMetrics(page);

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { File, Database, Loader2, Info } from 'lucide-react';
+import { File, Database, Loader2 } from 'lucide-react';
 import { useExampleDatasetLogic } from './hooks/useExampleDatasetLogic';
 import { exampleFiles } from './example-datasets';
 import { BaseModalProps } from '@/types/modalTypes';
@@ -17,29 +17,23 @@ const renderFileList = (
 ) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
         {files.map((file) => (
-            <Button
-                key={file.path}
-                variant="outline"
-                className="w-full justify-start text-left h-auto py-3 hover:bg-accent/50 transition-colors group"
-                onClick={() => handleFileClick(file.path)}
-                disabled={isLoading}
-                title={file.description || file.name}
-            >
-                <File className="mr-3 h-5 w-5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate group-hover:whitespace-normal group-hover:break-words">
-                        {file.name}
-                    </div>
-                    {file.description && (
-                        <div className="text-xs text-muted-foreground truncate group-hover:whitespace-normal group-hover:break-words mt-1">
-                            {file.description}
+            <div key={file.path} className="flex flex-col">
+                <div 
+                    className="border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md"
+                    onClick={() => handleFileClick(file.path)}
+                >
+                    <div className="p-4">
+                        <div className="flex items-start">
+                            <File className="mr-3 h-5 w-5 flex-shrink-0 mt-0.5 text-muted-foreground" />
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">
+                                    {file.name}
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </div>
                 </div>
-                {file.description && (
-                    <Info className="ml-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                )}
-            </Button>
+            </div>
         ))}
     </div>
 );
@@ -52,6 +46,8 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
         selectedTags.length === 0 || selectedTags.some(tag => file.tags?.includes(tag))
     );
 
+    
+
     return (
         <div className="flex flex-col h-full">
             <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
@@ -61,7 +57,7 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
                         Example Data
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        Select an example dataset (.sav) to get started with your analysis.
+                        Select a dataset (.sav) to start your analysis.
                     </p>
                 </div>
             </div>
@@ -104,7 +100,7 @@ export const ExampleDatasetModal: React.FC<BaseModalProps> = ({ onClose }) => {
                 
                 <h4 className="text-base font-semibold text-popover-foreground mb-1">SPSS Datasets (.sav)</h4>
                 <p className="text-sm text-muted-foreground mb-4">
-                    Select one of the example datasets to start your analysis.
+                    Choose from the example datasets below.
                 </p>
                 {renderFileList(filteredFiles, loadDataset, isLoading)}
             </div>
