@@ -45,6 +45,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="mean"
+                            data-testid="statistics-mean"
                             checked={displayStatistics.mean}
                             onCheckedChange={(checked) => updateStatistic('mean', !!checked)}
                             className="mr-2"
@@ -54,6 +55,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="median"
+                            data-testid="statistics-median"
                             checked={displayStatistics.median}
                             onCheckedChange={(checked) => updateStatistic('median', !!checked)}
                             className="mr-2"
@@ -63,6 +65,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="sum"
+                            data-testid="statistics-sum"
                             checked={displayStatistics.sum}
                             onCheckedChange={(checked) => updateStatistic('sum', !!checked)}
                             className="mr-2"
@@ -79,6 +82,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="stdDev"
+                            data-testid="statistics-stddev"
                             checked={displayStatistics.stdDev}
                             onCheckedChange={(checked) => updateStatistic('stdDev', !!checked)}
                             className="mr-2"
@@ -88,6 +92,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="minimum"
+                            data-testid="statistics-minimum"
                             checked={displayStatistics.minimum}
                             onCheckedChange={(checked) => updateStatistic('minimum', !!checked)}
                             className="mr-2"
@@ -97,6 +102,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="variance"
+                            data-testid="statistics-variance"
                             checked={displayStatistics.variance}
                             onCheckedChange={(checked) => updateStatistic('variance', !!checked)}
                             className="mr-2"
@@ -106,6 +112,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="maximum"
+                            data-testid="statistics-maximum"
                             checked={displayStatistics.maximum}
                             onCheckedChange={(checked) => updateStatistic('maximum', !!checked)}
                             className="mr-2"
@@ -115,6 +122,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="range"
+                            data-testid="statistics-range"
                             checked={displayStatistics.range}
                             onCheckedChange={(checked) => updateStatistic('range', !!checked)}
                             className="mr-2"
@@ -124,6 +132,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="standardError"
+                            data-testid="statistics-standard-error"
                             checked={displayStatistics.standardError}
                             onCheckedChange={(checked) => updateStatistic('standardError', !!checked)}
                             className="mr-2"
@@ -140,6 +149,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="kurtosis"
+                            data-testid="statistics-kurtosis"
                             checked={displayStatistics.kurtosis}
                             onCheckedChange={(checked) => updateStatistic('kurtosis', !!checked)}
                             className="mr-2 border-[#CCCCCC]"
@@ -149,6 +159,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <div className="flex items-center">
                         <Checkbox
                             id="skewness"
+                            data-testid="statistics-skewness"
                             checked={displayStatistics.skewness}
                             onCheckedChange={(checked) => updateStatistic('skewness', !!checked)}
                             className="mr-2 border-[#CCCCCC]"
@@ -186,4 +197,4 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     );
 };
 
-export default StatisticsTab; 
+export default StatisticsTab;

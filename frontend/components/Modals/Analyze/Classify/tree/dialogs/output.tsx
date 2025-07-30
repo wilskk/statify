@@ -127,11 +127,11 @@ export const TreeOutput = ({
                     <Separator />
                     <Tabs defaultValue="tree" className="sm:min-w-[350px]">
                         <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="tree">Tree</TabsTrigger>
-                            <TabsTrigger value="statistics">
+                            <TabsTrigger data-testid="tree-output-tree-tab" value="tree">Tree</TabsTrigger>
+                            <TabsTrigger data-testid="tree-output-statistics-tab" value="statistics">
                                 Statistics
                             </TabsTrigger>
-                            <TabsTrigger value="rules">Rules</TabsTrigger>
+                            <TabsTrigger data-testid="tree-output-rules-tab" value="rules">Rules</TabsTrigger>
                         </TabsList>
 
                         {/* Output Tree Tabs */}

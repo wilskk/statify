@@ -2,15 +2,16 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { File, Database, Loader2 } from 'lucide-react';
+import { File, Database, Loader2, Info } from 'lucide-react';
 import { useExampleDatasetLogic } from './hooks/useExampleDatasetLogic';
 import { exampleFiles } from './example-datasets';
 import { BaseModalProps } from '@/types/modalTypes';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { ExampleDataset } from './types';
 
 const renderFileList = (
-    files: { name: string; path: string }[],
+    files: ExampleDataset[],
     handleFileClick: (path: string) => void,
     isLoading: boolean
 ) => (
@@ -22,11 +23,22 @@ const renderFileList = (
                 className="w-full justify-start text-left h-auto py-3 hover:bg-accent/50 transition-colors group"
                 onClick={() => handleFileClick(file.path)}
                 disabled={isLoading}
+                title={file.description || file.name}
             >
                 <File className="mr-3 h-5 w-5 flex-shrink-0" />
-                <span className="text-sm truncate group-hover:whitespace-normal group-hover:break-words">
-                    {file.name}
-                </span>
+                <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate group-hover:whitespace-normal group-hover:break-words">
+                        {file.name}
+                    </div>
+                    {file.description && (
+                        <div className="text-xs text-muted-foreground truncate group-hover:whitespace-normal group-hover:break-words mt-1">
+                            {file.description}
+                        </div>
+                    )}
+                </div>
+                {file.description && (
+                    <Info className="ml-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                )}
             </Button>
         ))}
     </div>

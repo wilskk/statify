@@ -99,8 +99,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     // --- Render the manager component and error message ---
     return (
-        <div>
-            <div id="explore-variable-lists" className="relative">
+        <div data-testid="explore-variables-tab-content">
+            <div id="explore-variable-lists" data-testid="explore-variable-lists" className="relative">
                 <VariableListManager
                     availableVariables={availableVariables}
                     targetLists={targetLists}
@@ -115,7 +115,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             </div>
 
             {errorMsg && (
-                <div className="col-span-2 text-destructive-foreground text-sm mt-3 p-2 bg-destructive border border-destructive/50 rounded">
+                <div data-testid="explore-variables-error" className="col-span-2 text-destructive-foreground text-sm mt-3 p-2 bg-destructive border border-destructive/50 rounded">
                     {errorMsg}
                 </div>
             )}

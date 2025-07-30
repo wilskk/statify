@@ -5,6 +5,7 @@ import { ImportCsv } from '..';
 import { useImportCsvFileReader } from '../hooks/useImportCsvFileReader';
 import { ImportCsvSelection } from '../components/ImportCsvSelection';
 import { ImportCsvConfiguration } from '../components/ImportCsvConfiguration';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock child components
 jest.mock('../components/ImportCsvSelection', () => ({
@@ -34,13 +35,16 @@ jest.mock('../components/ImportCsvConfiguration', () => ({
   )),
 }));
 
-// Mock the custom hook
+// Mock the custom hooks
 jest.mock('../hooks/useImportCsvFileReader');
+jest.mock('@/hooks/use-toast');
 
 const mockUseImportCsvFileReader = useImportCsvFileReader as jest.Mock;
+const mockUseToast = useToast as jest.Mock;
 
 describe('ImportCsv Component', () => {
   const mockOnClose = jest.fn();
+  const mockToast = jest.fn();
   let mockReadFile: jest.Mock;
   let mockResetFileState: jest.Mock;
 
@@ -69,6 +73,11 @@ describe('ImportCsv Component', () => {
     };
 
     mockUseImportCsvFileReader.mockImplementation(() => hookState);
+
+    // Mock useToast hook
+    mockUseToast.mockReturnValue({
+      toast: mockToast
+    });
   });
 
   const TestWrapper = () => <ImportCsv onClose={mockOnClose} containerType="dialog" />;

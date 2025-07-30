@@ -22,6 +22,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface ImportCsvConfigurationProps {
     onClose: () => void;
@@ -245,6 +246,7 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
     
     const { processCSV, isProcessing: hookIsProcessing } = useImportCsvProcessor();
     const [submissionError, setSubmissionError] = useState<string | null>(null);
+    const { toast } = useToast();
 
     // Tour state and logic
     const [tourActive, setTourActive] = useState(false);
@@ -288,9 +290,25 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
                 fileContent,
                 options: { firstLineContains, removeLeading, removeTrailing, delimiter, decimal, textQualifier }
             });
+            
+            // Tampilkan toast sukses
+            toast({
+                title: "Import Berhasil",
+                description: `File ${fileName} berhasil diimpor ke dalam sistem.`,
+                variant: "default"
+            });
+            
             onClose();
         } catch (err: any) {
-            setSubmissionError(err?.message || "Failed to process CSV.");
+            const errorMessage = err?.message || "Failed to process CSV.";
+            setSubmissionError(errorMessage);
+            
+            // Tampilkan toast error
+            toast({
+                title: "Import Gagal",
+                description: errorMessage,
+                variant: "destructive"
+            });
         }
     };
 

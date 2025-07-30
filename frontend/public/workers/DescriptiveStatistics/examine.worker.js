@@ -1,4 +1,4 @@
-importScripts('/workers/DescriptiveStatistics/libs/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
 
 function roundDeep(value, decimals) {
   if (typeof value === 'number') {
@@ -8,17 +8,17 @@ function roundDeep(value, decimals) {
     return value.map(v => roundDeep(v, decimals));
   }
   if (value && typeof value === 'object') {
-    const newObj = {};
-    for (const k in value) {
-      newObj[k] = roundDeep(value[k], decimals);
+    const result = {};
+    for (const key in value) {
+      result[key] = roundDeep(value[key], decimals);
     }
-    return newObj;
+    return result;
   }
   return value;
 }
-importScripts('/workers/DescriptiveStatistics/libs/descriptive.js');
-importScripts('/workers/DescriptiveStatistics/libs/frequency.js');
-importScripts('/workers/DescriptiveStatistics/libs/examine.js');
+importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
+importScripts('/workers/DescriptiveStatistics/libs/frequency/frequency.js');
+importScripts('/workers/DescriptiveStatistics/libs/examine/examine.js');
 
 onmessage = function (event) {
   console.log('[ExamineWorker] Message received', event.data);
@@ -62,4 +62,4 @@ onmessage = function (event) {
       error: err?.message || String(err),
     });
   }
-}; 
+};

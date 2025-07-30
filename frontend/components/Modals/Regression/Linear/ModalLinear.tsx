@@ -1517,12 +1517,12 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       <div className="flex-grow px-6 overflow-y-auto">
         <Tabs defaultValue="variables" className="w-full">
           <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="variables">Variables</TabsTrigger>
-            <TabsTrigger value="statistics">Statistics</TabsTrigger>
-            <TabsTrigger value="plots">Plots</TabsTrigger>
-            <TabsTrigger value="save">Save</TabsTrigger>
-            <TabsTrigger value="options">Options</TabsTrigger>
-            <TabsTrigger value="assumption">Assumption</TabsTrigger>
+            <TabsTrigger data-testid="linear-variables-tab" value="variables">Variables</TabsTrigger>
+            <TabsTrigger data-testid="linear-statistics-tab" value="statistics">Statistics</TabsTrigger>
+            <TabsTrigger data-testid="linear-plots-tab" value="plots">Plots</TabsTrigger>
+            <TabsTrigger data-testid="linear-save-tab" value="save">Save</TabsTrigger>
+            <TabsTrigger data-testid="linear-options-tab" value="options">Options</TabsTrigger>
+            <TabsTrigger data-testid="linear-assumption-tab" value="assumption">Assumption</TabsTrigger>
           </TabsList>
 
           {/* Variables Tab */}

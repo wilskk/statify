@@ -95,6 +95,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 <div className="mt-4">
                     <div className="flex items-center relative" id="display-frequency-tables">
                         <Checkbox
+                            data-testid="display-frequency-tables-checkbox"
                             checked={showFrequencyTables}
                             onCheckedChange={(checked) => setShowFrequencyTables(!!checked)}
                             className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"

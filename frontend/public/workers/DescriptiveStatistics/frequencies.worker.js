@@ -1,6 +1,6 @@
-importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-importScripts('/workers/DescriptiveStatistics/libs/descriptive.js');
-importScripts('/workers/DescriptiveStatistics/libs/frequency.js');
+importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
+importScripts('/workers/DescriptiveStatistics/libs/frequency/frequency.js');
 
 
 function roundStatsObject(obj, decimals) {
@@ -95,4 +95,4 @@ onmessage = function (event) {
     console.error('[FrequenciesWorker] Error:', err);
     postMessage({ success: false, error: err?.message || String(err) });
   }
-}; 
+};

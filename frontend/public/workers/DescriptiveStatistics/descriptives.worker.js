@@ -1,5 +1,5 @@
-importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-importScripts('/workers/DescriptiveStatistics/libs/descriptive.js');
+importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
 
 function roundStatsObject(obj, decimals) {
   const rounded = {};
@@ -49,4 +49,4 @@ onmessage = function (event) {
       error: err?.message || String(err),
     });
   }
-}; 
+};

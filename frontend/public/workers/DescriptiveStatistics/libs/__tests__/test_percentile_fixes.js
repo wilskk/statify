@@ -5,17 +5,10 @@
 
 // Fungsi helper untuk load scripts (untuk testing di Node.js)
 const loadScript = (scriptPath) => {
-    const fs = require('fs');
-    const path = require('path');
-    const normalized = scriptPath.startsWith('/') ? scriptPath.slice(1) : scriptPath;
-    let absolutePath = path.resolve(__dirname, '../../', normalized);
-    
-    if (!fs.existsSync(absolutePath)) {
-        absolutePath = path.resolve(__dirname, '../../../../', normalized);
-    }
-    
-    const scriptContent = fs.readFileSync(absolutePath, 'utf8');
-    new Function(scriptContent)();
+  const normalized = scriptPath.startsWith('/') ? scriptPath.slice(1) : scriptPath;
+  const absolutePath = path.resolve(__dirname, '../', normalized);
+  const scriptContent = fs.readFileSync(absolutePath, 'utf8');
+  new Function(scriptContent)();
 };
 
 // Setup environment
@@ -23,9 +16,9 @@ global.self = global;
 global.importScripts = loadScript;
 
 // Load dependencies
-loadScript('libs/utils.js');
-loadScript('libs/descriptive.js');
-loadScript('libs/frequency.js');
+loadScript('utils/utils.js');
+loadScript('descriptive/descriptive.js');
+loadScript('frequency/frequency.js');
 
 const FrequencyCalculator = global.self.FrequencyCalculator;
 

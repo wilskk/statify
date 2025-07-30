@@ -4,10 +4,7 @@ const path = require('path');
 // Helper to load worker scripts into the Node test environment.
 const loadScript = (scriptPath) => {
   const normalized = scriptPath.startsWith('/') ? scriptPath.slice(1) : scriptPath;
-  let absolutePath = path.resolve(__dirname, '../../', normalized);
-  if (!fs.existsSync(absolutePath)) {
-    absolutePath = path.resolve(__dirname, '../../../../', normalized);
-  }
+  const absolutePath = path.resolve(__dirname, '../', normalized);
   const scriptContent = fs.readFileSync(absolutePath, 'utf8');
   new Function(scriptContent)();
 };
@@ -19,11 +16,22 @@ const loadScript = (scriptPath) => {
 global.self = global;
 global.importScripts = loadScript;
 
-// Load dependencies in order
-loadScript('libs/utils.js');
-loadScript('libs/descriptive.js');
-loadScript('libs/frequency.js');
-loadScript('libs/examine.js');
+// Mock jStat for testing
+global.jStat = {
+  studentt: {
+    inv: (p, df) => {
+      // Simple approximation for t-distribution inverse
+      if (df >= 30) return 1.96; // Normal approximation
+      return 2.0; // Simple fallback
+    }
+  }
+};
+
+// Load dependencies
+loadScript('utils/utils.js');
+loadScript('descriptive/descriptive.js');
+loadScript('frequency/frequency.js');
+loadScript('examine/examine.js');
 
 const ExamineCalculator = global.self.ExamineCalculator;
 
@@ -90,4 +98,4 @@ describe('ExamineCalculator', () => {
         expect(stats.summary.missing).toBe(0);
         expect(stats.summary.total).toBe(5);
     });
-}); 
+});

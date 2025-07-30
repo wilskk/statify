@@ -247,9 +247,15 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
+                        <TabsTrigger 
+                            data-testid="descriptive-variables-tab"
+                            value="variables"
+                        >
+                            Variables
+                        </TabsTrigger>
                         <TabsTrigger 
                             id="descriptive-statistics-tab-trigger"
+                            data-testid="descriptive-statistics-tab"
                             value="statistics"
                         >
                             Statistics
@@ -305,6 +311,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                     </Button>
                     <Button
                         id="descriptive-ok-button"
+                        data-testid="descriptive-ok-button"
                         onClick={runAnalysis}
                         disabled={isCalculating || selectedVariables.length === 0 || isVariablesLoading || !!variablesError}
                     >

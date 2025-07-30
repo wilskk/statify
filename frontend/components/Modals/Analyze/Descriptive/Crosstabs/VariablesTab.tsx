@@ -76,8 +76,8 @@ const CrosstabsVariablesTab: FC<VariablesTabProps> = ({
     const colVarsStep = getStepIndex('crosstabs-column-variables');
 
     return (
-        <div className="p-4">
-            <div className="relative">
+        <div className="p-4" data-testid="crosstabs-variables-tab-content">
+            <div className="relative" data-testid="crosstabs-variable-lists-container">
                 <VariableListManager
                     availableVariables={availableVariables}
                     targetLists={targetLists}
@@ -88,16 +88,17 @@ const CrosstabsVariablesTab: FC<VariablesTabProps> = ({
                     onReorderVariable={handleReorderVariable}
                     onVariableDoubleClick={handleVariableDoubleClick}
                     availableListHeight="268px"
+                    data-testid="crosstabs-variable-list-manager"
                 />
                 
                 {/* Tour highlight overlays */}
-                <div id="crosstabs-available-variables" className="absolute top-0 left-0 w-[49%] h-full pointer-events-none rounded-md">
+                <div id="crosstabs-available-variables" className="absolute top-0 left-0 w-[49%] h-full pointer-events-none rounded-md" data-testid="crosstabs-available-variables-overlay">
                     <ActiveElementHighlight active={tourActive && currentStep === availableVarsStep} />
                 </div>
-                <div id="crosstabs-row-variables" className="absolute top-0 right-0 w-[49%] h-[48%] pointer-events-none rounded-md">
+                <div id="crosstabs-row-variables" className="absolute top-0 right-0 w-[49%] h-[48%] pointer-events-none rounded-md" data-testid="crosstabs-row-variables-overlay">
                     <ActiveElementHighlight active={tourActive && currentStep === rowVarsStep} />
                 </div>
-                <div id="crosstabs-column-variables" className="absolute top-[52%] right-0 w-[49%] h-[48%] pointer-events-none rounded-md">
+                <div id="crosstabs-column-variables" className="absolute top-[52%] right-0 w-[49%] h-[48%] pointer-events-none rounded-md" data-testid="crosstabs-column-variables-overlay">
                     <ActiveElementHighlight active={tourActive && currentStep === colVarsStep} />
                 </div>
             </div>
