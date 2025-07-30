@@ -358,9 +358,6 @@ pub fn create_design_response_weights(
         }
     }
 
-    // Pesan sukses membuat matriks desain
-    web_sys::console::log_1(&"Design matrix created successfully".into());
-
     Ok(DesignMatrixInfo {
         x: x_nalgebra,
         y: y_nalgebra,

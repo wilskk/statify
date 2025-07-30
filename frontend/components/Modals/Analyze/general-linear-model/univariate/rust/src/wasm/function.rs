@@ -14,15 +14,12 @@ pub fn run_analysis(
     error_collector: &mut ErrorCollector,
     logger: &mut FunctionLogger
 ) -> Result<Option<UnivariateResult>, JsValue> {
-    web_sys::console::log_1(&"Starting univariate analysis".into());
-
     // Langkah 1: Ringkasan pemrosesan dasar (selalu dieksekusi).
     // Fungsi ini memberikan informasi awal tentang data, seperti jumlah kasus yang valid dan hilang.
     logger.add_log("basic_processing_summary");
     let mut processing_summary = None;
     match core::basic_processing_summary(&data, config) {
         Ok(summary) => {
-            web_sys::console::log_1(&"Basic Processing Summary".into());
             processing_summary = Some(summary);
         }
         Err(e) => {
@@ -38,7 +35,6 @@ pub fn run_analysis(
         logger.add_log("calculate_descriptive_statistics");
         match core::calculate_descriptive_statistics(&data, config) {
             Ok(stats) => {
-                web_sys::console::log_1(&"Descriptive Statistics".into());
                 descriptive_statistics = Some(stats);
             }
             Err(e) => {
@@ -56,7 +52,6 @@ pub fn run_analysis(
         logger.add_log("calculate_levene_test");
         match core::calculate_levene_test(&data, config) {
             Ok(test) => {
-                web_sys::console::log_1(&"Levene's Test".into());
                 levene_test = Some(test);
             }
             Err(e) => {
@@ -79,7 +74,6 @@ pub fn run_analysis(
         logger.add_log("calculate_heteroscedasticity_tests");
         match core::calculate_heteroscedasticity_tests(&data, config) {
             Ok(tests) => {
-                web_sys::console::log_1(&"Heteroscedasticity Tests".into());
                 heteroscedasticity_tests = Some(tests);
             }
             Err(e) => {
@@ -95,7 +89,6 @@ pub fn run_analysis(
     logger.add_log("calculate_tests_between_subjects_effects");
     match core::calculate_tests_between_subjects_effects(&data, config) {
         Ok(tests) => {
-            web_sys::console::log_1(&"Tests of Between-Subjects Effects".into());
             tests_of_between_subjects_effects = Some(tests);
         }
         Err(e) => {
@@ -111,7 +104,6 @@ pub fn run_analysis(
         logger.add_log("calculate_parameter_estimates");
         match core::calculate_parameter_estimates(&data, config) {
             Ok(estimates) => {
-                web_sys::console::log_1(&"Parameter Estimates".into());
                 parameter_estimates = Some(estimates);
             }
             Err(e) => {
@@ -129,7 +121,6 @@ pub fn run_analysis(
             logger.add_log("calculate_contrast_coefficients");
             match core::calculate_contrast_coefficients(&data, config) {
                 Ok(coefficients) => {
-                    web_sys::console::log_1(&"Contrast Coefficients".into());
                     contrast_coefficients = Some(coefficients);
                 }
                 Err(e) => {
@@ -147,7 +138,6 @@ pub fn run_analysis(
         logger.add_log("calculate_hypothesis_l_matrices");
         match core::calculate_hypothesis_l_matrices(&data, config) {
             Ok(matrices) => {
-                web_sys::console::log_1(&"Hypothesis L-Matrices".into());
                 hypothesis_l_matrices = Some(matrices);
             }
             Err(e) => {
@@ -164,7 +154,6 @@ pub fn run_analysis(
         logger.add_log("calculate_lack_of_fit_tests");
         match core::calculate_lack_of_fit_tests(&data, config) {
             Ok(tests) => {
-                web_sys::console::log_1(&"Lack of Fit Tests".into());
                 lack_of_fit_tests = Some(tests);
             }
             Err(e) => {
@@ -181,7 +170,6 @@ pub fn run_analysis(
         logger.add_log("calculate_emmeans");
         match core::calculate_emmeans(&data, config) {
             Ok(means) => {
-                web_sys::console::log_1(&"EMMeans".into());
                 emmeans = Some(means);
             }
             Err(e) => {
@@ -208,7 +196,6 @@ pub fn run_analysis(
         logger.add_log("save_variables");
         match core::save_variables(&data, config) {
             Ok(vars) => {
-                web_sys::console::log_1(&"Saved Variables".into());
                 saved_variables = Some(vars);
             }
             Err(e) => {
@@ -224,7 +211,6 @@ pub fn run_analysis(
         logger.add_log("calculate_general_estimable_function");
         match core::calculate_general_estimable_function(&data, config) {
             Ok(gef) => {
-                web_sys::console::log_1(&"General Estimable Function".into());
                 general_estimable_function = Some(gef);
             }
             Err(e) => {
@@ -234,8 +220,6 @@ pub fn run_analysis(
     }
 
     // log error collector
-    web_sys::console::log_1(&"Error Collector".into());
-    web_sys::console::log_1(&error_collector.get_error_summary().into());
 
     // Mengumpulkan semua hasil dari langkah-langkah di atas ke dalam satu struktur `UnivariateResult`.
     let result = UnivariateResult {
