@@ -216,68 +216,32 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
                     const outputData = {
                         tables: [
                             {
-                                title: "Linearity Test Results",
-                                columnHeaders: [
-                                    { header: "Variable" },
-                                    { header: "Correlation" },
-                                    { header: "F Statistic" },
-                                    { header: "P Value" },
-                                    { header: "Linearity Status" },
-                                ],
-                                rows: response.results.map((result: any) => ({
-                                    rowHeader: [
-                                        result.variableLabel
-                                            ? `${result.variable} (${result.variableLabel})`
-                                            : result.variable,
-                                    ],
-                                    Correlation: result.correlation.toFixed(4),
-                                    "F Statistic":
-                                        result.resetTest.fStatistic.toFixed(4),
-                                    "P Value":
-                                        result.resetTest.pValue.toFixed(4),
-                                    "Linearity Status": result.isLinear
-                                        ? "Linear"
-                                        : "Non-linear",
-                                })),
-                            },
-                            {
-                                title: "Linearity Test Summary",
+                                title: "Linearity Test Summary (Ramsey RESET)",
                                 columnHeaders: [
                                     { header: "Metric" },
                                     { header: "Value" },
                                 ],
                                 rows: [
                                     {
-                                        rowHeader: ["Total Variables"],
-                                        Value: response.summary.totalVariables.toString(),
+                                        rowHeader: ["F Statistic"],
+                                        Value: response.fStatistic.toFixed(4),
                                     },
                                     {
-                                        rowHeader: [
-                                            "Variables with Linear Relationship",
-                                        ],
-                                        Value: response.summary.linearVariables.toString(),
-                                    },
-                                    {
-                                        rowHeader: [
-                                            "Variables with Non-linear Relationship",
-                                        ],
-                                        Value: response.summary.nonlinearVariables.toString(),
-                                    },
-                                    {
-                                        rowHeader: ["Overall Assessment"],
-                                        Value: response.overallInterpretation,
+                                        rowHeader: ["P Value"],
+                                        Value: response.pValue.toFixed(4),
                                     },
                                 ],
                             },
+
                         ],
                     };
 
                     // Save the results to statistics store for display in Result output
                     const linearityStat = {
-                        title: "Linearity Test Results",
+                        title: "Linearity Test Summary (Ramsey RESET)",
                         output_data: JSON.stringify(outputData),
                         components: "LinearityTest",
-                        description: response.overallInterpretation,
+                        description: response.interpretation,
                     };
 
                     await addStatistic(analyticId, linearityStat);
