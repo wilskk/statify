@@ -119,7 +119,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
     const workerClientRef = useRef<WorkerClient<any, WorkerResult> | null>(null);
     const resultsRef = useRef<FrequenciesResult[]>([]);
     
-    const handleWorkerResult = useCallback(async (result: WorkerResult, analyticId: number) => {
+    const handleWorkerResult = useCallback(async (result: WorkerResult, analyticId: number, startTime: number, variableCount: number, caseCount: number) => {
         // Release the worker back to the pool and update UI state
         if (workerClientRef.current) {
             workerClientRef.current.terminate();
@@ -165,8 +165,27 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
             if (showCharts && chartOptions && results.frequencyTables) {
                 await processAndAddCharts(analyticId, results.frequencyTables, chartOptions);
             }
+            
+            // === Performance Monitoring: End ===
+            const endTime = performance.now();
+            const executionTime = endTime - startTime;
+            console.log(`[Frequencies Analysis] Analysis completed:`);
+            console.log(`  - Variables processed: ${variableCount}`);
+            console.log(`  - Cases analyzed: ${caseCount}`);
+            console.log(`  - Execution time: ${executionTime.toFixed(2)}ms`);
+            console.log(`  - End time: ${new Date().toISOString()}`);
+            // === Performance Monitoring: End ===
+            
             onClose();
         } else {
+            // === Performance Monitoring: Error ===
+            const endTime = performance.now();
+            const executionTime = endTime - startTime;
+            console.log(`[Frequencies Analysis] Analysis failed:`);
+            console.log(`  - Execution time before error: ${executionTime.toFixed(2)}ms`);
+            console.log(`  - Error: ${error || 'Unknown error'}`);
+            // === Performance Monitoring: Error ===
+            
             setErrorMsg(error || 'An unknown error occurred in the worker.');
         }
     }, [addStatistic, showFrequencyTables, showStatistics, onClose, selectedVariables, showCharts, chartOptions]);
@@ -176,6 +195,16 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
             setErrorMsg("Please select at least one variable.");
             return;
         }
+
+        // === Performance Monitoring: Start ===
+        const startTime = performance.now();
+        const variableCount = selectedVariables.length;
+        const caseCount = allData?.length || 0;
+        console.log(`[Frequencies Analysis] Starting analysis:`);
+        console.log(`  - Variables: ${variableCount}`);
+        console.log(`  - Cases: ${caseCount}`);
+        console.log(`  - Start time: ${new Date().toISOString()}`);
+        // === Performance Monitoring: End ===
 
         setIsLoading(true);
         setErrorMsg(null);
@@ -192,10 +221,19 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
         const workerClient = createPooledWorkerClient('frequencies');
         workerClientRef.current = workerClient;
 
-        workerClient.onMessage((data: WorkerResult) => handleWorkerResult(data, analyticId));
+        workerClient.onMessage((data: WorkerResult) => handleWorkerResult(data, analyticId, startTime, variableCount, caseCount));
 
         workerClient.onError((e: ErrorEvent) => {
             console.error("Frequencies worker error:", e);
+            
+            // === Performance Monitoring: Worker Error ===
+            const endTime = performance.now();
+            const executionTime = endTime - startTime;
+            console.log(`[Frequencies Analysis] Worker error:`);
+            console.log(`  - Execution time before error: ${executionTime.toFixed(2)}ms`);
+            console.log(`  - Worker error: ${e.message}`);
+            // === Performance Monitoring: Worker Error ===
+            
             setErrorMsg(`An unexpected error occurred in the Frequencies worker: ${e.message}`);
             setIsLoading(false);
             if (workerClientRef.current) {
@@ -243,4 +281,4 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
         runAnalysis,
         cancelAnalysis,
     };
-}; 
+};

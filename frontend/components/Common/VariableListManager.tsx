@@ -344,7 +344,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                     {candidateTargets.map(target => (
                         <button
                             key={target.id}
-                            data-testid="central-move-button"
+                            id={`move-to-${target.id}-button`}
+                            data-testid={`central-move-button-${target.id}`}
                             aria-label={`Move variable to ${target.title}`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -375,7 +376,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
         return (
             <button
-                data-testid="central-move-button"
+                id={`move-back-to-available-button`}
+                data-testid={`central-move-button-back-to-available`}
                 aria-label={`Move variable back to Available`}
                 onClick={(e) => {
                     e.stopPropagation();
@@ -417,6 +419,10 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <div
+                            id={`variable-item-${listId}-${varId}`}
+                            data-testid={`variable-item-${listId}-${varId}`}
+                            data-variable-id={varId}
+                            data-list-id={listId}
                             className={`
                                 flex items-center p-1 border rounded-md group relative transition-all duration-150 ease-in-out text-sm
                                 ${isActuallyDraggable && !isDisabled ? 'cursor-grab' : 'cursor-default'}
@@ -455,12 +461,17 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                                 {itemsDraggableInList && (
                                     <GripVertical 
                                         size={14} 
-                                        className="text-muted-foreground mr-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" 
+                                        className="text-muted-foreground mr-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity"
+                                        data-testid={`drag-handle-${listId}-${varId}`}
                                     />
                                 )}
                                 {!itemsDraggableInList && <div className="w-[14px] mr-1 flex-shrink-0"></div>}
-                                {getVariableIcon(variable)}
-                                <span className="truncate">{getDisplayName(variable)}</span>
+                                <span data-testid={`variable-icon-${listId}-${varId}`}>{getVariableIcon(variable)}</span>
+                                <span 
+                                    className="truncate" 
+                                    data-testid={`variable-name-${listId}-${varId}`}
+                                    title={getDisplayName(variable)}
+                                >{getDisplayName(variable)}</span>
                             </div>
                         </div>
                     </TooltipTrigger>
@@ -510,16 +521,23 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             <div 
                 key={id} 
                 className={`flex flex-col ${id !== 'available' ? 'mb-2' : ''}`}
-                id={id === 'selected' ? 'selected-variables-list-container' : undefined}
+                id={`${id}-variables-list-container`}
+                data-testid={`${id}-variables-list-container`}
             >
                 {title && (
                     <div
+                        id={`${id}-list-title`}
+                        data-testid={`${id}-list-title`}
                         className={`text-sm font-medium text-foreground mb-1.5 px-1 flex items-center h-6 ${arrowInfo ? 'cursor-pointer hover:bg-accent rounded' : ''}`}
                         onClick={arrowInfo?.handler}
                     >
                         {/* Render arrow button (if any) at the left side */}
                         {arrowInfo?.button && (
-                            <span className="mr-1 flex-shrink-0" onClick={(e) => { e.stopPropagation(); arrowInfo.handler(); }}>
+                            <span 
+                                className="mr-1 flex-shrink-0" 
+                                data-testid={`arrow-button-${id}`}
+                                onClick={(e) => { e.stopPropagation(); arrowInfo.handler(); }}
+                            >
                                 {arrowInfo.button}
                             </span>
                         )}
@@ -528,8 +546,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 )}
                 <div
                     data-list-id={id}
-                    data-testid={testIdMap[id]}
-                    id={id === 'selected' ? 'selected-variables-list' : undefined}
+                    data-testid={testIdMap[id] || `${id}-variable-list`}
+                    id={`${id}-variables-list`}
                     role="group"
                     aria-label={title || id}
                     className={`
@@ -558,7 +576,11 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                         </div>
                     )}
 
-                    <div className={`space-y-0.5 p-0.5 transition-all duration-150`}>
+                    <div 
+                        className={`space-y-0.5 p-0.5 transition-all duration-150`}
+                        data-testid={`${id}-variables-container`}
+                        id={`${id}-variables-container`}
+                    >
                         {variables.map((variable, index) => renderVariableItem(variable, id, index))}
                     </div>
                 </div>
@@ -573,26 +595,50 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
     if (useVerticalLayout) {
         return (
-            <div className="flex flex-col gap-4">
+            <div 
+                className="flex flex-col gap-4"
+                id="variable-list-manager-mobile"
+                data-testid="variable-list-manager-mobile"
+            >
                 {/* Available Variables */}
-                <div className="w-full flex flex-col">
+                <div 
+                    className="w-full flex flex-col"
+                    id="available-variables-section"
+                    data-testid="available-variables-section"
+                >
                     {renderList(allLists.find(l => l.id === 'available')!)}
                 </div>
                 
                 {/* Central Arrow Button for Mobile */}
-                <div className="flex justify-center items-center my-1 h-8">
+                <div 
+                    className="flex justify-center items-center my-1 h-8"
+                    id="central-arrow-section"
+                    data-testid="central-arrow-section"
+                >
                     {renderCentralArrowButton()}
                 </div>
                 
                 {/* Target Lists */}
-                <div className="w-full flex flex-col space-y-2">
+                <div 
+                    className="w-full flex flex-col space-y-2"
+                    id="target-lists-section"
+                    data-testid="target-lists-section"
+                >
                     {targetLists.map(listConfig => renderList(listConfig))}
                     {renderRightColumnFooter && renderRightColumnFooter()}
                 </div>
 
                 {/* Helper Text */}
-                <div className="flex flex-col mt-2 space-y-2">
-                    <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
+                <div 
+                    className="flex flex-col mt-2 space-y-2"
+                    id="helper-text-section"
+                    data-testid="helper-text-section"
+                >
+                    <div 
+                        className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border"
+                        id="help-info-mobile"
+                        data-testid="help-info-mobile"
+                    >
                         <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
                         <span>Drag or double-click to move. Tap to select, then use arrow.</span>
                     </div>
@@ -638,7 +684,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 arrowButtons[target.id] = {
                     button: (
                         <button
-                            data-testid="central-move-button"
+                            id={`arrow-move-to-${target.id}-button`}
+                            data-testid={`arrow-move-button-${target.id}`}
                             aria-label={`Move variable to ${target.title}`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -665,7 +712,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 arrowButtons[sourceListId] = {
                     button: (
                         <button
-                            data-testid="central-move-button"
+                            id={`arrow-move-back-to-available-button`}
+                            data-testid={`arrow-move-button-back-to-available`}
                             aria-label={`Move variable back to Available`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -684,13 +732,29 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
     // Pendekatan baru dengan layout 2 kolom dan tombol di antara kolom
     return (
-        <div className="flex gap-8 items-start relative">
+        <div 
+            className="flex gap-8 items-start relative"
+            id="variable-list-manager-desktop"
+            data-testid="variable-list-manager-desktop"
+        >
             {/* Available Variables Column (Left) */}
-            <div className="w-[45%] flex flex-col">
+            <div 
+                className="w-[45%] flex flex-col"
+                id="available-variables-column"
+                data-testid="available-variables-column"
+            >
                 {renderList(allLists.find(l => l.id === 'available')!)}
                 
-                <div className="flex flex-col mt-2 space-y-2">
-                    <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
+                <div 
+                    className="flex flex-col mt-2 space-y-2"
+                    id="help-section-desktop"
+                    data-testid="help-section-desktop"
+                >
+                    <div 
+                        className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border"
+                        id="help-info-desktop"
+                        data-testid="help-info-desktop"
+                    >
                         <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
                         <span>Drag or double-click to move.</span>
                     </div>
@@ -699,7 +763,11 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             </div>
 
             {/* Target Lists Column (Right) with buttons positioned between columns */}
-            <div className="w-[45%] flex flex-col space-y-2 relative" id="selected-variables-wrapper">
+            <div 
+                className="w-[45%] flex flex-col space-y-2 relative" 
+                id="target-variables-column"
+                data-testid="target-variables-column"
+            >
                 {targetLists.map((listConfig) => (
                     <React.Fragment key={`list-${listConfig.id}`}>
                         {renderList(listConfig, arrowButtons[listConfig.id])}

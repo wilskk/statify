@@ -3,15 +3,27 @@ import { sleep, check } from 'k6';
 import { Counter, Trend, Rate, Gauge } from 'k6/metrics';
 
 /**
- * Metrik SAV API Performance - Backend Load Testing
- * Mengukur performa operasi upload dan create file SAV
+ * Load Test untuk SAV API Backend - Skenario Terpisah
  * 
- * File SAV dikategorikan berdasarkan ukuran:
- * - File Kecil (< 5KB): accidents.sav, advert.sav, salesperformance.sav, dll
- * - File Sedang (5KB - 100KB): ozone.sav, satisf.sav, workprog.sav, dll  
- * - File Besar (> 100KB): telco.sav, demo.sav, customer_dbase.sav, dll
+ * Test ini mensimulasikan operasi upload dan pembuatan file SAV dengan 4 skenario terpisah:
  * 
- * Distribusi testing: 40% file kecil, 40% file sedang, 20% file besar
+ * SKENARIO UPLOAD (berdasarkan ukuran file):
+ * 1. sav_upload_small_files: Hanya file kecil (<5KB) - 10 VUs, durasi 80s
+ * 2. sav_upload_medium_files: Hanya file sedang (5-100KB) - 8 VUs, durasi 80s
+ * 3. sav_upload_large_files: Hanya file besar (>100KB) - 5 VUs, durasi 80s
+ * 
+ * SKENARIO CREATE:
+ * 4. sav_create_operations: Pembuatan file SAV dari data - 8 VUs, durasi 120s
+ * 
+ * Keunggulan skenario terpisah:
+ * - Analisis performa per kategori ukuran file
+ * - Threshold yang disesuaikan untuk setiap kategori
+ * - Metrik yang lebih detail dan spesifik
+ * - Kemudahan debugging dan optimasi
+ * 
+ * Endpoint yang diuji:
+ * - POST /api/sav/upload (upload file SAV)
+ * - POST /api/sav/create (buat file SAV dari data)
  */
 
 // === METRIK UTAMA SAV OPERATIONS ===
@@ -21,6 +33,48 @@ const savFileCreateTime = new Trend('sav_file_create_duration_ms');
 const savReadTime = new Trend('sav_read_time_ms');
 const savWriteTime = new Trend('sav_write_time_ms');
 const savOperationErrors = new Counter('sav_operation_errors_total');
+
+// === METRIK BERDASARKAN UKURAN FILE ===
+// Waktu operasi berdasarkan kategori ukuran file
+const savSmallFileTime = new Trend('sav_small_file_duration_ms'); // < 5KB
+const savMediumFileTime = new Trend('sav_medium_file_duration_ms'); // 5KB - 100KB
+const savLargeFileTime = new Trend('sav_large_file_duration_ms'); // > 100KB
+
+// === METRIK API ENDPOINT SPESIFIK ===
+// Metrik untuk endpoint /api/sav/upload
+const savUploadSuccessRate = new Rate('sav_upload_success_rate');
+const savUploadFileSize = new Trend('sav_upload_file_size_kb');
+
+// Metrik untuk endpoint /api/sav/create
+const savCreateSuccessRate = new Rate('sav_create_success_rate');
+const savCreateVariableCount = new Trend('sav_create_variable_count');
+const savCreateRecordCount = new Trend('sav_create_record_count');
+
+// === METRIK SKENARIO SPESIFIK ===
+// Metrik untuk skenario upload file kecil
+const savUploadSmallSuccessRate = new Rate('sav_upload_small_success_rate');
+const savUploadSmallDuration = new Trend('sav_upload_small_duration_ms');
+
+// Metrik untuk skenario upload file sedang
+const savUploadMediumSuccessRate = new Rate('sav_upload_medium_success_rate');
+const savUploadMediumDuration = new Trend('sav_upload_medium_duration_ms');
+
+// Metrik untuk skenario upload file besar
+const savUploadLargeSuccessRate = new Rate('sav_upload_large_success_rate');
+const savUploadLargeDuration = new Trend('sav_upload_large_duration_ms');
+
+// === METRIK SKENARIO WRITE SAV (CREATE) ===
+// Metrik untuk skenario create file SAV kecil (sedikit data)
+const savWriteSmallSuccessRate = new Rate('sav_write_small_success_rate');
+const savWriteSmallDuration = new Trend('sav_write_small_duration_ms');
+
+// Metrik untuk skenario create file SAV sedang
+const savWriteMediumSuccessRate = new Rate('sav_write_medium_success_rate');
+const savWriteMediumDuration = new Trend('sav_write_medium_duration_ms');
+
+// Metrik untuk skenario create file SAV besar (banyak data)
+const savWriteLargeSuccessRate = new Rate('sav_write_large_success_rate');
+const savWriteLargeDuration = new Trend('sav_write_large_duration_ms');
 
 // === METRIK PERFORMA API ===
 // Throughput dan beban sistem
@@ -61,28 +115,99 @@ const requestQueueTime = new Trend('request_queue_time_ms');
 // Test options
 export const options = {
   scenarios: {
-    // Simulate SAV read operations
-    sav_read_operations: {
-      executor: 'ramping-vus',
-      startVUs: 5,
-      stages: [
-        { duration: '30s', target: 15 }, // Ramp up to 15 VUs
-        { duration: '1m', target: 15 },  // Stay at 15 VUs
-        { duration: '30s', target: 0 },  // Ramp down to 0 VUs
-      ],
-      gracefulRampDown: '10s',
-    },
-    
-    // Simulate SAV write operations
-    sav_write_operations: {
+    // === SKENARIO 1: SAV UPLOAD - FILE KECIL (<5KB) ===
+    sav_upload_small_files: {
       executor: 'ramping-vus',
       startVUs: 3,
       stages: [
-        { duration: '30s', target: 10 }, // Ramp up to 10 VUs
-        { duration: '1m', target: 10 },  // Stay at 10 VUs
+        { duration: '20s', target: 10 }, // Ramp up to 10 VUs
+        { duration: '40s', target: 10 }, // Stay at 10 VUs
+        { duration: '20s', target: 0 },  // Ramp down to 0 VUs
+      ],
+      env: { FILE_SIZE_CATEGORY: 'small' },
+      gracefulRampDown: '10s',
+    },
+    
+    // === SKENARIO 2: SAV UPLOAD - FILE SEDANG (5KB-100KB) ===
+    sav_upload_medium_files: {
+      executor: 'ramping-vus',
+      startVUs: 2,
+      stages: [
+        { duration: '20s', target: 8 },  // Ramp up to 8 VUs
+        { duration: '40s', target: 8 },  // Stay at 8 VUs
+        { duration: '20s', target: 0 },  // Ramp down to 0 VUs
+      ],
+      startTime: '10s', // Start after 10s
+      env: { FILE_SIZE_CATEGORY: 'medium' },
+      gracefulRampDown: '10s',
+    },
+    
+    // === SKENARIO 3: SAV UPLOAD - FILE BESAR (>100KB) ===
+    sav_upload_large_files: {
+      executor: 'ramping-vus',
+      startVUs: 1,
+      stages: [
+        { duration: '20s', target: 5 },  // Ramp up to 5 VUs
+        { duration: '40s', target: 5 },  // Stay at 5 VUs
+        { duration: '20s', target: 0 },  // Ramp down to 0 VUs
+      ],
+      startTime: '20s', // Start after 20s
+      env: { FILE_SIZE_CATEGORY: 'large' },
+      gracefulRampDown: '10s',
+    },
+    
+    // === SKENARIO 4: SAV CREATE OPERATIONS (Create File) ===
+    sav_create_operations: {
+      executor: 'ramping-vus',
+      startVUs: 2,
+      stages: [
+        { duration: '30s', target: 8 },  // Ramp up to 8 VUs
+        { duration: '1m', target: 8 },   // Stay at 8 VUs
         { duration: '30s', target: 0 },  // Ramp down to 0 VUs
       ],
-      startTime: '15s', // Start after 15s
+      startTime: '30s', // Start after 30s
+      gracefulRampDown: '10s',
+    },
+    
+    // === SKENARIO 5: SAV WRITE SMALL DATA (Create dengan data kecil) ===
+    sav_write_small_data: {
+      executor: 'ramping-vus',
+      startVUs: 2,
+      stages: [
+        { duration: '20s', target: 6 },  // Ramp up to 6 VUs
+        { duration: '40s', target: 6 },  // Stay at 6 VUs
+        { duration: '20s', target: 0 },  // Ramp down to 0 VUs
+      ],
+      startTime: '2m40s', // Start after other scenarios
+      env: { DATA_SIZE_CATEGORY: 'small' },
+      gracefulRampDown: '10s',
+    },
+    
+    // === SKENARIO 6: SAV WRITE MEDIUM DATA (Create dengan data sedang) ===
+    sav_write_medium_data: {
+      executor: 'ramping-vus',
+      startVUs: 2,
+      stages: [
+        { duration: '20s', target: 5 },  // Ramp up to 5 VUs
+        { duration: '40s', target: 5 },  // Stay at 5 VUs
+        { duration: '20s', target: 0 },  // Ramp down to 0 VUs
+      ],
+      startTime: '3m20s', // Start after small data scenario
+      env: { DATA_SIZE_CATEGORY: 'medium' },
+      gracefulRampDown: '10s',
+    },
+    
+    // === SKENARIO 7: SAV WRITE LARGE DATA (Create dengan data besar) ===
+    sav_write_large_data: {
+      executor: 'ramping-vus',
+      startVUs: 1,
+      stages: [
+        { duration: '20s', target: 3 },  // Ramp up to 3 VUs
+        { duration: '40s', target: 3 },  // Stay at 3 VUs
+        { duration: '20s', target: 0 },  // Ramp down to 0 VUs
+      ],
+      startTime: '4m00s', // Start after medium data scenario
+      env: { DATA_SIZE_CATEGORY: 'large' },
       gracefulRampDown: '10s',
     },
   },
@@ -99,6 +224,44 @@ export const options = {
     sav_read_time_ms: ['p(95)<3000', 'p(99)<5000', 'avg<2000'], // Read SAV: 95% < 3s, 99% < 5s, rata-rata < 2s
     sav_write_time_ms: ['p(95)<5000', 'p(99)<8000', 'avg<3000'], // Write SAV: 95% < 5s, 99% < 8s, rata-rata < 3s
     sav_operation_errors_total: ['count<10'], // Maksimal 10 error SAV operation selama test
+    
+    // === THRESHOLD BERDASARKAN UKURAN FILE ===
+    sav_small_file_duration_ms: ['p(95)<1000', 'p(99)<1500', 'avg<500'], // File kecil: 95% < 1s, 99% < 1.5s, rata-rata < 500ms
+    sav_medium_file_duration_ms: ['p(95)<2000', 'p(99)<3000', 'avg<1000'], // File sedang: 95% < 2s, 99% < 3s, rata-rata < 1s
+    sav_large_file_duration_ms: ['p(95)<5000', 'p(99)<8000', 'avg<3000'], // File besar: 95% < 5s, 99% < 8s, rata-rata < 3s
+    
+    // === THRESHOLD ENDPOINT SPESIFIK ===
+    sav_upload_success_rate: ['rate>0.95'], // Upload success rate > 95%
+    sav_upload_file_size_kb: ['avg<200'], // Rata-rata ukuran file upload < 200KB
+    sav_create_success_rate: ['rate>0.95'], // Create success rate > 95%
+    sav_create_variable_count: ['avg<20'], // Rata-rata jumlah variabel < 20
+    sav_create_record_count: ['avg<100'], // Rata-rata jumlah record < 100
+    
+    // === THRESHOLD SKENARIO SPESIFIK ===
+    // Skenario upload file kecil
+    sav_upload_small_success_rate: ['rate>0.98'], // File kecil success rate > 98%
+    sav_upload_small_duration_ms: ['p(95)<800', 'p(99)<1200', 'avg<400'], // File kecil: sangat cepat
+    
+    // Skenario upload file sedang
+    sav_upload_medium_success_rate: ['rate>0.95'], // File sedang success rate > 95%
+    sav_upload_medium_duration_ms: ['p(95)<1500', 'p(99)<2500', 'avg<800'], // File sedang: cepat
+    
+    // Skenario upload file besar
+    sav_upload_large_success_rate: ['rate>0.90'], // File besar success rate > 90%
+    sav_upload_large_duration_ms: ['p(95)<4000', 'p(99)<6000', 'avg<2500'], // File besar: lebih lambat tapi masih acceptable
+    
+    // === THRESHOLD SKENARIO WRITE SAV ===
+    // Metrik untuk skenario write SAV data kecil
+    sav_write_small_success_rate: ['rate>0.95'], // Write data kecil success rate > 95%
+    sav_write_small_duration_ms: ['p(95)<2000', 'p(99)<3000', 'avg<1000'], // Write data kecil: cepat
+    
+    // Metrik untuk skenario write SAV data sedang
+    sav_write_medium_success_rate: ['rate>0.90'], // Write data sedang success rate > 90%
+    sav_write_medium_duration_ms: ['p(95)<4000', 'p(99)<6000', 'avg<2000'], // Write data sedang: normal
+    
+    // Metrik untuk skenario write SAV data besar
+    sav_write_large_success_rate: ['rate>0.85'], // Write data besar success rate > 85%
+    sav_write_large_duration_ms: ['p(95)<8000', 'p(99)<12000', 'avg<4000'], // Write data besar: lebih lambat
     
     // === THRESHOLD PERFORMA API ===
     api_requests_per_second: ['rate>5'], // Minimal 5 requests per detik
@@ -138,11 +301,10 @@ export function setup() {
   console.log('Starting SAV API load test for Statify');
   
   // Base URL untuk API backend (sesuaikan dengan environment)
-  const baseUrl = __ENV.BASE_URL || 'http://localhost:3001';
+  const baseUrl = __ENV.BASE_URL || 'https://statify-dev.student.stis.ac.id';
   
   // Common headers for requests
   const headers = {
-    'Content-Type': 'application/json',
     'User-Agent': 'k6-load-tester',
     'Accept': 'application/json'
   };
@@ -199,19 +361,34 @@ export function setup() {
     { name: 'customer_dbase.sav', size: 1555.48 }
   ];
   
-  // Pilih kategori file berdasarkan probabilitas (40% kecil, 40% sedang, 20% besar)
+  // === PEMILIHAN FILE BERDASARKAN SKENARIO ===
+  // Ambil kategori file dari environment variable skenario
+  const fileSizeCategory = __ENV.FILE_SIZE_CATEGORY || 'mixed';
   let selectedFile;
-  const random = Math.random();
   
-  if (random < 0.4) {
-    // 40% chance untuk file kecil
-    selectedFile = smallFiles[Math.floor(Math.random() * smallFiles.length)];
-  } else if (random < 0.8) {
-    // 40% chance untuk file sedang
-    selectedFile = mediumFiles[Math.floor(Math.random() * mediumFiles.length)];
-  } else {
-    // 20% chance untuk file besar
-    selectedFile = largeFiles[Math.floor(Math.random() * largeFiles.length)];
+  switch (fileSizeCategory) {
+    case 'small':
+      // Hanya file kecil (<5KB)
+      selectedFile = smallFiles[Math.floor(Math.random() * smallFiles.length)];
+      break;
+    case 'medium':
+      // Hanya file sedang (5KB-100KB)
+      selectedFile = mediumFiles[Math.floor(Math.random() * mediumFiles.length)];
+      break;
+    case 'large':
+      // Hanya file besar (>100KB)
+      selectedFile = largeFiles[Math.floor(Math.random() * largeFiles.length)];
+      break;
+    default:
+      // Mixed distribution: 40% kecil, 40% sedang, 20% besar
+      const random = Math.random();
+      if (random < 0.4) {
+        selectedFile = smallFiles[Math.floor(Math.random() * smallFiles.length)];
+      } else if (random < 0.8) {
+        selectedFile = mediumFiles[Math.floor(Math.random() * mediumFiles.length)];
+      } else {
+        selectedFile = largeFiles[Math.floor(Math.random() * largeFiles.length)];
+      }
   }
   
   // === SIMULASI RESOURCE MONITORING ===
@@ -227,15 +404,16 @@ export function setup() {
   activeConnections.add(__VU);
   
   // === PERSIAPAN REQUEST ===
-  // Simulasi form data untuk upload file SAV dengan ukuran yang sesuai
-  const formdata = {
-    'filename': selectedFile.name,
-    'filesize': Math.floor(selectedFile.size * 1024), // Konversi KB ke bytes
-    'category': selectedFile.size < 5 ? 'small' : selectedFile.size < 100 ? 'medium' : 'large'
+  // Simulasi multipart form data untuk upload file SAV
+  // Karena k6 tidak bisa upload file asli, kita simulasi dengan data binary
+  const fileContent = 'a'.repeat(Math.floor(selectedFile.size * 1024)); // Simulasi konten file
+  
+  const formData = {
+    file: http.file(fileContent, selectedFile.name, 'application/octet-stream')
   };
   
-  // Hitung ukuran request payload
-  const requestSizeBytes = JSON.stringify(formdata).length;
+  // Hitung ukuran request payload (estimasi)
+  const requestSizeBytes = fileContent.length + selectedFile.name.length + 200; // +200 untuk headers multipart
   requestPayloadSize.add(requestSizeBytes);
   
   // Increment counter throughput API
@@ -245,9 +423,12 @@ export function setup() {
   const startTime = Date.now();
   const res = http.post(
     `${data.baseUrl}/api/sav/upload`, // Menggunakan endpoint yang benar
-    formdata,
+    formData,
     { 
-      headers: data.headers,
+      headers: {
+        ...data.headers,
+        // Content-Type akan di-set otomatis oleh k6 untuk multipart/form-data
+      },
       timeout: '30s' // Timeout 30 detik untuk upload
     }
   );
@@ -324,15 +505,50 @@ export function setup() {
     savOperationErrors.add(1);
   }
   
-  // === LOGGING UNTUK DEBUGGING ===
-  if (!isSuccess) {
-    console.log(`SAV Read Error - File: ${selectedFile.name} (${selectedFile.size}KB), Status: ${res.status}, Duration: ${res.timings.duration}ms, Response Size: ${responseSizeBytes}B`);
-  } else {
-    console.log(`SAV Read Success - File: ${selectedFile.name} (${formdata.category}), Duration: ${res.timings.duration}ms`);
-  }
-  
+  // === PENCATATAN METRIK ===
   // Record read operation time
   savReadTime.add(res.timings.duration);
+  savFileUploadTime.add(res.timings.duration);
+  
+  // Metrik berdasarkan ukuran file
+  if (selectedFile.size < 5) {
+    savSmallFileTime.add(res.timings.duration);
+  } else if (selectedFile.size <= 100) {
+    savMediumFileTime.add(res.timings.duration);
+  } else {
+    savLargeFileTime.add(res.timings.duration);
+  }
+  
+  // Metrik endpoint spesifik
+  savUploadSuccessRate.add(isSuccess);
+  savUploadFileSize.add(selectedFile.size);
+  
+  // Metrik skenario spesifik berdasarkan kategori file
+  const fileSizeCategory = __ENV.FILE_SIZE_CATEGORY || 'mixed';
+  switch (fileSizeCategory) {
+    case 'small':
+      savUploadSmallSuccessRate.add(isSuccess);
+      savUploadSmallDuration.add(res.timings.duration);
+      break;
+    case 'medium':
+      savUploadMediumSuccessRate.add(isSuccess);
+      savUploadMediumDuration.add(res.timings.duration);
+      break;
+    case 'large':
+      savUploadLargeSuccessRate.add(isSuccess);
+      savUploadLargeDuration.add(res.timings.duration);
+      break;
+  }
+  
+  // === LOGGING UNTUK DEBUGGING ===
+  const fileCategory = selectedFile.size < 5 ? 'small' : selectedFile.size < 100 ? 'medium' : 'large';
+  const scenarioInfo = fileSizeCategory !== 'mixed' ? `[${fileSizeCategory.toUpperCase()}]` : '[MIXED]';
+  
+  if (!isSuccess) {
+    console.log(`${scenarioInfo} SAV Upload Error - File: ${selectedFile.name} (${fileCategory}, ${selectedFile.size}KB), Status: ${res.status}, Duration: ${res.timings.duration}ms, Response Size: ${responseSizeBytes}B`);
+  } else {
+    console.log(`${scenarioInfo} SAV Upload Success - File: ${selectedFile.name} (${fileCategory}, ${selectedFile.size}KB), Duration: ${res.timings.duration}ms`);
+  }
   
   return res;
 }
@@ -355,6 +571,9 @@ export function testSavWrite(data) {
   activeConnections.add(__VU);
   
   // === PERSIAPAN DATA SAV ===
+  // Tentukan ukuran data berdasarkan kategori
+  const dataSizeCategory = __ENV.DATA_SIZE_CATEGORY || 'mixed';
+  
   // Template data berdasarkan jenis dataset yang umum digunakan
   const dataTemplates = [
     {
@@ -407,22 +626,56 @@ export function testSavWrite(data) {
   // Pilih template secara acak
   const selectedTemplate = dataTemplates[Math.floor(Math.random() * dataTemplates.length)];
   
-  // Buat payload dengan template yang dipilih
-  const payload = {
-    filename: `${selectedTemplate.type}_${__VU}_${Date.now()}.sav`,
-    variables: selectedTemplate.variables,
-    data: selectedTemplate.sampleData,
-    metadata: {
-      created_by: 'k6_load_test',
-      template_type: selectedTemplate.type,
-      test_vu: __VU,
-      timestamp: new Date().toISOString()
-    }
-  };
+  // === GENERATE DATA BERDASARKAN KATEGORI UKURAN ===
+  let generatedData = [...selectedTemplate.sampleData];
+  
+  // Tentukan jumlah record berdasarkan kategori
+  let targetRecords;
+  switch (dataSizeCategory) {
+    case 'small':
+      targetRecords = Math.floor(Math.random() * 10) + 5; // 5-15 records
+      break;
+    case 'medium':
+      targetRecords = Math.floor(Math.random() * 50) + 25; // 25-75 records
+      break;
+    case 'large':
+      targetRecords = Math.floor(Math.random() * 200) + 100; // 100-300 records
+      break;
+    default:
+      targetRecords = Math.floor(Math.random() * 50) + 10; // 10-60 records (mixed)
+  }
+  
+  // Generate data tambahan jika diperlukan
+  while (generatedData.length < targetRecords) {
+    const baseRecord = selectedTemplate.sampleData[Math.floor(Math.random() * selectedTemplate.sampleData.length)];
+    const newRecord = { ...baseRecord };
+    
+    // Modifikasi beberapa field untuk variasi data
+    Object.keys(newRecord).forEach(key => {
+      const variable = selectedTemplate.variables.find(v => v.name === key);
+      if (variable && variable.type === 'NUMERIC') {
+        if (variable.measure === 'SCALE') {
+          // Untuk data skala, tambahkan variasi
+          newRecord[key] = newRecord[key] * (0.8 + Math.random() * 0.4); // ±20% variasi
+        } else if (variable.measure === 'NOMINAL' || variable.measure === 'ORDINAL') {
+          // Untuk data nominal/ordinal, gunakan nilai yang ada atau increment
+          newRecord[key] = newRecord[key] + Math.floor(Math.random() * 1000);
+        }
+      }
+    });
+    
+    generatedData.push(newRecord);
+  }
   
   // === PERSIAPAN REQUEST ===
+  // Struktur JSON yang benar untuk API createSavFile
+  const createPayload = {
+    variables: selectedTemplate.variables,
+    data: generatedData
+  };
+  
   // Hitung ukuran request payload
-  const requestSizeBytes = JSON.stringify(payload).length;
+  const requestSizeBytes = JSON.stringify(createPayload).length;
   requestPayloadSize.add(requestSizeBytes);
   
   // Increment counter throughput API
@@ -432,7 +685,7 @@ export function testSavWrite(data) {
   const startTime = Date.now();
   const res = http.post(
     `${data.baseUrl}/api/sav/create`, // Menggunakan endpoint yang benar
-    JSON.stringify(payload),
+    JSON.stringify(createPayload),
     { 
       headers: {
         ...data.headers,
@@ -511,36 +764,69 @@ export function testSavWrite(data) {
     clientErrors.add(1);
   }
   
+  // === PENCATATAN METRIK ===
+  savWriteTime.add(res.timings.duration);
+  savFileCreateTime.add(res.timings.duration);
+  
+  // Metrik endpoint spesifik
+  savCreateSuccessRate.add(isSuccess);
+  savCreateVariableCount.add(createPayload.variables.length);
+  savCreateRecordCount.add(createPayload.data.length);
+  
+  if (!isSuccess) {
+    savOperationErrors.add(1);
+  }
+  
+  // === METRIK SKENARIO WRITE BERDASARKAN KATEGORI ===
+  // Metrik berdasarkan kategori ukuran data
+  switch (dataSizeCategory) {
+    case 'small':
+      savWriteSmallSuccessRate.add(isSuccess);
+      savWriteSmallDuration.add(res.timings.duration);
+      break;
+    case 'medium':
+      savWriteMediumSuccessRate.add(isSuccess);
+      savWriteMediumDuration.add(res.timings.duration);
+      break;
+    case 'large':
+      savWriteLargeSuccessRate.add(isSuccess);
+      savWriteLargeDuration.add(res.timings.duration);
+      break;
+  }
+
   // === LOGGING UNTUK DEBUGGING ===
-   if (!isSuccess) {
-     console.log(`SAV Write Error - Template: ${selectedTemplate.type}, Status: ${res.status}, Duration: ${res.timings.duration}ms, Response Size: ${responseSizeBytes}B`);
-   } else {
-     console.log(`SAV Write Success - Template: ${selectedTemplate.type}, Filename: ${payload.filename}, Duration: ${res.timings.duration}ms`);
-   }
-   
-   // Record write operation time
-   savWriteTime.add(res.timings.duration);
+  const categoryInfo = dataSizeCategory !== 'mixed' ? `[${dataSizeCategory.toUpperCase()}]` : '[MIXED]';
+  
+  if (!isSuccess) {
+    console.log(`${categoryInfo} SAV Write Error - Template: ${selectedTemplate.type}, Status: ${res.status}, Duration: ${res.timings.duration}ms, Response Size: ${responseSizeBytes}B, Records: ${createPayload.data.length}`);
+  } else {
+    console.log(`${categoryInfo} SAV Write Success - Template: ${selectedTemplate.type}, Variables: ${createPayload.variables.length}, Records: ${createPayload.data.length}, Duration: ${res.timings.duration}ms`);
+  }
    
    return res;
 }
 
 // Main test function
 export default function(data) {
-  // Randomly choose an operation to perform
-  const operations = [
-    { func: testSavRead, weight: 2 },   // 40% chance
-    { func: testSavWrite, weight: 3 },  // 60% chance
-  ];
+  // Increment request counter
+  apiRequestsPerSecond.add(1);
   
-  // Weighted random selection
-  const totalWeight = operations.reduce((sum, op) => sum + op.weight, 0);
-  let random = Math.random() * totalWeight;
+  // Tentukan operasi berdasarkan nama skenario yang sedang berjalan
+  const scenarioName = __ENV.K6_SCENARIO || 'default';
   
-  for (const operation of operations) {
-    random -= operation.weight;
-    if (random <= 0) {
-      operation.func(data);
-      break;
+  if (scenarioName.includes('upload')) {
+    // Skenario upload (small, medium, large files)
+    testSavRead(data);
+  } else if (scenarioName.includes('create')) {
+    // Skenario create SAV file
+    testSavWrite(data);
+  } else {
+    // Default: campuran operasi (60% read, 40% write)
+    const operation = Math.random() < 0.6 ? 'read' : 'write';
+    if (operation === 'read') {
+      testSavRead(data);
+    } else {
+      testSavWrite(data);
     }
   }
   

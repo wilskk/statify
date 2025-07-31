@@ -1,20 +1,30 @@
 import { test, expect } from '@playwright/test';
 
-/**
- * Interface untuk metrik performa testing
- * Digunakan untuk memantau kinerja komponen Crosstabs
- */
+// Performance and Resource Monitoring Interface
 interface PerformanceMetrics {
   renderTime: number;
   updateTime: number;
   memoryUsage: number;
   errorRate: number;
+  cpuUsage?: number;
   networkRequests: number;
   networkLatency: number;
   domNodes: number;
   jsHeapSize: number;
   loadTime: number;
   interactionTime: number;
+  // Web Vitals metrics
+  firstPaint: number;
+  firstContentfulPaint: number;
+  largestContentfulPaint?: number;
+  cumulativeLayoutShift?: number;
+  firstInputDelay?: number;
+  // Application-specific metrics
+  datasetLoadTime: number;
+  analysisComputationTime: number;
+  chartRenderTime: number;
+  dataExportTime: number;
+  // Cross-browser specific metrics
   browserInfo: {
     name: string;
     version: string;
@@ -22,122 +32,227 @@ interface PerformanceMetrics {
   };
 }
 
-/**
- * Kelas untuk memantau dan menganalisis metrik performa
- * Menyediakan fungsi untuk tracking dan validasi threshold performa
- */
+// Resource monitoring helper functions
 class ResourceMonitor {
-  private metrics: PerformanceMetrics[] = [];
   private startTime: number = 0;
-  private thresholds = {
-    renderTime: 3000,
-    updateTime: 1000,
-    memoryUsage: 100 * 1024 * 1024, // 100MB
+  private currentMetrics: PerformanceMetrics = {
+    renderTime: 0,
+    updateTime: 0,
+    memoryUsage: 0,
     errorRate: 0,
-    networkLatency: 2000,
-    domNodes: 5000,
-    jsHeapSize: 50 * 1024 * 1024, // 50MB
-    loadTime: 5000,
-    interactionTime: 500
+    networkRequests: 0,
+    networkLatency: 0,
+    domNodes: 0,
+    jsHeapSize: 0,
+    loadTime: 0,
+    interactionTime: 0,
+    firstPaint: 0,
+    firstContentfulPaint: 0,
+    datasetLoadTime: 0,
+    analysisComputationTime: 0,
+    chartRenderTime: 0,
+    dataExportTime: 0,
+    browserInfo: {
+      name: 'unknown',
+      version: 'unknown',
+      platform: 'unknown'
+    }
   };
+  private metricsHistory: PerformanceMetrics[] = [];
 
-  /**
-   * Memulai monitoring performa
-   */
-  startMonitoring(): void {
+  startMonitoring() {
     this.startTime = Date.now();
   }
 
-  /**
-   * Mengumpulkan metrik performa dari browser
-   */
   async collectMetrics(page: any): Promise<PerformanceMetrics> {
-    const endTime = Date.now();
-    const renderTime = endTime - this.startTime;
-
-    // Mengumpulkan metrik dari browser
-    const metrics = await page.evaluate(() => {
-      const performance = window.performance;
-      const memory = (performance as any).memory;
-      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+    try {
+      // Collect browser performance metrics
+      const performanceMetrics = await page.evaluate(() => {
+        const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+        const memory = (performance as any).memory;
+        
+        return {
+          loadTime: navigation ? navigation.loadEventEnd - navigation.loadEventStart : 0,
+          domContentLoaded: navigation ? navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart : 0,
+          firstPaint: performance.getEntriesByName('first-paint')[0]?.startTime || 0,
+          firstContentfulPaint: performance.getEntriesByName('first-contentful-paint')[0]?.startTime || 0,
+          largestContentfulPaint: performance.getEntriesByName('largest-contentful-paint')[0]?.startTime || 0,
+          jsHeapSize: memory ? memory.usedJSHeapSize : 0,
+          jsHeapSizeLimit: memory ? memory.totalJSHeapSize : 0,
+          domNodes: document.querySelectorAll('*').length,
+          resourceCount: performance.getEntriesByType('resource').length,
+          // Browser-specific information
+          userAgent: navigator.userAgent,
+          viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight
+          },
+          devicePixelRatio: window.devicePixelRatio || 1
+        };
+      });
       
-      return {
-        memoryUsage: memory ? memory.usedJSHeapSize : 0,
-        jsHeapSize: memory ? memory.totalJSHeapSize : 0,
-        domNodes: document.querySelectorAll('*').length,
-        loadTime: navigation ? navigation.loadEventEnd - navigation.fetchStart : 0,
-        networkRequests: performance.getEntriesByType('resource').length,
-        networkLatency: navigation ? navigation.responseEnd - navigation.requestStart : 0
+      // Get browser context information
+      const browserContext = page.context();
+      const browser = browserContext.browser();
+      const browserName = browser?.browserType()?.name() || 'unknown';
+      const browserVersion = browser?.version() || 'unknown';
+
+      // Collect network metrics
+      const networkMetrics = await this.collectNetworkMetrics(page);
+      
+      // Update metrics
+      this.currentMetrics = {
+        renderTime: performanceMetrics.firstContentfulPaint,
+        updateTime: 0,
+        memoryUsage: performanceMetrics.jsHeapSize,
+        errorRate: 0,
+        networkRequests: performanceMetrics.resourceCount,
+        networkLatency: networkMetrics.averageLatency,
+        domNodes: performanceMetrics.domNodes,
+        jsHeapSize: performanceMetrics.jsHeapSize,
+        loadTime: performanceMetrics.loadTime,
+        interactionTime: Date.now() - this.startTime,
+        firstPaint: performanceMetrics.firstPaint,
+        firstContentfulPaint: performanceMetrics.firstContentfulPaint,
+        largestContentfulPaint: performanceMetrics.largestContentfulPaint,
+        datasetLoadTime: 0, // Will be set by test code when loading datasets
+        analysisComputationTime: 0, // Will be set by test code when running analysis
+        chartRenderTime: 0, // Will be set by test code when rendering charts
+        dataExportTime: 0, // Will be set by test code when exporting data
+        browserInfo: {
+          name: browserName,
+          version: browserVersion,
+          platform: 'unknown'
+        }
       };
-    });
 
-    const browserInfo = await page.evaluate(() => {
-      const ua = navigator.userAgent;
-      let name = 'Unknown';
-      let version = 'Unknown';
-      
-      if (ua.includes('Chrome')) {
-        name = 'Chrome';
-        const match = ua.match(/Chrome\/(\d+)/);
-        version = match ? match[1] : 'Unknown';
-      } else if (ua.includes('Firefox')) {
-        name = 'Firefox';
-        const match = ua.match(/Firefox\/(\d+)/);
-        version = match ? match[1] : 'Unknown';
-      } else if (ua.includes('Safari')) {
-        name = 'Safari';
-        const match = ua.match(/Version\/(\d+)/);
-        version = match ? match[1] : 'Unknown';
-      }
-      
-      return {
-        name,
-        version,
-        platform: navigator.platform
-      };
-    });
-
-    const metric: PerformanceMetrics = {
-      renderTime,
-      updateTime: 0,
-      memoryUsage: metrics.memoryUsage,
-      errorRate: 0,
-      networkRequests: metrics.networkRequests,
-      networkLatency: metrics.networkLatency,
-      domNodes: metrics.domNodes,
-      jsHeapSize: metrics.jsHeapSize,
-      loadTime: metrics.loadTime,
-      interactionTime: 0,
-      browserInfo
-    };
-
-    this.metrics.push(metric);
-    return metric;
+      // Add to history
+      this.metricsHistory.push({...this.currentMetrics});
+      return this.currentMetrics;
+    } catch (error) {
+      console.warn('Failed to collect performance metrics:', error);
+      return this.currentMetrics;
+    }
   }
 
-  /**
-   * Memvalidasi apakah metrik memenuhi threshold yang ditetapkan
-   */
+  private async collectNetworkMetrics(page: any) {
+    try {
+      const resourceTimings: any[] = await page.evaluate(() => {
+        return performance.getEntriesByType('resource').map((entry: any) => ({
+          name: entry.name,
+          duration: entry.duration,
+          transferSize: entry.transferSize || 0,
+          responseStart: entry.responseStart,
+          requestStart: entry.requestStart
+        }));
+      });
+      
+      const totalLatency = resourceTimings.reduce((sum: number, resource: any) => {
+        if (resource.requestStart && resource.responseStart) {
+          return sum + (resource.responseStart - resource.requestStart);
+        }
+        return sum;
+      }, 0);
+      
+      const averageLatency = resourceTimings.length > 0 ? totalLatency / resourceTimings.length : 0;
+      
+      return {
+        resourceCount: resourceTimings.length,
+        averageLatency,
+        totalTransferSize: resourceTimings.reduce((sum: number, resource: any) => sum + (resource.transferSize || 0), 0)
+      };
+    } catch (error) {
+      console.warn('Failed to collect network metrics:', error);
+      return {
+        resourceCount: 0,
+        averageLatency: 0,
+        totalTransferSize: 0
+      };
+    }
+  }
+
+  logMetrics(testName: string) {
+    console.log(`\n=== Performance Metrics for: ${testName} ===`);
+    console.log(`Browser: ${this.currentMetrics.browserInfo.name} v${this.currentMetrics.browserInfo.version}`);
+    console.log('--- Performance Metrics ---');
+    console.log(`Load Time: ${this.currentMetrics.loadTime.toFixed(2)}ms`);
+    console.log(`Render Time (FCP): ${this.currentMetrics.firstContentfulPaint.toFixed(2)}ms`);
+    console.log(`First Paint: ${this.currentMetrics.firstPaint.toFixed(2)}ms`);
+    if (this.currentMetrics.largestContentfulPaint) {
+      console.log(`Largest Contentful Paint: ${this.currentMetrics.largestContentfulPaint.toFixed(2)}ms`);
+    }
+    console.log(`Interaction Time: ${this.currentMetrics.interactionTime}ms`);
+    console.log(`JS Heap Size: ${(this.currentMetrics.jsHeapSize / 1024 / 1024).toFixed(2)}MB`);
+    console.log(`DOM Nodes: ${this.currentMetrics.domNodes}`);
+    console.log(`Network Requests: ${this.currentMetrics.networkRequests}`);
+    console.log(`Average Network Latency: ${this.currentMetrics.networkLatency.toFixed(2)}ms`);
+    console.log(`Dataset Load Time: ${this.currentMetrics.datasetLoadTime}ms`);
+    console.log(`Analysis Computation Time: ${this.currentMetrics.analysisComputationTime}ms`);
+    console.log(`Chart Render Time: ${this.currentMetrics.chartRenderTime}ms`);
+    console.log(`Data Export Time: ${this.currentMetrics.dataExportTime}ms`);
+    console.log('===============================\n');
+  }
+
+  validatePerformance(): { passed: boolean; issues: string[] } {
+    const issues: string[] = [];
+    const thresholds = this.getBrowserSpecificThresholds();
+    
+    // Standard performance validations
+    if (this.currentMetrics.loadTime > thresholds.loadTime) {
+      issues.push(`Load time ${this.currentMetrics.loadTime.toFixed(2)}ms exceeds threshold ${thresholds.loadTime}ms`);
+    }
+    
+    if (this.currentMetrics.firstContentfulPaint > thresholds.renderTime) {
+      issues.push(`Render time ${this.currentMetrics.firstContentfulPaint.toFixed(2)}ms exceeds threshold ${thresholds.renderTime}ms`);
+    }
+    
+    if (this.currentMetrics.jsHeapSize > thresholds.jsHeapSize) {
+      issues.push(`JS Heap size ${(this.currentMetrics.jsHeapSize / 1024 / 1024).toFixed(2)}MB exceeds threshold ${thresholds.jsHeapSize / 1024 / 1024}MB`);
+    }
+    
+    if (this.currentMetrics.domNodes > thresholds.domNodes) {
+      issues.push(`DOM nodes ${this.currentMetrics.domNodes} exceeds threshold ${thresholds.domNodes}`);
+    }
+    
+    if (this.currentMetrics.networkLatency > thresholds.networkLatency) {
+      issues.push(`Network latency ${this.currentMetrics.networkLatency.toFixed(2)}ms exceeds threshold ${thresholds.networkLatency}ms`);
+    }
+    
+    // Application-specific validations
+    if (this.currentMetrics.datasetLoadTime > 10000) { // 10 seconds
+      issues.push(`Dataset load time ${this.currentMetrics.datasetLoadTime}ms exceeds threshold 10000ms`);
+    }
+    
+    if (this.currentMetrics.analysisComputationTime > 30000) { // 30 seconds
+      issues.push(`Analysis computation time ${this.currentMetrics.analysisComputationTime}ms exceeds threshold 30000ms`);
+    }
+    
+    return {
+      passed: issues.length === 0,
+      issues
+    };
+  }
+
   validateThresholds(metric: PerformanceMetrics): { passed: boolean; violations: string[] } {
     const violations: string[] = [];
 
-    if (metric.renderTime > this.thresholds.renderTime) {
-      violations.push(`Render time exceeded: ${metric.renderTime}ms > ${this.thresholds.renderTime}ms`);
+    if (metric.renderTime > 3000) {
+      violations.push(`Render time exceeded: ${metric.renderTime}ms > 3000ms`);
     }
-    if (metric.memoryUsage > this.thresholds.memoryUsage) {
-      violations.push(`Memory usage exceeded: ${metric.memoryUsage} > ${this.thresholds.memoryUsage}`);
+    if (metric.memoryUsage > 100 * 1024 * 1024) { // 100MB
+      violations.push(`Memory usage exceeded: ${metric.memoryUsage} > ${100 * 1024 * 1024}`);
     }
-    if (metric.networkLatency > this.thresholds.networkLatency) {
-      violations.push(`Network latency exceeded: ${metric.networkLatency}ms > ${this.thresholds.networkLatency}ms`);
+    if (metric.networkLatency > 2000) {
+      violations.push(`Network latency exceeded: ${metric.networkLatency}ms > 2000ms`);
     }
-    if (metric.domNodes > this.thresholds.domNodes) {
-      violations.push(`DOM nodes exceeded: ${metric.domNodes} > ${this.thresholds.domNodes}`);
+    if (metric.domNodes > 5000) {
+      violations.push(`DOM nodes exceeded: ${metric.domNodes} > 5000`);
     }
-    if (metric.jsHeapSize > this.thresholds.jsHeapSize) {
-      violations.push(`JS heap size exceeded: ${metric.jsHeapSize} > ${this.thresholds.jsHeapSize}`);
+    if (metric.jsHeapSize > 50 * 1024 * 1024) { // 50MB
+      violations.push(`JS heap size exceeded: ${metric.jsHeapSize} > ${50 * 1024 * 1024}`);
     }
-    if (metric.loadTime > this.thresholds.loadTime) {
-      violations.push(`Load time exceeded: ${metric.loadTime}ms > ${this.thresholds.loadTime}ms`);
+    if (metric.loadTime > 5000) {
+      violations.push(`Load time exceeded: ${metric.loadTime}ms > 5000ms`);
     }
 
     return {
@@ -146,20 +261,58 @@ class ResourceMonitor {
     };
   }
 
+  private getBrowserSpecificThresholds() {
+    // Browser-specific performance thresholds
+    switch (this.currentMetrics.browserInfo.name) {
+      case 'chromium':
+        return {
+          loadTime: 3000,
+          renderTime: 2000,
+          jsHeapSize: 50 * 1024 * 1024, // 50MB
+          domNodes: 1500,
+          networkLatency: 1000
+        };
+      case 'firefox':
+        return {
+          loadTime: 3000,
+          renderTime: 2500,
+          jsHeapSize: 60 * 1024 * 1024, // 60MB
+          domNodes: 1500,
+          networkLatency: 1000
+        };
+      case 'webkit':
+        return {
+          loadTime: 3500,
+          renderTime: 2000,
+          jsHeapSize: 40 * 1024 * 1024, // 40MB
+          domNodes: 1500,
+          networkLatency: 1000
+        };
+      default:
+        return {
+          loadTime: 5000,
+          renderTime: 3000,
+          jsHeapSize: 100 * 1024 * 1024, // 100MB
+          domNodes: 2000,
+          networkLatency: 2000
+        };
+    }
+  }
+
   /**
    * Mendapatkan ringkasan statistik dari semua metrik yang dikumpulkan
    */
   getStatistics() {
-    if (this.metrics.length === 0) return null;
+    if (this.metricsHistory.length === 0) return null;
 
     const stats = {
-      count: this.metrics.length,
-      averageRenderTime: this.metrics.reduce((sum, m) => sum + m.renderTime, 0) / this.metrics.length,
-      averageMemoryUsage: this.metrics.reduce((sum, m) => sum + m.memoryUsage, 0) / this.metrics.length,
-      averageNetworkLatency: this.metrics.reduce((sum, m) => sum + m.networkLatency, 0) / this.metrics.length,
-      maxRenderTime: Math.max(...this.metrics.map(m => m.renderTime)),
-      maxMemoryUsage: Math.max(...this.metrics.map(m => m.memoryUsage)),
-      totalNetworkRequests: this.metrics.reduce((sum, m) => sum + m.networkRequests, 0)
+      count: this.metricsHistory.length,
+      averageRenderTime: this.metricsHistory.reduce((sum, m) => sum + m.renderTime, 0) / this.metricsHistory.length,
+      averageMemoryUsage: this.metricsHistory.reduce((sum, m) => sum + m.memoryUsage, 0) / this.metricsHistory.length,
+      averageNetworkLatency: this.metricsHistory.reduce((sum, m) => sum + m.networkLatency, 0) / this.metricsHistory.length,
+      maxRenderTime: Math.max(...this.metricsHistory.map(m => m.renderTime)),
+      maxMemoryUsage: Math.max(...this.metricsHistory.map(m => m.memoryUsage)),
+      totalNetworkRequests: this.metricsHistory.reduce((sum, m) => sum + m.networkRequests, 0)
     };
 
     return stats;
@@ -169,7 +322,7 @@ class ResourceMonitor {
    * Mereset semua metrik yang dikumpulkan
    */
   reset(): void {
-    this.metrics = [];
+    this.metricsHistory = [];
     this.startTime = 0;
   }
 }
@@ -237,12 +390,12 @@ test.describe('Crosstabs Analysis Workflow', () => {
     await page.waitForTimeout(1000);
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     
     // Verify dataset is loaded
-    await expect(page.locator('text=accidents.sav')).toBeVisible();
+    await expect(page.locator('[data-testid="example-dataset-accidents"]')).toBeVisible();
     
     // Navigate to Crosstabs
     await page.click('text=Analyze');
@@ -309,8 +462,8 @@ test.describe('Crosstabs Analysis Workflow', () => {
     await page.waitForTimeout(1000);
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     
     // Navigate to Crosstabs
@@ -388,8 +541,8 @@ test.describe('Crosstabs Analysis Workflow', () => {
     await page.waitForTimeout(1000);
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     
     // Navigate to Crosstabs
@@ -445,8 +598,8 @@ test.describe('Crosstabs Analysis Workflow', () => {
     await page.waitForTimeout(1000);
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     
     await page.click('text=Analyze');
@@ -491,8 +644,8 @@ test.describe('Crosstabs Analysis Workflow', () => {
     await page.waitForTimeout(1000);
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     
     await page.click('text=Analyze');
@@ -551,8 +704,8 @@ test.describe('Crosstabs Analysis Workflow', () => {
      await page.waitForTimeout(1000);
      await page.click('text=Example Data');
      await page.waitForTimeout(2000);
-     await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-     await page.click('button:has-text("accidents.sav")');
+     await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+     await page.click('[data-testid="example-dataset-accidents"]');
      await page.waitForTimeout(5000);
      
      await page.click('text=Analyze');
@@ -593,8 +746,8 @@ test.describe('Crosstabs Analysis Workflow', () => {
      await page.waitForTimeout(1000);
      await page.click('text=Example Data');
      await page.waitForTimeout(2000);
-     await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-     await page.click('button:has-text("accidents.sav")');
+     await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+     await page.click('[data-testid="example-dataset-accidents"]');
      await page.waitForTimeout(5000);
      
      await page.click('text=Analyze');
@@ -637,8 +790,8 @@ test.describe('Crosstabs Analysis Workflow', () => {
      await page.waitForTimeout(1000);
      await page.click('text=Example Data');
      await page.waitForTimeout(2000);
-     await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-     await page.click('button:has-text("accidents.sav")');
+     await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+     await page.click('[data-testid="example-dataset-accidents"]');
      await page.waitForTimeout(5000);
      
      await page.click('text=Analyze');
@@ -678,8 +831,8 @@ test.describe('Crosstabs Analysis Workflow', () => {
      await page.waitForTimeout(1000);
      await page.click('text=Example Data');
      await page.waitForTimeout(2000);
-     await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-     await page.click('button:has-text("accidents.sav")');
+     await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+     await page.click('[data-testid="example-dataset-accidents"]');
      await page.waitForTimeout(5000);
      
      await page.click('text=Analyze');

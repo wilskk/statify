@@ -21,6 +21,7 @@ const renderFileList = (
                 <div 
                     className="border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md"
                     onClick={() => handleFileClick(file.path)}
+                    data-testid={`example-dataset-${file.name}`}
                 >
                     <div className="p-4">
                         <div className="flex items-start">

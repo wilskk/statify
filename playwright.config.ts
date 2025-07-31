@@ -34,7 +34,7 @@ export default defineConfig({
   // Pengaturan global untuk semua tests
   use: {
     // Base URL untuk aplikasi yang akan ditest
-    baseURL: 'http://localhost:3001',
+    baseURL: 'http://localhost:3000',
     
     // Collect trace ketika retry test yang gagal
     trace: 'on-first-retry',
@@ -101,11 +101,12 @@ export default defineConfig({
     },
   ],
 
-  // Tidak perlu menjalankan development server untuk production testing
-  // webServer: {
-  //   command: 'npm run dev:frontend',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  //   timeout: 120 * 1000,
-  // },
+  // Konfigurasi webServer untuk menjalankan development server secara otomatis
+  webServer: {
+    command: 'npm run dev',
+    port: 3000,
+    cwd: './frontend',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
 });
