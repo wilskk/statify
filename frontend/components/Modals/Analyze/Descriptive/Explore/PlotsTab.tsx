@@ -31,35 +31,37 @@ const PlotsTab: FC<PlotsTabProps> = ({
     // Boxplot options are always enabled; user can configure before selecting variables.
 
     return (
-        <div className="space-y-6">
-            <div className="p-4 border rounded-md">
+        <div data-testid="explore-plots-tab-content" className="space-y-6">
+            <div data-testid="explore-boxplots-section" className="p-4 border rounded-md">
                 <Label className="text-base font-medium">Boxplots</Label>
                 <RadioGroup 
+                    data-testid="explore-boxplot-radio-group"
                     value={boxplotType} 
                     onValueChange={setBoxplotType}
                     className="mt-2 space-y-1"
                 >
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="none" id="none" />
+                        <RadioGroupItem data-testid="explore-boxplot-none" value="none" id="none" />
                         <Label htmlFor="none" className="font-normal">None</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="factor-levels-together" id="factor-levels" />
+                        <RadioGroupItem data-testid="explore-boxplot-factor-levels" value="factor-levels-together" id="factor-levels" />
                         <Label htmlFor="factor-levels" className="font-normal">Factor levels together</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="dependents-together" id="dependents" />
+                        <RadioGroupItem data-testid="explore-boxplot-dependents" value="dependents-together" id="dependents" />
                         <Label htmlFor="dependents" className="font-normal">Dependents together</Label>
                     </div>
                 </RadioGroup>
                 {/* Info text removed so user can preconfigure before variable selection */}
             </div>
             
-            <div className="p-4 border rounded-md space-y-3">
+            <div data-testid="explore-descriptives-plots-section" className="p-4 border rounded-md space-y-3">
                 <Label className="text-base font-medium">Descriptives</Label>
                 <div className="flex items-center space-x-2">
                     <Checkbox
                         id="stem-and-leaf"
+                        data-testid="explore-stem-and-leaf-checkbox"
                         checked={showStemAndLeaf}
                         onCheckedChange={(checked) => setShowStemAndLeaf(checked as boolean)}
                     />
@@ -68,6 +70,7 @@ const PlotsTab: FC<PlotsTabProps> = ({
                 <div className="flex items-center space-x-2">
                     <Checkbox
                         id="histogram"
+                        data-testid="explore-histogram-checkbox"
                         checked={showHistogram}
                         onCheckedChange={(checked) => setShowHistogram(checked as boolean)}
                     />
@@ -80,4 +83,4 @@ const PlotsTab: FC<PlotsTabProps> = ({
     );
 };
 
-export default PlotsTab; 
+export default PlotsTab;

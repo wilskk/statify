@@ -1,90 +1,140 @@
+import { ExampleFiles } from './types';
+
 const exampleSavFiles = [
     { 
-        name: 'accidents.sav', 
+        name: 'accidents', 
         path: '/exampleData/accidents.sav',
-        tags: ['transportation', 'safety', 'public', 'nonparametric'] 
+        tags: ['insurance', 'risk'],
+        description: 'Insurance company studying age and gender risk factors for automobile accidents.'
     },
     { 
-        name: 'advert.sav', 
+        name: 'adl', 
+        path: '/exampleData/adl.sav',
+        tags: ['medical', 'therapy'],
+        description: 'Benefits of emotional therapy for stroke patients compared to standard physical therapy.'
+    },
+    { 
+        name: 'advert', 
         path: '/exampleData/advert.sav',
-        tags: ['regression', 'parametric'] 
+        tags: ['marketing', 'sales'],
+        description: 'Retailer examining relationship between advertising costs and sales figures.'
     },
     { 
-        name: 'car_sales.sav', 
+        name: 'bankloan', 
+        path: '/exampleData/bankloan.sav',
+        tags: ['finance', 'risk'],
+        description: 'Bank efforts to reduce loan defaults with financial and demographic information.'
+    },
+    { 
+        name: 'behavior', 
+        path: '/exampleData/behavior.sav',
+        tags: ['psychology', 'survey'],
+        description: 'Students rating appropriateness of behaviors in various situations.'
+    },
+    { 
+        name: 'car_sales', 
         path: '/exampleData/car_sales.sav',
-        tags: ['regression', 'parametric'] 
+        tags: ['automotive', 'sales'],
+        description: 'Sales estimates, list prices, and specifications for various vehicles.'
     },
     { 
-        name: 'customer_dbase.sav', 
+        name: 'contacts', 
+        path: '/exampleData/contacts.sav',
+        tags: ['business', 'sales'],
+        description: 'Contact lists for corporate computer sales representatives.'
+    },
+    { 
+        name: 'customer_dbase', 
         path: '/exampleData/customer_dbase.sav',
-        tags: ['classification'] 
+        tags: ['marketing', 'offers'],
+        description: 'Company using data warehouse to make special offers to likely responders.'
     },
     { 
-        name: 'demo.sav', 
+        name: 'demo', 
         path: '/exampleData/demo.sav',
-        tags: ['nonparametric'] 
+        tags: ['marketing', 'demographics'],
+        description: 'Mailing list with demographic information for marketing offers.'
     },
     { 
-        name: 'dietstudy.sav', 
-        path: '/exampleData/dietstudy.sav',
-        tags: ['timeseries'] 
+        name: 'employee_data', 
+        path: '/exampleData/employee_data.sav',
+        tags: ['hr', 'performance'],
+        description: 'Employee data with job satisfaction, gender, and minority classification.'
     },
     { 
-        name: 'Employee data.sav', 
-        path: '/exampleData/Employee data.sav',
-        tags: ['regression'] 
-    },
-    { 
-        name: 'german_credit.sav', 
+        name: 'german_credit', 
         path: '/exampleData/german_credit.sav',
-        tags: ['classification'] 
+        tags: ['finance', 'risk'],
+        description: 'German credit dataset from University of California, Irvine.'
     },
     { 
-        name: 'insurance_claims.sav', 
+        name: 'insurance_claims', 
         path: '/exampleData/insurance_claims.sav',
-        tags: ['regression'] 
+        tags: ['insurance', 'fraud'],
+        description: 'Insurance company examining fraudulent claims detection.'
     },
     { 
-        name: 'patient_los.sav', 
+        name: 'poll_cs_sample', 
+        path: '/exampleData/poll_cs_sample.sav',
+        tags: ['polling', 'survey'],
+        description: 'Sample of voters from a poll concerning public support for legislation.'
+    },
+    { 
+        name: 'patient_los', 
         path: '/exampleData/patient_los.sav',
-        tags: ['timeseries'] 
+        tags: ['medical', 'treatment'],
+        description: 'Treatment records of patients admitted for suspected heart attack.'
     },
     { 
-        name: 'salesperformance.sav', 
+        name: 'salesperformance', 
         path: '/exampleData/salesperformance.sav',
-        tags: ['parametric'] 
+        tags: ['training', 'performance'],
+        description: 'Evaluation of two new sales training courses.'
     },
     { 
-        name: 'satisf.sav', 
+        name: 'satisf', 
         path: '/exampleData/satisf.sav',
-        tags: ['nonparametric'] 
+        tags: ['marketing', 'survey'],
+        description: 'Customer satisfaction survey at 4 store locations.'
     },
     { 
-        name: 'telco_extra.sav', 
-        path: '/exampleData/telco_extra.sav',
-        tags: ['classification'] 
-    },
-    { 
-        name: 'test_scores.sav', 
-        path: '/exampleData/test_scores.sav',
-        tags: ['parametric'] 
-    },
-    { 
-        name: 'worldsales.sav', 
-        path: '/exampleData/worldsales.sav',
-        tags: ['timeseries'] 
-    },
-    { 
-        name: 'tcm_kpi.sav', 
+        name: 'tcm_kpi', 
         path: '/exampleData/tcm_kpi.sav',
-        tags: ['timeseries'] 
+        tags: ['business', 'metrics'],
+        description: 'Weekly key performance indicators for business analysis.'
+    },
+    { 
+        name: 'telco', 
+        path: '/exampleData/telco.sav',
+        tags: ['telecom', 'churn'],
+        description: 'Telecommunications company efforts to reduce customer churn.'
+    },
+    { 
+        name: 'telco_extra', 
+        path: '/exampleData/telco_extra.sav',
+        tags: ['telecom', 'spending'],
+        description: 'Telecom data with standardized log-transformed customer spending variables.'
+    },
+    { 
+        name: 'test_scores', 
+        path: '/exampleData/test_scores.sav',
+        tags: ['education', 'assessment'],
+        description: 'Test scores for educational assessment and performance analysis.'
+    },
+    { 
+        name: 'workprog', 
+        path: '/exampleData/workprog.sav',
+        tags: ['government', 'employment'],
+        description: 'Government works program for disadvantaged people job placement.'
+    },
+    { 
+        name: 'worldsales', 
+        path: '/exampleData/worldsales.sav',
+        tags: ['business', 'sales'],
+        description: 'Sales revenue by continent and product for global business analysis.'
     },
 ];
 
-export const exampleFiles = {
+export const exampleFiles: ExampleFiles = {
     sav: exampleSavFiles,
-    // Add other file types here if needed in the future e.g.
-    // csv: [
-    //     { name: 'example.csv', path: '/exampleData/example.csv' },
-    // ]
 };

@@ -1,21 +1,276 @@
-# Kategori Modal File
+# File Modal Components Documentation
 
-> **Peringatan:** Arsitektur untuk semua modal di bawah kategori ini diatur oleh [Panduan Arsitektur Utama Modal](../README.md). Dokumen ini hanya berfungsi sebagai ringkasan kategori.
+## Overview
 
-## Tujuan
+This directory contains all file-related modal components for handling data import/export operations. Each component follows a consistent architecture pattern with separated concerns for UI, business logic, and utilities.
 
-Direktori ini berisi semua fitur modal yang berhubungan dengan **operasi file dan data I/O (Input/Output)**. Ini mencakup impor data dari berbagai format, ekspor data, dan membuka format file asli.
+## Component Architecture
 
-## Daftar Fitur
+### Core Design Pattern
+All file modal components follow a standardized structure:
+- **Hooks**: Business logic and state management
+- **Services**: API interactions and external service calls
+- **Utils**: Pure functions for data processing and transformations
+- **Types**: TypeScript interfaces and type definitions
+- **Tests**: Unit tests for each component layer
 
--   `ImportCsv`: Mengimpor data dari file `.csv`.
--   `ImportExcel`: Mengimpor data dari file `.xls` atau `.xlsx`.
--   `ImportClipboard`: Mengimpor data dari clipboard.
--   `ExportCsv`: Mengekspor dataset saat ini ke format `.csv`.
--   `ExportExcel`: Mengekspor dataset saat ini ke format `.xlsx`.
--   `ExampleDataset`: Menampilkan dataset contoh.
--   `OpenSavFile`: Membuka file berformat SPSS (`.sav`).
--   `Print`: Mencetak output atau data ke PDF.
+### Shared Dependencies
+- **State Management**: Zustand stores for data, variables, and metadata
+- **UI Framework**: React with TypeScript
+- **Styling**: Tailwind CSS with consistent design tokens
+- **Testing**: Jest and React Testing Library
+
+## Component Details
+
+### 1. ExampleDataset
+**Purpose**: Provides pre-loaded example datasets for user testing and exploration.
+
+**Algorithm**:
+1. **Data Loading**: Fetches `.sav` files from `/exampleData/` directory
+2. **File Processing**: Uses existing SPSS file processing pipeline
+3. **State Integration**: Updates Zustand stores with new data
+4. **Metadata**: Sets project metadata including filename and creation date
+
+**Key Files**:
+- `example-datasets.ts`: Dataset definitions and metadata
+- `services/services.ts`: File fetching and processing logic
+- `hooks/useExampleDatasetLogic.ts`: State management and user interactions
+
+### 2. ExportCsv
+**Purpose**: Exports current dataset to CSV format with configurable options.
+
+**Algorithm**:
+1. **Data Validation**: Checks for valid data availability
+2. **Option Processing**: Handles delimiter, headers, and formatting preferences
+3. **File Generation**: Creates CSV content using utility functions
+4. **Download Trigger**: Initiates browser download with proper MIME type
+
+**Key Options**:
+- Delimiter selection (comma, tab, semicolon)
+- Header inclusion toggle
+- Variable properties inclusion
+- String quoting preferences
+- Encoding selection (UTF-8, etc.)
+
+**Key Files**:
+- `hooks/useExportCsv.ts`: Main export logic and state management
+- `utils/exportCsvUtils.ts`: CSV content generation algorithms
+- `types.ts`: Type definitions for export options
+
+### 3. ExportExcel
+**Purpose**: Exports current dataset to Excel format with advanced formatting options.
+
+**Algorithm**:
+1. **Data Synchronization**: Fetches latest data from stores
+2. **Workbook Creation**: Uses SheetJS (XLSX) library for Excel generation
+3. **Multi-sheet Support**: Creates separate sheets for data, variables, and metadata
+4. **Styling Application**: Applies formatting based on user preferences
+
+**Key Features**:
+- Multiple worksheet generation
+- Variable properties sheet
+- Metadata inclusion
+- Header styling options
+- Data label formatting
+
+**Key Files**:
+- `hooks/useExportExcelLogic.ts`: Export orchestration logic
+- `utils/excelExporter.ts`: Excel workbook generation utilities
+- `utils/constants.ts`: Default values and configuration
+
+### 4. ImportClipboard
+**Purpose**: Imports data directly from system clipboard with parsing capabilities.
+
+**Algorithm**:
+1. **Text Parsing**: Analyzes clipboard content structure
+2. **Delimiter Detection**: Automatically detects common delimiters
+3. **Data Validation**: Validates parsed data structure
+4. **Configuration**: Allows user to adjust parsing parameters
+
+**Parsing Strategy**:
+- Tab-delimited detection
+- CSV format recognition
+- Fixed-width data handling
+- Error handling for malformed data
+
+**Key Files**:
+- `hooks/useImportClipboardLogic.ts`: Clipboard handling and parsing logic
+- `services/clipboardParser.ts`: Text parsing algorithms
+- `types.ts`: Stage management and data structures
+
+### 5. ImportCsv
+**Purpose**: Imports CSV files with comprehensive parsing and configuration options.
+
+**Algorithm**:
+1. **File Reading**: Uses FileReader API for text file processing
+2. **Content Validation**: Validates file content and structure
+3. **Parsing Configuration**: Allows delimiter and encoding selection
+4. **Data Integration**: Updates application state with imported data
+
+**Processing Pipeline**:
+- File type validation
+- Content reading with encoding detection
+- Delimiter configuration
+- Data matrix generation
+
+**Key Files**:
+- `hooks/useImportCsvFileReader.ts`: File reading and validation
+- `hooks/useImportCsvProcessor.ts`: Data processing pipeline
+- `utils/importCsvUtils.ts`: CSV parsing algorithms
+
+### 6. ImportExcel
+**Purpose**: Imports Excel files with worksheet selection and range configuration.
+
+**Algorithm**:
+1. **File Analysis**: Uses web worker for Excel file processing
+2. **Sheet Detection**: Identifies available worksheets
+3. **Range Selection**: Allows user to specify data ranges
+4. **Data Extraction**: Extracts data with type preservation
+
+**Worker Architecture**:
+- Off-thread processing for large files
+- Progressive loading indicators
+- Error handling with user feedback
+- Memory-efficient processing
+
+**Key Files**:
+- `hooks/useImportExcelLogic.ts`: Main import orchestration
+- `hooks/useExcelWorker.ts`: Web worker integration
+- `utils/importExcelUtils.ts`: Excel parsing utilities
+
+### 7. OpenSavFile
+**Purpose**: Opens SPSS `.sav` files with full metadata preservation.
+
+**Algorithm**:
+1. **File Validation**: Validates `.sav` file format
+2. **Upload Processing**: Sends file to backend for processing
+3. **Response Handling**: Processes SPSS-specific metadata
+4. **State Integration**: Updates application with SPSS data
+
+**SPSS Features**:
+- Variable metadata preservation
+- Date/time handling with SPSS epoch
+- Label and value label support
+- Missing value handling
+
+**Key Files**:
+- `hooks/useOpenSavFileLogic.ts`: SPSS file handling logic
+- `services/services.ts`: Backend communication
+- `utils/savFileUtils.ts`: SPSS-specific data processing
+
+### 8. Print
+**Purpose**: Generates PDF reports from current dataset with formatting options.
+
+**Algorithm**:
+1. **Data Preparation**: Formats data for PDF generation
+2. **Layout Design**: Creates table layouts with styling
+3. **PDF Generation**: Uses jsPDF library for document creation
+4. **Download Trigger**: Initiates browser download
+
+**Report Features**:
+- Tabular data presentation
+- Variable information inclusion
+- Customizable formatting
+- Professional report styling
+
+**Key Files**:
+- `hooks/usePrintLogic.ts`: Print orchestration logic
+- `services/pdfPrintService.ts`: PDF generation services
+- `utils/printUtils.ts`: Data formatting for print output
+
+## Testing Strategy
+
+### Test Structure
+Each component includes comprehensive test suites:
+
+1. **Component Tests**: UI rendering and user interaction
+2. **Hook Tests**: Business logic and state management
+3. **Service Tests**: API integration and external dependencies
+4. **Utility Tests**: Pure function validation
+
+### Test Coverage Areas
+- File format validation
+- Error handling scenarios
+- User interaction flows
+- Data processing accuracy
+- Performance optimization
+
+## Usage Patterns
+
+### Common Integration Flow
+```typescript
+// Example usage pattern for any file modal
+const { openModal } = useModal();
+
+// Open specific modal
+openModal('importCsv', {
+  onSuccess: (data) => {
+    // Handle successful import
+    console.log('Data imported:', data);
+  },
+  onError: (error) => {
+    // Handle import errors
+    console.error('Import failed:', error);
+  }
+});
+```
+
+### State Management Integration
+All components integrate with Zustand stores:
+- `useDataStore`: Dataset management
+- `useVariableStore`: Variable definitions and metadata
+- `useMetaStore`: Project information and settings
+
+## Development Guidelines
+
+### Adding New File Format Support
+1. Create new directory under `components/Modals/File/`
+2. Implement standardized hook structure
+3. Add service layer for format-specific processing
+4. Include comprehensive test coverage
+5. Update this documentation
+
+### Error Handling Standards
+- User-friendly error messages
+- Console logging for debugging
+- Graceful degradation for edge cases
+- Clear validation feedback
+
+### Performance Considerations
+- Web worker usage for heavy processing
+- Progressive loading indicators
+- Memory management for large files
+- Efficient state updates
+
+## API Integration
+
+### Backend Endpoints
+- `/api/upload-sav`: SPSS file processing
+- `/api/parse-excel`: Excel file parsing
+- `/api/process-csv`: CSV file processing
+
+### Error Response Format
+```json
+{
+  "error": "Specific error message",
+  "details": "Additional context",
+  "code": "ERROR_CODE"
+}
+```
+
+## Maintenance and Updates
+
+### Version Control
+- Semantic versioning for API changes
+- Backward compatibility considerations
+- Migration guides for breaking changes
+
+### Documentation Updates
+- Keep this README synchronized with code changes
+- Update test documentation for new features
+- Maintain changelog for significant updates
+
+_Last updated: 2025-07-29_
 
 ## Registrasi Fitur
 

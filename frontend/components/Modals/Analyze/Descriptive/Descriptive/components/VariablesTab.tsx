@@ -111,6 +111,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     <div id="save-standardized-section" className="flex items-center relative">
                         <Checkbox
                             id="saveStandardized"
+                            data-testid="save-standardized-checkbox"
                             checked={saveStandardized}
                             onCheckedChange={(checked) => setSaveStandardized(!!checked)}
                             className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
@@ -154,4 +155,4 @@ const VariablesTab: FC<VariablesTabProps> = ({
     );
 };
 
-export default VariablesTab; 
+export default VariablesTab;

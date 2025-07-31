@@ -1,20 +1,10 @@
-/**
- * @file descriptives.worker.js
- * Dedicated Web Worker for Descriptive Statistics analysis.
- * Receives a single–variable payload and responds with a statistics object
- * identical to the one produced previously by manager.js.
- */
+importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
 
-// Core calculation libraries
-importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-importScripts('/workers/DescriptiveStatistics/libs/descriptive.js');
-
-// Utility to round stats object according to decimals
 function roundStatsObject(obj, decimals) {
   const rounded = {};
   for (const key in obj) {
     const val = obj[key];
-    // Preserve counts as-is (no rounding)
     if (['N', 'Valid', 'Missing'].includes(key)) {
       rounded[key] = val;
     } else if (typeof val === 'number') {
@@ -34,16 +24,6 @@ function roundStatsObject(obj, decimals) {
   return rounded;
 }
 
-/**
- * Handle message from the main thread.
- * Expected payload structure:
- * {
- *   variable: VarDefinition,
- *   data: Array<any>,
- *   weights: Array<number>|null,
- *   options: object
- * }
- */
 onmessage = function (event) {
   const { variable, data, weights, options } = event.data || {};
 
@@ -69,4 +49,4 @@ onmessage = function (event) {
       error: err?.message || String(err),
     });
   }
-}; 
+};

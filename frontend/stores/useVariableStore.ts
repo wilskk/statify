@@ -313,18 +313,37 @@ export const useVariableStore = create<VariableStoreState>()(
                         combinedVars.push(finalVar); // Add to temp array for the next iteration's uniqueness check
                     }
                     
-                    // Create variables in database
-                    await sheetService.addMultipleColumns(finalNewVars);
-            
-                    // Apply the pending updates first to ensure data is preserved
-                    if (updates && updates.length > 0) {
-                        await useDataStore.getState().updateCells(updates);
+                    // Update data state immediately to show the column insertions
+                    const dataStore = useDataStore.getState();
+                    let currentData = [...dataStore.data];
+                    
+                    // Process columns in reverse order to maintain correct indices
+                    const reverseSortedVars = [...finalNewVars].sort((a, b) => b.columnIndex - a.columnIndex);
+                    for (const newVar of reverseSortedVars) {
+                        currentData = currentData.map(row => {
+                            const newRow = [...row];
+                            newRow.splice(newVar.columnIndex, 0, ""); // Insert empty cell at the specified column index
+                            return newRow;
+                        });
                     }
                     
+                    // Update the data store state immediately
+                    dataStore.setData(currentData);
+                    
+                    // Apply the pending updates to the new data structure
+                    if (updates && updates.length > 0) {
+                        await dataStore.updateCells(updates);
+                    }
+                    
+                    // Create variables in database
+                    await sheetService.addMultipleColumns(finalNewVars);
+                    
                     // Reload variables to get the new structure from database
-                    // This will also set isLoading to false in the success handler
                     const variables = await variableService.getAllVariables();
                     updateStateAfterSuccess(set, variables);
+                    
+                    // Save the data changes to database
+                    await dataStore.saveData();
                 } catch (error: any) {
                     handleError(set, 'addVariables')(error);
                 }
@@ -362,10 +381,26 @@ export const useVariableStore = create<VariableStoreState>()(
                     const constraintChanges = enforceMeasureConstraint({ ...baseVar, name: finalName }, null);
                     const newVar: Variable = { ...baseVar, name: finalName, ...constraintChanges };
 
+                    // Update data state immediately to show the column insertion
+                    const dataStore = useDataStore.getState();
+                    const currentData = [...dataStore.data];
+                    const updatedData = currentData.map(row => {
+                        const newRow = [...row];
+                        newRow.splice(idx, 0, ""); // Insert empty cell at the specified column index
+                        return newRow;
+                    });
+                    
+                    // Update the data store state immediately
+                    dataStore.setData(updatedData);
+
+                    // Now perform the database operation
                     await sheetService.insertColumn(newVar);
                     
-                    await get().loadVariables(); // Reload state from DB
-                    await useDataStore.getState().loadData(); // Reload data state from DB
+                    // Reload variables to get the updated structure from database
+                    await get().loadVariables();
+                    
+                    // Save the data changes to database
+                    await dataStore.saveData();
                 } catch (error: any) { 
                     handleError(set, 'addVariable')(error); 
                 }
@@ -374,7 +409,11 @@ export const useVariableStore = create<VariableStoreState>()(
             loadVariables: async () => {
                 set({ isLoading: true, error: null });
                 try {
-                    await useDataStore.getState().checkAndSave();
+                    // Only check and save if we're not in the middle of an overwrite operation
+                    const dataStore = useDataStore.getState();
+                    if (dataStore.hasUnsavedChanges && !get().isLoading) {
+                        await dataStore.checkAndSave();
+                    }
                     const variables = await variableService.getAllVariables();
                     updateStateAfterSuccess(set, variables);
                 } catch (error: any) {
@@ -419,11 +458,17 @@ export const useVariableStore = create<VariableStoreState>()(
             overwriteAll: async (variables, data) => {
                 set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    await useDataStore.getState().checkAndSave();
+                    // Replace all data without checking for unsaved changes since we're overwriting everything
                     await sheetService.replaceAll(variables, data);
                     // After success, reload everything to ensure stores are in sync
-                    await get().loadVariables();
-                    await useDataStore.getState().loadData();
+                    // Use direct service calls to avoid circular dependency
+                    const freshVariables = await variableService.getAllVariables();
+                    updateStateAfterSuccess(set, freshVariables);
+                    
+                    // Update data store directly without triggering checkAndSave
+                    const dataStore = useDataStore.getState();
+                    dataStore.setData(data);
+                    set(draft => { draft.isLoading = false; });
                 } catch (error: any) {
                     handleError(set, 'overwriteAll')(error);
                 }

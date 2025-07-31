@@ -1,14 +1,8 @@
-/**
- * @file frequencies.worker.js
- * Dedicated Web Worker for Frequencies analysis (including batched mode).
- */
+importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
+importScripts('/workers/DescriptiveStatistics/libs/frequency/frequency.js');
 
-importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-importScripts('/workers/DescriptiveStatistics/libs/descriptive.js');
-importScripts('/workers/DescriptiveStatistics/libs/frequency.js');
 
-// applyValueLabels now provided by utils.js and attached to globalThis
-// Utility to round stats object according to decimals
 function roundStatsObject(obj, decimals) {
   const rounded = {};
   for (const key in obj) {
@@ -43,7 +37,7 @@ onmessage = function (event) {
   } = event.data || {};
 
   // -------------------------------------------------------------
-  // 1. Batched Frequencies Mode (used by React Frequencies modal)
+  
   // -------------------------------------------------------------
   if (Array.isArray(variableData)) {
     try {
@@ -101,4 +95,4 @@ onmessage = function (event) {
     console.error('[FrequenciesWorker] Error:', err);
     postMessage({ success: false, error: err?.message || String(err) });
   }
-}; 
+};

@@ -11,7 +11,8 @@ import { useModal } from "@/hooks/useModal";
 import dynamic from 'next/dynamic';
 import { OnbordaProvider, Onborda } from "onborda";
 import { TourCard } from "@/components/ui/TourCard";
-import { dashboardTours } from "@/constants/tours";
+import { dashboardTours } from "@/app/dashboard/tours/dashboardTours";
+
 import ResultNavigationObserver from "@/components/Common/ResultNavigationObserver";
 const SyncStatusClient = dynamic(() => import('@/components/ui/SyncStatus'), { ssr: false });
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";

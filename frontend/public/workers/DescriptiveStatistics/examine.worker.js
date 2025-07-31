@@ -1,12 +1,5 @@
-/**
- * @file examine.worker.js
- * Dedicated Web Worker for the Examine/Explore dialog.
- */
+importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
 
-// Debug: signal worker script loaded
-console.log('[ExamineWorker] Script loaded');
-importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-// Utility to round numbers deeply in an object/array based on decimals
 function roundDeep(value, decimals) {
   if (typeof value === 'number') {
     return roundToDecimals(value, decimals);
@@ -15,17 +8,17 @@ function roundDeep(value, decimals) {
     return value.map(v => roundDeep(v, decimals));
   }
   if (value && typeof value === 'object') {
-    const newObj = {};
-    for (const k in value) {
-      newObj[k] = roundDeep(value[k], decimals);
+    const result = {};
+    for (const key in value) {
+      result[key] = roundDeep(value[key], decimals);
     }
-    return newObj;
+    return result;
   }
   return value;
 }
-importScripts('/workers/DescriptiveStatistics/libs/descriptive.js');
-importScripts('/workers/DescriptiveStatistics/libs/frequency.js');
-importScripts('/workers/DescriptiveStatistics/libs/examine.js');
+importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
+importScripts('/workers/DescriptiveStatistics/libs/frequency/frequency.js');
+importScripts('/workers/DescriptiveStatistics/libs/examine/examine.js');
 
 onmessage = function (event) {
   console.log('[ExamineWorker] Message received', event.data);
@@ -35,13 +28,13 @@ onmessage = function (event) {
     const calculator = new self.ExamineCalculator({ variable, data, caseNumbers, weights, options });
     const results = calculator.getStatistics();
 
-    // Apply rounding
-    // Round basic descriptives and percentiles
+    
+    
     if (results.descriptives) {
       results.descriptives = roundDeep(results.descriptives, STATS_DECIMAL_PLACES);
     }
     
-    // Percentiles, robust stats, and CI should always use higher precision
+    
     if (results.percentiles) {
       results.percentiles = roundDeep(results.percentiles, STATS_DECIMAL_PLACES);
     }
@@ -69,4 +62,4 @@ onmessage = function (event) {
       error: err?.message || String(err),
     });
   }
-}; 
+};

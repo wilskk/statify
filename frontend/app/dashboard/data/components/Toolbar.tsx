@@ -14,6 +14,7 @@ import {
     Variable,
     Search,
     ArrowRightLeft,
+    Columns,
 } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,10 @@ import { ModalType, useModal } from '@/hooks/useModal';
 // import { ModeToggle } from "@/components/mode-toggle";
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { usePathname } from 'next/navigation';
+import { useCallback } from 'react';
+import { useVariableStore } from '@/stores/useVariableStore';
+import { useDataStore } from '@/stores/useDataStore';
+import { toast } from '@/hooks/use-toast';
 
 export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
@@ -31,9 +36,84 @@ export default function Toolbar() {
     const { handleAction: handleFileAction } = useFileMenuActions();
     const { handleAction: handleEditAction } = useEditMenuActions();
     const { openModal } = useModal();
-    const { viewMode, toggleViewMode } = useTableRefStore();
+    const { viewMode, toggleViewMode, dataTableRef, resetColumnSizingCache } = useTableRefStore();
+    const variables = useVariableStore(state => state.variables);
+    const updateMultipleVariables = useVariableStore(state => state.updateMultipleVariables);
+    const data = useDataStore(state => state.data);
 
     const isDataPage = pathname === '/dashboard/data';
+
+    // Auto-width column function
+    const handleAutoWidth = useCallback(async () => {
+        if (!dataTableRef?.current?.hotInstance || !data || data.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Tidak ada data untuk mengatur lebar kolom otomatis.",
+            });
+            return;
+        }
+
+        try {
+            // Reset cache untuk memastikan semua kolom dapat diperbarui
+            if (resetColumnSizingCache) {
+                resetColumnSizingCache();
+            }
+            const hotInstance = dataTableRef.current.hotInstance;
+            const updates = [];
+
+            // Calculate optimal width for ALL variables (termasuk yang sudah diubah manual)
+            for (const variable of variables) {
+                const columnIndex = variable.columnIndex;
+                
+                // Sample data untuk perhitungan (maksimal 100 rows untuk performa)
+                const sampleSize = Math.min(data.length, 100);
+                const sampleData = data.slice(0, sampleSize);
+                
+                let maxWidth = 80; // Default minimum width
+                
+                // Check header width
+                if (variable.name) {
+                    const headerWidth = variable.name.length * 8 + 40;
+                    maxWidth = Math.max(maxWidth, headerWidth);
+                }
+                
+                // Check content width dari sample data
+                for (const row of sampleData) {
+                    const cellValue = row[columnIndex];
+                    if (cellValue !== null && cellValue !== undefined) {
+                        const contentWidth = String(cellValue).length * 8 + 20;
+                        maxWidth = Math.max(maxWidth, contentWidth);
+                    }
+                }
+                
+                // Batasi width maksimal untuk mencegah kolom terlalu lebar
+                const optimalWidth = Math.min(maxWidth, 300);
+                
+                // Selalu update semua kolom, tidak peduli apakah sudah diubah manual
+                updates.push({
+                    identifier: variable.columnIndex,
+                    changes: { columns: optimalWidth }
+                });
+            }
+
+            if (updates.length > 0) {
+                 await updateMultipleVariables(updates);
+                 
+                 toast({
+                     title: "Berhasil",
+                     description: `Lebar ${updates.length} kolom telah disesuaikan otomatis.`,
+                 });
+             }
+        } catch (error) {
+            console.error('Error auto-sizing columns:', error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Gagal mengatur lebar kolom otomatis.",
+            });
+        }
+     }, [dataTableRef, data, variables, updateMultipleVariables, resetColumnSizingCache]);
 
     const fileTools = [
         { name: 'Open Data', icon: <FolderOpen size={16} />, onClick: () => openModal(ModalType.OpenData) },
@@ -47,6 +127,7 @@ export default function Toolbar() {
         { name: 'Locate', icon: <Locate size={16} />, onClick: () => openModal(ModalType.GoTo, { initialMode: GoToMode.CASE }) },
         { name: 'Variable', icon: <Variable size={16} />, onClick: () => openModal(ModalType.DefineVarProps) },
         { name: 'Search', icon: <Search size={16} />, onClick: () => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.FIND }) },
+        { name: 'Auto Width', icon: <Columns size={16} />, onClick: handleAutoWidth },
         { name: 'Toggle View', icon: <ArrowRightLeft size={16} />, onClick: toggleViewMode },
     ];
 

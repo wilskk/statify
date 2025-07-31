@@ -212,16 +212,16 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
 
     return (
         <>
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="flex-grow flex flex-col overflow-hidden">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="flex-grow flex flex-col overflow-hidden" data-testid="crosstabs-tabs">
                 <div className="border-b border-border flex-shrink-0">
-                    <TabsList>
-                        <TabsTrigger value="variables" id="crosstabs-variables-tab-trigger">Variables</TabsTrigger>
-                        <TabsTrigger value="cells" id="crosstabs-cells-tab-trigger">Cells</TabsTrigger>
+                    <TabsList data-testid="crosstabs-tabs-list">
+                        <TabsTrigger value="variables" id="crosstabs-variables-tab-trigger" data-testid="crosstabs-variables-tab">Variables</TabsTrigger>
+                        <TabsTrigger value="cells" id="crosstabs-cells-tab-trigger" data-testid="crosstabs-cells-tab">Cells</TabsTrigger>
                     </TabsList>
                 </div>
 
-                <div className="flex-grow overflow-y-auto">
-                    <TabsContent value="variables">
+                <div className="flex-grow overflow-y-auto" data-testid="crosstabs-tab-content">
+                    <TabsContent value="variables" data-testid="crosstabs-variables-content">
                         <VariablesTab
                             availableVariables={availableVariables}
                             rowVariables={rowVariables}
@@ -238,7 +238,7 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                             tourSteps={tourSteps}
                         />
                     </TabsContent>
-                    <TabsContent value="cells">
+                    <TabsContent value="cells" data-testid="crosstabs-cells-content">
                         <CellsTab
                             options={options}
                             setOptions={setOptions}
@@ -253,20 +253,21 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                 </div>
             </Tabs>
 
-            {error && <div className="px-6 py-2 text-destructive text-sm whitespace-pre-wrap">{error}</div>}
+            {error && <div className="px-6 py-2 text-destructive text-sm whitespace-pre-wrap" data-testid="crosstabs-error-message">{error}</div>}
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0" data-testid="crosstabs-footer">
                 <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8" aria-label="help">
+                    <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8" aria-label="help" data-testid="crosstabs-help-button">
                         <HelpCircle size={18} />
                     </Button>
                 </div>
-                <div>
+                <div data-testid="crosstabs-action-buttons">
                     <Button
                         variant="outline"
                         className="mr-2"
                         onClick={resetAllStates}
                         disabled={isCalculating}
+                        data-testid="crosstabs-reset-button"
                     >
                         Reset
                     </Button>
@@ -275,6 +276,7 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                         className="mr-2"
                         onClick={onClose}
                         disabled={isCalculating}
+                        data-testid="crosstabs-cancel-button"
                     >
                         Cancel
                     </Button>
@@ -282,6 +284,7 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                         id="crosstabs-ok-button"
                         onClick={runAnalysis}
                         disabled={isCalculating}
+                        data-testid="crosstabs-ok-button"
                     >
                         {isCalculating ? "Calculating..." : "OK"}
                     </Button>
@@ -310,7 +313,7 @@ const Crosstabs: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...p
     // If sidebar mode, use a div container
     if (containerType === "sidebar") {
         return (
-            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground" data-testid="crosstabs-sidebar-container">
                 <div className="flex-grow flex flex-col overflow-hidden">
                     <CrosstabsContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
@@ -320,12 +323,12 @@ const Crosstabs: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...p
 
     // For dialog mode, use DialogContent
     return (
-        <DialogContent className="max-w-4xl h-[calc(100vh-8rem)] flex flex-col p-0 bg-popover text-popover-foreground">
-            <DialogHeader className="px-6 py-4 border-b border-border">
-                <DialogTitle className="text-xl">Crosstabs</DialogTitle>
+        <DialogContent className="max-w-4xl h-[calc(100vh-8rem)] flex flex-col p-0 bg-popover text-popover-foreground" data-testid="crosstabs-dialog-container">
+            <DialogHeader className="px-6 py-4 border-b border-border" data-testid="crosstabs-dialog-header">
+                <DialogTitle className="text-xl" data-testid="crosstabs-dialog-title">Crosstabs</DialogTitle>
             </DialogHeader>
 
-            <div className="flex-grow flex flex-col overflow-hidden">
+            <div className="flex-grow flex flex-col overflow-hidden" data-testid="crosstabs-dialog-content">
                 <CrosstabsContent onClose={onClose} containerType={containerType} {...props} />
             </div>
         </DialogContent>

@@ -284,13 +284,14 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             <div id="central-tendency-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Central Tendency</div>
                 {[
-                    { id: "mean", label: "Mean", checked: meanChecked, setter: setMeanChecked },
-                    { id: "median", label: "Median", checked: medianChecked, setter: setMedianChecked },
-                    { id: "mode", label: "Mode", checked: modeChecked, setter: setModeChecked },
-                    { id: "sum", label: "Sum", checked: sumChecked, setter: setSumChecked },
-                ].map(({ id, label, checked, setter }) => (
+                    { id: "mean", label: "Mean", checked: meanChecked, setter: setMeanChecked, testId: "frequencies-mean" },
+                    { id: "median", label: "Median", checked: medianChecked, setter: setMedianChecked, testId: "frequencies-median" },
+                    { id: "mode", label: "Mode", checked: modeChecked, setter: setModeChecked, testId: "frequencies-mode" },
+                    { id: "sum", label: "Sum", checked: sumChecked, setter: setSumChecked, testId: "frequencies-sum" },
+                ].map(({ id, label, checked, setter, testId }) => (
                     <div key={id} className="flex items-center">
                         <Checkbox
+                            data-testid={testId}
                             id={id}
                             className="mr-2"
                             disabled={!showStatistics}
@@ -306,15 +307,16 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             <div id="dispersion-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Dispersion</div>
                 {[
-                    { id: "stddev", label: "Std. deviation", checked: stdDevChecked, setter: setStdDevChecked },
-                    { id: "variance", label: "Variance", checked: varianceChecked, setter: setVarianceChecked },
-                    { id: "range", label: "Range", checked: rangeChecked, setter: setRangeChecked },
-                    { id: "minimum", label: "Minimum", checked: minChecked, setter: setMinChecked },
-                    { id: "maximum", label: "Maximum", checked: maxChecked, setter: setMaxChecked },
-                    { id: "semean", label: "S. E. mean", checked: seMeanChecked, setter: setSeMeanChecked },
-                ].map(({ id, label, checked, setter }) => (
+                    { id: "stddev", label: "Std. deviation", checked: stdDevChecked, setter: setStdDevChecked, testId: "frequencies-stddev" },
+                    { id: "variance", label: "Variance", checked: varianceChecked, setter: setVarianceChecked, testId: "frequencies-variance" },
+                    { id: "range", label: "Range", checked: rangeChecked, setter: setRangeChecked, testId: "frequencies-range" },
+                    { id: "minimum", label: "Minimum", checked: minChecked, setter: setMinChecked, testId: "frequencies-minimum" },
+                    { id: "maximum", label: "Maximum", checked: maxChecked, setter: setMaxChecked, testId: "frequencies-maximum" },
+                    { id: "semean", label: "S. E. mean", checked: seMeanChecked, setter: setSeMeanChecked, testId: "frequencies-semean" },
+                ].map(({ id, label, checked, setter, testId }) => (
                     <div key={id} className="flex items-center">
                         <Checkbox
+                            data-testid={testId}
                             id={id}
                             className="mr-2"
                             disabled={!showStatistics}
@@ -330,11 +332,12 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             <div id="distribution-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Distribution</div>
                 {[
-                    { id: "skewness", label: "Skewness", checked: skewnessChecked, setter: setSkewnessChecked },
-                    { id: "kurtosis", label: "Kurtosis", checked: kurtosisChecked, setter: setKurtosisChecked },
-                ].map(({ id, label, checked, setter }) => (
+                    { id: "skewness", label: "Skewness", checked: skewnessChecked, setter: setSkewnessChecked, testId: "frequencies-skewness" },
+                    { id: "kurtosis", label: "Kurtosis", checked: kurtosisChecked, setter: setKurtosisChecked, testId: "frequencies-kurtosis" },
+                ].map(({ id, label, checked, setter, testId }) => (
                     <div key={id} className="flex items-center">
                         <Checkbox
+                            data-testid={testId}
                             id={id}
                             className="mr-2"
                             disabled={!showStatistics}

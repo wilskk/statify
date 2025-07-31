@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import HandsontableWrapper from './HandsontableWrapper';
 import { registerAllModules } from 'handsontable/registry';
 import { useDataStore } from '@/stores/useDataStore';
-import { useDataTableLogic } from './hooks/useDataTableLogic';
+import { useDataTableLogic } from './hooks';
 import { useColumnSizing } from './hooks/useColumnSizing';
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useVariableStore } from '@/stores/useVariableStore';
@@ -36,11 +36,16 @@ function Index() {
     } = useDataTableLogic(hotTableRef);
     
     // Column sizing optimization
-    const { shouldUseAutoColumnSize } = useColumnSizing({
+    const { shouldUseAutoColumnSize, resetColumnSizingCache } = useColumnSizing({
         hotTableRef: hotTableRef,
         actualNumRows,
         actualNumCols
     });
+
+    // Expose resetColumnSizingCache to store for access from Toolbar
+    useEffect(() => {
+        useTableRefStore.getState().setResetColumnSizingCache?.(resetColumnSizingCache);
+    }, [resetColumnSizingCache]);
     
     const filterVarName = useMetaStore(state => state.meta.filter);
     const variables = useVariableStore(state => state.variables); // Keep for filter logic

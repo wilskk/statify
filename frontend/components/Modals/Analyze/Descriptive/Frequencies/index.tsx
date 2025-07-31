@@ -203,9 +203,9 @@ const FrequenciesContent = ({
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'variables' | 'statistics' | 'charts')} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
-                        <TabsTrigger id="statistics-tab-trigger" value="statistics">Statistics</TabsTrigger>
-                        <TabsTrigger id="charts-tab-trigger" value="charts">Charts</TabsTrigger>
+                        <TabsTrigger data-testid="variables-tab" value="variables">Variables</TabsTrigger>
+                        <TabsTrigger data-testid="statistics-tab" id="statistics-tab-trigger" value="statistics">Statistics</TabsTrigger>
+                        <TabsTrigger data-testid="charts-tab" id="charts-tab-trigger" value="charts">Charts</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -284,6 +284,7 @@ const FrequenciesContent = ({
                         Cancel
                     </Button>
                     <Button
+                        data-testid="frequencies-ok-button"
                         id="frequencies-ok-button"
                         onClick={runAnalysis}
                         disabled={isLoading || variableSelection.selectedVariables.length === 0}
