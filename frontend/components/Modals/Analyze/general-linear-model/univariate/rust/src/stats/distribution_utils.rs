@@ -119,7 +119,7 @@ pub fn calculate_f_non_centrality(f_value: f64, df1: f64, _df2: f64) -> f64 {
 }
 
 /// Menghitung Cumulative Distribution Function (CDF) untuk distribusi F non-sentral
-/// menggunakan Aproksimasi Patnaik (diadaptasi dari Abramowitz & Stegun, formula 26.6.26).
+/// menggunakan Aproksimasi (diadaptasi dari Abramowitz & Stegun, formula 26.6.26).
 ///
 /// # Arguments
 /// * `f_prime` - Nilai F (quantile) yang diamati.
