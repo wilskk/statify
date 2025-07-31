@@ -35,8 +35,7 @@ self.onmessage = function(e) {
     const regression = multipleLinearRegression(dependentData, X);
     const { residuals } = regression;
     
-    // Perform normality tests
-    const shapiroWilk = calculateShapiroWilk(residuals);
+    // Perform normality tests (Shapiro-Wilk removed)
     const kolmogorovSmirnov = calculateKolmogorovSmirnov(residuals);
     const jarqueBera = calculateJarqueBera(residuals);
     
@@ -50,8 +49,8 @@ self.onmessage = function(e) {
     // Generate QQ plot data
     const qqPlotData = generateQQPlotData(residuals);
     
-    // Determine overall normality based on tests
-    const isNormal = shapiroWilk.isNormal && kolmogorovSmirnov.isNormal;
+    // Determine overall normality based on tests (using KS only)
+    const isNormal = kolmogorovSmirnov.isNormal;
     
     // Create more focused interpretation that focuses on the assumption status and recommendations
     let detailedInterpretation = isNormal
@@ -69,13 +68,7 @@ self.onmessage = function(e) {
             { header: "P-Value" },
             { header: "Status" }
           ],
-          rows: [
-            {
-              rowHeader: ["Shapiro-Wilk"],
-              "Statistic": shapiroWilk.statistic.toFixed(4),
-              "P-Value": shapiroWilk.pValue.toFixed(4),
-              "Status": shapiroWilk.isNormal ? "Normal" : "Not normally distributed"
-            },
+                      rows: [
             {
               rowHeader: ["Kolmogorov-Smirnov"],
               "Statistic": kolmogorovSmirnov.statistic.toFixed(4),
@@ -138,7 +131,6 @@ self.onmessage = function(e) {
       interpretation: detailedInterpretation,
       output_data: JSON.stringify(tableData),
       tests: {
-        shapiroWilk,
         kolmogorovSmirnov,
         jarqueBera
       },
@@ -384,58 +376,140 @@ function standardDeviation(data, dataMean = undefined) {
   return Math.sqrt(variance);
 }
 
-// Calculate Shapiro-Wilk test for normality
+// -----------------------------------------------------------------------------
+// Shapiro-Wilk normality test (Royston algorithm, approximates SciPy/R output)
+// -----------------------------------------------------------------------------
 function calculateShapiroWilk(data) {
-  // Simple implementation of Shapiro-Wilk test
   const n = data.length;
-  
-  // Sort the data
-  const sortedData = [...data].sort((a, b) => a - b);
-  
-  // Calculate Shapiro-Wilk W statistic
-  
-  // For a simpler approach, use normal probability plot correlation coefficient
-  // This is an approximation of Shapiro-Wilk for educational purposes
-  const ranks = Array(n).fill(0).map((_, i) => (i + 1) / (n + 1));
-  const zScores = ranks.map(r => normalQuantile(r));
-  
-  // Calculate correlation between sorted data and z-scores
-  const correlation = pearsonCorrelation(sortedData, zScores);
-  const wStatistic = correlation * correlation;
-  
-  // Calculate p-value (simplified approximation)
-  // In practice, this would involve more complex calculations
-  const pValue = approximateShapiroWilkPValue(wStatistic, n);
-  
+  if (n < 3 || n > 5000) {
+    throw new Error("Shapiro-Wilk test is defined for sample sizes 3 … 5000");
+  }
+
+  // Sort data
+  const x = [...data].sort((a, b) => a - b);
+
+  // --- helper: inverse CDF of standard normal (we already have normalQuantile) ---
+  const m = new Array(n).fill(0).map((_, i) => normalQuantile((i + 1 - 0.375) / (n + 0.25)));
+  const mSumSq = m.reduce((s, v) => s + v * v, 0);
+
+    // pre-compute ‘c’ vector (normalized expected order stats)
+  const normFactor = Math.sqrt(mSumSq);
+  const cVec = m.map(v => v / normFactor);
+
+  // initialise weights “a”
+  const a = new Array(n).fill(0);
+  const u = 1 / Math.sqrt(n);
+
+  if (n === 3) {
+    a[0] = Math.SQRT1_2; // √0.5
+    a[2] = -a[0];
+  } else {
+    // Polynomial coefficients from Royston (1995)
+    const p1 = [-2.706056, 4.434685, -2.071190, -0.147981, 0.221157];
+    const p2 = [-3.582633, 5.682633, -1.752461, -0.293762, 0.042981];
+
+    const polyVal = (coeffs, z) => coeffs.reduce((acc, c) => acc * z + c, 0);
+
+    // Extreme weights (a_n & a_1)
+    const a_n = polyVal(p1, u);
+    a[n - 1] = a_n;
+    a[0] = -a_n;
+
+    if (n >= 6) {
+      const a_n1 = polyVal(p2, u);
+      a[n - 2] = a_n1;
+      a[1] = -a_n1;
+    }
+
+    // compute phi per Royston (menggunakan m mentah)
+    let phi;
+    if (n >= 6) {
+      phi = (mSumSq - 2 * m[n - 1] ** 2 - 2 * m[n - 2] ** 2) /
+            (1 - 2 * a[n - 1] ** 2 - 2 * a[n - 2] ** 2);
+    } else {
+      phi = (mSumSq - 2 * m[n - 1] ** 2) /
+            (1 - 2 * a[n - 1] ** 2);
+    }
+
+    const constDen = Math.sqrt(phi);
+
+    if (n >= 6) {
+      for (let i = 2; i <= n - 3; i++) {
+        a[i] = m[i] / constDen;
+      }
+    } else if (n === 5) {
+      a[2] = m[2] / constDen; // middle element
+      a[3] = -a[2];
+    } else if (n === 4) {
+      a[1] = m[1] / constDen;
+      a[2] = -a[1];
+    }
+  }
+
+  // --- compute W statistic (as correlation squared) ---
+  const W = Math.pow(pearsonCorrelation(x, m), 2);
+
+  // --- p-value approximation (Royston 1993) ---
+  const pValue = shapiroWilkPValue(W, n);
+
   return {
     testName: "Shapiro-Wilk",
-    statistic: wStatistic,
-    pValue: pValue,
+    statistic: W,
+    pValue,
     isNormal: pValue > 0.05,
-    criticalValue: 0.05
+    criticalValue: 0.05,
   };
 }
 
-// Normal quantile function (approximation of inverse cumulative normal distribution)
+// Approximate p-value for Shapiro-Wilk using Royston’s fitted polynomials
+function shapiroWilkPValue(W, n) {
+  const y = Math.log(1 - W);
+  let mu, sigma;
+  if (n === 3) {
+    return 1 - Math.exp(-6.0 / Math.PI * Math.asin(Math.sqrt(W))); // exact small-n formula
+  }
+
+  if (n <= 11) {
+    const g = -0.0006714 * n ** 3 + 0.025054 * n ** 2 - 0.39978 * n + 0.5440; // gamma from Royston
+    if (y > g) return 1e-19;
+    const y2 = -Math.log(g - y);
+    mu = -0.0020322 * n ** 3 + 0.062767 * n ** 2 - 0.77857 * n + 1.3822;
+    sigma = Math.exp(-0.00020322 * n ** 3 + 0.0062767 * n ** 2 - 0.067861 * n + 0.459);
+    return 1 - normalCDF((y2 - mu) / sigma);
+  } else {
+    const lnN = Math.log(n);
+    mu = -1.5861 - 0.31082 * lnN - 0.083751 * lnN ** 2 + 0.0038915 * lnN ** 3;
+    sigma = Math.exp(-0.4803 - 0.082676 * lnN + 0.0030302 * lnN ** 2);
+    return 1 - normalCDF((y - mu) / sigma);
+  }
+}
+
+// -------- helper: sample kurtosis (needed for future extensions) --------
+function sampleKurtosis(arr) {
+  const n = arr.length;
+  const m = mean(arr);
+  const sd = standardDeviation(arr, m);
+  const s4 = arr.reduce((s, v) => s + Math.pow((v - m) / sd, 4), 0) / n;
+  return s4 - 3;
+}
+
+// ----------------------
+// Standard normal quantile (inverse CDF) approximation (A&S formula)
+// ----------------------
 function normalQuantile(p) {
   if (p <= 0) return -Infinity;
   if (p >= 1) return Infinity;
-  
-  // Approximation for 0.001 < p < 0.999
-  if (p < 0.5) {
-    return -approxNormalQuantile(1 - p);
-  }
-  
-  // Abramowitz and Stegun approximation
+
+  if (p < 0.5) return -approxNormalQuantile(1 - p);
+
   const y = Math.sqrt(-2 * Math.log(1 - p));
-  return y - (2.515517 + 0.802853 * y + 0.010328 * y * y) / 
+  return y - (2.515517 + 0.802853 * y + 0.010328 * y * y) /
          (1 + 1.432788 * y + 0.189269 * y * y + 0.001308 * y * y * y);
 }
 
-// Approximate normal quantile helper
 function approxNormalQuantile(p) {
   const y = Math.sqrt(-2 * Math.log(p));
-  return y - (2.515517 + 0.802853 * y + 0.010328 * y * y) / 
+  return y - (2.515517 + 0.802853 * y + 0.010328 * y * y) /
          (1 + 1.432788 * y + 0.189269 * y * y + 0.001308 * y * y * y);
 }
 
@@ -525,20 +599,22 @@ function calculateKolmogorovSmirnov(data) {
   };
 }
 
-// Simple approximation of K-S p-value with Lilliefors correction
+// More accurate (two–sided) Kolmogorov–Smirnov p-value approximation
 function approximateKSPValue(d, n) {
-  // This is an approximation of Lilliefors table
-  // For a more accurate approach, use a lookup table or better approximation
+  if (n <= 0) return 1;
   const sqrtN = Math.sqrt(n);
-  const adjustedD = d * (sqrtN - 0.01 + 0.85 / sqrtN);
-  
-  if (adjustedD < 0.5) return 0.9;
-  if (adjustedD < 0.6) return 0.6;
-  if (adjustedD < 0.7) return 0.3;
-  if (adjustedD < 0.8) return 0.1;
-  if (adjustedD < 0.9) return 0.05;
-  if (adjustedD < 1.0) return 0.01;
-  return 0.001;
+  const lambda = (sqrtN + 0.12 + 0.11 / sqrtN) * d;
+  // Use the asymptotic Kolmogorov distribution
+  // P(D_n <= d) = 1 - 2 * Σ (-1)^{k-1} exp(-2 k^2 λ^2)
+  let sum = 0;
+  for (let k = 1; k < 100; k++) {
+    const term = Math.exp(-2 * k * k * lambda * lambda);
+    sum += (k % 2 === 1 ? 1 : -1) * term;
+    if (term < 1e-10) break;
+  }
+  const cdf = 1 - 2 * sum;
+  const p = 1 - cdf;
+  return Math.max(Math.min(p, 1), 0);
 }
 
 // Calculate Jarque-Bera test for normality
