@@ -620,40 +620,50 @@ function approximateKSPValue(d, n) {
 }
 
 // Calculate Jarque-Bera test for normality
+// Uses biased (population) estimators **internally** for JB statistic
+// but returns bias-corrected (Fisher) skewness & excess kurtosis
 function calculateJarqueBera(data) {
   const n = data.length;
-  
-  // Calculate mean
-  const dataMean = mean(data);
-  
-  // Calculate standard deviation (use population std, divide by n)
-  const dataStdDev = Math.sqrt(data.reduce((sum, value) => sum + Math.pow(value - dataMean, 2), 0) / n);
-  
-  // Calculate skewness
-  let sumCubed = 0;
-  for (let i = 0; i < n; i++) {
-    sumCubed += Math.pow((data[i] - dataMean) / dataStdDev, 3);
+  if (n < 4) {
+    // Need at least 4 points for unbiased kurtosis
+    throw new Error("Jarque-Bera test requires at least 4 observations");
   }
-  const skewness = sumCubed / n;
-  
-  // Calculate kurtosis
-  let sumFourth = 0;
+
+  const meanVal = mean(data);
+
+  // ----- 1. Bias-corrected skewness & excess kurtosis (displayed) -----
+  const sdSample = standardDeviation(data, meanVal); // divide by (n-1)
+
+  let m3 = 0, m4 = 0; // sample moments
   for (let i = 0; i < n; i++) {
-    sumFourth += Math.pow((data[i] - dataMean) / dataStdDev, 4);
+    const z = (data[i] - meanVal) / sdSample;
+    m3 += Math.pow(z, 3);
+    m4 += Math.pow(z, 4);
   }
-  const kurtosis = sumFourth / n;
-  
-  // Calculate Jarque-Bera statistic
-  const jbStatistic = n / 6 * (Math.pow(skewness, 2) + Math.pow(kurtosis - 3, 2) / 4);
-  
-  // Calculate p-value (chi-squared with 2 degrees of freedom)
+  const skewSample = (n / ((n - 1) * (n - 2))) * m3;
+  const kurtExcessSample = ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * m4 -
+                           (3 * Math.pow(n - 1, 2)) / ((n - 2) * (n - 3));
+
+  // ----- 2. Biased (population) estimators for Jarque–Bera statistic -----
+  const sdPop = Math.sqrt(data.reduce((sum, v) => sum + Math.pow(v - meanVal, 2), 0) / n);
+
+  let sumCubedPop = 0, sumFourthPop = 0;
+  for (let i = 0; i < n; i++) {
+    const zPop = (data[i] - meanVal) / sdPop;
+    sumCubedPop += Math.pow(zPop, 3);
+    sumFourthPop += Math.pow(zPop, 4);
+  }
+  const skewPop = sumCubedPop / n;
+  const kurtPop = sumFourthPop / n;
+
+  const jbStatistic = n / 6 * (Math.pow(skewPop, 2) + Math.pow(kurtPop - 3, 2) / 4);
   const pValue = 1 - chiSquareCDF(jbStatistic, 2);
-  
+
   return {
     testName: "Jarque-Bera",
     statistic: jbStatistic,
-    skewness: skewness,
-    kurtosis: kurtosis,
+    skewness: skewSample,
+    kurtosis: kurtExcessSample,
     pValue: pValue,
     isNormal: pValue > 0.05,
     criticalValue: 0.05
