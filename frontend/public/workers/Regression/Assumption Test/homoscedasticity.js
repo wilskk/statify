@@ -459,7 +459,11 @@ function variance(data, dataMean = undefined) {
 
 // Calculate standard deviation of an array
 function standardDeviation(data, dataMean = undefined) {
-  return Math.sqrt(variance(data, dataMean));
+  const m = dataMean !== undefined ? dataMean : mean(data);
+  // Use sample standard deviation (divide by n-1) when sample size > 1
+  const divisor = data.length > 1 ? data.length - 1 : data.length;
+  const variance = data.reduce((sum, value) => sum + Math.pow(value - m, 2), 0) / divisor;
+  return Math.sqrt(variance);
 }
 
 // Calculate residual statistics

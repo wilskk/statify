@@ -372,7 +372,9 @@ function mean(data) {
 // Calculate standard deviation of an array
 function standardDeviation(data, dataMean = undefined) {
   const m = dataMean !== undefined ? dataMean : mean(data);
-  const variance = data.reduce((sum, value) => sum + Math.pow(value - m, 2), 0) / data.length;
+  // Use sample standard deviation (divide by n-1) when sample size > 1
+  const divisor = data.length > 1 ? data.length - 1 : data.length;
+  const variance = data.reduce((sum, value) => sum + Math.pow(value - m, 2), 0) / divisor;
   return Math.sqrt(variance);
 }
 
@@ -624,8 +626,8 @@ function calculateJarqueBera(data) {
   // Calculate mean
   const dataMean = mean(data);
   
-  // Calculate standard deviation
-  const dataStdDev = standardDeviation(data, dataMean);
+  // Calculate standard deviation (use population std, divide by n)
+  const dataStdDev = Math.sqrt(data.reduce((sum, value) => sum + Math.pow(value - dataMean, 2), 0) / n);
   
   // Calculate skewness
   let sumCubed = 0;
