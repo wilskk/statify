@@ -5,4 +5,4 @@ export * from './crosstabs';
 export * from './explore';
 // export * from './inferential';
 // export * from './modeling';
-// export * from './timeseries'; 
+export * from './time-series'; 

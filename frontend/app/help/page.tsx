@@ -120,6 +120,11 @@ export default function HelpPage() {
 				{ key: 'descriptives', label: 'Descriptives', parentKey: 'statistics-guide', childContent: 'descriptives' },
 				{ key: 'explore', label: 'Explore', parentKey: 'statistics-guide', childContent: 'explore' },
 				{ key: 'crosstabs', label: 'Crosstabs', parentKey: 'statistics-guide', childContent: 'crosstabs' },
+				{ key: 'smoothing', label: 'Smoothing', parentKey: 'statistics-guide', childContent: 'smoothing' },
+				{ key: 'decomposition', label: 'Decomposition', parentKey: 'statistics-guide', childContent: 'decomposition' },
+				{ key: 'autocorrelation', label: 'Autocorrelation', parentKey: 'statistics-guide', childContent: 'autocorrelation' },
+				{ key: 'unit-root-test', label: 'Unit Root Test', parentKey: 'statistics-guide', childContent: 'unit-root-test' },
+				{ key: 'box-jenkins-model', label: 'Box-Jenkins Model', parentKey: 'statistics-guide', childContent: 'box-jenkins-model' },
 			]
 		},
 		{
