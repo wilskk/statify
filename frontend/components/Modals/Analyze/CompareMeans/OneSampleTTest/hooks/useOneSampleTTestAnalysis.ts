@@ -33,7 +33,26 @@ export const useOneSampleTTestAnalysis = ({
   const processedCountRef = useRef<number>(0);
   const insufficientDataVarsRef = useRef<string[]>([]);
 
+  // Timing refs
+  const timingRef = useRef<{
+    analysisStart: number;
+    dataSentToWorker: number;
+    dataReceivedFromWorker: number;
+    dataFormattedToTable: number;
+    processCompleted: number;
+  }>({
+    analysisStart: 0,
+    dataSentToWorker: 0,
+    dataReceivedFromWorker: 0,
+    dataFormattedToTable: 0,
+    processCompleted: 0
+  });
+
   const runAnalysis = useCallback(async () => {
+    // 1. Catat waktu ketika runAnalysis dimulai
+    timingRef.current.analysisStart = performance.now();
+    console.log(`[OneSampleTTest] Analysis started at: ${new Date().toISOString()}`);
+    
     setIsCalculating(true);
     setErrorMsg(null);
 
@@ -62,6 +81,11 @@ export const useOneSampleTTestAnalysis = ({
         analysisTypes = ['oneSampleTTest'];
     }
 
+    // 2. Catat waktu ketika data dikirim ke web worker
+    timingRef.current.dataSentToWorker = performance.now();
+    console.log(`[OneSampleTTest] Data sent to worker at: ${new Date().toISOString()}`);
+    console.log(`[OneSampleTTest] Time from start to sending data: ${timingRef.current.dataSentToWorker - timingRef.current.analysisStart}ms`);
+
     testVariables.forEach(variable => {
       const dataForVar = analysisData.map(row => row[variable.columnIndex]);
       const payload = {
@@ -75,6 +99,13 @@ export const useOneSampleTTestAnalysis = ({
 
     worker.onmessage = async (event) => {
       const { variableName, results, status, error: workerError } = event.data;
+
+      // 3. Catat waktu ketika data diterima dari web worker
+      if (processedCountRef.current === 0) {
+        timingRef.current.dataReceivedFromWorker = performance.now();
+        console.log(`[OneSampleTTest] First data received from worker at: ${new Date().toISOString()}`);
+        console.log(`[OneSampleTTest] Time from sending to receiving data: ${timingRef.current.dataReceivedFromWorker - timingRef.current.dataSentToWorker}ms`);
+      }
 
       if (status === 'success' && results) {
         // Check for metadata about insufficient data
@@ -116,6 +147,12 @@ export const useOneSampleTTestAnalysis = ({
       if (processedCountRef.current === testVariables.length) {
         try {
           console.log(`resultsRef.current: ${JSON.stringify(resultsRef.current)}`);
+          
+          // 4. Catat waktu ketika data diubah ke format tabel
+          timingRef.current.dataFormattedToTable = performance.now();
+          console.log(`[OneSampleTTest] Data formatting started at: ${new Date().toISOString()}`);
+          console.log(`[OneSampleTTest] Time from receiving data to formatting: ${timingRef.current.dataFormattedToTable - timingRef.current.dataReceivedFromWorker}ms`);
+
           // Prepare log message
           const variableNames = testVariables.map(v => v.name).join(" ");
           let logMsg = `T-TEST {TESTVAL=${testValue}} {VARIABLES=${variableNames}}`;
@@ -174,6 +211,20 @@ export const useOneSampleTTestAnalysis = ({
               description: ""
             });
           }
+
+          // 5. Catat waktu ketika proses selesai
+          timingRef.current.processCompleted = performance.now();
+          console.log(`[OneSampleTTest] Process completed at: ${new Date().toISOString()}`);
+          console.log(`[OneSampleTTest] Total time from start to completion: ${timingRef.current.processCompleted - timingRef.current.analysisStart}ms`);
+          console.log(`[OneSampleTTest] Time from formatting to completion: ${timingRef.current.processCompleted - timingRef.current.dataFormattedToTable}ms`);
+          
+          // Log summary of all timing stages
+          console.log(`[OneSampleTTest] TIMING SUMMARY:`);
+          console.log(`  - Analysis start to data sent: ${timingRef.current.dataSentToWorker - timingRef.current.analysisStart}ms`);
+          console.log(`  - Data sent to data received: ${timingRef.current.dataReceivedFromWorker - timingRef.current.dataSentToWorker}ms`);
+          console.log(`  - Data received to formatting: ${timingRef.current.dataFormattedToTable - timingRef.current.dataReceivedFromWorker}ms`);
+          console.log(`  - Formatting to completion: ${timingRef.current.processCompleted - timingRef.current.dataFormattedToTable}ms`);
+          console.log(`  - TOTAL TIME: ${timingRef.current.processCompleted - timingRef.current.analysisStart}ms`);
 
           setIsCalculating(false);
           worker.terminate();

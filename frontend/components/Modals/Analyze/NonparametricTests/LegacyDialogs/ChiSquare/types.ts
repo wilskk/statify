@@ -200,7 +200,15 @@ export interface DescriptiveStatistics {
 // Chi Square Result
 export interface ChiSquareResult {
   variable: Variable;
-  stats: Frequencies | TestStatistics | DescriptiveStatistics;
+  frequencies?: Frequencies;
+  testStatistics?: TestStatistics;
+  descriptiveStatistics?: DescriptiveStatistics;
+  metadata?: {
+    hasInsufficientData: boolean;
+    totalData1: number;
+    validData1: number;
+    variable1Name: string;
+  };
 } 
 
 // Chi Square Results Collection

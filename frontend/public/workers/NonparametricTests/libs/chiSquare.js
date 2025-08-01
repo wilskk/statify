@@ -11,14 +11,14 @@ import { checkIsMissing, isNumeric } from './utils.js';
 class ChiSquareCalculator {
     /**
      * @param {object} params - Parameter untuk analisis.
-     * @param {object} params.variable - Objek definisi variabel.
-     * @param {Array<any>} params.data - Array data untuk variabel ini.
+     * @param {object} params.variable1 - Objek definisi variabel.
+     * @param {Array<any>} params.data1 - Array data untuk variabel ini.
      * @param {object} params.options - Opsi tambahan dari main thread.
      */
-    constructor({ variable, data, options = {} }) {
+    constructor({ variable1, data1, options = {} }) {
         console.log('ChiSquareCalculator constructor');
-        this.variable = variable;
-        this.data = data;
+        this.variable1 = variable1;
+        this.data1 = data1;
         this.options = options;
         this.initialized = false;
         
@@ -46,11 +46,11 @@ class ChiSquareCalculator {
     #initialize() {
         if (this.initialized) return;
 
-        const isNumericType = ['scale', 'date'].includes(this.variable.measure);
+        const isNumericType = ['scale', 'date'].includes(this.variable1.measure);
 
         // Filter data yang valid
-        this.validData = this.data
-            .filter(value => !checkIsMissing(value, this.variable.missing, isNumericType) && isNumeric(value));
+        this.validData = this.data1
+            .filter(value => !checkIsMissing(value, this.variable1.missing, isNumericType) && isNumeric(value));
         
         // Terapkan filter range jika diperlukan
         if (this.expectedRange.useSpecifiedRange && 
@@ -78,7 +78,7 @@ class ChiSquareCalculator {
         this.initialized = true;
     }
     
-    getN() { this.#initialize(); return this.data.length; }
+    getN() { this.#initialize(); return this.data1.length; }
     getValidN() { this.#initialize(); return this.N; }
     getCountCategories() { this.#initialize(); return this.countCategories; }
     
@@ -251,7 +251,6 @@ class ChiSquareCalculator {
         });
 
         return {
-            variable: this.variable,
             categoryList,
             observedN: observedNList,
             expectedN: expectedNList,
@@ -271,7 +270,6 @@ class ChiSquareCalculator {
         const pValue = this.getPValue();
 
         return {
-            variable: this.variable,
             ChiSquare: chiSquare,
             DF: df,
             PValue: pValue
@@ -283,12 +281,21 @@ class ChiSquareCalculator {
      * @returns {Object} Objek hasil yang berisi statistik dan hasil uji.
      */
     getOutput() {
+        this.#initialize();
+        const hasInsufficientData = this.validData.length === 0;
         const frequencies = this.getFrequencies();
         const testStatistics = this.getTestStatistics();
 
         return {
+            variable: this.variable1,
             frequencies,
-            testStatistics
+            testStatistics,
+            metadata: {
+                hasInsufficientData,
+                totalData1: this.data1.length,
+                validData1: this.validData.length,
+                variable1Name: this.variable1.name,
+            }
         };
     }
 }

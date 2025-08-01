@@ -42,6 +42,8 @@ onmessage = (event) => {
         variableName = variable1.name + ' - ' + variable2.name;
     } else if (variable && data) {
         variableName = typeof variable === 'string' ? variable : variable.name || 'unknown';
+    } else if (variable1 && data1) {
+        variableName = variable1.name;
     }
     // --- Start of Debugging ---
     console.log('[Worker] Received analysis request:', JSON.stringify(analysisType));
@@ -56,6 +58,9 @@ onmessage = (event) => {
     } else if (analysisType.includes('kIndependentSamples') || analysisType.includes('twoIndependentSamples')) {
         console.log('[Worker] Received grouping variable:', JSON.stringify(groupingVariable));
         console.log('[Worker] Received grouping data (first 5 rows):', groupingData ? JSON.stringify(groupingData.slice(0, 5)) : 'No data');
+    } else if (analysisType.includes('chiSquare')) {
+        console.log('[Worker] Received variable:', JSON.stringify(variable1));
+        console.log('[Worker] Received data (first 5 rows):', data1 ? JSON.stringify(data1.slice(0, 5)) : 'No data');
     } else {
         console.log('[Worker] Received variable:', JSON.stringify(variable));
         console.log('[Worker] Received data (first 5 rows):', data ? JSON.stringify(data.slice(0, 5)) : 'No data');
@@ -81,6 +86,9 @@ onmessage = (event) => {
                     calculatorParams.variable2 = variable2;
                     calculatorParams.data1 = data1;
                     calculatorParams.data2 = data2;
+                } else if (variable1 && data1) {
+                    calculatorParams.variable1 = variable1;
+                    calculatorParams.data1 = data1;
                 }
                 calculator = new CalculatorClass(calculatorParams);
 
@@ -89,16 +97,20 @@ onmessage = (event) => {
                 results.descriptiveStatistics = calculator.getOutput().descriptiveStatistics;
             } else if (type === 'chiSquare') {
                 calculator = new CalculatorClass({ 
-                    variable,
-                    data,
+                    variable1,
+                    data1,
                     options
                 });
 
                 console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Variable:', JSON.stringify(variable1));
                 console.log('[Worker] Frequencies Results:', JSON.stringify(calculator.getOutput().frequencies));
                 console.log('[Worker] Chi Square Results:', JSON.stringify(calculator.getOutput().testStatistics));
+                console.log('[Worker] Metadata Results:', JSON.stringify(calculator.getOutput().metadata));
+                results.variable = calculator.getOutput().variable;
                 results.frequencies = calculator.getOutput().frequencies;
                 results.testStatistics = calculator.getOutput().testStatistics;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'runs') {
                 calculator = new CalculatorClass({ 
                     variable, 
