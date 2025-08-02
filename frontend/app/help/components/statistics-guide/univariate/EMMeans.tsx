@@ -76,7 +76,7 @@ export const EMMeans: React.FC = () => {
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah dalam calculate_EM Meaneans:
+                        Langkah-langkah dalam calculate_EM Means:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
@@ -110,7 +110,7 @@ export const EMMeans: React.FC = () => {
                         </li>
                         <li>
                             <strong>8. Agregasi Hasil:</strong> Mengumpulkan
-                            semua hasil ke dalam struktur EM MeaneansResult
+                            semua hasil ke dalam struktur EM MeansResult
                         </li>
                     </ol>
                 </div>
@@ -491,8 +491,8 @@ export const EMMeans: React.FC = () => {
                 <h2 className="mt-8">File Terkait</h2>
                 <ul>
                     <li>
-                        <code>rust/src/stats/EM Meaneans.rs</code> -
-                        Implementasi perhitungan EM Means
+                        <code>rust/src/stats/EM Means.rs</code> - Implementasi
+                        perhitungan EM Means
                     </li>
                     <li>
                         <code>rust/src/models/result.rs</code> - Struktur hasil
@@ -501,11 +501,6 @@ export const EMMeans: React.FC = () => {
                     <li>
                         <code>rust/src/stats/core.rs</code> - Fungsi bantu
                         perhitungan
-                    </li>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/dialogs/
-                        </code>
                     </li>
                 </ul>
             </div>
