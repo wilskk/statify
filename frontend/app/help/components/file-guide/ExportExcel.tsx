@@ -114,7 +114,7 @@ export const ExportExcel = () => {
       description="Complete guide for saving your data as Microsoft Excel (.xlsx)"
       category="File Management"
       lastUpdated="2024-01-15"
-
+      sections={sections}
       tips={tips}
       relatedTopics={relatedTopics}
     />

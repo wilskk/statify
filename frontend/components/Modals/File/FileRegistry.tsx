@@ -15,9 +15,9 @@ import { ExampleDatasetModal } from '@/components/Modals/File/ExampleDataset';
  * LoadingModal - Displayed while modal components are loading
  */
 const LoadingModal: React.FC<BaseModalProps> = ({ onClose }) => (
-  <div className="p-6 text-center">
-    <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" />
-    <p className="text-sm text-muted-foreground">Loading file modal...</p>
+  <div className="p-6 text-center" data-testid="file-modal-loading">
+    <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" data-testid="file-modal-loading-spinner" />
+    <p className="text-sm text-muted-foreground" data-testid="file-modal-loading-text">Loading file modal...</p>
   </div>
 );
 
@@ -89,4 +89,4 @@ export const FILE_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog
   [ModalType.OpenData]: "sidebar",
   [ModalType.Print]: "sidebar",
   [ModalType.ExampleDataset]: "sidebar",
-}; 
+};

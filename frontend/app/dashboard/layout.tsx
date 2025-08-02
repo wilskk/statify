@@ -11,7 +11,6 @@ import { useModal } from "@/hooks/useModal";
 import dynamic from 'next/dynamic';
 import { OnbordaProvider, Onborda } from "onborda";
 import { TourCard } from "@/components/ui/TourCard";
-import { dashboardTours } from "@/app/dashboard/tours/dashboardTours";
 
 import ResultNavigationObserver from "@/components/Common/ResultNavigationObserver";
 const SyncStatusClient = dynamic(() => import('@/components/ui/SyncStatus'), { ssr: false });
@@ -108,25 +107,17 @@ export default function DashboardLayout({
     return (
         <OnbordaProvider>
             <ResultNavigationObserver />
-            <Onborda
-                steps={dashboardTours as any}
-                showOnborda={false}
-                shadowRgb="55,48,163"
-                shadowOpacity="0.3"
-                cardComponent={TourCard}
-                cardTransition={{ duration: 0.3, type: "tween" }}
-            >
                 <DataLoader />
 
-                <div className="h-screen w-full flex flex-col dashboard-layout">
-                    <header className="flex-shrink-0 z-50 flex items-center justify-between">
+                <div className="h-screen w-full flex flex-col dashboard-layout" data-testid="dashboard-layout">
+                    <header className="flex-shrink-0 z-50 flex items-center justify-between" data-testid="dashboard-layout-header">
                        <Header />
                        <SyncStatusClient />
                     </header>
-                    <main className="flex-grow overflow-hidden relative bg-muted w-full">
+                    <main className="flex-grow overflow-hidden relative bg-muted w-full" data-testid="dashboard-main-content">
                         {isMobile ? (
                             // Tampilan Mobile: Konten utama penuh lebar, modal sebagai dialog
-                            <div className="h-full overflow-y-auto hide-scrollbar-x">
+                            <div className="h-full overflow-y-auto hide-scrollbar-x" data-testid="mobile-content">
                                 <LoadingOverlay>
                                     {children}
                                 </LoadingOverlay>
@@ -146,6 +137,7 @@ export default function DashboardLayout({
                                 direction="horizontal"
                                 key={desktopPanelGroupKey}
                                 className="overflow-hidden w-full"
+                                data-testid="desktop-resizable-panels"
                             >
                                 <ResizablePanel 
                                     defaultSize={hasOpenModal ? (100 - sidebarWidth) : 100}
@@ -153,8 +145,9 @@ export default function DashboardLayout({
                                     maxSize={hasOpenModal ? (100 - MIN_SIDEBAR_WIDTH) : 100}
                                     order={1}
                                     className="transition-all duration-300 ease-in-out"
+                                    data-testid="main-content-panel"
                                 >
-                                    <div className="h-full overflow-y-auto overflow-x-hidden w-full">
+                                    <div className="h-full overflow-y-auto overflow-x-hidden w-full" data-testid="desktop-content">
                                         <LoadingOverlay>
                                             {children}
                                         </LoadingOverlay>
@@ -178,6 +171,7 @@ export default function DashboardLayout({
                                     collapsedSize={0}
                                     order={2}
                                     className="transition-all duration-300 ease-in-out"
+                                    data-testid="sidebar-panel"
                                 >
                                     {/* Render modal sebagai sidebar panel di desktop */}
                                     {hasOpenModal && (
@@ -194,12 +188,11 @@ export default function DashboardLayout({
                             </ResizablePanelGroup>
                         )}
                     </main>
-                    <footer className="flex-shrink-0 border-t border-border">
+                    <footer className="flex-shrink-0 border-t border-border" data-testid="dashboard-footer">
                         <Footer />
                     </footer>
                 </div>
                 <Toaster />
-            </Onborda>
         </OnbordaProvider>
     );
 }

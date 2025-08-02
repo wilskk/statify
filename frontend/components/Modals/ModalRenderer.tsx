@@ -93,7 +93,7 @@ const ModalRenderer: React.FC<ModalRendererProps> = ({
     return (
       <div className="h-full flex flex-col bg-background overflow-hidden w-full">
         <div className="flex justify-between items-center border-b p-4 shrink-0">
-          <h2 className="text-xl font-semibold truncate mr-2">{title}</h2>
+          <h2 className="text-xl font-semibold truncate mr-2" data-testid="modal-title">{title}</h2>
           <button 
             onClick={onClose}
             className="rounded-full p-1.5 hover:bg-muted transition-colors flex-shrink-0"
@@ -125,7 +125,7 @@ const ModalRenderer: React.FC<ModalRendererProps> = ({
         aria-describedby={descriptionId}
       >
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle>{getModalTitle(modalType)}</DialogTitle>
+          <DialogTitle data-testid="modal-title">{getModalTitle(modalType)}</DialogTitle>
           <DialogDescription id={descriptionId}>
           </DialogDescription>
         </DialogHeader>

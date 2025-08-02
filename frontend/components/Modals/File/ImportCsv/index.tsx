@@ -89,7 +89,7 @@ export const ImportCsv: FC<ImportCsvProps> = ({
     return (
         // The outer <DialogHeader> specific to containerType === "dialog" is removed.
         // The padding for the content area is removed to match other file modals.
-        <div className="flex-grow flex flex-col overflow-hidden h-full">
+        <div className="flex-grow flex flex-col overflow-hidden h-full" data-testid="import-csv-modal">
             {/* 
                 The h-full class is added to ensure this div tries to take available vertical space, 
                 especially important if child components like ImportCsvSelection or ImportCsvConfiguration 
@@ -100,4 +100,4 @@ export const ImportCsv: FC<ImportCsvProps> = ({
     );
 };
 
-export default ImportCsv; 
+export default ImportCsv;

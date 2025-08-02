@@ -424,16 +424,18 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                         onClick={handleBack}
                         disabled={!stepConfig.canGoBack}
                         className="mr-2"
+                        data-testid="restructure-back-button"
                     >
                         Back
                     </Button>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={onClose} className="mr-2">
+                        <Button variant="outline" onClick={onClose} className="mr-2" data-testid="restructure-cancel-button">
                             Cancel
                         </Button>
                         {stepConfig.showFinish ? (
                             <Button 
                                 onClick={() => handleFinish(onClose)}
+                                data-testid="restructure-finish-button"
                             >
                                 Finish
                             </Button>
@@ -441,6 +443,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                             <Button 
                                 onClick={handleNext}
                                 disabled={!stepConfig.canProceed}
+                                data-testid="restructure-next-button"
                             >
                                 Next
                             </Button>

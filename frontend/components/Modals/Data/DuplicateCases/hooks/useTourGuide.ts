@@ -31,7 +31,7 @@ const baseTourSteps: TourStep[] = [
     targetId: "duplicate-cases-matching-variables",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: 'left',
-    icon: "🎯",
+    icon: null,
     requiredTab: TABS.VARIABLES
   },
   {
@@ -40,7 +40,7 @@ const baseTourSteps: TourStep[] = [
     targetId: "duplicate-cases-sorting-variables",
     defaultPosition: 'top',
     defaultHorizontalPosition: 'left',
-    icon: "📜",
+    icon: null,
     requiredTab: TABS.VARIABLES
   },
   {
@@ -49,7 +49,7 @@ const baseTourSteps: TourStep[] = [
     targetId: "options-tab-trigger",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "⚙️",
+    icon: null,
     requiredTab: TABS.VARIABLES,
     forceChangeTab: true
   },
@@ -60,7 +60,7 @@ const baseTourSteps: TourStep[] = [
     targetId: "duplicate-cases-indicator-variables",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "🏷️",
+    icon: null,
     requiredTab: TABS.OPTIONS
   },
   {
@@ -69,7 +69,7 @@ const baseTourSteps: TourStep[] = [
     targetId: "duplicate-cases-move-duplicates",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "📤",
+    icon: null,
     requiredTab: TABS.OPTIONS
   },
 ];

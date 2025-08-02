@@ -21,7 +21,6 @@ import {
 	SortCasesGuide,
 	SortVarsGuide,
 	TransposeGuide,
-	UnusualCasesGuide,
 	WeightCasesGuide,
 } from "@/app/help/components/data-guide";
 
@@ -47,8 +46,6 @@ const DataGuide = ({ section }: { section?: string }) => {
 			return <SortVarsGuide />;
 		case "transpose":
 			return <TransposeGuide />;
-		case "unusual-cases":
-			return <UnusualCasesGuide />;
 		case "weight-cases":
 			return <WeightCasesGuide />;
 		default:

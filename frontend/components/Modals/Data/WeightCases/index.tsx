@@ -85,9 +85,9 @@ const WeightCasesContent: React.FC<WeightCasesUIProps> = ({
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div />
                 <div>
-                    <Button variant="outline" className="mr-2" onClick={handleReset}>Reset</Button>
-                    <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleSave}>OK</Button>
+                    <Button variant="outline" className="mr-2" onClick={handleReset} data-testid="weightcases-reset-button">Reset</Button>
+                    <Button variant="outline" className="mr-2" onClick={onClose} data-testid="weightcases-cancel-button">Cancel</Button>
+                    <Button onClick={handleSave} data-testid="weightcases-ok-button">OK</Button>
                 </div>
             </div>
 
@@ -99,7 +99,7 @@ const WeightCasesContent: React.FC<WeightCasesUIProps> = ({
                         <div><p className="text-sm mt-2">{errorMessage}</p></div>
                     </div>
                     <DialogFooter className="flex justify-center mt-4">
-                        <Button size="sm" className="text-xs h-7" onClick={() => setErrorDialogOpen(false)}>OK</Button>
+                        <Button size="sm" className="text-xs h-7" onClick={() => setErrorDialogOpen(false)} data-testid="weightcases-error-ok-button">OK</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -138,9 +138,9 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-md p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogContent className="max-w-md p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]" data-testid="weightcases-dialog-content">
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Weight Cases</DialogTitle>
+                    <DialogTitle className="text-[22px] font-semibold" data-testid="weightcases-dialog-title">Weight Cases</DialogTitle>
                 </DialogHeader>
                 <WeightCasesUI {...hookProps} onClose={onClose} containerType={containerType} />
             </DialogContent>

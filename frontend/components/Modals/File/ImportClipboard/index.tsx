@@ -50,11 +50,11 @@ export const ImportClipboardModal: React.FC<ImportClipboardProps> = ({
             );
         }
         // Fallback or loading state if stage is configure but pastedText is null (should ideally not happen)
-        return <div className="p-6 flex-grow flex items-center justify-center">Loading configuration...</div>;
+        return <div className="p-6 flex-grow flex items-center justify-center" data-testid="import-clipboard-loading">Loading configuration...</div>;
     };
 
     return (
-        <div className="flex-grow overflow-y-auto flex flex-col h-full">
+        <div className="flex-grow overflow-y-auto flex flex-col h-full" data-testid="import-clipboard-modal">
             {renderContent()}
         </div>
     );
@@ -63,4 +63,4 @@ export const ImportClipboardModal: React.FC<ImportClipboardProps> = ({
 // Export the component with both names for backward compatibility if needed by other parts of the app
 // However, the primary export should now be just ImportClipboardModal if we are moving towards index.tsx pattern cleanly.
 // For now, keeping the default export as per original file structure might be safer if `ImportClipboard` (default) was used elsewhere.
-export default ImportClipboardModal; 
+export default ImportClipboardModal;

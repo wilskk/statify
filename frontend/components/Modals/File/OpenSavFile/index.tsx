@@ -249,21 +249,22 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
                     />
                 )}
             </AnimatePresence>
-            <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
+            <div data-testid="open-sav-header" className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
                 <FolderOpen size={18} className="mr-2.5 flex-shrink-0 text-primary" />
                 <div className="flex-grow overflow-hidden">
-                    <h3 className="font-semibold text-lg text-popover-foreground">
+                    <h3 data-testid="open-sav-title" className="font-semibold text-lg text-popover-foreground">
                         Open SAV File
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    <p data-testid="open-sav-description" className="text-xs text-muted-foreground mt-0.5 truncate">
                         Open an SPSS statistics file (.sav) to load it into the application.
                     </p>
                 </div>
             </div>
-            <div className="p-6 flex-grow flex flex-col">
+            <div data-testid="open-sav-content" className="p-6 flex-grow flex flex-col">
                 <label
                     htmlFor="sav-file-upload-step"
                     id="opensav-dropzone-wrapper"
+                    data-testid="open-sav-dropzone"
                     className={cn(`
                         border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors flex-1 mb-4 relative`,
                         isMobile && isPortrait ? 'min-h-[150px] p-6' : 'min-h-[200px] p-8',
@@ -285,6 +286,7 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
                     <input
                         id="sav-file-upload-step"
                         name="sav-file-upload-step"
+                        data-testid="open-sav-file-input"
                         type="file"
                         accept=".sav"
                         onChange={handleFileSelectChange}
@@ -311,26 +313,27 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
                 )}
 
                 {error && ( 
-                    <Alert variant="destructive" className="mb-4">
+                    <Alert data-testid="open-sav-error" variant="destructive" className="mb-4">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
                 )}
             </div>
             
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+            <div data-testid="open-sav-footer" className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div className="flex items-center text-muted-foreground">
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={startTour}
-                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                >
-                                    <HelpCircle className="h-4 w-4" />
-                                </Button>
+                            data-testid="open-sav-help-button"
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={startTour}
+                            className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                        >
+                            <HelpCircle className="h-4 w-4" />
+                        </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
                                 <p className="text-xs">Start feature tour</p>
@@ -339,11 +342,12 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
                     </TooltipProvider>
                 </div>
                 <div>
-                    <Button variant="outline" onClick={onClose} disabled={isLoading} className="mr-2">
+                    <Button data-testid="open-sav-cancel-button" variant="outline" onClick={onClose} disabled={isLoading} className="mr-2">
                         Cancel
                     </Button>
                     <div id="opensav-open-button-wrapper" className="relative inline-block">
                         <Button
+                            data-testid="open-sav-open-button"
                             onClick={onSubmit}
                             disabled={isLoading || !selectedFile}
                             className={cn(tourActive && currentStep === 1 && "focus:ring-primary")}
@@ -377,7 +381,7 @@ export const OpenSavFileModal: React.FC<OpenSavFileProps> = ({
     } = useOpenSavFileLogic({ onClose });
 
     return (
-        <div className="flex-grow overflow-y-auto flex flex-col h-full">
+        <div className="flex-grow overflow-y-auto flex flex-col h-full" data-testid="open-sav-file-modal">
             <OpenSavFileStep
                 onClose={handleModalClose}
                 onFileSelect={handleFileChange}

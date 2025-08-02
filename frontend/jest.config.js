@@ -7,11 +7,44 @@ const createJestConfig = nextJest({
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
-  testEnvironment: 'jest-environment-jsdom',
+  preset: 'ts-jest',
+  testEnvironment: 'jsdom',
+  roots: ['<rootDir>'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  testMatch: [
+    '**/__tests__/**/*.test.js',
+    '**/__tests__/**/*.spec.js',
+    '**/__tests__/**/*.test.ts',
+    '**/__tests__/**/*.test.tsx',
+    '**/test/**/*.test.js',
+    '**/test/**/*.test.ts',
+    '**/test/**/*.test.tsx'
+  ],
+  transform: {
+    '^.+\.js$': 'babel-jest',
+    '^.+\.(ts|tsx)$': ['ts-jest', {
+      useESM: true,
+      isolatedModules: true
+    }]
+  },
   moduleNameMapper: {
-    // Handle module aliases
     '^@/(.*)$': '<rootDir>/$1',
+    '^/workers/DescriptiveStatistics/(.*)$': '<rootDir>/public/workers/DescriptiveStatistics/$1'
+  },
+  collectCoverageFrom: [
+    'public/workers/DescriptiveStatistics/**/*.js',
+    '!public/workers/DescriptiveStatistics/**/*.test.js',
+    '!public/workers/DescriptiveStatistics/test/**/*.js'
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  testTimeout: 30000,
+  verbose: true,
+  globals: {
+    'ts-jest': {
+      isolatedModules: true
+    }
   },
   maxWorkers: process.env.CI ? "50%" : 2,
   testPathIgnorePatterns: [
@@ -23,4 +56,4 @@ const customJestConfig = {
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-module.exports = createJestConfig(customJestConfig) 
+module.exports = createJestConfig(customJestConfig)

@@ -78,10 +78,11 @@ const SetMeasurementLevelUIContent: FC<SetMeasurementLevelUIProps> = ({
                         variant="outline"
                         className="mr-2"
                         onClick={onClose}
+                        data-testid="setmeasurementlevel-cancel-button"
                     >
                         Cancel
                     </Button>
-                    <Button onClick={handleSave}>
+                    <Button onClick={handleSave} data-testid="setmeasurementlevel-ok-button">
                         OK
                     </Button>
                 </div>
@@ -105,9 +106,9 @@ export const SetMeasurementLevelUI: FC<SetMeasurementLevelUIProps> = (props) => 
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="max-w-[700px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogContent className="max-w-[700px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]" data-testid="setmeasurementlevel-dialog-content">
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold text-popover-foreground">Set Measurement Level</DialogTitle>
+                    <DialogTitle className="text-[22px] font-semibold text-popover-foreground" data-testid="setmeasurementlevel-dialog-title">Set Measurement Level</DialogTitle>
                 </DialogHeader>
                 <SetMeasurementLevelUIContent {...props} />
             </DialogContent>
