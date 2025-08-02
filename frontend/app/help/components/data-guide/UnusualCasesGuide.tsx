@@ -1,129 +1,111 @@
-/* eslint-disable react/no-unescaped-entities */
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import React from 'react';
+import { HelpGuideTemplate } from '@/app/help/ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpStep } from '@/app/help/ui/HelpLayout';
+import { Calculator, HelpCircle, FileText } from 'lucide-react';
 
-const UnusualCasesGuide = () => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Fitur Identifikasi Kasus Tidak Biasa</CardTitle>
-        <CardDescription>
-          Dokumen ini memberikan gambaran komprehensif tentang fitur "Identifikasi
-          Kasus Tidak Biasa", yang merinci fungsionalitas, arsitektur, dan
-          strategi pengujiannya. Fitur ini dirancang untuk mendeteksi catatan
-          anomali dalam dataset dengan membandingkan setiap kasus dengan rekan-rekannya.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-lg">
-            2. Panduan Fitur & Komponen UI
-          </h3>
-          <p>
-            Pengguna berinteraksi dengan dialog modal yang diatur dalam lima
-            tab. Tur terpandu juga tersedia untuk memandu pengguna melalui
-            fungsionalitas utama.
-          </p>
-          <div className="ml-4 mt-2 space-y-4">
-            <div>
-              <h4 className="font-semibold">2.1. Tab Variabel</h4>
-              <p>
-                Ini adalah tab awal di mana pengguna mendefinisikan ruang
-                lingkup analisis.
-              </p>
-              <ul className="list-disc list-inside ml-4">
-                <li>
-                  <strong>Variabel Analisis</strong>: Pengguna memilih variabel
-                  utama (biasanya skala atau numerik) untuk dievaluasi
-                  ketidakbiasaannya.
-                </li>
-                <li>
-                  <strong>Variabel Pengenal Kasus</strong>: Variabel tunggal
-                  opsional (misalnya, ID atau nama) dapat dipilih untuk melabeli
-                  kasus dalam output.
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold">2.2. Tab Opsi</h4>
-              <p>
-                Tab ini memungkinkan pengguna untuk menyempurnakan algoritma
-                deteksi.
-              </p>
-              <ul className="list-disc list-inside ml-4">
-                <li>
-                  <strong>Kriteria Identifikasi</strong>: Pengguna dapat memilih
-                  untuk mengidentifikasi persentase kasus tertentu dengan skor
-                  anomali tertinggi atau jumlah kasus yang tetap.
-                </li>
-                <li>
-                  <strong>Alasan</strong>: Menentukan jumlah maksimum alasan
-                  untuk dilaporkan mengapa sebuah kasus dianggap tidak biasa.
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold">2.3. Tab Output</h4>
-              <p>
-                Tab ini mengontrol tabel ringkasan dan daftar mana yang
-                dihasilkan di penampil output.
-              </p>
-              <ul className="list-disc list-inside ml-4">
-                <li>
-                  <strong>Daftar Kasus Tidak Biasa</strong>: Output utama,
-                  menunjukkan setiap kasus yang ditandai dan alasan
-                  identifikasinya.
-                </li>
-                <li>
-                  <strong>Norma Grup Sejawat</strong>: Tabel yang menunjukkan
-                  distribusi nilai variabel dalam setiap grup sejawat.
-                </li>
-                <li>
-                  <strong>Kejadian Alasan</strong>: Tabel yang melaporkan
-                  seberapa sering setiap variabel analisis berkontribusi pada
-                  kasus yang ditandai.
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold">2.4. Tab Simpan</h4>
-              <p>
-                Tab ini memungkinkan pengguna untuk menyimpan hasil analisis
-                kembali ke dataset aktif sebagai variabel baru.
-              </p>
-              <ul className="list-disc list-inside ml-4">
-                <li>
-                  <strong>Simpan Indeks Anomali</strong>: Membuat variabel baru
-                  yang berisi indeks anomali untuk setiap kasus.
-                </li>
-                <li>
-                  <strong>Simpan Keanggotaan Grup Sejawat</strong>: Membuat
-                  variabel baru untuk ID grup sejawat setiap kasus.
-                </li>
-                <li>
-                  <strong>Simpan Alasan</strong>: Membuat satu set variabel
-                  baru yang merinci alasan ketidakbiasaan.
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold">2.5. Tab Nilai Hilang</h4>
-              <p>
-                Tab ini mendefinisikan cara menangani data yang hilang dalam
-                variabel analisis. Opsi termasuk mengecualikan kasus atau
-                mengimputasi nilai yang hilang.
-              </p>
-            </div>
-          </div>
+export const UnusualCasesGuide: React.FC = () => {
+  const sections = [
+    {
+      id: 'overview',
+      title: 'Understanding Unusual Cases',
+      description: 'Learn how to identify and handle unusual or anomalous data points',
+      icon: HelpCircle,
+      content: (
+        <div className="space-y-4">
+          <HelpAlert variant="info" title="What are Unusual Cases?">
+            <p className="text-sm mt-2">
+              Unusual cases are data points that significantly differ from the majority of your dataset. 
+              These might be outliers, extreme values, or cases with unique characteristics that warrant special attention.
+            </p>
+          </HelpAlert>
         </div>
-      </CardContent>
-    </Card>
+      )
+    },
+    {
+      id: 'identification',
+      title: 'Identifying Unusual Cases',
+      description: 'Methods to detect unusual patterns in your data',
+      icon: Calculator,
+      content: (
+        <div className="space-y-4">
+          <HelpStep
+            number={1}
+            title="Review Descriptive Statistics"
+            description="Check minimum, maximum, and standard deviation values for extreme values."
+          />
+          <HelpStep
+            number={2}
+            title="Use Visual Inspection"
+            description="Examine histograms, box plots, or scatter plots to spot outliers visually."
+          />
+          <HelpStep
+            number={3}
+            title="Apply Statistical Methods"
+            description="Use z-scores, IQR method, or other statistical techniques to identify unusual cases."
+          />
+          <HelpStep
+            number={4}
+            title="Consider Context"
+            description="Evaluate whether unusual values make sense in your specific context or domain."
+          />
+        </div>
+      )
+    },
+    {
+      id: 'handling',
+      title: 'Handling Unusual Cases',
+      description: 'Best practices for dealing with anomalous data',
+      icon: HelpCircle,
+      content: (
+        <div className="space-y-4">
+          <HelpCard title="Approaches to Consider" variant="feature">
+            <ul className="text-sm space-y-2 mt-2">
+              <li><strong>Investigate:</strong> Determine if unusual cases are errors or genuine phenomena</li>
+              <li><strong>Verify:</strong> Double-check data entry and measurement processes</li>
+              <li><strong>Document:</strong> Keep records of identified unusual cases and decisions made</li>
+              <li><strong>Analyze Separately:</strong> Consider running analyses with and without unusual cases</li>
+              <li><strong>Transform:</strong> Apply appropriate data transformations if needed</li>
+            </ul>
+          </HelpCard>
+        </div>
+      )
+    }
+  ];
+
+  const tips = [
+    {
+      type: 'warning' as const,
+      title: 'Don\'t Delete Automatically',
+      content: 'Avoid removing unusual cases without proper investigation - they might be meaningful'
+    },
+    {
+      type: 'info' as const,
+      title: 'Context Matters',
+      content: 'What\'s unusual in one context might be normal in another - always consider your domain'
+    },
+    {
+      type: 'tip' as const,
+      title: 'Document Decisions',
+      content: 'Keep clear records of how you handled unusual cases for reproducibility'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: "Descriptive Statistics", href: "/help/statistics-guide/descriptive" },
+    { title: "Data Exploration", href: "/help/statistics-guide/descriptive/explore" },
+    { title: "Select Cases", href: "/help/data-guide/select-cases" },
+    { title: "Data Guide", href: "/help/data-guide" }
+  ];
+
+  return (
+    <HelpGuideTemplate
+      title="Unusual Cases Guide"
+      description="Learn how to identify, investigate, and handle unusual or anomalous data points in your analysis"
+      category="Data Management"
+      lastUpdated="2024-01-15"
+      sections={sections}
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
 };
-
-export default UnusualCasesGuide; 

@@ -1,35 +1,102 @@
 /* eslint-disable react/no-unescaped-entities */
 import React from 'react';
-import { HelpContentWrapper } from '../HelpContentWrapper';
-import { Card, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb } from 'lucide-react';
+import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
+import { Download, FileSpreadsheet, Lightbulb, Settings } from 'lucide-react';
 
 export const ExportCsv = () => {
+  const sections = [
+    {
+      id: 'export-steps',
+      title: 'How to Export to CSV',
+      description: 'Step-by-step guide to save your data as a CSV file',
+      icon: Download,
+      content: (
+        <div className="space-y-4">
+          <HelpStep
+            number={1}
+            title="Check Your Data"
+            description="Make sure the data you want to export is loaded in the data editor."
+          />
+          <HelpStep
+            number={2}
+            title="Open File Menu"
+            description="Go to 'File' menu and select 'Export to CSV'."
+          />
+          <HelpStep
+            number={3}
+            title="Choose Your Settings"
+            description="A dialog will appear where you can set options like separators and decimal symbols."
+          />
+          <HelpStep
+            number={4}
+            title="Name Your File"
+            description="Enter a file name and choose where to save it on your computer."
+          />
+          <HelpStep
+            number={5}
+            title="Save Your Data"
+            description="Click 'Export' to save the file to your computer."
+          />
+        </div>
+      )
+    },
+    {
+      id: 'options',
+      title: 'Export Options',
+      description: 'Settings you can adjust when saving your file',
+      icon: Settings,
+      content: (
+        <div className="space-y-4">
+          <HelpAlert variant="info" title="Data Separators">
+            <p className="text-sm mt-2">
+              Choose how to separate your data columns (comma, semicolon, or tab) based on what works best for your needs.
+            </p>
+          </HelpAlert>
+          <HelpAlert variant="tip" title="Decimal Symbols">
+            <p className="text-sm mt-2">
+              Set decimal symbols (period or comma) to match your regional standards or the requirements of other software.
+            </p>
+          </HelpAlert>
+        </div>
+      )
+    }
+  ];
+
+  const tips = [
+    {
+      type: 'warning' as const,
+      title: 'Data Notes',
+      content: 'CSV export saves your raw data only. Variable properties like labels or measurement levels won\'t be included in the .csv file.'
+    },
+    {
+      type: 'tip' as const,
+      title: 'Compatibility',
+      content: 'CSV files work with almost all spreadsheet programs and other statistical software.'
+    },
+    {
+      type: 'info' as const,
+      title: 'Character Support',
+      content: 'CSV files are saved with UTF-8 encoding to ensure special characters display correctly.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Export to Excel', href: '/help/file-guide/export-excel' },
+    { title: 'Import CSV Files', href: '/help/file-guide/import-csv' },
+    { title: 'Print Your Data', href: '/help/file-guide/print' },
+    { title: 'Data Management Guide', href: '/help/data-guide' }
+  ];
+
   return (
-    <HelpContentWrapper
-      title="Exporting to CSV"
-      description="This guide explains how to save your data as a Comma-Separated Values (.csv) file."
-    >
-      <Card className="mt-6">
-        <CardContent className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Steps to Export to a .csv File</h3>
-          <ol className="list-decimal list-inside space-y-2">
-            <li>Ensure the data you want to export is currently loaded in the data editor.</li>
-            <li>Navigate to the "File" menu and select "Export to CSV".</li>
-            <li>A dialog will appear allowing you to configure export options.</li>
-            <li>Enter a file name and choose your desired delimiter and decimal separator.</li>
-            <li>Click "Export" to save the file to your computer.</li>
-          </ol>
-        </CardContent>
-      </Card>
-      <Alert variant="default" className="mt-6 bg-blue-50 border-blue-200">
-        <Lightbulb className="h-5 w-5 text-blue-600" />
-        <AlertTitle>Data Integrity</AlertTitle>
-        <AlertDescription>
-          Exporting to CSV will save the raw data. Any variable properties, such as value labels or measurement levels, will not be included in the .csv file.
-        </AlertDescription>
-      </Alert>
-    </HelpContentWrapper>
+    <HelpGuideTemplate
+      title="Export to CSV"
+      description="Complete guide for saving your data as Comma-Separated Values (.csv)"
+      category="File Management"
+      lastUpdated="2024-01-15"
+
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
-}; 
+};

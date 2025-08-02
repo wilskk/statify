@@ -1,172 +1,193 @@
 /* eslint-disable react/no-unescaped-entities */
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
+import { Database, Settings, Calculator, Play } from 'lucide-react';
 
 const AggregateGuide = () => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Fitur Agregasi Data</CardTitle>
-        <CardDescription>
-          Dokumen ini menjelaskan fungsionalitas fitur Agregasi Data, yang
-          memungkinkan pengguna untuk menggabungkan data menjadi statistik
-          ringkasan di seluruh grup.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-lg">Gambaran Umum</h3>
+  const sections = [
+    {
+      id: 'overview',
+      title: 'Overview',
+      description: 'Understanding the basic concepts of data aggregation',
+      icon: Database,
+      content: (
+        <div className="space-y-4">
           <p>
-            Fitur Agregasi Data memungkinkan pengguna untuk mengagregasi data
-            dengan membuat statistik ringkasan untuk variabel tertentu dalam
-            grup yang ditentukan oleh variabel pemisah. Ini berguna untuk
-            meringkas informasi, menghitung rata-rata grup, menemukan nilai
-            maksimum per grup, menghitung kemunculan, dan banyak lagi.
+            The Data Aggregation feature allows users to aggregate data by creating
+            summary statistics for specific variables within groups defined by
+            break variables. This is useful for summarizing information, calculating
+            group averages, finding maximum values per group, counting occurrences,
+            and much more.
           </p>
+          
+          <HelpAlert variant="tip" title="When to Use Aggregation">
+            Use data aggregation when you want to:
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>Calculate statistics per group (mean, sum, etc.)</li>
+              <li>Summarize large datasets into more understandable information</li>
+              <li>Create summary reports based on specific categories</li>
+            </ul>
+          </HelpAlert>
         </div>
-
-        <div>
-          <h3 className="font-semibold text-lg">Penjelasan Opsi</h3>
-          <div className="ml-4 space-y-2">
-            <h4 className="font-semibold">Konfigurasi Variabel</h4>
-            <div className="ml-4 space-y-2">
-              <h5 className="font-semibold">Variabel Pemisah (Break Variable(s))</h5>
+      )
+    },
+    {
+      id: 'configuration',
+      title: 'Variable Configuration',
+      description: 'How to set up variables for aggregation',
+      icon: Settings,
+      steps: [
+        {
+          title: 'Select Break Variables',
+          description: 'Specify variables to use for grouping data',
+          content: (
+            <div className="space-y-3">
               <p>
-                Variabel-variabel ini mendefinisikan grup untuk agregasi.
-                Setiap kombinasi unik dari nilai dalam variabel pemisah akan
-                membuat sebuah grup. Misalnya, jika "Gender" dan "Region"
-                adalah variabel pemisah, data akan diagregasi secara terpisah
-                untuk setiap kombinasi Gender-Region.
+                These variables define the groups for aggregation.
+                Each unique combination of values in the break variables will
+                create a group.
               </p>
-              <h5 className="font-semibold">Variabel Agregat (Aggregated Variables)</h5>
+              
+              <HelpCard title="Example" variant="step">
+                <p className="text-sm">
+                  If "Gender" and "Region" are break variables, data will be
+                  aggregated separately for each Gender-Region combination
+                  (Male-Jakarta, Female-Jakarta, Male-Surabaya, etc.).
+                </p>
+              </HelpCard>
+            </div>
+          )
+        },
+        {
+          title: 'Select Aggregated Variables',
+          description: 'Specify variables to be summarized',
+          content: (
+            <div className="space-y-3">
               <p>
-                Ini adalah variabel yang akan diringkas. Untuk setiap
-                variabel yang dipilih, Anda dapat menerapkan fungsi agregasi
-                untuk menghitung statistik untuk setiap grup yang ditentukan
-                oleh variabel pemisah.
+                These are the variables that will be summarized. For each
+                selected variable, you can apply aggregation functions
+                to calculate statistics for each group defined by the break variables.
               </p>
             </div>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-lg">Fungsi Agregasi</h3>
+          )
+        }
+      ]
+    },
+    {
+      id: 'functions',
+      title: 'Aggregation Functions',
+      description: 'Various types of aggregation functions available',
+      icon: Calculator,
+      content: (
+        <div className="space-y-6">
           <p>
-            Fitur ini menyediakan beberapa kategori fungsi agregasi:
+            This feature provides several categories of aggregation functions:
           </p>
-          <div className="ml-4 mt-2 space-y-2">
-            <h4 className="font-semibold">Statistik Ringkasan</h4>
-            <ul className="list-disc list-inside ml-4">
-              <li>
-                <strong>Mean</strong>: Menghitung nilai rata-rata di seluruh
-                kasus di setiap grup.
-              </li>
-              <li>
-                <strong>Median</strong>: Menemukan nilai tengah di setiap
-                grup saat nilai diurutkan.
-              </li>
-              <li>
-                <strong>Sum</strong>: Menghitung total semua nilai di setiap
-                grup.
-              </li>
-              <li>
-                <strong>Standard Deviation</strong>: Mengukur jumlah variasi
-                di dalam setiap grup.
-              </li>
+          
+          <HelpCard title="Summary Statistics" variant="feature">
+            <ul className="space-y-2">
+              <li><strong>Mean</strong>: Calculates the average value across cases within each group</li>
+              <li><strong>Median</strong>: Finds the middle value in each group when values are sorted</li>
+              <li><strong>Sum</strong>: Calculates the total of all values in each group</li>
+              <li><strong>Standard Deviation</strong>: Measures the amount of variation within each group</li>
             </ul>
+          </HelpCard>
 
-            <h4 className="font-semibold">Nilai Spesifik</h4>
-            <ul className="list-disc list-inside ml-4">
-              <li>
-                <strong>First</strong>: Mengambil nilai pertama yang ditemui
-                di setiap grup.
-              </li>
-              <li>
-                <strong>Last</strong>: Mengambil nilai terakhir yang ditemui
-                di setiap grup.
-              </li>
-              <li>
-                <strong>Minimum</strong>: Menemukan nilai terkecil di setiap
-                grup.
-              </li>
-              <li>
-                <strong>Maximum</strong>: Menemukan nilai terbesar di setiap
-                grup.
-              </li>
+          <HelpCard title="Specific Values" variant="feature">
+            <ul className="space-y-2">
+              <li><strong>Maximum</strong>: Finds the highest value in each group</li>
+              <li><strong>Minimum</strong>: Finds the lowest value in each group</li>
+              <li><strong>First</strong>: Takes the first value that appears in each group</li>
+              <li><strong>Last</strong>: Takes the last value that appears in each group</li>
             </ul>
-            <h4 className="font-semibold">Jumlah Kasus</h4>
-            <p>
-              <em>
-                Catatan: Istilah "Weighted" dan "Unweighted" didasarkan pada
-                terminologi SPSS. Saat ini, fitur ini tidak mendukung
-                variabel bobot kasus, sehingga semua hitungan secara efektif
-                tidak diboboti.
-              </em>
-            </p>
-            <ul className="list-disc list-inside ml-4">
-              <li>
-                <strong>Weighted (N)</strong>: Menghitung jumlah kasus di
-                setiap grup di mana variabel sumber memiliki nilai yang tidak
-                hilang.
-              </li>
-              <li>
-                <strong>Weighted Missing (NMISS)</strong>: Menghitung jumlah
-                kasus di setiap grup di mana variabel sumber memiliki nilai
-                yang hilang.
-              </li>
-              <li>
-                <strong>Unweighted (NU)</strong>: Menghitung jumlah total
-                kasus di setiap grup.
-              </li>
-              <li>
-                <strong>Unweighted Missing (NUMISS)</strong>: Menghitung
-                jumlah kasus di setiap grup di mana variabel sumber memiliki
-                nilai yang hilang.
-              </li>
+          </HelpCard>
+
+          <HelpCard title="Case Counts" variant="feature">
+            <HelpAlert variant="info" title="Understanding Counts">
+              These count options help you understand how many cases are in each group:
+              - Use N to count valid responses
+              - Use NMISS to count missing responses
+              - NU gives you the total count including missing values
+            </HelpAlert>
+            
+            <ul className="space-y-2 mt-4">
+              <li><strong>Weighted (N)</strong>: Counts the number of cases in each group with non-missing values</li>
+              <li><strong>Weighted Missing (NMISS)</strong>: Counts the number of cases with missing values</li>
+              <li><strong>Unweighted (NU)</strong>: Counts the total number of cases in each group</li>
             </ul>
-            <h4 className="font-semibold">Persentase, Fraksi, Hitungan</h4>
-            <ul className="list-disc list-inside ml-4">
-              <li>
-                <strong>Persentase</strong>: Menghitung persentase kasus yang
-                memenuhi kriteria tertentu.
-                <ul className="list-disc list-inside ml-6">
-                  <li>
-                    <strong>Di Atas</strong>: Persentase kasus di atas nilai
-                    yang ditentukan.
-                  </li>
-                  <li>
-                    <strong>Di Bawah</strong>: Persentase kasus di bawah
-                    nilai yang ditentukan.
-                  </li>
-                  <li>
-                    <strong>Di Dalam</strong>: Persentase kasus di antara dua
-                    nilai yang ditentukan.
-                  </li>
-                  <li>
-                    <strong>Di Luar</strong>: Persentase kasus di luar
-                    rentang nilai yang ditentukan.
-                  </li>
+          </HelpCard>
+
+          <HelpCard title="Percentages, Fractions, Counts" variant="feature">
+            <div className="space-y-4">
+              <div>
+                <h5 className="font-semibold mb-2">Percentages</h5>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Calculates the percentage of cases meeting specific criteria:
+                </p>
+                <ul className="space-y-1 text-sm ml-4">
+                  <li><strong>Above</strong>: Percentage of cases above a specified value</li>
+                  <li><strong>Below</strong>: Percentage of cases below a specified value</li>
+                  <li><strong>Within</strong>: Percentage of cases between two specified values</li>
+                  <li><strong>Outside</strong>: Percentage of cases outside a specified value range</li>
                 </ul>
-              </li>
-              <li>
-                <strong>Fraksi</strong>: Mirip dengan persentase tetapi
-                dinyatakan sebagai proporsi (0-1 bukan 0-100).
-              </li>
-              <li>
-                <strong>Hitungan</strong>: Penghitungan sederhana kasus yang
-                memenuhi kriteria.
-              </li>
-            </ul>
-          </div>
+              </div>
+              
+              <div className="space-y-2">
+                <p><strong>Fractions</strong>: Similar to percentages but expressed as proportions (0-1 instead of 0-100)</p>
+                <p><strong>Counts</strong>: Simple counting of cases meeting criteria</p>
+              </div>
+            </div>
+          </HelpCard>
         </div>
-      </CardContent>
-    </Card>
+      )
+    },
+  ];
+
+
+
+  const prerequisites = [
+    'Your data is loaded in Statify',
+    'You know which variables you want to group by',
+    'You understand what each variable represents'
+  ];
+
+  const tips = [
+    {
+      type: 'tip' as const,
+      title: 'Keep It Simple',
+      content: 'Start with just one break variable to see how aggregation works before adding more complex groupings.'
+    },
+    {
+      type: 'warning' as const,
+      title: 'Check Your Results',
+      content: 'Always review your aggregated results to make sure they make sense for your analysis.'
+    },
+    {
+      type: 'tip' as const,
+      title: 'Save Your Work',
+      content: 'Save your dataset before running aggregation, so you can always go back to your original data.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Import Data', href: '/help/file-guide/import-sav' },
+    { title: 'Variable Definition', href: '/help/data-guide/define-var-props' },
+    { title: 'Descriptive Statistics', href: '/help/statistics-guide/descriptive' }
+  ];
+
+  return (
+    <HelpGuideTemplate
+      title="Data Aggregation Feature"
+      description="This document explains the functionality of the Data Aggregation feature, which allows users to combine data into summary statistics across groups."
+      category="Data Management"
+      lastUpdated="2024-01-15"
+      sections={sections}
+      prerequisites={prerequisites}
+
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
 };
 
-export default AggregateGuide; 
+export default AggregateGuide;

@@ -1,1 +1,1 @@
-export { Crosstabs } from '../descriptive/Crosstabs'; 
+export { Crosstabs } from './Crosstabs';
