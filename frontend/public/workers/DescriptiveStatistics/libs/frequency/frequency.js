@@ -344,7 +344,15 @@ class FrequencyCalculator {
         if (this.memo.frequencyTable) return this.memo.frequencyTable;
 
         const sortedData = this.getSortedData();
-        const descStats = this.descCalc.getStatistics().stats;
+        const descStatsResult = this.descCalc.getStatistics();
+        
+        // Tambahkan null check untuk mencegah error 'Cannot read properties of undefined'
+        if (!descStatsResult || !descStatsResult.stats) {
+            console.warn('[FrequencyCalculator] descStats is undefined or null');
+            return null;
+        }
+        
+        const descStats = descStatsResult.stats;
         const totalN = descStats.N;            
         const validN = descStats.Valid;        
         

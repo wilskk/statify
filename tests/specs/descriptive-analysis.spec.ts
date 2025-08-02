@@ -24,7 +24,7 @@ interface PerformanceMetrics {
 // Resource monitoring helper functions
 class ResourceMonitor {
   private startTime: number = 0;
-  private metrics: PerformanceMetrics = {
+  private currentMetrics: PerformanceMetrics = {
     renderTime: 0,
     updateTime: 0,
     memoryUsage: 0,
@@ -41,6 +41,7 @@ class ResourceMonitor {
     viewport: { width: 0, height: 0 },
     devicePixelRatio: 1,
   };
+  private metricsHistory: PerformanceMetrics[] = [];
 
   startMonitoring() {
     this.startTime = Date.now();
@@ -82,8 +83,8 @@ class ResourceMonitor {
       const networkMetrics = await this.collectNetworkMetrics(page);
       
       // Update metrics
-      this.metrics = {
-        ...this.metrics,
+      this.currentMetrics = {
+        ...this.currentMetrics,
         loadTime: performanceMetrics.loadTime,
         jsHeapSize: performanceMetrics.jsHeapSize,
         domNodes: performanceMetrics.domNodes,
@@ -98,11 +99,14 @@ class ResourceMonitor {
         viewport: performanceMetrics.viewport,
         devicePixelRatio: performanceMetrics.devicePixelRatio
       };
+      
+      // Add to history
+      this.metricsHistory.push({...this.currentMetrics});
 
-      return this.metrics;
+      return this.currentMetrics;
     } catch (error) {
       console.warn('Failed to collect performance metrics:', error);
-      return this.metrics;
+      return this.currentMetrics;
     }
   }
 
@@ -132,20 +136,20 @@ class ResourceMonitor {
 
   logMetrics(testName: string) {
     console.log(`\n=== Performance Metrics for: ${testName} ===`);
-    console.log(`Browser: ${this.metrics.browserName} v${this.metrics.browserVersion}`);
-    console.log(`Viewport: ${this.metrics.viewport.width}x${this.metrics.viewport.height}`);
-    console.log(`Device Pixel Ratio: ${this.metrics.devicePixelRatio}`);
-    console.log(`User Agent: ${this.metrics.userAgent.substring(0, 80)}...`);
+    console.log(`Browser: ${this.currentMetrics.browserName} v${this.currentMetrics.browserVersion}`);
+    console.log(`Viewport: ${this.currentMetrics.viewport.width}x${this.currentMetrics.viewport.height}`);
+    console.log(`Device Pixel Ratio: ${this.currentMetrics.devicePixelRatio}`);
+    console.log(`User Agent: ${this.currentMetrics.userAgent.substring(0, 80)}...`);
     console.log(`--- Performance Metrics ---`);
-    console.log(`Load Time: ${this.metrics.loadTime.toFixed(2)}ms`);
-    console.log(`Render Time (FCP): ${this.metrics.renderTime.toFixed(2)}ms`);
-    console.log(`Interaction Time: ${this.metrics.interactionTime}ms`);
-    console.log(`JS Heap Size: ${(this.metrics.jsHeapSize / 1024 / 1024).toFixed(2)}MB`);
-    console.log(`DOM Nodes: ${this.metrics.domNodes}`);
-    console.log(`Network Requests: ${this.metrics.networkRequests}`);
-    console.log(`Average Network Latency: ${this.metrics.networkLatency.toFixed(2)}ms`);
-    console.log(`Memory Usage: ${this.metrics.memoryUsage.toFixed(2)}MB`);
-    console.log(`Error Rate: ${this.metrics.errorRate}%`);
+    console.log(`Load Time: ${this.currentMetrics.loadTime.toFixed(2)}ms`);
+    console.log(`Render Time (FCP): ${this.currentMetrics.renderTime.toFixed(2)}ms`);
+    console.log(`Interaction Time: ${this.currentMetrics.interactionTime}ms`);
+    console.log(`JS Heap Size: ${(this.currentMetrics.jsHeapSize / 1024 / 1024).toFixed(2)}MB`);
+    console.log(`DOM Nodes: ${this.currentMetrics.domNodes}`);
+    console.log(`Network Requests: ${this.currentMetrics.networkRequests}`);
+    console.log(`Average Network Latency: ${this.currentMetrics.networkLatency.toFixed(2)}ms`);
+    console.log(`Memory Usage: ${this.currentMetrics.memoryUsage.toFixed(2)}MB`);
+    console.log(`Error Rate: ${this.currentMetrics.errorRate}%`);
     console.log('================================================\n');
   }
 
@@ -155,34 +159,56 @@ class ResourceMonitor {
     // Browser-specific performance thresholds
     const thresholds = this.getBrowserSpecificThresholds();
     
-    if (this.metrics.loadTime > thresholds.loadTime) {
-      issues.push(`Load time too high for ${this.metrics.browserName}: ${this.metrics.loadTime}ms (threshold: ${thresholds.loadTime}ms)`);
+    if (this.currentMetrics.loadTime > thresholds.loadTime) {
+      issues.push(`Load time too high for ${this.currentMetrics.browserName}: ${this.currentMetrics.loadTime}ms (threshold: ${thresholds.loadTime}ms)`);
     }
     
-    if (this.metrics.renderTime > thresholds.renderTime) {
-      issues.push(`Render time too high for ${this.metrics.browserName}: ${this.metrics.renderTime}ms (threshold: ${thresholds.renderTime}ms)`);
+    if (this.currentMetrics.renderTime > thresholds.renderTime) {
+      issues.push(`Render time too high for ${this.currentMetrics.browserName}: ${this.currentMetrics.renderTime}ms (threshold: ${thresholds.renderTime}ms)`);
     }
     
-    if (this.metrics.jsHeapSize > thresholds.jsHeapSize) {
-      issues.push(`JS Heap size too high for ${this.metrics.browserName}: ${(this.metrics.jsHeapSize / 1024 / 1024).toFixed(2)}MB (threshold: ${(thresholds.jsHeapSize / 1024 / 1024).toFixed(2)}MB)`);
+    if (this.currentMetrics.jsHeapSize > thresholds.jsHeapSize) {
+      issues.push(`Memory usage too high for ${this.currentMetrics.browserName}: ${this.currentMetrics.jsHeapSize} bytes (threshold: ${thresholds.jsHeapSize} bytes)`);
     }
     
-    if (this.metrics.domNodes > thresholds.domNodes) {
-      issues.push(`DOM nodes too many for ${this.metrics.browserName}: ${this.metrics.domNodes} (threshold: ${thresholds.domNodes})`);
+    if (this.currentMetrics.domNodes > thresholds.domNodes) {
+      issues.push(`Too many DOM nodes for ${this.currentMetrics.browserName}: ${this.currentMetrics.domNodes} (threshold: ${thresholds.domNodes})`);
     }
     
-    if (this.metrics.networkLatency > thresholds.networkLatency) {
-      issues.push(`Network latency too high for ${this.metrics.browserName}: ${this.metrics.networkLatency}ms (threshold: ${thresholds.networkLatency}ms)`);
+    if (this.currentMetrics.networkLatency > thresholds.networkLatency) {
+      issues.push(`Network latency too high for ${this.currentMetrics.browserName}: ${this.currentMetrics.networkLatency}ms (threshold: ${thresholds.networkLatency}ms)`);
     }
     
-    if (this.metrics.errorRate > thresholds.errorRate) {
-      issues.push(`Error rate too high for ${this.metrics.browserName}: ${this.metrics.errorRate}% (threshold: ${thresholds.errorRate}%)`);
+    if (this.currentMetrics.errorRate > thresholds.errorRate) {
+      issues.push(`Error rate too high for ${this.currentMetrics.browserName}: ${this.currentMetrics.errorRate}% (threshold: ${thresholds.errorRate}%)`);
     }
     
     return {
       passed: issues.length === 0,
       issues
     };
+  }
+
+  reset(): void {
+    this.metricsHistory = [];
+    this.currentMetrics = {
+      renderTime: 0,
+      updateTime: 0,
+      memoryUsage: 0,
+      errorRate: 0,
+      networkRequests: 0,
+      networkLatency: 0,
+      domNodes: 0,
+      jsHeapSize: 0,
+      loadTime: 0,
+      interactionTime: 0,
+      browserName: 'unknown',
+      browserVersion: 'unknown',
+      userAgent: 'unknown',
+      viewport: { width: 0, height: 0 },
+      devicePixelRatio: 1,
+    };
+    this.startTime = 0;
   }
   
   private getBrowserSpecificThresholds() {
@@ -196,7 +222,7 @@ class ResourceMonitor {
       errorRate: 5
     };
     
-    switch (this.metrics.browserName) {
+    switch (this.currentMetrics.browserName) {
       case 'firefox':
         // Firefox typically uses more memory but has good rendering performance
         return {
@@ -309,9 +335,9 @@ test.describe('Descriptive Analysis - Accidents Dataset Workflow', () => {
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
     
-    // Step 3: Tunggu dan klik accidents.sav
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    // Step 3: Tunggu dan klik accidents dataset
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     
     // Step 4: Tunggu data dimuat
     const dataLoadStart = Date.now();
@@ -353,8 +379,8 @@ test.describe('Descriptive Analysis - Accidents Dataset Workflow', () => {
     const dataLoadStart = Date.now();
     await page.click('button:has-text("File")');
     await page.click('text=Example Data');
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     const dataLoadTime = Date.now() - dataLoadStart;
     console.log(`Data loading time: ${dataLoadTime}ms`);
@@ -407,8 +433,8 @@ test.describe('Descriptive Analysis - Accidents Dataset Workflow', () => {
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
     
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     const dataLoadTime = Date.now() - dataLoadStart;
     console.log(`Data loading phase time: ${dataLoadTime}ms`);
@@ -525,8 +551,8 @@ test.describe('Descriptive Analysis - Accidents Dataset Workflow', () => {
     const dataLoadStart = Date.now();
     await page.click('button:has-text("File")');
     await page.click('text=Example Data');
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     const dataLoadTime = Date.now() - dataLoadStart;
     console.log(`Data loading time: ${dataLoadTime}ms`);
@@ -572,8 +598,8 @@ test.describe('Descriptive Analysis - Accidents Dataset Workflow', () => {
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
     
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     
     phaseMetrics.dataLoad = Date.now() - dataLoadStart;
@@ -908,8 +934,8 @@ test.describe('Descriptive Analysis - Accidents Dataset Workflow', () => {
     await page.click('text=Example Data');
     await page.waitForTimeout(2000);
     
-    await page.waitForSelector('button:has-text("accidents.sav")', { timeout: 10000 });
-    await page.click('button:has-text("accidents.sav")');
+    await page.waitForSelector('[data-testid="example-dataset-accidents"]', { timeout: 10000 });
+    await page.click('[data-testid="example-dataset-accidents"]');
     await page.waitForTimeout(5000);
     
     phaseMetrics.dataLoad = Date.now() - dataLoadStart;
@@ -1000,7 +1026,7 @@ test.describe('Descriptive Analysis - Accidents Dataset Workflow', () => {
         
         // Step 6: Switch to Statistics tab
         const statisticsTabStart = Date.now();
-        const statisticsTab = page.locator('[data-testid="statistics-tab"]');
+        const statisticsTab = page.locator('[data-testid="descriptive-statistics-tab"]');
         if (await statisticsTab.isVisible({ timeout: 3000 })) {
           await statisticsTab.click();
           await page.waitForTimeout(2000);

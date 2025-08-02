@@ -108,6 +108,18 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
             return;
         }
 
+        // === Performance Monitoring: Start ===
+        const startTime = performance.now();
+        const dependentVariableCount = params.dependentVariables.length;
+        const factorVariableCount = params.factorVariables.length;
+        const caseCount = analysisData?.length || 0;
+        console.log(`[Explore Analysis] Starting analysis:`);
+        console.log(`  - Dependent variables: ${dependentVariableCount}`);
+        console.log(`  - Factor variables: ${factorVariableCount}`);
+        console.log(`  - Cases: ${caseCount}`);
+        console.log(`  - Start time: ${new Date().toISOString()}`);
+        // === Performance Monitoring: End ===
+
         setIsCalculating(true);
         setError(null);
 
@@ -248,16 +260,35 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 await performAnalysisForFactors(factorSet, logId);
             }
 
+            // === Performance Monitoring: End ===
+            const endTime = performance.now();
+            const executionTime = endTime - startTime;
+            console.log(`[Explore Analysis] Analysis completed:`);
+            console.log(`  - Dependent variables processed: ${dependentVariableCount}`);
+            console.log(`  - Factor variables processed: ${factorVariableCount}`);
+            console.log(`  - Cases analyzed: ${caseCount}`);
+            console.log(`  - Execution time: ${executionTime.toFixed(2)}ms`);
+            console.log(`  - End time: ${new Date().toISOString()}`);
+            // === Performance Monitoring: End ===
+
             // Close modal after all analyses are complete
             onClose();
         } catch (e) {
             const err = e instanceof Error ? e.message : String(e);
             console.error('Explore Analysis Error:', err);
             setError(`An unexpected error occurred: ${err}`);
+            
+            // === Performance Monitoring: Error ===
+            const endTime = performance.now();
+            const executionTime = endTime - startTime;
+            console.log(`[Explore Analysis] Analysis failed:`);
+            console.log(`  - Execution time before error: ${executionTime.toFixed(2)}ms`);
+            console.log(`  - Error: ${err}`);
+            // === Performance Monitoring: Error ===
         } finally {
             setIsCalculating(false);
         }
     }, [params, analysisData, weights, addLog, addAnalytic, addStatistic, groupDataByFactors, onClose]);
 
     return { runAnalysis, isCalculating, error };
-}; 
+};
