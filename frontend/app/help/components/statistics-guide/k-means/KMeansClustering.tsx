@@ -187,7 +187,7 @@ export const KMeansClustering: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
-                            Running Means (Online)
+                            Running Means
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
                             <li>• Update pusat secara incremental</li>
@@ -199,7 +199,7 @@ export const KMeansClustering: React.FC = () => {
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <h4 className="font-bold text-blue-800 mb-2">
-                            Batch Update (Offline)
+                            Batch Update
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
                             <li>• Update pusat setelah semua assignment</li>
@@ -324,22 +324,6 @@ export const KMeansClustering: React.FC = () => {
 
                 <h2 className="mt-8">File Terkait</h2>
                 <ul>
-                    <li>
-                        <code>rust/src/stats/cluster_centers.rs</code> -
-                        Implementasi K-Means clustering
-                    </li>
-                    <li>
-                        <code>rust/src/models/config.rs</code> - Konfigurasi
-                        K-Means
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> - Struktur hasil
-                        clustering
-                    </li>
-                    <li>
-                        <code>rust/src/stats/core.rs</code> - Fungsi bantu
-                        perhitungan
-                    </li>
                     <li>
                         <code>
                             components/Modals/Analyze/Classify/k-means-cluster/

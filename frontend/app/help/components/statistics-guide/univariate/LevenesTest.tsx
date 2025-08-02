@@ -278,83 +278,6 @@ export const LevenesTest: React.FC = () => {
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Welch's ANOVA</h2>
-
-                <p>
-                    Ketika asumsi homogenitas tidak terpenuhi, Welch's ANOVA
-                    dapat digunakan:
-                </p>
-
-                <h3>Statistik F Welch</h3>
-                <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <div className="text-center text-lg font-mono">
-                        <strong>
-                            F = Σwᵢ(x̄ᵢ - x̄*)² / (k-1) / [1 +
-                            2(k-2)Σ(1-wᵢ/W)²/(nᵢ-1)]
-                        </strong>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
-                    <ul className="text-sm text-gray-600 mt-1">
-                        <li>
-                            <strong>wᵢ</strong> = nᵢ/sᵢ² (weight untuk kelompok
-                            i)
-                        </li>
-                        <li>
-                            <strong>W</strong> = Σwᵢ
-                        </li>
-                        <li>
-                            <strong>x̄*</strong> = Σwᵢx̄ᵢ/W (weighted grand mean)
-                        </li>
-                    </ul>
-                </div>
-
-                <h3>Degrees of Freedom Welch</h3>
-                <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <div className="text-center text-lg font-mono">
-                        <strong>
-                            df = (k-1) / [1 + 2(k-2)Σ(1-wᵢ/W)²/(nᵢ-1)]
-                        </strong>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana W = Σwᵢ</p>
-                </div>
-
-                <h2 className="mt-8">Power Analysis</h2>
-
-                <h3>Faktor yang Mempengaruhi Power</h3>
-                <div className="bg-blue-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-blue-800 mb-2">
-                        Determinan Power:
-                    </h4>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                        <li>
-                            <strong>Sample Size:</strong> Semakin besar n,
-                            semakin tinggi power
-                        </li>
-                        <li>
-                            <strong>Effect Size:</strong> Semakin besar
-                            perbedaan varians, semakin tinggi power
-                        </li>
-                        <li>
-                            <strong>Number of Groups:</strong> Semakin banyak
-                            kelompok, semakin tinggi power
-                        </li>
-                        <li>
-                            <strong>Alpha Level:</strong> Semakin besar α,
-                            semakin tinggi power
-                        </li>
-                    </ul>
-                </div>
-
-                <h3>Effect Size</h3>
-                <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <div className="text-center text-lg font-mono">
-                        <strong>ω² = (SSB - (k-1)MSW) / (SST + MSW)</strong>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Effect size untuk perbedaan varians antar kelompok
-                    </p>
-                </div>
-
                 <h2 className="mt-8">Tabel Hasil</h2>
 
                 <div className="overflow-x-auto">
@@ -424,11 +347,6 @@ export const LevenesTest: React.FC = () => {
                     <li>
                         <code>rust/src/models/result.rs</code> - Struktur hasil
                         Levene's Test
-                    </li>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/dialogs/
-                        </code>
                     </li>
                 </ul>
             </div>

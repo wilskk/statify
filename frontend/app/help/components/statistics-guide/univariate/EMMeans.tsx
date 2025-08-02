@@ -20,14 +20,14 @@ export const EMMeans: React.FC = () => {
                     <HelpCircle className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
                     <div>
                         <AlertTitle className="text-blue-800 font-medium mb-1">
-                            Estimated Marginal Means (EMMs)
+                            Estimated Marginal Means (EM Means)
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            EMMs adalah rata-rata yang disesuaikan untuk setiap
-                            level faktor, mengontrol efek variabel lain dalam
-                            model. Ini memberikan perbandingan yang adil antar
-                            kelompok dengan menghilangkan bias dari desain tidak
-                            seimbang.
+                            EM Means adalah rata-rata yang disesuaikan untuk
+                            setiap level faktor, mengontrol efek variabel lain
+                            dalam model. Ini memberikan perbandingan yang adil
+                            antar kelompok dengan menghilangkan bias dari desain
+                            tidak seimbang.
                         </AlertDescription>
                     </div>
                 </div>
@@ -36,21 +36,21 @@ export const EMMeans: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <Calculator className="h-6 w-6" />
-                    Konsep Dasar EMMs
+                    Konsep Dasar EM Means
                 </h2>
 
                 <p>
-                    Estimated Marginal Means (EMMs) adalah rata-rata yang
+                    Estimated Marginal Means (EM Means) adalah rata-rata yang
                     diprediksi untuk setiap kombinasi level faktor setelah
-                    mengontrol efek variabel lain dalam model. EMMs dihitung
+                    mengontrol efek variabel lain dalam model. EM Means dihitung
                     sebagai kombinasi linear dari parameter model menggunakan
                     vektor-L.
                 </p>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Formula Umum EMMs:</h4>
+                    <h4 className="font-bold mb-2">Formula Umum EM Means:</h4>
                     <div className="text-center text-lg font-mono">
-                        <strong>EMM = L' × β̂</strong>
+                        <strong>EM Mean = L' × β̂</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">Dimana:</p>
                     <ul className="text-sm text-gray-600 mt-1">
@@ -63,20 +63,20 @@ export const EMMeans: React.FC = () => {
                             model
                         </li>
                         <li>
-                            <strong>EMM</strong> = Estimated Marginal Mean untuk
-                            kombinasi level tertentu
+                            <strong>EM Mean</strong> = Estimated Marginal Mean
+                            untuk kombinasi level tertentu
                         </li>
                     </ul>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Layers className="h-6 w-6" />
-                    Alur Proses Perhitungan EMMs
+                    Alur Proses Perhitungan EM Means
                 </h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah dalam calculate_emmeans:
+                        Langkah-langkah dalam calculate_EM Meaneans:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
@@ -105,25 +105,25 @@ export const EMMeans: React.FC = () => {
                             Mengidentifikasi semua faktor dan levelnya
                         </li>
                         <li>
-                            <strong>7. Iterasi & Perhitungan EMMs:</strong>{" "}
+                            <strong>7. Iterasi & Perhitungan EM Means:</strong>{" "}
                             Untuk setiap efek yang diminta
                         </li>
                         <li>
                             <strong>8. Agregasi Hasil:</strong> Mengumpulkan
-                            semua hasil ke dalam struktur EMMeansResult
+                            semua hasil ke dalam struktur EM MeaneansResult
                         </li>
                     </ol>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <BarChart3 className="h-6 w-6" />
-                    Konstruksi Vektor-L untuk EMMs
+                    Konstruksi Vektor-L untuk EM Means
                 </h2>
 
                 <p>
-                    Vektor-L mendefinisikan cara menghitung satu EMM spesifik.
-                    Setiap vektor-L memiliki panjang yang sama dengan jumlah
-                    parameter model dan menentukan koefisien untuk setiap
+                    Vektor-L mendefinisikan cara menghitung satu EM Mean
+                    spesifik. Setiap vektor-L memiliki panjang yang sama dengan
+                    jumlah parameter model dan menentukan koefisien untuk setiap
                     parameter.
                 </p>
 
@@ -155,7 +155,7 @@ export const EMMeans: React.FC = () => {
                 <h3>Contoh Konstruksi Vektor-L</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Untuk EMM: gender=Pria, pendidikan=SMA
+                        Untuk EM Mean: gender=Pria, pendidikan=SMA
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-1">
                         <div>• Intercept: 1.0</div>
@@ -168,12 +168,12 @@ export const EMMeans: React.FC = () => {
                     </div>
                 </div>
 
-                <h2 className="mt-8">Perhitungan Statistik EMMs</h2>
+                <h2 className="mt-8">Perhitungan Statistik EM Means</h2>
 
-                <h3>Estimated Marginal Mean (EMM)</h3>
+                <h3>Estimated Marginal Mean (EM Mean)</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
-                        <strong>EMM = L' × β̂</strong>
+                        <strong>EM Mean = L' × β̂</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
                         Nilai rata-rata marginal yang diprediksi untuk kombinasi
@@ -181,7 +181,7 @@ export const EMMeans: React.FC = () => {
                     </p>
                 </div>
 
-                <h3>Standard Error (SE) dari EMM</h3>
+                <h3>Standard Error (SE) dari EM Mean</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>SE = √(L' × G⁻¹ × L × MSE)</strong>
@@ -197,7 +197,7 @@ export const EMMeans: React.FC = () => {
                         </li>
                         <li>
                             <strong>SE</strong> = mengukur variabilitas atau
-                            ketidakpastian dari estimasi EMM
+                            ketidakpastian dari estimasi EM Mean
                         </li>
                     </ul>
                 </div>
@@ -205,7 +205,7 @@ export const EMMeans: React.FC = () => {
                 <h3>Confidence Interval (CI)</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
-                        <strong>CI = EMM ± (t_critical × SE)</strong>
+                        <strong>CI = EM Mean ± (t_critical × SE)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">Dimana:</p>
                     <ul className="text-sm text-gray-600 mt-1">
@@ -225,7 +225,7 @@ export const EMMeans: React.FC = () => {
                 <h2 className="mt-8">Pairwise Comparisons</h2>
 
                 <p>
-                    Perbandingan berpasangan membandingkan EMMs dari setiap
+                    Perbandingan berpasangan membandingkan EM Means dari setiap
                     pasangan level dalam suatu efek utama untuk mengetahui
                     apakah ada perbedaan yang signifikan.
                 </p>
@@ -234,7 +234,8 @@ export const EMMeans: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>
-                            Mean Difference = EMMᵢ - EMMⱼ = (Lᵢ - Lⱼ)' × β̂
+                            Mean Difference = EM Meanᵢ - EM Meanⱼ = (Lᵢ - Lⱼ)' ×
+                            β̂
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
@@ -297,8 +298,8 @@ export const EMMeans: React.FC = () => {
 
                 <p>
                     Uji univariat melakukan uji-F untuk efek utama, menguji
-                    hipotesis nol bahwa semua EMMs untuk level-level dari efek
-                    tersebut adalah sama.
+                    hipotesis nol bahwa semua EM Means untuk level-level dari
+                    efek tersebut adalah sama.
                 </p>
 
                 <h3>Sum of Squares for Hypothesis (SSH)</h3>
@@ -307,8 +308,8 @@ export const EMMeans: React.FC = () => {
                         <strong>SSH = (Lβ̂)' × (L × G⁻¹ × L')⁻¹ × (Lβ̂)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        L adalah matriks kontras yang menguji perbedaan antar
-                        EMMs
+                        L adalah matriks kontras yang menguji perbedaan antar EM
+                        Means
                     </p>
                 </div>
 
@@ -386,10 +387,10 @@ export const EMMeans: React.FC = () => {
                     </div>
                 </div>
 
-                <h2 className="mt-8">Non-Estimable EMMs</h2>
+                <h2 className="mt-8">Non-Estimable EM Means</h2>
 
                 <p>
-                    EMM yang tidak dapat diestimasi terjadi ketika vektor-L
+                    EM Mean yang tidak dapat diestimasi terjadi ketika vektor-L
                     berisi semua nol, yang berarti kombinasi level tersebut
                     tidak dapat dihitung secara unik dari data.
                 </p>
@@ -414,7 +415,7 @@ export const EMMeans: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
-                            EMM Signifikan
+                            EM Mean Signifikan
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
                             <li>• CI tidak mengandung 0</li>
@@ -425,7 +426,7 @@ export const EMMeans: React.FC = () => {
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">
-                            EMM Non-Estimable
+                            EM Mean Non-Estimable
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
                             <li>• Ditampilkan sebagai NaN</li>
@@ -460,7 +461,9 @@ export const EMMeans: React.FC = () => {
                 <h2 className="mt-8">Aplikasi Praktis</h2>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Kapan Menggunakan EMMs:</h4>
+                    <h4 className="font-bold mb-2">
+                        Kapan Menggunakan EM Means:
+                    </h4>
                     <ul className="text-sm text-gray-600 space-y-1">
                         <li>
                             • <strong>Desain tidak seimbang:</strong> Ketika
@@ -488,12 +491,12 @@ export const EMMeans: React.FC = () => {
                 <h2 className="mt-8">File Terkait</h2>
                 <ul>
                     <li>
-                        <code>rust/src/stats/emmeans.rs</code> - Implementasi
-                        perhitungan EMMs
+                        <code>rust/src/stats/EM Meaneans.rs</code> -
+                        Implementasi perhitungan EM Means
                     </li>
                     <li>
                         <code>rust/src/models/result.rs</code> - Struktur hasil
-                        EMMs
+                        EM Means
                     </li>
                     <li>
                         <code>rust/src/stats/core.rs</code> - Fungsi bantu

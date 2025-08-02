@@ -310,11 +310,6 @@ export const ParameterEstimates: React.FC = () => {
                         <code>rust/src/models/result.rs</code> - Struktur hasil
                         parameter estimates
                     </li>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/dialogs/
-                        </code>
-                    </li>
                 </ul>
             </div>
         </HelpContentWrapper>
