@@ -107,62 +107,6 @@ export const DesignMatrix: React.FC = () => {
                     </ol>
                 </div>
 
-                <h3>Komponen Design Matrix</h3>
-                <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">
-                        Struktur DesignMatrixInfo:
-                    </h4>
-                    <div className="text-sm font-mono space-y-2">
-                        <div>
-                            <strong>x:</strong> Matriks desain (n × p)
-                        </div>
-                        <div>
-                            <strong>y:</strong> Vektor respons (n × 1)
-                        </div>
-                        <div>
-                            <strong>w:</strong> Vektor bobot opsional (n × 1)
-                        </div>
-                        <div>
-                            <strong>n_samples:</strong> Jumlah sampel efektif
-                        </div>
-                        <div>
-                            <strong>p_parameters:</strong> Jumlah parameter
-                            dalam model
-                        </div>
-                        <div>
-                            <strong>r_x_rank:</strong> Rank dari matriks desain
-                        </div>
-                        <div>
-                            <strong>term_column_indices:</strong> Peta indeks
-                            kolom untuk setiap term
-                        </div>
-                        <div>
-                            <strong>intercept_column:</strong> Indeks kolom
-                            intercept (jika ada)
-                        </div>
-                        <div>
-                            <strong>term_names:</strong> Nama-nama term dalam
-                            model
-                        </div>
-                        <div>
-                            <strong>case_indices_to_keep:</strong> Indeks kasus
-                            yang digunakan
-                        </div>
-                        <div>
-                            <strong>fixed_factor_indices:</strong> Peta indeks
-                            untuk faktor tetap
-                        </div>
-                        <div>
-                            <strong>random_factor_indices:</strong> Peta indeks
-                            untuk faktor acak
-                        </div>
-                        <div>
-                            <strong>covariate_indices:</strong> Peta indeks
-                            untuk kovariat
-                        </div>
-                    </div>
-                </div>
-
                 <h3>Jenis Term dalam Model</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -447,66 +391,6 @@ export const DesignMatrix: React.FC = () => {
                     <p className="mt-2 text-sm text-gray-600">
                         Estimasi varians error
                     </p>
-                </div>
-
-                <h2 className="mt-8">Implementasi dalam Statify</h2>
-
-                <div className="bg-blue-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-blue-800 mb-2">
-                        Fungsi-fungsi Utama:
-                    </h4>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                        <li>
-                            <strong>create_design_response_weights:</strong>{" "}
-                            Membuat matriks desain dan vektor respons
-                        </li>
-                        <li>
-                            <strong>create_cross_product_matrix:</strong>{" "}
-                            Membuat matriks Z'WZ
-                        </li>
-                        <li>
-                            <strong>perform_sweep_and_extract_results:</strong>{" "}
-                            Melakukan operasi sweep dan mengekstrak hasil
-                        </li>
-                        <li>
-                            <strong>create_groups_from_design_matrix:</strong>{" "}
-                            Membuat grup untuk Levene's test
-                        </li>
-                    </ul>
-                </div>
-
-                <h3>Struktur SweptMatrixInfo</h3>
-                <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">
-                        Hasil dari perform_sweep_and_extract_results:
-                    </h4>
-                    <div className="text-sm font-mono space-y-2">
-                        <div>
-                            <strong>g_inv:</strong> Matriks G⁻¹ (generalized
-                            inverse)
-                        </div>
-                        <div>
-                            <strong>beta_hat:</strong> Vektor estimasi parameter
-                            β̂
-                        </div>
-                        <div>
-                            <strong>s_rss:</strong> Sum of Squares Error (SSE)
-                        </div>
-                    </div>
-                </div>
-
-                <h3>Optimasi Implementasi</h3>
-                <div className="bg-yellow-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-yellow-800 mb-2">
-                        Fitur Optimasi:
-                    </h4>
-                    <ul className="text-sm text-yellow-700 space-y-1">
-                        <li>• Pre-caching data untuk menghindari re-reading</li>
-                        <li>• Parallel processing untuk perhitungan besar</li>
-                        <li>• Deteksi kolinearitas otomatis</li>
-                        <li>• Penanganan matriks singular</li>
-                        <li>• Validasi dimensi matriks</li>
-                    </ul>
                 </div>
 
                 <h2 className="mt-8">Aplikasi Praktis</h2>

@@ -418,36 +418,6 @@ export const SumOfSquares: React.FC = () => {
                     </table>
                 </div>
 
-                <h2 className="mt-8">Implementasi dalam Statify</h2>
-
-                <div className="bg-blue-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-blue-800 mb-2">
-                        Fungsi-fungsi Utama:
-                    </h4>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                        <li>
-                            <strong>calculate_ss_for_term:</strong> Fungsi inti
-                            untuk menghitung SS berdasarkan matriks L
-                        </li>
-                        <li>
-                            <strong>calculate_type_i_ss:</strong> Implementasi
-                            Type I SS
-                        </li>
-                        <li>
-                            <strong>calculate_type_ii_ss:</strong> Implementasi
-                            Type II SS
-                        </li>
-                        <li>
-                            <strong>calculate_type_iii_ss:</strong> Implementasi
-                            Type III SS
-                        </li>
-                        <li>
-                            <strong>calculate_type_iv_ss:</strong> Implementasi
-                            Type IV SS
-                        </li>
-                    </ul>
-                </div>
-
                 <h3>Algoritma Perhitungan SS</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold mb-2">
@@ -470,39 +440,6 @@ export const SumOfSquares: React.FC = () => {
                             7. Pastikan SS ≥ 0 (ambil nilai maksimal dengan 0)
                         </li>
                     </ol>
-                </div>
-
-                <h3>Konstruksi Matriks Hipotesis</h3>
-                <div className="bg-yellow-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-yellow-800 mb-2">
-                        Fungsi Konstruksi L-Matrix:
-                    </h4>
-                    <ul className="text-sm text-yellow-700 space-y-1">
-                        <li>
-                            <strong>construct_type_i_l_matrix:</strong>{" "}
-                            Membangun L untuk Type I SS
-                        </li>
-                        <li>
-                            <strong>construct_type_ii_l_matrix:</strong>{" "}
-                            Membangun L untuk Type II SS
-                        </li>
-                        <li>
-                            <strong>construct_type_iii_l_matrix:</strong>{" "}
-                            Membangun L untuk Type III SS
-                        </li>
-                        <li>
-                            <strong>construct_type_iv_l_matrix:</strong>{" "}
-                            Membangun L untuk Type IV SS
-                        </li>
-                        <li>
-                            <strong>sweep_matrix_on_columns:</strong> Operator
-                            SWEEP untuk Type I
-                        </li>
-                        <li>
-                            <strong>gram_schmidt_orthogonalization:</strong>{" "}
-                            Ortogonalisasi baris
-                        </li>
-                    </ul>
                 </div>
 
                 <h2 className="mt-8">Degrees of Freedom</h2>

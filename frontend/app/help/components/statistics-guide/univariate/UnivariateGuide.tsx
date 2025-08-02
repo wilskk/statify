@@ -12,7 +12,7 @@ import {
 export const UnivariateGuide: React.FC = () => {
     return (
         <HelpContentWrapper
-            title="GLM Univariate – Panduan Lengkap"
+            title="GLM Univariate"
             description="Analisis General Linear Model (GLM) Univariate untuk regresi, ANOVA, dan ANCOVA dengan rumus matematika lengkap."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
@@ -369,16 +369,6 @@ export const UnivariateGuide: React.FC = () => {
 
                 <h2 className="mt-8">File Terkait</h2>
                 <ul>
-                    <li>
-                        <code>
-                            public/workers/GLMUnivariate/glm-univariate.worker.js
-                        </code>
-                    </li>
-                    <li>
-                        <code>
-                            public/workers/GLMUnivariate/libs/glm-calculator.js
-                        </code>
-                    </li>
                     <li>
                         <code>
                             components/Modals/Analyze/general-linear-model/univariate/

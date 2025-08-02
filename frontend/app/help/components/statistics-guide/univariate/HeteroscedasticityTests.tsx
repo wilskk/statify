@@ -224,7 +224,7 @@ export const HeteroscedasticityTests: React.FC = () => {
                         <li>• LM ~ χ²(df) di bawah H₀</li>
                         <li>• p-value = P(χ²(df) {">"} LM)</li>
                         <li>
-                            • p {">"} 0.05: Tolak H₀, ada heteroskedastisitas
+                            • p {"<"} 0.05: Tolak H₀, ada heteroskedastisitas
                         </li>
                         <li>• p ≥ 0.05: Gagal tolak H₀, homoskedastisitas</li>
                     </div>
@@ -340,66 +340,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                         <li>• F ~ F(df₁, df₂) di bawah H₀</li>
                         <li>• p-value = P(F(df₁, df₂) {">"} F_observed)</li>
                         <li>
-                            • p {">"} 0.05: Tolak H₀, ada heteroskedastisitas
+                            • p {"<"} 0.05: Tolak H₀, ada heteroskedastisitas
                         </li>
                         <li>• p ≥ 0.05: Gagal tolak H₀, homoskedastisitas</li>
                     </div>
-                </div>
-
-                <h2 className="mt-8">Implementasi dalam Statify</h2>
-
-                <div className="bg-blue-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-blue-800 mb-2">
-                        Fungsi-fungsi Utama:
-                    </h4>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                        <li>
-                            <strong>calculate_heteroscedasticity_tests:</strong>{" "}
-                            Fungsi utama orkestrasi
-                        </li>
-                        <li>
-                            <strong>run_simple_ols:</strong> Regresi OLS
-                            menggunakan dekomposisi QR
-                        </li>
-                        <li>
-                            <strong>create_white_aux_matrix:</strong> Membuat
-                            matriks pembantu White
-                        </li>
-                        <li>
-                            <strong>create_predicted_aux_matrix:</strong>{" "}
-                            Membuat matriks pembantu BP
-                        </li>
-                        <li>
-                            <strong>calculate_white_test:</strong> Implementasi
-                            White test
-                        </li>
-                        <li>
-                            <strong>calculate_bp_test:</strong> Implementasi
-                            Breusch-Pagan test
-                        </li>
-                        <li>
-                            <strong>calculate_modified_bp_test:</strong>{" "}
-                            Implementasi Modified BP
-                        </li>
-                        <li>
-                            <strong>calculate_f_test:</strong> Implementasi
-                            F-test
-                        </li>
-                    </ul>
-                </div>
-
-                <h3>Optimasi Implementasi</h3>
-                <div className="bg-yellow-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-yellow-800 mb-2">
-                        Fitur Optimasi:
-                    </h4>
-                    <ul className="text-sm text-yellow-700 space-y-1">
-                        <li>• Dekomposisi QR untuk stabilitas numerik</li>
-                        <li>• Parallel processing untuk interaksi</li>
-                        <li>• Deteksi matriks singular</li>
-                        <li>• Penanganan kasus khusus</li>
-                        <li>• Validasi dimensi matriks</li>
-                    </ul>
                 </div>
 
                 <h2 className="mt-8">Interpretasi Hasil</h2>
@@ -419,7 +363,7 @@ export const HeteroscedasticityTests: React.FC = () => {
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">
-                            p-value {">"} 0.05
+                            p-value {"<"} 0.05
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
                             <li>• Menolak H₀</li>
