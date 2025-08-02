@@ -1,0 +1,580 @@
+# Page snapshot
+
+```yaml
+- main:
+  - navigation:
+    - menubar:
+      - menuitem "File"
+      - menuitem "Edit"
+      - menuitem "Data"
+      - menuitem "Transform"
+      - menuitem "Analyze"
+      - menuitem "Graphs"
+      - menuitem "Help"
+    - text: Statify
+  - button "Open Data":
+    - img
+  - button "Save Document":
+    - img
+  - button "Print":
+    - img
+  - button "Undo":
+    - img
+  - button "Redo":
+    - img
+  - button "Locate":
+    - img
+  - button "Variable":
+    - img
+  - button "Search":
+    - img
+  - button "Auto Width":
+    - img
+  - button "Toggle View":
+    - img
+  - text: ✓ All changes saved
+  - main:
+    - treegrid:
+      - textbox "Focus catcher"
+      - rowgroup:
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+        - row:
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+          - gridcell
+      - rowgroup:
+        - row "var var var var var var var var var var var var var var var":
+          - row
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+          - columnheader "var"
+      - rowgroup
+      - rowgroup:
+        - row "1":
+          - rowheader "1"
+        - row "2":
+          - rowheader "2"
+        - row "3":
+          - rowheader "3"
+        - row "4":
+          - rowheader "4"
+        - row "5":
+          - rowheader "5"
+        - row "6":
+          - rowheader "6"
+        - row "7":
+          - rowheader "7"
+        - row "8":
+          - rowheader "8"
+        - row "9":
+          - rowheader "9"
+        - row "10":
+          - rowheader "10"
+        - row "11":
+          - rowheader "11"
+        - row "12":
+          - rowheader "12"
+        - row "13":
+          - rowheader "13"
+        - row "14":
+          - rowheader "14"
+        - row "15":
+          - rowheader "15"
+        - row "16":
+          - rowheader "16"
+        - row "17":
+          - rowheader "17"
+        - row "18":
+          - rowheader "18"
+        - row "19":
+          - rowheader "19"
+        - row "20":
+          - rowheader "20"
+        - row "21":
+          - rowheader "21"
+        - row "22":
+          - rowheader "22"
+        - row "23":
+          - rowheader "23"
+        - row "24":
+          - rowheader "24"
+        - row "25":
+          - rowheader "25"
+        - row "26":
+          - rowheader "26"
+        - row "27":
+          - rowheader "27"
+      - rowgroup:
+        - row:
+          - row
+      - rowgroup
+      - textbox "Focus catcher"
+    - separator:
+      - img
+    - heading "Import CSV" [level=2]
+    - button "Close":
+      - img
+    - img
+    - heading "Import CSV File" [level=3]
+    - paragraph: Select a CSV file (.csv) to import data.
+    - img
+    - paragraph: Click to select a CSV file
+    - paragraph: or drag and drop here
+    - button "Cancel"
+    - button "Continue" [disabled]
+  - button "Data":
+    - img
+    - text: Data
+  - button "Variable":
+    - img
+    - text: Variable
+  - button "Result":
+    - img
+    - text: Result
+  - text: ✓ All changes saved
+  - region "Notifications (F8)":
+    - list
+- region "Notifications alt+T"
+- alert
+- button "Open Next.js Dev Tools":
+  - img
+```
