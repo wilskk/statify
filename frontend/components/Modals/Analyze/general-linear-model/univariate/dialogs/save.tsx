@@ -14,6 +14,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { CheckedState } from "@radix-ui/react-checkbox";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { saveTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateSave = ({
     isSaveOpen,
@@ -23,6 +34,17 @@ export const UnivariateSave = ({
 }: UnivariateSaveProps) => {
     const [saveState, setSaveState] = useState<UnivariateSaveType>({ ...data });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(saveTourSteps);
 
     useEffect(() => {
         if (isSaveOpen) {
@@ -67,6 +89,21 @@ export const UnivariateSave = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="flex flex-col gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
@@ -75,129 +112,135 @@ export const UnivariateSave = ({
                     <ResizablePanel defaultSize={40}>
                         <ResizablePanelGroup direction="horizontal">
                             <ResizablePanel defaultSize={50}>
-                                <ResizablePanelGroup direction="vertical">
-                                    <ResizablePanel defaultSize={60}>
-                                        <div className="flex flex-col gap-2 p-2">
-                                            <Label className="font-bold">
-                                                Predicted Values
-                                            </Label>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="UnstandardizedPre"
-                                                    checked={
-                                                        saveState.UnstandardizedPre
-                                                    }
-                                                    onCheckedChange={(
-                                                        checked
-                                                    ) =>
-                                                        handleChange(
-                                                            "UnstandardizedPre",
+                                <div id="univariate-save-variables">
+                                    <ResizablePanelGroup direction="vertical">
+                                        <ResizablePanel defaultSize={60}>
+                                            <div className="flex flex-col gap-2 p-2">
+                                                <Label className="font-bold">
+                                                    Predicted Values
+                                                </Label>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="UnstandardizedPre"
+                                                        checked={
+                                                            saveState.UnstandardizedPre
+                                                        }
+                                                        onCheckedChange={(
                                                             checked
-                                                        )
-                                                    }
-                                                />
-                                                <label
-                                                    htmlFor="UnstandardizedPre"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                >
-                                                    Unstandardized
-                                                </label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="WeightedPre"
-                                                    checked={
-                                                        saveState.WeightedPre
-                                                    }
-                                                    onCheckedChange={(
-                                                        checked
-                                                    ) =>
-                                                        handleChange(
-                                                            "WeightedPre",
+                                                        ) =>
+                                                            handleChange(
+                                                                "UnstandardizedPre",
+                                                                checked
+                                                            )
+                                                        }
+                                                    />
+                                                    <label
+                                                        htmlFor="UnstandardizedPre"
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    >
+                                                        Unstandardized
+                                                    </label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="WeightedPre"
+                                                        checked={
+                                                            saveState.WeightedPre
+                                                        }
+                                                        onCheckedChange={(
                                                             checked
-                                                        )
-                                                    }
-                                                />
-                                                <label
-                                                    htmlFor="WeightedPre"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                >
-                                                    Weighted
-                                                </label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="StdStatistics"
-                                                    checked={
-                                                        saveState.StdStatistics
-                                                    }
-                                                    onCheckedChange={(
-                                                        checked
-                                                    ) =>
-                                                        handleChange(
-                                                            "StdStatistics",
+                                                        ) =>
+                                                            handleChange(
+                                                                "WeightedPre",
+                                                                checked
+                                                            )
+                                                        }
+                                                    />
+                                                    <label
+                                                        htmlFor="WeightedPre"
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    >
+                                                        Weighted
+                                                    </label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="StdStatistics"
+                                                        checked={
+                                                            saveState.StdStatistics
+                                                        }
+                                                        onCheckedChange={(
                                                             checked
-                                                        )
-                                                    }
-                                                />
-                                                <label
-                                                    htmlFor="StdStatistics"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                >
-                                                    Standard Errors
-                                                </label>
+                                                        ) =>
+                                                            handleChange(
+                                                                "StdStatistics",
+                                                                checked
+                                                            )
+                                                        }
+                                                    />
+                                                    <label
+                                                        htmlFor="StdStatistics"
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    >
+                                                        Standard Errors
+                                                    </label>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </ResizablePanel>
-                                    <ResizableHandle />
-                                    <ResizablePanel defaultSize={40}>
-                                        <div className="flex flex-col gap-2 p-2">
-                                            <Label className="font-bold">
-                                                Diagnostics
-                                            </Label>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="CooksD"
-                                                    checked={saveState.CooksD}
-                                                    onCheckedChange={(
-                                                        checked
-                                                    ) =>
-                                                        handleChange(
-                                                            "CooksD",
+                                        </ResizablePanel>
+                                        <ResizableHandle />
+                                        <ResizablePanel defaultSize={40}>
+                                            <div className="flex flex-col gap-2 p-2">
+                                                <Label className="font-bold">
+                                                    Diagnostics
+                                                </Label>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="CooksD"
+                                                        checked={
+                                                            saveState.CooksD
+                                                        }
+                                                        onCheckedChange={(
                                                             checked
-                                                        )
-                                                    }
-                                                />
-                                                <label
-                                                    htmlFor="CooksD"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                >
-                                                    Cook&apos;s Distances
-                                                </label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="Leverage"
-                                                    checked={saveState.Leverage}
-                                                    onCheckedChange={(
-                                                        checked
-                                                    ) =>
-                                                        handleChange(
-                                                            "Leverage",
+                                                        ) =>
+                                                            handleChange(
+                                                                "CooksD",
+                                                                checked
+                                                            )
+                                                        }
+                                                    />
+                                                    <label
+                                                        htmlFor="CooksD"
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    >
+                                                        Cook&apos;s Distances
+                                                    </label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="Leverage"
+                                                        checked={
+                                                            saveState.Leverage
+                                                        }
+                                                        onCheckedChange={(
                                                             checked
-                                                        )
-                                                    }
-                                                />
-                                                <label
-                                                    htmlFor="Leverage"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                >
-                                                    Leverage Values
-                                                </label>
+                                                        ) =>
+                                                            handleChange(
+                                                                "Leverage",
+                                                                checked
+                                                            )
+                                                        }
+                                                    />
+                                                    <label
+                                                        htmlFor="Leverage"
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    >
+                                                        Leverage Values
+                                                    </label>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </ResizablePanel>
-                                </ResizablePanelGroup>
+                                        </ResizablePanel>
+                                    </ResizablePanelGroup>
+                                </div>
                             </ResizablePanel>
                             <ResizableHandle />
                             <ResizablePanel defaultSize={50}>
@@ -303,7 +346,10 @@ export const UnivariateSave = ({
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={60}>
-                        <div className="flex flex-col gap-4 p-2">
+                        <div
+                            id="univariate-save-coeff-stats"
+                            className="flex flex-col gap-4 p-2"
+                        >
                             <Label className="font-bold">
                                 Coefficient Statistics
                             </Label>
@@ -437,18 +483,23 @@ export const UnivariateSave = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -460,6 +511,7 @@ export const UnivariateSave = ({
                         Cancel
                     </Button>
                     <Button
+                        id="univariate-save-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

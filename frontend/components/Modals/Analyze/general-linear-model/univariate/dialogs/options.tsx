@@ -15,6 +15,17 @@ import { Input } from "@/components/ui/input";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { optionsTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateOptions = ({
     isOptionsOpen,
@@ -26,6 +37,17 @@ export const UnivariateOptions = ({
         ...data,
     });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(optionsTourSteps);
 
     useEffect(() => {
         if (isOptionsOpen) {
@@ -73,13 +95,31 @@ export const UnivariateOptions = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="flex flex-col gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
                     className="w-full min-h-[450px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={40}>
-                        <div className="flex flex-col gap-2 p-2">
+                        <div
+                            id="univariate-options-display"
+                            className="flex flex-col gap-2 p-2"
+                        >
                             <Label className="font-bold">Display</Label>
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="flex flex-col gap-2">
@@ -272,7 +312,10 @@ export const UnivariateOptions = ({
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={22}>
-                        <div className="flex flex-col gap-2 p-2">
+                        <div
+                            id="univariate-options-heteroscedasticity"
+                            className="flex flex-col gap-2 p-2"
+                        >
                             <Label className="font-bold">
                                 Heteroscedasticity Tests
                             </Label>
@@ -357,7 +400,10 @@ export const UnivariateOptions = ({
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={38}>
-                        <div className="flex flex-col gap-2 p-2">
+                        <div
+                            id="univariate-options-robust-std-err"
+                            className="flex flex-col gap-2 p-2"
+                        >
                             <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="ParamEstRobStdErr"
@@ -419,7 +465,10 @@ export const UnivariateOptions = ({
                         </div>
                     </ResizablePanel>
                 </ResizablePanelGroup>
-                <div className="flex items-center space-x-2">
+                <div
+                    id="univariate-options-sig-level"
+                    className="flex items-center space-x-2"
+                >
                     <Label className="w-[150px]">Significance Level:</Label>
                     <div className="w-[75px]">
                         <Input
@@ -438,18 +487,23 @@ export const UnivariateOptions = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -461,6 +515,7 @@ export const UnivariateOptions = ({
                         Cancel
                     </Button>
                     <Button
+                        id="univariate-options-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

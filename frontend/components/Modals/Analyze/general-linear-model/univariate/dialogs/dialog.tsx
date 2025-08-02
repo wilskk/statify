@@ -15,6 +15,17 @@ import {
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
 import { useModal } from "@/hooks/useModal";
 import { toast } from "sonner";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { univariateTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateDialog = ({
     isMainOpen,
@@ -35,6 +46,17 @@ export const UnivariateDialog = ({
 }: UnivariateDialogProps) => {
     const [mainState, setMainState] = useState<UnivariateMainType>({ ...data });
     const { closeModal } = useModal();
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(univariateTourSteps);
 
     const [availableVars, setAvailableVars] = useState<Variable[]>([]);
     const [depVar, setDepVar] = useState<Variable[]>([]);
@@ -149,24 +171,28 @@ export const UnivariateDialog = ({
                 variables: depVar,
                 height: "auto",
                 maxItems: 1,
+                containerId: "univariate-dependent-variable",
             },
             {
                 id: "FixFactor",
                 title: "Fixed Factor(s):",
                 variables: fixFactor,
                 height: "100px",
+                containerId: "univariate-fixed-factors",
             },
             {
                 id: "RandFactor",
                 title: "Random Factor(s):",
                 variables: randFactor,
                 height: "100px",
+                containerId: "univariate-random-factors",
             },
             {
                 id: "Covar",
                 title: "Covariate(s):",
                 variables: covar,
                 height: "100px",
+                containerId: "univariate-covariates",
             },
             {
                 id: "WlsWeight",
@@ -174,6 +200,7 @@ export const UnivariateDialog = ({
                 variables: wlsWeight,
                 height: "auto",
                 maxItems: 1,
+                containerId: "univariate-wls-weight",
             },
         ],
         [depVar, fixFactor, randFactor, covar, wlsWeight]
@@ -265,13 +292,31 @@ export const UnivariateDialog = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="horizontal"
                     className="min-h-[400px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={75}>
-                        <div className="p-2 h-full">
+                        <div
+                            id="univariate-available-variables"
+                            className="p-2 h-full"
+                        >
                             <VariableListManager
                                 availableVariables={availableVars}
                                 targetLists={targetListsConfig}
@@ -355,18 +400,23 @@ export const UnivariateDialog = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -385,7 +435,11 @@ export const UnivariateDialog = ({
                     >
                         Cancel
                     </Button>
-                    <Button type="button" onClick={handleContinue}>
+                    <Button
+                        id="univariate-ok-button"
+                        type="button"
+                        onClick={handleContinue}
+                    >
                         OK
                     </Button>
                 </div>
