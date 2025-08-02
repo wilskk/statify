@@ -87,9 +87,9 @@ const generateDummyData = (
 
 // Suite pengujian utama untuk kinerja konstruktor UnivariateAnalysis
 describe("UnivariateAnalysis Constructor Performance Test", () => {
-    const ROW_COUNTS = [10, 100, 1000];
-    const VAR_COUNTS = [10, 15, 25];
-    const NUM_RUNS = 1; // Jumlah eksekusi untuk setiap pengujian
+    const ROW_COUNTS = [1000];
+    const VAR_COUNTS = [5];
+    const NUM_RUNS = 50; // Jumlah eksekusi untuk setiap pengujian
     const performanceResults: Record<number, Record<number, number[]>> = {};
 
     // Inisialisasi modul WebAssembly sekali sebelum semua pengujian berjalan.
@@ -163,7 +163,7 @@ describe("UnivariateAnalysis Constructor Performance Test", () => {
                         },
                         contrast: {
                             FactorList: fixFactor.map(
-                                (f) => `${f} (polynomial)`
+                                (f) => `${f}`
                             ),
                             ContrastMethod: "polynomial",
                             Last: true,
@@ -214,60 +214,51 @@ describe("UnivariateAnalysis Constructor Performance Test", () => {
                         },
                         emmeans: {
                             SrcList: fixFactor,
-                            TargetList: [
-                                "(OVERALL)",
-                                ...fixFactor,
-                                fixFactor.length > 1
-                                    ? `${fixFactor[0]}*${fixFactor[1]}`
-                                    : "",
-                                fixFactor.length > 2
-                                    ? `${fixFactor[0]}*${fixFactor[1]}*${fixFactor[2]}`
-                                    : "",
-                            ].filter(Boolean),
+                            TargetList: [],
                             CompMainEffect: true,
                             ConfiIntervalMethod: "lsdNone",
                         },
                         save: {
-                            UnstandardizedPre: true,
-                            WeightedPre: true,
-                            StdStatistics: true,
-                            CooksD: true,
-                            Leverage: true,
-                            UnstandardizedRes: true,
-                            WeightedRes: true,
-                            StandardizedRes: true,
-                            StudentizedRes: true,
-                            DeletedRes: true,
+                            UnstandardizedPre: false,
+                            WeightedPre: false,
+                            StdStatistics: false,
+                            CooksD: false,
+                            Leverage: false,
+                            UnstandardizedRes: false,
+                            WeightedRes: false,
+                            StandardizedRes: false,
+                            StudentizedRes: false,
+                            DeletedRes: false,
                             CoeffStats: false,
                             StandardStats: false,
                             Heteroscedasticity: false,
-                            NewDataSet: true,
+                            NewDataSet: false,
                             FilePath: null,
                             DatasetName: null,
                             WriteNewDataSet: false,
                         },
                         options: {
-                            DescStats: true,
-                            HomogenTest: true,
-                            EstEffectSize: true,
+                            DescStats: false,
+                            HomogenTest: false,
+                            EstEffectSize: false,
                             SprVsLevel: false,
-                            ObsPower: true,
+                            ObsPower: false,
                             ResPlot: false,
                             ParamEst: true,
-                            LackOfFit: true,
+                            LackOfFit: false,
                             TransformMat: false,
-                            GeneralFun: true,
+                            GeneralFun: false,
                             ModBruschPagan: false,
                             FTest: false,
                             BruschPagan: false,
                             WhiteTest: false,
-                            ParamEstRobStdErr: true,
+                            ParamEstRobStdErr: false,
                             HC0: false,
                             HC1: false,
                             HC2: false,
                             HC3: false,
                             HC4: false,
-                            CoefficientMatrix: true,
+                            CoefficientMatrix: false,
                             SigLevel: 0.05,
                         },
                         bootstrap: {

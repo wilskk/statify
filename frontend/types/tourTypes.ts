@@ -1,5 +1,5 @@
-export type PopupPosition = 'top' | 'bottom';
-export type HorizontalPosition = 'left' | 'right';
+export type PopupPosition = "top" | "bottom";
+export type HorizontalPosition = "left" | "right";
 
 export type TourStep = {
     title: string;
@@ -10,4 +10,4 @@ export type TourStep = {
     position?: PopupPosition;
     horizontalPosition?: HorizontalPosition | null;
     icon: string;
-}; 
+};

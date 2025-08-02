@@ -1,6 +1,11 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { HorizontalPosition } from '@/types/tourTypes';
-import { TabControlProps, UseTourGuideResult, TourStep, TabType } from '../types';
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { HorizontalPosition } from "@/types/tourTypes";
+import {
+    TabControlProps,
+    UseTourGuideResult,
+    TourStep,
+    TabType,
+} from "../types";
 
 const TIMEOUT_DELAY = 200;
 
@@ -11,22 +16,35 @@ export const useTourGuide = (
 ): UseTourGuideResult => {
     const [tourActive, setTourActive] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
-    const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
+    const [targetElements, setTargetElements] = useState<
+        Record<string, HTMLElement | null>
+    >({});
 
     const lastTabRef = useRef<string | null>(null);
     const timeoutRef = useRef<number | undefined>(undefined);
 
-    const tourSteps = useMemo(() => initialSteps.map(step => ({
-        ...step,
-        horizontalPosition: containerType === "sidebar"
-            ? "left" as HorizontalPosition
-            : step.defaultHorizontalPosition as HorizontalPosition | null,
-        position: containerType === "sidebar" ? undefined : step.defaultPosition,
-    })), [initialSteps, containerType]);
+    const tourSteps = useMemo(
+        () =>
+            initialSteps.map((step) => ({
+                ...step,
+                horizontalPosition:
+                    containerType === "sidebar"
+                        ? ("left" as HorizontalPosition)
+                        : (step.defaultHorizontalPosition as HorizontalPosition | null),
+                position:
+                    containerType === "sidebar"
+                        ? undefined
+                        : step.defaultPosition,
+            })),
+        [initialSteps, containerType]
+    );
 
-    const findTargetElement = useCallback((stepId: string): HTMLElement | null => {
-        return document.getElementById(stepId);
-    }, []);
+    const findTargetElement = useCallback(
+        (stepId: string): HTMLElement | null => {
+            return document.getElementById(stepId);
+        },
+        []
+    );
 
     const clearTimeout = useCallback(() => {
         if (timeoutRef.current !== undefined) {
@@ -38,26 +56,39 @@ export const useTourGuide = (
     const refreshTargetElements = useCallback(() => {
         if (!tourActive) return;
         const elements: Record<string, HTMLElement | null> = {};
-        tourSteps.forEach(step => {
+        tourSteps.forEach((step) => {
             elements[step.targetId] = findTargetElement(step.targetId);
         });
         setTargetElements(elements);
     }, [tourActive, tourSteps, findTargetElement]);
 
-    const getRequiredTabForStep = useCallback((stepIndex: number): string | undefined => {
-        const step = tourSteps[stepIndex];
-        return step?.requiredTab;
-    }, [tourSteps]);
+    const getRequiredTabForStep = useCallback(
+        (stepIndex: number): string | undefined => {
+            const step = tourSteps[stepIndex];
+            return step?.requiredTab;
+        },
+        [tourSteps]
+    );
 
-    const switchTabIfNeeded = useCallback((requiredTab?: string | TabType) => {
-        if (!tabControl || !requiredTab || tabControl.currentActiveTab === requiredTab) {
-            return;
-        }
-        tabControl.setActiveTab(requiredTab as TabType);
-        lastTabRef.current = requiredTab;
-        clearTimeout();
-        timeoutRef.current = window.setTimeout(refreshTargetElements, TIMEOUT_DELAY);
-    }, [tabControl, refreshTargetElements, clearTimeout]);
+    const switchTabIfNeeded = useCallback(
+        (requiredTab?: string | TabType) => {
+            if (
+                !tabControl ||
+                !requiredTab ||
+                tabControl.currentActiveTab === requiredTab
+            ) {
+                return;
+            }
+            tabControl.setActiveTab(requiredTab as TabType);
+            lastTabRef.current = requiredTab;
+            clearTimeout();
+            timeoutRef.current = window.setTimeout(
+                refreshTargetElements,
+                TIMEOUT_DELAY
+            );
+        },
+        [tabControl, refreshTargetElements, clearTimeout]
+    );
 
     const handleResize = useCallback(() => {
         if (tourActive) {
@@ -75,9 +106,9 @@ export const useTourGuide = (
     }, [getRequiredTabForStep, tabControl, switchTabIfNeeded]);
 
     const endTour = useCallback(() => {
-            setTourActive(false);
-            setCurrentStep(0);
-            clearTimeout();
+        setTourActive(false);
+        setCurrentStep(0);
+        clearTimeout();
     }, [clearTimeout]);
 
     const nextStep = useCallback(() => {
@@ -105,18 +136,24 @@ export const useTourGuide = (
 
     const currentTargetElement = useMemo(() => {
         if (!tourActive) return null;
-            const currentStepData = tourSteps[currentStep];
-            return targetElements[currentStepData.targetId] ?? null;
+        const currentStepData = tourSteps[currentStep];
+        return targetElements[currentStepData.targetId] ?? null;
     }, [tourActive, tourSteps, currentStep, targetElements]);
 
     useEffect(() => {
         if (tourActive) {
-          refreshTargetElements();
-          const requiredTab = getRequiredTabForStep(currentStep);
-          switchTabIfNeeded(requiredTab);
+            refreshTargetElements();
+            const requiredTab = getRequiredTabForStep(currentStep);
+            switchTabIfNeeded(requiredTab);
         }
-      }, [currentStep, tourActive, getRequiredTabForStep, switchTabIfNeeded, refreshTargetElements]);
-    
+    }, [
+        currentStep,
+        tourActive,
+        getRequiredTabForStep,
+        switchTabIfNeeded,
+        refreshTargetElements,
+    ]);
+
     useEffect(() => {
         window.addEventListener("resize", handleResize);
         return () => {
@@ -133,6 +170,6 @@ export const useTourGuide = (
         startTour,
         nextStep,
         prevStep,
-        endTour
+        endTour,
     };
 };

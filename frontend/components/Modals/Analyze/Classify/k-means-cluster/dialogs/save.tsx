@@ -6,6 +6,17 @@ import {
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { saveTourSteps } from "../hooks/tourConfig";
 
 export const KMeansClusterSave = ({
     isSaveOpen,
@@ -17,6 +28,17 @@ export const KMeansClusterSave = ({
         ...data,
     });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(saveTourSteps);
 
     useEffect(() => {
         if (isSaveOpen) {
@@ -45,7 +67,25 @@ export const KMeansClusterSave = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col items-start gap-2 p-4 flex-grow">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
+            <div
+                id="kmeans-save-variables-section"
+                className="flex flex-col items-start gap-2 p-4 flex-grow"
+            >
                 <div className="flex items-center space-x-2">
                     <Checkbox
                         id="ClusterMembership"
@@ -79,18 +119,23 @@ export const KMeansClusterSave = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1IuU3ZTKbKavWCXiBM9i4B4EA4g-BvjU-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -102,6 +147,7 @@ export const KMeansClusterSave = ({
                         Cancel
                     </Button>
                     <Button
+                        id="kmeans-save-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

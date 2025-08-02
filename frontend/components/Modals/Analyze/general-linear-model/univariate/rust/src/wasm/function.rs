@@ -14,9 +14,6 @@ pub fn run_analysis(
     error_collector: &mut ErrorCollector,
     logger: &mut FunctionLogger
 ) -> Result<Option<UnivariateResult>, JsValue> {
-    web_sys::console::log_1(&format!("data: {:?}", data).into());
-    web_sys::console::log_1(&format!("config: {:?}", config).into());
-
     // Langkah 1: Ringkasan pemrosesan dasar (selalu dieksekusi).
     // Fungsi ini memberikan informasi awal tentang data, seperti jumlah kasus yang valid dan hilang.
     logger.add_log("basic_processing_summary");

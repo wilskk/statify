@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
     ResizableHandle,
@@ -20,12 +22,21 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
 import { useModal } from "@/hooks/useModal";
 import { toast } from "sonner";
 import VariableListManager, {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
+import { TourPopup } from "@/components/Common/TourComponents";
 import type { Variable } from "@/types/Variable";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { dialogTourSteps } from "../hooks/tourConfig";
 
 export const KMeansClusterDialog = ({
     isMainOpen,
@@ -49,6 +60,29 @@ export const KMeansClusterDialog = ({
         id: string;
         source: string;
     } | null>(null);
+    const [openAccordion, setOpenAccordion] = useState<string | undefined>(
+        undefined
+    );
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(dialogTourSteps);
+
+    useEffect(() => {
+        if (tourActive) {
+            const currentTourStep = tourSteps[currentStep];
+            if (currentTourStep.targetId === "kmeans-number-of-clusters") {
+                setOpenAccordion("item-1");
+            }
+        }
+    }, [tourActive, currentStep, tourSteps]);
 
     const { closeModal } = useModal();
 
@@ -130,6 +164,7 @@ export const KMeansClusterDialog = ({
                 title: "Variables:",
                 variables: targetVars,
                 height: "225px",
+                containerId: "kmeans-analysis-variables",
             },
             {
                 id: "CaseTarget",
@@ -137,6 +172,7 @@ export const KMeansClusterDialog = ({
                 variables: caseVars,
                 height: "auto",
                 maxItems: 1,
+                containerId: "kmeans-label-cases-by",
             },
         ],
         [targetVars, caseVars]
@@ -246,13 +282,31 @@ export const KMeansClusterDialog = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="flex flex-col items-center gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="horizontal"
                     className="min-h-[350px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={75}>
-                        <div className="p-2 h-full">
+                        <div
+                            id="kmeans-available-variables"
+                            className="p-2 h-full"
+                        >
                             <VariableListManager
                                 availableVariables={availableVars}
                                 targetLists={targetListsConfig}
@@ -296,7 +350,13 @@ export const KMeansClusterDialog = ({
                         </div>
                     </ResizablePanel>
                 </ResizablePanelGroup>
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion
+                    type="single"
+                    collapsible
+                    className="w-full"
+                    value={openAccordion}
+                    onValueChange={setOpenAccordion}
+                >
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="font-bold">
                             Cluster Centers
@@ -314,7 +374,7 @@ export const KMeansClusterDialog = ({
                                                 Number of Clusters:
                                             </Label>
                                             <Input
-                                                id="Cluster"
+                                                id="kmeans-number-of-clusters"
                                                 type="number"
                                                 placeholder=""
                                                 value={mainState.Cluster ?? 0}
@@ -560,18 +620,23 @@ export const KMeansClusterDialog = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1IuU3ZTKbKavWCXiBM9i4B4EA4g-BvjU-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -590,7 +655,11 @@ export const KMeansClusterDialog = ({
                     >
                         Cancel
                     </Button>
-                    <Button type="button" onClick={handleContinue}>
+                    <Button
+                        id="kmeans-ok-button"
+                        type="button"
+                        onClick={handleContinue}
+                    >
                         OK
                     </Button>
                 </div>
