@@ -269,8 +269,14 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
         }
     };
 
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const text = e.target.value;
+        onTextPaste(text);
+        setClipboardApiError(null);
+    };
+
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full" data-testid="import-clipboard-paste-step">
             <AnimatePresence>
                 {tourActive && (
                     <TourPopup
@@ -285,19 +291,19 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
                 )}
             </AnimatePresence>
 
-            <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
+            <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0" data-testid="paste-step-header">
                 <Clipboard size={18} className="mr-2.5 flex-shrink-0 text-primary" />
                 <div className="flex-grow overflow-hidden">
-                    <h3 className="font-semibold text-lg text-popover-foreground">
+                    <h3 className="font-semibold text-lg text-popover-foreground" data-testid="paste-step-title">
                         Import from Clipboard
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate" data-testid="paste-step-description">
                         Paste tabular data from clipboard to import into Statify
                     </p>
                 </div>
             </div>
 
-            <div className="p-6 flex-grow flex flex-col">
+            <div className="p-6 flex-grow flex flex-col" data-testid="paste-step-content">
                 <div className="mb-4">
                     <div id="paste-step-paste-button-wrapper" className="relative inline-block">
                         <Button 
@@ -305,6 +311,7 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
                             onClick={handlePasteButtonClick} 
                             className={cn("mb-3", tourActive && currentStep === 0 && "focus:ring-primary")}
                             disabled={isLoading}
+                            data-testid="paste-from-clipboard-button"
                         >
                             <Clipboard className="h-4 w-4 mr-2" />
                             Paste from Clipboard
@@ -313,7 +320,7 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
                     </div>
                     
                     {clipboardApiError && (
-                        <div className="flex items-center gap-2 mb-3 text-sm text-amber-500 dark:text-amber-400">
+                        <div className="flex items-center gap-2 mb-3 text-sm text-amber-500 dark:text-amber-400" data-testid="clipboard-error-message">
                             <AlertCircle size={16} className="flex-shrink-0" />
                             <span>{clipboardApiError}</span>
                         </div>
@@ -326,14 +333,16 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
                         className={cn(`w-full h-full min-h-[200px] font-mono text-sm`, error ? 'border-destructive' : '', tourActive && currentStep === 1 && "focus:ring-primary")}
                         placeholder="Paste your tabular data here..."
                         onPaste={handlePaste}
+                        onChange={handleTextChange}
                         disabled={isLoading}
                         value={pastedText || ''}
+                        data-testid="paste-textarea"
                     />
                     <ActiveElementHighlight active={tourActive && currentStep === 1} />
                 </div>
 
                 {error && (
-                    <div className="flex items-center gap-2 mt-3 text-sm text-destructive">
+                    <div className="flex items-center gap-2 mt-3 text-sm text-destructive" data-testid="paste-error-message">
                         <AlertCircle size={16} className="flex-shrink-0" />
                         <span>{error}</span>
                     </div>
@@ -341,32 +350,14 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                <div className="flex items-center text-muted-foreground">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={startTour}
-                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                >
-                                    <HelpCircle className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                                <p className="text-xs">Start feature tour</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0" data-testid="paste-step-footer">
                 <div>
                     <Button
                         variant="outline"
                         onClick={onClose}
                         disabled={isLoading}
                         className="mr-2"
+                        data-testid="paste-cancel-button"
                     >
                         Cancel
                     </Button>
@@ -375,6 +366,7 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
                             onClick={onContinue}
                             disabled={isLoading || !pastedText || pastedText.trim() === ''}
                             className={cn(tourActive && currentStep === 2 && "focus:ring-primary")}
+                            data-testid="paste-continue-button"
                         >
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Continue
@@ -385,4 +377,4 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
             </div>
         </div>
     );
-}; 
+};

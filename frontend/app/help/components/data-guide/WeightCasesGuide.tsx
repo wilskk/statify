@@ -1,91 +1,154 @@
 /* eslint-disable react/no-unescaped-entities */
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
+import { Scale, Settings, Eye } from 'lucide-react';
 
 const WeightCasesGuide = () => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Fitur Pembobotan Kasus</CardTitle>
-        <CardDescription>
-          Dokumen ini menjelaskan fungsionalitas fitur "Pembobotan Kasus", yang
-          memungkinkan pengguna untuk menerapkan bobot kasus ke dataset
-          berdasarkan nilai dari variabel numerik.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-lg">1. Fungsionalitas Dijelaskan</h3>
-          <ul className="list-disc list-inside ml-4">
-            <li>
-              <strong>Pembobotan berdasarkan Variabel</strong>: Pengguna dapat
-              memilih satu variabel numerik dari daftar variabel yang tersedia.
-              Nilai dari variabel ini akan digunakan untuk memboboti setiap
-              kasus.
-            </li>
-            <li>
-              <strong>Validasi Tipe</strong>: Dialog secara otomatis memfilter
-              daftar untuk hanya menampilkan variabel numerik sebagai kandidat
-              yang valid untuk pembobotan.
-            </li>
-            <li>
-              <strong>Pengecualian Kasus</strong>: Setiap kasus yang memiliki
-              nilai nol, negatif, atau hilang untuk variabel pembobotan yang
-              dipilih akan secara otomatis dikecualikan dari analisis yang
-              menggunakan bobot ini.
-            </li>
-            <li>
-              <strong>Status Global</strong>: Konfigurasi pembobotan adalah
-              pengaturan global. Dialog menampilkan variabel pembobotan yang
-              aktif saat ini, atau "Jangan boboti kasus" jika tidak ada yang
-              dipilih.
-            </li>
-            <li>
-              <strong>Menonaktifkan Pembobotan</strong>: Untuk mematikan
-              pembobotan, pengguna cukup menghapus variabel dari daftar "Boboti
-              kasus dengan" dan mengkonfirmasi dengan mengklik "OK".
-            </li>
-          </ul>
+  const sections = [
+    {
+      id: 'functionality',
+      title: 'Feature Overview',
+      description: 'Explanation of case weighting feature',
+      icon: Scale,
+      content: (
+        <div className="space-y-4">
+          <HelpCard title="Variable-Based Weighting" variant="feature">
+            <p className="text-sm">
+              You can select one numeric variable from the available list.
+              Values from this variable will be used to weight each case.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Type Validation" variant="feature">
+            <p className="text-sm">
+              The dialog automatically filters the list to show only numeric variables
+              as valid candidates for weighting.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Case Exclusions" variant="feature">
+            <p className="text-sm">
+              Any case with zero, negative, or missing values for the selected
+              weighting variable will automatically be excluded from analyses
+              using these weights.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Global Setting" variant="feature">
+            <p className="text-sm">
+              Weighting configuration is a global setting. The dialog displays
+              the currently active weighting variable, or "Do not weight cases"
+              if none is selected.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Disabling Weighting" variant="feature">
+            <p className="text-sm">
+              To turn off weighting, simply remove the variable from the
+              "Weight cases by" list and confirm by clicking "OK".
+            </p>
+          </HelpCard>
+          
+          <HelpAlert variant="info" title="Important Note">
+            <p className="text-sm mt-2">
+              Case weighting affects all statistical analyses performed after activation.
+            </p>
+          </HelpAlert>
         </div>
+      )
+    },
+    {
+      id: 'workflow',
+      title: 'Workflow',
+      description: 'Step-by-step feature usage',
+      icon: Settings,
+      content: (
+        <div className="space-y-4">
+          <HelpSection title="Step 1: Initialization">
+            <p className="text-sm">
+              The modal initializes, fetching the variable list and current weight status.
+            </p>
+          </HelpSection>
+          
+          <HelpSection title="Step 2: Display">
+            <p className="text-sm">
+              The UI renders the dialog with available variables and the currently
+              selected weight variable (if any).
+            </p>
+          </HelpSection>
+          
+          <HelpSection title="Step 3: Selection">
+            <p className="text-sm">
+              You move a numeric variable into the target "Weight cases by" list.
+            </p>
+          </HelpSection>
+          
+          <HelpSection title="Step 4: Confirmation">
+            <p className="text-sm">
+              You click "OK". This triggers saving the global weight status.
+            </p>
+          </HelpSection>
+          
+          <HelpSection title="Step 5: Global Update">
+            <p className="text-sm">
+              The global storage is updated with the new weight variable name
+              (or empty string if none selected).
+            </p>
+          </HelpSection>
+          
+          <HelpSection title="Step 6: Completion">
+            <p className="text-sm">
+              The dialog closes.
+            </p>
+          </HelpSection>
+          
+          <HelpAlert variant="success" title="Process Complete">
+            <p className="text-sm mt-2">
+              After completion, weighting will be active for all subsequent analyses.
+            </p>
+          </HelpAlert>
+        </div>
+      )
+    }
+  ];
 
-        <div>
-          <h3 className="font-semibold text-lg">2. Alur Kerja</h3>
-          <ol className="list-decimal list-inside ml-4">
-            <li>
-              <strong>Inisialisasi</strong>: Modal diinisialisasi, mengambil
-              daftar variabel dan status bobot saat ini.
-            </li>
-            <li>
-              <strong>Rendering</strong>: Komponen UI merender dialog dengan
-              variabel yang tersedia dan variabel bobot yang dipilih saat ini
-              (jika ada).
-            </li>
-            <li>
-              <strong>Pemilihan</strong>: Pengguna memindahkan variabel numerik
-              ke dalam daftar target "Boboti kasus dengan".
-            </li>
-            <li>
-              <strong>Konfirmasi</strong>: Pengguna mengklik "OK". Ini memicu
-              penyimpanan status bobot global.
-            </li>
-            <li>
-              <strong>Pembaruan Status Global</strong>: Status global di
-              penyimpanan diperbarui dengan nama variabel pembobotan baru (atau
-              string kosong jika tidak ada yang dipilih).
-            </li>
-            <li>
-              <strong>Pembersihan</strong>: Dialog ditutup.
-            </li>
-          </ol>
-        </div>
-      </CardContent>
-    </Card>
+
+  const tips = [
+    {
+      type: 'tip' as const,
+      title: 'Variable Validation',
+      content: 'Ensure the selected weighting variable is a valid numeric variable.'
+    },
+    {
+      type: 'warning' as const,
+      title: 'Invalid Values',
+      content: 'Cases with zero, negative, or missing values will be excluded from analysis.'
+    },
+    {
+      type: 'info' as const,
+      title: 'Global Setting',
+      content: 'Weighting is a global setting that affects all analyses.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Data Management', href: '/help/data-guide' },
+    { title: 'Statistical Analysis', href: '/help/statistics-guide' },
+    { title: 'Variable Types', href: '/help/data-guide/variable-types' }
+  ];
+
+  return (
+    <HelpGuideTemplate
+      title="Case Weighting Feature"
+      description="This guide explains the Case Weighting functionality, which allows you to apply case weights to your dataset based on values from a numeric variable"
+      category="Data Management"
+      lastUpdated="2024-01-15"
+      sections={sections}
+
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
 };
 
-export default WeightCasesGuide; 
+export default WeightCasesGuide;

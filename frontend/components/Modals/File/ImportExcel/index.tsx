@@ -50,15 +50,15 @@ export const ImportExcelModal: React.FC<ImportExcelProps> = ({
                 />
             );
         }
-        return <div className="p-6 flex-grow flex items-center justify-center">Loading configuration...</div>;
+        return <div className="p-6 flex-grow flex items-center justify-center" data-testid="import-excel-loading">Loading configuration...</div>;
     };
 
     return (
-        <div className="flex-grow overflow-y-auto flex flex-col h-full">
+        <div className="flex-grow overflow-y-auto flex flex-col h-full" data-testid="import-excel-modal">
             {renderContent()}
         </div>
     );
 };
 
 // Export the component with both names for backward compatibility
-export default ImportExcelModal; 
+export default ImportExcelModal;

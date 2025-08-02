@@ -96,9 +96,9 @@ const TransposeContent: React.FC<Omit<TransposeUIProps, 'containerType'>> = ({
                     {/* Help icon or other elements can go here */}
                 </div>
                 <div>
-                    <Button variant="outline" className="mr-2" onClick={handleReset}>Reset</Button>
-                    <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleOk}>OK</Button>
+                    <Button variant="outline" className="mr-2" onClick={handleReset} data-testid="transpose-reset-button">Reset</Button>
+                    <Button variant="outline" className="mr-2" onClick={onClose} data-testid="transpose-cancel-button">Cancel</Button>
+                    <Button onClick={handleOk} data-testid="transpose-ok-button">OK</Button>
                 </div>
             </div>
         </>
@@ -124,9 +124,9 @@ export const TransposeUI: React.FC<TransposeUIProps> = ({
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="max-w-md p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogContent className="max-w-md p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]" data-testid="transpose-dialog-content">
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-xl font-semibold">Transpose</DialogTitle>
+                    <DialogTitle className="text-xl font-semibold" data-testid="transpose-dialog-title">Transpose</DialogTitle>
                 </DialogHeader>
                 <div className="flex-grow flex flex-col overflow-hidden">
                     {content}

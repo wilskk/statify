@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExportExcelProps } from "./types";
@@ -46,7 +47,7 @@ export const ExportExcel: FC<ExportExcelProps> = ({
     }, [tourActive, tourSteps, currentStep]);
 
     return (
-        <div className="flex flex-col h-full">
+        <div data-testid="export-excel-modal" className="flex flex-col h-full">
             {/* Tour popup */}
             <AnimatePresence>
                 {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
@@ -62,56 +63,72 @@ export const ExportExcel: FC<ExportExcelProps> = ({
                 )}
             </AnimatePresence>
             
-            <div className="p-6 space-y-5 flex-grow overflow-y-auto">
-                {/* File Name */}
-                <div className="space-y-1.5 relative" id="excel-filename-wrapper">
-                    <Label htmlFor="excel-filename" className={cn(isStepActive("excel-filename-wrapper") && "text-primary font-medium")}>File Name</Label>
-                    <div className="relative">
-                        <Input
-                            id="excel-filename"
-                            value={exportOptions.filename}
-                            onChange={(e) => handleFilenameChange(e.target.value)}
-                            placeholder="Enter file name (e.g., excel_export)"
-                            disabled={isExporting}
-                            className={cn(isStepActive("excel-filename-wrapper") && "focus:ring-primary")}
-                        />
-                        <ActiveElementHighlight active={isStepActive("excel-filename-wrapper")} />
-                    </div>
-                </div>
+            <div data-testid="export-excel-content" className="p-6 space-y-5 flex-grow overflow-y-auto">
+                {/* File Settings */}
+                <Card data-testid="file-settings-card">
+                    <CardHeader className="pb-3">
+                        <CardTitle data-testid="file-settings-title" className="text-base">File Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* File Name */}
+                        <div className="space-y-1.5 relative" id="excel-filename-wrapper">
+                            <Label htmlFor="excel-filename" className={cn("text-sm font-medium", isStepActive("excel-filename-wrapper") && "text-primary")}>File Name</Label>
+                            <div className="relative">
+                                <Input
+                                    id="excel-filename"
+                                    data-testid="export-excel-filename"
+                                    value={exportOptions.filename}
+                                    onChange={(e) => handleFilenameChange(e.target.value)}
+                                    placeholder="Enter file name (e.g., excel_export)"
+                                    disabled={isExporting}
+                                    className={cn("pr-12", isStepActive("excel-filename-wrapper") && "focus:ring-primary")}
+                                />
+                                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
+                                    .xlsx
+                                </span>
+                                <ActiveElementHighlight active={isStepActive("excel-filename-wrapper")} />
+                            </div>
+                        </div>
 
-                {/* Format */}
-                <div className="space-y-1.5 relative" id="excel-format-wrapper">
-                    <Label htmlFor="excel-format" className={cn(isStepActive("excel-format-wrapper") && "text-primary font-medium")}>Format</Label>
-                    <div className="relative">
-                        <Select
-                            value={exportOptions.format}
-                            onValueChange={(value) => handleChange("format", value)}
-                            disabled={isExporting}
-                        >
-                            <SelectTrigger id="excel-format">
-                                <SelectValue placeholder="Select format" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {EXCEL_FORMATS.map((format) => (
-                                    <SelectItem key={format.value} value={format.value}>
-                                        {format.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <ActiveElementHighlight active={isStepActive("excel-format-wrapper")} />
-                    </div>
-                </div>
+                        {/* Format */}
+                        <div className="space-y-1.5 relative" id="excel-format-wrapper">
+                            <Label htmlFor="excel-format" className={cn("text-sm font-medium", isStepActive("excel-format-wrapper") && "text-primary")}>Format</Label>
+                            <div className="relative">
+                                <Select
+                                    data-testid="export-excel-format"
+                                    value={exportOptions.format}
+                                    onValueChange={(value) => handleChange("format", value)}
+                                    disabled={isExporting}
+                                >
+                                    <SelectTrigger id="excel-format">
+                                        <SelectValue placeholder="Select format" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {EXCEL_FORMATS.map((format) => (
+                                            <SelectItem key={format.value} value={format.value}>
+                                                {format.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <ActiveElementHighlight active={isStepActive("excel-format-wrapper")} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                {/* Options */}
-                <div className="space-y-3">
-                    <Label className="text-sm font-medium">Options</Label>
-                    <div className="grid gap-3 pl-1">
+                {/* Export Options */}
+                <Card data-testid="export-options-card">
+                    <CardHeader className="pb-3">
+                        <CardTitle data-testid="export-options-title" className="text-base">Export Options</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
                         {EXCEL_OPTIONS_CONFIG.map((option) => (
-                            <div key={option.id} id={`excel-${option.name}-wrapper`} className="flex items-start space-x-2 relative">
-                                <div className="relative mt-0.5">
+                            <div key={option.id} id={`excel-${option.name}-wrapper`} className="flex items-center space-x-2 relative">
+                                <div className="relative">
                                     <Checkbox
                                         id={option.id}
+                                        data-testid={`export-excel-${option.name}`}
                                         checked={exportOptions[option.name as keyof typeof exportOptions] as boolean}
                                         onCheckedChange={(checked) => 
                                             handleChange(option.name as keyof typeof exportOptions, Boolean(checked))
@@ -120,60 +137,47 @@ export const ExportExcel: FC<ExportExcelProps> = ({
                                     />
                                     <ActiveElementHighlight active={isStepActive(`excel-${option.name}-wrapper`)} />
                                 </div>
-                                <div className="flex items-center">
-                                    <Label 
-                                        htmlFor={option.id} 
-                                        className={cn("font-normal cursor-pointer", isStepActive(`excel-${option.name}-wrapper`) && "text-primary font-medium")}
-                                    >
-                                        {option.label}
-                                    </Label>
-                                    {option.tooltip && (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <button className="ml-1.5 text-muted-foreground hover:text-foreground">
-                                                        <HelpCircle size={14} />
-                                                    </button>
-                                                </TooltipTrigger>
-                                                <TooltipContent side="right" className="max-w-[280px] text-xs">
-                                                    {option.tooltip}
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
-                                </div>
+                                <Label 
+                                    htmlFor={option.id} 
+                                    className={cn("text-sm font-normal cursor-pointer flex-1", isStepActive(`excel-${option.name}-wrapper`) && "text-primary font-medium")}
+                                >
+                                    {option.label}
+                                </Label>
                             </div>
                         ))}
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </div>
             
             {/* Footer */}
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                {/* Kiri: Tour button (icon only) */}
+            {/* Footer */}
+            <div id="excel-buttons-wrapper" data-testid="export-excel-footer" className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0 relative">
+                {/* Left: Help/Tour button with tooltip */}
                 <div className="flex items-center text-muted-foreground">
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button 
+                                    data-testid="export-excel-help-button"
                                     variant="ghost" 
                                     size="icon" 
                                     onClick={startTour}
                                     className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                    data-testid="start-tour-button"
+                                    aria-label="Start feature tour"
                                 >
                                     <HelpCircle className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                <p className="text-xs">Mulai tour fitur</p>
+                                <p className="text-xs">Start feature tour</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
-                {/* Kanan: tombol Cancel/Export */}
+                {/* Right: Action buttons */}
                 <div>
                     <Button
+                        data-testid="export-excel-cancel-button"
                         variant="outline"
                         onClick={onClose}
                         disabled={isExporting}
@@ -182,6 +186,7 @@ export const ExportExcel: FC<ExportExcelProps> = ({
                         Cancel
                     </Button>
                     <Button
+                        data-testid="export-excel-export-button"
                         onClick={handleExport}
                         disabled={isExporting || !exportOptions.filename.trim()}
                     >
@@ -195,6 +200,9 @@ export const ExportExcel: FC<ExportExcelProps> = ({
                         )}
                     </Button>
                 </div>
+                <ActiveElementHighlight 
+                    active={isStepActive("excel-buttons-wrapper")} 
+                />
             </div>
         </div>
     );

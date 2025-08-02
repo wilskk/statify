@@ -1,87 +1,153 @@
 /* eslint-disable react/no-unescaped-entities */
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
+import { ArrowUpDown, Database, Settings, List } from 'lucide-react';
 
 const SortVarsGuide = () => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Fitur Urutkan Variabel</CardTitle>
-        <CardDescription>
-          Dokumen ini menjelaskan fungsionalitas fitur "Urutkan Variabel", yang
-          memungkinkan pengguna untuk menyusun ulang variabel dalam "Tampilan
-          Variabel" berdasarkan properti salah satu kolomnya.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-lg">1. Fungsionalitas Dijelaskan</h3>
-          <ul className="list-disc list-inside ml-4">
-            <li>
-              <strong>Pengurutan Berbasis Atribut</strong>: Pengguna dapat
-              memilih kolom mana pun dari kisi tampilan variabel (misalnya,
-              "Nama", "Tipe", "Ukuran") untuk digunakan sebagai kunci
-              pengurutan.
-            </li>
-            <li>
-              <strong>Arah Urutan</strong>: Urutan pengurutan `Menaik` dan
-              `Menurun` keduanya didukung.
-            </li>
-            <li>
-              <strong>Pembaruan Dataset Penuh</strong>: Fitur ini melakukan
-              pembaruan komprehensif. Ini menyusun ulang array `variabel` dan
-              secara fisik mengatur ulang kolom data agar sesuai dengan urutan
-              variabel baru, memastikan integritas data.
-            </li>
-            <li>
-              <strong>Aplikasi Langsung</strong>: Pengurutan diterapkan
-              langsung ke dataset saat ini, dan perubahan disimpan dalam status
-              aplikasi.
-            </li>
-          </ul>
+  const sections = [
+    {
+      id: 'functionality',
+      title: 'Feature Overview',
+      description: 'Complete explanation of the Sort Variables feature',
+      icon: Settings,
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm mb-4">
+            The "Sort Variables" feature allows you to rearrange variables 
+            in the "Variable View" based on properties from any column.
+          </p>
+          
+          <div className="space-y-3">
+            <HelpCard title="Attribute-Based Sorting" variant="feature">
+              <p className="text-sm">
+                You can select any column from the variable view grid 
+                (e.g., "Name", "Type", "Width") to use as the sorting key.
+              </p>
+            </HelpCard>
+            
+            <HelpCard title="Sort Direction" variant="feature">
+              <p className="text-sm">
+                Both ascending and descending sort directions are supported.
+              </p>
+            </HelpCard>
+            
+            <HelpCard title="Full Dataset Update" variant="feature">
+              <p className="text-sm">
+                This feature performs a comprehensive update. It reorders the 
+                variable array and physically rearranges data columns to match
+                the new variable order, ensuring data integrity.
+              </p>
+            </HelpCard>
+            
+            <HelpCard title="Direct Application" variant="feature">
+              <p className="text-sm">
+                Sorting is applied directly to your current dataset, and changes
+                are saved in the application state.
+              </p>
+            </HelpCard>
+          </div>
+          
+          <HelpAlert variant="info" title="Important Note">
+            <p className="text-sm mt-2">
+              Variable sorting changes the physical structure of your dataset,
+              including the column order in the data array.
+            </p>
+          </HelpAlert>
         </div>
-
-        <div>
-          <h3 className="font-semibold text-lg">2. Alur Kerja</h3>
-          <ol className="list-decimal list-inside ml-4">
-            <li>
-              <strong>Inisialisasi</strong>: Pengguna membuka modal "Urutkan
-              Variabel". UI merender daftar atribut variabel yang dapat diurutkan.
-            </li>
-            <li>
-              <strong>Interaksi Pengguna</strong>: Pengguna memilih atribut
-              (misalnya, "Nama") dan arah urutan (misalnya, "Menaik").
-            </li>
-            <li>
-              <strong>Eksekusi</strong>:
-              <ul className="list-disc list-inside ml-6">
-                <li>Pengguna mengklik tombol "OK".</li>
+      )
+    },
+    {
+      id: 'workflow',
+      title: 'Workflow',
+      description: 'Step-by-step variable sorting process',
+      icon: ArrowUpDown,
+      content: (
+        <div className="space-y-4">
+          <HelpSection title="Step 1: Initialization">
+            <p className="text-sm">
+              You open the "Sort Variables" modal. The UI displays a list of
+              variable attributes that can be sorted.
+            </p>
+          </HelpSection>
+          
+          <HelpSection title="Step 2: User Interaction">
+            <p className="text-sm">
+              You select an attribute (e.g., "Name") and sort direction
+              (e.g., "Ascending").
+            </p>
+          </HelpSection>
+          
+          <HelpSection title="Step 3: Execution">
+            <div className="space-y-2">
+              <p className="text-sm mb-2">The execution process includes:</p>
+              <ul className="list-disc list-inside ml-4 text-sm space-y-1">
+                <li>You click the "OK" button</li>
                 <li>
-                  Hook menyortir array `variabel` berdasarkan atribut dan arah
-                  yang dipilih. `columnIndex` dari setiap variabel diperbarui
-                  untuk mencerminkan posisi barunya.
+                  The system sorts the variable array based on your selected
+                  attribute and direction. Each variable's position is updated
+                  to reflect its new location.
                 </li>
                 <li>
-                  Hook kemudian memanggil layanan untuk menghitung posisi baru
-                  untuk setiap kolom data dan mengembalikan dataset baru yang
-                  telah diurutkan ulang.
+                  The system then calculates new positions for each data column
+                  and returns a newly sorted dataset.
                 </li>
                 <li>
-                  Status aplikasi diperbarui secara atomik dengan daftar
-                  variabel baru dan larik data baru.
+                  The application state is updated with the new variable list
+                  and data array.
                 </li>
               </ul>
-            </li>
-          </ol>
+            </div>
+          </HelpSection>
+          
+          <HelpAlert variant="success" title="Final Result">
+            <p className="text-sm mt-2">
+              Your dataset will have a new column order based on your selected
+              sorting criteria, with data integrity maintained.
+            </p>
+          </HelpAlert>
         </div>
-      </CardContent>
-    </Card>
+      )
+    }
+  ];
+
+
+  const tips = [
+    {
+      type: 'tip' as const,
+      title: 'Effective Sorting',
+      content: 'Choose the attribute most relevant to your analysis needs for optimal sorting results.'
+    },
+    {
+      type: 'info' as const,
+      title: 'Data Integrity',
+      content: 'This feature ensures data consistency by physically rearranging columns.'
+    },
+    {
+      type: 'warning' as const,
+      title: 'Permanent Changes',
+      content: 'Sorting will permanently change your dataset structure for the current session.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Variable View', href: '/help/data-guide/variable-view' },
+    { title: 'Data Management', href: '/help/data-guide' },
+    { title: 'Sort Cases', href: '/help/data-guide/sort-cases' },
+    { title: 'Restructure Data', href: '/help/data-guide/restructure' }
+  ];
+
+  return (
+    <HelpGuideTemplate
+      title="Sort Variables Feature"
+      description="Complete guide for rearranging variables in Variable View based on column properties"
+      category="Data Management"
+      lastUpdated="2024-01-15"
+      sections={sections}
+
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
 };
 
-export default SortVarsGuide; 
+export default SortVarsGuide;

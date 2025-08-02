@@ -1,124 +1,179 @@
 /* eslint-disable react/no-unescaped-entities */
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
+import { RotateCcw, ArrowUpDown, Database, Settings, Grid } from 'lucide-react';
 
 const TransposeGuide = () => {
+  const sections = [
+    {
+      id: 'interface',
+      title: 'Interface & Component Functionality',
+      description: 'Main components in the transpose feature',
+      icon: Settings,
+      content: (
+        <div className="space-y-4">
+          <HelpCard title="Available Variables List" variant="feature">
+            <p className="text-sm">
+              Displays all variables available in your current dataset.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Variables to Transpose" variant="feature">
+            <p className="text-sm">
+              This list holds the variables you've selected to become rows
+              in your new dataset.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Name Variable (Optional)" variant="feature">
+            <p className="text-sm">
+              This field is optional. You can move <strong>one</strong>{' '}
+              variable here. Values from each row of this variable will be
+              used as names for the new variables (columns) to be created.
+            </p>
+          </HelpCard>
+          
+          <HelpAlert variant="info" title="Usage Tip">
+            <p className="text-sm mt-2">
+              Drag and drop variables between components to configure your transpose setup.
+            </p>
+          </HelpAlert>
+        </div>
+      )
+    },
+    {
+      id: 'new-variables',
+      title: 'New Variables Created',
+      description: 'Variables that will be created after transpose',
+      icon: Database,
+      content: (
+        <div className="space-y-4">
+          <HelpCard title="case_lbl" variant="feature">
+            <p className="text-sm">
+              This variable is created automatically. This column will contain
+              the names of the original variables you selected for transposition.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="New Case Variables" variant="feature">
+            <div className="space-y-3">
+              <p className="text-sm">
+                New variables (columns) will be created, one for each case (row) in your original data.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <HelpCard title="Without Name Variable" variant="step">
+                  <p className="text-sm">
+                    New column names will be `Var1`, `Var2`, `Var3`, and so on.
+                  </p>
+                </HelpCard>
+                
+                <HelpCard title="With Name Variable" variant="step">
+                  <p className="text-sm">
+                    New column names will be taken from values in that variable.
+                  </p>
+                </HelpCard>
+              </div>
+            </div>
+          </HelpCard>
+          
+          <HelpAlert variant="success" title="Transpose Result">
+            <p className="text-sm mt-2">
+              Your data structure will change from wide format to long format or vice versa.
+            </p>
+          </HelpAlert>
+        </div>
+      )
+    },
+    {
+      id: 'examples',
+      title: 'Usage Examples',
+      description: 'Practical transpose usage scenarios',
+      icon: ArrowUpDown,
+      content: (
+        <div className="space-y-4">
+          <HelpCard title="Scenario 1: Simple Transpose (Wide to Long)" variant="feature">
+            <div className="space-y-3">
+              <p className="text-sm">
+                You have quarterly sales data with columns `Q1`, `Q2`, `Q3`, `Q4`. 
+                You want each quarter to become a row.
+              </p>
+              
+              <HelpSection title="Steps:">
+                <ol className="list-decimal list-inside ml-4 text-sm space-y-1">
+                  <li>Move variables `Q1`, `Q2`, `Q3`, and `Q4` to the "Variable(s)" list.</li>
+                  <li>Leave the "Name Variable" empty.</li>
+                  <li>Click OK.</li>
+                </ol>
+              </HelpSection>
+            </div>
+          </HelpCard>
+          
+          <HelpCard title="Scenario 2: Using Values as Column Names" variant="feature">
+            <div className="space-y-3">
+              <p className="text-sm">
+                You have yearly data with columns `Product_ID`, `Year_2020`, `Year_2021`, `Year_2022`. 
+                You want each year to become a row and use `Product_ID` as the new column name.
+              </p>
+              
+              <HelpSection title="Steps:">
+                <ol className="list-decimal list-inside ml-4 text-sm space-y-1">
+                  <li>Move `Year_2020`, `Year_2021`, `Year_2022` to the "Variable(s)" list.</li>
+                  <li>Move `Product_ID` to the "Name Variable" list.</li>
+                  <li>Click OK.</li>
+                </ol>
+              </HelpSection>
+            </div>
+          </HelpCard>
+          
+          <HelpAlert variant="warning" title="Important">
+            <p className="text-sm mt-2">
+              Ensure selected variables have compatible data types for transposition.
+            </p>
+          </HelpAlert>
+        </div>
+      )
+    }
+  ];
+
+
+  const tips = [
+    {
+      type: 'tip' as const,
+      title: 'Name Variable',
+      content: 'Use the name variable to provide meaningful names for new columns.'
+    },
+    {
+      type: 'info' as const,
+      title: 'case_lbl',
+      content: 'The case_lbl variable will be automatically created to store original variable names.'
+    },
+    {
+      type: 'warning' as const,
+      title: 'Data Types',
+      content: 'Ensure variables being transposed have consistent data types.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Data Management', href: '/help/data-guide' },
+    { title: 'Restructure Data', href: '/help/data-guide/restructure' },
+    { title: 'Sort Variables', href: '/help/data-guide/sort-vars' },
+    { title: 'Merge Data', href: '/help/data-guide/merge' }
+  ];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Fitur: Transpose Data</CardTitle>
-        <CardDescription>
-          Dokumen ini menjelaskan fungsionalitas fitur "Transpose", sebuah alat
-          yang kuat untuk merestrukturisasi dataset dengan menukar baris dan
-          kolom.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-lg">
-            1. Antarmuka & Fungsionalitas Komponen
-          </h3>
-          <ul className="list-disc list-inside ml-4">
-            <li>
-              <strong>Daftar Variabel (Available Variables)</strong>: Menampilkan
-              semua variabel yang tersedia dalam dataset saat ini.
-            </li>
-            <li>
-              <strong>Variabel yang Akan Ditransposisi (Variable(s))</strong>:
-              Daftar ini menampung variabel-variabel yang telah Anda pilih untuk
-              diubah menjadi baris dalam dataset yang baru.
-            </li>
-            <li>
-              <strong>Variabel Penamaan (Name Variable)</strong>: Kolom ini
-              bersifat opsional. Anda dapat memindahkan <strong>satu</strong>{' '}
-              variabel ke sini. Nilai dari setiap baris pada variabel ini akan
-              digunakan sebagai nama untuk variabel (kolom) baru yang akan
-              dibuat.
-            </li>
-          </ul>
-        </div>
+    <HelpGuideTemplate
+      title="Transpose Data Feature"
+      description="This guide explains the 'Transpose' functionality, a powerful tool for restructuring your dataset by swapping rows and columns."
+      category="Data Management"
+      lastUpdated="2024-01-15"
+      sections={sections}
 
-        <div>
-          <h3 className="font-semibold text-lg">
-            2. Variabel Baru yang Dihasilkan
-          </h3>
-          <ul className="list-disc list-inside ml-4">
-            <li>
-              <strong>
-                <code>case_lbl</code>
-              </strong>
-              : Variabel ini dibuat secara otomatis. Kolom ini akan berisi
-              nama-nama dari variabel asli yang Anda pilih untuk ditransposisi.
-            </li>
-            <li>
-              <strong>Variabel Kasus Baru</strong>: Variabel-variabel baru
-              (kolom) akan dibuat, satu untuk setiap kasus (baris) dalam data
-              asli.
-              <ul className="list-disc list-inside ml-6">
-                <li>
-                  Jika <strong>Variabel Penamaan</strong> tidak disediakan,
-                  nama-nama kolom baru akan menjadi `Var1`, `Var2`, `Var3`, dan
-                  seterusnya.
-                </li>
-                <li>
-                  Jika <strong>Variabel Penamaan</strong> disediakan, nama-nama
-                  kolom baru akan diambil dari nilai-nilai pada variabel
-                  tersebut.
-                </li>
-              </ul>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-lg">3. Contoh Penggunaan</h3>
-          <div className="ml-4 mt-2 space-y-4">
-            <div>
-              <h4 className="font-semibold">
-                Skenario 1: Transposisi Sederhana (Wide to Long)
-              </h4>
-              <p>
-                Anda memiliki data penjualan per kuartal dengan kolom `Q1`,
-                `Q2`, `Q3`, `Q4`. Anda ingin setiap kuartal menjadi baris.
-              </p>
-              <ol className="list-decimal list-inside ml-4">
-                <li>
-                  Pindahkan variabel `Q1`, `Q2`, `Q3`, dan `Q4` ke dalam daftar
-                  "Variable(s)".
-                </li>
-                <li>Biarkan "Name Variable" kosong.</li>
-                <li>Klik OK.</li>
-              </ol>
-            </div>
-            <div>
-              <h4 className="font-semibold">
-                Skenario 2: Menggunakan Nilai sebagai Nama Kolom
-              </h4>
-              <p>
-                Anda memiliki data tahunan dengan kolom `ID_Produk`,
-                `Tahun_2020`, `Tahun_2021`, `Tahun_2022`. Anda ingin setiap tahun
-                menjadi baris dan menggunakan `ID_Produk` sebagai nama kolom
-                baru.
-              </p>
-              <ol className="list-decimal list-inside ml-4">
-                <li>
-                  Pindahkan `Tahun_2020`, `Tahun_2021`, `Tahun_2022` ke daftar
-                  "Variable(s)".
-                </li>
-                <li>Pindahkan `ID_Produk` ke daftar "Name Variable".</li>
-                <li>Klik OK.</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
 };
 
-export default TransposeGuide; 
+export default TransposeGuide;

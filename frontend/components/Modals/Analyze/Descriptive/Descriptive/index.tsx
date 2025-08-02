@@ -275,6 +275,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button 
+                                    data-testid="descriptive-help-button"
                                     variant="ghost" 
                                     size="icon" 
                                     onClick={startTour}
@@ -294,6 +295,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                 {/* Right: Buttons */}
                 <div>
                     <Button
+                        data-testid="descriptive-reset-button"
                         variant="outline"
                         className="mr-2"
                         onClick={handleReset}
@@ -302,6 +304,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         Reset
                     </Button>
                     <Button
+                        data-testid="descriptive-cancel-button"
                         variant="outline"
                         className="mr-2"
                         onClick={onClose}
@@ -338,7 +341,10 @@ const Descriptives: FC<BaseModalProps> = ({ onClose, containerType = "dialog", .
 
     // Default dialog view with proper Dialog components
     return (
-        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+        <DialogContent 
+            data-testid="descriptive-dialog"
+            className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]"
+        >
             <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                 <DialogTitle className="text-[22px] font-semibold">Descriptives</DialogTitle>
             </DialogHeader>

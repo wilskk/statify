@@ -75,9 +75,9 @@ const SortVarsUIContent: React.FC<SortVarsUIProps> = ({
                     <HelpCircle size={18} className="mr-1" />
                 </div>
                 <div>
-                    <Button variant="outline" className="mr-2" onClick={handleReset}>Reset</Button>
-                    <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleOk}>OK</Button>
+                    <Button variant="outline" className="mr-2" onClick={handleReset} data-testid="sortvars-reset-button">Reset</Button>
+                    <Button variant="outline" className="mr-2" onClick={onClose} data-testid="sortvars-cancel-button">Cancel</Button>
+                    <Button onClick={handleOk} data-testid="sortvars-ok-button">OK</Button>
                 </div>
             </div>
         </>
@@ -102,9 +102,9 @@ export const SortVarsUI: React.FC<SortVarsUIProps> = ({
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="max-w-md p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogContent className="max-w-md p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]" data-testid="sortvars-dialog-content">
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Sort Variables</DialogTitle>
+                    <DialogTitle className="text-[22px] font-semibold" data-testid="sortvars-dialog-title">Sort Variables</DialogTitle>
                 </DialogHeader>
                 <div className="flex-grow flex flex-col overflow-hidden">
                     <SortVarsUIContent onClose={onClose} {...props} />

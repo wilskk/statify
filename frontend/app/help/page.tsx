@@ -21,7 +21,6 @@ import {
 	SortCasesGuide,
 	SortVarsGuide,
 	TransposeGuide,
-	UnusualCasesGuide,
 	WeightCasesGuide,
 } from "@/app/help/components/data-guide";
 
@@ -47,8 +46,6 @@ const DataGuide = ({ section }: { section?: string }) => {
 			return <SortVarsGuide />;
 		case "transpose":
 			return <TransposeGuide />;
-		case "unusual-cases":
-			return <UnusualCasesGuide />;
 		case "weight-cases":
 			return <WeightCasesGuide />;
 		default:
@@ -82,7 +79,7 @@ export default function HelpPage() {
 			label: "File Management",
 			content: <FileGuide section={activeChild || undefined} />,
 			children: [
-				{ key: 'import-sav', label: 'Import .sav', parentKey: 'file-guide', childContent: 'import-sav' },
+				{ key: 'import-sav', label: 'Import SPSS (.sav)', parentKey: 'file-guide', childContent: 'import-sav' },
 				{ key: 'import-csv', label: 'Import CSV', parentKey: 'file-guide', childContent: 'import-csv' },
 				{ key: 'import-excel', label: 'Import Excel', parentKey: 'file-guide', childContent: 'import-excel' },
 				{ key: 'import-clipboard', label: 'Import from Clipboard', parentKey: 'file-guide', childContent: 'import-clipboard' },
@@ -107,13 +104,12 @@ export default function HelpPage() {
 				{ key: 'sort-cases', label: 'Sort Cases', parentKey: 'data-guide', childContent: 'sort-cases' },
 				{ key: 'sort-vars', label: 'Sort Variables', parentKey: 'data-guide', childContent: 'sort-vars' },
 				{ key: 'transpose', label: 'Transpose', parentKey: 'data-guide', childContent: 'transpose' },
-				{ key: 'unusual-cases', label: 'Identify Unusual Cases', parentKey: 'data-guide', childContent: 'unusual-cases' },
 				{ key: 'weight-cases', label: 'Weight Cases', parentKey: 'data-guide', childContent: 'weight-cases' },
 			]
 		},
 		{
 			key: "statistics-guide",
-			label: "Statistics Guide",
+			label: "Statistics",
 			content: <StatisticsGuide section={activeChild || undefined} />,
 			children: [
 				{ key: 'frequencies', label: 'Frequencies', parentKey: 'statistics-guide', childContent: 'frequencies' },

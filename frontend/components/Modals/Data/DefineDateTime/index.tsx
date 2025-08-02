@@ -145,6 +145,7 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
                         variant="outline"
                         onClick={handleReset}
                         className="mr-2"
+                        data-testid="define-datetime-reset-button"
                     >
                         Reset
                     </Button>
@@ -152,10 +153,11 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
                         variant="outline"
                         onClick={onClose}
                         className="mr-2"
+                        data-testid="define-datetime-cancel-button"
                     >
                         Cancel
                     </Button>
-                    <Button onClick={handleOk}>
+                    <Button onClick={handleOk} data-testid="define-datetime-ok-button">
                         OK
                     </Button>
                 </div>
@@ -180,9 +182,9 @@ const DefineDateTime: FC<DefineDateTimeProps> = ({ onClose, containerType = "dia
     // For dialog mode, use Dialog and DialogContent
     return (
         <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Define Dates</DialogTitle>
+            <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]" data-testid="define-datetime-dialog-content">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0" data-testid="define-datetime-dialog-header">
+                    <DialogTitle className="text-[22px] font-semibold" data-testid="define-datetime-dialog-title">Define Dates</DialogTitle>
                 </DialogHeader>
                 
                 <div className="flex-grow flex flex-col overflow-hidden">

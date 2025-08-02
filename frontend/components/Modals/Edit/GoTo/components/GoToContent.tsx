@@ -17,6 +17,7 @@ import { X, HelpCircle, CheckCircle, AlertCircle, Info, ChevronLeft, ChevronRigh
 import { GoToMode, GoToModalProps } from "../types";
 import { useGoToForm } from "../hooks/useGoToForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AnimatePresence } from "framer-motion";
 import { TourPopup, ActiveElementHighlight, TourStep, PopupPosition, HorizontalPosition } from "./Tour";
@@ -88,69 +89,66 @@ export const GoToContent: React.FC<GoToModalProps & { onClose: () => void }> = (
                 )}
             </AnimatePresence>
             <div className="p-6 overflow-y-auto flex-grow">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <div id="goto-tabs-wrapper" className="relative">
-                        <TabsList className="w-full mb-6">
-                            <TabsTrigger value={GoToMode.CASE} className="w-1/2">Case</TabsTrigger>
-                            <TabsTrigger value={GoToMode.VARIABLE} className="w-1/2">Variable</TabsTrigger>
-                        </TabsList>
-                        <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'goto-tabs-wrapper'} />
-                    </div>
-
-                    <TabsContent value={GoToMode.CASE} className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
-                        <div id="goto-case-input-wrapper" className="space-y-1 relative">
-                            <div className="flex justify-between items-baseline">
-                                <Label htmlFor="case-number" className="text-xs font-medium text-muted-foreground">Go to case number:</Label>
-                                <span className="text-xs text-muted-foreground">Total: {totalCases}</span>
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Navigation</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Tabs value={activeTab} onValueChange={setActiveTab}>
+                            <div id="goto-tabs-wrapper" className="relative">
+                                <TabsList className="w-full mb-6">
+                                    <TabsTrigger value={GoToMode.CASE} className="w-1/2">Case</TabsTrigger>
+                                    <TabsTrigger value={GoToMode.VARIABLE} className="w-1/2">Variable</TabsTrigger>
+                                </TabsList>
+                                <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'goto-tabs-wrapper'} />
                             </div>
-                            <Input id="case-number" type="number" min="1" max={totalCases} value={caseNumberInput} onChange={(e) => handleCaseNumberChange(e.target.value)} className={cn("h-9 text-sm", caseError && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!caseError} aria-describedby={caseError ? "case-error-message" : undefined} />
-                            {caseError && <p id="case-error-message" className="text-xs text-destructive pt-1">{caseError}</p>}
-                            {lastNavigationSuccess !== null && activeTab === GoToMode.CASE && (
-                                <div className={cn("mt-2 p-2 text-xs rounded flex items-center", lastNavigationSuccess ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
-                                    {lastNavigationSuccess ? <><CheckCircle className="w-3.5 h-3.5 mr-1.5" />Successfully navigated to case {caseNumberInput}</> : <><AlertCircle className="w-3.5 h-3.5 mr-1.5" />Failed to navigate to case {caseNumberInput}</>}
-                                </div>
-                            )}
-                            <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'goto-case-input-wrapper'} />
-                        </div>
-                    </TabsContent>
 
-                    <TabsContent value={GoToMode.VARIABLE} className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
-                        <div id="goto-variable-select-wrapper" className="space-y-1 relative">
-                            <div className="flex justify-between items-baseline">
-                                <Label htmlFor="variable-select" className="text-xs font-medium text-muted-foreground">Go to variable:</Label>
-                                <span className="text-xs text-muted-foreground">Total: {variableNames.length}</span>
-                            </div>
-                            <Select value={selectedVariableName} onValueChange={handleSelectedVariableChange}>
-                                <SelectTrigger id="variable-select" className={cn("h-9 text-sm w-full", variableError && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!variableError} aria-describedby={variableError ? "variable-error-message" : undefined}>
-                                    <SelectValue placeholder="Select a variable" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[200px]">
-                                    {variableNames.map((variable: string) => <SelectItem key={variable} value={variable}>{variable}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            {variableError && <p id="variable-error-message" className="text-xs text-destructive pt-1">{variableError}</p>}
-                            {lastNavigationSuccess !== null && activeTab === GoToMode.VARIABLE && (
-                                <div className={cn("mt-2 p-2 text-xs rounded flex items-center", lastNavigationSuccess ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
-                                    {lastNavigationSuccess ? <><CheckCircle className="w-3.5 h-3.5 mr-1.5" />Successfully navigated to variable {selectedVariableName}</> : <><AlertCircle className="w-3.5 h-3.5 mr-1.5" />Failed to navigate to variable {selectedVariableName}</>}
+                            <TabsContent value={GoToMode.CASE} className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
+                                <div id="goto-case-input-wrapper" className="space-y-1 relative">
+                                    <div className="flex justify-between items-baseline">
+                                        <Label htmlFor="case-number" className="text-xs font-medium text-muted-foreground">Go to case number:</Label>
+                                        <span className="text-xs text-muted-foreground">Total: {totalCases}</span>
+                                    </div>
+                                    <Input id="case-number" type="number" min="1" max={totalCases} value={caseNumberInput} onChange={(e) => handleCaseNumberChange(e.target.value)} className={cn("h-9 text-sm", caseError && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!caseError} aria-describedby={caseError ? "case-error-message" : undefined} />
+                                    {caseError && <p id="case-error-message" className="text-xs text-destructive pt-1">{caseError}</p>}
+                                    {lastNavigationSuccess !== null && activeTab === GoToMode.CASE && (
+                                        <div className={cn("mt-2 p-2 text-xs rounded flex items-center", lastNavigationSuccess ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
+                                            {lastNavigationSuccess ? <><CheckCircle className="w-3.5 h-3.5 mr-1.5" />Successfully navigated to case {caseNumberInput}</> : <><AlertCircle className="w-3.5 h-3.5 mr-1.5" />Failed to navigate to case {caseNumberInput}</>}
+                                        </div>
+                                    )}
+                                    <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'goto-case-input-wrapper'} />
                                 </div>
-                            )}
-                            <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'goto-variable-select-wrapper'} />
-                        </div>
-                    </TabsContent>
-                </Tabs>
+                            </TabsContent>
+
+                            <TabsContent value={GoToMode.VARIABLE} className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
+                                <div id="goto-variable-select-wrapper" className="space-y-1 relative">
+                                    <div className="flex justify-between items-baseline">
+                                        <Label htmlFor="variable-select" className="text-xs font-medium text-muted-foreground">Go to variable:</Label>
+                                        <span className="text-xs text-muted-foreground">Total: {variableNames.length}</span>
+                                    </div>
+                                    <Select value={selectedVariableName} onValueChange={handleSelectedVariableChange}>
+                                        <SelectTrigger id="variable-select" className={cn("h-9 text-sm w-full", variableError && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!variableError} aria-describedby={variableError ? "variable-error-message" : undefined}>
+                                            <SelectValue placeholder="Select a variable" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {variableNames.map((variable: string) => <SelectItem key={variable} value={variable}>{variable}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    {variableError && <p id="variable-error-message" className="text-xs text-destructive pt-1">{variableError}</p>}
+                                    {lastNavigationSuccess !== null && activeTab === GoToMode.VARIABLE && (
+                                        <div className={cn("mt-2 p-2 text-xs rounded flex items-center", lastNavigationSuccess ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
+                                            {lastNavigationSuccess ? <><CheckCircle className="w-3.5 h-3.5 mr-1.5" />Successfully navigated to variable {selectedVariableName}</> : <><AlertCircle className="w-3.5 h-3.5 mr-1.5" />Failed to navigate to variable {selectedVariableName}</>}
+                                        </div>
+                                    )}
+                                    <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'goto-variable-select-wrapper'} />
+                                </div>
+                            </TabsContent>
+                        </Tabs>
+                    </CardContent>
+                </Card>
             </div>
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={startTour} className="rounded-full w-8 h-8">
-                                <HelpCircle size={18} />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Start feature tour</p></TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
                 <div className="flex justify-end space-x-2">
                     <Button variant="outline" onClick={handleClose}>Close</Button>
                     <div id="goto-go-button-wrapper" className="relative inline-block">
@@ -164,4 +162,4 @@ export const GoToContent: React.FC<GoToModalProps & { onClose: () => void }> = (
             </div>
         </>
     );
-}; 
+};

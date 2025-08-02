@@ -121,7 +121,7 @@ const ResultOutput: React.FC = () => {
               className="space-y-6 scroll-mt-20"
               data-testid={`result-log-${log.id}`}
             >
-              <div className="text-sm font-medium text-muted-foreground px-1">
+              <div className="text-sm font-medium text-muted-foreground px-1" data-testid={`log-header-${log.id}`}>
                 Log {log.id}: {log.log}
               </div>
               {log.analytics?.map((analytic) => (
@@ -130,11 +130,11 @@ const ResultOutput: React.FC = () => {
                   className="p-4 md:p-6 shadow-lg hover:shadow-xl transition-shadow border-t-4 border-primary/20"
                   data-testid={`result-analytic-${analytic.id}`}
                 >
-                  <div className="text-xl font-bold text-card-foreground mb-4 border-b pb-2">
+                  <div className="text-xl font-bold text-card-foreground mb-4 border-b pb-2" data-testid={`analytic-title-${analytic.id}`}>
                     {analytic.title}
                   </div>
                   {analytic.note && (
-                    <div className="text-sm italic text-muted-foreground mb-6 bg-muted/30 p-2 rounded-md">
+                    <div className="text-sm italic text-muted-foreground mb-6 bg-muted/30 p-2 rounded-md" data-testid={`analytic-note-${analytic.id}`}>
                       {analytic.note}
                     </div>
                   )}
@@ -154,7 +154,7 @@ const ResultOutput: React.FC = () => {
                         return (
                           <div key={stat.id} className="space-y-4">
                             {isFirstAppearance && (
-                              <div className="text-base font-semibold text-card-foreground mt-8 mb-3 flex items-center">
+                              <div className="text-base font-semibold text-card-foreground mt-8 mb-3 flex items-center" data-testid={`component-header-${stat.components.replace(/\s+/g, '-').toLowerCase()}`}>
                                 <div className="h-4 w-1 bg-primary rounded-full mr-2"></div>
                                 {stat.components}
                               </div>
@@ -252,7 +252,7 @@ const ResultOutput: React.FC = () => {
                             </div>
                             <div className="mt-4 mb-10 relative">
                               <div className="flex items-center justify-between mb-2">
-                                <div className="text-xs font-medium text-muted-foreground">
+                                <div className="text-xs font-medium text-muted-foreground" data-testid={`description-label-${stat.id}`}>
                                   Description
                                 </div>
                                 {!isEditing ? (
@@ -265,12 +265,13 @@ const ResultOutput: React.FC = () => {
                                       )
                                     }
                                     type="button"
+                                    data-testid={`edit-description-button-${stat.id}`}
                                   >
                                     <Edit className="h-3 w-3" />
                                     Edit
                                   </button>
                                 ) : (
-                                  <div className="text-xs">
+                                  <div className="text-xs" data-testid={`save-status-${stat.id}`}>
                                     {status === "saving" && (
                                       <span className="text-yellow-500">
                                         Saving...
@@ -306,6 +307,7 @@ const ResultOutput: React.FC = () => {
                                 }
                                 placeholder="Write description here..."
                                 id={`editor-${statId}`}
+                                data-testid={`description-editor-${stat.id}`}
                               />
                             </div>
                           </div>

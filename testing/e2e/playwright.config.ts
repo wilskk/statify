@@ -1,0 +1,50 @@
+import { defineConfig, devices } from '@playwright/test';
+
+/**
+ * Unified Playwright configuration for Statify
+ * Consolidates all E2E testing into one location
+ */
+export default defineConfig({
+  // Unified test directory
+  testDir: './specs',
+  
+  // Run tests sequentially for client-side SPSS-like application
+  fullyParallel: false,
+  workers: 1,
+  retries: 0,  // No retries for development testing
+  
+  // Clear reporting
+  reporter: [
+    ['html', { outputFolder: '../reports/e2e' }],
+    ['list'],
+  ],
+  
+  // Reasonable timeouts
+  timeout: 45 * 1000,
+  expect: { timeout: 10 * 1000 },
+  
+  use: {
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    // Browser resource monitoring
+    extraHTTPHeaders: {
+      'X-Metrics-Collection': 'enabled'
+    }
+  },
+
+  // Essential browser coverage
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+  ],
+
+  // Auto-start dev server
+  webServer: {
+    command: 'npm run dev',
+    port: 3000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
+});
