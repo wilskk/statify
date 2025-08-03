@@ -35,10 +35,8 @@ pub fn calculate_parameter_estimates(
     let mut estimates = Vec::new();
     let sig_level = config.options.sig_level;
 
-    // Use existing parameter name generation
     let all_parameter_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
 
-    // Create optimized parameter mapping using design matrix indices
     let mut estimated_params_map: HashMap<String, (usize, f64, f64)> = HashMap::with_capacity(
         design_info.p_parameters
     );
@@ -49,10 +47,8 @@ pub fn calculate_parameter_estimates(
         estimated_params_map.insert(param_name.clone(), (i, beta_val, g_ii));
     }
 
-    // Track redundant terms using design matrix information
     let mut term_is_aliased_map: HashMap<String, bool> = HashMap::new();
 
-    // Process each parameter efficiently
     for param_name in &all_parameter_names {
         let (
             final_b,
@@ -68,7 +64,6 @@ pub fn calculate_parameter_estimates(
         ) = if let Some((_idx, beta_val, g_ii)) = estimated_params_map.get(param_name) {
             let is_redundant = g_ii.abs() < 1e-9 || g_ii.is_nan();
 
-            // Extract base term name efficiently
             let base_term = param_name.split('=').next().unwrap_or(param_name).to_string();
             term_is_aliased_map
                 .entry(base_term)
@@ -91,7 +86,6 @@ pub fn calculate_parameter_estimates(
                     true,
                 )
             } else {
-                // Calculate statistics efficiently
                 let std_err = if mse.is_nan() || mse < 0.0 || *g_ii < 0.0 {
                     f64::NAN
                 } else {
@@ -201,14 +195,11 @@ pub fn calculate_parameter_estimates(
         });
     }
 
-    // Generate optimized notes
     let mut notes = Vec::new();
 
-    // Add dependent variable name
     notes.push(format!("Dependent Variable:{}", config.main.dep_var.as_ref().unwrap()));
     notes.push(format!("Computed using alpha:{}", sig_level));
 
-    // Check for aliased terms and add notes accordingly
     let aliased_terms: Vec<String> = term_is_aliased_map
         .iter()
         .filter(|(_, &is_aliased)| is_aliased)

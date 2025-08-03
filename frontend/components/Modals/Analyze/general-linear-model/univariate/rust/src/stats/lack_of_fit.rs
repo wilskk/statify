@@ -23,7 +23,6 @@ pub fn calculate_lack_of_fit_tests(
     let c_unique_combinations = groups.len();
     let mut ss_pure_error = 0.0;
 
-    // Calculate SS_PE using the groups created by design matrix function
     for y_group in &groups {
         if y_group.len() > 1 {
             let group_mean = calculate_mean(y_group);
@@ -35,7 +34,6 @@ pub fn calculate_lack_of_fit_tests(
 
     let df_pure_error = (design_info.n_samples as isize) - (c_unique_combinations as isize);
 
-    // Calculate lack of fit statistics
     let ss_lack_of_fit = (ss_error_total - ss_pure_error).max(0.0);
     let df_lack_of_fit = (c_unique_combinations as isize) - (p_model_params as isize);
 

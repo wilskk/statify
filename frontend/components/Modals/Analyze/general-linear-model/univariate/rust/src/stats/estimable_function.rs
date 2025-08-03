@@ -99,11 +99,28 @@ pub fn calculate_general_estimable_function(
         contrast_info_strings.push(desc_str);
     }
 
-    let notes_vec = generate_comprehensive_notes(
-        &design_info,
-        &is_redundant_vec,
-        &all_factors_ordered,
-        &l_matrix_rows
+    let mut notes_vec = Vec::new();
+    notes_vec.push(format!("a. Design: {}.", generate_design_string(&design_info)));
+
+    if is_redundant_vec.iter().any(|&x| x) {
+        notes_vec.push(
+            "b. One or more β parameters may be redundant (i.e., non-estimable due to data structure).".to_string()
+        );
+    }
+
+    notes_vec.push(
+        "c. Reference levels are first alphabetically/numerically; Pivot levels are last alphabetically/numerically for each factor.".to_string()
+    );
+
+    notes_vec.push(
+        format!(
+            "d. Factor processing order for effects based on first appearance in parameters: {:?}.",
+            all_factors_ordered
+        )
+    );
+
+    notes_vec.push(
+        format!("e. Total unique, non-zero, L-vectors generated: {}.", l_matrix_rows.len())
     );
 
     let estimable_function_entry = GeneralEstimableFunctionEntry {
@@ -467,39 +484,6 @@ fn build_interaction_l_vector(
 
     contrast_description_terms.sort_by_key(|k| k.starts_with('-'));
     (l_vec_interaction, contrast_description_terms.join(" "))
-}
-
-fn generate_comprehensive_notes(
-    design_info: &DesignMatrixInfo,
-    is_redundant_vec: &[bool],
-    all_factors_ordered: &[String],
-    l_matrix_rows: &[Vec<i32>]
-) -> Vec<String> {
-    let mut notes_vec = Vec::new();
-    notes_vec.push(format!("a. {}.", generate_design_string(design_info)));
-
-    if is_redundant_vec.iter().any(|&x| x) {
-        notes_vec.push(
-            "b. One or more β parameters may be redundant (i.e., non-estimable due to data structure).".to_string()
-        );
-    }
-
-    notes_vec.push(
-        "c. Reference levels are first alphabetically/numerically; Pivot levels are last alphabetically/numerically for each factor.".to_string()
-    );
-
-    notes_vec.push(
-        format!(
-            "d. Factor processing order for effects based on first appearance in parameters: {:?}.",
-            all_factors_ordered
-        )
-    );
-
-    notes_vec.push(
-        format!("e. Total unique, non-zero, L-vectors generated: {}.", l_matrix_rows.len())
-    );
-
-    notes_vec
 }
 
 fn get_coeffs_for_cell_mean(

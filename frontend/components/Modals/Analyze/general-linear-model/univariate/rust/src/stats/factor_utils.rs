@@ -3,9 +3,6 @@ use std::collections::{ HashMap, HashSet };
 use crate::models::{ config::UnivariateConfig, data::AnalysisData, result::DesignMatrixInfo };
 use super::core::*;
 
-/// Mem-parsing sebuah string istilah interaksi (misalnya, "A*B") menjadi komponen faktor individual.
-/// Fungsi ini memecah string berdasarkan karakter '*' untuk mengidentifikasi faktor-faktor
-/// yang terlibat dalam interaksi.
 pub fn parse_interaction_term(term: &str) -> Vec<String> {
     if term.is_empty() {
         return Vec::new();
@@ -16,9 +13,6 @@ pub fn parse_interaction_term(term: &str) -> Vec<String> {
         .collect()
 }
 
-/// Mem-parsing nama parameter yang terstruktur (misalnya, "[FaktorA=Level1]*[FaktorB=Level2]")
-/// menjadi sebuah `HashMap` di mana kunci adalah nama faktor dan nilai adalah levelnya.
-/// Fungsi ini juga menangani kasus khusus untuk "Intercept".
 pub fn parse_parameter_name(param_str: &str) -> HashMap<String, String> {
     let mut factors = HashMap::new();
     if param_str == "Intercept" {
@@ -35,12 +29,9 @@ pub fn parse_parameter_name(param_str: &str) -> HashMap<String, String> {
     factors
 }
 
-/// Mengambil semua level unik untuk sebuah faktor dari data analisis.
-/// Optimized version with early returns and cached lookups.
 pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<String>, String> {
     let mut level_set = HashSet::new();
 
-    // Check fixed factors first
     if
         let Some((group_idx, _)) = data.fix_factor_data_defs
             .iter()
@@ -59,7 +50,6 @@ pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<S
         return Ok(levels);
     }
 
-    // Check random factors if not found in fixed factors
     if let Some(random_defs_groups) = &data.random_factor_data_defs {
         if
             let Some((group_idx, _)) = random_defs_groups
@@ -82,30 +72,25 @@ pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<S
         }
     }
 
-    // Check if it's a covariate
     if let Some(covar_defs_groups) = &data.covariate_data_defs {
         for def_group in covar_defs_groups {
             if def_group.iter().any(|def| def.name == factor_name) {
-                return Ok(Vec::new()); // Covariate returns empty vector
+                return Ok(Vec::new());
             }
         }
     }
 
-    // Not found anywhere
     Err(
         format!("Term '{}' not found as a factor or covariate in the data definitions", factor_name)
     )
 }
 
-/// Optimized version using pre-built factor location cache
 pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData) -> Vec<f64> {
     let n_samples = data.dependent_data[0].len();
     let mut row = vec![0.0; n_samples];
 
-    // Build factor location cache for efficiency
     let mut factor_locations = HashMap::new();
     for (factor, _) in combo {
-        // Check fixed factors
         for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
             if def_group.iter().any(|def| &def.name == factor) {
                 factor_locations.insert(factor.clone(), (true, group_idx));
@@ -113,7 +98,6 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
             }
         }
 
-        // Check random factors if not found in fixed
         if !factor_locations.contains_key(factor) {
             if let Some(random_defs_groups) = &data.random_factor_data_defs {
                 for (group_idx, def_group) in random_defs_groups.iter().enumerate() {
@@ -126,7 +110,6 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
         }
     }
 
-    // Process each row using cached locations
     for i in 0..n_samples {
         let mut matches = true;
 
@@ -165,7 +148,6 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
     row
 }
 
-/// Optimized recursive function with pre-allocated result vector
 pub fn generate_lower_order_terms(
     factors: &[String],
     size: usize,
@@ -185,13 +167,11 @@ pub fn generate_lower_order_terms(
     }
 }
 
-/// Optimized with capacity pre-allocation
 pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
     if factors.is_empty() {
         return Vec::new();
     }
 
-    // Pre-calculate approximate capacity needed
     let total_combinations: usize = (2..=factors.len())
         .map(|size| {
             let mut result = 1;
@@ -210,7 +190,6 @@ pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
     interactions
 }
 
-/// Optimized with iterative approach instead of pure recursion for better performance
 pub fn generate_level_combinations(
     factor_levels: &[(String, Vec<String>)],
     current_combo: &mut HashMap<String, String>,
@@ -229,13 +208,11 @@ pub fn generate_level_combinations(
     }
 }
 
-/// Optimized with HashSet for deduplication
 pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>, String> {
     let mut terms = Vec::new();
     let mut factors_for_interaction = Vec::new();
     let mut added_terms = HashSet::new();
 
-    // Add covariates as main effects
     if let Some(covariates) = &config.main.covar {
         for covar_name in covariates {
             if added_terms.insert(covar_name.clone()) {
@@ -244,7 +221,6 @@ pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>,
         }
     }
 
-    // Add fixed factors as main effects and collect for interactions
     if let Some(fix_factors) = &config.main.fix_factor {
         for factor_name in fix_factors {
             if added_terms.insert(factor_name.clone()) {
@@ -254,7 +230,6 @@ pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>,
         }
     }
 
-    // Add random factors as main effects and collect for interactions
     if let Some(random_factors) = &config.main.rand_factor {
         for factor_name in random_factors {
             if added_terms.insert(factor_name.clone()) {
@@ -264,19 +239,16 @@ pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>,
         }
     }
 
-    // Add all possible interactions between factors
     if factors_for_interaction.len() > 1 {
         terms.extend(generate_interaction_terms(&factors_for_interaction));
     }
     Ok(terms)
 }
 
-/// Optimized with HashSet for deduplication
 pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, String> {
     let mut terms = Vec::new();
     let mut added_terms = HashSet::new();
 
-    // Add covariates from custom model
     if let Some(cov_model_str) = &config.model.cov_model {
         for term_name in cov_model_str.split_whitespace() {
             if added_terms.insert(term_name.to_string()) {
@@ -285,7 +257,6 @@ pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, S
         }
     }
 
-    // Add main effects from custom factor model
     if let Some(factors_model) = &config.model.factors_model {
         for factor_name in factors_model {
             if added_terms.insert(factor_name.clone()) {
@@ -296,7 +267,6 @@ pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, S
     Ok(terms)
 }
 
-/// Optimized string building with capacity estimation
 pub fn generate_design_string(design_info: &DesignMatrixInfo) -> String {
     let has_intercept = design_info.term_names.contains(&"Intercept".to_string());
     let other_terms: Vec<_> = design_info.term_names
@@ -304,14 +274,10 @@ pub fn generate_design_string(design_info: &DesignMatrixInfo) -> String {
         .filter(|&term| term != "Intercept")
         .collect();
 
-    // Estimate capacity needed
-    let estimated_capacity =
-        (if has_intercept { 17 } else { 8 }) + // "Design: Intercept" or "Design: "
-        other_terms.len() * 3 + // " + " for each term
-        other_terms
-            .iter()
-            .map(|term| term.len())
-            .sum::<usize>();
+    let estimated_capacity = other_terms
+        .iter()
+        .map(|term| term.len())
+        .sum::<usize>();
 
     let mut design_string = String::with_capacity(estimated_capacity);
 
@@ -328,7 +294,6 @@ pub fn generate_design_string(design_info: &DesignMatrixInfo) -> String {
     design_string
 }
 
-/// Optimized with pre-allocated capacity
 pub fn generate_l_labels(design_info: &DesignMatrixInfo) -> Vec<String> {
     let mut l_labels = Vec::with_capacity(design_info.p_parameters);
     let mut l_counter = 1;
@@ -345,7 +310,6 @@ pub fn generate_l_labels(design_info: &DesignMatrixInfo) -> Vec<String> {
     l_labels
 }
 
-/// Optimized parameter name generation with better error handling and performance
 pub fn generate_all_row_parameter_names_sorted(
     design_info: &DesignMatrixInfo,
     data: &AnalysisData
@@ -353,11 +317,20 @@ pub fn generate_all_row_parameter_names_sorted(
     let mut all_params = Vec::with_capacity(design_info.p_parameters);
     let mut factor_levels_cache: HashMap<String, Vec<String>> = HashMap::new();
 
-    // Build factor levels cache for all unique factors at once
+    let mut covariate_names = HashSet::new();
+    if let Some(covar_defs_groups) = &data.covariate_data_defs {
+        for def_group in covar_defs_groups {
+            for def in def_group {
+                covariate_names.insert(def.name.clone());
+            }
+        }
+    }
+
     let unique_factors: HashSet<String> = design_info.term_names
         .iter()
         .filter(|&term| term != "Intercept")
         .flat_map(|term| parse_interaction_term(term))
+        .filter(|factor_name| !covariate_names.contains(factor_name))
         .collect();
 
     for factor_name in unique_factors {
@@ -371,10 +344,14 @@ pub fn generate_all_row_parameter_names_sorted(
         }
     }
 
-    // Process each term to generate parameter names
     for term_name in &design_info.term_names {
         if term_name == "Intercept" {
             all_params.push("Intercept".to_string());
+            continue;
+        }
+
+        if covariate_names.contains(term_name) {
+            all_params.push(term_name.clone());
             continue;
         }
 
@@ -382,81 +359,81 @@ pub fn generate_all_row_parameter_names_sorted(
             let num_cols = end_idx - start_idx + 1;
 
             if term_name.contains('*') {
-                // Interaction terms
                 let factors_in_term = parse_interaction_term(term_name);
 
-                // Validate all factors have levels
-                let level_sets: Result<Vec<_>, String> = factors_in_term
-                    .iter()
-                    .map(|factor_name| {
-                        factor_levels_cache
-                            .get(factor_name)
-                            .ok_or_else(||
-                                format!(
-                                    "Levels not found for factor '{}' in interaction '{}'.",
-                                    factor_name,
-                                    term_name
-                                )
-                            )
-                            .and_then(|levels| {
-                                if levels.is_empty() {
-                                    Err(
-                                        format!(
-                                            "Factor '{}' in interaction '{}' has no defined levels (might be a covariate).",
-                                            factor_name,
-                                            term_name
-                                        )
-                                    )
-                                } else {
-                                    Ok((factor_name, levels))
-                                }
-                            })
-                    })
-                    .collect();
+                let has_covariate = factors_in_term.iter().any(|f| covariate_names.contains(f));
 
-                let level_sets = level_sets?;
-
-                // Generate combinations using iterative approach for better performance
-                let mut combination_indices = vec![0; level_sets.len()];
-
-                for _ in 0..num_cols {
-                    let param_parts: Vec<String> = level_sets
+                if has_covariate {
+                    for _ in 0..num_cols {
+                        all_params.push(term_name.clone());
+                    }
+                } else {
+                    let level_sets: Result<Vec<_>, String> = factors_in_term
                         .iter()
-                        .enumerate()
-                        .map(|(idx, (factor_name, levels))| {
-                            format!("[{}={}]", factor_name, levels[combination_indices[idx]])
+                        .map(|factor_name| {
+                            factor_levels_cache
+                                .get(factor_name)
+                                .ok_or_else(||
+                                    format!(
+                                        "Levels not found for factor '{}' in interaction '{}'.",
+                                        factor_name,
+                                        term_name
+                                    )
+                                )
+                                .and_then(|levels| {
+                                    if levels.is_empty() {
+                                        Err(
+                                            format!(
+                                                "Factor '{}' in interaction '{}' has no defined levels (might be a covariate).",
+                                                factor_name,
+                                                term_name
+                                            )
+                                        )
+                                    } else {
+                                        Ok((factor_name, levels))
+                                    }
+                                })
                         })
                         .collect();
-                    all_params.push(param_parts.join("*"));
 
-                    // Increment combination indices (odometer-style)
-                    let mut carry_pos = level_sets.len();
-                    loop {
-                        if carry_pos == 0 {
-                            break;
+                    let level_sets = level_sets?;
+
+                    let mut combination_indices = vec![0; level_sets.len()];
+
+                    for _ in 0..num_cols {
+                        let param_parts: Vec<String> = level_sets
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, (factor_name, levels))| {
+                                format!("[{}={}]", factor_name, levels[combination_indices[idx]])
+                            })
+                            .collect();
+                        all_params.push(param_parts.join("*"));
+
+                        let mut carry_pos = level_sets.len();
+                        loop {
+                            if carry_pos == 0 {
+                                break;
+                            }
+                            carry_pos -= 1;
+                            combination_indices[carry_pos] += 1;
+                            if combination_indices[carry_pos] < level_sets[carry_pos].1.len() {
+                                break;
+                            }
+                            combination_indices[carry_pos] = 0;
                         }
-                        carry_pos -= 1;
-                        combination_indices[carry_pos] += 1;
-                        if combination_indices[carry_pos] < level_sets[carry_pos].1.len() {
-                            break;
-                        }
-                        combination_indices[carry_pos] = 0;
                     }
                 }
             } else {
-                // Main effects
                 if let Some(levels) = factor_levels_cache.get(term_name) {
                     if levels.is_empty() {
-                        // Covariate
                         all_params.push(term_name.clone());
                     } else {
-                        // Categorical factor
                         for level in levels {
                             all_params.push(format!("[{}={}]", term_name, level));
                         }
                     }
                 } else {
-                    // Fallback
                     all_params.push(term_name.clone());
                 }
             }
@@ -465,7 +442,6 @@ pub fn generate_all_row_parameter_names_sorted(
     Ok(all_params)
 }
 
-/// Optimized with better data structure usage and early returns
 pub fn get_all_non_empty_cells(
     data: &AnalysisData,
     config: &UnivariateConfig
@@ -487,10 +463,8 @@ pub fn get_all_non_empty_cells(
         return Ok(Vec::new());
     }
 
-    // Build factor location cache once
     let mut factor_locations = HashMap::with_capacity(all_factor_names.len());
     for factor_name in &all_factor_names {
-        // Check fixed factors
         if
             let Some((group_idx, _)) = data.fix_factor_data_defs
                 .iter()
@@ -501,7 +475,6 @@ pub fn get_all_non_empty_cells(
             continue;
         }
 
-        // Check random factors
         if let Some(rand_defs) = &data.random_factor_data_defs {
             if
                 let Some((group_idx, _)) = rand_defs
@@ -517,7 +490,6 @@ pub fn get_all_non_empty_cells(
         return Err(format!("Definition for factor '{}' not found.", factor_name));
     }
 
-    // Collect unique cells
     let mut seen_representations = HashSet::new();
     let mut unique_cells = Vec::new();
 
@@ -553,7 +525,6 @@ pub fn get_all_non_empty_cells(
         }
 
         if cell_complete && !current_cell.is_empty() {
-            // Create canonical representation for hashing
             let mut pairs: Vec<_> = current_cell.iter().collect();
             pairs.sort_unstable_by_key(|(k, _)| *k);
             let representation = pairs

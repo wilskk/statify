@@ -29,12 +29,10 @@ pub fn calculate_ss_for_term(
     g_inv_model: &DMatrix<f64>,
     term_of_interest: &str
 ) -> Result<(f64, usize), String> {
-    // Jika matriks L tidak memiliki baris atau kolom, berarti tidak ada hipotesis yang perlu diuji.
     if l_matrix.nrows() == 0 || l_matrix.ncols() == 0 {
         return Ok((0.0, 0));
     }
 
-    // Validasi dimensi: jumlah kolom L harus sama dengan jumlah baris/elemen beta_hat.
     if beta_hat_model.nrows() != l_matrix.ncols() {
         return Err(
             format!(
@@ -47,7 +45,6 @@ pub fn calculate_ss_for_term(
         );
     }
 
-    // Validasi dimensi: G_inv harus matriks persegi dengan dimensi sama dengan jumlah kolom L.
     if g_inv_model.nrows() != l_matrix.ncols() || g_inv_model.ncols() != l_matrix.ncols() {
         return Err(
             format!(
@@ -61,22 +58,15 @@ pub fn calculate_ss_for_term(
         );
     }
 
-    // Menghitung (L * beta_hat), yaitu estimasi nilai dari kombinasi linier hipotesis.
     let l_beta_hat = l_matrix * beta_hat_model;
 
-    // Menghitung (L * G_inv * L'), yang merupakan bagian inti dari bentuk kuadratik SS.
-    // Matriks ini proporsional dengan matriks kovarians dari (L * beta_hat).
     let l_g_inv_lt = l_matrix * g_inv_model * l_matrix.transpose();
 
-    // Derajat kebebasan (df) untuk term ini adalah rank dari matriks (LGL').
-    // Rank menunjukkan jumlah hipotesis linier independen yang sedang diuji.
     let df_term = l_g_inv_lt.rank(1e-8);
     if df_term == 0 {
         return Ok((0.0, 0));
     }
 
-    // Menghitung pseudo-inverse dari (LGL'), diperlukan jika matriks tersebut singular.
-    // Ini memungkinkan perhitungan SS bahkan ketika beberapa hipotesis bersifat dependen secara linier.
     let l_g_inv_lt_inv_tolerance = 1e-12;
     let l_g_inv_lt_inv = l_g_inv_lt
         .clone()
@@ -91,13 +81,9 @@ pub fn calculate_ss_for_term(
             )
         )?;
 
-    // Menghitung SS(H) = (L*beta)^T * (LGL')^-1 * (L*beta).
-    // Hasilnya harus berupa matriks 1x1 yang berisi nilai SS skalar.
     let ss_matrix = l_beta_hat.transpose() * l_g_inv_lt_inv * l_beta_hat;
 
-    // Memastikan hasil perhitungan SS adalah sebuah skalar sebelum mengembalikannya.
     if ss_matrix.nrows() == 1 && ss_matrix.ncols() == 1 {
-        // SS tidak boleh negatif; ambil nilai maksimal antara hasil perhitungan dan 0.0.
         Ok((ss_matrix[(0, 0)].max(0.0), df_term))
     } else {
         Err(
@@ -111,11 +97,6 @@ pub fn calculate_ss_for_term(
     }
 }
 
-/// Menghitung Sum of Squares (SS) Tipe I menggunakan pendekatan matriks hipotesis.
-///
-/// SS Tipe I bersifat sekuensial; hasilnya bergantung pada urutan term dalam model.
-/// Suatu term dievaluasi setelah term-term yang mendahuluinya dalam model dimasukkan.
-/// Ini berguna untuk analisis di mana urutan penambahan prediktor memiliki makna teoretis.
 pub fn calculate_type_i_ss(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
@@ -124,22 +105,16 @@ pub fn calculate_type_i_ss(
     g_inv: &DMatrix<f64>,
     ztwz_matrix: &DMatrix<f64>
 ) -> Result<(f64, usize), String> {
-    // Membangun matriks hipotesis (L) yang sesuai untuk SS Tipe I.
     let l_matrix = construct_type_i_l_matrix(
         design_info,
         term_of_interest,
         all_model_terms,
         ztwz_matrix
     )?;
-    // Menghitung SS menggunakan matriks L yang telah dibangun.
+
     calculate_ss_for_term(&l_matrix, beta_hat, g_inv, term_of_interest)
 }
 
-/// Menghitung Sum of Squares (SS) Tipe II menggunakan pendekatan matriks hipotesis.
-///
-/// SS Tipe II menguji efek suatu term setelah memperhitungkan semua term lain dalam model
-/// yang TIDAK mengandung term tersebut (misalnya, interaksi tingkat lebih tinggi diabaikan).
-/// Cocok untuk model tanpa interaksi signifikan.
 pub fn calculate_type_ii_ss(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
@@ -147,17 +122,11 @@ pub fn calculate_type_ii_ss(
     beta_hat: &DVector<f64>,
     g_inv: &DMatrix<f64>
 ) -> Result<(f64, usize), String> {
-    // Membangun matriks hipotesis (L) yang sesuai untuk SS Tipe II.
     let l_matrix = construct_type_ii_l_matrix(design_info, term_of_interest, all_model_terms)?;
-    // Menghitung SS menggunakan matriks L yang telah dibangun.
+
     calculate_ss_for_term(&l_matrix, beta_hat, g_inv, term_of_interest)
 }
 
-/// Menghitung Sum of Squares (SS) Tipe III menggunakan pendekatan matriks hipotesis.
-///
-/// SS Tipe III menguji efek suatu term setelah memperhitungkan semua term lain dalam model,
-/// termasuk interaksi. Ini adalah pendekatan yang paling umum digunakan ketika ada interaksi
-/// dalam model, karena menguji hipotesis marginal.
 pub fn calculate_type_iii_ss(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
@@ -167,7 +136,6 @@ pub fn calculate_type_iii_ss(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<(f64, usize), String> {
-    // Membangun matriks hipotesis (L) yang sesuai untuk SS Tipe III.
     let l_matrix = construct_type_iii_l_matrix(
         design_info,
         term_of_interest,
@@ -175,14 +143,10 @@ pub fn calculate_type_iii_ss(
         data,
         config
     )?;
-    // Menghitung SS menggunakan matriks L yang telah dibangun.
+
     calculate_ss_for_term(&l_matrix, beta_hat, g_inv, term_of_interest)
 }
 
-/// Menghitung Sum of Squares (SS) Tipe IV menggunakan pendekatan matriks hipotesis.
-///
-/// SS Tipe IV dirancang khusus untuk data yang tidak seimbang dengan sel kosong (missing cells)
-/// dalam desain faktorial. Hipotesis yang diuji bergantung pada pola sel kosong tersebut.
 pub fn calculate_type_iv_ss(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
@@ -192,7 +156,6 @@ pub fn calculate_type_iv_ss(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<(f64, usize), String> {
-    // Membangun matriks hipotesis (L) yang sesuai untuk SS Tipe IV.
     let l_matrix = construct_type_iv_l_matrix(
         design_info,
         term_of_interest,
@@ -200,6 +163,6 @@ pub fn calculate_type_iv_ss(
         data,
         config
     )?;
-    // Menghitung SS menggunakan matriks L yang telah dibangun.
+
     calculate_ss_for_term(&l_matrix, beta_hat, g_inv, term_of_interest)
 }
