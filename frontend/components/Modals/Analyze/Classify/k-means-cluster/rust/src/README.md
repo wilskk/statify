@@ -1,74 +1,80 @@
-# Rust Statistical Library dengan WASM Support
+# Rust K-Means Clustering Library dengan WASM Support
 
-Proyek ini adalah implementasi library statistik menggunakan Rust dengan dukungan WebAssembly melalui wasm-bindgen, yang memungkinkan fungsi-fungsi statistik digunakan di browser atau aplikasi JavaScript.
+Proyek ini adalah implementasi algoritma K-Means clustering menggunakan Rust dengan dukungan WebAssembly melalui wasm-bindgen, yang memungkinkan analisis clustering digunakan di browser atau aplikasi JavaScript.
 
 ## Struktur Proyek
 
 ```
 src/
-|   mod.rs                  # Root module, mengekspor semua komponen publik
+|   lib.rs                  # Root module, mengekspor semua komponen publik
 |   
 +---models/                 # Definisi struktur data
-|       config.rs           # Konfigurasi untuk analisis statistik
-|       data.rs             # Struktur data input
+|       config.rs           # Konfigurasi untuk analisis K-Means clustering
+|       data.rs             # Struktur data input dan definisi variabel
 |       mod.rs              # Ekspor model
-|       result.rs           # Struktur hasil analisis
+|       result.rs           # Struktur hasil analisis clustering
 |       
-+---stats/                  # Implementasi algoritma statistik
-|       core.rs             # Fungsi-fungsi statistik inti
++---stats/                  # Implementasi algoritma statistik dan clustering
+|       core.rs             # Re-export semua fungsi statistik
 |       mod.rs              # Ekspor fungsi statistik
-|       
-+---test/                   # Modul pengujian
-|       sample.rs             # Data untuk pengujian
-|       example.rs          # Contoh penggunaan dan test case
-|       mod.rs              # Ekspor modul test
+|       anova.rs            # Implementasi analisis ANOVA
+|       case_count.rs       # Perhitungan jumlah kasus per cluster
+|       cluster_centers.rs  # Perhitungan pusat cluster
+|       cluster_membership.rs # Penentuan keanggotaan cluster
+|       cluster_plot.rs     # Data untuk visualisasi cluster
+|       common.rs           # Fungsi-fungsi umum
+|       initialize_clusters.rs # Inisialisasi pusat cluster awal
+|       iteration_history.rs # Riwayat iterasi algoritma
+|       preprocess_data.rs  # Pra-pemrosesan data
 |       
 +---utils/                  # Utilitas pendukung
 |       converter.rs        # Konversi antara format (JSON, struct)
 |       error.rs            # Penanganan error terstandarisasi
+|       log.rs              # Sistem logging untuk debugging
 |       mod.rs              # Ekspor utilitas
 |       
-\---wasm/                   # Binding WebAssembly
-        constructor.rs      # Constructor-based API untuk JavaScript
-        function.rs         # Function-based API untuk JavaScript
-        mod.rs              # Ekspor binding WASM
++---wasm/                   # Binding WebAssembly
+|       constructor.rs      # Constructor-based API untuk JavaScript
+|       function.rs         # Function-based API untuk JavaScript
+|       mod.rs              # Ekspor binding WASM
+|       
+\---test/                   # Modul pengujian
+        mod.rs              # Ekspor modul test
 ```
 
 ### Tabel File dan Fungsi Utama
 
 | File                | Fungsi Utama                                              | Input                       | Output                      |
 |---------------------|-----------------------------------------------------------|-----------------------------|-----------------------------|
-| `mod.rs`            | Mengekspor semua modul publik untuk library               | -                           | Modul publik                |
+| `lib.rs`            | Mengekspor semua modul publik untuk library               | -                           | Modul publik                |
 | `models/mod.rs`     | Re-export semua struktur model                            | -                           | Tipe data publik            |
-| `models/config.rs`  | Mendefinisikan struktur konfigurasi analisis              | -                           | Struktur `Config`           |
-| `models/data.rs`    | Mendefinisikan struktur data input                        | -                           | Struktur `DataSet`          |
-| `models/result.rs`  | Mendefinisikan struktur output hasil analisis             | -                           | Struktur `StatResult`       |
-| `stats/mod.rs`      | Re-export fungsi statistik                                | -                           | Fungsi `analyze`            |
-| `stats/core.rs`     | Implementasi algoritma statistik                          | `DataSet`, `Config`         | `StatResult`                |
+| `models/config.rs`  | Mendefinisikan struktur konfigurasi K-Means clustering   | -                           | Struktur `KMeansConfig`     |
+| `models/data.rs`    | Mendefinisikan struktur data input dan variabel           | -                           | Struktur `AnalysisData`     |
+| `models/result.rs`  | Mendefinisikan struktur output hasil clustering           | -                           | Struktur `KMeansResult`     |
+| `stats/mod.rs`      | Re-export fungsi statistik                                | -                           | Fungsi clustering           |
+| `stats/core.rs`     | Re-export semua fungsi clustering                         | `AnalysisData`, `KMeansConfig` | `KMeansResult`              |
 | `utils/mod.rs`      | Re-export utilitas                                        | -                           | Fungsi utilitas publik      |
-| `utils/converter.rs`| Konversi antara JSON dan struktur Rust                    | `&str`, `StatResult`        | `(DataSet, Config)`, `String` |
-| `utils/error.rs`    | Definisi dan penanganan error                             | -                           | Enum `StatError`            |
+| `utils/converter.rs`| Konversi antara JSON dan struktur Rust                    | `&str`, `KMeansResult`      | `AnalysisData`, `String`    |
+| `utils/error.rs`    | Definisi dan penanganan error                             | -                           | `ErrorCollector`            |
+| `utils/log.rs`      | Sistem logging untuk debugging                            | -                           | `FunctionLogger`            |
 | `wasm/mod.rs`       | Re-export binding WASM                                    | -                           | API WASM                    |
-| `wasm/constructor.rs`| API berorientasi objek untuk JavaScript                   | `&str` (JSON)               | `String` (JSON)             |
-| `wasm/function.rs`  | API fungsional untuk JavaScript                           | `&str` (JSON)               | `String` (JSON)             |
-| `test/mod.rs`       | Re-export modul test                                      | -                           | -                           |
-| `test/data.rs`      | Menyediakan data pengujian                                | -                           | `DataSet`, `Config`         |
-| `test/example.rs`   | Test case dan contoh penggunaan                           | `DataSet`, `Config`         | Hasil test                  |
-
+| `wasm/constructor.rs`| API berorientasi objek untuk JavaScript                   | `JsValue`                   | `KMeansClusterAnalysis`     |
+| `wasm/function.rs`  | API fungsional untuk JavaScript                           | `AnalysisData`, `KMeansConfig` | `KMeansResult`              |
 
 ## Keunggulan Arsitektur
 
 1. **Modularitas Tinggi**: Setiap komponen memiliki tanggung jawab spesifik dan terpisah
 2. **Dukungan API Ganda**: Menawarkan pendekatan OO dan fungsional untuk fleksibilitas
 3. **Error Handling Konsisten**: Pendekatan terstandarisasi untuk error di seluruh library
-4. **Testability**: Struktur yang mudah diuji secara terpisah
-5. **Maintainability**: Mudah dipelihara dan diperluas
+4. **Sistem Logging**: Tracking proses untuk debugging dan monitoring
+5. **Testability**: Struktur yang mudah diuji secara terpisah
+6. **Maintainability**: Mudah dipelihara dan diperluas
 
 ## Keterkaitan Antar File
 
 ```
                           ┌────────────────────────┐
-                          │        mod.rs          │
+                          │        lib.rs          │
                           │  (Root module export)  │
                           └───────────┬────────────┘
                                       │
@@ -88,23 +94,24 @@ src/
      │           │         │              │     │                               │
      └───────────┼─────────┼──────────────▼─────┼───────────────────────────┐  │
                  │         │      ┌──────────────────────────────────┐      │  │
-                 │         │      │    Implementasi stats/core.rs    │      │  │
-                 │         │      │    - Menerima DataSet & Config   │◄─────┘  │
-                 │         │      │    - Menggunakan StatError       │         │
-                 │         │      │    - Menghasilkan StatResult     │         │
+                 │         │      │    Implementasi stats/*.rs       │      │  │
+                 │         │      │    - Menerima AnalysisData &     │◄─────┘  │
+                 │         │      │      KMeansConfig                │         │
+                 │         │      │    - Menggunakan ErrorCollector  │         │
+                 │         │      │    - Menghasilkan KMeansResult   │         │
                  │         │      └──────────────────────────────────┘         │
                  │         │                                                   │
                  │         │      ┌──────────────────────────────────┐         │
                  │         └─────►│    Implementasi wasm/*.rs        │◄────────┘
-                 │                │    - Menerima JSON               │
+                 │                │    - Menerima JsValue            │
                  │                │    - Memanggil converter.rs      │
-                 │                │    - Memanggil core.rs           │
-                 │                │    - Mengembalikan JSON Result   │
+                 │                │    - Memanggil stats/core.rs     │
+                 │                │    - Mengembalikan JsValue       │
                  │                └──────────────────────────────────┘
                  │
                  │                ┌──────────────────────────────────┐
                  └───────────────►│    Implementasi utils/converter  │
-                                  │    - Mengkonversi JSON<->Struct  │
+                                  │    - Mengkonversi JsValue<->Struct│
                                   │    - Menggunakan model structs   │
                                   └──────────────────────────────────┘
 ```
@@ -112,17 +119,17 @@ src/
 ### Aliran Data
 
 1. **Entrypoint (wasm layer)**:
-   - `wasm/constructor.rs` atau `wasm/function.rs` menerima input JSON dari JavaScript
-   - Memanggil `utils/converter.rs` untuk mengkonversi JSON menjadi struct Rust
+   - `wasm/constructor.rs` atau `wasm/function.rs` menerima input JsValue dari JavaScript
+   - Memanggil `utils/converter.rs` untuk mengkonversi JsValue menjadi struct Rust
 
 2. **Proses Utama**:
-   - `stats/core.rs` menerima struktur `DataSet` dan `Config` dari wasm layer
-   - Melakukan validasi dan proses analisis statistik
-   - Menghasilkan `StatResult` yang berisi hasil analisis atau pesan error
+   - `stats/core.rs` menerima struktur `AnalysisData` dan `KMeansConfig` dari wasm layer
+   - Melakukan validasi dan proses clustering K-Means
+   - Menghasilkan `KMeansResult` yang berisi hasil clustering atau pesan error
 
 3. **Output (wasm layer)**:
-   - `utils/converter.rs` mengkonversi `StatResult` kembali ke JSON
-   - `wasm/constructor.rs` atau `wasm/function.rs` mengembalikan JSON ke JavaScript
+   - `utils/converter.rs` mengkonversi `KMeansResult` kembali ke JsValue
+   - `wasm/constructor.rs` atau `wasm/function.rs` mengembalikan JsValue ke JavaScript
 
 ### Dependensi Antar Modul
 
@@ -134,7 +141,6 @@ src/
 | `wasm/`     | Bergantung pada semua modul lainnya            |
 | `test/`     | Bergantung pada semua modul lainnya            |
 
-
 ## Penjelasan Komponen
 
 ### 1. Models
@@ -143,18 +149,29 @@ Modul ini berisi definisi struktur data yang digunakan dalam library.
 
 #### `config.rs`
 
-Mendefinisikan struktur konfigurasi untuk operasi statistik:
+Mendefinisikan struktur konfigurasi untuk operasi K-Means clustering:
 
 ```rust
-pub struct Config {
-    pub method: String,           // Metode statistik ("mean", "median", dll)
-    pub params: Vec<String>,      // Parameter opsional
-    pub options: ConfigOptions,   // Opsi tambahan
+pub struct KMeansConfig {
+    pub main: MainConfig,           // Konfigurasi utama
+    pub iterate: IterateConfig,     // Konfigurasi iterasi
+    pub save: SaveConfig,           // Konfigurasi penyimpanan
+    pub options: OptionsConfig,     // Opsi tambahan
 }
 
-pub struct ConfigOptions {
-    pub confidence_level: Option<f64>,  // Tingkat kepercayaan untuk interval
-    pub exclude_outliers: Option<bool>, // Apakah mengecualikan outlier
+pub struct MainConfig {
+    pub target_var: Option<Vec<String>>,    // Variabel target
+    pub case_target: Option<String>,        // Target kasus
+    pub iterate_classify: bool,             // Iterasi klasifikasi
+    pub classify_only: bool,                // Hanya klasifikasi
+    pub cluster: i32,                       // Jumlah cluster
+    // ... dan lainnya
+}
+
+pub struct IterateConfig {
+    pub maximum_iterations: i32,            // Maksimum iterasi
+    pub convergence_criterion: f64,         // Kriteria konvergensi
+    pub use_running_means: bool,           // Gunakan running means
 }
 ```
 
@@ -163,44 +180,80 @@ pub struct ConfigOptions {
 Mendefinisikan struktur data input:
 
 ```rust
-pub struct DataSet {
-    pub values: Vec<f64>,            // Nilai numerik
-    pub labels: Option<Vec<String>>, // Label opsional
+pub struct DataRecord {
+    pub values: HashMap<String, DataValue>,
+}
+
+pub enum DataValue {
+    NumberFloat(f64),
+    Number(i64),
+    Text(String),
+    Boolean(bool),
+    Date(String),
+    DateTime(String),
+    Time(String),
+    Currency(f64),
+    Scientific(f64),
+    Percentage(f64),
+    Null,
+}
+
+pub struct AnalysisData {
+    pub target_data: Vec<Vec<DataRecord>>,           // Data target
+    pub case_data: Vec<Vec<DataRecord>>,             // Data kasus
+    pub target_data_defs: Vec<Vec<VariableDefinition>>, // Definisi variabel target
+    pub case_data_defs: Vec<Vec<VariableDefinition>>,   // Definisi variabel kasus
 }
 ```
 
 #### `result.rs`
 
-Mendefinisikan struktur untuk hasil analisis:
+Mendefinisikan struktur untuk hasil analisis clustering:
 
 ```rust
-pub struct StatResult {
-    pub success: bool,                 // Status keberhasilan
-    pub result: Option<AnalysisResult>, // Hasil jika sukses
-    pub errors: Vec<String>,           // Daftar error jika gagal
-}
-
-pub struct AnalysisResult {
-    pub metrics: HashMap<String, f64>,             // Metrik hasil (mean, median, dll)
-    pub derived_data: Option<Vec<f64>>,            // Data turunan (z-scores, dll)
-    pub additional_info: Option<HashMap<String, String>>, // Info tambahan
+pub struct KMeansResult {
+    pub initial_centers: Option<InitialClusterCenters>,      // Pusat cluster awal
+    pub iteration_history: Option<IterationHistory>,         // Riwayat iterasi
+    pub cluster_membership: Option<ClusterMembership>,       // Keanggotaan cluster
+    pub final_cluster_centers: Option<FinalClusterCenters>,  // Pusat cluster akhir
+    pub distances_between_centers: Option<DistancesBetweenCenters>, // Jarak antar pusat
+    pub anova: Option<ANOVATable>,                          // Hasil ANOVA
+    pub cases_count: Option<CaseCountTable>,                // Jumlah kasus
+    pub cluster_plot: Option<ClusterPlot>,                  // Data plot cluster
 }
 ```
 
 ### 2. Stats
 
-Modul ini berisi implementasi algoritma statistik.
+Modul ini berisi implementasi algoritma K-Means clustering dan analisis statistik.
 
 #### `core.rs`
 
-Berisi fungsi-fungsi statistik utama:
+Re-export semua fungsi clustering:
 
-- `analyze(data: &DataSet, config: &Config) -> StatResult`: Fungsi utama untuk analisis statistik
-- Implementasi untuk berbagai metode statistik:
-  - `calculate_mean`: Menghitung rata-rata
-  - `calculate_median`: Menghitung median
-  - `calculate_std_dev`: Menghitung standar deviasi
-  - Dan lain-lain sesuai kebutuhan
+```rust
+pub use crate::stats::anova::*;
+pub use crate::stats::case_count::*;
+pub use crate::stats::cluster_centers::*;
+pub use crate::stats::cluster_membership::*;
+pub use crate::stats::common::*;
+pub use crate::stats::initialize_clusters::*;
+pub use crate::stats::iteration_history::*;
+pub use crate::stats::preprocess_data::*;
+pub use crate::stats::cluster_plot::*;
+```
+
+#### Fungsi-fungsi Utama:
+
+- `preprocess_data`: Pra-pemrosesan data untuk clustering
+- `initialize_clusters`: Inisialisasi pusat cluster awal
+- `generate_iteration_history`: Menghasilkan riwayat iterasi
+- `generate_cluster_membership`: Menentukan keanggotaan cluster
+- `generate_final_cluster_centers`: Menghitung pusat cluster akhir
+- `calculate_distances_between_centers`: Menghitung jarak antar pusat
+- `perform_anova`: Melakukan analisis ANOVA
+- `calculate_case_count`: Menghitung jumlah kasus per cluster
+- `generate_cluster_plot`: Menghasilkan data untuk visualisasi
 
 ### 3. Utils
 
@@ -210,19 +263,37 @@ Modul ini berisi fungsi-fungsi utilitas.
 
 Fungsi-fungsi untuk konversi format:
 
-- `parse_json_input(json_str: &str) -> Result<(DataSet, Config), StatError>`: Mengkonversi JSON menjadi struktur data
-- `to_json_result(result: &StatResult) -> Result<String, StatError>`: Mengkonversi hasil analisis menjadi JSON
+- `format_result`: Memformat hasil untuk output
+- `string_to_js_error`: Mengkonversi string error ke JsValue
 
 #### `error.rs`
 
 Implementasi error handling:
 
 ```rust
-pub enum StatError {
-    EmptyData,                      // Data kosong
-    UnsupportedMethod(String),      // Metode tidak didukung
-    SerializationError(String),     // Error serialisasi
-    InputError(String),             // Error input
+pub struct ErrorCollector {
+    pub errors: Vec<(String, String)>,  // (context, message)
+}
+
+impl ErrorCollector {
+    pub fn add_error(&mut self, context: &str, message: &str) { ... }
+    pub fn has_errors(&self) -> bool { ... }
+    pub fn get_errors(&self) -> Vec<(String, String)> { ... }
+}
+```
+
+#### `log.rs`
+
+Sistem logging untuk debugging:
+
+```rust
+pub struct FunctionLogger {
+    pub logs: Vec<String>,
+}
+
+impl FunctionLogger {
+    pub fn add_log(&mut self, function_name: &str) { ... }
+    pub fn get_logs(&self) -> Vec<String> { ... }
 }
 ```
 
@@ -235,14 +306,28 @@ Modul ini berisi binding ke WebAssembly untuk digunakan dengan JavaScript.
 Implementasi pendekatan berorientasi objek:
 
 ```rust
-pub struct StatCalculator {
-    data: DataSet,
-    config: Config,
+#[wasm_bindgen]
+pub struct KMeansClusterAnalysis {
+    config: KMeansConfig,
+    data: AnalysisData,
+    result: Option<KMeansResult>,
+    error_collector: ErrorCollector,
+    logger: FunctionLogger,
 }
 
-impl StatCalculator {
-    pub fn new(json_str: &str) -> Result<StatCalculator, JsValue> {...}
-    pub fn process(&self) -> String {...}
+#[wasm_bindgen]
+impl KMeansClusterAnalysis {
+    #[wasm_bindgen(constructor)]
+    pub fn new(target_data: JsValue, case_data: JsValue, 
+               target_data_defs: JsValue, case_data_defs: JsValue, 
+               config_data: JsValue) -> Result<KMeansClusterAnalysis, JsValue> { ... }
+    
+    pub fn run_analysis(&mut self) -> Result<JsValue, JsValue> { ... }
+    pub fn get_results(&self) -> Result<JsValue, JsValue> { ... }
+    pub fn get_formatted_results(&self) -> Result<JsValue, JsValue> { ... }
+    pub fn get_all_log(&self) -> Result<JsValue, JsValue> { ... }
+    pub fn get_all_errors(&self) -> JsValue { ... }
+    pub fn clear_errors(&mut self) -> JsValue { ... }
 }
 ```
 
@@ -251,28 +336,15 @@ impl StatCalculator {
 Implementasi pendekatan fungsional:
 
 ```rust
-pub fn calculate_stats(json_str: &str) -> String {...}
-```
+pub fn run_analysis(data: &AnalysisData, config: &KMeansConfig, 
+                   error_collector: &mut ErrorCollector, 
+                   logger: &mut FunctionLogger) -> Result<Option<KMeansResult>, JsValue> { ... }
 
-### 5. Test
-
-Modul ini berisi komponen untuk pengujian.
-
-#### `data.rs`
-
-Data pengujian:
-
-```rust
-pub fn get_test_data() -> DataSet {...}
-pub fn get_test_config() -> Config {...}
-```
-
-#### `example.rs`
-
-Contoh penggunaan dan test case:
-
-```rust
-fn test_mean_calculation() {...}
+pub fn get_results(result: &Option<KMeansResult>) -> Result<JsValue, JsValue> { ... }
+pub fn get_formatted_results(result: &Option<KMeansResult>) -> Result<JsValue, JsValue> { ... }
+pub fn get_all_log(logger: &FunctionLogger) -> Result<JsValue, JsValue> { ... }
+pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue { ... }
+pub fn clear_errors(error_collector: &mut ErrorCollector) -> JsValue { ... }
 ```
 
 ## Alur Pemrosesan Data
@@ -280,21 +352,36 @@ fn test_mean_calculation() {...}
 Berikut adalah alur pemrosesan data dalam library:
 
 1. **Input Data**
-   - Menerima input dalam format JSON dari JavaScript
-   - Mengkonversi JSON menjadi struct Rust (`DataSet` dan `Config`)
+   - Menerima input dalam format JsValue dari JavaScript
+   - Mengkonversi JsValue menjadi struct Rust (`AnalysisData` dan `KMeansConfig`)
 
 2. **Validasi Input**
    - Memeriksa kevalidan data dan konfigurasi
-   - Mengumpulkan error jika ada
+   - Mengumpulkan error jika ada menggunakan `ErrorCollector`
 
-3. **Pemrosesan Statistik**
-   - Menentukan metode statistik yang akan digunakan berdasarkan konfigurasi
-   - Menerapkan algoritma statistik pada data
-   - Menyimpan hasil dalam struktur `AnalysisResult`
+3. **Pra-pemrosesan Data**
+   - Menangani data hilang dan normalisasi
+   - Menyiapkan data untuk algoritma clustering
 
-4. **Pengembalian Hasil**
-   - Mengemas hasil analisis dalam struktur `StatResult`
-   - Mengkonversi hasil kembali ke format JSON
+4. **Inisialisasi Cluster**
+   - Menentukan pusat cluster awal (jika diaktifkan)
+   - Menggunakan metode yang ditentukan dalam konfigurasi
+
+5. **Iterasi K-Means**
+   - Menjalankan algoritma K-Means
+   - Melacak perubahan pusat cluster dan keanggotaan
+   - Menentukan konvergensi berdasarkan kriteria
+
+6. **Analisis Hasil**
+   - Menghitung pusat cluster akhir
+   - Menentukan keanggotaan cluster untuk setiap data point
+   - Menghitung jarak antar pusat cluster
+   - Melakukan analisis ANOVA (jika diaktifkan)
+   - Menghitung statistik kasus per cluster
+
+7. **Pengembalian Hasil**
+   - Mengemas hasil analisis dalam struktur `KMeansResult`
+   - Mengkonversi hasil kembali ke format JsValue
    - Mengembalikan hasil ke JavaScript
 
 ## Penggunaan di JavaScript
@@ -302,96 +389,129 @@ Berikut adalah alur pemrosesan data dalam library:
 ### Pendekatan Berorientasi Objek
 
 ```javascript
-import { StatCalculator } from 'rust_stats_wasm';
+import { KMeansClusterAnalysis } from 'k-means-cluster-wasm';
 
 // Input data dan konfigurasi
-const inputData = {
-  data: {
-    values: [1.2, 3.4, 5.6, 7.8, 9.0],
-    labels: null
-  },
-  config: {
-    method: "mean",
-    params: [],
+const targetData = [/* array of data records */];
+const caseData = [/* array of data records */];
+const targetDataDefs = [/* array of variable definitions */];
+const caseDataDefs = [/* array of variable definitions */];
+const configData = {
+    main: {
+        cluster: 3,
+        iterate_classify: true,
+        classify_only: false,
+        // ... other config
+    },
+    iterate: {
+        maximum_iterations: 100,
+        convergence_criterion: 0.0001,
+        use_running_means: false
+    },
+    save: {
+        cluster_membership: true,
+        distance_cluster_center: true
+    },
     options: {
-      exclude_outliers: true
+        initial_cluster: true,
+        anova: true,
+        cluster_info: true,
+        cluster_plot: true
     }
-  }
 };
 
-// Membuat instance calculator
-const calculator = new StatCalculator(JSON.stringify(inputData));
+// Membuat instance analyzer
+const analyzer = new KMeansClusterAnalysis(
+    targetData, caseData, targetDataDefs, caseDataDefs, configData
+);
 
-// Memproses data
-const resultJson = calculator.process();
-const result = JSON.parse(resultJson);
+// Menjalankan analisis
+const result = analyzer.run_analysis();
 
-console.log("Hasil analisis:", result);
+// Mendapatkan hasil
+const results = analyzer.get_results();
+const formattedResults = analyzer.get_formatted_results();
+
+// Mendapatkan log dan error
+const logs = analyzer.get_all_log();
+const errors = analyzer.get_all_errors();
+
+console.log("Hasil clustering:", results);
 ```
 
 ### Pendekatan Fungsional
 
 ```javascript
-import { calculate_stats } from 'rust_stats_wasm';
+import { run_analysis, get_results, get_formatted_results } from 'k-means-cluster-wasm';
 
-// Input data dan konfigurasi
-const inputData = {
-  data: {
-    values: [1.2, 3.4, 5.6, 7.8, 9.0],
-    labels: null
-  },
-  config: {
-    method: "std_dev",
-    params: [],
-    options: {
-      confidence_level: 0.95
-    }
-  }
-};
+// Input data dan konfigurasi (dalam format yang sama)
+const targetData = [/* ... */];
+const caseData = [/* ... */];
+const targetDataDefs = [/* ... */];
+const caseDataDefs = [/* ... */];
+const configData = {/* ... */};
 
-// Memanggil fungsi
-const resultJson = calculate_stats(JSON.stringify(inputData));
-const result = JSON.parse(resultJson);
+// Memanggil fungsi analisis
+const result = run_analysis(targetData, caseData, targetDataDefs, caseDataDefs, configData);
 
-console.log("Hasil analisis:", result);
+// Mendapatkan hasil
+const results = get_results(result);
+const formattedResults = get_formatted_results(result);
+
+console.log("Hasil clustering:", results);
 ```
 
 ## Pengembangan
 
-### Menambahkan Metode Statistik Baru
+### Menambahkan Metode Analisis Baru
 
-1. Tambahkan implementasi metode di `stats/core.rs`:
+1. Tambahkan implementasi metode di `stats/`:
 
 ```rust
-fn calculate_new_method(data: &DataSet) -> StatResult {
+// Di stats/new_analysis.rs
+pub fn perform_new_analysis(data: &ProcessedData, config: &KMeansConfig) -> Result<NewAnalysisResult, String> {
     // Implementasi algoritma
     // ...
     
-    // Hasilkan output
-    StatResult {
-        success: true,
-        result: Some(AnalysisResult {
-            metrics: metrics,
-            derived_data: Some(derived_data),
-            additional_info: None,
-        }),
-        errors: vec![],
-    }
+    Ok(NewAnalysisResult {
+        // hasil analisis
+    })
 }
 ```
 
-2. Tambahkan metode ke dalam match pattern di fungsi `analyze`:
+2. Tambahkan struktur hasil di `models/result.rs`:
 
 ```rust
-match config.method.as_str() {
-    "mean" => calculate_mean(data),
-    "median" => calculate_median(data),
-    "std_dev" => calculate_std_dev(data),
-    "new_method" => calculate_new_method(data), // Metode baru
-    _ => StatResult {
-        success: false,
-        result: None,
-        errors: vec![format!("Method '{}' tidak didukung", config.method)],
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NewAnalysisResult {
+    pub metric1: f64,
+    pub metric2: f64,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
+}
+```
+
+3. Perbarui `KMeansResult` untuk menyertakan hasil baru:
+
+```rust
+pub struct KMeansResult {
+    // ... existing fields
+    pub new_analysis: Option<NewAnalysisResult>,
+}
+```
+
+4. Integrasikan ke dalam alur pemrosesan di `wasm/function.rs`:
+
+```rust
+// Di dalam run_analysis function
+if config.options.new_analysis {
+    match core::perform_new_analysis(&preprocessed_data, config) {
+        Ok(analysis) => {
+            new_analysis = Some(analysis);
+        }
+        Err(e) => {
+            error_collector.add_error("Run Analysis : New Analysis", &e);
+        }
     }
 }
 ```
@@ -400,7 +520,7 @@ match config.method.as_str() {
 
 Jika perlu menambahkan informasi tambahan ke hasil analisis:
 
-1. Perbarui struktur `AnalysisResult` di `models/result.rs`
+1. Perbarui struktur di `models/result.rs`
 2. Pastikan implementasi serialisasi/deserialisasi sesuai (menggunakan serde)
 3. Perbarui implementasi metode untuk mengisi data tambahan
 
@@ -412,26 +532,30 @@ Jika perlu menambahkan informasi tambahan ke hasil analisis:
 wasm-pack build --target web
 ```
 
-### Test
-
-```bash
-cargo test
-wasm-pack test --node
-```
-
 ### Penggunaan di Web
 
 ```html
 <script type="module">
-  import init, { StatCalculator, calculate_stats } from './pkg/rust_stats_wasm.js';
+  import init, { KMeansClusterAnalysis, run_analysis } from './pkg/k_means_cluster_wasm.js';
 
   async function run() {
     await init();
     
-    // Gunakan fungsi statistik
+    // Gunakan fungsi clustering
     // ...
   }
 
   run();
 </script>
 ```
+
+## Fitur Utama
+
+1. **K-Means Clustering**: Implementasi algoritma K-Means yang robust
+2. **Analisis ANOVA**: Uji signifikansi perbedaan antar cluster
+3. **Visualisasi Data**: Data untuk plotting cluster
+4. **Error Handling**: Sistem error handling yang komprehensif
+5. **Logging**: Tracking proses untuk debugging
+6. **Konfigurasi Fleksibel**: Berbagai opsi untuk menyesuaikan analisis
+7. **WASM Support**: Performa tinggi di browser
+8. **API Ganda**: OO dan fungsional untuk fleksibilitas

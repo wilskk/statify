@@ -139,8 +139,6 @@ pub fn calculate_anova(data: &ProcessedData, config: &KMeansConfig) -> Result<AN
         note: Some(
             "The F tests should be used only for descriptive purposes because the clusters have been chosen to maximize the differences among cases in different clusters. The observed significance levels are not corrected for this and thus cannot be interpreted as tests of the hypothesis that the cluster means are equal.".to_string()
         ),
-        interpretation: Some(
-            "The ANOVA table assesses how well each variable differentiates between the clusters. A high F-statistic and a low significance value (e.g., < 0.05) for a variable indicate that it is a strong differentiator between the clusters. This means the variable's mean value is significantly different across the clusters.".to_string()
-        ),
+        interpretation: Some("".to_string()),
     })
 }
