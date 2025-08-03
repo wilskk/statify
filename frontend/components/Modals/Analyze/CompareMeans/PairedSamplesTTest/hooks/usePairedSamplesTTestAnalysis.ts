@@ -32,7 +32,7 @@ export const usePairedSamplesTTestAnalysis = ({
     
     const workerRef = useRef<Worker | null>(null);
 
-    const insufficientDataVarsRef = useRef<string[]>([]);
+    const insufficientDataVarsRef = useRef<{ pair: string, insufficientType: string[] }[]>([]);
     const resultsRef = useRef<PairedSamplesTTestResult[]>([]);
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
@@ -69,109 +69,25 @@ export const usePairedSamplesTTestAnalysis = ({
                 data2: dataForVar2,
                 options: { estimateEffectSize, calculateStandardizer }
             };
+            // console.log(`pair: ${pairNumbers[i]}, variable1: ${testVariables1[i].name}, variable2: ${testVariables2[i].name}`);
             worker.postMessage(payload);
         }
 
         worker.onmessage = async (event) => {
             // console.log(`event.data ke-${processedCountRef.current}: `, JSON.stringify(event.data));
-            const { variable1Name, variable2Name, pair, results, status, error: workerError } = event.data;
+            const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
                 // Check for metadata about insufficient data
                 if (results.metadata && results.metadata.hasInsufficientData) {
-                    insufficientDataVarsRef.current.push(`Pair ${results.metadata.pair}`);
-                    console.warn(`Insufficient valid data for Pair ${results.metadata.pair}. Total1: ${results.metadata.totalData1}, Valid1: ${results.metadata.validData1}, Total2: ${results.metadata.totalData2}, Valid2: ${results.metadata.validData2}, Variable1: ${results.metadata.variable1Name}, Variable2: ${results.metadata.variable2Name}`);
+                    insufficientDataVarsRef.current.push({pair: results.metadata.pair, insufficientType: results.metadata.insufficientType});
+                    // console.warn(`Insufficient valid data for Pair ${results.metadata.pair}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                 }
-
-                // if (results.pairedSamplesStatistics) {
-                    // const { variable1, variable2, pair, group1, group2 } = results.pairedSamplesStatistics;
-
-                    // if (group1 && group2) {
-                    //     resultsRef.current.push({
-                    //         variable1,
-                    //         variable2,
-                    //         pair: pair,
-                    //         pairedSamplesStatistics: {
-                    //             group1,
-                    //             group2
-                    //         }
-                    //     });
-                    // }
-                    // else {
-                    //     console.error(`Error processing paired samples statistics for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                // }
-
-                // if (results.pairedSamplesCorrelation) {
-                //     const { variable1, variable2, pair, Label, N, Correlation, PValue } = results.pairedSamplesCorrelation;
-
-                //     // if (variable1 && variable2 && Label && N && Correlation && PValue) {
-                //         resultsRef.current.push({
-                //             variable1,
-                //             variable2,
-                //             pair: pair || 0,
-                //             pairedSamplesCorrelation: {
-                //                 Label,
-                //                 N,
-                //                 Correlation,
-                //                 PValue
-                //             }
-                //         });
-                //     // }
-                    // else {
-                    //     console.error(`Error processing paired samples correlation for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                // }
-
-                // if (results.pairedSamplesTest) {
-                    const { group1, group2 } = results.pairedSamplesStatistics;
-                    const { correlationLabel, N, Correlation, correlationPValue } = results.pairedSamplesCorrelation;
-                    const { label, Mean, StdDev, SEMean, LowerCI, UpperCI, t, df, pValue } = results.pairedSamplesTest;
-
-                    // if (variable1 && variable2 && label && Mean && StdDev && SEMean && LowerCI && UpperCI && t && df && pValue !== undefined && pair !== undefined) {
-                        resultsRef.current.push({
-                            variable1: results.variable1,
-                            variable2: results.variable2,
-                            pair: results.pair,
-                            pairedSamplesStatistics: {
-                                group1,
-                                group2
-                            },
-                            pairedSamplesCorrelation: {
-                                correlationLabel,
-                                N,
-                                Correlation,
-                                correlationPValue
-                            },
-                            pairedSamplesTest: {
-                                label,
-                                Mean,
-                                StdDev,
-                                SEMean,
-                                LowerCI,
-                                UpperCI,
-                                t,
-                                df,
-                                pValue
-                            }
-                        });
-                    // }
-                    // else {
-                    //     console.error(`Error processing paired samples test for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                // }
+                // console.log(`results: ${JSON.stringify(results)}`);
+                resultsRef.current.push(results);
             } else {
-                console.error(`Error processing ${variable1Name} and ${variable2Name}:`, workerError);
-                const errorMsg = `Calculation failed for ${variable1Name} and ${variable2Name}: ${workerError || 'Unknown error'}`;
+                console.error(`Error processing ${variableName}:`, workerError);
+                const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
                 setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
                 errorCountRef.current += 1;
             }
@@ -204,9 +120,30 @@ export const usePairedSamplesTTestAnalysis = ({
                         const logId = await addLog({ log: logMsg });
 
                         // Prepare note about insufficient data if needed
-                        let note = "";
+                        let pairedSamplesStatisticsNote = "";
                         if (insufficientDataVarsRef.current.length > 0) {
-                            note = `Note: The following pairs did not have sufficient valid data for analysis: ${insufficientDataVarsRef.current.join(', ')}. These pairs require at least two valid numeric values in each pair for T-Test calculation.`;
+                            pairedSamplesStatisticsNote += "Note: ";
+                            const typeToVars: Record<string, string[]> = {};
+                            for (const { pair, insufficientType } of insufficientDataVarsRef.current) {
+                                for (const type of insufficientType) {
+                                    if (!typeToVars[type]) typeToVars[type] = [];
+                                    typeToVars[type].push(pair);
+                                }
+                            }
+                            if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+                                pairedSamplesStatisticsNote += `[t cannot be computed for pair(s): ${typeToVars["empty"].join(", ")}. There are no valid pairs.]`;
+                            }
+                            if (typeToVars["single"] && typeToVars["single"].length > 0) {
+                                pairedSamplesStatisticsNote += `[t cannot be computed for pair(s): ${typeToVars["single"].join(", ")}. The sum of caseweights is less than or equal to 1.]`;
+                            }
+                            if (typeToVars["stdDev"] && typeToVars["stdDev"].length > 0) {
+                                pairedSamplesStatisticsNote += `[t cannot be computed for pair(s): ${typeToVars["stdDev"].join(", ")}. The standard error of the difference is 0.]`;
+                            }
+                        }
+
+                        let note = "";
+                        if (insufficientDataVarsRef.current.length === testVariables1.length) {
+                            note = "Note: The Paired Correlation table and the Paired Samples Test table are not produced because all pairs have insufficient data.";
                         }
 
                         const analyticId = await addAnalytic(logId, { title: "T Test", note: note || undefined });
@@ -216,7 +153,7 @@ export const usePairedSamplesTTestAnalysis = ({
                             title: "Paired Samples Statistics",
                             output_data: JSON.stringify({ tables: [formattedPairedSamplesStatisticsTable] }),
                             components: "Paired Samples Statistics",
-                            description: ""
+                            description: pairedSamplesStatisticsNote
                         });
 
                         if (formattedPairedSamplesCorrelationTable.rows.length > 0) {

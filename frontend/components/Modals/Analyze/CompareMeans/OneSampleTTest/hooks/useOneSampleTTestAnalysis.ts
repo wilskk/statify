@@ -11,7 +11,6 @@ import {
 import {
   formatOneSampleTestTable,
   formatOneSampleStatisticsTable,
-  formatErrorTable
 } from '../utils/formatters'
 
 export const useOneSampleTTestAnalysis = ({
@@ -31,7 +30,7 @@ export const useOneSampleTTestAnalysis = ({
   const resultsRef = useRef<OneSampleTTestResult[]>([]);
   const errorCountRef = useRef<number>(0);
   const processedCountRef = useRef<number>(0);
-  const insufficientDataVarsRef = useRef<string[]>([]);
+  const insufficientDataVarsRef = useRef<{variableName: string, variableLabel: string, insufficientType: string[]}[]>([]);
 
   // Timing refs
   const timingRef = useRef<{
@@ -51,7 +50,6 @@ export const useOneSampleTTestAnalysis = ({
   const runAnalysis = useCallback(async () => {
     // 1. Catat waktu ketika runAnalysis dimulai
     timingRef.current.analysisStart = performance.now();
-    console.log(`[OneSampleTTest] Analysis started at: ${new Date().toISOString()}`);
     
     setIsCalculating(true);
     setErrorMsg(null);
@@ -83,8 +81,6 @@ export const useOneSampleTTestAnalysis = ({
 
     // 2. Catat waktu ketika data dikirim ke web worker
     timingRef.current.dataSentToWorker = performance.now();
-    console.log(`[OneSampleTTest] Data sent to worker at: ${new Date().toISOString()}`);
-    console.log(`[OneSampleTTest] Time from start to sending data: ${timingRef.current.dataSentToWorker - timingRef.current.analysisStart}ms`);
 
     testVariables.forEach(variable => {
       const dataForVar = analysisData.map(row => row[variable.columnIndex]);
@@ -103,38 +99,15 @@ export const useOneSampleTTestAnalysis = ({
       // 3. Catat waktu ketika data diterima dari web worker
       if (processedCountRef.current === 0) {
         timingRef.current.dataReceivedFromWorker = performance.now();
-        console.log(`[OneSampleTTest] First data received from worker at: ${new Date().toISOString()}`);
-        console.log(`[OneSampleTTest] Time from sending to receiving data: ${timingRef.current.dataReceivedFromWorker - timingRef.current.dataSentToWorker}ms`);
       }
 
       if (status === 'success' && results) {
         // Check for metadata about insufficient data
         if (results.metadata && results.metadata.hasInsufficientData) {
-          insufficientDataVarsRef.current.push(results.metadata.variableName);
-          console.warn(`Insufficient valid data for variable: ${results.metadata.variableName}. Total: ${results.metadata.totalData}, Valid: ${results.metadata.validData}`);
+          insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
+          // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
         }
-        
-        if (results.oneSampleStatistics && results.oneSampleTest) {
-          const { N, Mean, StdDev, SEMean } = results.oneSampleStatistics;
-          const { T, DF, PValue, MeanDifference, Lower, Upper } = results.oneSampleTest;
-          resultsRef.current.push({
-            variable1: results.variable1,
-            oneSampleStatistics: {
-              N,
-              Mean,
-              StdDev,
-              SEMean
-            },
-            oneSampleTest: {
-              T,
-              DF,
-              PValue,
-              MeanDifference,
-              Lower,
-              Upper
-            }
-          });
-        }
+        resultsRef.current.push(results);
       } else {
         console.error(`Error processing ${variableName}:`, workerError);
         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
@@ -146,12 +119,8 @@ export const useOneSampleTTestAnalysis = ({
 
       if (processedCountRef.current === testVariables.length) {
         try {
-          console.log(`resultsRef.current: ${JSON.stringify(resultsRef.current)}`);
-          
           // 4. Catat waktu ketika data diubah ke format tabel
           timingRef.current.dataFormattedToTable = performance.now();
-          console.log(`[OneSampleTTest] Data formatting started at: ${new Date().toISOString()}`);
-          console.log(`[OneSampleTTest] Time from receiving data to formatting: ${timingRef.current.dataFormattedToTable - timingRef.current.dataReceivedFromWorker}ms`);
 
           // Prepare log message
           const variableNames = testVariables.map(v => v.name).join(" ");
@@ -169,31 +138,46 @@ export const useOneSampleTTestAnalysis = ({
           const logId = await addLog({ log: logMsg });
           
           // Prepare note about insufficient data if needed
-          let note = "";
+          let oneSampleStatisticsNote = "";
           if (insufficientDataVarsRef.current.length > 0) {
-            note = `Note: The following variables did not have sufficient valid data for analysis: ${insufficientDataVarsRef.current.join(', ')}. 
-                These variables require at least two valid numeric values for T-Test calculation.`;
+            oneSampleStatisticsNote += "Note: ";
+            const typeToVars: Record<string, string[]> = {};
+            for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
+              for (const type of insufficientType) {
+                if (!typeToVars[type]) typeToVars[type] = [];
+                typeToVars[type].push(variableLabel || variableName);
+              }
+            }
+            if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+              oneSampleStatisticsNote += `[t cannot be computed for variable(s): ${typeToVars["empty"].join(", ")}. There are no valid cases for this analysis because all caseweights are not positive.]`;
+            }
+            if (typeToVars["single"] && typeToVars["single"].length > 0) {
+              oneSampleStatisticsNote += `[t cannot be computed for variable(s): ${typeToVars["single"].join(", ")}. The sum of caseweights is less than or equal 1.]`;
+            }
+            if (typeToVars["stdDev"] && typeToVars["stdDev"].length > 0) {
+              oneSampleStatisticsNote += `[t cannot be computed for variable(s): ${typeToVars["stdDev"].join(", ")}. The standard deviation is 0.]`;
+            }
+          }
+
+          let note = "";
+          if (insufficientDataVarsRef.current.length === testVariables.length) {
+            note = "Note: The One-Sample Test table is not produced because all variables have insufficient data.";
           }
           
           // Create analytic with or without note
-          const analyticId = await addAnalytic(logId, { 
-            title: "T-Test", 
-            note: note || undefined 
+          const analyticId = await addAnalytic(logId, { title: "T-Test", note: note || undefined });
+
+          const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(resultsRef.current);
+
+          await addStatistic(analyticId, {
+            title: "One-Sample Statistics",
+            output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
+            components: "One-Sample Statistics",
+            description: oneSampleStatisticsNote
           });
 
-          // If we have valid results and not all variables have insufficient data
           if (resultsRef.current.length > 0 && insufficientDataVarsRef.current.length < testVariables.length) {
-            // Format tables
-            const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(resultsRef.current);
             const formattedOneSampleTestTable = formatOneSampleTestTable(resultsRef.current, testValue);
-
-            await addStatistic(analyticId, {
-              title: "One-Sample Statistics",
-              output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
-              components: "One-Sample Statistics",
-              description: ""
-            });
-
             await addStatistic(analyticId, {
               title: "One-Sample Test",
               output_data: JSON.stringify({ tables: [formattedOneSampleTestTable] }),
@@ -201,30 +185,27 @@ export const useOneSampleTTestAnalysis = ({
               description: ""
             });
           } 
-          // If no valid results or all variables have insufficient data, show error table
-          else {
-            const formattedErrorTable = formatErrorTable();
-            await addStatistic(analyticId, {
-              title: "One-Sample T Test Error",
-              output_data: JSON.stringify({ tables: [formattedErrorTable] }),
-              components: "Error",
-              description: ""
-            });
-          }
 
           // 5. Catat waktu ketika proses selesai
           timingRef.current.processCompleted = performance.now();
-          console.log(`[OneSampleTTest] Process completed at: ${new Date().toISOString()}`);
-          console.log(`[OneSampleTTest] Total time from start to completion: ${timingRef.current.processCompleted - timingRef.current.analysisStart}ms`);
-          console.log(`[OneSampleTTest] Time from formatting to completion: ${timingRef.current.processCompleted - timingRef.current.dataFormattedToTable}ms`);
           
-          // Log summary of all timing stages
-          console.log(`[OneSampleTTest] TIMING SUMMARY:`);
-          console.log(`  - Analysis start to data sent: ${timingRef.current.dataSentToWorker - timingRef.current.analysisStart}ms`);
-          console.log(`  - Data sent to data received: ${timingRef.current.dataReceivedFromWorker - timingRef.current.dataSentToWorker}ms`);
-          console.log(`  - Data received to formatting: ${timingRef.current.dataFormattedToTable - timingRef.current.dataReceivedFromWorker}ms`);
-          console.log(`  - Formatting to completion: ${timingRef.current.processCompleted - timingRef.current.dataFormattedToTable}ms`);
-          console.log(`  - TOTAL TIME: ${timingRef.current.processCompleted - timingRef.current.analysisStart}ms`);
+          // Hitung semua timing durations
+          const timeToSendData = timingRef.current.dataSentToWorker - timingRef.current.analysisStart;
+          const timeToReceiveData = timingRef.current.dataReceivedFromWorker - timingRef.current.dataSentToWorker;
+          const timeToFormatData = timingRef.current.dataFormattedToTable - timingRef.current.dataReceivedFromWorker;
+          const timeToComplete = timingRef.current.processCompleted - timingRef.current.dataFormattedToTable;
+          const totalTime = timingRef.current.processCompleted - timingRef.current.analysisStart;
+          
+          // Hitung jumlah data (total rows dari analysisData)
+          const totalDataRows = analysisData.length;
+          
+          // Single console.log dengan format yang diminta
+//           console.log(`[OneSampleTTest][${testVariables.length} var][${totalDataRows} data] TIMING SUMMARY:
+// Analysis start to data sent: ${timeToSendData}ms
+// Data sent to data received: ${timeToReceiveData}ms
+// Data received to formatting: ${timeToFormatData}ms
+// Formatting to completion: ${timeToComplete}ms
+// TOTAL TIME: ${totalTime}ms`);
 
           setIsCalculating(false);
           worker.terminate();

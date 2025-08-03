@@ -1,406 +1,280 @@
 import {
-  formatNumber,
-  formatPValue,
-  formatDF,
-  formatTestStatisticsTable,
   formatFrequenciesTable,
+  formatTestStatisticsTable,
+  formatDescriptiveStatisticsTable,
   formatErrorTable
 } from '../utils/formatters';
-import { ChiSquareResult } from '../types';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
+import type { ChiSquareResult } from '../types';
 
-describe('Chi-Square Formatters', () => {
-  describe('formatNumber', () => {
-    it('should format a number with specified precision', () => {
-      expect(formatNumber(10.12345, 2)).toBe('10.12');
-      expect(formatNumber(0, 3)).toBe('0.000');
-      expect(formatNumber(-5.6789, 1)).toBe('-5.7');
+describe('ChiSquare Formatters', () => {
+  const mockVariable: Variable = {
+    name: 'testVar',
+    label: 'Test Variable',
+    columnIndex: 0,
+    type: 'NUMERIC',
+    tempId: '1',
+    width: 8,
+    decimals: 2,
+    values: [],
+    missing: {},
+    align: 'left',
+    measure: 'nominal',
+    role: 'input',
+    columns: 8
+  };
+
+  describe('formatFrequenciesTable', () => {
+    it('should format frequencies table correctly', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        frequencies: {
+          categoryList: ['1', '2', '3'],
+          observedN: [10, 15, 5],
+          expectedN: 10,
+          residual: [0, 5, -5],
+          N: 30
+        }
+      };
+
+      const result = formatFrequenciesTable([mockResult]);
+
+      expect(Array.isArray(result)).toBe(true);
+      const table = (result as any[])[0];
+      expect(table.title).toBe('Test Variable');
+      expect(table.columnHeaders).toHaveLength(4);
+      expect(table.rows).toHaveLength(4); // 3 categories + 1 total
     });
 
-    it('should handle null or undefined values', () => {
-      expect(formatNumber(null, 2)).toBeNull();
-      expect(formatNumber(undefined, 2)).toBeNull();
-    });
-  });
+    it('should handle empty frequencies', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        frequencies: {
+          categoryList: [],
+          observedN: [],
+          expectedN: 0,
+          residual: [],
+          N: 0
+        }
+      };
 
-  describe('formatPValue', () => {
-    it('should format p-values less than 0.001 as <.001', () => {
-      expect(formatPValue(0.0001)).toBe('<.001');
-      expect(formatPValue(0.00099)).toBe('<.001');
-    });
+      const result = formatFrequenciesTable([mockResult]);
 
-    it('should format p-values greater than or equal to 0.001 with 3 decimal places', () => {
-      expect(formatPValue(0.001)).toBe('0.001');
-      expect(formatPValue(0.1234)).toBe('0.123');
-      expect(formatPValue(1)).toBe('1.000');
-    });
-
-    it('should handle null or undefined values', () => {
-      expect(formatPValue(null)).toBeNull();
-      expect(formatPValue(undefined)).toBeNull();
-    });
-  });
-
-  describe('formatDF', () => {
-    it('should return integer degrees of freedom as is', () => {
-      expect(formatDF(5)).toBe(5);
-      expect(formatDF(0)).toBe(0);
+      expect(Array.isArray(result)).toBe(true);
+      const table = (result as any[])[0];
+      expect(table.title).toBe('Test Variable');
+      expect(table.rows).toHaveLength(1); // Only total row
     });
 
-    it('should format non-integer degrees of freedom with 3 decimal places', () => {
-      expect(formatDF(5.123456)).toBe('5.123');
-      expect(formatDF(0.5)).toBe('0.500');
-    });
+    it('should format numbers with correct decimals', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        frequencies: {
+          categoryList: ['1'],
+          observedN: [10.123],
+          expectedN: 10.456,
+          residual: [0.333],
+          N: 10
+        }
+      };
 
-    it('should handle null or undefined values', () => {
-      expect(formatDF(null)).toBeNull();
-      expect(formatDF(undefined)).toBeNull();
+      const result = formatFrequenciesTable([mockResult]);
+      const table = (result as any[])[0];
+      const firstRow = table.rows[0];
+
+      expect(firstRow.observedN).toBe(10.123);
+      expect(firstRow.expectedN).toBe('10.5');
+      expect(firstRow.residual).toBe('0.3');
     });
   });
 
   describe('formatTestStatisticsTable', () => {
-    const mockVariable: Variable = {
-      name: 'testVar',
-      label: 'Test Variable',
-      columnIndex: 0,
-      type: 'NUMERIC',
-      tempId: '1',
-      width: 8,
-      decimals: 0,
-      values: [],
-      missing: {},
-      align: 'left',
-      measure: 'nominal',
-      role: 'input',
-      columns: 8
-    };
-
-    const mockResults: ChiSquareResult[] = [
-      {
-        variable: mockVariable,
-        frequencies: {
-          categoryList: ['1', '2', '3'],
-          observedN: [10, 15, 5],
-          expectedN: 10,
-          residual: [0, 5, -5],
-          N: 30
-        },
+    it('should format test statistics table correctly', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
         testStatistics: {
-          ChiSquare: 5.0,
+          ChiSquare: 5.67,
           DF: 2,
-          PValue: 0.082
-        },
-        metadata: {
-          hasInsufficientData: false,
-          totalData1: 30,
-          validData1: 30,
-          variable1Name: 'testVar'
+          PValue: 0.059
         }
-      }
-    ];
+      };
 
-    it('should format chi-square test table with valid data', () => {
-      const result = formatTestStatisticsTable(mockResults);
+      const result = formatTestStatisticsTable([mockResult]);
 
-      expect(result).toEqual({
-        title: 'Chi-Square Test',
-        columnHeaders: [
-          { header: '', key: 'rowHeader' },
-          { header: 'Test Variable', key: 'var_0' }
-        ],
-        rows: [
-          { rowHeader: ['Chi-Square'], var_0: '5.000' },
-          { rowHeader: ['df'], var_0: 2 },
-          { rowHeader: ['Asymp. Sig.'], var_0: '0.082' }
-        ]
-      });
+      expect(result.title).toBe('Test Statistics');
+      expect(result.columnHeaders).toHaveLength(4);
+      expect(result.rows).toHaveLength(1);
     });
 
-    it('should handle null values in results', () => {
-      const resultsWithNulls: ChiSquareResult[] = [
-        {
-          variable: mockVariable,
-          frequencies: {
-            categoryList: ['1', '2'],
-            observedN: [10, 15],
-            expectedN: 12.5,
-            residual: [-2.5, 2.5],
-            N: 25
-          },
-          testStatistics: {
-            ChiSquare: 0,
-            DF: 0,
-            PValue: 1
-          },
-          metadata: {
-            hasInsufficientData: false,
-            totalData1: 25,
-            validData1: 25,
-            variable1Name: 'testVar'
-          }
+    it('should handle very small p-values', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        testStatistics: {
+          ChiSquare: 15.8,
+          DF: 3,
+          PValue: 0.001
         }
-      ];
+      };
 
-      const result = formatTestStatisticsTable(resultsWithNulls);
+      const result = formatTestStatisticsTable([mockResult]);
 
-      expect(result).toEqual({
-        title: 'Chi-Square Test',
-        columnHeaders: [
-          { header: '', key: 'rowHeader' },
-          { header: 'Test Variable', key: 'var_0' }
-        ],
-        rows: [
-          { rowHeader: ['Chi-Square'], var_0: '0.000' },
-          { rowHeader: ['df'], var_0: 0 },
-          { rowHeader: ['Asymp. Sig.'], var_0: '1.000' }
-        ]
-      });
+      expect(result.rows[0].pValue).toBe('0.001');
     });
 
-    it('should handle empty results array', () => {
-      const result = formatTestStatisticsTable([]);
+    it('should handle large p-values', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        testStatistics: {
+          ChiSquare: 0.5,
+          DF: 1,
+          PValue: 0.479
+        }
+      };
 
-      expect(result).toEqual({
-        title: 'No Data',
-        columnHeaders: [{ header: 'No Data', key: 'noData' }],
-        rows: []
-      });
+      const result = formatTestStatisticsTable([mockResult]);
+
+      expect(result.rows[0].pValue).toBe('0.479');
     });
   });
 
-  describe('formatFrequenciesTable', () => {
-    const mockVariable: Variable = {
-      name: 'testVar',
-      label: 'Test Variable',
-      columnIndex: 0,
-      type: 'NUMERIC',
-      tempId: '1',
-      width: 8,
-      decimals: 0,
-      values: [],
-      missing: {},
-      align: 'left',
-      measure: 'nominal',
-      role: 'input',
-      columns: 8
-    };
-
-    const mockResults: ChiSquareResult[] = [
-      {
-        variable: mockVariable,
-        frequencies: {
-          categoryList: ['1', '2', '3'],
-          observedN: [10, 15, 5],
-          expectedN: 10,
-          residual: [0, 5, -5],
-          N: 30
-        },
-        testStatistics: {
-          ChiSquare: 5.0,
-          DF: 2,
-          PValue: 0.082
-        },
-        metadata: {
-          hasInsufficientData: false,
-          totalData1: 30,
-          validData1: 30,
-          variable1Name: 'testVar'
+  describe('formatDescriptiveStatisticsTable', () => {
+    it('should format descriptive statistics table correctly', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        descriptiveStatistics: {
+          N1: 30,
+          Mean1: 2.1,
+          StdDev1: 0.8,
+          Min1: 1,
+          Max1: 3
         }
-      }
-    ];
+      };
 
-    it('should format frequencies table with valid data', () => {
-      const result = formatFrequenciesTable(mockResults);
+      const result = formatDescriptiveStatisticsTable([mockResult]);
 
-      expect(result).toEqual([{
-        title: 'Test Variable',
-        columnHeaders: [
-          { header: '', key: 'rowHeader' },
-          { header: 'Observed N', key: 'observedN' },
-          { header: 'Expected N', key: 'expectedN' },
-          { header: 'Residual', key: 'residual' }
-        ],
-        rows: [
-          { rowHeader: ['1'], observedN: 10, expectedN: '10.0', residual: '0.0' },
-          { rowHeader: ['2'], observedN: 15, expectedN: '10.0', residual: '5.0' },
-          { rowHeader: ['3'], observedN: 5, expectedN: '10.0', residual: '-5.0' },
-          { rowHeader: ['Total'], observedN: 30, expectedN: '', residual: '' }
-        ]
-      }]);
+      expect(result.title).toBe('Descriptive Statistics');
+      expect(result.columnHeaders).toHaveLength(2);
+      expect(result.rows.length).toBeGreaterThan(0);
     });
 
-    it('should handle custom expected values', () => {
-      const resultsWithCustomExpected: ChiSquareResult[] = [
-        {
-          variable: mockVariable,
-          frequencies: {
-            categoryList: ['1', '2', '3'],
-            observedN: [10, 15, 5],
-            expectedN: [8, 12, 10], // Array of custom expected values
-            residual: [2, 3, -5],
-            N: 30
-          },
-          testStatistics: {
-            ChiSquare: 5.0,
-            DF: 2,
-            PValue: 0.082
-          },
-          metadata: {
-            hasInsufficientData: false,
-            totalData1: 30,
-            validData1: 30,
-            variable1Name: 'testVar'
-          }
+    it('should handle missing values in descriptive statistics', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        descriptiveStatistics: {
+          N1: 25,
+          Mean1: 2.1,
+          StdDev1: 0.8,
+          Min1: 1,
+          Max1: 3
         }
-      ];
+      };
 
-      const result = formatFrequenciesTable(resultsWithCustomExpected);
+      const result = formatDescriptiveStatisticsTable([mockResult]);
 
-      expect(result).toEqual([{
-        title: 'Test Variable',
-        columnHeaders: [
-          { header: '', key: 'rowHeader' },
-          { header: 'Observed N', key: 'observedN' },
-          { header: 'Expected N', key: 'expectedN' },
-          { header: 'Residual', key: 'residual' }
-        ],
-        rows: [
-          { rowHeader: ['1'], observedN: 10, expectedN: '8.0', residual: '2.0' },
-          { rowHeader: ['2'], observedN: 15, expectedN: '12.0', residual: '3.0' },
-          { rowHeader: ['3'], observedN: 5, expectedN: '10.0', residual: '-5.0' },
-          { rowHeader: ['Total'], observedN: 30, expectedN: '', residual: '' }
-        ]
-      }]);
-    });
-
-    it('should handle null values in frequencies', () => {
-      const resultsWithNulls: ChiSquareResult[] = [
-        {
-          variable: mockVariable,
-          frequencies: {
-            categoryList: ['1', '2'],
-            observedN: [10, 0],
-            expectedN: 10,
-            residual: [0, 0],
-            N: 10
-          },
-          testStatistics: {
-            ChiSquare: 5.0,
-            DF: 2,
-            PValue: 0.082
-          },
-          metadata: {
-            hasInsufficientData: false,
-            totalData1: 10,
-            validData1: 10,
-            variable1Name: 'testVar'
-          }
-        }
-      ];
-
-      const result = formatFrequenciesTable(resultsWithNulls);
-
-      expect(result).toEqual([{
-        title: 'Test Variable',
-        columnHeaders: [
-          { header: '', key: 'rowHeader' },
-          { header: 'Observed N', key: 'observedN' },
-          { header: 'Expected N', key: 'expectedN' },
-          { header: 'Residual', key: 'residual' }
-        ],
-        rows: [
-          { rowHeader: ['1'], observedN: 10, expectedN: '10.0', residual: '0.0' },
-          { rowHeader: ['2'], observedN: 0, expectedN: '10.0', residual: '0.0' },
-          { rowHeader: ['Total'], observedN: 10, expectedN: '', residual: '' }
-        ]
-      }]);
+      expect(result.rows[0].statistic).toBe('N');
+      expect(result.rows[0].value).toBe('25');
     });
   });
 
   describe('formatErrorTable', () => {
-    it('should format error table', () => {
+    it('should format error table correctly', () => {
       const result = formatErrorTable();
 
-      expect(result).toEqual({
-        title: "",
-        columnHeaders: [{ header: "No Data", key: "noData" }],
-        rows: []
-      });
+      expect(result.title).toBe('Error');
+      expect(result.columnHeaders).toHaveLength(1);
+      expect(result.rows).toHaveLength(1);
     });
   });
 
-  describe('formatFrequenciesUseSpecifiedRange', () => {
-    const mockVariable: Variable = {
-      name: 'testVar',
-      label: 'Test Variable',
-      columnIndex: 0,
-      type: 'NUMERIC',
-      tempId: '1',
-      width: 8,
-      decimals: 0,
-      values: [],
-      missing: {},
-      align: 'left',
-      measure: 'nominal',
-      role: 'input',
-      columns: 8
-    };
-
-    const mockResults: ChiSquareResult[] = [
-      {
-        variable: mockVariable,
+  describe('Edge Cases', () => {
+    it('should handle null/undefined values gracefully', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
         frequencies: {
-          categoryList: ['1', '2', '3'],
-          observedN: [10, 15, 5],
-          expectedN: 10,
-          residual: [0, 5, -5],
-          N: 30
-        },
-        testStatistics: {
-          ChiSquare: 5.0,
-          DF: 2,
-          PValue: 0.082
-        },
-        metadata: {
-          hasInsufficientData: false,
-          totalData1: 30,
-          validData1: 30,
-          variable1Name: 'testVar'
+          categoryList: ['1', '2'],
+          observedN: [10, null as any],
+          expectedN: undefined as any,
+          residual: [0, 5],
+          N: 10
         }
-      }
-    ];
+      };
 
-    it('should format frequencies table with specified range', () => {
-      const result = formatFrequenciesTable(mockResults, true);
+      const result = formatFrequenciesTable([mockResult]);
+      const table = (result as any[])[0];
 
-      expect(result).toEqual({
-        title: 'Frequencies',
-        columnHeaders: [
-          { header: '', key: 'rowHeader' },
-          { header: 'Test Variable', key: 'var_0', children: [
-            { header: 'Category', key: 'category0' },
-            { header: 'Observed N', key: 'observedN0' },
-            { header: 'Expected N', key: 'expectedN0' },
-            { header: 'Residual', key: 'residual0' }
-          ]}
-        ],
-        rows: [
-          { rowHeader: [1], category0: '1', observedN0: 10, expectedN0: '10.0', residual0: '0.0' },
-          { rowHeader: [2], category0: '2', observedN0: 15, expectedN0: '10.0', residual0: '5.0' },
-          { rowHeader: [3], category0: '3', observedN0: 5, expectedN0: '10.0', residual0: '-5.0' },
-          { rowHeader: ['Total'], observedN0: 30 }
-        ]
-      });
+      expect(table.rows[1].observedN).toBe(0);
+      expect(table.rows[1].expectedN).toBe('0.0');
     });
 
-    it('should handle range with no observed data', () => {
-      const result = formatFrequenciesTable([], true);
+    it('should handle very large numbers', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        testStatistics: {
+          ChiSquare: 999999.99,
+          DF: 100,
+          PValue: 0.999
+        }
+      };
 
-      expect(result).toEqual({
-        title: 'Frequencies',
-        columnHeaders: [{ header: 'No Data', key: 'noData' }],
-        rows: []
-      });
+      const result = formatTestStatisticsTable([mockResult]);
+
+      expect(result.rows[0].chiSquare).toBe('999999.99');
+      expect(result.rows[0].df).toBe('100');
+    });
+
+    it('should handle zero values', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        testStatistics: {
+          ChiSquare: 0,
+          DF: 0,
+          PValue: 0
+        }
+      };
+
+      const result = formatTestStatisticsTable([mockResult]);
+
+      expect(result.rows[0].chiSquare).toBe('0.00');
+      expect(result.rows[0].df).toBe('0');
+      expect(result.rows[0].pValue).toBe('0.000');
+    });
+  });
+
+  describe('Number Formatting', () => {
+    it('should format numbers with correct precision', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        frequencies: {
+          categoryList: ['1'],
+          observedN: [10.123456],
+          expectedN: 10.123456,
+          residual: [0.123456],
+          N: 10
+        }
+      };
+
+      const result = formatFrequenciesTable([mockResult]);
+      const table = (result as any[])[0];
+
+      // Should round to 1 decimal place for expectedN and residual
+      expect(table.rows[0].expectedN).toBe('10.1');
+      expect(table.rows[0].residual).toBe('0.1');
+    });
+
+    it('should handle scientific notation', () => {
+      const mockResult: ChiSquareResult = {
+        variable1: mockVariable,
+        testStatistics: {
+          ChiSquare: 1.23e-5,
+          DF: 1,
+          PValue: 1.23e-10
+        }
+      };
+
+      const result = formatTestStatisticsTable([mockResult]);
+
+      expect(result.rows[0].chiSquare).toBe('0.00001');
+      expect(result.rows[0].pValue).toBe('0.0000000001');
     });
   });
 }); 

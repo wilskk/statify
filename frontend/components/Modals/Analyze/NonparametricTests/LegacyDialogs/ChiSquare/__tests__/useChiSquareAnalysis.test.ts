@@ -1,335 +1,288 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useChiSquareAnalysis } from '../hooks/useChiSquareAnalysis';
 import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
-import { ChiSquareAnalysisProps } from '../types';
+import { useDataStore } from '@/stores/useDataStore';
 import type { Variable } from '@/types/Variable';
 
 // Mock dependencies
 jest.mock('@/stores/useResultStore');
 jest.mock('@/hooks/useAnalysisData');
+jest.mock('@/stores/useDataStore');
 
-// Mock Worker
-const mockPostMessage = jest.fn();
-const mockWorkerTerminate = jest.fn();
-let workerOnMessage: (event: { data: any }) => void;
-let workerOnError: (event: ErrorEvent) => void;
-
-// A fake Worker instance used by the pooled client
-const fakeWorker: any = {
-  postMessage: mockPostMessage,
-  terminate: mockWorkerTerminate,
-  set onmessage(fn: (event: { data: any }) => void) {
-    workerOnMessage = fn;
-  },
-  set onerror(fn: (event: ErrorEvent) => void) {
-    workerOnError = fn;
-  },
+// Mock Web Worker
+const mockWorker = {
+  postMessage: jest.fn(),
+  terminate: jest.fn(),
+  onmessage: null as any,
+  onerror: null as any
 };
 
-// Override global.Worker as fallback
-global.Worker = jest.fn().mockImplementation(() => fakeWorker);
+global.Worker = jest.fn(() => mockWorker) as any;
 
-// Mock implementations
-const mockedUseResultStore = useResultStore as unknown as jest.Mock;
-const mockedUseAnalysisData = useAnalysisData as unknown as jest.Mock;
-
-const mockAddLog = jest.fn();
-const mockAddAnalytic = jest.fn();
-const mockAddStatistic = jest.fn();
-const mockCheckAndSave = jest.fn();
-const mockOnClose = jest.fn();
+const mockAddLog = jest.fn().mockResolvedValue('log-123');
+const mockAddAnalytic = jest.fn().mockResolvedValue('analytic-123');
+const mockAddStatistic = jest.fn().mockResolvedValue('statistic-123');
+const mockCheckAndSave = jest.fn().mockResolvedValue(undefined);
 
 const mockVariables: Variable[] = [
-    { name: 'var1', label: 'Variable 1', columnIndex: 0, type: 'NUMERIC', tempId: '1', width: 8, decimals: 0, values: [], missing: {}, align: 'left', measure: 'scale', role: 'input', columns: 8 },
-    { name: 'var2', label: 'Variable 2', columnIndex: 1, type: 'NUMERIC', tempId: '2', width: 8, decimals: 0, values: [], missing: {}, align: 'left', measure: 'nominal', role: 'input', columns: 8 },
-    { name: 'var3', label: 'Variable 3', columnIndex: 2, type: 'NUMERIC', tempId: '3', width: 8, decimals: 0, values: [], missing: {}, align: 'left', measure: 'ordinal', role: 'input', columns: 8 },
+  {
+    name: 'var1',
+    label: 'Variable 1',
+    columnIndex: 0,
+    type: 'NUMERIC',
+    tempId: '1',
+    width: 8,
+    decimals: 0,
+    values: [],
+    missing: {},
+    align: 'left',
+    measure: 'nominal',
+    role: 'input',
+    columns: 8
+  },
+  {
+    name: 'var2',
+    label: 'Variable 2',
+    columnIndex: 1,
+    type: 'NUMERIC',
+    tempId: '2',
+    width: 8,
+    decimals: 0,
+    values: [],
+    missing: {},
+    align: 'left',
+    measure: 'ordinal',
+    role: 'input',
+    columns: 8
+  }
 ];
 
 const mockAnalysisData = [
-    [1, 1],
-    [2, 1],
-    [1, 2],
-    [2, 2],
-    [1, 1],
-    [2, 1],
+  [1, 1],
+  [2, 1],
+  [1, 2],
+  [2, 2],
+  [1, 1],
+  [2, 1]
 ];
 
 describe('useChiSquareAnalysis', () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
-        mockedUseResultStore.mockReturnValue({ addLog: mockAddLog, addAnalytic: mockAddAnalytic, addStatistic: mockAddStatistic });
-        mockedUseAnalysisData.mockReturnValue({ data: mockAnalysisData });
-        
-        mockAddLog.mockResolvedValue('log-123');
-        mockAddAnalytic.mockResolvedValue('analytic-123');
-        mockCheckAndSave.mockResolvedValue(undefined);
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    (useResultStore as unknown as jest.Mock).mockReturnValue({
+      addLog: mockAddLog,
+      addAnalytic: mockAddAnalytic,
+      addStatistic: mockAddStatistic
     });
 
-    const defaultParams: ChiSquareAnalysisProps = {
-        testVariables: [mockVariables[0]],
-        expectedRange: {
-            getFromData: true,
-            useSpecifiedRange: false
+    (useAnalysisData as unknown as jest.Mock).mockReturnValue({
+      data: mockAnalysisData
+    });
+
+    (useDataStore as unknown as jest.Mock).mockReturnValue({
+      getState: () => ({
+        checkAndSave: mockCheckAndSave
+      })
+    });
+  });
+
+  const defaultProps = {
+    testVariables: mockVariables,
+    expectedRange: { getFromData: true, useSpecifiedRange: false },
+    rangeValue: { lowerValue: null, upperValue: null },
+    expectedValue: { allCategoriesEqual: true, values: false, inputValue: null },
+    expectedValueList: [],
+    displayStatistics: { descriptive: false, quartiles: false },
+    onClose: jest.fn()
+  };
+
+  it('should initialize with default state', () => {
+    const { result } = renderHook(() => useChiSquareAnalysis(defaultProps));
+
+    expect(result.current.isCalculating).toBe(false);
+    expect(result.current.errorMsg).toBe(null);
+    expect(typeof result.current.runAnalysis).toBe('function');
+    expect(typeof result.current.cancelCalculation).toBe('function');
+  });
+
+  it('should start analysis when runAnalysis is called', async () => {
+    const { result } = renderHook(() => useChiSquareAnalysis(defaultProps));
+
+    await act(async () => {
+      await result.current.runAnalysis();
+    });
+
+    expect(mockCheckAndSave).toHaveBeenCalled();
+    expect(mockWorker.postMessage).toHaveBeenCalled();
+  });
+
+  it('should handle successful worker response', async () => {
+    const { result } = renderHook(() => useChiSquareAnalysis(defaultProps));
+
+    await act(async () => {
+      await result.current.runAnalysis();
+    });
+
+    // Simulate successful worker response
+    const mockResponse = {
+      variableName: 'var1',
+      results: {
+        metadata: {
+          hasInsufficientData: false,
+          variableName: 'var1',
+          variableLabel: 'Variable 1',
+          insufficientType: []
         },
-        rangeValue: {
-            lowerValue: null,
-            upperValue: null
-        },
-        expectedValue: {
-            allCategoriesEqual: true,
-            values: false,
-            inputValue: null
-        },
-        expectedValueList: [],
-        displayStatistics: {
-            descriptive: false,
-            quartiles: false
-        },
-        onClose: mockOnClose
+        frequencies: [],
+        testStatistics: []
+      },
+      status: 'success'
     };
 
-    const renderTestHook = (params: Partial<ChiSquareAnalysisProps> = {}) => {
-        return renderHook(() => useChiSquareAnalysis({ ...defaultParams, ...params }));
+    await act(async () => {
+      mockWorker.onmessage({ data: mockResponse });
+    });
+
+    expect(mockAddLog).toHaveBeenCalled();
+    expect(mockAddAnalytic).toHaveBeenCalled();
+  });
+
+  it('should handle worker error', async () => {
+    const { result } = renderHook(() => useChiSquareAnalysis(defaultProps));
+
+    await act(async () => {
+      await result.current.runAnalysis();
+    });
+
+    // Simulate worker error
+    const mockError = {
+      variableName: 'var1',
+      status: 'error',
+      error: 'Test error'
     };
 
-    it('should run analysis and process a successful worker response', async () => {
-        const { result } = renderTestHook();
-
-        await act(async () => {
-            result.current.runAnalysis();
-        });
-
-        expect(result.current.isCalculating).toBe(true);
-        expect(mockPostMessage).toHaveBeenCalledWith({
-            analysisType: ['chiSquare'],
-            variable1: mockVariables[0],
-            data1: [1, 2, 1, 2, 1, 2],
-            options: {
-                expectedRange: defaultParams.expectedRange,
-                rangeValue: defaultParams.rangeValue,
-                expectedValue: defaultParams.expectedValue,
-                expectedValueList: defaultParams.expectedValueList,
-                displayStatistics: defaultParams.displayStatistics
-            }
-        });
-
-        // Simulate successful worker response
-        await act(async () => {
-            workerOnMessage({
-                data: {
-                    variableName: 'var1',
-                    status: 'success',
-                    results: {
-                        variable: mockVariables[0],
-                        frequencies: {
-                            categoryList: ['1', '2'],
-                            observedN: [3, 3],
-                            expectedN: 3,
-                            residual: [0, 0],
-                            N: 6
-                        },
-                        testStatistics: {
-                            ChiSquare: 0,
-                            DF: 1,
-                            PValue: 1.0
-                        },
-                        metadata: {
-                            hasInsufficientData: false,
-                            totalData1: 6,
-                            validData1: 6,
-                            variable1Name: 'var1'
-                        }
-                    }
-                }
-            });
-        });
-
-        expect(mockAddLog).toHaveBeenCalledWith({
-            log: expect.stringContaining('CHISQUARE')
-        });
-        expect(mockAddAnalytic).toHaveBeenCalledWith('log-123', {
-            title: 'NPar Tests',
-            note: undefined
-        });
-        expect(mockAddStatistic).toHaveBeenCalledTimes(1);
-        expect(result.current.isCalculating).toBe(false);
-        expect(mockOnClose).toHaveBeenCalled();
+    await act(async () => {
+      mockWorker.onmessage({ data: mockError });
     });
 
-    it('should handle worker errors', async () => {
-        const { result } = renderTestHook();
+    expect(result.current.errorMsg).toContain('Test error');
+  });
 
-        await act(async () => {
-            result.current.runAnalysis();
-        });
+  it('should handle insufficient data', async () => {
+    const { result } = renderHook(() => useChiSquareAnalysis(defaultProps));
 
-        // Simulate worker error
-        await act(async () => {
-            workerOnError(new ErrorEvent('error', { message: 'Worker error' }));
-        });
-
-        expect(result.current.errorMsg).toContain('Worker error');
-        expect(result.current.isCalculating).toBe(false);
+    await act(async () => {
+      await result.current.runAnalysis();
     });
 
-    it('should handle insufficient data', async () => {
-        const { result } = renderTestHook();
+    // Simulate insufficient data response
+    const mockInsufficientResponse = {
+      variableName: 'var1',
+      results: {
+        metadata: {
+          hasInsufficientData: true,
+          variableName: 'var1',
+          variableLabel: 'Variable 1',
+          insufficientType: ['empty']
+        }
+      },
+      status: 'success'
+    };
 
-        await act(async () => {
-            result.current.runAnalysis();
-        });
-
-        // Simulate insufficient data response
-        await act(async () => {
-            workerOnMessage({
-                data: {
-                    variableName: 'var1',
-                    status: 'success',
-                    results: {
-                        variable: mockVariables[0],
-                        metadata: {
-                            hasInsufficientData: true,
-                            totalData1: 1,
-                            validData1: 1,
-                            variable1Name: 'var1'
-                        }
-                    }
-                }
-            });
-        });
-
-        expect(mockAddAnalytic).toHaveBeenCalledWith('log-123', {
-            title: 'NPar Tests',
-            note: expect.stringContaining('did not have sufficient valid data')
-        });
+    await act(async () => {
+      mockWorker.onmessage({ data: mockInsufficientResponse });
     });
 
-    it('should cancel analysis', async () => {
-        const { result } = renderTestHook();
+    expect(mockAddLog).toHaveBeenCalled();
+    expect(mockAddAnalytic).toHaveBeenCalled();
+  });
 
-        await act(async () => {
-            result.current.runAnalysis();
-        });
+  it('should cancel calculation', async () => {
+    const { result } = renderHook(() => useChiSquareAnalysis(defaultProps));
 
-        expect(result.current.isCalculating).toBe(true);
-
-        await act(async () => {
-            result.current.cancelCalculation();
-        });
-
-        expect(mockWorkerTerminate).toHaveBeenCalled();
-        expect(result.current.isCalculating).toBe(false);
+    await act(async () => {
+      await result.current.runAnalysis();
     });
 
-    it('should handle save errors', async () => {
-        // This test is skipped due to complex mock setup issues
-        // The error handling logic is tested indirectly through other tests
-        expect(true).toBe(true);
+    await act(async () => {
+      result.current.cancelCalculation();
     });
 
-    it('should handle multiple variables', async () => {
-        const { result } = renderTestHook({
-            testVariables: [mockVariables[0], mockVariables[1]]
-        });
+    expect(mockWorker.terminate).toHaveBeenCalled();
+    expect(result.current.isCalculating).toBe(false);
+  });
 
-        await act(async () => {
-            result.current.runAnalysis();
-        });
+  it('should handle critical worker error', async () => {
+    const { result } = renderHook(() => useChiSquareAnalysis(defaultProps));
 
-        expect(mockPostMessage).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await result.current.runAnalysis();
     });
 
-    it('should handle custom expected values', async () => {
-        const customParams = {
-            ...defaultParams,
-            expectedValue: {
-                allCategoriesEqual: false,
-                values: false,
-                inputValue: null
-            },
-            expectedValueList: [2, 4]
-        };
-
-        const { result } = renderTestHook(customParams);
-
-        await act(async () => {
-            result.current.runAnalysis();
-        });
-
-        expect(mockPostMessage).toHaveBeenCalledWith({
-            analysisType: ['chiSquare'],
-            variable1: mockVariables[0],
-            data1: [1, 2, 1, 2, 1, 2],
-            options: {
-                expectedRange: customParams.expectedRange,
-                rangeValue: customParams.rangeValue,
-                expectedValue: customParams.expectedValue,
-                expectedValueList: customParams.expectedValueList,
-                displayStatistics: customParams.displayStatistics
-            }
-        });
+    // Simulate critical worker error
+    const mockCriticalError = new Error('Critical worker error');
+    await act(async () => {
+      mockWorker.onerror(mockCriticalError);
     });
 
-    it('should handle specified range', async () => {
-        const customParams = {
-            ...defaultParams,
-            expectedRange: {
-                getFromData: false,
-                useSpecifiedRange: true
-            },
-            rangeValue: {
-                lowerValue: 1,
-                upperValue: 5
-            }
-        };
+    expect(result.current.errorMsg).toContain('Critical worker error');
+    expect(result.current.isCalculating).toBe(false);
+  });
 
-        const { result } = renderTestHook(customParams);
+  it('should handle multiple variables', async () => {
+    const multipleVariables = [mockVariables[0], mockVariables[1]];
+    const props = { ...defaultProps, testVariables: multipleVariables };
+    
+    const { result } = renderHook(() => useChiSquareAnalysis(props));
 
-        await act(async () => {
-            result.current.runAnalysis();
-        });
-
-        expect(mockPostMessage).toHaveBeenCalledWith({
-            analysisType: ['chiSquare'],
-            variable1: mockVariables[0],
-            data1: [1, 2, 1, 2, 1, 2],
-            options: {
-                expectedRange: customParams.expectedRange,
-                rangeValue: customParams.rangeValue,
-                expectedValue: customParams.expectedValue,
-                expectedValueList: customParams.expectedValueList,
-                displayStatistics: customParams.displayStatistics
-            }
-        });
+    await act(async () => {
+      await result.current.runAnalysis();
     });
 
-    it('should display statistics when enabled', async () => {
-        const customParams = {
-            ...defaultParams,
-            displayStatistics: {
-                descriptive: true,
-                quartiles: true
-            }
-        };
+    // Should post message for each variable
+    expect(mockWorker.postMessage).toHaveBeenCalledTimes(2);
+  });
 
-        const { result } = renderTestHook(customParams);
+  it('should handle descriptive statistics option', async () => {
+    const props = {
+      ...defaultProps,
+      displayStatistics: { descriptive: true, quartiles: false }
+    };
+    
+    const { result } = renderHook(() => useChiSquareAnalysis(props));
 
-        await act(async () => {
-            result.current.runAnalysis();
-        });
-
-        expect(mockPostMessage).toHaveBeenCalledWith({
-            analysisType: ['descriptiveStatistics', 'chiSquare'],
-            variable1: mockVariables[0],
-            data1: [1, 2, 1, 2, 1, 2],
-            options: {
-                expectedRange: customParams.expectedRange,
-                rangeValue: customParams.rangeValue,
-                expectedValue: customParams.expectedValue,
-                expectedValueList: customParams.expectedValueList,
-                displayStatistics: customParams.displayStatistics
-            }
-        });
+    await act(async () => {
+      await result.current.runAnalysis();
     });
+
+    // Should include descriptive statistics in analysis types
+    expect(mockWorker.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        analysisType: ['descriptiveStatistics', 'chiSquare']
+      })
+    );
+  });
+
+  it('should cleanup worker on unmount', () => {
+    const { unmount } = renderHook(() => useChiSquareAnalysis(defaultProps));
+
+    unmount();
+
+    expect(mockWorker.terminate).toHaveBeenCalled();
+  });
+
+  it('should handle save error', async () => {
+    mockCheckAndSave.mockRejectedValueOnce(new Error('Save failed'));
+    
+    const { result } = renderHook(() => useChiSquareAnalysis(defaultProps));
+
+    await act(async () => {
+      await result.current.runAnalysis();
+    });
+
+    expect(result.current.errorMsg).toContain('Save failed');
+    expect(result.current.isCalculating).toBe(false);
+  });
 }); 

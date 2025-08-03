@@ -28,8 +28,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
     currentStep = 0,
     tourSteps = []
 }) => {
-    const [allowUnknown, setAllowUnknown] = useState(false);
-
     const getDisplayName = (variable: Variable) => {
         if (!variable.label) return variable.name;
         return `${variable.label} [${variable.name}]`;
@@ -53,14 +51,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const isVariableDisabled = useCallback((variable: Variable): boolean => {   
-        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
-                                (variable.measure === 'scale' || variable.measure === 'ordinal');
-        
-        if (isNormallyValid) return false;
-        if (variable.measure === 'unknown') return !allowUnknown;
-        
-        return true;
-    }, [allowUnknown]);
+        return variable.type !== 'NUMERIC';
+    }, []);
 
     const handleVariableSelect = (variable: Variable, source: 'available' | 'test1' | 'test2', rowIndex?: number) => {
         if (source === 'available') {
@@ -201,23 +193,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return tourSteps[currentStep]?.targetId === elementId;
     }, [tourActive, currentStep, tourSteps]);
 
-    const renderAllowUnknown = () => (
-        <div id="allow-unknown-section" className="flex items-center mt-2 p-1.5 relative">
-            <Checkbox
-                id="allowUnknown"
-                checked={allowUnknown}
-                onCheckedChange={(checked) => setAllowUnknown(!!checked)}
-                className="mr-2 h-4 w-4"
-            />
-            <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                Treat &apos;unknown&apos; as Scale and allow selection
-            </Label>
-            {tourActive && isTourElementActive("allow-unknown-section") && (
-                <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
-            )}
-        </div>
-    );
-
     // Move button for available variables
     const renderMoveButtonToRight = () => {
         if (!highlightedVariable || highlightedVariable.source !== 'available') return null;
@@ -278,7 +253,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
                         <span>Double-click to move variables between lists.</span>
                     </div>
-                    {renderAllowUnknown()}
                 </div>
                 {tourActive && isTourElementActive("paired-samples-t-test-available-variables") && (
                     <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>

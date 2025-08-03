@@ -93,6 +93,41 @@ global.self.OneSampleTTestCalculator = class OneSampleTTestCalculator {
       MeanDifference: meanDifference
     };
   }
+
+  getOutput() {
+    // Check if we have sufficient valid data
+    let hasInsufficientData = false;
+    let insufficientType = [];
+    
+    if (this.validData.length === 0) {
+      hasInsufficientData = true;
+      insufficientType.push('empty');
+    }
+    if (this.validData.length <= 1) {
+      hasInsufficientData = true;
+      insufficientType.push('single');
+    }
+    
+    const oneSampleStatistics = this.getOneSampleStatistics();
+    if ((oneSampleStatistics.StdDeviation === null || oneSampleStatistics.StdDeviation === undefined || oneSampleStatistics.StdDeviation === 0) && this.validData.length > 1) {
+      hasInsufficientData = true;
+      insufficientType.push('stdDev');
+    }
+    
+    const oneSampleTest = this.getOneSampleTest();
+    
+    return {
+      variable1: this.variable1,
+      oneSampleStatistics,
+      oneSampleTest,
+      metadata: {
+        hasInsufficientData,
+        variableName: this.variable1.name,
+        variableLabel: this.variable1.label,
+        insufficientType
+      }
+    };
+  }
 };
 
 // -------------------------------------------------------------
@@ -172,6 +207,164 @@ describe('OneSampleTTestCalculator', () => {
         it('should compute the correct mean difference for custom test value', () => {
             const test = calc.getOneSampleTest();
             expect(test.MeanDifference).toBe(0); // Mean - testValue (3-3)
+        });
+    });
+
+    describe('Insufficient Data Cases', () => {
+        
+        describe('Empty data case', () => {
+            const emptyData = [];
+            const calc = new OneSampleTTestCalculator({ variable1: variable, data1: emptyData });
+
+            it('should detect empty data as insufficient', () => {
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+            });
+
+            it('should return null statistics for empty data', () => {
+                const stats = calc.getOneSampleStatistics();
+                expect(stats.N).toBe(0);
+                expect(stats.Mean).toBe(null);
+                expect(stats.StdDeviation).toBe(null);
+                expect(stats.StdErrorMean).toBe(null);
+            });
+
+            it('should return null test results for empty data', () => {
+                const test = calc.getOneSampleTest();
+                expect(test).toBe(null);
+            });
+        });
+
+        describe('All missing values case', () => {
+            const missingData = [null, undefined, '', 'missing', 'N/A'];
+            const calc = new OneSampleTTestCalculator({ variable1: variable, data1: missingData });
+
+            it('should detect all missing values as insufficient', () => {
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+            });
+
+            it('should have zero valid data points', () => {
+                expect(calc.getValidN()).toBe(0);
+            });
+        });
+
+        describe('Single data point case', () => {
+            const singleData = [5];
+            const calc = new OneSampleTTestCalculator({ variable1: variable, data1: singleData });
+
+            it('should detect single data point as insufficient', () => {
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('single');
+            });
+
+            it('should compute statistics for single data point', () => {
+                const stats = calc.getOneSampleStatistics();
+                expect(stats.N).toBe(1);
+                expect(stats.Mean).toBe(5);
+                expect(stats.StdDeviation).toBe(NaN); // Cannot compute variance with n=1
+                expect(stats.StdErrorMean).toBe(NaN);
+            });
+
+            it('should have one valid data point', () => {
+                expect(calc.getValidN()).toBe(1);
+            });
+        });
+
+        describe('Single valid data with missing values case', () => {
+            const mixedData = [null, 5, undefined, '', 'missing'];
+            const calc = new OneSampleTTestCalculator({ variable1: variable, data1: mixedData });
+
+            it('should detect single valid data point as insufficient', () => {
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('single');
+            });
+
+            it('should filter out missing values correctly', () => {
+                expect(calc.getN()).toBe(5); // Total data points
+                expect(calc.getValidN()).toBe(1); // Only one valid numeric value
+            });
+        });
+
+        describe('Zero standard deviation case', () => {
+            const identicalData = [5, 5, 5, 5, 5];
+            const calc = new OneSampleTTestCalculator({ variable1: variable, data1: identicalData });
+
+            it('should detect zero standard deviation as insufficient', () => {
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('stdDev');
+            });
+
+            it('should compute statistics for identical values', () => {
+                const stats = calc.getOneSampleStatistics();
+                expect(stats.N).toBe(5);
+                expect(stats.Mean).toBe(5);
+                expect(stats.StdDeviation).toBe(0); // All values are identical
+                expect(stats.StdErrorMean).toBe(0);
+            });
+
+            it('should have sufficient data points but zero variance', () => {
+                expect(calc.getValidN()).toBe(5);
+                expect(calc.getValidN()).toBeGreaterThan(1);
+            });
+        });
+
+        describe('Mixed insufficient data cases', () => {
+            it('should handle data with some missing values but sufficient valid data', () => {
+                const mixedValidData = [null, 1, 2, undefined, 3, '', 4, 5];
+                const calc = new OneSampleTTestCalculator({ variable1: variable, data1: mixedValidData });
+                
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(output.metadata.insufficientType).toEqual([]);
+                expect(calc.getValidN()).toBe(5);
+            });
+
+            it('should handle data with exactly 2 identical values', () => {
+                const twoIdenticalData = [5, 5];
+                const calc = new OneSampleTTestCalculator({ variable1: variable, data1: twoIdenticalData });
+                
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('stdDev');
+                expect(calc.getValidN()).toBe(2);
+            });
+
+            it('should handle data with exactly 2 different values', () => {
+                const twoDifferentData = [1, 3];
+                const calc = new OneSampleTTestCalculator({ variable1: variable, data1: twoDifferentData });
+                
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(output.metadata.insufficientType).toEqual([]);
+                expect(calc.getValidN()).toBe(2);
+            });
+        });
+
+        describe('Edge cases with non-numeric data', () => {
+            it('should handle mixed numeric and non-numeric data', () => {
+                const mixedTypesData = [1, 'abc', 2, 'def', 3, '123', 4];
+                const calc = new OneSampleTTestCalculator({ variable1: variable, data1: mixedTypesData });
+                
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(calc.getValidN()).toBe(5); // 1, 2, 3, 123, 4 (string '123' is numeric)
+            });
+
+            it('should handle data with only non-numeric values', () => {
+                const nonNumericData = ['abc', 'def', 'ghi', 'jkl'];
+                const calc = new OneSampleTTestCalculator({ variable1: variable, data1: nonNumericData });
+                
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getValidN()).toBe(0);
+            });
         });
     });
 }); 

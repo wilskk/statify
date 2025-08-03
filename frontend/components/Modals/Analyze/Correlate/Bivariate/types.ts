@@ -235,6 +235,15 @@ export interface Correlation {
             df: number;
         };
     }>;
+    matrixValidation?: MatrixValidation;
+    metadata?: Array<{
+        hasInsufficientData: boolean;
+        insufficientType: string[];
+        variableLabel: string;
+        variableName: string;
+        totalData: number;
+        validData: number;
+    }>;
 }
   
   // ---------------------------------
@@ -256,3 +265,23 @@ export interface Correlation {
     columnHeaders: TableColumnHeader[];
     rows: TableRow[];
   }
+
+// Matrix Validation Types
+export interface InvalidCorrelation {
+    variable1: string;
+    variable2: string;
+    value: number;
+}
+
+export interface InvalidN {
+    variable1: string;
+    variable2: string;
+    value: number;
+}
+
+export interface MatrixValidation {
+    hasInvalidCorrelations: boolean;
+    hasInvalidNs: boolean;
+    invalidCorrelations: InvalidCorrelation[];
+    invalidNs: InvalidN[];
+}

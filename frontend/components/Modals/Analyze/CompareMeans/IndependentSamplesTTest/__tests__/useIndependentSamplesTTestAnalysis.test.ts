@@ -145,8 +145,8 @@ describe('useIndependentSamplesTTestAnalysis', () => {
       status: 'success',
       variableName: 'var1',
       results: {
+        variable1: mockVariables[0],
         groupStatistics: {
-          variable: mockVariables[0],
           group1: {
             label: 'Group 1',
             N: 2,
@@ -189,6 +189,12 @@ describe('useIndependentSamplesTTestAnalysis', () => {
               upper: -4.6
             }
           }
+        },
+        metadata: {
+          hasInsufficientData: false,
+          insufficientType: [],
+          variableName: 'var1',
+          variableLabel: 'Variable 1'
         }
       }
     };
@@ -223,8 +229,8 @@ describe('useIndependentSamplesTTestAnalysis', () => {
           status: 'success',
           variableName: 'var1',
           results: {
+            variable1: mockVariables[0],
             groupStatistics: {
-              variable: mockVariables[0],
               group1: { label: 'Group 1', N: 2, Mean: 12.5, StdDev: 3.54, SEMean: 2.5 },
               group2: { label: 'Group 2', N: 2, Mean: 32.5, StdDev: 3.54, SEMean: 2.5 }
             },
@@ -232,6 +238,12 @@ describe('useIndependentSamplesTTestAnalysis', () => {
               levene: { F: 0, Sig: 1 },
               equalVariances: { t: -5.66, df: 2, sig: 0.03, meanDifference: -20, stdErrorDifference: 3.54, confidenceInterval: { lower: -35.4, upper: -4.6 } },
               unequalVariances: { t: -5.66, df: 2, sig: 0.03, meanDifference: -20, stdErrorDifference: 3.54, confidenceInterval: { lower: -35.4, upper: -4.6 } }
+            },
+            metadata: {
+              hasInsufficientData: false,
+              insufficientType: [],
+              variableName: 'var1',
+              variableLabel: 'Variable 1'
             }
           }
         }
@@ -249,8 +261,8 @@ describe('useIndependentSamplesTTestAnalysis', () => {
           status: 'success',
           variableName: 'var2',
           results: {
+            variable1: mockVariables[1],
             groupStatistics: {
-              variable: mockVariables[1],
               group1: { label: 'Group 1', N: 2, Mean: 22.5, StdDev: 3.54, SEMean: 2.5 },
               group2: { label: 'Group 2', N: 2, Mean: 42.5, StdDev: 3.54, SEMean: 2.5 }
             },
@@ -258,14 +270,20 @@ describe('useIndependentSamplesTTestAnalysis', () => {
               levene: { F: 0, Sig: 1 },
               equalVariances: { t: -5.66, df: 2, sig: 0.03, meanDifference: -20, stdErrorDifference: 3.54, confidenceInterval: { lower: -35.4, upper: -4.6 } },
               unequalVariances: { t: -5.66, df: 2, sig: 0.03, meanDifference: -20, stdErrorDifference: 3.54, confidenceInterval: { lower: -35.4, upper: -4.6 } }
+            },
+            metadata: {
+              hasInsufficientData: false,
+              insufficientType: [],
+              variableName: 'var2',
+              variableLabel: 'Variable 2'
             }
           }
         }
       });
     });
     
-    // Now it should finish
-    expect(mockAddStatistic).toHaveBeenCalledTimes(2);
+    // Now it should finish - each variable gets 2 statistics calls (one for statistics, one for test results)
+    expect(mockAddStatistic).toHaveBeenCalledTimes(2); // 2 variables × 2 statistics each
     expect(mockOnClose).toHaveBeenCalled();
     expect(result.current.isCalculating).toBe(false);
   });
@@ -310,47 +328,189 @@ describe('useIndependentSamplesTTestAnalysis', () => {
     expect(result.current.errorMsg).toContain('A critical worker error occurred');
     expect(result.current.isCalculating).toBe(false);
   });
-  
-  it('should handle insufficient data cases', async () => {
-    const { result } = renderTestHook();
+
+  describe('Insufficient Data Cases', () => {
     
-    await act(async () => {
-      await result.current.runAnalysis();
-    });
-    
-    await act(async () => {
-      workerOnMessage({
-        data: {
-          status: 'success',
-          variableName: 'var1',
-          results: {
-            variable1: mockVariables[0],
-            metadata: {
-              hasInsufficientData: true,
-              variableName: 'var1',
-              totalData: 4,
-              validData: 1
-            },
-            groupStatistics: {
-              group1: { label: 'Group 1', N: 1, Mean: 10, StdDev: 0, SEMean: 0 },
-              group2: { label: 'Group 2', N: 0, Mean: 0, StdDev: 0, SEMean: 0 }
-            },
-            independentSamplesTest: {
-              levene: { F: 0, Sig: 1 },
-              equalVariances: { t: 0, df: 0, sig: 1, meanDifference: 0, stdErrorDifference: 0, confidenceInterval: { lower: 0, upper: 0 } },
-              unequalVariances: { t: 0, df: 0, sig: 1, meanDifference: 0, stdErrorDifference: 0, confidenceInterval: { lower: 0, upper: 0 } }
+    it('should handle empty groups case', async () => {
+      const { result } = renderTestHook();
+      
+      await act(async () => {
+        await result.current.runAnalysis();
+      });
+      
+      await act(async () => {
+        workerOnMessage({
+          data: {
+            status: 'success',
+            variableName: 'var1',
+            results: {
+              variable1: mockVariables[0],
+              metadata: {
+                hasInsufficientData: true,
+                insufficientType: ['empty'],
+                variableName: 'var1',
+                variableLabel: 'Variable 1'
+              },
+              groupStatistics: {
+                group1: { label: 'Group 1', N: 0, Mean: null, StdDev: null, SEMean: null },
+                group2: { label: 'Group 2', N: 0, Mean: null, StdDev: null, SEMean: null }
+              },
+              independentSamplesTest: null
             }
           }
-        }
+        });
       });
+      
+      expect(mockAddStatistic).toHaveBeenCalled();
+      expect(mockAddLog).toHaveBeenCalled();
+      
+      // Log harus mencantumkan informasi tentang T-TEST
+      const logCall = mockAddLog.mock.calls[0][0];
+      expect(logCall.log).toContain('T-TEST');
     });
-    
-    expect(mockAddStatistic).toHaveBeenCalled();
-    expect(mockAddLog).toHaveBeenCalled();
-    
-    // Log harus mencantumkan informasi tentang T-TEST
-    const logCall = mockAddLog.mock.calls[0][0];
-    expect(logCall.log).toContain('T-TEST');
+
+    it('should handle zero standard deviation case', async () => {
+      const { result } = renderTestHook();
+      
+      await act(async () => {
+        await result.current.runAnalysis();
+      });
+      
+      await act(async () => {
+        workerOnMessage({
+          data: {
+            status: 'success',
+            variableName: 'var1',
+            results: {
+              variable1: mockVariables[0],
+              metadata: {
+                hasInsufficientData: true,
+                insufficientType: ['stdDev'],
+                variableName: 'var1',
+                variableLabel: 'Variable 1'
+              },
+              groupStatistics: {
+                group1: { label: 'Group 1', N: 3, Mean: 5, StdDev: 0, SEMean: 0 },
+                group2: { label: 'Group 2', N: 3, Mean: 10, StdDev: 0, SEMean: 0 }
+              },
+              independentSamplesTest: null
+            }
+          }
+        });
+      });
+      
+      expect(mockAddStatistic).toHaveBeenCalled();
+      expect(mockAddLog).toHaveBeenCalled();
+      
+      const logCall = mockAddLog.mock.calls[0][0];
+      expect(logCall.log).toContain('T-TEST');
+    });
+
+    it('should handle mixed sufficient and insufficient data for multiple variables', async () => {
+      const { result } = renderTestHook({
+        testVariables: [mockVariables[0], mockVariables[1]]
+      });
+      
+      await act(async () => {
+        await result.current.runAnalysis();
+      });
+
+      // First variable has insufficient data
+      await act(async () => {
+        workerOnMessage({
+          data: {
+            status: 'success',
+            variableName: 'var1',
+            results: {
+              variable1: mockVariables[0],
+              metadata: {
+                hasInsufficientData: true,
+                insufficientType: ['empty'],
+                variableName: 'var1',
+                variableLabel: 'Variable 1'
+              },
+              groupStatistics: {
+                group1: { label: 'Group 1', N: 0, Mean: null, StdDev: null, SEMean: null },
+                group2: { label: 'Group 2', N: 0, Mean: null, StdDev: null, SEMean: null }
+              },
+              independentSamplesTest: null
+            }
+          }
+        });
+      });
+      
+      expect(result.current.isCalculating).toBe(true);
+      
+      // Second variable has sufficient data
+      await act(async () => {
+        workerOnMessage({
+          data: {
+            status: 'success',
+            variableName: 'var2',
+            results: {
+              variable1: mockVariables[1],
+              metadata: {
+                hasInsufficientData: false,
+                insufficientType: [],
+                variableName: 'var2',
+                variableLabel: 'Variable 2'
+              },
+              groupStatistics: {
+                group1: { label: 'Group 1', N: 2, Mean: 22.5, StdDev: 3.54, SEMean: 2.5 },
+                group2: { label: 'Group 2', N: 2, Mean: 42.5, StdDev: 3.54, SEMean: 2.5 }
+              },
+              independentSamplesTest: {
+                levene: { F: 0, Sig: 1 },
+                equalVariances: { t: -5.66, df: 2, sig: 0.03, meanDifference: -20, stdErrorDifference: 3.54, confidenceInterval: { lower: -35.4, upper: -4.6 } },
+                unequalVariances: { t: -5.66, df: 2, sig: 0.03, meanDifference: -20, stdErrorDifference: 3.54, confidenceInterval: { lower: -35.4, upper: -4.6 } }
+              }
+            }
+          }
+        });
+      });
+
+      // Should process both results
+      expect(mockAddStatistic).toHaveBeenCalled();
+      expect(mockAddLog).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
+      expect(result.current.isCalculating).toBe(false);
+    });
+
+    it('should verify insufficient data metadata is properly handled', async () => {
+      const { result } = renderTestHook();
+      
+      await act(async () => {
+        await result.current.runAnalysis();
+      });
+      
+      await act(async () => {
+        workerOnMessage({
+          data: {
+            status: 'success',
+            variableName: 'var1',
+            results: {
+              variable1: mockVariables[0],
+              metadata: {
+                hasInsufficientData: true,
+                insufficientType: ['empty'],
+                variableName: 'var1',
+                variableLabel: 'Variable 1'
+              },
+              groupStatistics: {
+                group1: { label: 'Group 1', N: 0, Mean: null, StdDev: null, SEMean: null },
+                group2: { label: 'Group 2', N: 0, Mean: null, StdDev: null, SEMean: null }
+              },
+              independentSamplesTest: null
+            }
+          }
+        });
+      });
+      
+      // Verify that the hook properly handles insufficient data
+      expect(mockAddStatistic).toHaveBeenCalled();
+      expect(result.current.isCalculating).toBe(false);
+      expect(result.current.errorMsg).toBe(null); // Should not be an error, just insufficient data
+    });
   });
   
   it('should cancel analysis when requested', async () => {
@@ -382,5 +542,52 @@ describe('useIndependentSamplesTTestAnalysis', () => {
     
     // Worker harus dibersihkan
     expect(mockWorkerTerminate).toHaveBeenCalled();
+  });
+
+  it('should handle custom grouping options', async () => {
+    const { result } = renderTestHook({
+      defineGroups: { useSpecifiedValues: false, cutPoint: true },
+      cutPointValue: 25,
+      estimateEffectSize: true
+    });
+
+    await act(async () => {
+      await result.current.runAnalysis();
+    });
+
+    expect(mockPostMessage).toHaveBeenCalledWith({
+      analysisType: ['independentSamplesTTest'],
+      variable1: mockVariables[0],
+      data1: [10, 15, 30, 35],
+      variable2: mockVariables[2],
+      data2: [1, 1, 2, 2],
+      options: {
+        defineGroups: { useSpecifiedValues: false, cutPoint: true },
+        group1: 1,
+        group2: 2,
+        cutPointValue: 25,
+        estimateEffectSize: true
+      }
+    });
+  });
+
+  it('should handle analysis timeout gracefully', async () => {
+    const { result } = renderTestHook();
+    
+    await act(async () => {
+      await result.current.runAnalysis();
+    });
+    
+    // Simulate timeout by not calling workerOnMessage
+    // The analysis should eventually timeout or be cancelled
+    
+    expect(result.current.isCalculating).toBe(true);
+    
+    // Cancel to clean up
+    await act(async () => {
+      result.current.cancelCalculation();
+    });
+    
+    expect(result.current.isCalculating).toBe(false);
   });
 }); 

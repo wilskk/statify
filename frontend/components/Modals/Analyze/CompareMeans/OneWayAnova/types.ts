@@ -196,6 +196,14 @@ export interface OneWayAnovaResult {
     homogeneityOfVariances?: HomogeneityOfVariance | HomogeneityOfVariance[];
     multipleComparisons?: MultipleComparisons | MultipleComparisons[];
     homogeneousSubsets?: HomogeneousSubsets | HomogeneousSubsets[];
+    metadata?: {
+        hasInsufficientData: boolean;
+        insufficientType: string[];
+        variable1Label: string;
+        variable2Label: string;
+        variable1Name: string;
+        variable2Name: string;
+    };
 }
   
 // ---------------------------------

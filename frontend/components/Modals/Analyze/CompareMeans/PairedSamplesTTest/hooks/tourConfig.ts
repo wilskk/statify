@@ -11,15 +11,6 @@ export const baseTourSteps: TourStep[] = [
         requiredTab: TABS.VARIABLES
     },
     {
-        title: "Allow Unknown Variables",
-        content: "Check this option to treat variables with 'unknown' measurement level as Scale variables, allowing them to be selected for analysis.",
-        targetId: "allow-unknown-section",
-        defaultPosition: 'bottom',
-        defaultHorizontalPosition: null,
-        icon: "🔍",
-        requiredTab: TABS.VARIABLES
-    },
-    {
         title: "Paired Variables",
         content: "Variables in this list will be Analyzed in pairs.",
         targetId: "paired-samples-t-test-test-variables",

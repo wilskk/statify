@@ -148,6 +148,37 @@ global.self.IndependentSamplesTTestCalculator = class IndependentSamplesTTestCal
       }
     };
   }
+
+  getOutput() {
+    // Check if we have sufficient valid data
+    let hasInsufficientData = false;
+    let insufficientType = [];
+    
+    if (this.group1N === 0 || this.group2N === 0) {
+      hasInsufficientData = true;
+      insufficientType.push('empty');
+    }
+    
+    const groupStatistics = this.getGroupStatistics();
+    if (groupStatistics.group1.StdDeviation === 0 && groupStatistics.group2.StdDeviation === 0) {
+      hasInsufficientData = true;
+      insufficientType.push('stdDev');
+    }
+    
+    const independentSamplesTest = this.getIndependentSamplesTest();
+    
+    return {
+      variable1: this.variable1,
+      groupStatistics,
+      independentSamplesTest,
+      metadata: {
+        hasInsufficientData,
+        insufficientType,
+        variableName: this.variable1.name,
+        variableLabel: this.variable1.label
+      }
+    };
+  }
 };
 
 // -------------------------------------------------------------
@@ -275,6 +306,254 @@ describe('IndependentSamplesTTestCalculator', () => {
             const stats = calc.getGroupStatistics();
             expect(stats.group1.N).toBe(3);
             expect(stats.group2.N).toBe(3);
+        });
+    });
+
+    describe('Insufficient Data Cases', () => {
+        
+        describe('Empty groups case', () => {
+            it('should detect when group1 is empty', () => {
+                const data = [10, 20, 30, 40, 50, 60];
+                const groupingData = [2, 2, 2, 2, 2, 2]; // All data in group 2
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getGroup1N()).toBe(0);
+                expect(calc.getGroup2N()).toBe(6);
+            });
+
+            it('should detect when group2 is empty', () => {
+                const data = [10, 20, 30, 40, 50, 60];
+                const groupingData = [1, 1, 1, 1, 1, 1]; // All data in group 1
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getGroup1N()).toBe(6);
+                expect(calc.getGroup2N()).toBe(0);
+            });
+
+            it('should detect when both groups are empty', () => {
+                const data = [10, 20, 30, 40, 50, 60];
+                const groupingData = [3, 3, 3, 3, 3, 3]; // All data in group 3 (not 1 or 2)
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getGroup1N()).toBe(0);
+                expect(calc.getGroup2N()).toBe(0);
+            });
+        });
+
+        describe('Zero standard deviation case', () => {
+            it('should detect when both groups have zero standard deviation', () => {
+                const data = [5, 5, 5, 10, 10, 10];
+                const groupingData = [1, 1, 1, 2, 2, 2];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('stdDev');
+                
+                const stats = calc.getGroupStatistics();
+                expect(stats.group1.StdDeviation).toBe(0); // All values are 5
+                expect(stats.group2.StdDeviation).toBe(0); // All values are 10
+            });
+
+            it('should not detect insufficient data when only one group has zero standard deviation', () => {
+                const data = [5, 5, 5, 10, 20, 30];
+                const groupingData = [1, 1, 1, 2, 2, 2];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(output.metadata.insufficientType).toEqual([]);
+                
+                const stats = calc.getGroupStatistics();
+                expect(stats.group1.StdDeviation).toBe(0); // All values are 5
+                expect(stats.group2.StdDeviation).toBeGreaterThan(0); // Values vary: 10, 20, 30
+            });
+        });
+
+        describe('Missing data cases', () => {
+            it('should handle missing data in test variable', () => {
+                const data = [10, null, 30, 40, null, 60];
+                const groupingData = [1, 1, 1, 2, 2, 2];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(calc.getGroup1N()).toBe(2); // 10, 30
+                expect(calc.getGroup2N()).toBe(2); // 40, 60
+            });
+
+            it('should handle missing data in grouping variable', () => {
+                const data = [10, 20, 30, 40, 50, 60];
+                const groupingData = [1, null, 1, 2, null, 2];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(calc.getGroup1N()).toBe(2); // 10, 30
+                expect(calc.getGroup2N()).toBe(2); // 40, 60
+            });
+
+            it('should handle missing data in both variables', () => {
+                const data = [10, null, 30, 40, null, 60];
+                const groupingData = [1, 1, null, 2, 2, null];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(calc.getGroup1N()).toBe(1); // Only 10
+                expect(calc.getGroup2N()).toBe(1); // Only 40
+            });
+        });
+
+        describe('Cut point insufficient data cases', () => {
+            it('should detect empty groups with cut point grouping', () => {
+                const data = [10, 20, 30, 40, 50, 60];
+                const groupingData = [5, 15, 25, 35, 45, 55];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: {
+                        defineGroups: { cutPoint: true },
+                        cutPointValue: 100 // All values are below 100
+                    }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getGroup1N()).toBe(0); // No values >= 100
+                expect(calc.getGroup2N()).toBe(6); // All values < 100
+            });
+
+            it('should detect zero standard deviation with cut point grouping', () => {
+                const data = [5, 5, 5, 10, 10, 10];
+                const groupingData = [1, 2, 3, 4, 5, 6];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: {
+                        defineGroups: { cutPoint: true },
+                        cutPointValue: 3.5
+                    }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('stdDev');
+                
+                const stats = calc.getGroupStatistics();
+                expect(stats.group1.StdDeviation).toBe(0); // All values >= 3.5 are 10
+                expect(stats.group2.StdDeviation).toBe(0); // All values < 3.5 are 5
+            });
+        });
+
+        describe('Edge cases', () => {
+            it('should handle single data point per group', () => {
+                const data = [10, 20];
+                const groupingData = [1, 2];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(calc.getGroup1N()).toBe(1);
+                expect(calc.getGroup2N()).toBe(1);
+                
+                // Should be able to compute statistics but t-test might not be meaningful
+                const stats = calc.getGroupStatistics();
+                expect(stats.group1.N).toBe(1);
+                expect(stats.group2.N).toBe(1);
+            });
+
+            it('should handle mixed sufficient and insufficient data scenarios', () => {
+                // This test verifies that the calculator correctly identifies
+                // when data is sufficient for analysis
+                const data = [10, 20, 30, 40, 50, 60];
+                const groupingData = [1, 1, 1, 2, 2, 2];
+                const calc = new IndependentSamplesTTestCalculator({ 
+                    variable1: variable, 
+                    data1: data,
+                    variable2: groupingVariable,
+                    data2: groupingData,
+                    options: { group1: 1, group2: 2 }
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(output.metadata.insufficientType).toEqual([]);
+                expect(calc.getGroup1N()).toBe(3);
+                expect(calc.getGroup2N()).toBe(3);
+                
+                const stats = calc.getGroupStatistics();
+                expect(stats.group1.StdDeviation).toBeGreaterThan(0);
+                expect(stats.group2.StdDeviation).toBeGreaterThan(0);
+            });
         });
     });
 }); 

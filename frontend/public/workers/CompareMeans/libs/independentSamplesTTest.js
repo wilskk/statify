@@ -30,8 +30,8 @@ class IndependentSamplesTTestCalculator {
         
         // Ekstrak opsi dari options
         this.defineGroups = options.defineGroups || { useSpecifiedValues: true };
-        this.group1 = options.group1 || null;
-        this.group2 = options.group2 || null;
+        this.group1 = options.group1 || 0;
+        this.group2 = options.group2 || 0;
         this.cutPointValue = options.cutPointValue || 0;
         this.estimateEffectSize = options.estimateEffectSize || false;
         
@@ -221,9 +221,15 @@ class IndependentSamplesTTestCalculator {
         
         const pooledVar = ((n1 - 1) * var1 + (n2 - 1) * var2) / df;
         const stdErrorDifference = Math.sqrt(pooledVar * (1/n1 + 1/n2));
-        const t = (mean1 - mean2) / stdErrorDifference;
+        let t = null;
+        if (stdErrorDifference !== 0) {
+            t = (mean1 - mean2) / stdErrorDifference;
+        }
         
-        const sig = 2 * (1 - stdlibstatsBaseDistsTCdf(Math.abs(t), df));
+        let sig = null;
+        if (stdErrorDifference !== 0) {
+            sig = 2 * (1 - stdlibstatsBaseDistsTCdf(Math.abs(t), df));
+        }
         
         // Calculate confidence intervals
         const tCritical = stdlibstatsBaseDistsTQuantile(0.975, df);
@@ -397,13 +403,18 @@ class IndependentSamplesTTestCalculator {
     getOutput() {
         this.#initialize();
 
-        const hasInsufficientData = this.group1Data.length === 0 || this.group2Data.length === 0;
-        const totalData = this.data1.length;
-        const validData = this.validData.length;
-        const group1N = this.group1Data.length;
-        const group2N = this.group2Data.length;
+        let hasInsufficientData = false;
+        let insufficientType = [];
 
+        if (this.group1N === 0 || this.group2N === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('empty');
+        }
         const groupStatistics = this.getGroupStatistics();
+        if (groupStatistics.group1.StdDev === 0 && groupStatistics.group2.StdDev === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('stdDev');
+        }
         const independentSamplesTest = this.getIndependentSamplesTest();
         
         return {
@@ -412,11 +423,9 @@ class IndependentSamplesTTestCalculator {
             independentSamplesTest,
             metadata: {
                 hasInsufficientData,
-                totalData,
-                validData,
-                group1N,
-                group2N,
-                variableName: this.variable1.name
+                insufficientType,
+                variableName: this.variable1.name,
+                variableLabel: this.variable1.label
             }
         };
     }

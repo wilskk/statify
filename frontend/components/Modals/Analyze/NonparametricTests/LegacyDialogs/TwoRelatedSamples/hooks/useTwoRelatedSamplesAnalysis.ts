@@ -74,8 +74,8 @@ export const useTwoRelatedSamplesAnalysis = ({
             const payload = {
                 analysisType: analysisTypes,
                 variable1: testVariables1[i],
-                variable2: testVariables2[i],
                 data1: dataForVar1,
+                variable2: testVariables2[i],
                 data2: dataForVar2,
                 options: { testType, displayStatistics }
             };

@@ -2,12 +2,10 @@ import {
   formatNumber,
   formatPValue,
   formatDF,
-  formatErrorMessage,
   formatOneSampleStatisticsTable,
   formatOneSampleTestTable,
-  formatErrorTable
 } from '../utils/formatters';
-import { OneSampleTTestResult, OneSampleStatistics, OneSampleTest } from '../types';
+import { OneSampleTTestResult } from '../types';
 import { Variable, VariableType } from '@/types/Variable';
 
 describe('OneSampleTTest Formatters', () => {
@@ -56,13 +54,6 @@ describe('OneSampleTTest Formatters', () => {
     it('should handle null or undefined values', () => {
       expect(formatDF(null)).toBeNull();
       expect(formatDF(undefined)).toBeNull();
-    });
-  });
-
-  describe('formatErrorMessage', () => {
-    it('should format error messages correctly', () => {
-      expect(formatErrorMessage('Test error')).toBe('Error: Test error');
-      expect(formatErrorMessage('')).toBe('Error: ');
     });
   });
 
@@ -176,17 +167,6 @@ describe('OneSampleTTest Formatters', () => {
       const table = formatOneSampleTestTable(emptyResults, testValue);
       
       expect(table.title).toBe('One-Sample Test');
-      expect(table.columnHeaders).toHaveLength(1);
-      expect(table.columnHeaders[0].header).toBe('No Data');
-      expect(table.rows).toHaveLength(0);
-    });
-  });
-
-  describe('formatErrorTable', () => {
-    it('should return an empty table structure', () => {
-      const table = formatErrorTable();
-      
-      expect(table.title).toBe('');
       expect(table.columnHeaders).toHaveLength(1);
       expect(table.columnHeaders[0].header).toBe('No Data');
       expect(table.rows).toHaveLength(0);

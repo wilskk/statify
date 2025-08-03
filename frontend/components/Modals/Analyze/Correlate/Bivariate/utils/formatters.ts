@@ -141,13 +141,23 @@ export function formatCorrelationTable(
                         const pearson = result.pearsonCorrelation;
 
                         // Diagonal case (same variable)
-                        if (i === j) {
-                            corrRow[`var_${j}`] = 1;
-                            if (sigRow) sigRow[`var_${j}`] = "";
-                        } else {
-                            corrRow[`var_${j}`] = formatCorrelationValue(pearson.Pearson, pearson.PValue, options);
-                            if (sigRow) sigRow[`var_${j}`] = formatPValue(pearson.PValue);
-                        }
+                        // if (i === j) {
+                        //     corrRow[`var_${j}`] = 1;
+                        //     if (sigRow) sigRow[`var_${j}`] = "";
+                        // } else {
+                            // Check if either variable has insufficient data
+                            const var1Metadata = results.metadata?.find(m => m.variableName === rowVar.name);
+                            const var2Metadata = results.metadata?.find(m => m.variableName === colVar.name);
+                            const hasInsufficientData = var1Metadata?.hasInsufficientData || var2Metadata?.hasInsufficientData;
+
+                            if (hasInsufficientData) {
+                                corrRow[`var_${j}`] = "";
+                                if (sigRow) sigRow[`var_${j}`] = "";
+                            } else {
+                                corrRow[`var_${j}`] = formatCorrelationValue(pearson.Pearson, pearson.PValue, options);
+                                if (sigRow) sigRow[`var_${j}`] = formatPValue(pearson.PValue);
+                            }
+                        // }
 
                         if (options.statisticsOptions.crossProductDeviationsAndCovariances) {
                             sumOfSquaresRow[`var_${j}`] = formatNumber(pearson.SumOfSquares, rowVar.decimals + 3);
@@ -240,13 +250,23 @@ export function formatCorrelationTable(
                         const kendall = result.kendallsTauBCorrelation;
 
                         // Diagonal case (same variable)
-                        if (i === j) {
-                            corrRow[`var_${j}`] = 1;
-                            if (sigRow) sigRow[`var_${j}`] = "";
-                        } else {
-                            corrRow[`var_${j}`] = formatCorrelationValue(kendall.KendallsTauB, kendall.PValue, options);
-                            if (sigRow) sigRow[`var_${j}`] = formatPValue(kendall.PValue);
-                        }
+                        // if (i === j) {
+                        //     corrRow[`var_${j}`] = 1;
+                        //     if (sigRow) sigRow[`var_${j}`] = "";
+                        // } else {
+                            // Check if either variable has insufficient data
+                            const var1Metadata = results.metadata?.find(m => m.variableName === rowVar.name);
+                            const var2Metadata = results.metadata?.find(m => m.variableName === colVar.name);
+                            const hasInsufficientData = var1Metadata?.hasInsufficientData || var2Metadata?.hasInsufficientData;
+
+                            if (hasInsufficientData) {
+                                corrRow[`var_${j}`] = "";
+                                if (sigRow) sigRow[`var_${j}`] = "";
+                            } else {
+                                corrRow[`var_${j}`] = formatCorrelationValue(kendall.KendallsTauB, kendall.PValue, options);
+                                if (sigRow) sigRow[`var_${j}`] = formatPValue(kendall.PValue);
+                            }
+                        // }
 
                         nRow[`var_${j}`] = kendall.N;
                     } else {
@@ -324,13 +344,23 @@ export function formatCorrelationTable(
                         const spearman = result.spearmanCorrelation;
 
                         // Diagonal case (same variable)
-                        if (i === j) {
-                            corrRow[`var_${j}`] = 1;
-                            if (sigRow) sigRow[`var_${j}`] = "";
-                        } else {
-                            corrRow[`var_${j}`] = formatCorrelationValue(spearman.Spearman, spearman.PValue, options);
-                            if (sigRow) sigRow[`var_${j}`] = formatPValue(spearman.PValue);
-                        }
+                        // if (i === j) {
+                        //     corrRow[`var_${j}`] = 1;
+                        //     if (sigRow) sigRow[`var_${j}`] = "";
+                        // } else {
+                            // Check if either variable has insufficient data
+                            const var1Metadata = results.metadata?.find(m => m.variableName === rowVar.name);
+                            const var2Metadata = results.metadata?.find(m => m.variableName === colVar.name);
+                            const hasInsufficientData = var1Metadata?.hasInsufficientData || var2Metadata?.hasInsufficientData;
+
+                            if (hasInsufficientData) {
+                                corrRow[`var_${j}`] = "";
+                                if (sigRow) sigRow[`var_${j}`] = "";
+                            } else {
+                                corrRow[`var_${j}`] = formatCorrelationValue(spearman.Spearman, spearman.PValue, options);
+                                if (sigRow) sigRow[`var_${j}`] = formatPValue(spearman.PValue);
+                            }
+                        // }
 
                         nRow[`var_${j}`] = spearman.N;
                     } else {

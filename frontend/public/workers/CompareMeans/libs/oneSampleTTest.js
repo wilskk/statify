@@ -68,7 +68,7 @@ class OneSampleTTestCalculator {
      */
     #mean(arr) {
         if (!arr || arr.length === 0) return null;
-        return arr.reduce((sum, x) => sum + x, 0) / arr.length;
+        return arr.reduce((sum, x) => sum + x, 0) / this.N;
     }
     
     /**
@@ -207,11 +207,22 @@ class OneSampleTTestCalculator {
         this.#initialize();
         
         // Check if we have sufficient valid data
-        const hasInsufficientData = this.validData.length === 0 || this.validData.length <= 1;
-        const totalData = this.data1.length;
-        const validData = this.validData.length;
-        
+        let hasInsufficientData = false;
+        let insufficientType = [];
+        if (this.validData.length === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('empty');
+        }
+        if (this.validData.length <= 1) {
+            hasInsufficientData = true;
+            insufficientType.push('single');
+        }
         const oneSampleStatistics = this.getOneSampleStatistics();
+        if ((oneSampleStatistics.StdDev === null || oneSampleStatistics.StdDev === undefined || oneSampleStatistics.StdDev === 0) && this.validData.length > 1) {
+            hasInsufficientData = true;
+            insufficientType.push('stdDev');
+        }
+        
         const oneSampleTest = this.getOneSampleTest();
         
         return {
@@ -220,9 +231,9 @@ class OneSampleTTestCalculator {
             oneSampleTest,
             metadata: {
                 hasInsufficientData,
-                totalData,
-                validData,
-                variableName: this.variable1.name
+                variableName: this.variable1.name,
+                variableLabel: this.variable1.label,
+                insufficientType
             }
         };
     }

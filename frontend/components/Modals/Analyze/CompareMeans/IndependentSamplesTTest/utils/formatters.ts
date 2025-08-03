@@ -122,12 +122,12 @@ export function formatIndependentSamplesTestTable (
 
     // Process each result
     results.forEach((result) => {
-        const stats = result.independentSamplesTest as IndependentSamplesTest;
-        const decimals = result.variable1?.decimals;
-
-        if (isNaN(stats.equalVariances.t) || isNaN(stats.unequalVariances.t)) {
+        if (result.metadata && result.metadata.hasInsufficientData && (result.metadata.insufficientType.includes('empty') || result.metadata.insufficientType.includes('stdDev'))) {
             return;
         }
+
+        const stats = result.independentSamplesTest as IndependentSamplesTest;
+        const decimals = result.variable1?.decimals;
         
         table.rows.push(
             {
@@ -152,7 +152,9 @@ export function formatIndependentSamplesTestTable (
                 DF: formatDF(stats.unequalVariances.df),
                 Sig2tailed: formatPValue(stats.unequalVariances.sig),
                 MeanDifference: formatNumber(stats.unequalVariances.meanDifference, decimals! + 3),
-                StdErrorDifference: formatNumber(stats.unequalVariances.stdErrorDifference, decimals! + 3),
+                StdErrorDifference: stats.unequalVariances.stdErrorDifference === 0
+                    ? ''
+                    : formatNumber(stats.unequalVariances.stdErrorDifference, decimals! + 3),
                 Lower: formatNumber(stats.unequalVariances.confidenceInterval.lower, decimals! + 3),
                 Upper: formatNumber(stats.unequalVariances.confidenceInterval.upper, decimals! + 3)
             }
@@ -169,7 +171,7 @@ export function formatIndependentSamplesTestTable (
  * @returns Formatted number
  */
 export const formatNumber = (value: number | null | undefined, precision: number) => {
-    if (value === null || value === undefined) return null;
+    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) return '';
     return value.toFixed(precision);
 };
 
@@ -179,7 +181,7 @@ export const formatNumber = (value: number | null | undefined, precision: number
  * @returns Formatted p-value
  */
 export const formatPValue = (pValue: number | null | undefined) => {
-    if (pValue === null || pValue === undefined) return null;
+    if (pValue === null || pValue === undefined || isNaN(pValue) || !isFinite(pValue)) return '';
     
     if (pValue < 0.001) {
         return '<.001';
@@ -194,7 +196,7 @@ export const formatPValue = (pValue: number | null | undefined) => {
  * @returns Formatted degrees of freedom
  */
 export const formatDF = (df: number | null | undefined) => {
-    if (df === null || df === undefined) return null;
+    if (df === null || df === undefined || isNaN(df) || !isFinite(df)) return '';
     if (Number.isInteger(df)) {
         return df;
     } else {

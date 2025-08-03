@@ -39,7 +39,7 @@ export const useOneWayAnovaAnalysis = ({
     const resultsRef = useRef<OneWayAnovaResult[]>([]);
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
-    const insufficientDataVarsRef = useRef<string[]>([]);
+    const insufficientDataVarsRef = useRef<{ variable1Label: string, variable1Name: string, insufficientType: string[] }[]>([]);
 
     const runAnalysis = useCallback(async (): Promise<void> => {
         setIsCalculating(true);
@@ -83,8 +83,8 @@ export const useOneWayAnovaAnalysis = ({
 
             if (status === 'success' && results) {
                 if (results.metadata.hasInsufficientData) {
-                    insufficientDataVarsRef.current.push(results.metadata.variable1Name);
-                    console.warn(`Insufficient valid data for: ${results.metadata.variable1Name} & ${results.metadata.variable2Name}. Total1: ${results.metadata.totalData1}, Total2: ${results.metadata.totalData2}, Valid1: ${results.metadata.validData1}, Valid2: ${results.metadata.validData2}`);
+                    insufficientDataVarsRef.current.push({ variable1Label: results.metadata.variable1Label, variable1Name: results.metadata.variable1Name, insufficientType: results.metadata.insufficientType });
+                    console.warn(`Insufficient valid data for: ${results.metadata.variable1Label || results.metadata.variable1Name} & ${results.metadata.variable2Label || results.metadata.variable2Name}. Type: ${results.metadata.insufficientType.join(', ')}`);
                 }
 
                 // Since the worker now returns simplified structure, we can directly push the results
@@ -102,9 +102,7 @@ export const useOneWayAnovaAnalysis = ({
 
                 try {
                     // Format tables - now resultsRef.current contains array of results for each variable
-                    // console.log("resultsRef.current", JSON.stringify(resultsRef.current));
-                    const formattedOneWayAnovaTable = formatOneWayAnovaTable(resultsRef.current);
-                    
+                    console.log("resultsRef.current", JSON.stringify(resultsRef.current));                    
                     const variableNames = testVariables.map(v => v.name);
                     let logMsg = `ONEWAY ${variableNames.join(' ')} BY ${factorVariable!.name}`;
                     
@@ -132,39 +130,81 @@ export const useOneWayAnovaAnalysis = ({
 
                     const logId = await addLog({ log: logMsg });
 
-                    let note = "";
+                    let oneWayAnovaNote = "";
+                    let typeToVars: Record<string, string[]> = {};
                     if (insufficientDataVarsRef.current.length > 0) {
-                        note = `Note: The following variables did not have sufficient valid data for analysis: ${insufficientDataVarsRef.current.join(', ')}. These variables require at least one valid numeric value for ANOVA calculation.`;
-                    }
-
-                    const analyticId = await addAnalytic(logId, { title: "Oneway", note: note || undefined });
-
-                    if (insufficientDataVarsRef.current.length < testVariables.length) {
-                        // Add Descriptive Statistics table if enabled
-                        if (statisticsOptions.descriptive) {
-                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current);
-                            await addStatistic(analyticId, {
-                                title: "Descriptives",
-                                output_data: JSON.stringify({ tables: [formattedDescriptiveStatisticsTable] }),
-                                components: "Descriptives",
-                                description: ""
-                            });
-                        }
-
-                        if (insufficientDataVarsRef.current.length === 0) {
-                            // Add Homogeneity of Variance table if enabled
-                            if (statisticsOptions.homogeneityOfVariance) {
-                                const formattedHomogeneityOfVarianceTable = formatHomogeneityOfVarianceTable(resultsRef.current);
-                                // console.log("formattedHomogeneityOfVarianceTable", JSON.stringify(formattedHomogeneityOfVarianceTable));
-                                await addStatistic(analyticId, {
-                                    title: "Test of Homogeneity of Variances",
-                                    output_data: JSON.stringify({ tables: [formattedHomogeneityOfVarianceTable] }),
-                                    components: "Test of Homogeneity of Variances",
-                                    description: ""
-                                });
+                        oneWayAnovaNote += "Note: ";
+                        for (const { variable1Label, variable1Name, insufficientType } of insufficientDataVarsRef.current) {
+                            for (const type of insufficientType) {
+                                if (!typeToVars[type]) typeToVars[type] = [];
+                                typeToVars[type].push(`${variable1Label || variable1Name}`);
                             }
                         }
 
+                        if (typeToVars["fewerThanTwoGroups"] && typeToVars["fewerThanTwoGroups"].length > 0) {
+                            oneWayAnovaNote += `[t cannot be computed for variable(s): ${typeToVars["fewerThanTwoGroups"].join(", ")}. At least one of the groups is empty.]`;
+                        }
+                        if (typeToVars["fewerThanThreeGroups"] && typeToVars["fewerThanThreeGroups"].length > 0) {
+                            oneWayAnovaNote += `[t cannot be computed for variable(s): ${typeToVars["fewerThanThreeGroups"].join(", ")}. At least one of the groups is empty.]`;
+                        }
+                        if (typeToVars["groupWithFewerThanTwoCases"] && typeToVars["groupWithFewerThanTwoCases"].length > 0) {
+                            oneWayAnovaNote += `[t cannot be computed for variable(s): ${typeToVars["groupWithFewerThanTwoCases"].join(", ")}. At least one of the groups is empty.]`;
+                        }
+                        if (typeToVars["allDeviationsConstant"] && typeToVars["allDeviationsConstant"].length > 0) {
+                            oneWayAnovaNote += `[t cannot be computed for variable(s): ${typeToVars["allDeviationsConstant"].join(", ")}. At least one of the groups is empty.]`;
+                        }
+                        if (typeToVars["noValidData"] && typeToVars["noValidData"].length > 0) {
+                            oneWayAnovaNote += `[t cannot be computed for pair(s): ${typeToVars["noValidData"].join(", ")}. There are no valid pairs.]`;
+                        }
+                    }
+
+                    let note = "";
+                    if (insufficientDataVarsRef.current.length > 0) {
+                        note = `Note: The following variables did not have sufficient valid data for analysis: . These variables require at least one valid numeric value for ANOVA calculation.`;
+                    }
+
+                    const analyticId = await addAnalytic(logId, { title: "Oneway", note: note || undefined });
+                    // Add Descriptive Statistics table if enabled
+                    const fewerThanTwoGroups = typeToVars["fewerThanTwoGroups"] || [];
+                    if (statisticsOptions.descriptive && fewerThanTwoGroups.length < testVariables.length) {
+                        console.log("disini1");
+                        const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current);
+                        console.log("disini2");
+                        console.log("formattedDescriptiveStatisticsTable:", JSON.stringify(formattedDescriptiveStatisticsTable));
+                        await addStatistic(analyticId, {
+                            title: "Descriptives",
+                            output_data: JSON.stringify({ tables: [formattedDescriptiveStatisticsTable] }),
+                            components: "Descriptives",
+                            description: ""
+                        });
+                    }
+
+                    let showHomogeneity = true;
+                    for (const variable of resultsRef.current) {
+                        if (variable.metadata?.insufficientType?.includes('fewerThanTwoGroups')) {
+                            showHomogeneity = false;
+                            break;
+                        } else if (variable.metadata?.insufficientType?.includes('allDeviationsConstant')) {
+                            showHomogeneity = false;
+                            break;
+                        }
+                    }
+                    if (showHomogeneity) {
+                        // Add Homogeneity of Variance table if enabled
+                        if (statisticsOptions.homogeneityOfVariance) {
+                            const formattedHomogeneityOfVarianceTable = formatHomogeneityOfVarianceTable(resultsRef.current);
+                            // console.log("formattedHomogeneityOfVarianceTable", JSON.stringify(formattedHomogeneityOfVarianceTable));
+                            await addStatistic(analyticId, {
+                                title: "Test of Homogeneity of Variances",
+                                output_data: JSON.stringify({ tables: [formattedHomogeneityOfVarianceTable] }),
+                                components: "Test of Homogeneity of Variances",
+                                description: ""
+                            });
+                        }
+                    }
+
+                    if (fewerThanTwoGroups.length < testVariables.length) {
+                        const formattedOneWayAnovaTable = formatOneWayAnovaTable(resultsRef.current);
                         // Add ANOVA table
                         await addStatistic(analyticId, {
                             title: "ANOVA",
@@ -172,48 +212,50 @@ export const useOneWayAnovaAnalysis = ({
                             components: "ANOVA",
                             description: ""
                         });
-
-                        // Add Multiple Comparisons table if post hoc tests are enabled
-                        if (equalVariancesAssumed.tukey) {
-                            const formattedMultipleComparisonsTable = formatMultipleComparisonsTable(resultsRef.current, factorVariable!.label || factorVariable!.name);
-                            // console.log("formattedMultipleComparisonsTable", JSON.stringify(formattedMultipleComparisonsTable));
-                            await addStatistic(analyticId, {
-                                title: "Multiple Comparisons",
-                                output_data: JSON.stringify({ tables: [formattedMultipleComparisonsTable] }),
-                                components: "Post Hoc Tests",
-                                description: ""
-                            });
-                        }
-
-                        // Add Homogeneous Subsets tables if post hoc tests are enabled
-                        if (equalVariancesAssumed.tukey || equalVariancesAssumed.duncan) {
-                            // Create separate tables for each test variable
-                            testVariables.forEach(async (variable, index) => {
-                                if (insufficientDataVarsRef.current.includes(variable.name)) {
-                                    return;
-                                }
-                                const formattedHomogeneousSubsetsTable = formatHomogeneousSubsetsTable(resultsRef.current, index, variable);
-                                // console.log("formattedHomogeneousSubsetsTable", JSON.stringify(formattedHomogeneousSubsetsTable));
-                                await addStatistic(analyticId, {
-                                    title: "Homogeneous Subsets",
-                                    output_data: JSON.stringify({ tables: [formattedHomogeneousSubsetsTable] }),
-                                    components: "Post Hoc Tests",
-                                    description: ""
-                                });
-                            });
-                        }
                     }
 
-                    if (resultsRef.current.length === 0 || insufficientDataVarsRef.current.length === testVariables.length) {
-                        const formattedErrorTable = formatErrorTable();
-                        // console.log('formattedErrorTable', JSON.stringify(formattedErrorTable));
+                    // Add Multiple Comparisons table if post hoc tests are enabled
+                    if (equalVariancesAssumed.tukey && insufficientDataVarsRef.current.length !== testVariables.length) {
+                        const formattedMultipleComparisonsTable = formatMultipleComparisonsTable(resultsRef.current, factorVariable!.label || factorVariable!.name);
+                        // console.log("formattedMultipleComparisonsTable", JSON.stringify(formattedMultipleComparisonsTable));
                         await addStatistic(analyticId, {
-                            title: "Error",
-                            output_data: JSON.stringify({ tables: [formattedErrorTable] }),
-                            components: "Error",
+                            title: "Multiple Comparisons",
+                            output_data: JSON.stringify({ tables: [formattedMultipleComparisonsTable] }),
+                            components: "Post Hoc Tests",
                             description: ""
                         });
                     }
+
+                    // Add Homogeneous Subsets tables if post hoc tests are enabled
+                    if ((equalVariancesAssumed.tukey || equalVariancesAssumed.duncan) && insufficientDataVarsRef.current.length !== testVariables.length) {
+                        // Create separate tables for each test variable
+                        testVariables.forEach((variable, index) => {
+                            if (insufficientDataVarsRef.current.some(v => v.variable1Name === variable.name)) {
+                                return;
+                            }
+
+                            console.log("resultsRef.current[index]", JSON.stringify(resultsRef.current[index]));
+                            const formattedHomogeneousSubsetsTable = formatHomogeneousSubsetsTable(resultsRef.current[index], factorVariable!.label || factorVariable!.name, variable);
+                            console.log("formattedHomogeneousSubsetsTable", JSON.stringify(formattedHomogeneousSubsetsTable));
+                            addStatistic(analyticId, {
+                                title: "Homogeneous Subsets",
+                                output_data: JSON.stringify({ tables: [formattedHomogeneousSubsetsTable] }),
+                                components: "Post Hoc Tests",
+                                description: ""
+                            });
+                        });
+                    }
+
+                    // if (resultsRef.current.length === 0 || insufficientDataVarsRef.current.length === testVariables.length) {
+                    //     const formattedErrorTable = formatErrorTable();
+                    //     // console.log('formattedErrorTable', JSON.stringify(formattedErrorTable));
+                    //     await addStatistic(analyticId, {
+                    //         title: "Error",
+                    //         output_data: JSON.stringify({ tables: [formattedErrorTable] }),
+                    //         components: "Error",
+                    //         description: ""
+                    //     });
+                    // }
 
                     if (onClose) {
                         onClose();

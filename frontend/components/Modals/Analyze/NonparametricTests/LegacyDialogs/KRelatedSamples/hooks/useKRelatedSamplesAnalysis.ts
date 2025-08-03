@@ -76,8 +76,8 @@ export const useKRelatedSamplesAnalysis = ({
                 const dataForVar = analysisData.map(row => row[variable.columnIndex]);
                 const descriptiveStatisticsPayload = {
                     analysisType: ['descriptiveStatistics'],
-                    variable,
-                    data: dataForVar,
+                    variable1: variable,
+                    data1: dataForVar,
                     options: { displayStatistics }
                 };
                 worker.postMessage(descriptiveStatisticsPayload);
@@ -88,9 +88,9 @@ export const useKRelatedSamplesAnalysis = ({
 
         const payload = {
             analysisType: ['kRelatedSamples'],
-            variable: 'K-Related Samples Test',
+            variable1: 'K-Related Samples Test',
             batchVariable: batch.map(vd => vd.variable),
-            data: batch.map(vd => vd.data),
+            data1: batch.map(vd => vd.data),
             batchData: batch.flatMap(vd => vd.data),
             options: { 
                 testType,

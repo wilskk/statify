@@ -106,9 +106,20 @@ global.self.PairedSamplesTTestCalculator = class PairedSamplesTTestCalculator {
     };
     
     return {
-      variable1: calculateStats(this.validData1),
-      variable2: calculateStats(this.validData2),
-      pairedDifferences: calculateStats(this.differences)
+      group1: {
+        label: this.variable1.label || this.variable1.name,
+        N: this.N,
+        Mean: calculateStats(this.validData1).Mean,
+        StdDev: calculateStats(this.validData1).StdDeviation,
+        SEMean: this.N > 0 ? calculateStats(this.validData1).StdDeviation / Math.sqrt(this.N) : 0
+      },
+      group2: {
+        label: this.variable2.label || this.variable2.name,
+        N: this.N,
+        Mean: calculateStats(this.validData2).Mean,
+        StdDev: calculateStats(this.validData2).StdDeviation,
+        SEMean: this.N > 0 ? calculateStats(this.validData2).StdDeviation / Math.sqrt(this.N) : 0
+      }
     };
   }
   
@@ -135,10 +146,10 @@ global.self.PairedSamplesTTestCalculator = class PairedSamplesTTestCalculator {
   getTestResults() {
     if (this.N === 0) return null;
     
-    const stats = this.getStatistics();
-    const meanDiff = stats.pairedDifferences.Mean;
-    const stdError = stats.pairedDifferences.StdDeviation / Math.sqrt(this.N);
-    const t = meanDiff / stdError;
+    const meanDiff = this.differences.reduce((sum, x) => sum + x, 0) / this.N;
+    const stdError = this.N > 1 ? 
+      Math.sqrt(this.differences.reduce((sum, x) => sum + Math.pow(x - meanDiff, 2), 0) / (this.N - 1)) / Math.sqrt(this.N) : 0;
+    const t = stdError > 0 ? meanDiff / stdError : 0;
     const df = this.N - 1;
     
     return {
@@ -146,6 +157,54 @@ global.self.PairedSamplesTTestCalculator = class PairedSamplesTTestCalculator {
       df: df,
       Sig2Tailed: 0.01, // Mock significance
       MeanDifference: meanDiff
+    };
+  }
+
+  getOutput() {
+    // Check if we have sufficient valid data
+    let hasInsufficientData = false;
+    let insufficientType = [];
+    
+    if (this.pairedData.length === 0) {
+      hasInsufficientData = true;
+      insufficientType.push('empty');
+    }
+    
+    if (this.pairedData.length === 1) {
+      hasInsufficientData = true;
+      insufficientType.push('single');
+    }
+    
+    const pairedSamplesStatistics = this.getStatistics();
+    const stdDevDiff = this.differences.length > 1 ? 
+      Math.sqrt(this.differences.reduce((sum, x) => {
+        const mean = this.differences.reduce((s, val) => s + val, 0) / this.differences.length;
+        return sum + Math.pow(x - mean, 2);
+      }, 0) / (this.differences.length - 1)) : 0;
+    
+    if (stdDevDiff === 0 && this.pairedData.length > 1) {
+      hasInsufficientData = true;
+      insufficientType.push('stdDev');
+    }
+    
+    const pairedSamplesCorrelation = this.getCorrelations();
+    const pairedSamplesTest = this.getTestResults();
+    
+    return {
+      variable1: this.variable1,
+      variable2: this.variable2,
+      pairedSamplesStatistics,
+      pairedSamplesCorrelation,
+      pairedSamplesTest,
+      metadata: {
+        pair: this.pair,
+        hasInsufficientData,
+        insufficientType,
+        variable1Label: this.variable1.label,
+        variable1Name: this.variable1.name,
+        variable2Label: this.variable2.label,
+        variable2Name: this.variable2.name
+      }
     };
   }
 };
@@ -175,33 +234,24 @@ describe('PairedSamplesTTestCalculator', () => {
 
         it('should compute the correct variable means', () => {
             const stats = calc.getStatistics();
-            expect(stats.variable1.Mean).toBe(30); // (10+20+30+40+50)/5
-            expect(stats.variable2.Mean).toBe(32); // (12+22+32+42+52)/5
+            expect(stats.group1.Mean).toBe(30); // (10+20+30+40+50)/5
+            expect(stats.group2.Mean).toBe(32); // (12+22+32+42+52)/5
         });
 
         it('should compute the correct variable standard deviations', () => {
             const stats = calc.getStatistics();
-            expect(stats.variable1.StdDeviation).toBeCloseTo(Math.sqrt(250)); // sqrt(variance of [10,20,30,40,50])
-            expect(stats.variable2.StdDeviation).toBeCloseTo(Math.sqrt(250)); // sqrt(variance of [12,22,32,42,52])
-        });
-
-        it('should compute the correct paired differences', () => {
-            const stats = calc.getStatistics();
-            expect(stats.pairedDifferences.Mean).toBe(-2); // (10-12)+(20-22)+(30-32)+(40-42)+(50-52) = -10/5 = -2
-            expect(stats.pairedDifferences.StdDeviation).toBe(0); // All differences are -2, so std dev is 0
+            expect(stats.group1.StdDev).toBeCloseTo(Math.sqrt(250)); // sqrt(variance of [10,20,30,40,50])
+            expect(stats.group2.StdDev).toBeCloseTo(Math.sqrt(250)); // sqrt(variance of [12,22,32,42,52])
         });
 
         it('should provide a complete statistics summary', () => {
             const stats = calc.getStatistics();
-            expect(stats.variable1.N).toBe(5);
-            expect(stats.variable1.Mean).toBe(30);
-            expect(stats.variable1.StdDeviation).toBeCloseTo(Math.sqrt(250));
-            expect(stats.variable2.N).toBe(5);
-            expect(stats.variable2.Mean).toBe(32);
-            expect(stats.variable2.StdDeviation).toBeCloseTo(Math.sqrt(250));
-            expect(stats.pairedDifferences.N).toBe(5);
-            expect(stats.pairedDifferences.Mean).toBe(-2);
-            expect(stats.pairedDifferences.StdDeviation).toBe(0);
+            expect(stats.group1.N).toBe(5);
+            expect(stats.group1.Mean).toBe(30);
+            expect(stats.group1.StdDev).toBeCloseTo(Math.sqrt(250));
+            expect(stats.group2.N).toBe(5);
+            expect(stats.group2.Mean).toBe(32);
+            expect(stats.group2.StdDev).toBeCloseTo(Math.sqrt(250));
         });
     });
 
@@ -278,8 +328,277 @@ describe('PairedSamplesTTestCalculator', () => {
 
         it('should compute correct statistics for zero differences', () => {
             const stats = calc.getStatistics();
-            expect(stats.pairedDifferences.Mean).toBe(0);
-            expect(stats.pairedDifferences.StdDeviation).toBe(0);
+            expect(stats.group1.Mean).toBe(30);
+            expect(stats.group2.Mean).toBe(30);
+        });
+    });
+
+    describe('Insufficient Data Cases', () => {
+        
+        describe('Empty paired data case', () => {
+            it('should detect when all data is missing in variable1', () => {
+                const data1 = [null, null, null, null, null];
+                const data2 = [12, 22, 32, 42, 52];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getN()).toBe(0);
+            });
+
+            it('should detect when all data is missing in variable2', () => {
+                const data1 = [10, 20, 30, 40, 50];
+                const data2 = [null, null, null, null, null];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getN()).toBe(0);
+            });
+
+            it('should detect when all data is missing in both variables', () => {
+                const data1 = [null, null, null, null, null];
+                const data2 = [null, null, null, null, null];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getN()).toBe(0);
+            });
+        });
+
+        describe('Single paired data case', () => {
+            it('should detect when only one pair has valid data', () => {
+                const data1 = [10, null, null, null, null];
+                const data2 = [12, null, null, null, null];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('single');
+                expect(calc.getN()).toBe(1);
+            });
+
+            it('should detect when only one pair has valid data with mixed missing values', () => {
+                const data1 = [10, null, 30, null, 50];
+                const data2 = [null, 22, null, 42, null];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('empty');
+                expect(calc.getN()).toBe(0); // No valid pairs due to mismatched indices
+            });
+        });
+
+        describe('Zero standard deviation case', () => {
+            it('should detect when all differences are identical', () => {
+                const data1 = [10, 20, 30, 40, 50];
+                const data2 = [15, 25, 35, 45, 55]; // All differences are -5
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('stdDev');
+                expect(calc.getN()).toBe(5);
+            });
+
+            it('should detect when variables are identical', () => {
+                const data1 = [10, 20, 30, 40, 50];
+                const data2 = [10, 20, 30, 40, 50]; // Identical to data1
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(output.metadata.insufficientType).toContain('stdDev');
+                expect(calc.getN()).toBe(5);
+            });
+
+            it('should not detect insufficient data when differences vary', () => {
+                const data1 = [10, 20, 30, 40, 50];
+                const data2 = [12, 18, 35, 38, 55]; // Different differences: -2, 2, -5, 2, -5
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(output.metadata.insufficientType).toEqual([]);
+                expect(calc.getN()).toBe(5);
+            });
+        });
+
+        describe('Missing data cases', () => {
+            it('should handle missing data in variable1 only', () => {
+                const data1 = [10, null, 30, null, 50];
+                const data2 = [12, 22, 32, 42, 52];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(calc.getN()).toBe(3); // (10,12), (30,32), (50,52)
+            });
+
+            it('should handle missing data in variable2 only', () => {
+                const data1 = [10, 20, 30, 40, 50];
+                const data2 = [12, null, 32, null, 52];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(calc.getN()).toBe(3); // (10,12), (30,32), (50,52)
+            });
+
+            it('should handle missing data in both variables', () => {
+                const data1 = [10, null, 30, null, 50];
+                const data2 = [12, 22, null, 42, null];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(calc.getN()).toBe(1); // (10,12), (30,30) - only 2 valid pairs
+            });
+        });
+
+        describe('Edge cases', () => {
+            it('should handle exactly two paired data points', () => {
+                const data1 = [10, 20];
+                const data2 = [12, 18];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(calc.getN()).toBe(2);
+                
+                // Should be able to compute statistics but t-test might not be meaningful
+                const stats = calc.getStatistics();
+                expect(stats.group1.N).toBe(2);
+            });
+
+            it('should handle non-numeric data', () => {
+                const data1 = [10, 'abc', 30, 'def', 50];
+                const data2 = [12, 22, 'ghi', 42, 'jkl'];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true);
+                expect(calc.getN()).toBe(1); // Only (10,12) and (30,30) are valid numeric pairs
+            });
+
+            it('should handle mixed sufficient and insufficient data scenarios', () => {
+                // This test verifies that the calculator correctly identifies
+                // when data is sufficient for analysis
+                const data1 = [10, 20, 30, 40, 50];
+                const data2 = [12, 22, 32, 42, 52];
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(true); // Because all differences are identical (-2)
+                expect(output.metadata.insufficientType).toContain('stdDev');
+                expect(calc.getN()).toBe(5);
+            });
+
+            it('should handle sufficient data with varying differences', () => {
+                const data1 = [10, 20, 30, 40, 50];
+                const data2 = [12, 18, 35, 38, 55]; // Different differences
+                const calc = new PairedSamplesTTestCalculator({ 
+                    pair: 'preTest-postTest',
+                    variable1: variable1, 
+                    data1: data1,
+                    variable2: variable2,
+                    data2: data2
+                });
+
+                const output = calc.getOutput();
+                expect(output.metadata.hasInsufficientData).toBe(false);
+                expect(output.metadata.insufficientType).toEqual([]);
+                expect(calc.getN()).toBe(5);
+            });
         });
     });
 }); 

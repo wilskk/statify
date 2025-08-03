@@ -133,6 +133,14 @@ class PairedSamplesTTestCalculator {
         return sumSq / (arr.length - 1);
     }
 
+    #meanDiff() {
+        return this.#mean(this.differences);
+    }
+
+    #stdDevDiff() {
+        return this.#stdDev(this.differences, this.#meanDiff());
+    }
+
     /**
      * Calculate covariance between two arrays
      * @param {Array<number>} arr1 - First array
@@ -192,13 +200,34 @@ class PairedSamplesTTestCalculator {
             this.memo.statistics = result;
             return result;
         }
+        
 
         // Calculate statistics for each variable
         const mean1 = this.#mean(this.validData1);
+        const mean2 = this.#mean(this.validData2);
+
+        if (this.N <= 1) {
+            const result = {
+                group1: {
+                    label: this.variable1.label || this.variable1.name,
+                    N: this.N,
+                    Mean: mean1,
+                    StdDev: 0,
+                    SEMean: 0
+                },
+                group2: {
+                    label: this.variable2.label || this.variable2.name,
+                    N: this.N,
+                    Mean: mean2,
+                    StdDev: 0,
+                    SEMean: 0
+                }
+            };
+            this.memo.statistics = result;
+            return result;
+        }
         const stdDev1 = this.#stdDev(this.validData1, mean1);
         const stdErr1 = this.#stdError(stdDev1, this.N);
-
-        const mean2 = this.#mean(this.validData2);
         const stdDev2 = this.#stdDev(this.validData2, mean2);
         const stdErr2 = this.#stdError(stdDev2, this.N);
 
@@ -351,18 +380,30 @@ class PairedSamplesTTestCalculator {
     getOutput() {
         this.#initialize();
 
-        const hasInsufficientData = this.pairedData.length === 0;
-        const totalData1 = this.data1.length;
-        const validData1 = this.validData1.length;
-        const totalData2 = this.data2.length;
-        const validData2 = this.validData2.length;
-        
+        let hasInsufficientData = false;
+        let insufficientType = [];
+
+        if (this.pairedData.length === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('empty');
+        }
+
+        if (this.pairedData.length === 1) {
+            hasInsufficientData = true;
+            insufficientType.push('single');
+        }
+
         const pairedSamplesStatistics = this.getStatistics();
+        const stdDevDiff = this.#stdDevDiff();
+        if (stdDevDiff === 0 && this.pairedData.length > 1) {
+            hasInsufficientData = true;
+            insufficientType.push('stdDev');
+        }
+
         const pairedSamplesCorrelation = this.getCorrelations();
         const pairedSamplesTest = this.getTestResults();
 
         return {
-            pair: this.pair,
             variable1: this.variable1,
             variable2: this.variable2,
             pairedSamplesStatistics,
@@ -371,11 +412,10 @@ class PairedSamplesTTestCalculator {
             metadata: {
                 pair: this.pair,
                 hasInsufficientData,
-                totalData1,
-                validData1,
-                totalData2,
-                validData2,
+                insufficientType,
+                variable1Label: this.variable1.label,
                 variable1Name: this.variable1.name,
+                variable2Label: this.variable2.label,
                 variable2Name: this.variable2.name
             }
         };

@@ -2,12 +2,114 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OptionsTab from '../components/OptionsTab';
+import { OptionsTabProps } from '../types';
+
+// Mock UI components
+jest.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick, disabled, variant, size, className, id }: any) => (
+    <button 
+      onClick={onClick} 
+      disabled={disabled} 
+      className={className}
+      data-testid={id || 'button'}
+      data-variant={variant}
+      data-size={size}
+    >
+      {children}
+    </button>
+  ),
+}));
+
+jest.mock('@/components/ui/input', () => ({
+  Input: ({ value, onChange, placeholder, className, id, disabled }: any) => (
+    <input 
+      value={value} 
+      onChange={onChange} 
+      placeholder={placeholder}
+      className={className}
+      data-testid={id || 'input'}
+      disabled={disabled}
+    />
+  ),
+}));
+
+jest.mock('@/components/ui/checkbox', () => ({
+  Checkbox: ({ checked, onCheckedChange, className, id }: any) => (
+    <input 
+      type="checkbox"
+      checked={checked} 
+      onChange={(e) => onCheckedChange?.(e.target.checked)} 
+      className={className}
+      data-testid={id || 'checkbox'}
+    />
+  ),
+}));
+
+jest.mock('@/components/ui/label', () => ({
+  Label: ({ children, className, htmlFor }: any) => (
+    <label className={className} htmlFor={htmlFor} data-testid="label">
+      {children}
+    </label>
+  ),
+}));
+
+jest.mock('@/components/ui/radio-group', () => ({
+  RadioGroup: ({ children, value, onValueChange }: any) => (
+    <div data-testid="radio-group" data-value={value}>
+      {children}
+    </div>
+  ),
+  RadioGroupItem: ({ value, id }: any) => (
+    <input 
+      type="radio" 
+      value={value} 
+      id={id} 
+      data-testid={`radio-${value}`}
+    />
+  ),
+}));
+
+jest.mock('@/components/Common/TourComponents', () => ({
+  ActiveElementHighlight: ({ active, children }: any) => (
+    <div data-testid="active-element-highlight" data-active={active}>
+      {children}
+    </div>
+  ),
+}));
 
 describe('OptionsTab Component', () => {
-  const mockOnSettingsChange = jest.fn();
-  const mockDisplayStatistics = {
-    descriptive: false,
-    quartiles: false
+  const defaultProps: OptionsTabProps = {
+    expectedRange: {
+      getFromData: true,
+      useSpecifiedRange: false
+    },
+    setExpectedRange: jest.fn(),
+    rangeValue: {
+      lowerValue: null,
+      upperValue: null
+    },
+    setRangeValue: jest.fn(),
+    expectedValue: {
+      allCategoriesEqual: true,
+      values: false,
+      inputValue: null
+    },
+    setExpectedValue: jest.fn(),
+    expectedValueList: [],
+    setExpectedValueList: jest.fn(),
+    displayStatistics: {
+      descriptive: false,
+      quartiles: false
+    },
+    setDisplayStatistics: jest.fn(),
+    highlightedExpectedValueIndex: null,
+    setHighlightedExpectedValueIndex: jest.fn(),
+    addExpectedValue: jest.fn(),
+    removeExpectedValue: jest.fn(),
+    changeExpectedValue: jest.fn(),
+    tourActive: false,
+    currentStep: 0,
+    tourSteps: []
   };
 
   beforeEach(() => {
@@ -15,20 +117,16 @@ describe('OptionsTab Component', () => {
   });
 
   const renderComponent = (props = {}) => {
-    const defaultProps = {
-      displayStatistics: mockDisplayStatistics,
-      onSettingsChange: mockOnSettingsChange,
-      ...props
-    };
-    return render(<OptionsTab {...defaultProps} />);
+    const mergedProps = { ...defaultProps, ...props };
+    return render(<OptionsTab {...mergedProps} />);
   };
 
   describe('Initial Render', () => {
     it('should render the options tab with correct title', () => {
       renderComponent();
       
-      expect(screen.getByText('Options')).toBeInTheDocument();
-      expect(screen.getByText('Display Statistics')).toBeInTheDocument();
+      expect(screen.getByText('Statistics')).toBeInTheDocument();
+      expect(screen.getByText('Expected Range')).toBeInTheDocument();
     });
 
     it('should display all available options', () => {
@@ -49,12 +147,14 @@ describe('OptionsTab Component', () => {
   describe('Display Statistics Options', () => {
     it('should allow toggling descriptive statistics', async () => {
       const user = userEvent.setup();
-      renderComponent();
+      const mockSetDisplayStatistics = jest.fn();
+      
+      renderComponent({ setDisplayStatistics: mockSetDisplayStatistics });
       
       const descriptiveCheckbox = screen.getByLabelText('Descriptive');
       await user.click(descriptiveCheckbox);
       
-      expect(mockOnSettingsChange).toHaveBeenCalledWith({
+      expect(mockSetDisplayStatistics).toHaveBeenCalledWith({
         descriptive: true,
         quartiles: false
       });
@@ -62,33 +162,15 @@ describe('OptionsTab Component', () => {
 
     it('should allow toggling quartiles', async () => {
       const user = userEvent.setup();
-      renderComponent();
+      const mockSetDisplayStatistics = jest.fn();
+      
+      renderComponent({ setDisplayStatistics: mockSetDisplayStatistics });
       
       const quartilesCheckbox = screen.getByLabelText('Quartiles');
       await user.click(quartilesCheckbox);
       
-      expect(mockOnSettingsChange).toHaveBeenCalledWith({
+      expect(mockSetDisplayStatistics).toHaveBeenCalledWith({
         descriptive: false,
-        quartiles: true
-      });
-    });
-
-    it('should allow toggling multiple options', async () => {
-      const user = userEvent.setup();
-      renderComponent();
-      
-      const descriptiveCheckbox = screen.getByLabelText('Descriptive');
-      const quartilesCheckbox = screen.getByLabelText('Quartiles');
-      
-      await user.click(descriptiveCheckbox);
-      await user.click(quartilesCheckbox);
-      
-      expect(mockOnSettingsChange).toHaveBeenCalledWith({
-        descriptive: true,
-        quartiles: false
-      });
-      expect(mockOnSettingsChange).toHaveBeenCalledWith({
-        descriptive: true,
         quartiles: true
       });
     });
@@ -106,17 +188,27 @@ describe('OptionsTab Component', () => {
     });
   });
 
-  describe('Option Descriptions', () => {
-    it('should show descriptive statistics description', () => {
+  describe('Expected Range Options', () => {
+    it('should show expected range options', () => {
       renderComponent();
       
-      expect(screen.getByText(/Descriptive statistics include/)).toBeInTheDocument();
+      expect(screen.getByText('Get from data')).toBeInTheDocument();
+      expect(screen.getByText('Use specified range')).toBeInTheDocument();
     });
 
-    it('should show quartiles description', () => {
-      renderComponent();
+    it('should handle expected range changes', async () => {
+      const user = userEvent.setup();
+      const mockSetExpectedRange = jest.fn();
       
-      expect(screen.getByText(/Quartiles show the 25th, 50th, and 75th percentiles/)).toBeInTheDocument();
+      renderComponent({ setExpectedRange: mockSetExpectedRange });
+      
+      const useSpecifiedRangeRadio = screen.getByTestId('radio-useSpecifiedRange');
+      await user.click(useSpecifiedRangeRadio);
+      
+      expect(mockSetExpectedRange).toHaveBeenCalledWith({
+        getFromData: false,
+        useSpecifiedRange: true
+      });
     });
   });
 
@@ -137,7 +229,9 @@ describe('OptionsTab Component', () => {
 
     it('should have proper keyboard navigation', async () => {
       const user = userEvent.setup();
-      renderComponent();
+      const mockSetDisplayStatistics = jest.fn();
+      
+      renderComponent({ setDisplayStatistics: mockSetDisplayStatistics });
       
       const descriptiveCheckbox = screen.getByLabelText('Descriptive');
       
@@ -147,17 +241,10 @@ describe('OptionsTab Component', () => {
       
       // Use space to toggle
       await user.keyboard(' ');
-      expect(mockOnSettingsChange).toHaveBeenCalledWith({
+      expect(mockSetDisplayStatistics).toHaveBeenCalledWith({
         descriptive: true,
         quartiles: false
       });
-    });
-
-    it('should have proper fieldset and legend structure', () => {
-      renderComponent();
-      
-      const fieldset = screen.getByRole('group', { name: /display statistics/i });
-      expect(fieldset).toBeInTheDocument();
     });
   });
 
@@ -175,160 +262,27 @@ describe('OptionsTab Component', () => {
       // Update props
       rerender(
         <OptionsTab
+          {...defaultProps}
           displayStatistics={{
             descriptive: true,
             quartiles: false
           }}
-          onSettingsChange={mockOnSettingsChange}
         />
       );
       
       expect(screen.getByLabelText('Descriptive')).toBeChecked();
     });
-
-    it('should call onSettingsChange with correct parameters', async () => {
-      const user = userEvent.setup();
-      renderComponent();
-      
-      const descriptiveCheckbox = screen.getByLabelText('Descriptive');
-      await user.click(descriptiveCheckbox);
-      
-      expect(mockOnSettingsChange).toHaveBeenCalledWith({
-        descriptive: true,
-        quartiles: false
-      });
-    });
   });
 
-  describe('Edge Cases', () => {
-    it('should handle undefined onSettingsChange', async () => {
-      const user = userEvent.setup();
+  describe('Tour Guide Integration', () => {
+    it('should show tour highlighting when tour is active', () => {
       renderComponent({
-        onSettingsChange: undefined
+        tourActive: true,
+        currentStep: 0
       });
       
-      const descriptiveCheckbox = screen.getByLabelText('Descriptive');
-      
-      // Should not throw error when clicking
-      await expect(user.click(descriptiveCheckbox)).resolves.not.toThrow();
-    });
-
-    it('should handle null displayStatistics', () => {
-      renderComponent({
-        displayStatistics: null
-      });
-      
-      // Should render with default values
-      expect(screen.getByLabelText('Descriptive')).not.toBeChecked();
-      expect(screen.getByLabelText('Quartiles')).not.toBeChecked();
-    });
-
-    it('should handle partial displayStatistics object', () => {
-      renderComponent({
-        displayStatistics: {
-          descriptive: true
-          // quartiles is missing
-        }
-      });
-      
-      expect(screen.getByLabelText('Descriptive')).toBeChecked();
-      expect(screen.getByLabelText('Quartiles')).not.toBeChecked();
-    });
-  });
-
-  describe('User Interaction', () => {
-    it('should handle rapid clicking', async () => {
-      const user = userEvent.setup();
-      renderComponent();
-      
-      const descriptiveCheckbox = screen.getByLabelText('Descriptive');
-      
-      // Rapid clicks
-      await user.click(descriptiveCheckbox);
-      await user.click(descriptiveCheckbox);
-      await user.click(descriptiveCheckbox);
-      
-      // Should handle all clicks properly
-      expect(mockOnSettingsChange).toHaveBeenCalledTimes(3);
-    });
-
-    it('should handle keyboard interaction', async () => {
-      const user = userEvent.setup();
-      renderComponent();
-      
-      const descriptiveCheckbox = screen.getByLabelText('Descriptive');
-      descriptiveCheckbox.focus();
-      
-      // Use Enter key
-      await user.keyboard('{Enter}');
-      expect(mockOnSettingsChange).toHaveBeenCalledWith({
-        descriptive: true,
-        quartiles: false
-      });
-    });
-  });
-
-  describe('Visual Feedback', () => {
-    it('should show visual feedback when checkbox is checked', async () => {
-      const user = userEvent.setup();
-      renderComponent();
-      
-      const descriptiveCheckbox = screen.getByLabelText('Descriptive');
-      await user.click(descriptiveCheckbox);
-      
-      // Checkbox should appear checked
-      expect(descriptiveCheckbox).toBeChecked();
-    });
-
-    it('should show visual feedback when checkbox is unchecked', async () => {
-      const user = userEvent.setup();
-      renderComponent({
-        displayStatistics: {
-          descriptive: true,
-          quartiles: false
-        }
-      });
-      
-      const descriptiveCheckbox = screen.getByLabelText('Descriptive');
-      await user.click(descriptiveCheckbox);
-      
-      // Checkbox should appear unchecked
-      expect(descriptiveCheckbox).not.toBeChecked();
-    });
-  });
-
-  describe('Performance', () => {
-    it('should render efficiently', () => {
-      const startTime = performance.now();
-      renderComponent();
-      const endTime = performance.now();
-      
-      // Should render within reasonable time (less than 50ms)
-      expect(endTime - startTime).toBeLessThan(50);
-    });
-
-    it('should handle frequent prop updates efficiently', () => {
-      const { rerender } = renderComponent();
-      
-      const startTime = performance.now();
-      
-      // Simulate frequent prop updates
-      for (let i = 0; i < 10; i++) {
-        rerender(
-          <OptionsTab
-            displayStatistics={{
-              descriptive: i % 2 === 0,
-              quartiles: i % 3 === 0
-            }}
-            onSettingsChange={mockOnSettingsChange}
-          />
-        );
-      }
-      
-      const endTime = performance.now();
-      
-      // Should handle updates efficiently
-      expect(endTime - startTime).toBeLessThan(100);
+      // Check that tour-related elements are present
+      expect(screen.getByTestId('active-element-highlight')).toBeInTheDocument();
     });
   });
 }); 

@@ -41,24 +41,30 @@ export function formatOneWayAnovaTable(
 
     // Process each result
     results.forEach((result) => {
-        const { variable1, oneWayAnova } = result;
+        const { variable1, oneWayAnova, metadata } = result;
         const { SumOfSquares, df, MeanSquare, F, Sig, withinGroupsSumOfSquares, withinGroupsDf, withinGroupsMeanSquare, totalSumOfSquares, totalDf } = oneWayAnova as OneWayAnova;
         const decimals = variable1.decimals;
 
-        if (isNaN(Sig)) {
-            return;
-        }
-
         // Between Groups row
-        table.rows.push({
-            rowHeader: [variable1.label || variable1.name],
-            type: 'Between Groups',
-            SumOfSquares: formatNumber(SumOfSquares, decimals + 3),
-            df: df,
-            MeanSquare: formatNumber(MeanSquare, decimals + 3),
-            F: formatNumber(F, decimals + 3),
-            Sig: formatPValue(Sig)
-        });
+        if (metadata?.insufficientType?.includes('allDeviationsConstant')) {
+            table.rows.push({
+                rowHeader: [variable1.label || variable1.name],
+                type: 'Between Groups',
+                SumOfSquares: formatNumber(SumOfSquares, decimals + 3),
+                df: df,
+                MeanSquare: formatNumber(MeanSquare, decimals + 3),
+            });
+        } else {
+            table.rows.push({
+                rowHeader: [variable1.label || variable1.name],
+                type: 'Between Groups',
+                SumOfSquares: formatNumber(SumOfSquares, decimals + 3),
+                df: df,
+                MeanSquare: formatNumber(MeanSquare, decimals + 3),
+                F: formatNumber(F, decimals + 3),
+                Sig: formatPValue(Sig)
+            });
+        }
 
         // Within Groups row (assuming these values are available)
         table.rows.push({
@@ -122,7 +128,12 @@ export function formatDescriptiveStatisticsTable(
 
     // Process each variable's descriptive statistics
     results.forEach((result) => {
-        const { variable1, descriptives } = result;
+
+        const { variable1, descriptives, metadata } = result;
+        if (metadata?.hasInsufficientData && metadata.insufficientType.includes('fewerThanTwoGroups')) {
+            return;
+        }
+
         const variableName = variable1.label || variable1.name;
         const decimals = variable1.decimals;
 
@@ -241,15 +252,20 @@ export function formatMultipleComparisonsTable(
             { header: 'Mean Difference (I-J)', key: 'meanDifference' },
             { header: 'Std. Error', key: 'stdError' },
             { header: 'Sig.', key: 'Sig' },
-            { header: 'Lower Bound', key: 'lowerBound' },
-            { header: 'Upper Bound', key: 'upperBound' }
+            { header: '95% Confidence Interval', key: 'confidenceInterval', children: [
+                { header: 'Lower Bound', key: 'lowerBound' },
+                { header: 'Upper Bound', key: 'upperBound' }
+            ] }
         ],
         rows: []
     };
 
     // Process each variable's multiple comparisons
     results.forEach((result) => {
-        const { variable1, multipleComparisons } = result;
+        const { variable1, multipleComparisons, metadata } = result;
+        if (metadata?.hasInsufficientData) {
+            return;
+        }
         const variableName = variable1.label || variable1.name;
         const decimals = variable1.decimals || 3;
 
@@ -284,11 +300,11 @@ export function formatMultipleComparisonsTable(
  * @returns Formatted table
  */
 export function formatHomogeneousSubsetsTable(
-    results: OneWayAnovaResult[],
-    index: number,
+    results: OneWayAnovaResult,
+    factorLabel: string,
     variable: Variable
 ): OneWayAnovaTable {
-    if (!results || results.length === 0) {
+    if (!results) {
         return {
             title: variable.label || variable.name,
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -297,9 +313,7 @@ export function formatHomogeneousSubsetsTable(
     }
 
     // Find the result for this specific variable
-    const variableResult = results.find(result => 
-        result.variable1.name === variable.name || result.variable1.label === variable.label
-    );
+    const variableResult = results;
 
     if (!variableResult || !variableResult.homogeneousSubsets) {
         return {
@@ -338,7 +352,7 @@ export function formatHomogeneousSubsetsTable(
         title: variable.label || variable.name,
         columnHeaders: [
             { header: '', key: 'rowHeader' },
-            { header: 'Wilayah', key: 'factor' },
+            { header: factorLabel, key: 'factor' },
             { header: 'N', key: 'N' },
             { 
                 header: 'Subset for alpha = 0.05',
@@ -351,63 +365,17 @@ export function formatHomogeneousSubsetsTable(
 
     // Process homogeneous subsets for this variable
     if (homogeneousSubsetsArray.length > 0) {
-        // Group by method
-        const methodGroups: Record<string, any[]> = {};
-
-        // Based on the JSON structure, each homogeneousSubsets item has method, output, and subsetCount
+        // Process each homogeneous subset item directly
         for (const subsetItem of homogeneousSubsetsArray as any[]) {
             const method = subsetItem.method;
             const output = subsetItem.output;
             
             if (!method || !output || !Array.isArray(output)) continue;
 
-            if (!methodGroups[method]) {
-                methodGroups[method] = [];
-            }
-
-            methodGroups[method].push(...output);
-        }
-
-        // Untuk urutan output: urutkan method by urutan kemunculan di results.homogeneousSubsets
-        const methodOrder: string[] = [];
-        for (const subsetItem of homogeneousSubsetsArray as any[]) {
-            if (subsetItem.method && !methodOrder.includes(subsetItem.method)) {
-                methodOrder.push(subsetItem.method);
-            }
-        }
-
-        // Untuk setiap method, tambahkan rows ke table.rows
-        for (const method of methodOrder) {
-            const items = methodGroups[method];
-            if (!items) continue;
-
             // Pisahkan factor rows dan sig rows
-            const factorItems = items.filter(item => item.factor !== 'Sig.');
-            const sigItems = items.filter(item => item.factor === 'Sig.');
+            const factorItems = output.filter(item => item.factor !== 'Sig.');
+            const sigItems = output.filter(item => item.factor === 'Sig.');
 
-            // Buat mapping factor -> subset index array
-            const factorToSubsets: Record<string, number[]> = {};
-            for (const item of factorItems) {
-                const factor = item.factor;
-                factorToSubsets[factor] = [];
-                for (let i = 1; i <= numSubsets; i++) {
-                    const subsetKey = `subset${i}`;
-                    if (item[subsetKey] !== undefined) {
-                        factorToSubsets[factor].push(i);
-                    }
-                }
-            }
-
-            // Urutkan factorItems: faktor yang ada di subset1 dulu, dst
-            factorItems.sort((a, b) => {
-                const aSubsets = factorToSubsets[a.factor] || [];
-                const bSubsets = factorToSubsets[b.factor] || [];
-                const aMin = aSubsets.length > 0 ? Math.min(...aSubsets) : Number.MAX_SAFE_INTEGER;
-                const bMin = bSubsets.length > 0 ? Math.min(...bSubsets) : Number.MAX_SAFE_INTEGER;
-                return aMin - bMin;
-            });
-
-            // Tambahkan row untuk setiap factor
             for (const item of factorItems) {
                 const row: TableRow = {
                     rowHeader: [method],
@@ -419,7 +387,7 @@ export function formatHomogeneousSubsetsTable(
                 for (let i = 1; i <= numSubsets; i++) {
                     const subsetKey = `subset${i}`;
                     if (item[subsetKey] !== undefined) {
-                        row[subsetKey] = formatNumber(item[subsetKey], 3);
+                        row[subsetKey] = formatNumber(item[subsetKey], variable.decimals + 2);
                     }
                 }
 
@@ -432,23 +400,24 @@ export function formatHomogeneousSubsetsTable(
                     rowHeader: [method],
                     factor: 'Sig.'
                 };
-
-                // Untuk setiap subset, jika ada value, masukkan
-                for (const item of sigItems) {
-                    for (let i = 1; i <= numSubsets; i++) {
-                        const subsetKey = `subset${i}`;
-                        if (item[subsetKey] !== undefined) {
-                            sigRow[subsetKey] = formatPValue(item[subsetKey]);
-                        }
+                
+                // --- PERBAIKAN DIMULAI ---
+                // Logika disederhanakan, karena hanya ada satu item 'Sig.' per metode.
+                const sigItem = sigItems[0];
+                for (let i = 1; i <= numSubsets; i++) {
+                    const subsetKey = `subset${i}`;
+                    if (sigItem[subsetKey] !== undefined) {
+                        sigRow[subsetKey] = formatPValue(sigItem[subsetKey]);
                     }
                 }
+                // --- PERBAIKAN SELESAI ---
 
                 table.rows.push(sigRow);
             }
         }
     }
 
-    console.log("formattedHomogeneousSubsetsTable", JSON.stringify(table));
+    // console.log("formattedHomogeneousSubsetsTable", JSON.stringify(table));
     return table;
 }
 

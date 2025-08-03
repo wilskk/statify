@@ -269,8 +269,8 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose, container
                             isCalculating ||
                             testVariables.length < 1 ||
                             !groupingVariable ||
-                            (defineGroups.useSpecifiedValues && (!group1 || !group2)) || 
-                            (!defineGroups.useSpecifiedValues && !cutPointValue)
+                            (defineGroups.useSpecifiedValues && (group1 === null || group2 === null)) || 
+                            (!defineGroups.useSpecifiedValues && cutPointValue === null)
                         }
                     >
                         {isCalculating ? "Processing..." : "OK"}

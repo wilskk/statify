@@ -1,12 +1,8 @@
 import {
     ChiSquareResult,
-    ChiSquareResults,
     ChiSquareTable,
     TableColumnHeader,
     TableRow,
-    Frequencies,
-    TestStatistics,
-    DescriptiveStatistics,
     DisplayStatisticsOptions,
 } from '../types';
 
@@ -49,11 +45,11 @@ function formatFrequenciesGetFromData(
     if (results) {
         const tables: ChiSquareTable[] = [];
         results.forEach((result) => {
-            const { variable, frequencies, metadata } = result;
+            const { variable1, frequencies, metadata } = result;
 
-            if (variable && frequencies && !metadata?.hasInsufficientData) {
+            if (variable1 && frequencies && frequencies.categoryList && frequencies.categoryList.length > 0) {
                 const freqStats = frequencies;
-                const decimals = variable.decimals || 0;
+                const decimals = variable1.decimals;
 
                 const columnHeaders: TableColumnHeader[] = [
                     { header: "", key: "rowHeader" },
@@ -71,8 +67,18 @@ function formatFrequenciesGetFromData(
                         const expected = Array.isArray(expectedN) ? expectedN[index] : expectedN;
                         const res = residual[index] || 0;
                         
+                        // Get label from variable1.values if available, else fallback to category value
+                        let rowHeaderLabel = "";
+                        if (Array.isArray(variable1.values)) {
+                            const valueObj = variable1.values.find(
+                                (v: any) => v.value === category
+                            );
+                            rowHeaderLabel = valueObj?.label ?? String(category);
+                        } else {
+                            rowHeaderLabel = String(category);
+                        }
                         rows.push({
-                            rowHeader: [typeof category === 'number' ? category.toFixed(decimals) : String(category)],
+                            rowHeader: [rowHeaderLabel],
                             observedN: observed,
                             expectedN: expected.toFixed(1),
                             residual: res.toFixed(1)
@@ -89,7 +95,7 @@ function formatFrequenciesGetFromData(
                 }
 
                 tables.push({
-                    title: variable.label || variable.name,
+                    title: variable1.label || variable1.name,
                     columnHeaders,
                     rows
                 });
@@ -133,9 +139,9 @@ function formatFrequenciesUseSpecifiedRange(
     // Add column headers for each variable
     if (results) {
         results.forEach((result, index) => {
-            if (result && result.variable && !result.metadata?.hasInsufficientData) {
+            if (result && result.variable1 && !result.metadata?.hasInsufficientData) {
                 table.columnHeaders.push({
-                    header: result.variable?.label || result.variable?.name || `Variable ${index + 1}`,
+                    header: result.variable1?.label || result.variable1?.name || `Variable ${index + 1}`,
                     key: `var_${index}`,
                     children: [
                         { header: "Category", key: `category${index}` },
@@ -167,7 +173,7 @@ function formatFrequenciesUseSpecifiedRange(
                 };
                 
                 results.forEach((result, varIndex) => {
-                    const variable = result.variable;
+                    const variable = result.variable1;
                     const stats = result.frequencies;
                     
                     if (!variable || !stats || !('categoryList' in stats) || result.metadata?.hasInsufficientData) {
@@ -256,7 +262,7 @@ export function formatTestStatisticsTable (
     }
     
     const table: ChiSquareTable = {
-        title: 'Chi-Square Test',
+        title: 'Test Statistics',
         columnHeaders: [{ header: '', key: 'rowHeader' }],
         rows: []
     };
@@ -264,9 +270,9 @@ export function formatTestStatisticsTable (
     // Add column headers for each variable
     if (results) {
         results.forEach((result, index) => {
-            if (result && result.variable && !result.metadata?.hasInsufficientData) {
+            if (result && result.variable1 && !result.metadata?.hasInsufficientData) {
                 table.columnHeaders.push({
-                    header: result.variable?.label || result.variable?.name || `Variable ${index + 1}`,
+                    header: result.variable1?.label || result.variable1?.name || `Variable ${index + 1}`,
                     key: `var_${index}`
                 });
             }
@@ -345,22 +351,20 @@ export function formatDescriptiveStatisticsTable (
 
     // Process each result
     results.forEach((result) => {
-        if (!result.metadata?.hasInsufficientData) {
-            const stats = result.descriptiveStatistics;
-            const decimals = result.variable.decimals || 2;
-            
-            table.rows.push({
-                rowHeader: [result.variable.label || result.variable.name],
-                N: stats?.N,
-                Mean: formatNumber(stats?.Mean, decimals + 2),
-                StdDev: formatNumber(stats?.StdDev, decimals + 3),
-                Min: formatNumber(stats?.Min, decimals),
-                Max: formatNumber(stats?.Max, decimals),
-                Percentile25: formatNumber(stats?.Percentile25, decimals),
-                Percentile50: formatNumber(stats?.Percentile50, decimals),
-                Percentile75: formatNumber(stats?.Percentile75, decimals)
-            });
-        }
+        const stats = result.descriptiveStatistics;
+        const decimals = result.variable1?.decimals || 0;
+        
+        table.rows.push({
+            rowHeader: [result.variable1?.label || result.variable1?.name || 'Unknown'],
+            N: stats?.N1,
+            Mean: formatNumber(stats?.Mean1, decimals + 2),
+            StdDev: formatNumber(stats?.StdDev1, decimals + 3),
+            Min: formatNumber(stats?.Min1, decimals),
+            Max: formatNumber(stats?.Max1, decimals),
+            Percentile25: formatNumber(stats?.Percentile25_1, decimals),
+            Percentile50: formatNumber(stats?.Percentile50_1, decimals),
+            Percentile75: formatNumber(stats?.Percentile75_1, decimals)
+        });
     });
 
     return table;

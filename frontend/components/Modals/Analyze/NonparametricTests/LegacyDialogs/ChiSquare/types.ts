@@ -187,27 +187,27 @@ export interface TestStatistics {
 
 // Descriptive Statistics
 export interface DescriptiveStatistics {
-  N: number;
-  Mean?: number;
-  StdDev?: number;
-  Min?: number;
-  Max?: number;
-  Percentile25?: number;
-  Percentile50?: number;
-  Percentile75?: number;
+  N1: number;
+  Mean1?: number;
+  StdDev1?: number;
+  Min1?: number;
+  Max1?: number;
+  Percentile25_1?: number;
+  Percentile50_1?: number;
+  Percentile75_1?: number;
 }
 
 // Chi Square Result
 export interface ChiSquareResult {
-  variable: Variable;
+  variable1: Variable;
   frequencies?: Frequencies;
   testStatistics?: TestStatistics;
   descriptiveStatistics?: DescriptiveStatistics;
   metadata?: {
     hasInsufficientData: boolean;
-    totalData1: number;
-    validData1: number;
-    variable1Name: string;
+    insufficientType: string[];
+    variableLabel: string;
+    variableName: string;
   };
 } 
 

@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useState } from "react";
+import React, { FC, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
     tourSteps = [],
 }) => {
     const variableIdKeyToUse: keyof Variable = 'tempId';
-    const [allowUnknown, setAllowUnknown] = useState(false);
 
     const getDisplayName = (variable: Variable) => {
         if (!variable.label) return variable.name;
@@ -32,14 +31,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const isVariableDisabled = useCallback((variable: Variable): boolean => {
-        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
-                                (variable.measure === 'scale' || variable.measure === 'ordinal');
-        
-        if (isNormallyValid) return false;
-        if (variable.measure === 'unknown') return !allowUnknown;
-        
-        return true;
-    }, [allowUnknown]);
+        return variable.type !== 'NUMERIC';
+    }, []);
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         if (sourceListId === 'available' && isVariableDisabled(variable)) {
@@ -139,25 +132,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return null;
     }, [testValue, setTestValue, estimateEffectSize, setEstimateEffectSize, tourActive, isTourElementActive]);
 
-    const renderExtraInfo = () => (
-        <>
-            <div id="allow-unknown-section" className="flex items-center mt-2 p-1.5 relative">
-                <Checkbox
-                    id="allowUnknown"
-                    checked={allowUnknown}
-                    onCheckedChange={(checked: boolean) => setAllowUnknown(checked)}
-                    className="mr-2 h-4 w-4"
-                />
-                <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                    Treat &apos;unknown&apos; as Scale and allow selection
-                </Label>
-                {tourActive && isTourElementActive("allow-unknown-section") && (
-                    <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
-                )}
-            </div>
-        </>
-    );
-
     return (
         <div className="space-y-4">
             <div className="relative">
@@ -174,7 +148,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     isVariableDisabled={isVariableDisabled}
                     showArrowButtons={true}
                     renderListFooter={renderTestFooter}
-                    renderExtraInfoContent={renderExtraInfo}
                 />
                 <div id="one-sample-t-test-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
                     <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-sample-t-test-available-variables')} />

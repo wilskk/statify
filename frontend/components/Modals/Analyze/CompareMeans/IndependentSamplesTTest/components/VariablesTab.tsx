@@ -41,14 +41,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const isVariableDisabled = useCallback((variable: Variable): boolean => {   
-        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
-                                (variable.measure === 'scale' || variable.measure === 'ordinal');
-        
-        if (isNormallyValid) return false;
-        if (variable.measure === 'unknown') return !allowUnknown;
-        
-        return true;
-    }, [allowUnknown]);
+        return variable.type !== 'NUMERIC';
+    }, []);
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         if (sourceListId === 'available' && isVariableDisabled(variable)) {
@@ -119,25 +113,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return tourSteps[currentStep]?.targetId === elementId;
     }, [tourActive, currentStep, tourSteps]);
 
-    const renderAllowUnknown = () => (
-        <>
-            <div id="allow-unknown-section" className="flex items-center mt-2 p-1.5 relative">
-                <Checkbox
-                    id="allowUnknown"
-                    checked={allowUnknown}
-                    onCheckedChange={(checked: boolean) => setAllowUnknown(checked)}
-                    className="mr-2 h-4 w-4"
-                />
-                <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                    Treat &apos;unknown&apos; as Scale and allow selection
-                </Label>
-                {tourActive && isTourElementActive("allow-unknown-section") && (
-                    <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
-                )}
-            </div>
-        </>
-    );
-
     const groupingFooter = useCallback((listId: string) => {
         if (listId === 'grouping') {
             return (
@@ -177,7 +152,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                                     id="group1"
                                                     type="number"
                                                     disabled={!defineGroups.useSpecifiedValues}
-                                                    value={group1 || ""}
+                                                    value={group1 !== null ? group1 : ""}
                                                     onChange={(e) => setGroup1(e.target.value ? Number(e.target.value) : null)}
                                                     className="w-20 h-8 text-sm"
                                                 />
@@ -190,7 +165,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                                     id="group2"
                                                     type="number"
                                                     disabled={!defineGroups.useSpecifiedValues}
-                                                    value={group2 || ""}
+                                                    value={group2 !== null ? group2 : ""}
                                                     onChange={(e) => setGroup2(e.target.value ? Number(e.target.value) : null)}
                                                     className="w-20 h-8 text-sm"
                                                 />
@@ -223,7 +198,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                             id="cutPointValue"
                                             type="number"
                                             disabled={defineGroups.useSpecifiedValues}
-                                            value={cutPointValue || ""}
+                                            value={cutPointValue !== null ? cutPointValue : ""}
                                             onChange={(e) => setCutPointValue(e.target.value ? Number(e.target.value) : null)}
                                             className="w-20 h-8 text-sm"
                                         />
@@ -279,7 +254,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     isVariableDisabled={isVariableDisabled}
                     renderListFooter={groupingFooter}
                     showArrowButtons={true}
-                    renderExtraInfoContent={renderAllowUnknown}
                 />
 
                 <div id="independent-samples-t-test-available-variables" className="absolute top-0 left-0 w-[48%] h-[70%] pointer-events-none rounded-md">

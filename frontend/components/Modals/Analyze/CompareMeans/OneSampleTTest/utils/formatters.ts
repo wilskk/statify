@@ -103,6 +103,10 @@ export function formatOneSampleTestTable (
 
     // Process each result
     results.forEach((result) => {
+        if (result.metadata && result.metadata.hasInsufficientData) {
+            return;
+        }
+
         const stats = result.oneSampleTest as OneSampleTest;
         const decimals = result.variable1?.decimals;
 
@@ -122,13 +126,6 @@ export function formatOneSampleTestTable (
     return table;
 }
 
-export function formatErrorTable() {
-    return {
-        title: "",
-        columnHeaders: [{ header: "No Data", key: "noData" }],
-        rows: []
-    };
-}
 /**
  * Formats number with specified precision
  * @param value Number to format
@@ -167,13 +164,4 @@ export const formatDF = (df: number | null | undefined) => {
     } else {
         return df.toFixed(3);
     }
-};
-
-/**
- * Formats error message
- * @param error Error message
- * @returns Formatted error message
- */
-export const formatErrorMessage = (error: string): string => {
-    return `Error: ${error}`;
 };

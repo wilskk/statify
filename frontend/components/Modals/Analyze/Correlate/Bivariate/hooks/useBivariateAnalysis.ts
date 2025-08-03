@@ -59,8 +59,27 @@ export const useBivariateAnalysis = ({
     const resultsRef = useRef<BivariateResults>();
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
+    const insufficientDataVarsRef = useRef<{ variableName: string; variableLabel: string; insufficientType: string[] }[]>([]);
+
+    // Timing refs
+    const timingRef = useRef<{
+        analysisStart: number;
+        dataSentToWorker: number;
+        dataReceivedFromWorker: number;
+        dataFormattedToTable: number;
+        processCompleted: number;
+    }>({
+        analysisStart: 0,
+        dataSentToWorker: 0,
+        dataReceivedFromWorker: 0,
+        dataFormattedToTable: 0,
+        processCompleted: 0
+    });
 
     const runAnalysis = useCallback(async (): Promise<void> => {
+        // 1. Catat waktu ketika runAnalysis dimulai
+        timingRef.current.analysisStart = performance.now();
+        
         if (testVariables.length === 0) {
             setErrorMsg('Please select at least one variable to analyze.');
             return;
@@ -111,13 +130,35 @@ export const useBivariateAnalysis = ({
                 controlData: batchControl.map(vd => vd.data)
             }
         };
+
+        // 2. Catat waktu ketika data dikirim ke web worker
+        timingRef.current.dataSentToWorker = performance.now();
+
         worker.postMessage(payload);
 
         worker.onmessage = async (event) => {
             // console.log('Received message:', JSON.stringify(event.data));
             const { variableName, results, status, error: workerError } = event.data;
 
+            // 3. Catat waktu ketika data diterima dari web worker
+            if (processedCountRef.current === 0) {
+                timingRef.current.dataReceivedFromWorker = performance.now();
+            }
+
             if (status === 'success' && results) {
+                // Check for metadata about insufficient data
+                if (Array.isArray(results.metadata)) {
+                    results.metadata.forEach((meta: any) => {
+                        if (meta.hasInsufficientData) {
+                            insufficientDataVarsRef.current.push({
+                                variableName: meta.variableName,
+                                variableLabel: meta.variableLabel,
+                                insufficientType: meta.insufficientType
+                            });
+                            // console.warn(`Insufficient valid data for variable: ${meta.variableLabel || meta.variableName}. Insufficient type: ${meta.insufficientType.join(', ')}`);
+                        }
+                    });
+                }
                 resultsRef.current = results;
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
@@ -135,9 +176,51 @@ export const useBivariateAnalysis = ({
                         const variableNames = testVariables.map(v => v.name).join(" ");
                         let logMsg = `CORRELATIONS {VARIABLES=${variableNames}}`;
 
+                        // 4. Catat waktu ketika data diubah ke format tabel
+                        timingRef.current.dataFormattedToTable = performance.now();
+
                         // Save to database
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "Correlation" });
+                        
+                        // Prepare note about matrix validation issues if needed
+                        let note = "";
+                        if (partialCorrelationKendallsTauB && resultsRef.current.matrixValidation && 
+                            (resultsRef.current.matrixValidation.hasInvalidCorrelations || resultsRef.current.matrixValidation.hasInvalidNs)) {
+                            const issues = [];
+                            if (resultsRef.current.matrixValidation.hasInvalidCorrelations) {
+                                issues.push("invalid correlation values (less than -1 or greater than +1)");
+                            }
+                            if (resultsRef.current.matrixValidation.hasInvalidNs) {
+                                issues.push("invalid N values (less than 1)");
+                            }
+                            note = `Note: Matrix validation detected ${issues.join(" and ")}. Partial correlation is not displayed.`;
+                        }
+                        
+                        let correlationNote = "";
+                        if (insufficientDataVarsRef.current.length > 0) {
+                            correlationNote += "Note: ";
+                            const typeToVars: Record<string, string[]> = {};
+                            for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
+                                for (const type of insufficientType) {
+                                    if (!typeToVars[type]) typeToVars[type] = [];
+                                    typeToVars[type].push(variableLabel || variableName);
+                                }
+                            }
+                            if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+                                correlationNote += `[Cannot be computed for variable(s): ${typeToVars["empty"].join(", ")}. There are no valid cases for this analysis because all caseweights are not positive.]`;
+                            }
+                            if (typeToVars["single"] && typeToVars["single"].length > 0) {
+                                correlationNote += `[Cannot be computed for variable(s): ${typeToVars["single"].join(", ")}. The sum of caseweights is less than or equal 1.]`;
+                            }
+                            if (typeToVars["stdDev"] && typeToVars["stdDev"].length > 0) {
+                                correlationNote += `[Cannot be computed for variable(s): ${typeToVars["stdDev"].join(", ")}. The standard deviation is 0.]`;
+                            }
+                        }
+                        // Create analytic with or without note
+                        const analyticId = await addAnalytic(logId, { 
+                            title: "Correlation", 
+                            note: note || undefined 
+                        });
 
                         // Add descriptive statistics table
                         if (statisticsOptions.meansAndStandardDeviations) {
@@ -158,7 +241,7 @@ export const useBivariateAnalysis = ({
                                 title: "Correlation",
                                 output_data: JSON.stringify({ tables: [formattedCorrelationTable] }),
                                 components: "Correlation",
-                                description: ""
+                                description: correlationNote
                             });
                         }
 
@@ -171,6 +254,7 @@ export const useBivariateAnalysis = ({
                                 correlationType.push("Spearman's rho");
                             }
                             const formattedCorrelationTable = formatCorrelationTable(resultsRef.current, options, testVariables, correlationType);
+                            // console.log('formattedCorrelationTable:', JSON.stringify(formattedCorrelationTable));
 
                             await addStatistic(analyticId, {
                                 title: "Nonparametric Correlation",
@@ -180,18 +264,52 @@ export const useBivariateAnalysis = ({
                             });
 
                             if (partialCorrelationKendallsTauB && correlationCoefficient.kendallsTauB && testVariables.length > 2 && missingValuesOptions.excludeCasesListwise) {
-                                const formattedPartialCorrelationTable = formatPartialCorrelationTable(resultsRef.current, options, testVariables);
-                                // console.log('Formatted partial correlation table:', JSON.stringify(formattedPartialCorrelationTable));
+                                // Check for matrix validation issues
+                                const hasMatrixIssues = resultsRef.current.matrixValidation && 
+                                    (resultsRef.current.matrixValidation.hasInvalidCorrelations || resultsRef.current.matrixValidation.hasInvalidNs);
+                                
+                                if (!hasMatrixIssues) {
+                                    const formattedPartialCorrelationTable = formatPartialCorrelationTable(resultsRef.current, options, testVariables);
+                                    // console.log('Formatted partial correlation table:', JSON.stringify(formattedPartialCorrelationTable));
 
-                                await addStatistic(analyticId, {
-                                    title: "Partial Correlation",
-                                    output_data: JSON.stringify({ tables: [formattedPartialCorrelationTable] }),
-                                    components: "Partial Correlation",
-                                    description: ""
-                                });
+                                    await addStatistic(analyticId, {
+                                        title: "Partial Correlation",
+                                        output_data: JSON.stringify({ tables: [formattedPartialCorrelationTable] }),
+                                        components: "Partial Correlation",
+                                        description: ""
+                                    });
+                                }
                             }
                         }
 
+                        
+                        // 5. Catat waktu ketika proses selesai
+                        timingRef.current.processCompleted = performance.now();
+
+                        // Hitung semua timing durations
+
+                        const timeToSendData = timingRef.current.dataSentToWorker - timingRef.current.analysisStart;
+                        const timeToReceiveData = timingRef.current.dataReceivedFromWorker - timingRef.current.dataSentToWorker;
+                        const timeToFormatData = timingRef.current.dataFormattedToTable - timingRef.current.dataReceivedFromWorker;
+                        const timeToComplete = timingRef.current.processCompleted - timingRef.current.dataFormattedToTable;
+                        const totalTime = timingRef.current.processCompleted - timingRef.current.analysisStart;
+
+                        // Hitung jumlah data (total rows dari analysisData)
+                        const totalDataRows = analysisData.length;
+
+                        // Single console.log dengan format yang diminta
+                        // console.log(`[BivariateCorrelation][${testVariables.length} var][${totalDataRows} data] TIMING SUMMARY:
+                        //     Analysis start to data sent: ${timeToSendData}ms
+                        //     Data sent to data received: ${timeToReceiveData}ms
+                        //     Data received to formatting: ${timeToFormatData}ms
+                        //     Formatting to completion: ${timeToComplete}ms
+                        //     TOTAL TIME: ${totalTime}ms`);
+
+                        setIsCalculating(false);
+                        worker.terminate();
+                        workerRef.current = null;
+                        onClose?.();
+                            
                         if (onClose) {
                             onClose();
                         }

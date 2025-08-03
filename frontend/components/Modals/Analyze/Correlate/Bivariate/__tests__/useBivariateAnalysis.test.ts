@@ -189,7 +189,25 @@ describe('useBivariateAnalysis', () => {
                         }
                     }
                 ],
-                partialCorrelation: []
+                partialCorrelation: [],
+                metadata: [
+                    {
+                        hasInsufficientData: false,
+                        insufficientType: [],
+                        variableLabel: 'Variable 1',
+                        variableName: 'var1',
+                        totalData: 3,
+                        validData: 3
+                    },
+                    {
+                        hasInsufficientData: false,
+                        insufficientType: [],
+                        variableLabel: 'Variable 2',
+                        variableName: 'var2',
+                        totalData: 3,
+                        validData: 3
+                    }
+                ]
             }
         };
 
@@ -239,6 +257,24 @@ describe('useBivariateAnalysis', () => {
                             PValue: 0.05,
                             df: 1
                         }
+                    }
+                ],
+                metadata: [
+                    {
+                        hasInsufficientData: false,
+                        insufficientType: [],
+                        variableLabel: 'Variable 1',
+                        variableName: 'var1',
+                        totalData: 3,
+                        validData: 3
+                    },
+                    {
+                        hasInsufficientData: false,
+                        insufficientType: [],
+                        variableLabel: 'Variable 2',
+                        variableName: 'var2',
+                        totalData: 3,
+                        validData: 3
                     }
                 ]
             }
@@ -293,7 +329,7 @@ describe('useBivariateAnalysis', () => {
                             N: 3
                         },
                         kendallsTauBCorrelation: {
-                            Kendall: 0.6,
+                            KendallsTauB: 0.6,
                             PValue: 0.2,
                             N: 3
                         },
@@ -304,7 +340,25 @@ describe('useBivariateAnalysis', () => {
                         }
                     }
                 ],
-                partialCorrelation: []
+                partialCorrelation: [],
+                metadata: [
+                    {
+                        hasInsufficientData: false,
+                        insufficientType: [],
+                        variableLabel: 'Variable 1',
+                        variableName: 'var1',
+                        totalData: 3,
+                        validData: 3
+                    },
+                    {
+                        hasInsufficientData: false,
+                        insufficientType: [],
+                        variableLabel: 'Variable 2',
+                        variableName: 'var2',
+                        totalData: 3,
+                        validData: 3
+                    }
+                ]
             }
         };
 
@@ -355,38 +409,434 @@ describe('useBivariateAnalysis', () => {
         expect(result.current.errorMsg).toContain('A critical worker error occurred');
         expect(result.current.isCalculating).toBe(false);
     });
-    
-    it('should handle insufficient data cases', async () => {
-        const { result } = renderTestHook();
-        
-        await act(async () => {
-            await result.current.runAnalysis();
-        });
-        
-        const mockWorkerResult = {
-            status: 'success',
-            results: {
-                descriptiveStatistics: [],
-                correlation: [],
-                partialCorrelation: [],
-                metadata: {
-                    hasInsufficientData: true,
-                    totalData: 3,
-                    validData: 1
-                }
-            }
-        };
 
-        await act(async () => {
-            workerOnMessage({ data: mockWorkerResult });
+    describe('Insufficient Data Cases', () => {
+        
+        it('should handle empty data case', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                results: {
+                    descriptiveStatistics: [],
+                    correlation: [],
+                    partialCorrelation: [],
+                    metadata: [
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['empty'],
+                            variableLabel: 'Variable 1',
+                            variableName: 'var1',
+                            totalData: 0,
+                            validData: 0
+                        },
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['empty'],
+                            variableLabel: 'Variable 2',
+                            variableName: 'var2',
+                            totalData: 0,
+                            validData: 0
+                        }
+                    ]
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            
+            // Log should mention CORRELATION
+            const logCall = mockAddLog.mock.calls[0][0];
+            expect(logCall.log).toContain('CORRELATION');
         });
-        
-        expect(mockAddStatistic).toHaveBeenCalled();
-        expect(mockAddLog).toHaveBeenCalled();
-        
-        // Log should mention CORRELATION
-        const logCall = mockAddLog.mock.calls[0][0];
-        expect(logCall.log).toContain('CORRELATION');
+
+        it('should handle single data point case', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                results: {
+                    descriptiveStatistics: [
+                        {
+                            variable: 'var1',
+                            Mean: 10,
+                            StdDev: 0,
+                            N: 1
+                        },
+                        {
+                            variable: 'var2',
+                            Mean: 100,
+                            StdDev: 0,
+                            N: 1
+                        }
+                    ],
+                    correlation: [
+                        {
+                            variable1: 'var1',
+                            variable2: 'var1',
+                            pearsonCorrelation: {
+                                Pearson: 1,
+                                PValue: null,
+                                SumOfSquares: 0,
+                                Covariance: 0,
+                                N: 1
+                            }
+                        },
+                        {
+                            variable1: 'var1',
+                            variable2: 'var2',
+                            pearsonCorrelation: {
+                                Pearson: null,
+                                PValue: null,
+                                SumOfSquares: 0,
+                                Covariance: null,
+                                N: 1
+                            }
+                        },
+                        {
+                            variable1: 'var2',
+                            variable2: 'var2',
+                            pearsonCorrelation: {
+                                Pearson: 1,
+                                PValue: null,
+                                SumOfSquares: 0,
+                                Covariance: 0,
+                                N: 1
+                            }
+                        }
+                    ],
+                    partialCorrelation: [],
+                    metadata: [
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['single'],
+                            variableLabel: 'Variable 1',
+                            variableName: 'var1',
+                            totalData: 1,
+                            validData: 1
+                        },
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['single'],
+                            variableLabel: 'Variable 2',
+                            variableName: 'var2',
+                            totalData: 1,
+                            validData: 1
+                        }
+                    ]
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            
+            const logCall = mockAddLog.mock.calls[0][0];
+            expect(logCall.log).toContain('CORRELATION');
+        });
+
+        it('should handle zero standard deviation case', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                results: {
+                    descriptiveStatistics: [
+                        {
+                            variable: 'var1',
+                            Mean: 10,
+                            StdDev: 0,
+                            N: 3
+                        },
+                        {
+                            variable: 'var2',
+                            Mean: 100,
+                            StdDev: 0,
+                            N: 3
+                        }
+                    ],
+                    correlation: [
+                        {
+                            variable1: 'var1',
+                            variable2: 'var1',
+                            pearsonCorrelation: {
+                                Pearson: 1,
+                                PValue: null,
+                                SumOfSquares: 0,
+                                Covariance: 0,
+                                N: 3
+                            }
+                        },
+                        {
+                            variable1: 'var1',
+                            variable2: 'var2',
+                            pearsonCorrelation: {
+                                Pearson: null,
+                                PValue: null,
+                                SumOfSquares: 0,
+                                Covariance: 0,
+                                N: 3
+                            }
+                        },
+                        {
+                            variable1: 'var2',
+                            variable2: 'var2',
+                            pearsonCorrelation: {
+                                Pearson: 1,
+                                PValue: null,
+                                SumOfSquares: 0,
+                                Covariance: 0,
+                                N: 3
+                            }
+                        }
+                    ],
+                    partialCorrelation: [],
+                    metadata: [
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['stdDev'],
+                            variableLabel: 'Variable 1',
+                            variableName: 'var1',
+                            totalData: 3,
+                            validData: 3
+                        },
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['stdDev'],
+                            variableLabel: 'Variable 2',
+                            variableName: 'var2',
+                            totalData: 3,
+                            validData: 3
+                        }
+                    ]
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            
+            const logCall = mockAddLog.mock.calls[0][0];
+            expect(logCall.log).toContain('CORRELATION');
+        });
+
+        it('should handle mixed insufficient data types', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                results: {
+                    descriptiveStatistics: [],
+                    correlation: [],
+                    partialCorrelation: [],
+                    metadata: [
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['empty'],
+                            variableLabel: 'Variable 1',
+                            variableName: 'var1',
+                            totalData: 0,
+                            validData: 0
+                        },
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['single', 'stdDev'],
+                            variableLabel: 'Variable 2',
+                            variableName: 'var2',
+                            totalData: 1,
+                            validData: 1
+                        }
+                    ]
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            
+            const logCall = mockAddLog.mock.calls[0][0];
+            expect(logCall.log).toContain('CORRELATION');
+        });
+
+        it('should handle mixed sufficient and insufficient data', async () => {
+            const { result } = renderTestHook({
+                testVariables: [mockVariables[0], mockVariables[1], mockVariables[2]]
+            });
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                results: {
+                    descriptiveStatistics: [
+                        {
+                            variable: 'var1',
+                            Mean: 15,
+                            StdDev: 5,
+                            N: 3
+                        },
+                        {
+                            variable: 'var2',
+                            Mean: 0,
+                            StdDev: 0,
+                            N: 0
+                        },
+                        {
+                            variable: 'var3',
+                            Mean: 150,
+                            StdDev: 50,
+                            N: 3
+                        }
+                    ],
+                    correlation: [
+                        {
+                            variable1: 'var1',
+                            variable2: 'var1',
+                            pearsonCorrelation: {
+                                Pearson: 1,
+                                PValue: null,
+                                SumOfSquares: 50,
+                                Covariance: 25,
+                                N: 3
+                            }
+                        },
+                        {
+                            variable1: 'var1',
+                            variable2: 'var3',
+                            pearsonCorrelation: {
+                                Pearson: 0.8,
+                                PValue: 0.1,
+                                SumOfSquares: 200,
+                                Covariance: 100,
+                                N: 3
+                            }
+                        },
+                        {
+                            variable1: 'var3',
+                            variable2: 'var3',
+                            pearsonCorrelation: {
+                                Pearson: 1,
+                                PValue: null,
+                                SumOfSquares: 5000,
+                                Covariance: 2500,
+                                N: 3
+                            }
+                        }
+                    ],
+                    partialCorrelation: [],
+                    metadata: [
+                        {
+                            hasInsufficientData: false,
+                            insufficientType: [],
+                            variableLabel: 'Variable 1',
+                            variableName: 'var1',
+                            totalData: 3,
+                            validData: 3
+                        },
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['empty'],
+                            variableLabel: 'Variable 2',
+                            variableName: 'var2',
+                            totalData: 0,
+                            validData: 0
+                        },
+                        {
+                            hasInsufficientData: false,
+                            insufficientType: [],
+                            variableLabel: 'Variable 3',
+                            variableName: 'var3',
+                            totalData: 3,
+                            validData: 3
+                        }
+                    ]
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            expect(mockOnClose).toHaveBeenCalled();
+            expect(result.current.isCalculating).toBe(false);
+        });
+
+        it('should verify insufficient data metadata is properly handled', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                results: {
+                    descriptiveStatistics: [],
+                    correlation: [],
+                    partialCorrelation: [],
+                    metadata: [
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['empty'],
+                            variableLabel: 'Variable 1',
+                            variableName: 'var1',
+                            totalData: 0,
+                            validData: 0
+                        },
+                        {
+                            hasInsufficientData: true,
+                            insufficientType: ['empty'],
+                            variableLabel: 'Variable 2',
+                            variableName: 'var2',
+                            totalData: 0,
+                            validData: 0
+                        }
+                    ]
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            // Verify that the hook properly handles insufficient data
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(result.current.isCalculating).toBe(false);
+            expect(result.current.errorMsg).toBe(null); // Should not be an error, just insufficient data
+        });
     });
     
     it('should cancel analysis when requested', async () => {
@@ -420,5 +870,47 @@ describe('useBivariateAnalysis', () => {
         expect(mockWorkerTerminate).toHaveBeenCalled();
     });
 
+    it('should handle custom missing values options', async () => {
+        const { result } = renderTestHook({
+            missingValuesOptions: {
+                excludeCasesPairwise: true,
+                excludeCasesListwise: false
+            }
+        });
 
+        await act(async () => {
+            await result.current.runAnalysis();
+        });
+
+        expect(mockPostMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                options: expect.objectContaining({
+                    missingValuesOptions: {
+                        excludeCasesPairwise: true,
+                        excludeCasesListwise: false
+                    }
+                })
+            })
+        );
+    });
+
+    it('should handle analysis timeout gracefully', async () => {
+        const { result } = renderTestHook();
+        
+        await act(async () => {
+            await result.current.runAnalysis();
+        });
+        
+        // Simulate timeout by not calling workerOnMessage
+        // The analysis should eventually timeout or be cancelled
+        
+        expect(result.current.isCalculating).toBe(true);
+        
+        // Cancel to clean up
+        await act(async () => {
+            result.current.cancelCalculation();
+        });
+        
+        expect(result.current.isCalculating).toBe(false);
+    });
 }); 

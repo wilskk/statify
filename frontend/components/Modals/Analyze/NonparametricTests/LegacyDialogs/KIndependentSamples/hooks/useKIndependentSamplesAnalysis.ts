@@ -92,10 +92,10 @@ export const useKIndependentSamplesAnalysis = ({
             const groupingDataForVar = analysisData.map(row => row[groupingVariable.columnIndex]);
             const payload = {
                 analysisType: analysisTypes,
-                variable,
-                data: dataForVar,
-                groupingVariable,
-                groupingData: groupingDataForVar,
+                variable1: variable,
+                data1: dataForVar,
+                variable2: groupingVariable,
+                data2: groupingDataForVar,
                 options: { testType, displayStatistics, minimum, maximum }
             };
             worker.postMessage(payload);

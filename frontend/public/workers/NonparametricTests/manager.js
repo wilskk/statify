@@ -36,14 +36,12 @@ const calculators = {
  * @param {MessageEvent} event - Event pesan yang diterima.
  */
 onmessage = (event) => {
-    const { analysisType, variable, variable1, variable2, batchVariable, data, data1, data2, batchData, groupingVariable, groupingData, options } = event.data;
+    const { analysisType, variable1, data1, variable2, data2, batchVariable, batchData, options } = event.data;
     let variableName;
     if (variable1 && variable2 && data1 && data2) {
         variableName = variable1.name + ' - ' + variable2.name;
-    } else if (variable && data) {
-        variableName = typeof variable === 'string' ? variable : variable.name || 'unknown';
     } else if (variable1 && data1) {
-        variableName = variable1.name;
+        variableName = typeof variable1 === 'string' ? variable1 : variable1.name || 'unknown';
     }
     // --- Start of Debugging ---
     console.log('[Worker] Received analysis request:', JSON.stringify(analysisType));
@@ -56,14 +54,13 @@ onmessage = (event) => {
         console.log('[Worker] Received batch variable:', JSON.stringify(batchVariable));
         console.log('[Worker] Received batch data (first 5 rows):', batchData ? JSON.stringify(batchData.slice(0, 5)) : 'No data');
     } else if (analysisType.includes('kIndependentSamples') || analysisType.includes('twoIndependentSamples')) {
-        console.log('[Worker] Received grouping variable:', JSON.stringify(groupingVariable));
-        console.log('[Worker] Received grouping data (first 5 rows):', groupingData ? JSON.stringify(groupingData.slice(0, 5)) : 'No data');
-    } else if (analysisType.includes('chiSquare')) {
-        console.log('[Worker] Received variable:', JSON.stringify(variable1));
-        console.log('[Worker] Received data (first 5 rows):', data1 ? JSON.stringify(data1.slice(0, 5)) : 'No data');
+        console.log('[Worker] Received variable1:', JSON.stringify(variable1));
+        console.log('[Worker] Received variable2:', JSON.stringify(variable2));
+        console.log('[Worker] Received data1 (first 5 rows):', data1 ? JSON.stringify(data1.slice(0, 5)) : 'No data');
+        console.log('[Worker] Received data2 (first 5 rows):', data2 ? JSON.stringify(data2.slice(0, 5)) : 'No data');
     } else {
-        console.log('[Worker] Received variable:', JSON.stringify(variable));
-        console.log('[Worker] Received data (first 5 rows):', data ? JSON.stringify(data.slice(0, 5)) : 'No data');
+        console.log('[Worker] Received variable1:', JSON.stringify(variable1));
+        console.log('[Worker] Received data1 (first 5 rows):', data1 ? JSON.stringify(data1.slice(0, 5)) : 'No data');
     }
     console.log('[Worker] Received options:', JSON.stringify(options || {}));
     // --- End of Debugging ---
@@ -80,15 +77,10 @@ onmessage = (event) => {
 
             if (type === 'descriptiveStatistics') {
                 // Jika variable1, variable2, data1, data2 ada, kirim juga ke calculator
-                const calculatorParams = { variable, data, options };
+                const calculatorParams = { variable1, data1, options };
                 if (variable1 && variable2 && data1 && data2) {
-                    calculatorParams.variable1 = variable1;
                     calculatorParams.variable2 = variable2;
-                    calculatorParams.data1 = data1;
                     calculatorParams.data2 = data2;
-                } else if (variable1 && data1) {
-                    calculatorParams.variable1 = variable1;
-                    calculatorParams.data1 = data1;
                 }
                 calculator = new CalculatorClass(calculatorParams);
 
@@ -107,46 +99,52 @@ onmessage = (event) => {
                 console.log('[Worker] Frequencies Results:', JSON.stringify(calculator.getOutput().frequencies));
                 console.log('[Worker] Chi Square Results:', JSON.stringify(calculator.getOutput().testStatistics));
                 console.log('[Worker] Metadata Results:', JSON.stringify(calculator.getOutput().metadata));
-                results.variable = calculator.getOutput().variable;
+                results.variable1 = calculator.getOutput().variable1;
                 results.frequencies = calculator.getOutput().frequencies;
                 results.testStatistics = calculator.getOutput().testStatistics;
                 results.metadata = calculator.getOutput().metadata;
             } else if (type === 'runs') {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data,
+                    variable: variable1, 
+                    data: data1,
                     options 
                 });
 
                 console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
-                console.log('[Worker] Cut Point Results:', JSON.stringify(calculator.getOutput().cutPoint));
-                console.log('[Worker] Custom Value Results:', JSON.stringify(calculator.getOutput().customValue));
+                console.log('[Worker] Variable:', JSON.stringify(variable1));
                 console.log('[Worker] Runs Results:', JSON.stringify(calculator.getOutput().runsTest));
-                results.cutPoint = calculator.getOutput().cutPoint;
-                results.customValue = calculator.getOutput().customValue;
+                console.log('[Worker] Metadata Results:', JSON.stringify(calculator.getOutput().metadata));
+                results.variable1 = calculator.getOutput().variable1;
                 results.runsTest = calculator.getOutput().runsTest;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'twoIndependentSamples') {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data, 
-                    groupingVariable,
-                    groupingData,
+                    variable1, 
+                    data1, 
+                    variable2,
+                    data2,
                     options 
                 });
 
                 console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
+                console.log('[Worker] Variable2:', JSON.stringify(calculator.getOutput().variable2));
                 console.log('[Worker] Frequencies Ranks Results:', JSON.stringify(calculator.getOutput().frequenciesRanks));
                 console.log('[Worker] Mann Whitney U Results:', JSON.stringify(calculator.getOutput().testStatisticsMannWhitneyU));
                 console.log('[Worker] Kolmogorov Smirnov Z Results:', JSON.stringify(calculator.getOutput().testStatisticsKolmogorovSmirnovZ));
+                console.log('[Worker] Metadata Results:', JSON.stringify(calculator.getOutput().metadata));
+                results.variable1 = calculator.getOutput().variable1;
+                results.variable2 = calculator.getOutput().variable2;
                 results.frequenciesRanks = calculator.getOutput().frequenciesRanks;
                 results.testStatisticsMannWhitneyU = calculator.getOutput().testStatisticsMannWhitneyU;
                 results.testStatisticsKolmogorovSmirnovZ = calculator.getOutput().testStatisticsKolmogorovSmirnovZ;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'kIndependentSamples') {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data, 
-                    groupingVariable, 
-                    groupingData, 
+                    variable: variable1, 
+                    data: data1, 
+                    groupingVariable: variable2, 
+                    groupingData: data2, 
                     options 
                 });
 
@@ -180,9 +178,9 @@ onmessage = (event) => {
             } else if (type === 'kRelatedSamples') {
                 calculator = new CalculatorClass({ 
                     batchVariable,
-                    variable,
+                    variable: variable1,
                     batchData,
-                    data,
+                    data: data1,
                     options 
                 });
 
@@ -195,8 +193,8 @@ onmessage = (event) => {
                 results.testStatistics = calculator.getOutput().testStatistics;
             } else {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data, 
+                    variable: variable1, 
+                    data: data1, 
                     options 
                 });
             

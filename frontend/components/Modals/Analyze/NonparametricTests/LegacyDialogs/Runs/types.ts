@@ -132,29 +132,40 @@ export interface RunsTest {
 
 // Descriptive Statistics
 export interface DescriptiveStatistics {
-  N: number;
-  Mean?: number;
-  StdDev?: number;
-  Min?: number;
-  Max?: number;
-  Percentile25?: number;
-  Percentile50?: number;
-  Percentile75?: number;
+  variable1: Variable;
+  N1: number;
+  Mean1?: number;
+  StdDev1?: number;
+  Min1?: number;
+  Max1?: number;
+  Percentile25_1?: number;
+  Percentile50_1?: number;
+  Percentile75_1?: number;
 }
 
 // Runs Test Result
 export interface RunsTestResult {
-  variable: Variable;
-  displayStatistics?: DisplayStatisticsOptions;
-  cutPoint?: 'Median' | 'Mean' | 'Mode' | 'Custom';
-  stats: RunsTest | DescriptiveStatistics;
+  variable1: Variable;
+  descriptiveStatistics?: DescriptiveStatistics;
+  runsTest?: {
+    median?: RunsTest;
+    mean?: RunsTest;
+    mode?: RunsTest;
+    custom?: RunsTest;
+  };
+  metadata?: {
+    hasInsufficientData: boolean;
+    insufficientType: string[];
+    variableName: string;
+    variableLabel: string;
+  };
 } 
 
 // Runs Test Results Collection
 export interface RunsTestResults {
-  runsTest?: RunsTestResult[];
+  runsTest?: RunsTest[];
   cutPoint?: 'Median' | 'Mean' | 'Mode' | 'Custom';
-  descriptiveStatistics?: RunsTestResult[];
+  descriptiveStatistics?: DescriptiveStatistics[];
 }
 
 // ---------------------------------

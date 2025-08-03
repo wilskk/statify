@@ -46,11 +46,27 @@ class ChiSquareCalculator {
     #initialize() {
         if (this.initialized) return;
 
-        const isNumericType = ['scale', 'date'].includes(this.variable1.measure);
-
-        // Filter data yang valid
+        // For Chi-Square test, we need to treat all numeric data as valid
+        // The measure type doesn't matter for frequency analysis
+        const isNumericType = true;
         this.validData = this.data1
-            .filter(value => !checkIsMissing(value, this.variable1.missing, isNumericType) && isNumeric(value));
+            .filter(value => {
+                // Skip null/undefined values
+                if (value === null || value === undefined) {
+                    return false;
+                }
+                // Check if it's missing according to variable definition
+                if (checkIsMissing(value, this.variable1.missing, isNumericType)) {
+                    return false;
+                }
+                // Check if it's numeric
+                if (!isNumeric(value)) {
+                    return false;
+                }
+                return true;
+            });
+        
+        console.log('ChiSquareCalculator: Valid data after filtering:', this.validData);
         
         // Terapkan filter range jika diperlukan
         if (this.expectedRange.useSpecifiedRange && 
@@ -75,6 +91,11 @@ class ChiSquareCalculator {
             this.countCategories = Object.keys(this.observedN).length;
         }
 
+        // Handle edge case: if no valid data, ensure countCategories is at least 0
+        if (this.N === 0) {
+            this.countCategories = 0;
+        }
+
         this.initialized = true;
     }
     
@@ -91,6 +112,12 @@ class ChiSquareCalculator {
         
         this.#initialize();
         let expectedN;
+        
+        // Handle edge case: no valid data
+        if (this.N === 0 || this.countCategories === 0) {
+            this.memo.expectedN = 0;
+            return 0;
+        }
         
         if (this.expectedValue.values) {
             if (this.expectedValueList.length !== this.countCategories) {
@@ -112,6 +139,12 @@ class ChiSquareCalculator {
         this.#initialize();
         let categoryList;
         
+        // Handle edge case: no valid data
+        if (this.N === 0 || this.countCategories === 0) {
+            this.memo.categoryList = [];
+            return [];
+        }
+        
         if (this.expectedRange.useSpecifiedRange && 
             this.rangeValue.lowerValue !== null && 
             this.rangeValue.upperValue !== null) {
@@ -129,6 +162,11 @@ class ChiSquareCalculator {
     
     getResidual() { 
         this.#initialize();
+        
+        // Handle edge case: no valid data
+        if (this.N === 0 || this.countCategories === 0) {
+            return [];
+        }
         
         const expectedN = this.getExpectedN();
         const categoryList = this.getCategoryList();
@@ -236,6 +274,17 @@ class ChiSquareCalculator {
     getFrequencies() {
         this.#initialize();
 
+        // Handle edge case: no valid data
+        if (this.N === 0 || this.countCategories === 0) {
+            return {
+                categoryList: [],
+                observedN: [],
+                expectedN: [],
+                residual: [],
+                N: 0
+            };
+        }
+
         const expectedN = this.getExpectedN();
         const residual = this.getResidual();
         const categoryList = this.getCategoryList();
@@ -265,6 +314,13 @@ class ChiSquareCalculator {
      */
     getTestStatistics() {  
         this.#initialize();
+        if (this.countCategories <= 1) {
+            return {
+                ChiSquare: null,
+                DF: null,
+                PValue: null
+            };
+        }
         const chiSquare = this.getChiSquareValue();
         const df = this.getDegreesOfFreedom();
         const pValue = this.getPValue();
@@ -282,19 +338,28 @@ class ChiSquareCalculator {
      */
     getOutput() {
         this.#initialize();
-        const hasInsufficientData = this.validData.length === 0;
+        let hasInsufficientData = false;
+        let insufficientType = [];
+        if (this.validData.length === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('empty');
+        }
+        if (this.countCategories <= 1) {
+            hasInsufficientData = true;
+            insufficientType.push('single');
+        }
         const frequencies = this.getFrequencies();
         const testStatistics = this.getTestStatistics();
 
         return {
-            variable: this.variable1,
+            variable1: this.variable1,
             frequencies,
             testStatistics,
             metadata: {
                 hasInsufficientData,
-                totalData1: this.data1.length,
-                validData1: this.validData.length,
-                variable1Name: this.variable1.name,
+                insufficientType,
+                variableLabel: this.variable1.label || '',
+                variableName: this.variable1.name,
             }
         };
     }

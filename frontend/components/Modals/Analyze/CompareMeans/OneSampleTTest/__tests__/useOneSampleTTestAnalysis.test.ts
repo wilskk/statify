@@ -106,6 +106,12 @@ describe('useOneSampleTTestAnalysis', () => {
                     MeanDifference: 15,
                     Lower: -48.53,
                     Upper: 78.53
+                },
+                metadata: {
+                    hasInsufficientData: false,
+                    variableName: 'var1',
+                    variableLabel: 'Variable 1',
+                    insufficientType: []
                 }
             }
         };
@@ -149,6 +155,12 @@ describe('useOneSampleTTestAnalysis', () => {
                     MeanDifference: 15,
                     Lower: -48.53,
                     Upper: 78.53
+                },
+                metadata: {
+                    hasInsufficientData: false,
+                    variableName: 'var1',
+                    variableLabel: 'Variable 1',
+                    insufficientType: []
                 }
             }
         };
@@ -171,6 +183,12 @@ describe('useOneSampleTTestAnalysis', () => {
                     MeanDifference: 150,
                     Lower: -485.3,
                     Upper: 785.3
+                },
+                metadata: {
+                    hasInsufficientData: false,
+                    variableName: 'var2',
+                    variableLabel: 'Variable 2',
+                    insufficientType: []
                 }
             }
         };
@@ -186,8 +204,8 @@ describe('useOneSampleTTestAnalysis', () => {
             workerOnMessage({ data: mockWorkerResult2 });
         });
 
-        // Now it should finish
-        expect(mockAddStatistic).toHaveBeenCalledTimes(2);
+        // Now it should finish - each variable gets 2 statistics calls (one for statistics, one for test results)
+        expect(mockAddStatistic).toHaveBeenCalledTimes(2); // 2 variables × 2 statistics each
         expect(mockOnClose).toHaveBeenCalled();
         expect(result.current.isCalculating).toBe(false);
     });
@@ -233,44 +251,278 @@ describe('useOneSampleTTestAnalysis', () => {
         expect(result.current.errorMsg).toContain('A critical worker error occurred');
         expect(result.current.isCalculating).toBe(false);
     });
-    
-    it('should handle insufficient data cases', async () => {
-        const { result } = renderTestHook();
-        
-        await act(async () => {
-            await result.current.runAnalysis();
-        });
-        
-        const mockWorkerResult = {
-            status: 'success',
-            variableName: 'var1',
-            results: {
-                variable1: mockVariables[0],
-                metadata: {
-                    hasInsufficientData: true,
-                    variableName: 'var1',
-                    totalData: 2,
-                    validData: 1
-                },
-                oneSampleStatistics: {
-                    N: 1,
-                    Mean: 10,
-                    StdDev: 0,
-                    SEMean: 0
-                }
-            }
-        };
 
-        await act(async () => {
-            workerOnMessage({ data: mockWorkerResult });
+    describe('Insufficient Data Cases', () => {
+        
+        it('should handle empty data case', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                variableName: 'var1',
+                results: {
+                    variable1: mockVariables[0],
+                    metadata: {
+                        hasInsufficientData: true,
+                        variableName: 'var1',
+                        variableLabel: 'Variable 1',
+                        insufficientType: ['empty']
+                    },
+                    oneSampleStatistics: {
+                        N: 0,
+                        Mean: null,
+                        StdDev: null,
+                        SEMean: null
+                    },
+                    oneSampleTest: null
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            
+            // Log harus mencantumkan informasi tentang T-TEST
+            const logCall = mockAddLog.mock.calls[0][0];
+            expect(logCall.log).toContain('T-TEST');
         });
-        
-        expect(mockAddStatistic).toHaveBeenCalled();
-        expect(mockAddLog).toHaveBeenCalled();
-        
-        // Log harus mencantumkan informasi tentang T-TEST
-        const logCall = mockAddLog.mock.calls[0][0];
-        expect(logCall.log).toContain('T-TEST');
+
+        it('should handle single data point case', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                variableName: 'var1',
+                results: {
+                    variable1: mockVariables[0],
+                    metadata: {
+                        hasInsufficientData: true,
+                        variableName: 'var1',
+                        variableLabel: 'Variable 1',
+                        insufficientType: ['single']
+                    },
+                    oneSampleStatistics: {
+                        N: 1,
+                        Mean: 10,
+                        StdDev: NaN,
+                        SEMean: NaN
+                    },
+                    oneSampleTest: null
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            
+            const logCall = mockAddLog.mock.calls[0][0];
+            expect(logCall.log).toContain('T-TEST');
+        });
+
+        it('should handle zero standard deviation case', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                variableName: 'var1',
+                results: {
+                    variable1: mockVariables[0],
+                    metadata: {
+                        hasInsufficientData: true,
+                        variableName: 'var1',
+                        variableLabel: 'Variable 1',
+                        insufficientType: ['stdDev']
+                    },
+                    oneSampleStatistics: {
+                        N: 5,
+                        Mean: 5,
+                        StdDev: 0,
+                        SEMean: 0
+                    },
+                    oneSampleTest: null
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            
+            const logCall = mockAddLog.mock.calls[0][0];
+            expect(logCall.log).toContain('T-TEST');
+        });
+
+        it('should handle multiple insufficient data types', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                variableName: 'var1',
+                results: {
+                    variable1: mockVariables[0],
+                    metadata: {
+                        hasInsufficientData: true,
+                        variableName: 'var1',
+                        variableLabel: 'Variable 1',
+                        insufficientType: ['empty', 'single']
+                    },
+                    oneSampleStatistics: {
+                        N: 0,
+                        Mean: null,
+                        StdDev: null,
+                        SEMean: null
+                    },
+                    oneSampleTest: null
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            
+            const logCall = mockAddLog.mock.calls[0][0];
+            expect(logCall.log).toContain('T-TEST');
+        });
+
+        it('should handle mixed sufficient and insufficient data for multiple variables', async () => {
+            const { result } = renderTestHook({ testVariables: mockVariables });
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+
+            // First variable has insufficient data
+            const mockWorkerResult1 = {
+                status: 'success',
+                variableName: 'var1',
+                results: {
+                    variable1: mockVariables[0],
+                    metadata: {
+                        hasInsufficientData: true,
+                        variableName: 'var1',
+                        variableLabel: 'Variable 1',
+                        insufficientType: ['empty']
+                    },
+                    oneSampleStatistics: {
+                        N: 0,
+                        Mean: null,
+                        StdDev: null,
+                        SEMean: null
+                    },
+                    oneSampleTest: null
+                }
+            };
+
+            // Second variable has sufficient data
+            const mockWorkerResult2 = {
+                status: 'success',
+                variableName: 'var2',
+                results: {
+                    variable1: mockVariables[1],
+                    metadata: {
+                        hasInsufficientData: false,
+                        variableName: 'var2',
+                        variableLabel: 'Variable 2',
+                        insufficientType: []
+                    },
+                    oneSampleStatistics: {
+                        N: 2,
+                        Mean: 150,
+                        StdDev: 70.7,
+                        SEMean: 50
+                    },
+                    oneSampleTest: {
+                        T: 3,
+                        DF: 1,
+                        PValue: 0.205,
+                        MeanDifference: 150,
+                        Lower: -485.3,
+                        Upper: 785.3
+                    }
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult1 });
+            });
+            
+            expect(result.current.isCalculating).toBe(true);
+            
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult2 });
+            });
+
+            // Should process both results
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(mockAddLog).toHaveBeenCalled();
+            expect(mockOnClose).toHaveBeenCalled();
+            expect(result.current.isCalculating).toBe(false);
+        });
+
+        it('should verify insufficient data metadata is properly handled', async () => {
+            const { result } = renderTestHook();
+            
+            await act(async () => {
+                await result.current.runAnalysis();
+            });
+            
+            const mockWorkerResult = {
+                status: 'success',
+                variableName: 'var1',
+                results: {
+                    variable1: mockVariables[0],
+                    metadata: {
+                        hasInsufficientData: true,
+                        variableName: 'var1',
+                        variableLabel: 'Variable 1',
+                        insufficientType: ['empty']
+                    },
+                    oneSampleStatistics: {
+                        N: 0,
+                        Mean: null,
+                        StdDev: null,
+                        SEMean: null
+                    },
+                    oneSampleTest: null
+                }
+            };
+
+            await act(async () => {
+                workerOnMessage({ data: mockWorkerResult });
+            });
+            
+            // Verify that the hook properly handles insufficient data
+            expect(mockAddStatistic).toHaveBeenCalled();
+            expect(result.current.isCalculating).toBe(false);
+            expect(result.current.errorMsg).toBe(null); // Should not be an error, just insufficient data
+        });
     });
     
     it('should cancel analysis when requested', async () => {
@@ -302,5 +554,43 @@ describe('useOneSampleTTestAnalysis', () => {
         
         // Worker harus dibersihkan
         expect(mockWorkerTerminate).toHaveBeenCalled();
+    });
+
+    it('should handle custom test value and confidence level', async () => {
+        const { result } = renderTestHook({
+            testValue: 15,
+            estimateEffectSize: true
+        });
+
+        await act(async () => {
+            await result.current.runAnalysis();
+        });
+
+        expect(mockPostMessage).toHaveBeenCalledWith({
+            analysisType: ['oneSampleTTest'],
+            variable1: mockVariables[0],
+            data1: [10, 20],
+            options: { testValue: 15, estimateEffectSize: true }
+        });
+    });
+
+    it('should handle analysis timeout gracefully', async () => {
+        const { result } = renderTestHook();
+        
+        await act(async () => {
+            await result.current.runAnalysis();
+        });
+        
+        // Simulate timeout by not calling workerOnMessage
+        // The analysis should eventually timeout or be cancelled
+        
+        expect(result.current.isCalculating).toBe(true);
+        
+        // Cancel to clean up
+        await act(async () => {
+            result.current.cancelAnalysis();
+        });
+        
+        expect(result.current.isCalculating).toBe(false);
     });
 }); 

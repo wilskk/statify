@@ -178,13 +178,33 @@ class BivariateCalculator {
         }
         
         const n = validPairs.length;
-        
-        if (n <= 1) {
+
+        if (n === 0) {
             return {
                 Pearson: null,
                 PValue: null,
                 SumOfSquares: null,
                 Covariance: null,
+                N: n
+            };
+        }
+        
+        if (n === 1) {
+            return {
+                Pearson: null,
+                PValue: null,
+                SumOfSquares: 0,
+                Covariance: null,
+                N: n
+            };
+        }
+
+        if (this.#stdDev(x, this.#mean(x)) === 0 || this.#stdDev(y, this.#mean(y)) === 0) {
+            return {
+                Pearson: null,
+                PValue: null,
+                SumOfSquares: 0,
+                Covariance: 0,
                 N: n
             };
         }
@@ -299,10 +319,6 @@ class BivariateCalculator {
         const var2Index = this.variable.findIndex(v => v.name === variable2);
         
         if (var1Index === -1 || var2Index === -1) return null;
-
-        if (variable1 === variable2) {
-            return { KendallsTauB: 1, PValue: null, N: this.getValidN() };
-        }
         
         const x_full = this.validData[var1Index];
         const y_full = this.validData[var2Index];
@@ -315,8 +331,30 @@ class BivariateCalculator {
         }
         
         const n = validPairs.length;
-        if (n <= 1) return { KendallsTauB: null, PValue: null, N: n };
-        
+        if (n <= 1) {
+            return {
+                KendallsTauB: null,
+                PValue: null,
+                N: n
+            };
+        }
+
+        if (this.#stdDev(x_full, this.#mean(x_full)) === 0 || this.#stdDev(y_full, this.#mean(y_full)) === 0) {
+            return {
+                KendallsTauB: null,
+                PValue: null,
+                N: n
+            };
+        }
+
+        if (variable1 === variable2) {
+            return {
+                KendallsTauB: 1,
+                PValue: null,
+                N: this.getValidN()
+            };
+        }
+
         // 1. Hitung S (jumlah pasangan konkordan - diskordan)
         let S = 0;
         for (let i = 0; i < n; i++) {
@@ -528,6 +566,105 @@ class BivariateCalculator {
     }
 
     /**
+     * @private
+     * Validates correlation matrix and N values for partial correlation
+     * @param {Array} correlationData - The correlation data to validate
+     * @returns {object} Validation results
+     */
+    #validateMatrix(correlationData) {
+        const invalidCorrelations = [];
+        const invalidNs = [];
+        let hasInvalidCorrelations = false;
+        let hasInvalidNs = false;
+
+        // Check all correlation values
+        for (const corr of correlationData || []) {
+            // Check Pearson correlations
+            if (corr.pearsonCorrelation && corr.pearsonCorrelation.Pearson !== null) {
+                const value = corr.pearsonCorrelation.Pearson;
+                if (value < -1 || value > 1) {
+                    invalidCorrelations.push({
+                        variable1: corr.variable1,
+                        variable2: corr.variable2,
+                        value: value
+                    });
+                    hasInvalidCorrelations = true;
+                }
+            }
+
+            // Check Kendall's Tau-b correlations
+            if (corr.kendallsTauBCorrelation && corr.kendallsTauBCorrelation.KendallsTauB !== null) {
+                const value = corr.kendallsTauBCorrelation.KendallsTauB;
+                if (value < -1 || value > 1) {
+                    invalidCorrelations.push({
+                        variable1: corr.variable1,
+                        variable2: corr.variable2,
+                        value: value
+                    });
+                    hasInvalidCorrelations = true;
+                }
+            }
+
+            // Check Spearman correlations
+            if (corr.spearmanCorrelation && corr.spearmanCorrelation.Spearman !== null) {
+                const value = corr.spearmanCorrelation.Spearman;
+                if (value < -1 || value > 1) {
+                    invalidCorrelations.push({
+                        variable1: corr.variable1,
+                        variable2: corr.variable2,
+                        value: value
+                    });
+                    hasInvalidCorrelations = true;
+                }
+            }
+
+            // Check N values
+            if (corr.pearsonCorrelation && corr.pearsonCorrelation.N !== null) {
+                const n = corr.pearsonCorrelation.N;
+                if (n < 1) {
+                    invalidNs.push({
+                        variable1: corr.variable1,
+                        variable2: corr.variable2,
+                        value: n
+                    });
+                    hasInvalidNs = true;
+                }
+            }
+
+            if (corr.kendallsTauBCorrelation && corr.kendallsTauBCorrelation.N !== null) {
+                const n = corr.kendallsTauBCorrelation.N;
+                if (n < 1) {
+                    invalidNs.push({
+                        variable1: corr.variable1,
+                        variable2: corr.variable2,
+                        value: n
+                    });
+                    hasInvalidNs = true;
+                }
+            }
+
+            if (corr.spearmanCorrelation && corr.spearmanCorrelation.N !== null) {
+                const n = corr.spearmanCorrelation.N;
+                if (n < 1) {
+                    invalidNs.push({
+                        variable1: corr.variable1,
+                        variable2: corr.variable2,
+                        value: n
+                    });
+                    hasInvalidNs = true;
+                }
+            }
+        }
+
+        return {
+            hasInvalidCorrelations,
+            hasInvalidNs,
+            invalidCorrelations,
+            invalidNs
+        };
+    }
+
+    /**
      * Mengambil semua hasil statistik.
      * @returns {Object} Objek hasil yang berisi statistik sampel dan hasil uji.
      */
@@ -544,6 +681,51 @@ class BivariateCalculator {
         const pearsonMap = {};
         const kendallsTauBMap = {};
         const spearmanMap = {};
+
+        const metadata = [];
+        for (let i = 0; i < this.variable.length; i++) {
+            const variable = this.variable[i];
+            const varData = this.data[i] || [];
+            const insufficientType = [];
+            let hasInsufficientData = false;
+            
+            // Check if variable has no data or all values are null/undefined
+            const validValues = varData.filter(val => val !== null && val !== undefined);
+            if (varData.length === 0 || validValues.length === 0) {
+                hasInsufficientData = true;
+                insufficientType.push('empty');
+            }
+            
+            // Check if variable has only one case
+            if (varData.length === 1 || validValues.length === 1) {
+                hasInsufficientData = true;
+                insufficientType.push('single');
+            }
+            
+            // Check if variable has insufficient data for correlation (less than 3 cases)
+            // Cek jika standard deviation = 0 atau null, atau data kurang dari 3 (untuk korelasi)
+            let stdDevValue = null;
+            const descriptiveStats = this.getDescriptiveStatistics();
+            if (descriptiveStats) {
+                const varStats = descriptiveStats.find(stat => stat.variable === variable.name);
+                if (varStats) {
+                    stdDevValue = varStats.StdDev;
+                }
+            }
+            if (stdDevValue === 0 || stdDevValue === null || stdDevValue === undefined) {
+                hasInsufficientData = true;
+                insufficientType.push('stdDev');
+            }
+            
+            metadata.push({
+                hasInsufficientData,
+                insufficientType,
+                variableLabel: variable.label || '',
+                variableName: variable.name,
+                totalData: varData.length,
+                validData: validValues.length
+            });
+        }
 
         // Pearson
         if (this.correlationCoefficient.pearson) {
@@ -642,10 +824,15 @@ class BivariateCalculator {
             }
         }
 
+        // Validate matrix for partial correlation - now with the populated correlation data
+        const matrixValidation = this.#validateMatrix(correlation);
+
         return {
             descriptiveStatistics,
             correlation,
-            partialCorrelation
+            partialCorrelation,
+            matrixValidation,
+            metadata
         };
     }
 }

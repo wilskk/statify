@@ -102,6 +102,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesStatistics: {
             group1: {
               label: 'Variable 1',
@@ -161,6 +171,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesStatistics: undefined
         }
       ];
@@ -178,6 +198,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 0,
+            validData1: 0,
+            totalData2: 0,
+            validData2: 0,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesStatistics: {
             group1: {
               label: 'Variable 1',
@@ -250,6 +280,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesCorrelation: {
             correlationLabel: 'Variable 1 & Variable 2',
             N: 10,
@@ -289,6 +329,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesCorrelation: undefined
         }
       ];
@@ -316,6 +366,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1HighPrecision,
           variable2: mockVariable2LowPrecision,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesCorrelation: {
             correlationLabel: 'Variable 1 & Variable 2',
             N: 10,
@@ -371,6 +431,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesTest: {
             label: 'Variable 1 - Variable 2',
             Mean: -2.8,
@@ -420,6 +490,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesTest: undefined
         }
       ];
@@ -437,6 +517,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesTest: {
             label: 'Variable 1 - Variable 2',
             Mean: -2.8,
@@ -472,6 +562,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1HighPrecision,
           variable2: mockVariable2LowPrecision,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesTest: {
             label: 'Variable 1 - Variable 2',
             Mean: -2.8,
@@ -503,9 +603,19 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: true, // This should cause the result to be skipped
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesTest: {
             label: 'Variable 1 - Variable 2',
-            Mean: NaN, // Invalid value
+            Mean: -2.8,
             StdDev: 1.5,
             SEMean: 0.47,
             LowerCI: -3.85,
@@ -519,7 +629,7 @@ describe('PairedSamplesTTest Formatters', () => {
 
       const table = formatPairedSamplesTestTable(mockResults);
       
-      // Should not add any rows for invalid test results
+      // Should not add any rows for results with insufficient data
       expect(table.rows).toHaveLength(0);
     });
 
@@ -529,6 +639,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable1,
           variable2: mockVariable2,
           pair: 1,
+          metadata: {
+            pair: 1,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var1',
+            variable2Name: 'var2'
+          },
           pairedSamplesTest: {
             label: 'Variable 1 - Variable 2',
             Mean: -2.8,
@@ -545,6 +665,16 @@ describe('PairedSamplesTTest Formatters', () => {
           variable1: mockVariable2,
           variable2: mockVariable1,
           pair: 2,
+          metadata: {
+            pair: 2,
+            hasInsufficientData: false,
+            totalData1: 10,
+            validData1: 10,
+            totalData2: 10,
+            validData2: 10,
+            variable1Name: 'var2',
+            variable2Name: 'var1'
+          },
           pairedSamplesTest: {
             label: 'Variable 2 - Variable 1',
             Mean: 2.8,

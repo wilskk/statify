@@ -174,6 +174,14 @@ export interface IndependentSamplesEffectSizeStatistics {
     Percentile75?: number;
 }
   
+// IndependentSamplesTTest Result Metadata
+export interface IndependentSamplesTTestResultMetadata {
+    hasInsufficientData: boolean;
+    insufficientType: string[];
+    variableName: string;
+    variableLabel: string;
+}
+
 // IndependentSamplesTTest Analysis Result
 export interface IndependentSamplesTTestResult {
     variable1?: Variable;
@@ -181,6 +189,7 @@ export interface IndependentSamplesTTestResult {
     groupStatistics?: GroupStatistics;
     independentSamplesTest?: IndependentSamplesTest;
     independentSamplesEffectSize?: IndependentSamplesEffectSizeStatistics;
+    metadata?: IndependentSamplesTTestResultMetadata;
 }
   
   // ---------------------------------

@@ -110,12 +110,21 @@ export interface OneSampleTest {
   Upper: number | null;
 }
 
+// OneSampleTTest Result Metadata
+export interface OneSampleTTestResultMetadata {
+  hasInsufficientData: boolean;
+  insufficientType: string[];
+  variableName: string;
+  variableLabel: string;
+}
+
 // OneSampleTTest Result
 export interface OneSampleTTestResult {
   variable1?: Variable;
   testValue?: number;
   oneSampleStatistics?: OneSampleStatistics;
   oneSampleTest?: OneSampleTest;
+  metadata?: OneSampleTTestResultMetadata;
 }
 
 // ---------------------------------

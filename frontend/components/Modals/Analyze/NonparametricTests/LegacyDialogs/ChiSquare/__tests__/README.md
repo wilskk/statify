@@ -1,234 +1,233 @@
-# Chi-Square Test - Test Documentation
+# Chi-Square Test Component Tests
 
-This directory contains comprehensive test suites for the Chi-Square Test component and its related functionality.
+This directory contains comprehensive tests for the Chi-Square Test component and its related hooks and utilities.
 
 ## Test Files Overview
 
-### Core Component Tests
+### 1. `ChiSquare.test.tsx`
+**Component-level tests for the main Chi-Square dialog**
 
-#### `ChiSquare.test.tsx`
-Tests for the main Chi-Square dialog component including:
-- Initial rendering and UI elements
+Tests the main Chi-Square component including:
+- Rendering and UI structure
+- Form validation (OK button disable conditions)
+- Loading states and error handling
+- Tour guide integration
 - Variable selection functionality
-- Expected range and values configuration
-- Options and settings management
-- Form validation and error handling
-- Tab navigation and accessibility
-- Button actions and user interactions
 
-#### `VariablesTab.test.tsx`
-Tests for the variables selection tab including:
-- Variable list rendering and display
-- Single and multiple variable selection
-- Variable information display (type, measure, etc.)
-- Accessibility features (ARIA labels, keyboard navigation)
-- Edge cases (empty lists, null values)
-- Performance with large variable sets
+**Key Test Cases:**
+- Form validation based on the formula: `isCalculating || testVariables.length < 1 || (!expectedRange.getFromData && (rangeValue.lowerValue || !rangeValue.upperValue)) || (!expectedValue.allCategoriesEqual && expectedValueList.length < 2)`
+- Loading state when `isCalculating` is true
+- Error state handling
+- Variable selection and deselection
 
-#### `OptionsTab.test.tsx`
-Tests for the options configuration tab including:
-- Display statistics options (descriptive, quartiles)
-- Setting toggles and state management
-- Option descriptions and help text
-- Accessibility and keyboard navigation
-- Form validation and user feedback
+### 2. `useChiSquareAnalysis.test.ts`
+**Hook tests for the Chi-Square analysis logic**
 
-### Hook Tests
-
-#### `useChiSquareAnalysis.test.ts`
-Tests for the main analysis hook including:
-- Worker communication and data processing
-- Analysis execution and result handling
-- Error handling and edge cases
+Tests the `useChiSquareAnalysis` hook including:
+- Worker communication and message handling
+- Analysis state management
+- Error handling and insufficient data scenarios
 - Multiple variable processing
-- Custom expected values and ranges
-- Statistics display options
+- Cleanup and resource management
 
-#### `useVariableSelection.test.ts`
-Tests for variable selection management including:
-- Variable selection state management
-- Bulk operations (select all, deselect all)
-- Selection validation and constraints
-- Performance with large variable sets
-- State persistence and updates
+**Key Test Cases:**
+- Successful worker response processing
+- Worker error handling
+- Insufficient data scenarios (`empty`, `singleCategory`)
+- Multiple variable analysis
+- Critical worker errors
+- Analysis timeout and cancellation
 
-#### `useTestSettings.test.ts`
-Tests for test configuration settings including:
-- Setting updates and toggles
-- Bulk operations (enable all, disable all)
-- Setting queries and status checks
-- State consistency and validation
-- Performance optimization
+### 3. `formatters.test.ts`
+**Utility function tests for result formatting**
 
-#### `useTourGuide.test.ts`
-Tests for the tour guide functionality including:
-- Tour navigation (next, previous, skip)
-- Step management and progress tracking
-- Tour completion and callback handling
-- State persistence and configuration
-- Edge cases and error handling
-
-### Utility Tests
-
-#### `formatters.test.ts`
-Tests for data formatting utilities including:
-- Number formatting with precision
-- P-value formatting and significance levels
-- Chi-square test table formatting
-- Frequencies table formatting
+Tests the formatting utilities including:
+- Frequency table formatting
+- Test statistics table formatting
+- Descriptive statistics table formatting
 - Error table formatting
-- Edge cases and null value handling
+- Number formatting and precision
+
+**Key Test Cases:**
+- Correct table structure and headers
+- Number formatting with proper decimals
+- Edge cases (empty data, null values)
+- Large numbers and scientific notation
+- P-value formatting
+
+### 4. `VariablesTab.test.tsx`
+**Component tests for the Variables tab**
+
+Tests the VariablesTab component including:
+- Variable display and selection
+- Drag and drop functionality
+- Keyboard navigation
+- Empty state handling
+- Tour guide integration
+
+**Key Test Cases:**
+- Variable movement between available and test lists
+- Highlighting and hover states
+- Empty state displays
+- Loading and error state handling
+- Tour guide integration
+
+### 5. `useVariableSelection.test.ts`
+**Hook tests for variable selection logic**
+
+Tests the `useVariableSelection` hook including:
+- Variable state management
+- Movement between available and test variables
+- Reordering functionality
+- Highlighting and selection states
+
+**Key Test Cases:**
+- Variable movement operations
+- State consistency
+- Edge cases (empty lists, invalid operations)
+- Performance with large variable sets
+
+### 6. `useTourGuide.test.ts`
+**Hook tests for tour guide functionality**
+
+Tests the `useTourGuide` hook including:
+- Tour navigation (next/previous)
+- Step management
+- Tour state persistence
+- Boundary conditions
+
+**Key Test Cases:**
+- Tour navigation logic
+- Step boundary handling
+- State persistence across renders
+- Multiple tour cycles
+
+### 7. `useTestSettings.test.ts`
+**Hook tests for test configuration settings**
+
+Tests the `useTestSettings` hook including:
+- Expected range configuration
+- Range value management
+- Expected value settings
+- Display statistics options
+
+**Key Test Cases:**
+- Setting updates and state management
+- Range value validation
+- Expected value list management
+- Display statistics configuration
 
 ## Test Coverage
 
-### Component Coverage
-- ✅ Initial rendering and UI elements
-- ✅ User interactions and state changes
-- ✅ Form validation and error handling
-- ✅ Accessibility features
-- ✅ Performance optimization
-- ✅ Edge cases and error scenarios
-
-### Hook Coverage
-- ✅ State management and updates
-- ✅ Side effects and cleanup
+### Chi-Square Analysis Logic
+- ✅ Worker communication
+- ✅ Data validation and insufficient data detection
 - ✅ Error handling and recovery
-- ✅ Performance optimization
-- ✅ Integration with external services
+- ✅ Multiple variable processing
+- ✅ Resource cleanup
 
-### Utility Coverage
-- ✅ Data transformation and formatting
-- ✅ Input validation and sanitization
-- ✅ Edge cases and error conditions
-- ✅ Performance with large datasets
+### UI Components
+- ✅ Form validation and button states
+- ✅ Variable selection interface
+- ✅ Loading and error states
+- ✅ Tour guide integration
+- ✅ Accessibility features
+
+### Data Processing
+- ✅ Frequency table generation
+- ✅ Test statistics calculation
+- ✅ Descriptive statistics formatting
+- ✅ Number formatting and precision
+- ✅ Edge case handling
+
+### State Management
+- ✅ Variable selection state
+- ✅ Test configuration settings
+- ✅ Tour guide state
+- ✅ Analysis progress tracking
 
 ## Running Tests
 
-### Run All Tests
+### Run all Chi-Square tests:
 ```bash
-npm test ChiSquare
+npm test -- components/Modals/Analyze/NonparametricTests/LegacyDialogs/ChiSquare/__tests__
 ```
 
-### Run Specific Test File
+### Run specific test file:
 ```bash
-npm test ChiSquare.test.tsx
-npm test useChiSquareAnalysis.test.ts
-npm test formatters.test.ts
+npm test -- components/Modals/Analyze/NonparametricTests/LegacyDialogs/ChiSquare/__tests__/ChiSquare.test.tsx
 ```
 
-### Run Tests with Coverage
+### Run with coverage:
 ```bash
-npm test -- --coverage --collectCoverageFrom="**/ChiSquare/**"
+npm test -- --coverage components/Modals/Analyze/NonparametricTests/LegacyDialogs/ChiSquare/__tests__
 ```
 
 ## Test Patterns
 
-### Component Testing
-- Use `@testing-library/react` for component rendering
-- Use `@testing-library/user-event` for user interactions
-- Mock external dependencies (stores, hooks, workers)
-- Test accessibility features and keyboard navigation
-- Verify state changes and callback invocations
+### Mocking Strategy
+- **Hooks**: Mocked using `jest.mock()` with controlled return values
+- **Web Workers**: Mocked with `postMessage`, `terminate`, and event handlers
+- **Stores**: Mocked using `jest.mock()` for Zustand stores
+- **Dependencies**: External dependencies are mocked to isolate unit tests
+
+### Test Structure
+- **Setup**: Clear `beforeEach` blocks with mock initialization
+- **Assertions**: Specific expectations for state changes and function calls
+- **Cleanup**: Proper cleanup in `afterEach` blocks where needed
+- **Edge Cases**: Comprehensive coverage of error conditions and boundary cases
+
+### Async Testing
+- **Worker Communication**: Uses `act()` and `async/await` for worker message handling
+- **State Updates**: Proper handling of asynchronous state changes
+- **Error Scenarios**: Testing of timeout and error conditions
+
+## Key Testing Principles
+
+1. **Isolation**: Each test is independent and doesn't rely on other tests
+2. **Completeness**: Tests cover both success and failure scenarios
+3. **Realism**: Mock data and scenarios reflect real-world usage
+4. **Maintainability**: Tests are well-structured and documented
+5. **Performance**: Tests run efficiently and don't have unnecessary complexity
+
+## Common Test Patterns
 
 ### Hook Testing
-- Use `@testing-library/react-hooks` for hook testing
-- Test state initialization and updates
-- Verify side effects and cleanup
-- Test error handling and edge cases
-- Mock external dependencies appropriately
+```typescript
+const { result } = renderHook(() => useHook());
+act(() => {
+  result.current.someAction();
+});
+expect(result.current.someState).toBe(expectedValue);
+```
 
-### Utility Testing
-- Test pure functions with various inputs
-- Verify output formatting and precision
-- Test edge cases and error conditions
-- Ensure performance with large datasets
+### Component Testing
+```typescript
+render(<Component />);
+const element = screen.getByText('Expected Text');
+expect(element).toBeInTheDocument();
+```
 
-## Mocking Strategy
+### Async Testing
+```typescript
+await act(async () => {
+  await result.current.asyncAction();
+});
+expect(mockFunction).toHaveBeenCalled();
+```
 
-### External Dependencies
-- **Stores**: Mock `useDataStore`, `useModalStore`, `useResultStore`
-- **Hooks**: Mock `useAnalysisData` and other custom hooks
-- **Workers**: Mock Web Worker communication
-- **APIs**: Mock external API calls and services
+### Error Testing
+```typescript
+act(() => {
+  result.current.actionThatThrows();
+});
+expect(result.current.errorState).toContain('Error message');
+```
 
-### Mock Data
-- Use realistic test data that represents actual usage
-- Include edge cases and error conditions
-- Provide comprehensive variable definitions
-- Include various data types and formats
+## Maintenance Notes
 
-## Best Practices
-
-### Test Organization
-- Group related tests using `describe` blocks
-- Use descriptive test names that explain the behavior
-- Separate setup, execution, and assertion phases
-- Use `beforeEach` for common setup
-
-### Assertions
-- Test one concept per test case
-- Use specific assertions that verify exact behavior
-- Test both positive and negative cases
-- Verify side effects and state changes
-
-### Performance
-- Test with realistic data sizes
-- Verify performance characteristics
-- Test memory usage and cleanup
-- Monitor test execution time
-
-## Common Test Scenarios
-
-### Variable Selection
-- Single variable selection
-- Multiple variable selection
-- Bulk operations (select all, deselect all)
-- Validation and constraints
-- Performance with large variable sets
-
-### Analysis Configuration
-- Expected range settings
-- Expected values configuration
-- Display statistics options
-- Form validation and error handling
-
-### Data Processing
-- Worker communication
-- Result formatting and display
-- Error handling and recovery
-- Performance optimization
-
-### User Experience
-- Accessibility features
-- Keyboard navigation
-- Visual feedback
-- Error messages and help text
-
-## Troubleshooting
-
-### Common Issues
-1. **Mock not working**: Ensure mocks are properly configured and imported
-2. **Async test failures**: Use `waitFor` or `act` for async operations
-3. **State not updating**: Verify state management and re-renders
-4. **Worker communication**: Mock worker messages and responses
-
-### Debug Tips
-- Use `screen.debug()` to inspect rendered output
-- Add `console.log` statements for debugging
-- Check mock implementations and return values
-- Verify test data and expected results
-
-## Contributing
-
-When adding new tests:
-1. Follow existing patterns and conventions
-2. Ensure comprehensive coverage of new functionality
-3. Include edge cases and error scenarios
-4. Test performance characteristics
-5. Update this documentation as needed
-
-## Related Documentation
-
-- [Chi-Square Test Component](../README.md)
-- [Testing Guidelines](../../../../../../README.md)
-- [Component Architecture](../../../../../../ARCHITECTURE.md) 
+- Keep mock data consistent across test files
+- Update tests when component interfaces change
+- Ensure new features have corresponding test coverage
+- Monitor test performance and optimize slow tests
+- Maintain test documentation as features evolve 

@@ -35,7 +35,7 @@ export function formatPairedSamplesStatisticsTable(
 
     const rows: TableRow[] = [];
     results.forEach((result) => {
-        const { variable1, variable2, pair, pairedSamplesStatistics } = result;
+        const { variable1, variable2, metadata, pairedSamplesStatistics } = result;
         if (!variable1 || !variable2 || !pairedSamplesStatistics) return;
 
         const { group1, group2 } = pairedSamplesStatistics as PairedSamplesStatistics;
@@ -44,7 +44,7 @@ export function formatPairedSamplesStatisticsTable(
         if (group1.N === 0 || group2.N === 0) {
             rows.push(
                 {
-                    rowHeader: [`Pair ${pair}`],
+                    rowHeader: [`Pair ${metadata.pair}`],
                     group: group1.label,
                     Mean: null,
                     N: group1.N,
@@ -52,7 +52,7 @@ export function formatPairedSamplesStatisticsTable(
                     SEMean: null
                 },
                 {
-                    rowHeader: [`Pair ${pair}`],
+                    rowHeader: [`Pair ${metadata.pair}`],
                     group: group2.label,
                     Mean: null,
                     N: group2.N,
@@ -61,10 +61,28 @@ export function formatPairedSamplesStatisticsTable(
                 }
             );
             return;
+        } else if (group1.N === 1 || group2.N === 1) {
+            rows.push({
+                rowHeader: [`Pair ${metadata.pair}`],
+                group: group1.label,
+                Mean: formatNumber(group1.Mean, result.variable1.decimals+2),
+                N: group1.N,
+                StdDev: null,
+                SEMean: null
+            });
+            rows.push({
+                rowHeader: [`Pair ${metadata.pair}`],
+                group: group2.label,
+                Mean: formatNumber(group2.Mean, result.variable2.decimals+2),
+                N: group2.N,
+                StdDev: null,
+                SEMean: null
+            });
+            return;
         }
 
         rows.push({
-            rowHeader: [`Pair ${pair}`],
+            rowHeader: [`Pair ${metadata.pair}`],
             group: group1.label,
             Mean: formatNumber(group1.Mean, result.variable1.decimals+2),
             N: group1.N,
@@ -72,7 +90,7 @@ export function formatPairedSamplesStatisticsTable(
             SEMean: formatNumber(group1.SEMean, result.variable1.decimals+3)
         });
         rows.push({
-            rowHeader: [`Pair ${pair}`],
+            rowHeader: [`Pair ${metadata.pair}`],
             group: group2.label,
             Mean: formatNumber(group2.Mean, result.variable2.decimals+2),
             N: group2.N,
@@ -114,14 +132,13 @@ export function formatPairedSamplesCorrelationTable(
 
     const rows: TableRow[] = [];
     results.forEach((result) => {
-        const { variable1, variable2, pair, pairedSamplesCorrelation } = result;
-        if (!variable1 || !variable2 || !pairedSamplesCorrelation) return;
+        const { variable1, variable2, metadata, pairedSamplesCorrelation } = result;
+        if (!variable1 || !variable2 || !pairedSamplesCorrelation || metadata.hasInsufficientData) return;
 
         const { correlationLabel, N, Correlation, correlationPValue } = pairedSamplesCorrelation as PairedSamplesCorrelation;
-        if (!correlationLabel || !N || !Correlation || !correlationPValue) return;
 
         rows.push({
-            rowHeader: [`Pair ${pair}`],
+            rowHeader: [`Pair ${metadata.pair}`],
             correlationLabel: correlationLabel,
             N: N,
             Correlation: formatNumber(Correlation, Math.max(result.variable1.decimals, result.variable2.decimals)+3),
@@ -178,16 +195,15 @@ export function formatPairedSamplesTestTable (
     ];
 
     const rows: TableRow[] = [];
-    results.forEach((result, index) => {
-        const { variable1, variable2, pair, pairedSamplesTest } = result;
-        if (!variable1 || !variable2 || !pairedSamplesTest) return;
+    results.forEach((result) => {
+        const { variable1, variable2, metadata, pairedSamplesTest } = result;
+        if (!variable1 || !variable2 || !pairedSamplesTest || metadata.hasInsufficientData) return;
 
         const { label, Mean, StdDev, SEMean, LowerCI, UpperCI, t, df, pValue } = pairedSamplesTest as PairedSamplesTest;
-        if (!label || !Mean || !StdDev || !SEMean || !LowerCI || !UpperCI || !t || !df || pValue === undefined) return;
-
+    
         const decimals = Math.max(variable1.decimals, variable2.decimals);
         rows.push({
-            rowHeader: [`Pair ${pair}`],
+            rowHeader: [`Pair ${metadata.pair}`],
             Label: label,
             Mean: formatNumber(Mean, decimals+3),
             StdDev: formatNumber(StdDev, decimals+3),

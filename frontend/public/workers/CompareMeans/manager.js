@@ -62,7 +62,7 @@ onmessage = (event) => {
                     options 
                 });
 
-                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                // console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
                 console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
                 console.log('[Worker] One Sample Statistics Results:', JSON.stringify(calculator.getOutput().oneSampleStatistics));
                 console.log('[Worker] One Sample Test Results:', JSON.stringify(calculator.getOutput().oneSampleTest));
@@ -79,7 +79,7 @@ onmessage = (event) => {
                     options
                 });
 
-                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                // console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
                 console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
                 console.log('[Worker] Group Statistics Results:', JSON.stringify(calculator.getOutput().groupStatistics));
                 console.log('[Worker] Independent Samples Test Results:', JSON.stringify(calculator.getOutput().independentSamplesTest));
@@ -97,14 +97,13 @@ onmessage = (event) => {
                     options 
                 });
 
-                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
-                console.log('[Worker] Pair:', JSON.stringify(calculator.getOutput().pair));
+                // console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
                 console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
                 console.log('[Worker] Variable2:', JSON.stringify(calculator.getOutput().variable2));
                 console.log('[Worker] Paired Samples Statistics Results:', JSON.stringify(calculator.getOutput().pairedSamplesStatistics));
                 console.log('[Worker] Paired Samples Correlation Results:', JSON.stringify(calculator.getOutput().pairedSamplesCorrelation));
                 console.log('[Worker] Paired Samples Test Results:', JSON.stringify(calculator.getOutput().pairedSamplesTest));
-                results.pair = calculator.getOutput().pair;
+                console.log('[Worker] Metadata:', JSON.stringify(calculator.getOutput().metadata));
                 results.variable1 = calculator.getOutput().variable1;
                 results.variable2 = calculator.getOutput().variable2;
                 results.pairedSamplesStatistics = calculator.getOutput().pairedSamplesStatistics;
@@ -121,11 +120,12 @@ onmessage = (event) => {
                 });
 
                 console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
-                console.log('[Worker] One Way ANOVA Results:', JSON.stringify(calculator.getOutput().oneWayAnova));
-                console.log('[Worker] One Way ANOVA Descriptives Results:', JSON.stringify(calculator.getOutput().descriptives));
-                console.log('[Worker] One Way ANOVA Homogeneity of Variance Results:', JSON.stringify(calculator.getOutput().homogeneityOfVariances));
-                console.log('[Worker] One Way ANOVA Multiple Comparisons Results:', JSON.stringify(calculator.getOutput().multipleComparisons));
-                console.log('[Worker] One Way ANOVA Homogeneous Subsets Results:', JSON.stringify(calculator.getOutput().homogeneousSubsets));
+                // console.log('[Worker] One Way ANOVA Results:', JSON.stringify(calculator.getOutput().oneWayAnova));
+                // console.log('[Worker] One Way ANOVA Descriptives Results:', JSON.stringify(calculator.getOutput().descriptives));
+                // console.log('[Worker] One Way ANOVA Homogeneity of Variance Results:', JSON.stringify(calculator.getOutput().homogeneityOfVariances));
+                // console.log('[Worker] One Way ANOVA Multiple Comparisons Results:', JSON.stringify(calculator.getOutput().multipleComparisons));
+                // console.log('[Worker] One Way ANOVA Homogeneous Subsets Results:', JSON.stringify(calculator.getOutput().homogeneousSubsets));
+                console.log('[Worker] One Way ANOVA Metadata:', JSON.stringify(calculator.getOutput().metadata));
                 results.variable1 = calculator.getOutput().variable1;
                 results.oneWayAnova = calculator.getOutput().oneWayAnova;
                 results.descriptives = calculator.getOutput().descriptives;
@@ -146,7 +146,7 @@ onmessage = (event) => {
                     options 
                 });
             }
-            console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+            // console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
             console.log('[Worker] Results:', JSON.stringify(results));
         });
 

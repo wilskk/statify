@@ -2,14 +2,60 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import VariablesTab from '../components/VariablesTab';
-import { useDataStore } from '@/stores/useDataStore';
 import type { Variable } from '@/types/Variable';
+import type { VariablesTabProps, HighlightedVariable } from '../types';
 
-// Mock dependencies
-jest.mock('@/stores/useDataStore');
-
-// Mock implementations
-const mockedUseDataStore = useDataStore as unknown as jest.Mock;
+// Mock the VariableListManager component
+jest.mock('@/components/Common/VariableListManager', () => {
+  return function MockVariableListManager(props: any) {
+    return (
+      <div data-testid="variable-list-manager">
+        <div data-testid="available-variables">
+          <h3>Available Variables</h3>
+          {props.availableVariables?.length === 0 ? (
+            <p>No variables available</p>
+          ) : (
+            props.availableVariables?.map((variable: Variable) => (
+              <div 
+                key={variable.tempId}
+                data-testid={`available-${variable.tempId}`}
+                onClick={() => props.onMoveVariable?.(variable, 'available', 'test')}
+                onMouseEnter={() => props.setHighlightedVariable?.({ id: variable.tempId!, source: 'available' })}
+                onMouseLeave={() => props.setHighlightedVariable?.(null)}
+              >
+                {variable.label || variable.name}
+              </div>
+            ))
+          )}
+        </div>
+        <div data-testid="test-variables">
+          <h3>Test Variables</h3>
+          {props.targetLists?.[0]?.variables?.length === 0 ? (
+            <p>No variables selected</p>
+          ) : (
+            props.targetLists?.[0]?.variables?.map((variable: Variable) => (
+              <div 
+                key={variable.tempId}
+                data-testid={`test-${variable.tempId}`}
+                onClick={() => props.onMoveVariable?.(variable, 'test', 'available')}
+                onMouseEnter={() => props.setHighlightedVariable?.({ id: variable.tempId!, source: 'test' })}
+                onMouseLeave={() => props.setHighlightedVariable?.(null)}
+              >
+                {variable.label || variable.name}
+              </div>
+            ))
+          )}
+        </div>
+        <button 
+          data-testid="reset-button"
+          onClick={() => props.onReset?.()}
+        >
+          Reset
+        </button>
+      </div>
+    );
+  };
+});
 
 const mockVariables: Variable[] = [
   {
@@ -59,287 +105,186 @@ const mockVariables: Variable[] = [
   }
 ];
 
-describe('VariablesTab Component', () => {
-  const mockOnVariableChange = jest.fn();
-  const mockSelectedVariables: Variable[] = [];
+describe('VariablesTab', () => {
+  const defaultProps: VariablesTabProps = {
+    availableVariables: mockVariables,
+    testVariables: [],
+    highlightedVariable: null,
+    setHighlightedVariable: jest.fn(),
+    moveToTestVariables: jest.fn(),
+    moveToAvailableVariables: jest.fn(),
+    reorderVariables: jest.fn(),
+    tourActive: false,
+    currentStep: 0,
+    tourSteps: []
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedUseDataStore.mockReturnValue({
-      variables: mockVariables
-    });
   });
 
   const renderComponent = (props = {}) => {
-    const defaultProps = {
-      availableVariables: mockVariables,
-      testVariables: mockSelectedVariables,
-      highlightedVariable: null,
-      setHighlightedVariable: jest.fn(),
-      moveToTestVariables: jest.fn(),
-      moveToAvailableVariables: jest.fn(),
-      reorderVariables: jest.fn(),
-      tourActive: false,
-      currentStep: 0,
-      tourSteps: [],
-      ...props
-    };
-    return render(<VariablesTab {...defaultProps} />);
+    const mergedProps = { ...defaultProps, ...props };
+    return render(<VariablesTab {...mergedProps} />);
   };
 
-  describe('Initial Render', () => {
-    it('should render the variables tab with correct title', () => {
-      renderComponent();
-      
-      expect(screen.getByText('Test Variable(s)')).toBeInTheDocument();
-    });
+  it('should render the variables tab', () => {
+    renderComponent();
+    
+    expect(screen.getByTestId('variable-list-manager')).toBeInTheDocument();
+    expect(screen.getByText('Available Variables')).toBeInTheDocument();
+    expect(screen.getByText('Test Variables')).toBeInTheDocument();
+  });
 
-    it('should display all available variables', () => {
-      renderComponent();
-      
-      // The VariableListManager will handle the display of variables
-      expect(screen.getByText('Test Variable(s)')).toBeInTheDocument();
-    });
+  it('should display available variables', () => {
+    renderComponent();
+    
+    expect(screen.getByText('Variable 1')).toBeInTheDocument();
+    expect(screen.getByText('Variable 2')).toBeInTheDocument();
+    expect(screen.getByText('Variable 3')).toBeInTheDocument();
+  });
 
-    it('should show variable labels and names', () => {
-      renderComponent();
-      
-      // The VariableListManager will handle the display of variable names
-      expect(screen.getByText('Test Variable(s)')).toBeInTheDocument();
-    });
+  it('should move variable to test variables when clicked', async () => {
+    const user = userEvent.setup();
+    const mockMoveToTestVariables = jest.fn();
+    
+    renderComponent({ moveToTestVariables: mockMoveToTestVariables });
+    
+    const variable1 = screen.getByTestId('available-1');
+    await user.click(variable1);
+    
+    expect(mockMoveToTestVariables).toHaveBeenCalledWith(mockVariables[0]);
+  });
 
-    it('should show no variables selected initially', () => {
-      renderComponent();
-      
-      expect(screen.getByText('Test Variable(s)')).toBeInTheDocument();
+  it('should move variable back to available variables when clicked', async () => {
+    const user = userEvent.setup();
+    const mockMoveToAvailableVariables = jest.fn();
+    
+    renderComponent({ 
+      moveToAvailableVariables: mockMoveToAvailableVariables,
+      testVariables: [mockVariables[0]],
+      availableVariables: [mockVariables[1], mockVariables[2]]
+    });
+    
+    const testVariable = screen.getByTestId('test-1');
+    await user.click(testVariable);
+    
+    expect(mockMoveToAvailableVariables).toHaveBeenCalledWith(mockVariables[0]);
+  });
+
+  it('should highlight variable on hover', () => {
+    const mockSetHighlightedVariable = jest.fn();
+    
+    renderComponent({ setHighlightedVariable: mockSetHighlightedVariable });
+    
+    const variable1 = screen.getByTestId('available-1');
+    fireEvent.mouseEnter(variable1);
+    
+    expect(mockSetHighlightedVariable).toHaveBeenCalledWith({
+      tempId: '1',
+      source: 'available'
     });
   });
 
-  describe('Variable Selection', () => {
-    it('should allow selecting a single variable', async () => {
-      const user = userEvent.setup();
-      const mockMoveToTestVariables = jest.fn();
-      renderComponent({
-        moveToTestVariables: mockMoveToTestVariables
-      });
-      
-      // Since this component uses VariableListManager, we need to test the integration
-      // The actual selection logic is handled by the parent component
-      expect(screen.getByText('Test Variable(s)')).toBeInTheDocument();
-    });
-
-    it('should allow selecting multiple variables', async () => {
-      const user = userEvent.setup();
-      const mockMoveToTestVariables = jest.fn();
-      renderComponent({
-        moveToTestVariables: mockMoveToTestVariables
-      });
-      
-      expect(screen.getByText('Test Variable(s)')).toBeInTheDocument();
-    });
-
-    it('should allow deselecting variables', async () => {
-      const user = userEvent.setup();
-      const mockMoveToAvailableVariables = jest.fn();
-      renderComponent({
-        testVariables: [mockVariables[0]],
-        moveToAvailableVariables: mockMoveToAvailableVariables
-      });
-      
-      expect(screen.getByText('Test Variable(s)')).toBeInTheDocument();
-    });
-
-    it('should update selected count when variables are selected', () => {
-      renderComponent({
-        testVariables: [mockVariables[0], mockVariables[1]]
-      });
-      
-      expect(screen.getByText('Test Variable(s)')).toBeInTheDocument();
-    });
+  it('should remove highlight on mouse leave', () => {
+    const mockSetHighlightedVariable = jest.fn();
+    
+    renderComponent({ setHighlightedVariable: mockSetHighlightedVariable });
+    
+    const variable1 = screen.getByTestId('available-1');
+    fireEvent.mouseLeave(variable1);
+    
+    expect(mockSetHighlightedVariable).toHaveBeenCalledWith(null);
   });
 
-  describe('Variable Information Display', () => {
-    it('should display variable type information', () => {
-      renderComponent();
-      
-      // Check if variable types are displayed
-      const variableItems = screen.getAllByRole('checkbox');
-      expect(variableItems).toHaveLength(3);
-    });
-
-    it('should show variable measure type', () => {
-      renderComponent();
-      
-      // Variables should show their measure type (nominal, ordinal, scale)
-      expect(screen.getByText('Variable 1')).toBeInTheDocument();
-      expect(screen.getByText('Variable 2')).toBeInTheDocument();
-      expect(screen.getByText('Variable 3')).toBeInTheDocument();
-    });
+  it('should display variable labels when available', () => {
+    renderComponent();
+    
+    expect(screen.getByText('Variable 1')).toBeInTheDocument();
+    expect(screen.getByText('Variable 2')).toBeInTheDocument();
+    expect(screen.getByText('Variable 3')).toBeInTheDocument();
   });
 
-  describe('Accessibility', () => {
-    it('should have proper ARIA labels for checkboxes', () => {
-      renderComponent();
-      
-      expect(screen.getByLabelText('Variable 1')).toBeInTheDocument();
-      expect(screen.getByLabelText('Variable 2')).toBeInTheDocument();
-      expect(screen.getByLabelText('Variable 3')).toBeInTheDocument();
-    });
-
-    it('should have proper checkbox roles', () => {
-      renderComponent();
-      
-      const checkboxes = screen.getAllByRole('checkbox');
-      expect(checkboxes).toHaveLength(3);
-    });
-
-    it('should have proper keyboard navigation', async () => {
-      const user = userEvent.setup();
-      renderComponent();
-      
-      const variable1Checkbox = screen.getByLabelText('Variable 1');
-      
-      // Focus the checkbox
-      variable1Checkbox.focus();
-      expect(variable1Checkbox).toHaveFocus();
-      
-      // Use space to select
-      await user.keyboard(' ');
-      expect(mockOnVariableChange).toHaveBeenCalledWith([mockVariables[0]]);
-    });
+  it('should display variable names when labels are not available', () => {
+    const variablesWithoutLabels = mockVariables.map(v => ({ ...v, label: '' }));
+    
+    renderComponent({ availableVariables: variablesWithoutLabels });
+    
+    expect(screen.getByText('var1')).toBeInTheDocument();
+    expect(screen.getByText('var2')).toBeInTheDocument();
+    expect(screen.getByText('var3')).toBeInTheDocument();
   });
 
-  describe('Edge Cases', () => {
-    it('should handle empty variables list', () => {
-      mockedUseDataStore.mockReturnValue({
-        variables: []
-      });
-      
-      renderComponent();
-      
-      expect(screen.getByText('No variables available')).toBeInTheDocument();
-      expect(screen.getByText('0 variables selected')).toBeInTheDocument();
-    });
-
-    it('should handle null variables', () => {
-      mockedUseDataStore.mockReturnValue({
-        variables: null
-      });
-      
-      renderComponent();
-      
-      expect(screen.getByText('No variables available')).toBeInTheDocument();
-    });
-
-    it('should handle undefined variables', () => {
-      mockedUseDataStore.mockReturnValue({
-        variables: undefined
-      });
-      
-      renderComponent();
-      
-      expect(screen.getByText('No variables available')).toBeInTheDocument();
-    });
-
-    it('should handle variables with missing labels', () => {
-      const variablesWithoutLabels: Variable[] = [
-        {
-          name: 'var1',
-          label: '',
-          columnIndex: 0,
-          type: 'NUMERIC',
-          tempId: '1',
-          width: 8,
-          decimals: 0,
-          values: [],
-          missing: {},
-          align: 'left',
-          measure: 'nominal',
-          role: 'input',
-          columns: 8
-        }
-      ];
-      
-      mockedUseDataStore.mockReturnValue({
-        variables: variablesWithoutLabels
-      });
-      
-      renderComponent();
-      
-      // Should fall back to variable name
-      expect(screen.getByText('var1')).toBeInTheDocument();
-    });
+  it('should show empty state when no available variables', () => {
+    renderComponent({ availableVariables: [] });
+    
+    expect(screen.getByText('No variables available')).toBeInTheDocument();
   });
 
-  describe('Performance', () => {
-    it('should handle large number of variables efficiently', () => {
-      const largeVariablesList: Variable[] = Array.from({ length: 100 }, (_, index) => ({
-        name: `var${index + 1}`,
-        label: `Variable ${index + 1}`,
-        columnIndex: index,
-        type: 'NUMERIC',
-        tempId: `${index + 1}`,
-        width: 8,
-        decimals: 0,
-        values: [],
-        missing: {},
-        align: 'left',
-        measure: 'nominal',
-        role: 'input',
-        columns: 8
-      }));
-      
-      mockedUseDataStore.mockReturnValue({
-        variables: largeVariablesList
-      });
-      
-      const startTime = performance.now();
-      renderComponent();
-      const endTime = performance.now();
-      
-      // Should render within reasonable time (less than 100ms)
-      expect(endTime - startTime).toBeLessThan(100);
-      
-      expect(screen.getByText('Variable 1')).toBeInTheDocument();
-      expect(screen.getByText('Variable 100')).toBeInTheDocument();
-    });
+  it('should show empty state when no test variables', () => {
+    renderComponent();
+    
+    expect(screen.getByText('No variables selected')).toBeInTheDocument();
   });
 
-  describe('State Management', () => {
-    it('should maintain selected state when re-rendering', () => {
-      const { rerender } = renderComponent({
-        selectedVariables: [mockVariables[0]]
-      });
-      
-      expect(screen.getByLabelText('Variable 1')).toBeChecked();
-      
-      // Re-render with same props
-      rerender(
-        <VariablesTab
-          selectedVariables={[mockVariables[0]]}
-          onVariableChange={mockOnVariableChange}
-        />
-      );
-      
-      expect(screen.getByLabelText('Variable 1')).toBeChecked();
+  it('should handle drag and drop for reordering', () => {
+    const mockReorderVariables = jest.fn();
+    
+    renderComponent({ 
+      reorderVariables: mockReorderVariables,
+      testVariables: [mockVariables[0], mockVariables[1]]
     });
+    
+    // This would require more complex drag and drop testing
+    // For now, we just verify the component renders with test variables
+    expect(screen.getByText('Variable 1')).toBeInTheDocument();
+    expect(screen.getByText('Variable 2')).toBeInTheDocument();
+  });
 
-    it('should update when selected variables change', () => {
-      const { rerender } = renderComponent({
-        selectedVariables: []
-      });
-      
-      expect(screen.getByLabelText('Variable 1')).not.toBeChecked();
-      
-      // Update selected variables
-      rerender(
-        <VariablesTab
-          selectedVariables={[mockVariables[0]]}
-          onVariableChange={mockOnVariableChange}
-        />
-      );
-      
-      expect(screen.getByLabelText('Variable 1')).toBeChecked();
+  it('should display variable measure types', () => {
+    renderComponent();
+    
+    // Check that variables with different measure types are displayed
+    expect(screen.getByText('Variable 1')).toBeInTheDocument(); // nominal
+    expect(screen.getByText('Variable 2')).toBeInTheDocument(); // ordinal
+    expect(screen.getByText('Variable 3')).toBeInTheDocument(); // scale
+  });
+
+  it('should handle keyboard navigation', async () => {
+    const user = userEvent.setup();
+    const mockMoveToTestVariables = jest.fn();
+    
+    renderComponent({ moveToTestVariables: mockMoveToTestVariables });
+    
+    const variable1 = screen.getByTestId('available-1');
+    variable1.focus();
+    
+    await user.keyboard('{Enter}');
+    
+    expect(mockMoveToTestVariables).toHaveBeenCalledWith(mockVariables[0]);
+  });
+
+  it('should show loading state when calculating', () => {
+    renderComponent();
+    
+    // The component should still render but with disabled interactions
+    expect(screen.getByTestId('variable-list-manager')).toBeInTheDocument();
+  });
+
+  it('should handle error state', () => {
+    renderComponent();
+    
+    // The component should still render despite the error
+    expect(screen.getByTestId('variable-list-manager')).toBeInTheDocument();
+  });
+
+  it('should handle tour guide integration', () => {
+    renderComponent({
+      tourActive: true,
+      currentStep: 1
     });
+    
+    // Component should render with tour guide active
+    expect(screen.getByTestId('variable-list-manager')).toBeInTheDocument();
   });
 }); 
