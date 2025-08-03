@@ -370,6 +370,13 @@ pub struct HeteroscedasticityTests {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OlsResult {
+    pub r_squared: f64,
+    pub ess: f64,
+    pub df_regressors: usize,
+    pub df_residuals: usize,
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WhiteTest {
     pub statistic: f64,
     pub df: usize,

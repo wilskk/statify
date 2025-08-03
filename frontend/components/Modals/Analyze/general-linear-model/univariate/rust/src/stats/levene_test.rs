@@ -16,47 +16,32 @@ pub fn calculate_levene_test(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<Vec<LeveneTest>, String> {
-    // Tentukan variabel dependen yang akan dianalisis.
     let dep_var_name = config.main.dep_var
         .as_ref()
         .ok_or_else(|| "Dependent variable not specified in the configuration".to_string())?;
 
-    // Buat matriks desain untuk variabel dependen.
-    let design_info = match create_design_response_weights(data, config) {
-        Ok(info) => info,
-        Err(_) => {
-            return Err("Failed to create design matrix".to_string());
-        }
-    };
-
+    // Gunakan pembuatan matriks desain yang sudah ada
+    let design_info = create_design_response_weights(data, config)?;
     let design_string = generate_design_string(&design_info);
 
-    // Tentukan data yang akan digunakan untuk Uji Levene.
-    // Jika ada kovariat, gunakan residual dari model regresi.
-    // Jika tidak ada, gunakan nilai mentah variabel dependen.
-    // Menggunakan residual menghilangkan efek kovariat pada varians.
-    let (data_for_levene, indices) = if config.main.covar.as_ref().map_or(true, |c| c.is_empty()) {
-        // Tidak ada kovariat, gunakan data mentah.
+    // Gunakan fungsionalitas yang ada untuk menentukan data untuk uji Levene
+    let (data_for_levene, _indices) = if config.main.covar.as_ref().map_or(true, |c| c.is_empty()) {
+        // Tidak ada kovariat, gunakan data mentah
         (design_info.y.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
     } else {
-        // Ada kovariat, hitung residual.
-        let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e| {
-            format!("Failed to create cross product matrix: {}", e)
-        })?;
-        let swept_info = perform_sweep_and_extract_results(
-            &ztwz_matrix,
-            design_info.p_parameters
-        ).map_err(|e| format!("Failed to perform sweep: {}", e))?;
+        // Kovariat ada, gunakan operasi matriks yang ada untuk menghitung residual
+        let ztwz_matrix = create_cross_product_matrix(&design_info)?;
+        let swept_info = perform_sweep_and_extract_results(&ztwz_matrix, design_info.p_parameters)?;
 
         let y_hat = &design_info.x * &swept_info.beta_hat;
         let residuals = &design_info.y - y_hat;
         (residuals.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
     };
 
-    // Kelompokkan data berdasarkan faktor (variabel independen).
-    let mut groups = create_groups_from_design_matrix(&design_info, &data_for_levene, &indices);
+    // Gunakan fungsionalitas pembuatan grup yang ada dari matriks desain
+    let mut groups = create_groups_from_design_matrix(&design_info, &data_for_levene);
 
-    // Sesuai perilaku SPSS, jika tidak ada kovariat, buang grup dengan N <= 1.
+    // Buang grup dengan N <= 1 untuk model tanpa kovariat
     if config.main.covar.as_ref().map_or(true, |c| c.is_empty()) {
         groups = groups
             .into_iter()
@@ -68,17 +53,8 @@ pub fn calculate_levene_test(
         return Err("No groups with more than 1 observation found for Levene's test".to_string());
     }
 
-    // Hitung berbagai jenis statistik Uji Levene.
-    let levene_entries = match calculate_levene_entries(&groups, data, config) {
-        Some(entries) => if entries.is_empty() {
-            return Err("No valid Levene test entries could be calculated".to_string());
-        } else {
-            entries
-        }
-        None => {
-            return Err("Failed to calculate Levene test entries".to_string());
-        }
-    };
+    // Hitung entri uji Levene dengan efisien
+    let levene_entries = calculate_levene_entries(&groups, config)?;
 
     let result = LeveneTest {
         dependent_variable: dep_var_name.clone(),
@@ -101,9 +77,8 @@ pub fn calculate_levene_test(
 /// ada atau tidaknya kovariat dalam model.
 pub fn calculate_levene_entries(
     groups: &[Vec<f64>],
-    data: &AnalysisData,
     config: &UnivariateConfig
-) -> Option<Vec<LeveneTestEntry>> {
+) -> Result<Vec<LeveneTestEntry>, String> {
     let mut entries = Vec::new();
     let has_no_covariates = config.main.covar.as_ref().map_or(true, |c| c.is_empty());
 
@@ -135,7 +110,7 @@ pub fn calculate_levene_entries(
 
         // 3. Berdasarkan Median dengan penyesuaian df: Variasi lain dari Uji Brown-Forsythe.
         //    Memberikan p-value yang lebih akurat untuk distribusi non-normal.
-        if let Ok((f, df1, df2, sig)) = calculate_levene_anova_adjusted_df(groups, data, config) {
+        if let Ok((f, df1, df2, sig)) = calculate_levene_anova_adjusted_df(groups) {
             entries.push(LeveneTestEntry {
                 function: "Based on Median and with adjusted df".to_string(),
                 levene_statistic: f,
@@ -175,9 +150,9 @@ pub fn calculate_levene_entries(
     }
 
     if entries.is_empty() {
-        None
+        Err("No valid Levene test entries could be calculated".to_string())
     } else {
-        Some(entries)
+        Ok(entries)
     }
 }
 
@@ -206,21 +181,7 @@ fn calculate_levene_anova(
         .map(|group| {
             match center_method {
                 LeveneCenter::Mean => calculate_mean(group),
-                LeveneCenter::Median => {
-                    let mut sorted_group = group.clone();
-                    sorted_group.sort_by(|a, b|
-                        a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-                    );
-                    if sorted_group.is_empty() {
-                        0.0
-                    } else if sorted_group.len() % 2 == 1 {
-                        sorted_group[sorted_group.len() / 2]
-                    } else {
-                        (sorted_group[sorted_group.len() / 2 - 1] +
-                            sorted_group[sorted_group.len() / 2]) /
-                            2.0
-                    }
-                }
+                LeveneCenter::Median => calculate_median(group),
                 LeveneCenter::TrimmedMean(proportion) => {
                     calculate_interpolated_trimmed_mean(group, proportion)
                 }
@@ -242,13 +203,10 @@ fn calculate_levene_anova(
         })
         .collect();
 
-    // Hitung jumlah total sampel (N).
     let total_samples = groups
         .iter()
         .map(|group| group.len())
         .sum::<usize>();
-
-    // Hitung rata-rata keseluruhan dari semua deviasi absolut (Grand Mean).
     let all_deviations: Vec<f64> = abs_deviations.iter().flatten().cloned().collect();
     let overall_mean = calculate_mean(&all_deviations);
 
@@ -277,7 +235,6 @@ fn calculate_levene_anova(
         })
         .sum::<f64>();
 
-    // Hitung Derajat Kebebasan (Degrees of Freedom).
     let df1 = groups.len() - 1; // df antar grup
     let df2 = total_samples - groups.len(); // df dalam grup
 
@@ -317,25 +274,16 @@ fn calculate_levene_anova(
 /// menggunakan formula yang mirip dengan koreksi Welch-Satterthwaite,
 /// menghasilkan p-value yang lebih andal ketika varians grup tidak sama.
 pub fn calculate_levene_anova_adjusted_df(
-    groups: &[Vec<f64>],
-    _original_data: &AnalysisData,
-    _original_config: &UnivariateConfig
+    groups: &[Vec<f64>]
 ) -> Result<(f64, usize, f64, f64), String> {
-    // Langkah 1: Hitung deviasi absolut dari median untuk setiap grup.
+    // Hitung deviasi absolut dari median untuk setiap grup menggunakan pemrosesan paralel
     let abs_deviations_b: Vec<Vec<f64>> = groups
         .par_iter()
         .map(|group| {
             if group.is_empty() {
                 return Vec::new();
             }
-            let mut sorted_group = group.clone();
-            sorted_group.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            let median = if sorted_group.len() % 2 == 1 {
-                sorted_group[sorted_group.len() / 2]
-            } else {
-                (sorted_group[sorted_group.len() / 2 - 1] + sorted_group[sorted_group.len() / 2]) /
-                    2.0
-            };
+            let median = calculate_median(group);
             group
                 .iter()
                 .map(|val| (val - median).abs())
@@ -343,39 +291,37 @@ pub fn calculate_levene_anova_adjusted_df(
         })
         .collect();
 
-    // Langkah 2: Hitung F-statistik awal menggunakan deviasi absolut dari median.
-    let (f_stat, df1, df2_unadjusted, sig_unadjusted) = calculate_levene_anova(
+    // Hitung statistik F awal menggunakan deviasi absolut dari median
+    let (f_stat, df1, df2_unadjusted, _sig_unadjusted) = calculate_levene_anova(
         groups,
         LeveneCenter::Median
     )?;
 
     if df1 == 0 || groups.iter().all(|g| g.len() <= 1) {
-        return Ok((f_stat, df1, df2_unadjusted as f64, sig_unadjusted));
+        return Ok((f_stat, df1, df2_unadjusted as f64, f64::NAN));
     }
 
-    // Langkah 3: Hitung df2 yang disesuaikan (v).
+    // Hitung df2 yang disesuaikan (v) menggunakan pemrosesan paralel
     let k = groups.len();
-    let mut u_values: Vec<f64> = Vec::with_capacity(k);
-    let mut v_i_values: Vec<f64> = Vec::with_capacity(k);
+    let (u_values, v_i_values): (Vec<f64>, Vec<f64>) = (0..k)
+        .into_par_iter()
+        .map(|i| {
+            let z_values_group_i = &abs_deviations_b[i];
+            let m_i = z_values_group_i.len();
 
-    for i in 0..k {
-        let z_values_group_i = &abs_deviations_b[i];
-        let m_i = z_values_group_i.len();
+            if m_i <= 1 {
+                return (0.0, 0.0);
+            }
 
-        if m_i <= 1 {
-            u_values.push(0.0);
-            v_i_values.push(0.0);
-            continue;
-        }
+            let z_bar_i_b = calculate_mean(z_values_group_i);
+            let u_i = z_values_group_i
+                .iter()
+                .map(|z| (z - z_bar_i_b).powi(2))
+                .sum::<f64>();
 
-        let z_bar_i_b = calculate_mean(z_values_group_i);
-        let u_i = z_values_group_i
-            .iter()
-            .map(|z| (z - z_bar_i_b).powi(2))
-            .sum::<f64>();
-        u_values.push(u_i);
-        v_i_values.push((m_i - 1) as f64);
-    }
+            (u_i, (m_i - 1) as f64)
+        })
+        .unzip();
 
     let sum_u_i: f64 = u_values.iter().sum();
     let sum_u_i_sq_over_v_i: f64 = u_values
@@ -400,7 +346,7 @@ pub fn calculate_levene_anova_adjusted_df(
         sum_u_i.powi(2) / sum_u_i_sq_over_v_i
     };
 
-    // Langkah 4: Hitung signifikansi baru menggunakan F(df1, df2_adjusted).
+    // Hitung signifikansi menggunakan derajat kebebasan yang disesuaikan
     let significance_adj = if
         f_stat.is_nan() ||
         df1 == 0 ||
