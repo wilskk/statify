@@ -1,1 +1,1 @@
-export { Frequencies } from '../descriptive/Frequencies'; 
+export { Frequencies } from './Frequencies';
