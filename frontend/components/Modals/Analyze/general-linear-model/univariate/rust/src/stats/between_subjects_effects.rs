@@ -15,25 +15,21 @@ use crate::models::{
 use super::core::*;
 
 /// Menghitung efek antar-subjek untuk model statistik
-///
-/// Fungsi ini melakukan analisis varians (ANOVA) untuk menguji efek antar-subjek
-/// dengan berbagai metode sum of squares (Type I, II, III, IV)
 pub fn calculate_tests_between_subjects_effects(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<TestsBetweenSubjectsEffects, String> {
-    // Membuat matriks desain dan informasi terkait untuk analisis
+    // Langkah 1: Membuat matriks desain dan informasi terkait untuk analisis
     let design_info = create_design_response_weights(data, config).map_err(|e| {
         format!("Failed to create design matrix for Between Subjects Effects: {}", e)
     })?;
 
-    // Membuat matriks cross-product (Z'WZ) untuk perhitungan statistik
+    // Langkah 2: Membuat matriks cross-product (Z'WZ) untuk perhitungan statistik
     let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e| {
         format!("Failed to create cross-product matrix: {}", e)
     })?;
 
-    // Melakukan sweep penuh untuk hasil model keseluruhan
-    // SWEEP adalah algoritma untuk menyelesaikan sistem persamaan linear
+    // Langkah 3: Melakukan sweep penuh untuk hasil model keseluruhan
     let swept_info_full_model_option = if design_info.p_parameters > 0 {
         perform_sweep_and_extract_results(&ztwz_matrix, design_info.p_parameters).ok()
     } else {
@@ -54,14 +50,13 @@ pub fn calculate_tests_between_subjects_effects(
             )
         )?;
 
-    // Vec untuk menyimpan hasil tes setiap efek
+    // Langkah 4: Inisialisasi vektor untuk menyimpan hasil tes setiap efek
     let mut final_sources: Vec<SourceEntry> = Vec::new();
 
-    // Menghitung rata-rata variabel dependen (Y)
+    // Langkah 5: Menghitung rata-rata variabel dependen (Y)
     let y_mean = design_info.y.mean();
 
-    // Menghitung Total Sum of Squares (TSS) - jumlah kuadrat deviasi dari rata-rata
-    // Rumus: TSS = Σ(yi - ȳ)²
+    // Langkah 6: Menghitung Total Sum of Squares (TSS) - jumlah kuadrat deviasi dari rata-rata
     let ss_total_corrected = design_info.y
         .iter()
         .map(|val| (val - y_mean).powi(2))
@@ -70,17 +65,17 @@ pub fn calculate_tests_between_subjects_effects(
     // Degrees of freedom untuk total (n-1)
     let df_total = design_info.n_samples.saturating_sub(1);
 
-    // Menghitung komponen error (residual)
+    // Langkah 7: Menghitung komponen error (residual)
     let (ss_error, df_error, ms_error) = calculate_error_terms(&design_info, swept_info)?;
 
-    // Menghitung komponen model (explained variance)
+    // Langkah 8: Menghitung komponen model (explained variance)
     let (ss_model_corrected, df_model_overall) = calculate_model_terms(
         &design_info,
         ss_total_corrected,
         ss_error
     );
 
-    // Menghitung koefisien determinasi (R²) dan adjusted R²
+    // Langkah 9: Menghitung koefisien determinasi (R²) dan adjusted R²
     let (current_r_squared, current_adj_r_squared) = calculate_r_squared_metrics(
         ss_model_corrected,
         ss_total_corrected,
@@ -89,14 +84,14 @@ pub fn calculate_tests_between_subjects_effects(
         df_model_overall
     );
 
-    // Daftar semua term dalam model desain
+    // Langkah 10: Daftar semua term dalam model desain
     let all_model_terms_in_design = &design_info.term_names;
 
-    // Iterasi untuk setiap term dalam model
+    // Langkah 11: Iterasi untuk setiap term dalam model
     for term_name in all_model_terms_in_design {
         // Menghitung sum of squares berdasarkan metode yang dipilih
         let (ss_term, df_term) = (match config.model.sum_of_square_method {
-            SumOfSquaresMethod::TypeI =>
+            SumOfSquaresMethod::TypeI => {
                 // Type I: Sequential SS - efek dihitung berdasarkan urutan dalam model
                 calculate_type_i_ss(
                     &design_info,
@@ -105,8 +100,9 @@ pub fn calculate_tests_between_subjects_effects(
                     &swept_info.beta_hat,
                     &swept_info.g_inv,
                     &ztwz_matrix
-                ),
-            SumOfSquaresMethod::TypeII =>
+                )
+            }
+            SumOfSquaresMethod::TypeII => {
                 // Type II: Hierarchical SS - efek dihitung dengan mempertimbangkan hierarki
                 calculate_type_ii_ss(
                     &design_info,
@@ -114,8 +110,9 @@ pub fn calculate_tests_between_subjects_effects(
                     all_model_terms_in_design,
                     &swept_info.beta_hat,
                     &swept_info.g_inv
-                ),
-            SumOfSquaresMethod::TypeIII =>
+                )
+            }
+            SumOfSquaresMethod::TypeIII => {
                 // Type III: Partial SS - efek dihitung dengan mengontrol efek lain
                 calculate_type_iii_ss(
                     &design_info,
@@ -125,8 +122,9 @@ pub fn calculate_tests_between_subjects_effects(
                     &swept_info.g_inv,
                     data,
                     config
-                ),
-            SumOfSquaresMethod::TypeIV =>
+                )
+            }
+            SumOfSquaresMethod::TypeIV => {
                 // Type IV: Marginal SS - untuk desain tidak seimbang
                 calculate_type_iv_ss(
                     &design_info,
@@ -136,10 +134,11 @@ pub fn calculate_tests_between_subjects_effects(
                     &swept_info.g_inv,
                     data,
                     config
-                ),
+                )
+            }
         })?;
 
-        // Jika degrees of freedom = 0, buat entry kosong
+        // Langkah 12: Jika degrees of freedom = 0, buat entry kosong
         if df_term == 0 {
             final_sources.push(SourceEntry {
                 name: term_name.clone(),
@@ -148,7 +147,9 @@ pub fn calculate_tests_between_subjects_effects(
             continue;
         }
 
-        // Membuat entry efek dengan semua statistik yang diperlukan
+        // Langkah 13: Membuat entry efek dengan semua statistik yang diperlukan
+        //
+        // Statistik yang dihitung: Mean Square, F-statistic, signifikansi, effect size, power
         let effect_entry = create_effect_entry(
             ss_term,
             df_term,
@@ -161,7 +162,7 @@ pub fn calculate_tests_between_subjects_effects(
         final_sources.push(SourceEntry { name: term_name.clone(), effect: effect_entry });
     }
 
-    // Menambahkan entry untuk model keseluruhan, error, dan total
+    // Langkah 14: Menambahkan entry untuk model keseluruhan, error, dan total
     add_model_summary_entries(
         &mut final_sources,
         ss_model_corrected,
@@ -175,8 +176,7 @@ pub fn calculate_tests_between_subjects_effects(
         config
     );
 
-    // Mengurutkan hasil sesuai urutan
-    // Urutan: Corrected Model, Intercept, Main Effects, Interaction, Error, Total, Corrected Total
+    // Langkah 15: Mengurutkan hasil sesuai urutan standar
     final_sources.sort_by_key(|s| {
         match s.name.as_str() {
             "Corrected Model" | "Model" => 0,
@@ -189,7 +189,9 @@ pub fn calculate_tests_between_subjects_effects(
         }
     });
 
-    // Menyiapkan catatan dan metadata
+    // Langkah 16: Menyiapkan catatan dan metadata
+    //
+    // Catatan berisi informasi tentang variabel dependen, level signifikansi, metode SS, dan R²
     let mut notes = Vec::new();
     if let Some(dep_var) = &config.main.dep_var {
         notes.push(format!("Dependent Variable: {}", dep_var));
@@ -199,6 +201,12 @@ pub fn calculate_tests_between_subjects_effects(
     notes.push(format!("R Squared = {:.4}", current_r_squared));
     notes.push(format!("Adjusted R Squared = {:.4}", current_adj_r_squared));
 
+    // Langkah 17: Mengembalikan hasil analisis ANOVA
+    //
+    // Struktur TestsBetweenSubjectsEffects berisi:
+    // - sources: Daftar semua efek yang diuji dengan statistik lengkap
+    // - note: Catatan tentang parameter analisis
+    // - interpretation: Penjelasan tentang arti dari hasil
     Ok(TestsBetweenSubjectsEffects {
         sources: final_sources,
         note: Some(notes.join("\n")),
@@ -209,8 +217,6 @@ pub fn calculate_tests_between_subjects_effects(
 }
 
 /// Menghitung komponen error (residual) dari model
-///
-/// Returns: (sum of squares error, degrees of freedom error, mean square error)
 fn calculate_error_terms(
     design_info: &DesignMatrixInfo,
     swept_info: &SweptMatrixInfo
@@ -219,9 +225,15 @@ fn calculate_error_terms(
     let current_ss_error = swept_info.s_rss;
 
     // Degrees of freedom error = n - rank(X)
+    //
+    // df_error = n - p, dimana n = jumlah observasi, p = rank matriks desain
+    // df_error mengukur derajat kebebasan untuk estimasi error
     let current_df_error = design_info.n_samples - design_info.r_x_rank;
 
     // Validasi degrees of freedom error
+    //
+    // df_error harus positif untuk estimasi yang valid
+    // Kecuali dalam kasus khusus ketika n = rank(X) dan n > 0
     if
         current_df_error <= 0 &&
         !(design_info.n_samples == design_info.r_x_rank && design_info.n_samples > 0)
@@ -230,6 +242,9 @@ fn calculate_error_terms(
     }
 
     // Mean Square Error (MSE) = RSS / df_error
+    //
+    // MSE adalah estimasi varian error yang tidak bias
+    // MSE digunakan sebagai denominator dalam F-statistic
     let current_ms_error = if current_df_error > 0 {
         current_ss_error / (current_df_error as f64)
     } else {
@@ -240,17 +255,21 @@ fn calculate_error_terms(
 }
 
 /// Menghitung komponen model (explained variance)
-///
-/// Returns: (sum of squares model, degrees of freedom model)
 fn calculate_model_terms(
     design_info: &DesignMatrixInfo,
     ss_total_corrected: f64,
     ss_error: f64
 ) -> (f64, usize) {
     // Model Sum of Squares = Total SS - Error SS
+    //
+    // MSS mengukur variabilitas yang dapat dijelaskan oleh model
+    // MSS tidak boleh negatif (dibatasi ke minimum 0)
     let ss_model_corrected = (ss_total_corrected - ss_error).max(0.0);
 
     // Degrees of freedom model = rank(X) - (1 jika ada intercept)
+    //
+    // df_model = p - 1 jika ada intercept, p jika tidak ada intercept
+    // dimana p = rank matriks desain
     let df_model_overall =
         design_info.r_x_rank - (if design_info.intercept_column.is_some() { 1 } else { 0 });
 
@@ -258,9 +277,6 @@ fn calculate_model_terms(
 }
 
 /// Menghitung koefisien determinasi (R²) dan adjusted R²
-///
-/// R² = SS_model / SS_total (proporsi varians yang dijelaskan model)
-/// Adjusted R² = 1 - [(1-R²)(n-1)/(n-p-1)] (R² yang disesuaikan untuk jumlah parameter)
 fn calculate_r_squared_metrics(
     ss_model_corrected: f64,
     ss_total_corrected: f64,
@@ -269,6 +285,9 @@ fn calculate_r_squared_metrics(
     df_model_overall: usize
 ) -> (f64, f64) {
     // Koefisien determinasi (R²)
+    //
+    // R² = SS_model / SS_total
+    // R² dibatasi antara 0 dan 1
     let current_r_squared = if ss_total_corrected.abs() > 1e-9 {
         (ss_model_corrected / ss_total_corrected).max(0.0).min(1.0)
     } else {
@@ -276,6 +295,9 @@ fn calculate_r_squared_metrics(
     };
 
     // Adjusted R² untuk mengatasi bias karena jumlah parameter
+    //
+    // R²_adj = 1 - [(1-R²)(n-1)/(n-p-1)]
+    // R²_adj menyesuaikan R² untuk kompleksitas model
     let current_adj_r_squared = if df_total > 0 && df_error > 0 && df_total != df_model_overall {
         (1.0 - ((1.0 - current_r_squared) * (df_total as f64)) / (df_error as f64)).max(0.0)
     } else {
@@ -286,8 +308,6 @@ fn calculate_r_squared_metrics(
 }
 
 /// Menambahkan entry ringkasan model (Model, Error, Total)
-///
-/// Entry ini memberikan gambaran keseluruhan performa model statistik
 fn add_model_summary_entries(
     final_sources: &mut Vec<SourceEntry>,
     ss_model_corrected: f64,
@@ -305,12 +325,18 @@ fn add_model_summary_entries(
     if has_intercept {
         // Model dengan Intercept
         // Entry: Corrected Model, Error, Corrected Total, Total
+        //
+        // Model dengan intercept mengoreksi rata-rata dalam perhitungan SS
 
         if df_model_overall > 0 {
             // Mean Square Model
+            //
+            // MS_model = SS_model / df_model
             let ms_model_corrected = ss_model_corrected / (df_model_overall as f64);
 
             // F-statistic untuk model: F = MS_model / MS_error
+            //
+            // F-statistic menguji signifikansi keseluruhan model
             let f_model_corrected = if ms_error > 1e-9 {
                 ms_model_corrected / ms_error
             } else {
@@ -318,6 +344,8 @@ fn add_model_summary_entries(
             };
 
             // Signifikansi F-test
+            //
+            // p-value dari distribusi F dengan df_model dan df_error
             let sig_model_corrected = calculate_f_significance(
                 df_model_overall,
                 df_error,
@@ -325,6 +353,9 @@ fn add_model_summary_entries(
             );
 
             // Partial Eta Squared (effect size)
+            //
+            // η²p = SS_model / SS_total
+            // Effect size mengukur kekuatan efek
             let pes_model_corrected = if config.options.est_effect_size {
                 if ss_total_corrected.abs() > 1e-9 {
                     (ss_model_corrected / ss_total_corrected).max(0.0).min(1.0)
@@ -336,6 +367,9 @@ fn add_model_summary_entries(
             };
 
             // Non-centrality parameter dan observed power
+            //
+            // Non-centrality parameter = F * df_model
+            // Observed power = probabilitas menolak H0 yang salah
             let (ncp_model_corrected, power_model_corrected) = if config.options.obs_power {
                 let ncp = calculate_f_non_centrality(
                     f_model_corrected,
@@ -370,6 +404,8 @@ fn add_model_summary_entries(
         }
 
         // Entry "Error" (residual)
+        //
+        // Error entry tidak memiliki F-statistic karena merupakan denominator
         final_sources.push(SourceEntry {
             name: "Error".to_string(),
             effect: TestEffectEntry {
@@ -385,6 +421,8 @@ fn add_model_summary_entries(
         });
 
         // Entry "Corrected Total" (total setelah dikoreksi rata-rata)
+        //
+        // Corrected total = SS_total - SS_intercept
         final_sources.push(SourceEntry {
             name: "Corrected Total".to_string(),
             effect: TestEffectEntry {
@@ -400,6 +438,8 @@ fn add_model_summary_entries(
         });
 
         // Entry "Total" (total tanpa koreksi rata-rata)
+        //
+        // Total tanpa koreksi = Σy²
         let ss_total_uncorrected = design_info.y
             .iter()
             .map(|val| val.powi(2))
@@ -421,8 +461,12 @@ fn add_model_summary_entries(
     } else {
         // Model Tanpa Intercept
         // Entry: Model, Error, Total (tanpa corrected model/total)
+        //
+        // Model tanpa intercept tidak mengoreksi rata-rata
 
         // Total Sum of Squares tanpa koreksi
+        //
+        // Total = Σy² (tanpa koreksi rata-rata)
         let ss_total = design_info.y
             .iter()
             .map(|val| val.powi(2))
@@ -430,18 +474,26 @@ fn add_model_summary_entries(
         let df_total = design_info.n_samples;
 
         // Model Sum of Squares = Total SS - Error SS
+        //
+        // Model SS = SS_total - SS_error
         let ss_model = (ss_total - ss_error).max(0.0);
         let df_model = design_info.r_x_rank;
 
         if df_model > 0 {
             // Mean Square Model
+            //
+            // MS_model = SS_model / df_model
             let ms_model = ss_model / (df_model as f64);
 
             // F-statistic
+            //
+            // F = MS_model / MS_error
             let f_model = if ms_error > 1e-9 { ms_model / ms_error } else { f64::NAN };
             let sig_model = calculate_f_significance(df_model, df_error, f_model);
 
             // Partial Eta Squared
+            //
+            // η²p = SS_model / SS_total
             let pes_model = if config.options.est_effect_size {
                 if ss_total.abs() > 1e-9 { (ss_model / ss_total).max(0.0).min(1.0) } else { 0.0 }
             } else {
@@ -449,6 +501,8 @@ fn add_model_summary_entries(
             };
 
             // Non-centrality parameter dan observed power
+            //
+            // Non-centrality parameter dan observed power untuk model tanpa intercept
             let (ncp_model, power_model) = if config.options.obs_power {
                 let ncp = calculate_f_non_centrality(f_model, df_model as f64, df_error as f64);
                 let power = calculate_observed_power_f(
@@ -479,6 +533,8 @@ fn add_model_summary_entries(
         }
 
         // Entry "Error"
+        //
+        // Error entry untuk model tanpa intercept
         final_sources.push(SourceEntry {
             name: "Error".to_string(),
             effect: TestEffectEntry {
@@ -494,6 +550,8 @@ fn add_model_summary_entries(
         });
 
         // Entry "Total"
+        //
+        // Total entry untuk model tanpa intercept
         final_sources.push(SourceEntry {
             name: "Total".to_string(),
             effect: TestEffectEntry {
@@ -510,14 +568,6 @@ fn add_model_summary_entries(
     }
 }
 
-/// Membuat TestEffectEntry dengan statistik yang dihitung
-///
-/// Fungsi ini menghitung semua statistik yang diperlukan untuk satu efek:
-/// - Mean Square (MS = SS/df)
-/// - F-statistic (F = MS_effect / MS_error)
-/// - Signifikansi (p-value dari distribusi F)
-/// - Partial Eta Squared (effect size)
-/// - Non-centrality parameter dan observed power
 pub fn create_effect_entry(
     sum_of_squares: f64,
     df: usize,
@@ -528,6 +578,9 @@ pub fn create_effect_entry(
     obs_power: bool
 ) -> TestEffectEntry {
     // Mean Square = Sum of Squares / Degrees of Freedom
+    //
+    // MS_effect = SS_effect / df_effect
+    // Mean square adalah estimasi varian yang tidak bias
     let mean_square = if df > 0 { sum_of_squares / (df as f64) } else { 0.0 };
 
     // F-statistic = MS_effect / MS_error
@@ -541,7 +594,6 @@ pub fn create_effect_entry(
     };
 
     // Partial Eta Squared (effect size)
-    // Rumus: η²p = SS_effect / (SS_effect + SS_error)
     let partial_eta_squared = if est_effect_size {
         if sum_of_squares >= 0.0 && error_df > 0 {
             let error_ss = error_ms * (error_df as f64);
@@ -556,10 +608,9 @@ pub fn create_effect_entry(
 
     // Non-centrality parameter dan observed power
     let (noncent_parameter, observed_power) = if obs_power {
-        // Non-centrality parameter = F * df_effect
+        // λ = F * df_effect
         let noncent_parameter = if f_value > 0.0 { f_value * (df as f64) } else { 0.0 };
 
-        // Observed power (probabilitas menolak H0 yang salah)
         let observed_power = if f_value > 0.0 {
             calculate_observed_power_f(f_value, df as f64, error_df as f64, sig_level)
         } else {
@@ -570,6 +621,7 @@ pub fn create_effect_entry(
         (f64::NAN, f64::NAN)
     };
 
+    // Mengembalikan TestEffectEntry dengan semua statistik yang dihitung
     TestEffectEntry {
         sum_of_squares,
         df,

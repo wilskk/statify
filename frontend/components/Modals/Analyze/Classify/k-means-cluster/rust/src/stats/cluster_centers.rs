@@ -7,46 +7,10 @@ use crate::models::{
 
 use super::core::*;
 
-/// Menghasilkan pusat cluster final menggunakan algoritma K-Means.
-///
-/// ## Langkah-langkah Algoritma:
-/// 1. **Inisialisasi**: Pilih k pusat cluster awal secara acak atau menggunakan metode tertentu
-/// 2. **Assignment**: Setiap titik data ditugaskan ke cluster terdekat berdasarkan jarak Euclidean
-/// 3. **Update**: Hitung ulang pusat cluster sebagai mean dari semua titik dalam cluster
-/// 4. **Iterasi**: Ulangi langkah 2-3 sampai konvergensi atau iterasi maksimum tercapai
-///
-/// ## Rumus Matematika:
-///
-/// ### Jarak Euclidean (untuk assignment):
-/// ```
-/// d(x, μ) = √(Σ(x_i - μ_i)²)
-/// ```
-/// Dimana:
-/// - x = titik data
-/// - μ = pusat cluster
-/// - i = dimensi variabel
-///
-/// ### Update Pusat Cluster (batch mode):
-/// ```
-/// μ_k^(t+1) = (1/|C_k|) * Σ(x ∈ C_k) x
-/// ```
-/// Dimana:
-/// - μ_k = pusat cluster k
-/// - C_k = himpunan titik dalam cluster k
-/// - |C_k| = jumlah titik dalam cluster k
-///
-/// ### Update Pusat Cluster (running mean):
-/// ```
-/// μ_k^(t+1) = μ_k^t + (1/n_k) * (x - μ_k^t)
-/// ```
-/// Dimana:
-/// - n_k = jumlah titik yang telah ditugaskan ke cluster k
-/// - x = titik data baru
 pub fn generate_final_cluster_centers(
     data: &ProcessedData,
     config: &KMeansConfig
 ) -> Result<FinalClusterCenters, String> {
-    // Inisialisasi parameter dari konfigurasi.
     let num_clusters = config.main.cluster as usize;
     let max_iterations = config.iterate.maximum_iterations;
     let convergence_criterion = config.iterate.convergence_criterion;
@@ -114,12 +78,6 @@ pub fn generate_final_cluster_centers(
         }
         current_centers = new_centers;
     } else {
-        // Implementasi K-Means dengan batch mode (standar)
-        //
-        // Algoritma:
-        // 1. Assignment: Tugaskan setiap titik ke cluster terdekat
-        // 2. Update: Hitung ulang pusat cluster sebagai mean dari semua titik dalam cluster
-        // 3. Iterasi: Ulangi sampai konvergensi
         for _ in 1..=max_iterations {
             let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
             let mut cluster_counts = vec![0; num_clusters];
@@ -136,7 +94,7 @@ pub fn generate_final_cluster_centers(
             }
 
             // Langkah Update: Hitung pusat cluster baru sebagai mean
-            // Rumus: μ_k = (1/|C_k|) * Σ(x ∈ C_k) x
+            // Rumus: μ_k = (1/|C_k|) * Σ(x ∈ C_k)
             for i in 0..num_clusters {
                 if cluster_counts[i] > 0 {
                     for j in 0..data.variables.len() {
@@ -168,10 +126,7 @@ pub fn generate_final_cluster_centers(
         }
     }
 
-    // Langkah 3: Format hasil akhir dari matriks ke dalam bentuk `HashMap` untuk kemudahan penggunaan.
-    //
-    // Transformasi dari format matriks [cluster][variable] ke format HashMap[variable][cluster]
-    // untuk memudahkan akses dan interpretasi hasil.
+    // Langkah 3: Format hasil akhir dari matriks ke dalam bentuk `HashMap`
     let mut centers_map = HashMap::new();
     for (i, var) in data.variables.iter().enumerate() {
         let var_values = current_centers
