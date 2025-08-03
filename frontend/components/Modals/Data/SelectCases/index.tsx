@@ -310,6 +310,7 @@ const SelectCasesContent: FC<{
                         <Button
                             className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                             onClick={() => setErrorDialogOpen(false)}
+                            data-testid="selectcases-error-ok-button"
                         >
                             OK
                         </Button>
@@ -368,13 +369,14 @@ const SelectCases: FC<{
                     <div></div>
                     <div className="flex items-center gap-2">
                         <Button variant="outline" className="mr-2"
-                            onClick={() => document.dispatchEvent(new CustomEvent('selectCasesReset'))}>
+                            onClick={() => document.dispatchEvent(new CustomEvent('selectCasesReset'))}
+                            data-testid="selectcases-reset-button">
                             Reset
                         </Button>
-                        <Button variant="outline" className="mr-2" onClick={onClose}>
+                        <Button variant="outline" className="mr-2" onClick={onClose} data-testid="selectcases-cancel-button">
                             Cancel
                         </Button>
-                        <Button onClick={() => document.dispatchEvent(new CustomEvent('selectCasesOk'))}>
+                        <Button onClick={() => document.dispatchEvent(new CustomEvent('selectCasesOk'))} data-testid="selectcases-ok-button">
                             OK
                         </Button>
                     </div>
@@ -386,7 +388,7 @@ const SelectCases: FC<{
     // For dialog mode, use Dialog and DialogContent
     return (
         <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-xl p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
+            <DialogContent className="max-w-xl p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[90vh]" data-testid="selectcases-dialog-content">
                 <SelectCasesContent onClose={onClose} containerType={containerType} />
             </DialogContent>
         </Dialog>

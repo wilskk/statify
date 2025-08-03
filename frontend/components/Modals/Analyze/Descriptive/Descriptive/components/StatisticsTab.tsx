@@ -172,21 +172,45 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
 
             <div id="display-order-section" className="border border-[#E6E6E6] rounded-md p-5 relative">
                 <div className="text-sm font-medium mb-3">Display Order</div>
-                <RadioGroup value={displayOrder} onValueChange={handleDisplayOrderChange} className="space-y-2">
+                <RadioGroup data-testid="display-order-radio-group" value={displayOrder} onValueChange={handleDisplayOrderChange} className="space-y-2">
                     <div className="flex items-center">
-                        <RadioGroupItem id="variableList" value="variableList" className="mr-2 border-[#CCCCCC]" {...({ changeHandler: handleDisplayOrderChange } as any)} />
+                        <RadioGroupItem 
+                            id="variableList" 
+                            data-testid="display-order-variable-list"
+                            value="variableList" 
+                            className="mr-2 border-[#CCCCCC]" 
+                            {...({ changeHandler: handleDisplayOrderChange } as any)} 
+                        />
                         <Label htmlFor="variableList" className="text-sm cursor-pointer">Variable list</Label>
                     </div>
                     <div className="flex items-center">
-                        <RadioGroupItem id="alphabetic" value="alphabetic" className="mr-2 border-[#CCCCCC]" {...({ changeHandler: handleDisplayOrderChange } as any)} />
+                        <RadioGroupItem 
+                            id="alphabetic" 
+                            data-testid="display-order-alphabetic"
+                            value="alphabetic" 
+                            className="mr-2 border-[#CCCCCC]" 
+                            {...({ changeHandler: handleDisplayOrderChange } as any)} 
+                        />
                         <Label htmlFor="alphabetic" className="text-sm cursor-pointer">Alphabetic</Label>
                     </div>
                     <div className="flex items-center">
-                        <RadioGroupItem id="ascendingMeans" value="ascendingMeans" className="mr-2 border-[#CCCCCC]" {...({ changeHandler: handleDisplayOrderChange } as any)} />
+                        <RadioGroupItem 
+                            id="ascendingMeans" 
+                            data-testid="display-order-ascending-means"
+                            value="ascendingMeans" 
+                            className="mr-2 border-[#CCCCCC]" 
+                            {...({ changeHandler: handleDisplayOrderChange } as any)} 
+                        />
                         <Label htmlFor="ascendingMeans" className="text-sm cursor-pointer">Ascending means</Label>
                     </div>
                     <div className="flex items-center">
-                        <RadioGroupItem id="descendingMeans" value="descendingMeans" className="mr-2 border-[#CCCCCC]" {...({ changeHandler: handleDisplayOrderChange } as any)} />
+                        <RadioGroupItem 
+                            id="descendingMeans" 
+                            data-testid="display-order-descending-means"
+                            value="descendingMeans" 
+                            className="mr-2 border-[#CCCCCC]" 
+                            {...({ changeHandler: handleDisplayOrderChange } as any)} 
+                        />
                         <Label htmlFor="descendingMeans" className="text-sm cursor-pointer">Descending means</Label>
                     </div>
                 </RadioGroup>

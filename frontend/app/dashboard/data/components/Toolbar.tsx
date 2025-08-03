@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useEditMenuActions } from "@/components/Modals/Edit/hooks/useEditMenuActions";
+import { useEditMenuActions } from "@/components/Modals/Edit/Actions/useEditMenuActions";
 import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
 import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
 import {
@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
-import { useFileMenuActions } from '@/components/Modals/File/hooks/useFileMenuActions';
+import { useFileMenuActions } from '@/components/Modals/File/Actions/useFileMenuActions';
 import { ModalType, useModal } from '@/hooks/useModal';
 // import { ModeToggle } from "@/components/mode-toggle";
 import { useTableRefStore } from '@/stores/useTableRefStore';
@@ -163,7 +163,7 @@ export default function Toolbar() {
     );
 
     return (
-        <div className="bg-background px-4 py-1 border-b border-border flex justify-between items-center overflow-hidden shadow-md">
+        <div className="bg-background px-4 py-1 border-b border-border flex justify-between items-center overflow-hidden shadow-md" data-tour="data-toolbar">
             {/* Always allow horizontal scroll on small screens, but keep normal on medium+ */}
             <div className="flex w-full overflow-x-auto md:overflow-visible">
                 <div className="flex space-x-2 min-w-max">

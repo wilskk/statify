@@ -61,11 +61,11 @@ export default function DashboardPage() {
     ];
 
     if (metaIsLoading || !metaIsLoaded) {
-        return <DashboardLandingSkeleton />;
+        return <DashboardLandingSkeleton data-testid="dashboard-loading" />;
     }
 
     if (meta.name) {
-        return <DashboardLandingSkeleton />;
+        return <DashboardLandingSkeleton data-testid="dashboard-loading" />;
         // return null;
     }
 
@@ -81,8 +81,8 @@ export default function DashboardPage() {
     ];
 
     return (
-        <>
+        <div data-testid="dashboard-page">
             <DashboardLanding dataActions={dataActions} resources={resources} />
-        </>
+        </div>
     );
 }

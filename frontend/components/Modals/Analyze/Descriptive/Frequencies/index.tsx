@@ -200,12 +200,17 @@ const FrequenciesContent = ({
                 )}
             </AnimatePresence>
 
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'variables' | 'statistics' | 'charts')} className="w-full flex flex-col flex-grow overflow-hidden">
+            <Tabs 
+                data-testid="frequencies-tabs"
+                value={activeTab} 
+                onValueChange={(value) => setActiveTab(value as 'variables' | 'statistics' | 'charts')} 
+                className="w-full flex flex-col flex-grow overflow-hidden"
+            >
                 <div className="border-b border-border flex-shrink-0">
-                    <TabsList>
-                        <TabsTrigger data-testid="variables-tab" value="variables">Variables</TabsTrigger>
-                        <TabsTrigger data-testid="statistics-tab" id="statistics-tab-trigger" value="statistics">Statistics</TabsTrigger>
-                        <TabsTrigger data-testid="charts-tab" id="charts-tab-trigger" value="charts">Charts</TabsTrigger>
+                    <TabsList data-testid="frequencies-tabs-list">
+                        <TabsTrigger data-testid="frequencies-variables-tab" value="variables">Variables</TabsTrigger>
+                        <TabsTrigger data-testid="frequencies-statistics-tab" id="statistics-tab-trigger" value="statistics">Statistics</TabsTrigger>
+                        <TabsTrigger data-testid="frequencies-charts-tab" id="charts-tab-trigger" value="charts">Charts</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -251,6 +256,7 @@ const FrequenciesContent = ({
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
+                                    data-testid="frequencies-help-button"
                                     variant="ghost"
                                     size="icon"
                                     onClick={startTour}
@@ -269,6 +275,7 @@ const FrequenciesContent = ({
 
                 <div>
                     <Button
+                        data-testid="frequencies-reset-button"
                         variant="outline"
                         className="mr-2"
                         onClick={handleReset}
@@ -276,6 +283,7 @@ const FrequenciesContent = ({
                         Reset
                     </Button>
                     <Button
+                        data-testid="frequencies-cancel-button"
                         variant="outline"
                         className="mr-2"
                         onClick={onClose}
@@ -310,7 +318,10 @@ const Frequencies: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ..
 
     return (
         <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-            <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogContent 
+                data-testid="frequencies-dialog"
+                className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]"
+            >
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                     <DialogTitle className="text-xl font-semibold">Frequencies</DialogTitle>
                 </DialogHeader>

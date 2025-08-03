@@ -23,48 +23,50 @@ const DataMenu: React.FC = () => {
 
     return (
         <MenubarMenu>
-            <MenubarTrigger>Data</MenubarTrigger>
+            <MenubarTrigger data-testid="data-menu-trigger">Data</MenubarTrigger>
             <MenubarContent>
                 <MenubarItem
                     onClick={() => openModal(ModalType.DefineVarProps)}
+                    data-testid="data-menu-define-variable-properties"
                 >
                     Define Variable Properties
                 </MenubarItem>
                 <MenubarItem
                     onClick={() => openModal(ModalType.SetMeasurementLevel)}
+                    data-testid="data-menu-set-measurement-level"
                 >
                     Set Measurement Level
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.DefineDateTime)}>
+                <MenubarItem onClick={() => openModal(ModalType.DefineDateTime)} data-testid="data-menu-define-date-time">
                     Define Date and Time
                 </MenubarItem>
                 <MenubarSeparator />
                 {/*<MenubarItem onClick={() => openModal(ModalType.Validate)}>*/}
                 {/*    Validation...*/}
                 {/*</MenubarItem>*/}
-                <MenubarItem onClick={() => openModal(ModalType.DuplicateCases)}>
+                <MenubarItem onClick={() => openModal(ModalType.DuplicateCases)} data-testid="data-menu-duplicate-cases">
                     Identify Duplicate Cases
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.SortCases)}>
+                <MenubarItem onClick={() => openModal(ModalType.SortCases)} data-testid="data-menu-sort-cases">
                     Sort Cases
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.SortVars)}>
+                <MenubarItem onClick={() => openModal(ModalType.SortVars)} data-testid="data-menu-sort-variables">
                     Sort Variables...
-                </MenubarItem>                <MenubarItem onClick={() => openModal(ModalType.Transpose)}>
+                </MenubarItem>                <MenubarItem onClick={() => openModal(ModalType.Transpose)} data-testid="data-menu-transpose">
                     Transpose
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Restructure)}>
+                <MenubarItem onClick={() => openModal(ModalType.Restructure)} data-testid="data-menu-restructure">
                     Restructure
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Aggregate)}>
+                <MenubarItem onClick={() => openModal(ModalType.Aggregate)} data-testid="data-menu-aggregate">
                     Aggregate
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.SelectCases)}>
+                <MenubarItem onClick={() => openModal(ModalType.SelectCases)} data-testid="data-menu-select-cases">
                     Select Cases
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.WeightCases)}>
+                <MenubarItem onClick={() => openModal(ModalType.WeightCases)} data-testid="data-menu-weight-cases">
                     Weight Cases
                 </MenubarItem>
             </MenubarContent>

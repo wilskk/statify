@@ -9,7 +9,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-filename-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "📝",
+        icon: null,
     },
     {
         title: "Format File",
@@ -17,7 +17,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-format-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "📄",
+        icon: null,
     },
     {
         title: "Sertakan Header",
@@ -25,7 +25,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-includeHeaders-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "🏷️",
+        icon: null,
     },
     {
         title: "Sheet Properti Variabel",
@@ -33,7 +33,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-includeVariableProperties-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "🧩",
+        icon: null,
     },
     {
         title: "Sheet Metadata",
@@ -41,7 +41,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-includeMetadataSheet-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "ℹ️",
+        icon: null,
     },
     {
         title: "Gaya Header",
@@ -49,7 +49,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-applyHeaderStyling-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "🎨",
+        icon: null,
     },
     {
         title: "Tampilkan Data Hilang",
@@ -57,7 +57,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-includeDataLabels-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "🚫",
+        icon: null,
     }
 ];
 

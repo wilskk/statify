@@ -9,5 +9,5 @@ export type TourStep = {
     defaultHorizontalPosition: HorizontalPosition | null;
     position?: PopupPosition;
     horizontalPosition?: HorizontalPosition | null;
-    icon: string;
+    icon: string | null;
 };

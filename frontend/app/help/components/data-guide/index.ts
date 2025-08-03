@@ -8,5 +8,4 @@ export { default as SetMeasurementLevelGuide } from './SetMeasurementLevelGuide'
 export { default as SortCasesGuide } from './SortCasesGuide';
 export { default as SortVarsGuide } from './SortVarsGuide';
 export { default as TransposeGuide } from './TransposeGuide';
-export { default as UnusualCasesGuide } from './UnusualCasesGuide';
-export { default as WeightCasesGuide } from './WeightCasesGuide'; 
+export { default as WeightCasesGuide } from './WeightCasesGuide';

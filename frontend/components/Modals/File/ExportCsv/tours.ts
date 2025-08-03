@@ -24,7 +24,7 @@ export const exportCsvTour: TourDefinition = {
   tour: "exportcsv",
   steps: [
     {
-      icon: "📝",
+      icon: null,
       title: "Nama File",
       content: "Tentukan nama file untuk hasil ekspor CSV Anda di sini.",
       selector: "#csv-filename-wrapper",
@@ -33,7 +33,7 @@ export const exportCsvTour: TourDefinition = {
       pointerPadding: 5,
     },
     {
-      icon: "🔣",
+      icon: null,
       title: "Pemisah Data",
       content: "Pilih karakter yang akan digunakan untuk memisahkan nilai dalam file CSV Anda.",
       selector: "#csv-delimiter-wrapper",
@@ -42,7 +42,7 @@ export const exportCsvTour: TourDefinition = {
       pointerPadding: 5,
     },
     {
-      icon: "🏷️",
+      icon: null,
       title: "Header Variabel",
       content: "Pilih apakah akan menyertakan nama variabel sebagai baris header dalam file CSV.",
       selector: "#csv-headers-wrapper",
@@ -51,7 +51,7 @@ export const exportCsvTour: TourDefinition = {
       pointerPadding: 5,
     },
     {
-      icon: "🧩",
+      icon: null,
       title: "Properti Variabel",
       content: "Anda dapat menyertakan properti variabel seperti tipe data dan label sebagai baris pertama.",
       selector: "#csv-properties-wrapper",
@@ -60,7 +60,7 @@ export const exportCsvTour: TourDefinition = {
       pointerPadding: 5,
     },
     {
-      icon: "🔠",
+      icon: null,
       title: "Kutip String",
       content: "Aktifkan opsi ini untuk mengapit semua nilai string dengan tanda kutip.",
       selector: "#csv-quotes-wrapper",
@@ -69,7 +69,7 @@ export const exportCsvTour: TourDefinition = {
       pointerPadding: 5,
     },
     {
-      icon: "🌐",
+      icon: null,
       title: "Pengkodean",
       content: "Pilih pengkodean karakter untuk file CSV Anda. UTF-8 adalah standar yang paling umum digunakan.",
       selector: "#csv-encoding-wrapper",
@@ -78,7 +78,7 @@ export const exportCsvTour: TourDefinition = {
       pointerPadding: 5,
     },
     {
-      icon: "💾",
+      icon: null,
       title: "Tombol Ekspor",
       content: "Setelah mengatur semua opsi, klik tombol 'Export' untuk mengunduh file CSV Anda.",
       selector: "#csv-buttons-wrapper",

@@ -13,7 +13,7 @@ import { useModal } from "@/hooks/useModal";
 import { ModalType } from "@/types/modalTypes";
 import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
 import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
-import { useEditMenuActions } from "./hooks/useEditMenuActions";
+import { useEditMenuActions } from "./Actions/useEditMenuActions";
 
 const EditMenu: React.FC = () => {
     const { openModal } = useModal();

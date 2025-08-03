@@ -22,7 +22,7 @@ Untuk menjaga antarmuka tetap responsif bahkan saat memproses file besar, operas
     -   `First row as variable names`: Menggunakan baris pertama dari data yang dipilih sebagai nama variabel.
     -   `Read hidden rows & columns`: Menyertakan baris dan kolom yang disembunyikan di Excel dalam proses impor.
     -   `Read empty cells as`: Menentukan bagaimana sel kosong harus diperlakukan, apakah sebagai string kosong atau sebagai nilai sistem yang hilang (`SYSMIS`).
--   **Pratinjau Data**: Sebuah tabel `Handsontable` yang menampilkan pratinjau data berdasarkan sheet dan opsi yang dipilih. Pratinjau ini diperbarui setiap kali opsi diubah.
+-   **Pratinjau Data**: Sebuah tabel HTML dasar yang menampilkan pratinjau data berdasarkan sheet dan opsi yang dipilih. Pratinjau ini diperbarui setiap kali opsi diubah dan menampilkan maksimal 100 baris pertama untuk performa yang optimal.
 -   **Tombol Import Data**: Tombol final yang akan memproses data dengan konfigurasi yang ada dan memuatnya ke dalam aplikasi.
 
 ## 3. Alur Kerja & Logika
@@ -51,7 +51,7 @@ Untuk menjaga antarmuka tetap responsif bahkan saat memproses file besar, operas
 
 -   **`components/`**
     -   **`ImportExcelSelectionStep.tsx`**: Komponen UI untuk tahap pemilihan file.
-    -   **`ImportExcelConfigurationStep.tsx`**: Komponen UI untuk tahap konfigurasi, termasuk pemilihan *sheet*, penentuan rentang, dan opsi lainnya. Juga menampilkan pratinjau data menggunakan `Handsontable`.
+    -   **`ImportExcelConfigurationStep.tsx`**: Komponen UI untuk tahap konfigurasi, termasuk pemilihan *sheet*, penentuan rentang, dan opsi lainnya. Juga menampilkan pratinjau data menggunakan tabel HTML dasar yang responsif.
 
 -   **`hooks/`**
     -   **`useImportExcelLogic.ts`**: Hook utama yang mengelola logika dan *state* keseluruhan, seperti file yang dipilih, *stage* saat ini, dan data hasil *parsing* dari *worker*.
@@ -78,7 +78,7 @@ Untuk menjaga antarmuka tetap responsif bahkan saat memproses file besar, operas
     -   Komponen UI dari `@/components/ui/*`.
 -   **Eksternal**:
     -   `xlsx` (SheetJS): Pustaka inti untuk *parsing* file Excel, digunakan di dalam Web Worker.
-    -   `handsontable/react-wrapper`: Untuk menampilkan pratinjau data interaktif.
+    -   Tabel HTML dasar dengan CSS kustom: Untuk menampilkan pratinjau data yang ringan dan responsif.
     -   `framer-motion`: Untuk animasi pada fitur *tour*.
 -   **Arsitektural**:
     -   **Web Worker API**: Ketergantungan fundamental untuk *offloading* proses *parsing* dari *thread* utama.

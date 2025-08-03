@@ -7,11 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 // Import all guide components
-import GettingStarted from "./GettingStarted";
-import FAQ from "./FAQ";
-import Feedback from "./Feedback";
-import FileGuide from "./FileGuide";
-import StatisticsGuide from "./StatisticsGuide";
+import { GettingStarted } from "./GettingStarted";
+import { FAQ } from "./FAQ";
+import { Feedback } from "./Feedback";
+import { FileGuide } from "@/app/help/components/file-guide";
+import { StatisticsGuide } from "@/app/help/components/statistics-guide";
 
 // Data guides
 import {

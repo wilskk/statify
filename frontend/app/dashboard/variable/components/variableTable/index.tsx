@@ -74,8 +74,8 @@ function VariableTableComponent() {
     }, [variables]);
     
     return (
-        <div className="relative w-full h-full border-t border-border">
-            <div className="hot-container w-full h-full overflow-hidden relative z-0">
+        <div className="relative w-full h-full border-t border-border" data-testid="variable-table-container">
+            <div className="hot-container w-full h-full overflow-hidden relative z-0" data-testid="handsontable-container">
                 <HotTable
                     ref={hotTableRef}
                     data={tableData}

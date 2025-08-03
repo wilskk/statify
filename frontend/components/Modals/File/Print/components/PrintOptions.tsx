@@ -231,7 +231,7 @@ export const PrintOptions: React.FC<PrintOptionsProps> = ({
     }, [tourActive, currentStep, targetElements]);
 
     return (
-        <div className="flex flex-col h-full">
+        <div data-testid="print-modal" className="flex flex-col h-full">
             <AnimatePresence>
                 {tourActive && (
                     <TourPopup
@@ -246,68 +246,100 @@ export const PrintOptions: React.FC<PrintOptionsProps> = ({
                 )}
             </AnimatePresence>
 
-            <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
+            <div data-testid="print-header" className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
                 <Printer size={18} className="mr-2.5 flex-shrink-0 text-primary" />
                 <div className="flex-grow overflow-hidden">
-                    <h3 className="font-semibold text-lg text-popover-foreground">Print Options</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">Configure options and select content to include in the PDF export.</p>
+                    <h3 data-testid="print-title" className="font-semibold text-lg text-popover-foreground">Print Options</h3>
+                    <p data-testid="print-description" className="text-xs text-muted-foreground mt-0.5 truncate">Configure options and select content to include in the PDF export.</p>
                 </div>
             </div>
 
-            <div className={`p-6 flex-grow overflow-y-auto ${isMobile ? 'space-y-5' : 'space-y-4'}`}>
-                <div id="print-filename-wrapper" className={cn(isMobile ? 'flex flex-col space-y-1.5' : 'grid grid-cols-4 items-center gap-4', "relative")}>
-                    <Label htmlFor="print-filename" className={cn(!isMobile ? 'text-right' : 'text-sm font-medium', tourActive && currentStep === 0 && "text-primary")}>File Name</Label>
-                    <Input id="print-filename" value={fileName} onChange={(e) => onFileNameChange(e.target.value)} className={`${isMobile ? 'h-10' : 'col-span-3 h-9'}`} placeholder="Enter file name" disabled={isGenerating} />
-                    <ActiveElementHighlight active={tourActive && currentStep === 0} />
-                </div>
-
-                <div id="print-content-wrapper" className={cn(isMobile ? 'flex flex-col space-y-1.5' : 'grid grid-cols-4 items-start gap-4', "relative")}>
-                    <Label className={cn(!isMobile ? 'text-right pt-1' : 'text-sm font-medium', tourActive && currentStep === 1 && "text-primary")}>Content to Print</Label>
-                    <div className={`${isMobile ? 'space-y-2.5 pt-1' : 'col-span-3 space-y-2'}`}>
-                        {(Object.keys(selectedOptions) as Array<keyof SelectedOptions>).map((option) => (
-                            <div key={option} className="flex items-center space-x-2">
-                                <Checkbox id={`print-option-${option}`} checked={selectedOptions[option]} onCheckedChange={() => onOptionChange(option)} disabled={isGenerating} />
-                                <Label htmlFor={`print-option-${option}`} className="cursor-pointer font-normal text-sm">
-                                    {option === 'data' ? 'Data View' : option === 'variable' ? 'Variable View' : 'Output Viewer (Results)'}
-                                </Label>
+            <div data-testid="print-content" className="p-6 flex-grow overflow-y-auto space-y-4">
+                {/* File Settings */}
+                <Card data-testid="file-settings-card">
+                    <CardHeader className="pb-3">
+                        <CardTitle data-testid="file-settings-title" className="text-base">File Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div id="print-filename-wrapper" className="space-y-1.5 relative">
+                            <Label htmlFor="print-filename" className={cn("text-sm font-medium", tourActive && currentStep === 0 && "text-primary")}>File Name</Label>
+                            <div className="relative">
+                                <Input 
+                                    id="print-filename" 
+                                    data-testid="print-filename"
+                                    value={fileName} 
+                                    onChange={(e) => onFileNameChange(e.target.value)} 
+                                    className="pr-12" 
+                                    placeholder="Enter file name" 
+                                    disabled={isGenerating} 
+                                />
+                                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
+                                    .pdf
+                                </span>
                             </div>
-                        ))}
-                    </div>
-                    <ActiveElementHighlight active={tourActive && currentStep === 1} />
-                </div>
+                            <ActiveElementHighlight active={tourActive && currentStep === 0} />
+                        </div>
 
-                <div id="print-paper-size-wrapper" className={cn(isMobile ? 'flex flex-col space-y-1.5' : 'grid grid-cols-4 items-center gap-4', "relative")}>
-                    <Label htmlFor="print-paperSize" className={cn(!isMobile ? 'text-right' : 'text-sm font-medium', tourActive && currentStep === 2 && "text-primary")}>Paper Size</Label>
-                    <Select value={paperSize} onValueChange={(value) => onPaperSizeChange(value as PaperSize)} disabled={isGenerating}>
-                        <SelectTrigger id="print-paperSize" className={`${isMobile ? 'h-10' : 'col-span-3 h-9'}`}>
-                            <SelectValue placeholder="Select paper size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {["a4", "a3", "letter", "legal"].map((size) => (
-                                <SelectItem key={size} value={size}>{size.toUpperCase()}</SelectItem>
+                        <div id="print-paper-size-wrapper" className="space-y-1.5 relative">
+                            <Label htmlFor="print-paperSize" className={cn("text-sm font-medium", tourActive && currentStep === 2 && "text-primary")}>Paper Size</Label>
+                            <Select data-testid="print-paper-size" value={paperSize} onValueChange={(value) => onPaperSizeChange(value as PaperSize)} disabled={isGenerating}>
+                                <SelectTrigger id="print-paperSize">
+                                    <SelectValue placeholder="Select paper size" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {["a4", "a3", "letter", "legal"].map((size) => (
+                                        <SelectItem key={size} value={size}>{size.toUpperCase()}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <ActiveElementHighlight active={tourActive && currentStep === 2} />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Print Options */}
+                <Card data-testid="print-options-card">
+                    <CardHeader className="pb-3">
+                        <CardTitle data-testid="print-options-title" className="text-base">Print Options</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div id="print-content-wrapper" className="space-y-3 relative">
+                            {(Object.keys(selectedOptions) as Array<keyof SelectedOptions>).map((option) => (
+                                <div key={option} className="flex items-center space-x-2">
+                                    <Checkbox 
+                                        id={`print-option-${option}`} 
+                                        data-testid={`print-option-${option}`}
+                                        checked={selectedOptions[option]} 
+                                        onCheckedChange={() => onOptionChange(option)} 
+                                        disabled={isGenerating} 
+                                    />
+                                    <Label htmlFor={`print-option-${option}`} className="text-sm font-normal cursor-pointer flex-1">
+                                        {option === 'data' ? 'Data View' : option === 'variable' ? 'Variable View' : 'Output Viewer (Results)'}
+                                    </Label>
+                                </div>
                             ))}
-                        </SelectContent>
-                    </Select>
-                    <ActiveElementHighlight active={tourActive && currentStep === 2} />
-                </div>
+                            <ActiveElementHighlight active={tourActive && currentStep === 1} />
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary">
+            <div data-testid="print-footer" className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary">
                 <div className="flex items-center text-muted-foreground">
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"><HelpCircle className="h-4 w-4" /></Button>
+                                <Button data-testid="print-help-button" variant="ghost" size="icon" onClick={startTour} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"><HelpCircle className="h-4 w-4" /></Button>
                             </TooltipTrigger>
                             <TooltipContent side="top"><p className="text-xs">Start feature tour</p></TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
                 <div>
-                    <Button variant="outline" onClick={onCancel} disabled={isGenerating} className="mr-2">Cancel</Button>
-                    <Button variant="outline" onClick={onReset} disabled={isGenerating} className="mr-2">Reset</Button>
+                    <Button data-testid="print-cancel-button" variant="outline" onClick={onCancel} disabled={isGenerating} className="mr-2">Cancel</Button>
+                    <Button data-testid="print-reset-button" variant="outline" onClick={onReset} disabled={isGenerating} className="mr-2">Reset</Button>
                     <div id="print-button-wrapper" className="relative inline-block">
-                        <Button onClick={onPrint} disabled={isPrintDisabled} className={cn(tourActive && currentStep === 3 && "focus:ring-primary")}>
+                        <Button data-testid="print-print-button" onClick={onPrint} disabled={isPrintDisabled} className={cn(tourActive && currentStep === 3 && "focus:ring-primary")}>
                             {isGenerating && <Loader2 className="mr-2 animate-spin" size={16} />}
                             {isGenerating ? "Printing..." : "Print"}
                         </Button>

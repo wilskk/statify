@@ -11,49 +11,46 @@ import {
     type SectionItem,
 } from "@/app/help/components";
 import {
-    AggregateGuide,
-    DefineDateTimeGuide,
-    DefineVarPropsGuide,
-    DuplicateCasesGuide,
-    RestructureGuide,
-    SelectCasesGuide,
-    SetMeasurementLevelGuide,
-    SortCasesGuide,
-    SortVarsGuide,
-    TransposeGuide,
-    UnusualCasesGuide,
-    WeightCasesGuide,
+	AggregateGuide,
+	DefineDateTimeGuide,
+	DefineVarPropsGuide,
+	DuplicateCasesGuide,
+	RestructureGuide,
+	SelectCasesGuide,
+	SetMeasurementLevelGuide,
+	SortCasesGuide,
+	SortVarsGuide,
+	TransposeGuide,
+	WeightCasesGuide,
 } from "@/app/help/components/data-guide";
 
 const DataGuide = ({ section }: { section?: string }) => {
-    switch (section) {
-        case "aggregate":
-            return <AggregateGuide />;
-        case "define-datetime":
-            return <DefineDateTimeGuide />;
-        case "define-var-props":
-            return <DefineVarPropsGuide />;
-        case "duplicate-cases":
-            return <DuplicateCasesGuide />;
-        case "restructure":
-            return <RestructureGuide />;
-        case "select-cases":
-            return <SelectCasesGuide />;
-        case "set-measurement-level":
-            return <SetMeasurementLevelGuide />;
-        case "sort-cases":
-            return <SortCasesGuide />;
-        case "sort-vars":
-            return <SortVarsGuide />;
-        case "transpose":
-            return <TransposeGuide />;
-        case "unusual-cases":
-            return <UnusualCasesGuide />;
-        case "weight-cases":
-            return <WeightCasesGuide />;
-        default:
-            return <AggregateGuide />; // Show a default guide
-    }
+	switch (section) {
+		case "aggregate":
+			return <AggregateGuide />;
+		case "define-datetime":
+			return <DefineDateTimeGuide />;
+		case "define-var-props":
+			return <DefineVarPropsGuide />;
+		case "duplicate-cases":
+			return <DuplicateCasesGuide />;
+		case "restructure":
+			return <RestructureGuide />;
+		case "select-cases":
+			return <SelectCasesGuide />;
+		case "set-measurement-level":
+			return <SetMeasurementLevelGuide />;
+		case "sort-cases":
+			return <SortCasesGuide />;
+		case "sort-vars":
+			return <SortVarsGuide />;
+		case "transpose":
+			return <TransposeGuide />;
+		case "weight-cases":
+			return <WeightCasesGuide />;
+		default:
+			return <AggregateGuide />; // Show a default guide
+	}
 };
 
 export default function HelpPage() {
