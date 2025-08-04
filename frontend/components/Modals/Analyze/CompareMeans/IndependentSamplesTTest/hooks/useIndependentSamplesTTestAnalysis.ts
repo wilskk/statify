@@ -169,9 +169,9 @@ export const useIndependentSamplesTTestAnalysis = ({
                             await addStatistic(analyticId, {
                                 title: "Independent Samples Test",
                                 output_data: JSON.stringify({ tables: [formattedIndependentSamplesTestTable] }),
-                                    components: "Independent Samples Test",
-                                    description: ""
-                                });
+                                components: "Independent Samples Test",
+                                description: ""
+                            });
                         }
 
                         if (onClose) {

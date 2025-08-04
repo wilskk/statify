@@ -1,5 +1,6 @@
 import {
     TwoRelatedSamplesResults,
+    TwoRelatedSamplesResult,
     TwoRelatedSamplesTable,
     TableColumnHeader,
     TableRow,
@@ -15,18 +16,30 @@ import {
  * @returns Formatted table
  */
 export function formatRanksFrequenciesTable(
-    results: TwoRelatedSamplesResults,
+    results: any[],
     testType: string
 ): TwoRelatedSamplesTable {
     let title = "Frequencies";
     
-    if (!results || !results.ranksFrequencies || results.ranksFrequencies.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: title,
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
     }
+    
+    // Filter only test results (not descriptive statistics)
+    const testResults = results.filter(result => result.ranksFrequencies && !result.descriptiveStatistics);
+    
+    if (testResults.length === 0) {
+        return {
+            title: title,
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        };
+    }
+    
     let columnHeaders: TableColumnHeader[] = [
         { header: "", key: "rowHeader" },
         { header: "", key: "type" },
@@ -42,14 +55,14 @@ export function formatRanksFrequenciesTable(
     }
 
     const rows: TableRow[] = [];
-    results.ranksFrequencies.forEach((result) => {
-        const { variable1, variable2, ranksFrequencies } = result;
-        if (!variable1 || !variable2 || !ranksFrequencies) return;
+    testResults.forEach((result) => {
+        const { variable1, variable2, ranksFrequencies, metadata } = result;
+        if (!variable1 || !variable2 || !ranksFrequencies || metadata?.hasInsufficientData && metadata.insufficientType.includes('empty')) return;
 
         const { negative, positive, ties, total } = ranksFrequencies as RanksFrequencies;
 
         const label= `${variable1.label || variable1.name} - ${variable2.label || variable2.name}`;
-        const decimals = Math.max(variable1.decimals, variable2.decimals);
+        const decimals = Math.max(variable1.decimals || 0, variable2.decimals || 0);
         // For M-W, show Mean Rank and Sum of Ranks; for K-S, just N
         if (testType === "WILCOXON") {
             rows.push({
@@ -114,10 +127,24 @@ export function formatRanksFrequenciesTable(
  * @returns Formatted table
  */
 export function formatTestStatisticsTable (
-    results: TwoRelatedSamplesResults,
+    results: any[],
     testType: string
 ): TwoRelatedSamplesTable {
-    if (!results || (!results.testStatisticsWilcoxon && !results.testStatisticsSign)) {
+    if (!results || results.length === 0) {
+        return {
+            title: "No Data",
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        };
+    }
+    
+    // Filter only test results (not descriptive statistics)
+    const testResults = results.filter(result => 
+        (result.testStatisticsWilcoxon || result.testStatisticsSign) && 
+        !result.descriptiveStatistics
+    );
+    
+    if (testResults.length === 0) {
         return {
             title: "No Data",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -132,34 +159,35 @@ export function formatTestStatisticsTable (
     };
 
     // Add column headers for each variable
-    if (results.testStatisticsWilcoxon || results.testStatisticsSign) {
+    if (testType === "WILCOXON" || testType === "SIGN") {
         const zRow: TableRow = { rowHeader: ["Z"] };
         const pValueRow: TableRow = { rowHeader: ["P Value"] };
 
-        if (testType === "WILCOXON" && results.testStatisticsWilcoxon) {
-            results.testStatisticsWilcoxon.forEach((result, index) => {
-                if (result && result.variable1 && result.variable2 && result.testStatisticsWilcoxon) {
+        if (testType === "WILCOXON") {
+            testResults.forEach((result, index) => {
+                if (result && result.variable1 && result.variable2 && result.testStatisticsWilcoxon && !result.metadata?.insufficientType.includes('empty')) {
                     const stats = result.testStatisticsWilcoxon as TestStatistics;
+
                     table.columnHeaders.push({
                         header: `${result.variable1.label || result.variable1.name} - ${result.variable2.label || result.variable2.name}`,
                         key: `var_${index}`
                     });
-                    zRow[`var_${index}`] = formatNumber(stats.Z, 3);
-                    pValueRow[`var_${index}`] = formatPValue(stats.PValue);
+                    zRow[`var_${index}`] = formatNumber(stats.zValue, 3);
+                    pValueRow[`var_${index}`] = formatPValue(stats.pValue);
                 }
             });
         }
 
-        if (testType === "SIGN" && results.testStatisticsSign) {
-            results.testStatisticsSign.forEach((result, index) => {
-                if (result && result.variable1 && result.variable2 && result.testStatisticsSign) {
+        if (testType === "SIGN") {
+            testResults.forEach((result, index) => {
+                if (result && result.variable1 && result.variable2 && result.testStatisticsSign && !result.metadata?.insufficientType.includes('empty')) {
                     const stats = result.testStatisticsSign as TestStatistics;
                     table.columnHeaders.push({
                         header: `${result.variable1.label || result.variable1.name} - ${result.variable2.label || result.variable2.name}`,
                         key: `var_${index}`
                     });
-                    zRow[`var_${index}`] = formatNumber(stats.Z, 3);
-                    pValueRow[`var_${index}`] = formatPValue(stats.PValue);
+                    zRow[`var_${index}`] = formatNumber(stats.zValue, 3);
+                    pValueRow[`var_${index}`] = formatPValue(stats.pValue);
                 }
             });
         }
@@ -171,16 +199,27 @@ export function formatTestStatisticsTable (
 
 /**
  * Formats descriptive statistics table
- * @param results Chi Square results
+ * @param results Array of test results and descriptive statistics
  * @returns Formatted table
  */
 export function formatDescriptiveStatisticsTable (
-    results: TwoRelatedSamplesResults,
+    results: any[],
     displayStatistics?: DisplayStatistics
 ): TwoRelatedSamplesTable {
-    if (!results || !results.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "No Data",
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        };
+    }
+    
+    // Filter only descriptive statistics results
+    const descriptiveResults = results.filter(result => result.descriptiveStatistics);
+    
+    if (descriptiveResults.length === 0) {
+        return {
+            title: "No Descriptive Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
@@ -191,7 +230,6 @@ export function formatDescriptiveStatisticsTable (
         columnHeaders: [
             { header: '', key: 'rowHeader' },
             { header: 'N', key: 'N' }
-
         ],
         rows: []
     };
@@ -206,75 +244,38 @@ export function formatDescriptiveStatisticsTable (
     }
 
     if (displayStatistics?.quartiles) {
-        table.columnHeaders.push({
-            header: "Percentiles",
-            key: "percentiles",
-            children: [
-                { header: "25th", key: "Percentile25" },
-                { header: "50th (Median)", key: "Percentile50" },
-                { header: "75th", key: "Percentile75" }
-            ]
-        });
+        table.columnHeaders.push(
+            { header: "25th", key: "Percentile25" },
+            { header: "50th (Median)", key: "Percentile50" },
+            { header: "75th", key: "Percentile75" }
+        );
     }
 
-    // Collect all unique variables and their stats
-    const uniqueVariables = new Map();
-    
-    // First collect all variable1 entries
-    results.descriptiveStatistics.forEach((result) => {
-        const stats = result.descriptiveStatistics as DescriptiveStatistics;
-        const var1 = result.variable1;
+    // Process each descriptive statistics result
+    descriptiveResults.forEach((result) => {
+        const stats = result.descriptiveStatistics;
+        const variable = stats.variable1;
+        const decimals = variable.decimals || 0;
         
-        if (var1 && !uniqueVariables.has(var1.name)) {
-            uniqueVariables.set(var1.name, {
-                variable: var1,
-                N: stats.N1,
-                Mean: formatNumber(stats.Mean1, var1.decimals + 2),
-                StdDev: formatNumber(stats.StdDev1, var1.decimals + 3),
-                Min: formatNumber(stats.Min1, var1.decimals),
-                Max: formatNumber(stats.Max1, var1.decimals),
-                Percentile25: formatNumber(stats.Percentile25_1, var1.decimals),
-                Percentile50: formatNumber(stats.Percentile50_1, var1.decimals),
-                Percentile75: formatNumber(stats.Percentile75_1, var1.decimals)
-            });
+        const row: any = {
+            rowHeader: [variable.label || variable.name],
+            N: stats.N1,
+        };
+        
+        if (displayStatistics?.descriptive) {
+            row.Mean = formatNumber(stats.Mean1, decimals + 2);
+            row.StdDev = formatNumber(stats.StdDev1, decimals + 3);
+            row.Min = formatNumber(stats.Min1, decimals);
+            row.Max = formatNumber(stats.Max1, decimals);
         }
-    });
-    
-    // Then collect any variable2 entries not already included
-    results.descriptiveStatistics.forEach((result) => {
-        const stats = result.descriptiveStatistics as DescriptiveStatistics;
-        const var2 = result.variable2;
         
-        if (var2 && !uniqueVariables.has(var2.name)) {
-            uniqueVariables.set(var2.name, {
-                variable: var2,
-                N: stats.N2,
-                Mean: formatNumber(stats.Mean2, var2.decimals + 2),
-                StdDev: formatNumber(stats.StdDev2, var2.decimals + 3),
-                Min: formatNumber(stats.Min2, var2.decimals),
-                Max: formatNumber(stats.Max2, var2.decimals),
-                Percentile25: formatNumber(stats.Percentile25_2, var2.decimals),
-                Percentile50: formatNumber(stats.Percentile50_2, var2.decimals),
-                Percentile75: formatNumber(stats.Percentile75_2, var2.decimals)
-            });
+        if (displayStatistics?.quartiles) {
+            row.Percentile25 = formatNumber(stats.Percentile25_1, decimals);
+            row.Percentile50 = formatNumber(stats.Percentile50_1, decimals);
+            row.Percentile75 = formatNumber(stats.Percentile75_1, decimals);
         }
-    });
-    
-    // Add rows for each unique variable
-    uniqueVariables.forEach((stats, varName) => {
-        const decimals = stats.variable.decimals || 2;
         
-        table.rows.push({
-            rowHeader: [stats.variable.label || varName],
-            N: stats.N,
-            Mean: formatNumber(stats.Mean, decimals + 2),
-            StdDev: formatNumber(stats.StdDev, decimals + 3),
-            Min: formatNumber(stats.Min, decimals),
-            Max: formatNumber(stats.Max, decimals),
-            Percentile25: formatNumber(stats.Percentile25, decimals),
-            Percentile50: formatNumber(stats.Percentile50, decimals),
-            Percentile75: formatNumber(stats.Percentile75, decimals)
-        });
+        table.rows.push(row);
     });
 
     return table;

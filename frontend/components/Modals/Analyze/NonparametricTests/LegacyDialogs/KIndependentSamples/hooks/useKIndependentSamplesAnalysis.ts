@@ -27,40 +27,21 @@ export const useKIndependentSamplesAnalysis = ({
     displayStatistics,
     onClose
 }: KIndependentSamplesTestAnalysisProps) => {
+    const [isCalculating, setIsCalculating] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { data: analysisData } = useAnalysisData();
     
-    const [isCalculating, setIsCalculating] = useState(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    
     const workerRef = useRef<Worker | null>(null);
+    const workerPost = useRef<number>(0);
     
     const resultsRef = useRef<KIndependentSamplesTestResult[]>([]);
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
+    const insufficientDataVarsRef = useRef<{ variableName: string, variableLabel: string, insufficientType: string[] }[]>([]);
 
     const runAnalysis = useCallback(async (): Promise<void> => {
-        if (testVariables.length === 0) {
-            setErrorMsg('Please select at least one variable to analyze.');
-            return;
-        }
-
-        if (!groupingVariable) {
-            setErrorMsg("Please select a grouping variable.");
-            return;
-        }
-
-        if (minimum === null || maximum === null) {
-            setErrorMsg("Please define grouping variable range.");
-            return;
-        }
-
-        if (!testType.kruskalWallisH && !testType.median && 
-            !testType.jonckheereTerpstra) {
-            setErrorMsg("Please select at least one test type.");
-            return;
-        }
-
         setIsCalculating(true);
         setErrorMsg(null);
 
@@ -76,205 +57,86 @@ export const useKIndependentSamplesAnalysis = ({
         resultsRef.current = [];
         errorCountRef.current = 0;
         processedCountRef.current = 0;
+        insufficientDataVarsRef.current = [];
+        workerPost.current = 0;
 
         const worker = new Worker('/workers/NonparametricTests/manager.js', { type: 'module' });
         workerRef.current = worker;
 
-        let analysisTypes;
-        if (displayStatistics.descriptive || displayStatistics.quartiles) {
-            analysisTypes = ['descriptiveStatistics', 'kIndependentSamples'];
-        } else {
-            analysisTypes = ['kIndependentSamples'];
-        }
+        const groupingDataForVar = analysisData.map(row => row[groupingVariable!.columnIndex]);
 
         testVariables.forEach(variable => {
             const dataForVar = analysisData.map(row => row[variable.columnIndex]);
-            const groupingDataForVar = analysisData.map(row => row[groupingVariable.columnIndex]);
             const payload = {
-                analysisType: analysisTypes,
+                analysisType: ['kIndependentSamples'],
                 variable1: variable,
                 data1: dataForVar,
                 variable2: groupingVariable,
                 data2: groupingDataForVar,
-                options: { testType, displayStatistics, minimum, maximum }
+                options: { testType, minimum, maximum }
             };
             worker.postMessage(payload);
+            workerPost.current += 1;
+            if (displayStatistics.descriptive || displayStatistics.quartiles) {
+                const displayStatisticsPayload = {
+                    analysisType: ['descriptiveStatistics'],
+                    variable1: variable,
+                    data1: dataForVar,
+                    options: { displayStatistics }
+                };
+                worker.postMessage(displayStatisticsPayload);
+                workerPost.current += 1;
+            }
         });
+        if (displayStatistics.descriptive || displayStatistics.quartiles) {
+            const displayStatisticsPayload = {
+                analysisType: ['descriptiveStatistics'],
+                variable1: groupingVariable,
+                data1: groupingDataForVar,
+                options: { displayStatistics }
+            };
+            worker.postMessage(displayStatisticsPayload);
+            workerPost.current += 1;
+        }
 
         worker.onmessage = async (event) => {
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
-                if (results.descriptiveStatistics) {
-                    const { variable, N, Mean, StdDev, Min, Max, Percentile25, Percentile50, Percentile75 } = results.descriptiveStatistics;
-
-                    if (variable && N && Mean && StdDev && Min && Max && Percentile25 && Percentile50 && Percentile75) {
-                        resultsRef.current.push({
-                            variable,
-                            descriptiveStatistics: {
-                                N,
-                                Mean,
-                                StdDev,
-                                Min,
-                                Max,
-                                Percentile25,
-                                Percentile50,
-                                Percentile75
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
+                if (results.metadata && results.metadata.hasInsufficientData) {
+                    insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
+                    // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                 }
-
-                if (results.ranks) {
-                    const { variable, groups } = results.ranks;
-
-                    if (variable && Array.isArray(groups)) {
-                        resultsRef.current.push({
-                            variable,
-                            ranks: { groups }
-                        });
-                    } else {
-                        console.error(`Error processing ranks for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
-                }
-
-                if (results.testStatisticsKruskalWallisH) {
-                    const { variable, H, df, pValue } = results.testStatisticsKruskalWallisH;
-
-                    if (variable && H !== undefined && df !== undefined && pValue !== undefined) {
-                        resultsRef.current.push({
-                            variable,
-                            testStatisticsKruskalWallisH: {
-                                H,
-                                df,
-                                pValue
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing test statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
-                }
-
-                // if (results.frequencies) {
-                //     const { variable, group1, group2 } = results.frequencies;
-
-                //     if (variable && group1 && group2) {
-                //         resultsRef.current.push({
-                //             variable,
-                //             frequencies: {
-                //                 group1,
-                //                 group2
-                //             }
-                //         });
-                //     } else {
-                //         console.error(`Error processing test statistics for ${variableName}:`, workerError);
-                //         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                //         setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                //         errorCountRef.current += 1;
-                //     }
-                // }
-
-                // if (results.testStatisticsMedian) {
-                //     const { variable, N, Median, ChiSquare, df, pValue } = results.testStatisticsMedian;
-
-                //     if (variable && N && Median && ChiSquare && df && pValue) {
-                //         resultsRef.current.push({
-                //             variable,
-                //             testStatisticsMedian: {
-                //                 N,
-                //                 Median,
-                //                 ChiSquare,
-                //                 df,
-                //                 pValue
-                //             }
-                //         });
-                //     } else {
-                //         console.error(`Error processing test statistics for ${variableName}:`, workerError);
-                //         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                //         setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                //         errorCountRef.current += 1;
-                //     }
-                // }
-
-                // if (results.jonckheereTerpstraTest) {
-                //     const { variable, Levels, N, Observed, Mean, StdDev, Std, pValue } = results.jonckheereTerpstraTest;
-
-                //     if (variable && Levels && N && Observed && Mean && StdDev && Std && pValue) {
-                //         resultsRef.current.push({
-                //             variable,
-                //             jonckheereTerpstraTest: {
-                //                 Levels,
-                //                 N,
-                //                 Observed,
-                //                 Mean,
-                //                 StdDev,
-                //                 Std,
-                //                 pValue
-                //             }
-                //         });
-                //     } else {
-                //         console.error(`Error processing test statistics for ${variableName}:`, workerError);
-                //         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                //         setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                //         errorCountRef.current += 1;
-                //     }
-                // }
+                resultsRef.current.push(results);
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
                 const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
                 setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
                 errorCountRef.current += 1;
             }
-            console.log('[Results before] processedCountRef.current:', processedCountRef.current);
+            // console.log('[Results before] processedCountRef.current:', processedCountRef.current);
             processedCountRef.current += 1;
-            console.log('[Results after] processedCountRef.current:', processedCountRef.current);
+            // console.log('[Results after] processedCountRef.current:', processedCountRef.current, 'workerPost.current:', workerPost.current);
 
-            if (processedCountRef.current === testVariables.length) {
+            if (processedCountRef.current === workerPost.current) {
                 if (resultsRef.current.length > 0) {
                     try {
-                        const descriptiveStatistics = resultsRef.current.filter(r => 'descriptiveStatistics' in (r as any));
-                        const ranks = resultsRef.current.filter(r => 'ranks' in (r as any));
-                        const testStatisticsKruskalWallisH = resultsRef.current.filter(r => 'testStatisticsKruskalWallisH' in (r as any));
-                        // const frequencies = resultsRef.current.filter(r => 'frequencies' in (r as any));
-                        // const testStatisticsMedian = resultsRef.current.filter(r => 'testStatisticsMedian' in (r as any));
-                        // const jonckheereTerpstraTest = resultsRef.current.filter(r => 'jonckheereTerpstraTest' in (r as any));
-                      
-                        const results: KIndependentSamplesTestResults = {
-                            descriptiveStatistics,
-                            ranks,
-                            testStatisticsKruskalWallisH,
-                            // frequencies,
-                            // testStatisticsMedian,
-                            // jonckheereTerpstraTest
-                        };
-
-                        console.log('Results to format:', JSON.stringify(results));
+                        // console.log('Results to format:', JSON.stringify(resultsRef.current));
 
                         // Prepare log message
                         const variableNames = testVariables.map(v => v.name).join(" ");
                         let logMsg = `NPAR TESTS`;
 
                         if (testType.kruskalWallisH) {
-                            logMsg += `{K-W=${variableNames} BY ${groupingVariable.name}(${minimum} ${maximum})}`;
+                            logMsg += `{K-W=${variableNames} BY ${groupingVariable!.name}(${minimum} ${maximum})}`;
                         }
 
                         if (testType.median) {
-                            logMsg += `{MEDIAN=${variableNames} BY ${groupingVariable.name}(${minimum} ${maximum})}`;
+                            logMsg += `{MEDIAN=${variableNames} BY ${groupingVariable!.name}(${minimum} ${maximum})}`;
                         }
 
                         if (testType.jonckheereTerpstra) {
-                            logMsg += `{J-T=${variableNames} BY ${groupingVariable.name}(${minimum} ${maximum})}`;
+                            logMsg += `{J-T=${variableNames} BY ${groupingVariable!.name}(${minimum} ${maximum})}`;
                         }
 
                         if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
@@ -286,12 +148,36 @@ export const useKIndependentSamplesAnalysis = ({
 
                         // Save to database
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "K Independent Samples Test" });
+
+                        let kIndependentSamplesNote = "";
+                        let note = "";
+                        let typeToVars: Record<string, string[]> = {};
+                        if (insufficientDataVarsRef.current.length > 0) {
+                            kIndependentSamplesNote += "Note: "; 
+                            for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
+                                for (const type of insufficientType) {
+                                    if (!typeToVars[type]) typeToVars[type] = [];
+                                    typeToVars[type].push(variableLabel || variableName);
+                                }
+                            }
+                            if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+                                let testNames = [];
+                                if (testType.kruskalWallisH) testNames.push("Kruskal-Wallis H Test");
+                                if (testNames.length > 0) {
+                                    note += `Note: There are not enough valid cases to perform the ${testNames.join(" and ")} for ${typeToVars["empty"].join(", ")}. No statistics are computed.`;
+                                }
+                            }
+                            if (typeToVars["single"] && typeToVars["single"].length > 0) {
+                                kIndependentSamplesNote += `[Kruskal-Wallis H cannot be computed for variable(s): ${typeToVars["single"].join(", ")}. There is only one non-empty group.]`;
+                            }
+                        }
+
+                        const analyticId = await addAnalytic(logId, { title: "K Independent Samples Test", note: note || undefined });
 
                         // Add descriptive statistics table
-                         if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
-                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results, displayStatistics);
-                            console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
+                        if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
+                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current, displayStatistics);
+                            // console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
                        
                             await addStatistic(analyticId, {
                                 title: "Descriptive Statistics",
@@ -301,26 +187,29 @@ export const useKIndependentSamplesAnalysis = ({
                             });
                         }
 
-                        if (testType.kruskalWallisH) {
-                            const formattedRanksTable = formatRanksTable(results, groupingVariable.label || groupingVariable.name);
-                            console.log('Formatted ranks table:', JSON.stringify(formattedRanksTable));
+                        const empty = typeToVars["empty"] || [];
+                        if (testType.kruskalWallisH && empty.length !== testVariables.length) {
+                            const formattedRanksTable = formatRanksTable(resultsRef.current, groupingVariable!.label || groupingVariable!.name);
+                            // console.log('Formatted ranks table:', JSON.stringify(formattedRanksTable));
 
                             await addStatistic(analyticId, {
                                 title: "Ranks",
                                 output_data: JSON.stringify({ tables: [formattedRanksTable] }),
                                 components: "Kruskal-Wallis Test",
-                                description: ""
+                                description: kIndependentSamplesNote
                             });
 
-                            const formattedTestStatisticsTable = formatKruskalWallisHTestStatisticsTable(results);
-                            console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
+                            if (insufficientDataVarsRef.current.length < testVariables.length) {
+                                const formattedTestStatisticsTable = formatKruskalWallisHTestStatisticsTable(resultsRef.current);
+                                // console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
 
-                            await addStatistic(analyticId, {
-                                title: "Test Statistics",
-                                output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
-                                components: "Kruskal-Wallis Test",
-                                description: ""
-                            });
+                                await addStatistic(analyticId, {
+                                    title: "Test Statistics",
+                                    output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
+                                    components: "Kruskal-Wallis Test",
+                                    description: ""
+                                });
+                            }
                         }
 
                         // if (testType.median) {

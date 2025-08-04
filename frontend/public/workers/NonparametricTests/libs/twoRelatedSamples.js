@@ -36,6 +36,9 @@ class TwoRelatedSamplesCalculator {
         this.validData2 = [];
         this.N = 0;
 
+        this.hasInsufficientData = false;
+        this.insufficientType = [];
+
         /** @private */
         this.memo = {};
     }
@@ -68,6 +71,16 @@ class TwoRelatedSamplesCalculator {
         this.validData1 = pairs.map(p => p.value1);
         this.validData2 = pairs.map(p => p.value2);
         this.N = this.validData1.length;
+
+        if (this.N < 1) {
+            this.hasInsufficientData = true;
+            this.insufficientType.push('empty');
+        }
+        // If there are no differences between pairs (i.e., all value1 == value2), mark as insufficient data
+        if (this.N > 0 && this.validData1.every((v, i) => v === this.validData2[i])) {
+            this.hasInsufficientData = true;
+            this.insufficientType.push('no_difference');
+        }
 
         this.initialized = true;
     }
@@ -135,8 +148,6 @@ class TwoRelatedSamplesCalculator {
         const meanNegRank = nNeg > 0 ? sumNegRanks / nNeg : 0;
         
         const result = {
-            variable1: this.variable1,
-            variable2: this.variable2,
             negative: {
                 N: nNeg,
                 MeanRank: meanNegRank,
@@ -242,8 +253,6 @@ class TwoRelatedSamplesCalculator {
         if (pValue < 0) pValue = 0;
         
         const result = {
-            variable1: this.variable1,
-            variable2: this.variable2,
             zValue: zValue,
             pValue: pValue
         };
@@ -299,8 +308,6 @@ class TwoRelatedSamplesCalculator {
         if (pValue < 0) pValue = 0;
         
         const result = {
-            variable1: this.variable1,
-            variable2: this.variable2,
             n: n,
             zValue: zValue,
             pValue: pValue
@@ -323,9 +330,19 @@ class TwoRelatedSamplesCalculator {
         }
         
         return {
+            variable1: this.variable1,
+            variable2: this.variable2,
             ranksFrequencies,
             testStatisticsWilcoxon,
-            testStatisticsSign
+            testStatisticsSign,
+            metadata: {
+                hasInsufficientData: this.hasInsufficientData,
+                insufficientType: this.insufficientType,
+                variable1Label: this.variable1.label,
+                variable2Label: this.variable2.label,
+                variable1Name: this.variable1.name,
+                variable2Name: this.variable2.name,
+            }
         };
     }
 }

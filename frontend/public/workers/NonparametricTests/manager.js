@@ -141,24 +141,22 @@ onmessage = (event) => {
                 results.metadata = calculator.getOutput().metadata;
             } else if (type === 'kIndependentSamples') {
                 calculator = new CalculatorClass({ 
-                    variable: variable1, 
-                    data: data1, 
-                    groupingVariable: variable2, 
-                    groupingData: data2, 
+                    variable1, 
+                    data1, 
+                    variable2, 
+                    data2, 
                     options 
                 });
 
                 console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
                 console.log('[Worker] Ranks Results:', JSON.stringify(calculator.getOutput().ranks));
-                console.log('[Worker] Kruskal Wallis H Results:', JSON.stringify(calculator.getOutput().testStatistics));
-                console.log('[Worker] Frequencies Results:', JSON.stringify(calculator.getOutput().frequencies));
-                console.log('[Worker] Median Results:', JSON.stringify(calculator.getOutput().testStatisticsMedian));
-                console.log('[Worker] Jonckheere Terpstra Results:', JSON.stringify(calculator.getOutput().testStatisticsJonckheereTerpstra));
+                console.log('[Worker] Kruskal Wallis H Results:', JSON.stringify(calculator.getOutput().testStatisticsKruskalWallisH));
+                console.log('[Worker] Metadata Results:', JSON.stringify(calculator.getOutput().metadata));
+                results.variable1 = calculator.getOutput().variable1;
                 results.ranks = calculator.getOutput().ranks;
                 results.testStatisticsKruskalWallisH = calculator.getOutput().testStatisticsKruskalWallisH;
-                results.frequencies = calculator.getOutput().frequencies;
-                results.testStatisticsMedian = calculator.getOutput().testStatisticsMedian;
-                results.testStatisticsJonckheereTerpstra = calculator.getOutput().testStatisticsJonckheereTerpstra;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'twoRelatedSamples') {
                 calculator = new CalculatorClass({ 
                     variable1,
@@ -169,12 +167,18 @@ onmessage = (event) => {
                 });
 
                 console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
+                console.log('[Worker] Variable2:', JSON.stringify(calculator.getOutput().variable2));
                 console.log('[Worker] Ranks Frequencies Results:', JSON.stringify(calculator.getOutput().ranksFrequencies));
                 console.log('[Worker] Test Statistics Wilcoxon Results:', JSON.stringify(calculator.getOutput().testStatisticsWilcoxon));
                 console.log('[Worker] Test Statistics Sign Results:', JSON.stringify(calculator.getOutput().testStatisticsSign));
+                console.log('[Worker] Metadata Results:', JSON.stringify(calculator.getOutput().metadata));
+                results.variable1 = calculator.getOutput().variable1;
+                results.variable2 = calculator.getOutput().variable2;
                 results.ranksFrequencies = calculator.getOutput().ranksFrequencies;
                 results.testStatisticsWilcoxon = calculator.getOutput().testStatisticsWilcoxon;
                 results.testStatisticsSign = calculator.getOutput().testStatisticsSign;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'kRelatedSamples') {
                 calculator = new CalculatorClass({ 
                     batchVariable,
@@ -188,9 +192,11 @@ onmessage = (event) => {
                 console.log('[Worker] Ranks Results:', JSON.stringify(calculator.getOutput().ranks));
                 console.log('[Worker] Frequencies Results:', JSON.stringify(calculator.getOutput().frequencies));
                 console.log('[Worker] Test Statistics Results:', JSON.stringify(calculator.getOutput().testStatistics));
+                console.log('[Worker] Metadata Results:', JSON.stringify(calculator.getOutput().metadata));
                 results.ranks = calculator.getOutput().ranks;
                 results.frequencies = calculator.getOutput().frequencies;
                 results.testStatistics = calculator.getOutput().testStatistics;
+                results.metadata = calculator.getOutput().metadata;
             } else {
                 calculator = new CalculatorClass({ 
                     variable: variable1, 
