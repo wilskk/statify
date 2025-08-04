@@ -91,3 +91,5 @@ _tes/
 /_skripsi penulisan
 /frontend/coverage
 frontend/.trae/rules/project_rules.md
+/testing/reports
+/testing/test-results
