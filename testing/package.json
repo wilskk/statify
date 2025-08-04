@@ -13,6 +13,15 @@
     "test:performance": "k6 run testing/performance/scenarios/load-test.js",
     "test:performance:smoke": "k6 run testing/performance/scenarios/smoke-test.js",
     "test:performance:stress": "k6 run testing/performance/scenarios/stress-test.js",
+    "test:performance:specific-pages": "k6 run testing/performance/load-tests/frontend/specific-pages-load-test.js",
+    "test:performance:dashboard-data": "k6 run --env SCENARIO=dashboard_data_load testing/performance/load-tests/frontend/specific-pages-load-test.js",
+    "test:performance:help-page": "k6 run --env SCENARIO=help_page_load testing/performance/load-tests/frontend/specific-pages-load-test.js",
+    "test:performance:landing-page": "k6 run --env SCENARIO=landing_page_load testing/performance/load-tests/frontend/specific-pages-load-test.js",
+    
+    "test:performance:sav-small-read": "k6 run --env OPERATION_TYPE=read --env FILE_SIZE=small testing/performance/load-tests/backend/sav-small-files-test.js",
+    "test:performance:sav-small-download": "k6 run --env OPERATION_TYPE=download --env FILE_SIZE=small testing/performance/load-tests/backend/sav-small-files-test.js",
+    "test:performance:sav-large-read": "k6 run --env OPERATION_TYPE=read --env FILE_SIZE=large testing/performance/load-tests/backend/sav-large-files-only-test.js",
+    "test:performance:sav-large-download": "k6 run --env OPERATION_TYPE=download --env FILE_SIZE=large testing/performance/load-tests/backend/sav-large-files-only-test.js",
     
     "test:unit": "jest --config=testing/unit/jest.config.js",
     "test:integration": "jest --config=testing/integration/jest.config.js",

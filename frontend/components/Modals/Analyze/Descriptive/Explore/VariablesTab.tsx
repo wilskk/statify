@@ -34,6 +34,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     // --- Adapt props for VariableListManager ---
     const variableIdKeyToUse: keyof Variable = 'id';
+    
+    // Filter to show only NUMERIC variables in available list
+    const filteredAvailableVariables = availableVariables.filter(variable => variable.type === 'NUMERIC');
 
     // 1. Configure the target lists
     const targetLists: TargetListConfig[] = [
@@ -102,7 +105,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
         <div data-testid="explore-variables-tab-content">
             <div id="explore-variable-lists" data-testid="explore-variable-lists" className="relative">
                 <VariableListManager
-                    availableVariables={availableVariables}
+                    availableVariables={filteredAvailableVariables}
                     targetLists={targetLists}
                     variableIdKey={variableIdKeyToUse}
                     highlightedVariable={managerHighlightedVariable}

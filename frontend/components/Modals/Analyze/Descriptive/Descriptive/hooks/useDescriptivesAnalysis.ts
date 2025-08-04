@@ -64,7 +64,7 @@ export const useDescriptivesAnalysis = ({
         const workerClient = createPooledWorkerClient('descriptives');
         workerClientRef.current = workerClient;
 
-        // Kirim payload untuk setiap variabel
+        // Send payload for each variable
         selectedVariables.forEach(variable => {
             const dataForVar = analysisData.map(row => row[variable.columnIndex]);
             const payload = {

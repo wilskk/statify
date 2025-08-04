@@ -9,8 +9,8 @@ interface ZScoreProcessingParams {
 }
 
 /**
- * Hook terisolasi untuk menangani semua logika yang berkaitan dengan
- * pemrosesan dan penyimpanan data Z-score yang diterima dari worker.
+ * Isolated hook to handle all logic related to
+ * processing and storing Z-score data received from worker.
  */
 export const useZScoreProcessing = ({ setErrorMsg }: ZScoreProcessingParams) => {
     const processZScoreData = useCallback(async (zScoreData: ZScoreData | null): Promise<number> => {
@@ -82,4 +82,4 @@ export const useZScoreProcessing = ({ setErrorMsg }: ZScoreProcessingParams) => 
     }, [setErrorMsg]);
 
     return { processZScoreData };
-}; 
+};
