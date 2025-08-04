@@ -131,6 +131,6 @@ export const formatExtremeValuesTable = (
     title: 'Extreme Values',
     columnHeaders,
     rows,
-    footnotes: footnotes.length > 0 ? footnotes : undefined,
+    footer: footnotes.length > 0 ? footnotes : undefined,
   };
-}; 
+};

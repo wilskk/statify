@@ -248,7 +248,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                     ...variable,
                     decimals: 2, // Use consistent 2 decimal places for all statistics
                 },
-                data: allData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
+                data: allData.map(row => row[variable.columnIndex]) as (string | number | null | undefined)[],
             })),
             weightVariableData: weights,
             options: {
