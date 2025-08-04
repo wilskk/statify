@@ -13,7 +13,7 @@ export const EMMeans: React.FC = () => {
     return (
         <HelpContentWrapper
             title="GLM Univariate: Estimated Marginal Means (EM Means)"
-            description="Penjelasan lengkap tentang perhitungan Estimated Marginal Means dalam analisis GLM Univariate."
+            description="Complete explanation of Estimated Marginal Means calculation in GLM Univariate analysis."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
@@ -23,11 +23,10 @@ export const EMMeans: React.FC = () => {
                             Estimated Marginal Means (EM Means)
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            EM Means adalah rata-rata yang disesuaikan untuk
-                            setiap level faktor, mengontrol efek variabel lain
-                            dalam model. Ini memberikan perbandingan yang adil
-                            antar kelompok dengan menghilangkan bias dari desain
-                            tidak seimbang.
+                            EM Means are adjusted means for each factor level,
+                            controlling for the effects of other variables in
+                            the model. They provide fair comparisons between
+                            groups by removing bias from unbalanced designs.
                         </AlertDescription>
                     </div>
                 </div>
@@ -36,139 +35,145 @@ export const EMMeans: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <Calculator className="h-6 w-6" />
-                    Konsep Dasar EM Means
+                    Basic Concepts of EM Means
                 </h2>
 
                 <p>
-                    Estimated Marginal Means (EM Means) adalah rata-rata yang
-                    diprediksi untuk setiap kombinasi level faktor setelah
-                    mengontrol efek variabel lain dalam model. EM Means dihitung
-                    sebagai kombinasi linear dari parameter model menggunakan
-                    vektor-L.
+                    Estimated Marginal Means (EM Means) are predicted means for
+                    each combination of factor levels after controlling for the
+                    effects of other variables in the model. EM Means are
+                    calculated as linear combinations of model parameters using
+                    L-vectors.
                 </p>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Formula Umum EM Means:</h4>
+                    <h4 className="font-bold mb-2">
+                        General EM Means Formula:
+                    </h4>
                     <div className="text-center text-lg font-mono">
                         <strong>EM Mean = L' × β̂</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>L'</strong> = transpose dari vektor-L
-                            (koefisien kombinasi linear)
+                            <strong>L'</strong> = transpose of L-vector (linear
+                            combination coefficients)
                         </li>
                         <li>
-                            <strong>β̂</strong> = vektor estimasi parameter dari
-                            model
+                            <strong>β̂</strong> = vector of estimated parameters
+                            from the model
                         </li>
                         <li>
                             <strong>EM Mean</strong> = Estimated Marginal Mean
-                            untuk kombinasi level tertentu
+                            for specific level combination
                         </li>
                     </ul>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Layers className="h-6 w-6" />
-                    Alur Proses Perhitungan EM Means
+                    EM Means Calculation Process
                 </h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah dalam calculate_EM Means:
+                        Steps in calculate_EM Means:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Persiapan Desain:</strong> Membuat
-                            matriks desain, vektor respons, dan bobot
+                            <strong>1. Design Preparation:</strong> Create
+                            design matrix, response vector, and weights
                         </li>
                         <li>
-                            <strong>2. Ekstraksi Informasi Model:</strong>{" "}
-                            Mendapatkan nama parameter dan mempersiapkan data
-                            kovariat
+                            <strong>2. Extract Model Information:</strong> Get
+                            parameter names and prepare covariate data
                         </li>
                         <li>
-                            <strong>3. Perhitungan Matriks:</strong> Membuat
-                            matriks cross-product (Z'Z)
+                            <strong>3. Matrix Calculation:</strong> Create
+                            cross-product matrix (Z'Z)
                         </li>
                         <li>
-                            <strong>4. Solusi Model:</strong> Melakukan SWEEP
-                            untuk mendapatkan β̂, G⁻¹, dan SSE
+                            <strong>4. Model Solution:</strong> Perform SWEEP to
+                            obtain β̂, G⁻¹, and SSE
                         </li>
                         <li>
-                            <strong>5. Perhitungan Statistik Dasar:</strong>{" "}
-                            Menghitung MSE dan df_error
+                            <strong>5. Basic Statistics Calculation:</strong>{" "}
+                            Calculate MSE and df_error
                         </li>
                         <li>
-                            <strong>6. Ekstraksi Faktor:</strong>{" "}
-                            Mengidentifikasi semua faktor dan levelnya
+                            <strong>6. Extract Factors:</strong> Identify all
+                            factors and their levels
                         </li>
                         <li>
-                            <strong>7. Iterasi & Perhitungan EM Means:</strong>{" "}
-                            Untuk setiap efek yang diminta
+                            <strong>
+                                7. Iteration & EM Means Calculation:
+                            </strong>{" "}
+                            For each requested effect
                         </li>
                         <li>
-                            <strong>8. Agregasi Hasil:</strong> Mengumpulkan
-                            semua hasil ke dalam struktur EM MeansResult
+                            <strong>8. Aggregate Results:</strong> Collect all
+                            results into EM MeansResult structure
                         </li>
                     </ol>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <BarChart3 className="h-6 w-6" />
-                    Konstruksi Vektor-L untuk EM Means
+                    L-Vector Construction for EM Means
                 </h2>
 
                 <p>
-                    Vektor-L mendefinisikan cara menghitung satu EM Mean
-                    spesifik. Setiap vektor-L memiliki panjang yang sama dengan
-                    jumlah parameter model dan menentukan koefisien untuk setiap
-                    parameter.
+                    The L-vector defines how to calculate one specific EM Mean.
+                    Each L-vector has the same length as the number of model
+                    parameters and determines coefficients for each parameter.
                 </p>
 
-                <h3>Aturan Konstruksi Vektor-L</h3>
+                <h3>L-Vector Construction Rules</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>Intercept:</strong> Koefisien selalu 1.0
+                            <strong>Intercept:</strong> Coefficient always 1.0
                         </div>
                         <div>
-                            <strong>Kovariat:</strong> Koefisien adalah nilai
-                            rata-rata kovariat
+                            <strong>Covariates:</strong> Coefficient is
+                            covariate mean
                         </div>
                         <div>
-                            <strong>Faktor yang dispesifikasikan:</strong>{" "}
-                            Koefisien 1.0 jika level cocok, 0.0 jika tidak
+                            <strong>Specified factors:</strong> Coefficient 1.0
+                            if level matches, 0.0 if not
                         </div>
                         <div>
-                            <strong>Faktor yang dirata-ratakan:</strong>{" "}
-                            Koefisien adalah 1.0 / jumlah level
+                            <strong>Averaged factors:</strong> Coefficient is
+                            1.0 / number of levels
                         </div>
                         <div>
-                            <strong>Interaksi:</strong> Koefisien adalah produk
-                            dari koefisien komponennya
+                            <strong>Interactions:</strong> Coefficient is
+                            product of component coefficients
                         </div>
                     </div>
                 </div>
 
-                <h3>Contoh Konstruksi Vektor-L</h3>
+                <h3>L-Vector Construction Example</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Untuk EM Mean: gender=Pria, pendidikan=SMA
+                        For EM Mean: gender=Male, education=High School
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-1">
                         <div>• Intercept: 1.0</div>
-                        <div>• gender=Pria: 1.0 (level cocok)</div>
-                        <div>• gender=Wanita: 0.0 (level tidak cocok)</div>
-                        <div>• pendidikan=SMA: 1.0 (level cocok)</div>
-                        <div>• pendidikan=S1: 0.0 (level tidak cocok)</div>
-                        <div>• kovariat: rata-rata kovariat</div>
-                        <div>• interaksi: produk dari koefisien komponen</div>
+                        <div>• gender=Male: 1.0 (level matches)</div>
+                        <div>• gender=Female: 0.0 (level doesn't match)</div>
+                        <div>• education=High School: 1.0 (level matches)</div>
+                        <div>
+                            • education=Bachelor: 0.0 (level doesn't match)
+                        </div>
+                        <div>• covariates: covariate means</div>
+                        <div>
+                            • interactions: product of component coefficients
+                        </div>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Perhitungan Statistik EM Means</h2>
+                <h2 className="mt-8">EM Means Statistics Calculation</h2>
 
                 <h3>Estimated Marginal Mean (EM Mean)</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
@@ -176,28 +181,28 @@ export const EMMeans: React.FC = () => {
                         <strong>EM Mean = L' × β̂</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Nilai rata-rata marginal yang diprediksi untuk kombinasi
-                        level tertentu
+                        Predicted marginal mean value for specific level
+                        combination
                     </p>
                 </div>
 
-                <h3>Standard Error (SE) dari EM Mean</h3>
+                <h3>Standard Error (SE) of EM Mean</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>SE = √(L' × G⁻¹ × L × MSE)</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>G⁻¹</strong> = generalized inverse dari
-                            matriks (X'X)
+                            <strong>G⁻¹</strong> = generalized inverse of matrix
+                            (X'X)
                         </li>
                         <li>
                             <strong>MSE</strong> = Mean Squared Error
                         </li>
                         <li>
-                            <strong>SE</strong> = mengukur variabilitas atau
-                            ketidakpastian dari estimasi EM Mean
+                            <strong>SE</strong> = measures variability or
+                            uncertainty of EM Mean estimate
                         </li>
                     </ul>
                 </div>
@@ -207,17 +212,17 @@ export const EMMeans: React.FC = () => {
                     <div className="text-center text-lg font-mono">
                         <strong>CI = EM Mean ± (t_critical × SE)</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>t_critical</strong> = nilai t kritis dari
-                            distribusi-t
+                            <strong>t_critical</strong> = critical t-value from
+                            t-distribution
                         </li>
                         <li>
                             <strong>df</strong> = degrees of freedom error
                         </li>
                         <li>
-                            <strong>α</strong> = tingkat signifikansi
+                            <strong>α</strong> = significance level
                         </li>
                     </ul>
                 </div>
@@ -225,9 +230,9 @@ export const EMMeans: React.FC = () => {
                 <h2 className="mt-8">Pairwise Comparisons</h2>
 
                 <p>
-                    Perbandingan berpasangan membandingkan EM Means dari setiap
-                    pasangan level dalam suatu efek utama untuk mengetahui
-                    apakah ada perbedaan yang signifikan.
+                    Pairwise comparisons compare EM Means of each pair of levels
+                    within a main effect to determine if there are significant
+                    differences.
                 </p>
 
                 <h3>Mean Difference</h3>
@@ -239,7 +244,7 @@ export const EMMeans: React.FC = () => {
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Selisih estimasi rata-rata antara dua level
+                        Difference in estimated means between two levels
                     </p>
                 </div>
 
@@ -251,7 +256,7 @@ export const EMMeans: React.FC = () => {
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Mengukur ketidakpastian dari selisih rata-rata
+                        Measures uncertainty of mean difference
                     </p>
                 </div>
 
@@ -270,20 +275,20 @@ export const EMMeans: React.FC = () => {
                         </div>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Dilakukan penyesuaian untuk perbandingan ganda
-                        menggunakan metode Bonferroni, Sidak, atau LSD
+                        Adjustment for multiple comparisons using Bonferroni,
+                        Sidak, or LSD methods
                     </p>
                 </div>
 
                 <h3>Multiple Comparison Adjustments</h3>
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Metode Penyesuaian:
+                        Adjustment Methods:
                     </h4>
                     <div className="text-sm text-blue-700 space-y-2">
                         <div>
-                            <strong>Bonferroni:</strong> α' = α / C (C = jumlah
-                            perbandingan)
+                            <strong>Bonferroni:</strong> α' = α / C (C = number
+                            of comparisons)
                         </div>
                         <div>
                             <strong>Sidak:</strong> α' = 1 - (1 - α)^(1/C)
@@ -297,9 +302,9 @@ export const EMMeans: React.FC = () => {
                 <h2 className="mt-8">Univariate Tests</h2>
 
                 <p>
-                    Uji univariat melakukan uji-F untuk efek utama, menguji
-                    hipotesis nol bahwa semua EM Means untuk level-level dari
-                    efek tersebut adalah sama.
+                    Univariate tests perform F-tests for main effects, testing
+                    the null hypothesis that all EM Means for levels of that
+                    effect are equal.
                 </p>
 
                 <h3>Sum of Squares for Hypothesis (SSH)</h3>
@@ -308,7 +313,7 @@ export const EMMeans: React.FC = () => {
                         <strong>SSH = (Lβ̂)' × (L × G⁻¹ × L')⁻¹ × (Lβ̂)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        L adalah matriks kontras yang menguji perbedaan antar EM
+                        L is the contrast matrix testing differences between EM
                         Means
                     </p>
                 </div>
@@ -319,7 +324,7 @@ export const EMMeans: React.FC = () => {
                         <strong>MSH = SSH / df_hypothesis</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        df_hypothesis = jumlah level - 1
+                        df_hypothesis = number of levels - 1
                     </p>
                 </div>
 
@@ -329,8 +334,8 @@ export const EMMeans: React.FC = () => {
                         <strong>F = MSH / MSE</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Statistik uji yang membandingkan variasi antar grup
-                        dengan variasi dalam grup
+                        Test statistic comparing between-group variation with
+                        within-group variation
                     </p>
                 </div>
 
@@ -340,8 +345,8 @@ export const EMMeans: React.FC = () => {
                         <strong>η²ₚ = SSH / (SSH + SSE)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Ukuran efek yang menunjukkan proporsi variasi yang dapat
-                        dijelaskan oleh efek utama
+                        Effect size measure showing proportion of variation
+                        explained by main effect
                     </p>
                 </div>
 
@@ -352,15 +357,15 @@ export const EMMeans: React.FC = () => {
                             Power = P(F {">"} F_critical | F ~ F(df₁, df₂, λ))
                         </strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>λ</strong> = parameter non-sentralitas = F ×
+                            <strong>λ</strong> = noncentrality parameter = F ×
                             df_hypothesis
                         </li>
                         <li>
-                            <strong>F_critical</strong> = nilai F kritis untuk α
-                            dan df
+                            <strong>F_critical</strong> = critical F-value for α
+                            and df
                         </li>
                     </ul>
                 </div>
@@ -368,70 +373,71 @@ export const EMMeans: React.FC = () => {
                 <h2 className="mt-8">Grand Mean</h2>
 
                 <p>
-                    Grand Mean adalah rata-rata keseluruhan yang dihitung dengan
-                    merata-ratakan semua efek faktor dan menggunakan rata-rata
-                    kovariat.
+                    Grand Mean is the overall mean calculated by averaging all
+                    factor effects and using covariate means.
                 </p>
 
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Konstruksi Vektor-L untuk Grand Mean:
+                        L-Vector Construction for Grand Mean:
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-1">
                         <div>• Intercept: 1.0</div>
-                        <div>• Kovariat: rata-rata kovariat</div>
+                        <div>• Covariates: covariate means</div>
                         <div>
-                            • Faktor: 1.0 / jumlah level (untuk merata-ratakan)
+                            • Factors: 1.0 / number of levels (for averaging)
                         </div>
-                        <div>• Interaksi: produk dari koefisien komponen</div>
+                        <div>
+                            • Interactions: product of component coefficients
+                        </div>
                     </div>
                 </div>
 
                 <h2 className="mt-8">Non-Estimable EM Means</h2>
 
                 <p>
-                    EM Mean yang tidak dapat diestimasi terjadi ketika vektor-L
-                    berisi semua nol, yang berarti kombinasi level tersebut
-                    tidak dapat dihitung secara unik dari data.
+                    Non-estimable EM Means occur when the L-vector contains all
+                    zeros, meaning that level combination cannot be uniquely
+                    calculated from the data.
                 </p>
 
                 <div className="bg-red-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-red-800 mb-2">
-                        Kondisi Non-Estimable:
+                        Non-Estimable Conditions:
                     </h4>
                     <ul className="text-sm text-red-700 space-y-1">
                         <li>
-                            • Kombinasi level yang tidak ada dalam data (missing
+                            • Level combinations not present in data (missing
                             cells)
                         </li>
-                        <li>• Desain yang tidak seimbang dengan sel kosong</li>
-                        <li>• Model yang overparameterized</li>
-                        <li>• Kovariat dengan nilai yang tidak valid</li>
+                        <li>• Unbalanced design with empty cells</li>
+                        <li>• Overparameterized model</li>
+                        <li>• Covariates with invalid values</li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Interpretasi Hasil</h2>
+                <h2 className="mt-8">Interpreting Results</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
-                            EM Mean Signifikan
+                            Significant EM Mean
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• CI tidak mengandung 0</li>
-                            <li>• SE relatif kecil</li>
-                            <li>• Estimasi stabil</li>
+                            <li>• CI does not contain 0</li>
+                            <li>• SE relatively small</li>
+                            <li>• Stable estimate</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">
-                            EM Mean Non-Estimable
+                            Non-Estimable EM Mean
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Ditampilkan sebagai NaN</li>
-                            <li>• Vektor-L semua nol</li>
-                            <li>• Kombinasi level tidak ada dalam data</li>
+                            <li>• Displayed as NaN</li>
+                            <li>• L-vector all zeros</li>
+                            <li>• Level combination not in data</li>
                         </ul>
                     </div>
 
@@ -440,9 +446,9 @@ export const EMMeans: React.FC = () => {
                             Pairwise Comparison
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• p-value {"<"} 0.05: signifikan</li>
-                            <li>• CI tidak mengandung 0</li>
-                            <li>• Perbedaan praktis penting</li>
+                            <li>• p-value {"<"} 0.05: significant</li>
+                            <li>• CI does not contain 0</li>
+                            <li>• Practically important difference</li>
                         </ul>
                     </div>
 
@@ -453,54 +459,52 @@ export const EMMeans: React.FC = () => {
                         <ul className="text-sm text-yellow-700 space-y-1">
                             <li>• F-value {">"} F_critical</li>
                             <li>• p-value {"<"} 0.05</li>
-                            <li>• η²ₚ menunjukkan effect size</li>
+                            <li>• η²ₚ shows effect size</li>
                         </ul>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Aplikasi Praktis</h2>
+                <h2 className="mt-8">Practical Applications</h2>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">
-                        Kapan Menggunakan EM Means:
-                    </h4>
+                    <h4 className="font-bold mb-2">When to Use EM Means:</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
                         <li>
-                            • <strong>Desain tidak seimbang:</strong> Ketika
-                            jumlah observasi berbeda antar sel
+                            • <strong>Unbalanced design:</strong> When number of
+                            observations differs across cells
                         </li>
                         <li>
-                            • <strong>Model dengan kovariat:</strong> Untuk
-                            mengontrol efek variabel kontinu
+                            • <strong>Models with covariates:</strong> To
+                            control for continuous variable effects
                         </li>
                         <li>
-                            • <strong>Interaksi signifikan:</strong> Untuk
-                            memahami efek utama dalam konteks interaksi
+                            • <strong>Significant interactions:</strong> To
+                            understand main effects in interaction context
                         </li>
                         <li>
-                            • <strong>Missing cells:</strong> Ketika beberapa
-                            kombinasi level tidak ada dalam data
+                            • <strong>Missing cells:</strong> When some level
+                            combinations are not present in data
                         </li>
                         <li>
-                            • <strong>Perbandingan adil:</strong> Untuk
-                            membandingkan kelompok dengan cara yang fair
+                            • <strong>Fair comparisons:</strong> To compare
+                            groups in a fair manner
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
-                        <code>rust/src/stats/EM Means.rs</code> - Implementasi
-                        perhitungan EM Means
+                        <code>rust/src/stats/EM Means.rs</code> - EM Means
+                        calculation implementation
                     </li>
                     <li>
-                        <code>rust/src/models/result.rs</code> - Struktur hasil
-                        EM Means
+                        <code>rust/src/models/result.rs</code> - EM Means result
+                        structures
                     </li>
                     <li>
-                        <code>rust/src/stats/core.rs</code> - Fungsi bantu
-                        perhitungan
+                        <code>rust/src/stats/core.rs</code> - Helper calculation
+                        functions
                     </li>
                 </ul>
             </div>

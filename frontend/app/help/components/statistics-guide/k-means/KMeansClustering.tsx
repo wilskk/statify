@@ -7,15 +7,13 @@ import {
     BarChart3,
     TrendingUp,
     Target,
-    Layers,
-    Repeat,
 } from "lucide-react";
 
 export const KMeansClustering: React.FC = () => {
     return (
         <HelpContentWrapper
             title="K-Means Clustering"
-            description="Penjelasan lengkap tentang algoritma K-Means clustering untuk pengelompokan data."
+            description="Complete explanation of the K-Means clustering algorithm for data grouping."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
@@ -25,9 +23,10 @@ export const KMeansClustering: React.FC = () => {
                             K-Means Clustering
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            Algoritma K-Means secara iteratif memperbarui posisi
-                            pusat cluster untuk meminimalkan jarak total antara
-                            titik data dan pusat cluster terdekatnya.
+                            The K-Means algorithm iteratively updates cluster
+                            center positions to minimize the total distance
+                            between data points and their nearest cluster
+                            centers.
                         </AlertDescription>
                     </div>
                 </div>
@@ -36,78 +35,74 @@ export const KMeansClustering: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <Target className="h-6 w-6" />
-                    Konsep Dasar K-Means
+                    Basic Concepts of K-Means
                 </h2>
 
                 <p>
-                    K-Means adalah algoritma clustering yang membagi data
-                    menjadi K kelompok berdasarkan kemiripan. Setiap kelompok
-                    memiliki pusat (centroid) yang merepresentasikan rata-rata
-                    dari semua titik data dalam kelompok tersebut.
+                    K-Means is a clustering algorithm that divides data into K
+                    groups based on similarity. Each group has a center
+                    (centroid) that represents the average of all data points in
+                    that group.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
-                            Tujuan K-Means
+                            K-Means Objectives
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Meminimalkan within-cluster variance</li>
-                            <li>• Memaksimalkan between-cluster separation</li>
-                            <li>• Mengelompokkan data yang mirip</li>
-                            <li>• Menemukan pola tersembunyi</li>
+                            <li>• Minimize within-cluster variance</li>
+                            <li>• Maximize between-cluster separation</li>
+                            <li>• Group similar data</li>
+                            <li>• Discover hidden patterns</li>
                         </ul>
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <h4 className="font-bold text-blue-800 mb-2">
-                            Karakteristik
+                            Characteristics
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Algoritma iteratif</li>
-                            <li>• Berbasis jarak Euclidean</li>
-                            <li>• Konvergen ke minimum lokal</li>
-                            <li>• Sensitif terhadap inisialisasi</li>
+                            <li>• Iterative algorithm</li>
+                            <li>• Based on Euclidean distance</li>
+                            <li>• Converges to local minimum</li>
+                            <li>• Sensitive to initialization</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Calculator className="h-6 w-6" />
-                    Algoritma K-Means
+                    K-Means Algorithm
                 </h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah dalam generate_final_cluster_centers:
+                        Steps in generate_final_cluster_centers:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Inisialisasi Pusat Cluster:</strong>{" "}
-                            Tentukan posisi awal pusat cluster
+                            <strong>1. Initialize Cluster Centers:</strong>{" "}
+                            Determine initial positions of cluster centers
                         </li>
                         <li>
-                            <strong>2. Hitung Ambang Batas Konvergensi:</strong>{" "}
-                            Berdasarkan jarak minimum antar pusat awal
+                            <strong>2. Calculate Convergence Threshold:</strong>{" "}
+                            Based on minimum distance between initial centers
                         </li>
                         <li>
-                            <strong>3. Iterasi Assignment & Update:</strong>{" "}
-                            Assign titik ke cluster terdekat dan update pusat
+                            <strong>3. Iterate Assignment & Update:</strong>{" "}
+                            Assign points to nearest cluster and update centers
                         </li>
                         <li>
-                            <strong>4. Cek Konvergensi:</strong> Bandingkan
-                            perubahan posisi pusat dengan ambang batas
-                        </li>
-                        <li>
-                            <strong>5. Format Hasil:</strong> Konversi matriks
-                            ke HashMap untuk kemudahan penggunaan
+                            <strong>4. Check Convergence:</strong> Compare
+                            center position changes with threshold
                         </li>
                     </ol>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <BarChart3 className="h-6 w-6" />
-                    Metode Inisialisasi
+                    Initialization Methods
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
@@ -116,10 +111,10 @@ export const KMeansClustering: React.FC = () => {
                             Random Initialization
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Pilih K titik secara acak</li>
-                            <li>• Sederhana dan cepat</li>
-                            <li>• Hasil tidak konsisten</li>
-                            <li>• Dapat terjebak di minimum lokal</li>
+                            <li>• Select K points randomly</li>
+                            <li>• Simple and fast</li>
+                            <li>• Inconsistent results</li>
+                            <li>• Can get trapped in local minima</li>
                         </ul>
                     </div>
 
@@ -128,34 +123,34 @@ export const KMeansClustering: React.FC = () => {
                             K-Means++
                         </h4>
                         <ul className="text-sm text-purple-700 space-y-1">
-                            <li>• Probabilistik selection</li>
-                            <li>• Pusat awal lebih terpisah</li>
-                            <li>• Konvergensi lebih cepat</li>
-                            <li>• Hasil lebih konsisten</li>
+                            <li>• Probabilistic selection</li>
+                            <li>• Initial centers more separated</li>
+                            <li>• Faster convergence</li>
+                            <li>• More consistent results</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <TrendingUp className="h-6 w-6" />
-                    Perhitungan Jarak
+                    Distance Calculation
                 </h2>
 
-                <h3>Jarak Euclidean</h3>
+                <h3>Euclidean Distance</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>d(x, y) = √(Σ(xᵢ - yᵢ)²)</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>x, y</strong> = vektor data
+                            <strong>x, y</strong> = data vectors
                         </li>
                         <li>
-                            <strong>i</strong> = dimensi ke-i
+                            <strong>i</strong> = i-th dimension
                         </li>
                         <li>
-                            <strong>d</strong> = jarak Euclidean
+                            <strong>d</strong> = Euclidean distance
                         </li>
                     </ul>
                 </div>
@@ -166,8 +161,8 @@ export const KMeansClustering: React.FC = () => {
                         <strong>c(x) = argmin_k ||x - μ_k||²</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Setiap titik data di-assign ke cluster dengan pusat
-                        terdekat
+                        Each data point is assigned to the cluster with the
+                        nearest center
                     </p>
                 </div>
 
@@ -177,12 +172,12 @@ export const KMeansClustering: React.FC = () => {
                         <strong>μ_k = (1/|C_k|) × Σ_{"x∈C_k"} x</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Pusat cluster diperbarui sebagai rata-rata dari semua
-                        titik dalam cluster
+                        Cluster center is updated as the average of all points
+                        in the cluster
                     </p>
                 </div>
 
-                <h2 className="mt-8">Dua Mode Update</h2>
+                <h2 className="mt-8">Two Update Modes</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -190,10 +185,10 @@ export const KMeansClustering: React.FC = () => {
                             Running Means
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Update pusat secara incremental</li>
+                            <li>• Update centers incrementally</li>
                             <li>• μ_new = μ_old + (x - μ_old) / n</li>
-                            <li>• Lebih efisien memori</li>
-                            <li>• Cocok untuk data besar</li>
+                            <li>• More memory efficient</li>
+                            <li>• Suitable for large datasets</li>
                         </ul>
                     </div>
 
@@ -202,17 +197,17 @@ export const KMeansClustering: React.FC = () => {
                             Batch Update
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Update pusat setelah semua assignment</li>
+                            <li>• Update centers after all assignments</li>
                             <li>• μ = (1/|C|) x Σ_{"x∈C"} x</li>
-                            <li>• Lebih akurat</li>
-                            <li>• Standar K-Means</li>
+                            <li>• More accurate</li>
+                            <li>• Standard K-Means</li>
                         </ul>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Kriteria Konvergensi</h2>
+                <h2 className="mt-8">Convergence Criteria</h2>
 
-                <h3>Perhitungan Ambang Batas</h3>
+                <h3>Threshold Calculation</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>
@@ -220,109 +215,106 @@ export const KMeansClustering: React.FC = () => {
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Ambang batas dihitung berdasarkan jarak minimum antar
-                        pusat cluster awal
+                        Threshold is calculated based on minimum distance
+                        between initial cluster centers
                     </p>
                 </div>
 
-                <h3>Kondisi Berhenti</h3>
+                <h3>Stopping Conditions</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Algoritma berhenti ketika:
+                        Algorithm stops when:
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-1">
-                        <li>• max_change ≤ threshold (konvergensi tercapai)</li>
+                        <li>• max_change ≤ threshold (convergence achieved)</li>
                         <li>
-                            • iterasi ≥ max_iterations (maksimum iterasi
-                            tercapai)
+                            • iterations ≥ max_iterations (maximum iterations
+                            reached)
                         </li>
-                        <li>
-                            • Tidak ada perubahan assignment (konvergensi
-                            sempurna)
-                        </li>
+                        <li>• No assignment changes (perfect convergence)</li>
                     </ul>
                 </div>
 
-                <h3>Perhitungan Perubahan Maksimum</h3>
+                <h3>Maximum Change Calculation</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>max_change = max(||μ_new - μ_old||)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Perubahan maksimum adalah jarak Euclidean terbesar
-                        antara pusat lama dan baru
+                        Maximum change is the largest Euclidean distance between
+                        old and new centers
                     </p>
                 </div>
 
-                <h2 className="mt-8">Jarak Antar Pusat Cluster</h2>
+                <h2 className="mt-8">Distance Between Cluster Centers</h2>
 
-                <h3>Matriks Jarak</h3>
+                <h3>Distance Matrix</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>D[i][j] = ||μ_i - μ_j||</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Matriks simetris yang menunjukkan jarak Euclidean antar
-                        pusat cluster
+                        Symmetric matrix showing Euclidean distances between
+                        cluster centers
                     </p>
                 </div>
 
-                <h3>Interpretasi Matriks Jarak</h3>
+                <h3>Distance Matrix Interpretation</h3>
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Interpretasi nilai jarak:
+                        Distance value interpretation:
                     </h4>
                     <ul className="text-sm text-blue-700 space-y-1">
                         <li>
-                            • <strong>D[i][j] = 0:</strong> i = j (jarak ke diri
-                            sendiri)
+                            • <strong>D[i][j] = 0:</strong> i = j (distance to
+                            self)
                         </li>
                         <li>
-                            • <strong>D[i][j] kecil:</strong> Cluster i dan j
-                            berdekatan
+                            • <strong>D[i][j] small:</strong> Clusters i and j
+                            are close
                         </li>
                         <li>
-                            • <strong>D[i][j] besar:</strong> Cluster i dan j
-                            terpisah jauh
+                            • <strong>D[i][j] large:</strong> Clusters i and j
+                            are far apart
                         </li>
                         <li>
-                            • <strong>D[i][j] = D[j][i]:</strong> Matriks
-                            simetris
+                            • <strong>D[i][j] = D[j][i]:</strong> Symmetric
+                            matrix
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Praktik Terbaik</h2>
+                <h2 className="mt-8">Best Practices</h2>
 
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Tips untuk hasil optimal:
+                        Tips for optimal results:
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-2">
                         <li>
-                            <strong>1. Normalisasi Data:</strong> Standarisasi
-                            variabel untuk menghindari bias skala
+                            <strong>1. Data Normalization:</strong> Standardize
+                            variables to avoid scale bias
                         </li>
                         <li>
-                            <strong>2. Multiple Runs:</strong> Jalankan
-                            algoritma beberapa kali dengan inisialisasi berbeda
+                            <strong>2. Multiple Runs:</strong> Run algorithm
+                            multiple times with different initializations
                         </li>
                         <li>
-                            <strong>3. Elbow Method:</strong> Gunakan untuk
-                            menentukan K optimal
+                            <strong>3. Elbow Method:</strong> Use to determine
+                            optimal K
                         </li>
                         <li>
-                            <strong>4. Validasi Silhouette:</strong> Evaluasi
-                            kualitas clustering
+                            <strong>4. Silhouette Validation:</strong> Evaluate
+                            clustering quality
                         </li>
                         <li>
-                            <strong>5. Interpretasi Domain:</strong>{" "}
-                            Pertimbangkan konteks bisnis
+                            <strong>5. Domain Interpretation:</strong> Consider
+                            business context
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
                         <code>

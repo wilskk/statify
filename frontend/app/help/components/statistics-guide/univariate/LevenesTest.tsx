@@ -13,7 +13,7 @@ export const LevenesTest: React.FC = () => {
     return (
         <HelpContentWrapper
             title="GLM Univariate: Levene's Test"
-            description="Penjelasan lengkap tentang uji Levene untuk homogenitas varians dalam analisis GLM Univariate."
+            description="Complete explanation of Levene's test for homogeneity of variances in GLM Univariate analysis."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
@@ -23,9 +23,10 @@ export const LevenesTest: React.FC = () => {
                             Levene's Test
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            Uji Levene digunakan untuk memeriksa apakah varians
-                            dari variabel dependen sama di semua kelompok.
-                            Asumsi homogenitas varians penting untuk ANOVA.
+                            Levene's test is used to check whether the variances
+                            of the dependent variable are equal across all
+                            groups. The assumption of homogeneity of variances
+                            is important for ANOVA.
                         </AlertDescription>
                     </div>
                 </div>
@@ -34,136 +35,135 @@ export const LevenesTest: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <Calculator className="h-6 w-6" />
-                    Konsep Dasar Levene's Test
+                    Basic Concepts of Levene's Test
                 </h2>
 
                 <p>
-                    Levene's Test menguji hipotesis nol bahwa varians populasi
-                    sama di semua kelompok. Ini adalah asumsi penting untuk
-                    analisis parametrik seperti ANOVA.
+                    Levene's Test tests the null hypothesis that population
+                    variances are equal across all groups. This is an important
+                    assumption for parametric analyses such as ANOVA.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
-                            Hipotesis Nol (H₀)
+                            Null Hypothesis (H₀)
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
                             <li>• σ₁² = σ₂² = ... = σₖ²</li>
-                            <li>• Varians sama di semua kelompok</li>
-                            <li>• Asumsi homogenitas terpenuhi</li>
+                            <li>• Variances equal across all groups</li>
+                            <li>• Homogeneity assumption satisfied</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">
-                            Hipotesis Alternatif (H₁)
+                            Alternative Hypothesis (H₁)
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• σᵢ² ≠ σⱼ² untuk setidaknya satu pasangan</li>
-                            <li>• Varians tidak sama di semua kelompok</li>
-                            <li>• Asumsi homogenitas dilanggar</li>
+                            <li>• σᵢ² ≠ σⱼ² for at least one pair</li>
+                            <li>• Variances not equal across all groups</li>
+                            <li>• Homogeneity assumption violated</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <BarChart3 className="h-6 w-6" />
-                    Variasi Levene's Test
+                    Levene's Test Variations
                 </h2>
 
                 <p>
-                    Levene's Test memiliki beberapa variasi yang berbeda dalam
-                    cara menghitung titik pusat (center) untuk deviasi absolut:
+                    Levene's Test has several variations that differ in how they
+                    calculate the center point for absolute deviations:
                 </p>
 
-                <h3>1. Berdasarkan Rata-rata (Mean)</h3>
+                <h3>1. Based on Mean</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Zᵢⱼ = |Yᵢⱼ - Ȳᵢ|</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Menggunakan rata-rata sebagai pengganti median
+                        Uses mean as substitute for median
                     </p>
                 </div>
 
-                <h3>2. Berdasarkan Median</h3>
+                <h3>2. Based on Median</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Zᵢⱼ = |Yᵢⱼ - Mᵢ|</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Menggunakan median (sama dengan Levene's Test standar)
+                        Uses median (same as standard Levene's Test)
                     </p>
                 </div>
 
-                <h3>3. Berdasarkan Median dengan Adjusted df</h3>
+                <h3>3. Based on Median with Adjusted df</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Zᵢⱼ = |Yᵢⱼ - Mᵢ|</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Menggunakan median dengan penyesuaian degrees of freedom
+                        Uses median with adjusted degrees of freedom
                         (Brown-Forsythe)
                     </p>
                 </div>
 
-                <h3>4. Berdasarkan Trimmed Mean</h3>
+                <h3>4. Based on Trimmed Mean</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Zᵢⱼ = |Yᵢⱼ - Ȳᵢ(trimmed)|</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Menggunakan trimmed mean (rata-rata setelah
-                        menghilangkan outlier)
+                        Uses trimmed mean (mean after removing outliers)
                     </p>
                 </div>
 
-                <h2 className="mt-8">Langkah-langkah Perhitungan</h2>
+                <h2 className="mt-8">Calculation Steps</h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Algoritma Levene's Test:
+                        Levene's Test Algorithm:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Menghitung Median Kelompok</strong>
+                            <strong>1. Calculate Group Medians</strong>
                             <br />
-                            Mᵢ = median dari kelompok ke-i
+                            Mᵢ = median of group i
                         </li>
                         <li>
-                            <strong>2. Menghitung Absolute Deviations</strong>
+                            <strong>2. Calculate Absolute Deviations</strong>
                             <br />
                             Zᵢⱼ = |Yᵢⱼ - Mᵢ|
                         </li>
                         <li>
-                            <strong>3. Menghitung Rata-rata Deviations</strong>
+                            <strong>3. Calculate Mean Deviations</strong>
                             <br />
-                            Z̄ᵢ = rata-rata Zᵢⱼ untuk kelompok ke-i
+                            Z̄ᵢ = mean of Zᵢⱼ for group i
                         </li>
                         <li>
-                            <strong>4. Menghitung Statistik F</strong>
-                            <br />F = MSB / MSW untuk Zᵢⱼ
+                            <strong>4. Calculate F Statistic</strong>
+                            <br />F = MSB / MSW for Zᵢⱼ
                         </li>
                     </ol>
                 </div>
 
-                <h2 className="mt-8">Formula Matematika</h2>
+                <h2 className="mt-8">Mathematical Formulas</h2>
 
-                <h3>Statistik F</h3>
+                <h3>F Statistic</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>F = MSB / MSW</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>MSB</strong> = Mean Square Between (antar
-                            kelompok)
+                            <strong>MSB</strong> = Mean Square Between (between
+                            groups)
                         </li>
                         <li>
-                            <strong>MSW</strong> = Mean Square Within (dalam
-                            kelompok)
+                            <strong>MSW</strong> = Mean Square Within (within
+                            groups)
                         </li>
                     </ul>
                 </div>
@@ -181,23 +181,22 @@ export const LevenesTest: React.FC = () => {
                             <strong>SST = SSB + SSW</strong>
                         </div>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>nᵢ</strong> = jumlah observasi dalam
-                            kelompok ke-i
+                            <strong>nᵢ</strong> = number of observations in
+                            group i
                         </li>
                         <li>
-                            <strong>Z̄ᵢ</strong> = rata-rata deviasi absolut
-                            kelompok ke-i
+                            <strong>Z̄ᵢ</strong> = mean absolute deviation of
+                            group i
                         </li>
                         <li>
-                            <strong>Z̄</strong> = rata-rata deviasi absolut
-                            keseluruhan
+                            <strong>Z̄</strong> = overall mean absolute deviation
                         </li>
                         <li>
-                            <strong>Zᵢⱼ</strong> = deviasi absolut observasi
-                            ke-j dalam kelompok ke-i
+                            <strong>Zᵢⱼ</strong> = absolute deviation of
+                            observation j in group i
                         </li>
                     </ul>
                 </div>
@@ -206,24 +205,24 @@ export const LevenesTest: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>df₁ = k - 1</strong> (antar kelompok)
+                            <strong>df₁ = k - 1</strong> (between groups)
                         </div>
                         <div>
-                            <strong>df₂ = N - k</strong> (dalam kelompok)
+                            <strong>df₂ = N - k</strong> (within groups)
                         </div>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>k</strong> = jumlah kelompok
+                            <strong>k</strong> = number of groups
                         </li>
                         <li>
-                            <strong>N</strong> = total observasi
+                            <strong>N</strong> = total observations
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Interpretasi Hasil</h2>
+                <h2 className="mt-8">Interpreting Results</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -231,10 +230,10 @@ export const LevenesTest: React.FC = () => {
                             p-value {">"} 0.05
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Gagal menolak H₀</li>
-                            <li>• Varians homogen</li>
-                            <li>• ANOVA dapat digunakan</li>
-                            <li>• Asumsi terpenuhi</li>
+                            <li>• Fail to reject H₀</li>
+                            <li>• Homogeneous variances</li>
+                            <li>• ANOVA can be used</li>
+                            <li>• Assumption satisfied</li>
                         </ul>
                     </div>
 
@@ -243,42 +242,42 @@ export const LevenesTest: React.FC = () => {
                             p-value {"<"} 0.05
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Menolak H₀</li>
-                            <li>• Varians tidak homogen</li>
-                            <li>• Pertimbangkan alternatif</li>
-                            <li>• Asumsi dilanggar</li>
+                            <li>• Reject H₀</li>
+                            <li>• Non-homogeneous variances</li>
+                            <li>• Consider alternatives</li>
+                            <li>• Assumption violated</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="mt-8">
-                    Alternatif Ketika Varians Tidak Homogen
+                    Alternatives When Variances Are Not Homogeneous
                 </h2>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Solusi untuk Heteroskedastisitas:
+                        Solutions for Heteroscedasticity:
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-2">
                         <li>
-                            <strong>1. Welch's ANOVA:</strong> Tidak memerlukan
-                            asumsi homogenitas varians
+                            <strong>1. Welch's ANOVA:</strong> Does not require
+                            homogeneity of variances assumption
                         </li>
                         <li>
-                            <strong>2. Transformasi Data:</strong> Log, square
-                            root, atau transformasi lain
+                            <strong>2. Data Transformation:</strong> Log, square
+                            root, or other transformations
                         </li>
                         <li>
-                            <strong>3. Robust Methods:</strong> Menggunakan
-                            metode yang tahan terhadap pelanggaran asumsi
+                            <strong>3. Robust Methods:</strong> Use methods
+                            resistant to assumption violations
                         </li>
                         <li>
                             <strong>4. Non-parametric Tests:</strong>{" "}
-                            Kruskal-Wallis atau Mann-Whitney U
+                            Kruskal-Wallis or Mann-Whitney U
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Tabel Hasil</h2>
+                <h2 className="mt-8">Results Table</h2>
 
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-sm border border-gray-300">
@@ -334,19 +333,19 @@ export const LevenesTest: React.FC = () => {
                     </table>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
-                        <code>rust/src/wasm/function.rs</code> - Fungsi
+                        <code>rust/src/wasm/function.rs</code> - Function
                         calculate_levene_test
                     </li>
                     <li>
-                        <code>rust/src/stats/core.rs</code> - Implementasi
-                        perhitungan Levene's Test
+                        <code>rust/src/stats/core.rs</code> - Levene's Test
+                        calculation implementation
                     </li>
                     <li>
-                        <code>rust/src/models/result.rs</code> - Struktur hasil
-                        Levene's Test
+                        <code>rust/src/models/result.rs</code> - Levene's Test
+                        result structures
                     </li>
                 </ul>
             </div>

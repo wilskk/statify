@@ -14,7 +14,7 @@ export const ContrastFactors: React.FC = () => {
     return (
         <HelpContentWrapper
             title="GLM Univariate: Contrast Factors"
-            description="Penjelasan lengkap tentang contrast factors, metode kontras, dan pengujian hipotesis dalam analisis GLM Univariate."
+            description="Complete explanation of contrast factors, contrast methods, and hypothesis testing in GLM Univariate analysis."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
@@ -24,11 +24,10 @@ export const ContrastFactors: React.FC = () => {
                             Contrast Factors
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            Contrast factors memungkinkan pengujian hipotesis
-                            spesifik tentang perbedaan antar level faktor.
-                            Metode kontras yang berbeda memberikan cara yang
-                            berbeda untuk membandingkan level-level dalam
-                            faktor.
+                            Contrast factors enable specific hypothesis testing
+                            about differences between factor levels. Different
+                            contrast methods provide different ways to compare
+                            levels within factors.
                         </AlertDescription>
                     </div>
                 </div>
@@ -37,38 +36,38 @@ export const ContrastFactors: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <Target className="h-6 w-6" />
-                    Konsep Dasar Contrast Factors
+                    Basic Concepts of Contrast Factors
                 </h2>
 
                 <p>
-                    Contrast factors adalah teknik untuk menguji hipotesis
-                    spesifik tentang perbedaan antar level dalam faktor. Kontras
-                    memungkinkan kita untuk menguji perbandingan yang bermakna
-                    secara teoritis daripada hanya menguji perbedaan umum.
+                    Contrast factors are techniques for testing specific
+                    hypotheses about differences between levels within a factor.
+                    Contrasts allow us to test theoretically meaningful
+                    comparisons rather than just testing general differences.
                 </p>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Model Kontras Umum:</h4>
+                    <h4 className="font-bold mb-2">General Contrast Model:</h4>
                     <div className="text-center text-lg font-mono">
                         <strong>ψ = L'β</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>ψ</strong> = nilai kontras
+                            <strong>ψ</strong> = contrast value
                         </li>
                         <li>
-                            <strong>L'</strong> = vektor koefisien kontras
+                            <strong>L'</strong> = contrast coefficient vector
                         </li>
                         <li>
-                            <strong>β</strong> = vektor parameter model
+                            <strong>β</strong> = model parameter vector
                         </li>
                     </ul>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Calculator className="h-6 w-6" />
-                    Metode Kontras
+                    Contrast Methods
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
@@ -77,28 +76,26 @@ export const ContrastFactors: React.FC = () => {
                             Deviation
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Membandingkan level dengan grand mean</li>
+                            <li>• Compare levels with grand mean</li>
                             <li>
-                                • Koefisien: 1 untuk level fokus, -1/k untuk
-                                lainnya
+                                • Coefficients: 1 for target level, -1/k for
+                                others
                             </li>
-                            <li>• Referensi: First atau Last</li>
-                            <li>• Jumlah kontras: k-1</li>
+                            <li>• Reference: First or Last</li>
+                            <li>• Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <h4 className="font-bold text-blue-800 mb-2">Simple</h4>
                         <ul className="text-sm text-blue-700 space-y-1">
+                            <li>• Compare levels with reference level</li>
                             <li>
-                                • Membandingkan level dengan level referensi
+                                • Coefficients: 1 for target level, -1 for
+                                reference
                             </li>
-                            <li>
-                                • Koefisien: 1 untuk level fokus, -1 untuk
-                                referensi
-                            </li>
-                            <li>• Referensi: First atau Last</li>
-                            <li>• Jumlah kontras: k-1</li>
+                            <li>• Reference: First or Last</li>
+                            <li>• Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
@@ -107,26 +104,26 @@ export const ContrastFactors: React.FC = () => {
                             Difference
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Level_i vs mean level sebelumnya</li>
+                            <li>• Level_i vs mean of previous levels</li>
                             <li>
-                                • Koefisien: 1 untuk level_i, -1/i untuk level
+                                • Coefficients: 1 for level_i, -1/i for levels
                                 1..i-1
                             </li>
-                            <li>• Tidak memerlukan referensi</li>
-                            <li>• Jumlah kontras: k-1</li>
+                            <li>• No reference required</li>
+                            <li>• Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">Helmert</h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Level_i vs mean level berikutnya</li>
+                            <li>• Level_i vs mean of subsequent levels</li>
                             <li>
-                                • Koefisien: 1 untuk level_i, -1/(k-i) untuk
-                                level i+1..k
+                                • Coefficients: 1 for level_i, -1/(k-i) for
+                                levels i+1..k
                             </li>
-                            <li>• Tidak memerlukan referensi</li>
-                            <li>• Jumlah kontras: k-1</li>
+                            <li>• No reference required</li>
+                            <li>• Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
@@ -137,11 +134,11 @@ export const ContrastFactors: React.FC = () => {
                         <ul className="text-sm text-purple-700 space-y-1">
                             <li>• Level_i vs level_{`i + 1`}</li>
                             <li>
-                                • Koefisien: 1 untuk level_i, -1 untuk level_
+                                • Coefficients: 1 for level_i, -1 for level_
                                 {`i + 1`}
                             </li>
-                            <li>• Tidak memerlukan referensi</li>
-                            <li>• Jumlah kontras: k-1</li>
+                            <li>• No reference required</li>
+                            <li>• Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
@@ -150,72 +147,71 @@ export const ContrastFactors: React.FC = () => {
                             Polynomial
                         </h4>
                         <ul className="text-sm text-indigo-700 space-y-1">
-                            <li>• Trend linear (hanya degree 1)</li>
+                            <li>• Linear trend (degree 1 only)</li>
                             <li>
-                                • Koefisien: nilai terpusat dan ternormalisasi
+                                • Coefficients: centered and normalized values
                             </li>
-                            <li>• Tidak memerlukan referensi</li>
-                            <li>• Jumlah kontras: 1 (jika k ≥ 2)</li>
+                            <li>• No reference required</li>
+                            <li>• Number of contrasts: 1 (if k ≥ 2)</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <BarChart3 className="h-6 w-6" />
-                    Konstruksi L-Matrix
+                    L-Matrix Construction
                 </h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah dalam
-                        generate_l_matrix_and_descriptions:
+                        Steps in generate_l_matrix_and_descriptions:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Parse Spesifikasi:</strong> Ekstrak nama
-                            faktor, metode, dan referensi
+                            <strong>1. Parse Specification:</strong> Extract
+                            factor name, method, and reference
                         </li>
                         <li>
-                            <strong>2. Tentukan Jumlah Kontras:</strong>{" "}
-                            Berdasarkan metode dan jumlah level
+                            <strong>2. Determine Number of Contrasts:</strong>{" "}
+                            Based on method and number of levels
                         </li>
                         <li>
-                            <strong>3. Inisialisasi Matriks L:</strong> Matriks
-                            kosong dengan dimensi yang sesuai
+                            <strong>3. Initialize L Matrix:</strong> Empty
+                            matrix with appropriate dimensions
                         </li>
                         <li>
-                            <strong>4. Generate Koefisien:</strong> Untuk setiap
-                            kontras berdasarkan metode
+                            <strong>4. Generate Coefficients:</strong> For each
+                            contrast based on method
                         </li>
                         <li>
-                            <strong>5. Averaging Logic:</strong> Untuk faktor
-                            lain dalam parameter
+                            <strong>5. Averaging Logic:</strong> For other
+                            factors in parameters
                         </li>
                         <li>
-                            <strong>6. Generate Deskripsi:</strong> Label dan
-                            deskripsi untuk setiap kontras
+                            <strong>6. Generate Descriptions:</strong> Labels
+                            and descriptions for each contrast
                         </li>
                     </ol>
                 </div>
 
-                <h3>Formula Koefisien Kontras</h3>
+                <h3>Contrast Coefficient Formulas</h3>
 
                 <h4>Deviation Contrast</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>Untuk k = 2:</strong>
+                            <strong>For k = 2:</strong>
                         </div>
                         <div>
-                            • Level target: 0.5 (jika ref = Last) atau -0.5
-                            (jika ref = First)
+                            • Target level: 0.5 (if ref = Last) or -0.5 (if ref
+                            = First)
                         </div>
-                        <div>• Level lainnya: -0.5 atau 0.5</div>
+                        <div>• Other level: -0.5 or 0.5</div>
                         <div>
-                            <strong>Untuk k {">"} 2:</strong>
+                            <strong>For k {">"} 2:</strong>
                         </div>
-                        <div>• Level fokus: 1 - 1/k</div>
-                        <div>• Level lainnya: -1/k</div>
+                        <div>• Target level: 1 - 1/k</div>
+                        <div>• Other levels: -1/k</div>
                     </div>
                 </div>
 
@@ -223,11 +219,11 @@ export const ContrastFactors: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>Koefisien:</strong>
+                            <strong>Coefficients:</strong>
                         </div>
-                        <div>• Level fokus: 1.0</div>
-                        <div>• Level referensi: -1.0</div>
-                        <div>• Level lainnya: 0.0</div>
+                        <div>• Target level: 1.0</div>
+                        <div>• Reference level: -1.0</div>
+                        <div>• Other levels: 0.0</div>
                     </div>
                 </div>
 
@@ -235,11 +231,11 @@ export const ContrastFactors: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>Untuk level_{`i + 1`}:</strong>
+                            <strong>For level_{`i + 1`}:</strong>
                         </div>
                         <div>• Level_{`i + 1`}: 1.0</div>
-                        <div>• Level 1..i: -1/i</div>
-                        <div>• Level i+2..k: 0.0</div>
+                        <div>• Levels 1..i: -1/i</div>
+                        <div>• Levels i+2..k: 0.0</div>
                     </div>
                 </div>
 
@@ -247,11 +243,11 @@ export const ContrastFactors: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>Untuk level_i:</strong>
+                            <strong>For level_i:</strong>
                         </div>
                         <div>• Level_i: 1.0</div>
-                        <div>• Level i+1..k: -1/(k-i)</div>
-                        <div>• Level 1..i-1: 0.0</div>
+                        <div>• Levels i+1..k: -1/(k-i)</div>
+                        <div>• Levels 1..i-1: 0.0</div>
                     </div>
                 </div>
 
@@ -259,11 +255,11 @@ export const ContrastFactors: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>Untuk level_i vs level_{`i + 1`}:</strong>
+                            <strong>For level_i vs level_{`i + 1`}:</strong>
                         </div>
                         <div>• Level_i: 1.0</div>
                         <div>• Level_{`i + 1`}: -1.0</div>
-                        <div>• Level lainnya: 0.0</div>
+                        <div>• Other levels: 0.0</div>
                     </div>
                 </div>
 
@@ -273,23 +269,23 @@ export const ContrastFactors: React.FC = () => {
                         <div>
                             <strong>Linear Trend:</strong>
                         </div>
-                        <div>• x_i = i - (k-1)/2 (nilai terpusat)</div>
-                        <div>• Normalisasi: x_i / √(Σx_i²)</div>
+                        <div>• x_i = i - (k-1)/2 (centered values)</div>
+                        <div>• Normalized: x_i / √(Σx_i²)</div>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <TrendingUp className="h-6 w-6" />
-                    Pengujian Hipotesis Kontras
+                    Contrast Hypothesis Testing
                 </h2>
 
-                <h3>Estimasi Kontras</h3>
+                <h3>Contrast Estimation</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>ψ̂ = L'β̂</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Estimasi kontras menggunakan estimasi parameter dari
+                        Contrast estimation using parameter estimates from the
                         model
                     </p>
                 </div>
@@ -300,18 +296,18 @@ export const ContrastFactors: React.FC = () => {
                         <strong>SE(ψ̂) = √(L'G⁻¹L × MSE)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Standard error kontras menggunakan generalized inverse
-                        dan MSE
+                        Standard error of contrast using generalized inverse and
+                        MSE
                     </p>
                 </div>
 
-                <h3>Statistik t</h3>
+                <h3>t-Statistic</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>t = ψ̂ / SE(ψ̂)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Statistik t untuk menguji H₀: ψ = 0
+                        t-statistic for testing H₀: ψ = 0
                     </p>
                 </div>
 
@@ -321,11 +317,11 @@ export const ContrastFactors: React.FC = () => {
                         <strong>CI = ψ̂ ± t_critical × SE(ψ̂)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Confidence interval untuk nilai kontras yang sebenarnya
+                        Confidence interval for the true contrast value
                     </p>
                 </div>
 
-                <h2 className="mt-8">Pengujian F untuk Set Kontras</h2>
+                <h2 className="mt-8">F-Test for Contrast Sets</h2>
 
                 <h3>Sum of Squares Hypothesis (SSH)</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
@@ -333,7 +329,7 @@ export const ContrastFactors: React.FC = () => {
                         <strong>SSH = (Lβ̂)'(LG⁻¹L')⁻¹(Lβ̂)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Sum of squares untuk set kontras
+                        Sum of squares for contrast set
                     </p>
                 </div>
 
@@ -343,21 +339,21 @@ export const ContrastFactors: React.FC = () => {
                         <strong>MSH = SSH / df_hypothesis</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Dimana df_hypothesis = jumlah kontras
+                        Where df_hypothesis = number of contrasts
                     </p>
                 </div>
 
-                <h3>Statistik F</h3>
+                <h3>F-Statistic</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>F = MSH / MSE</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Statistik F untuk menguji signifikansi set kontras
+                        F-statistic for testing significance of contrast set
                     </p>
                 </div>
 
-                <h2 className="mt-8">Effect Size dan Power</h2>
+                <h2 className="mt-8">Effect Size and Power</h2>
 
                 <h3>Partial Eta Squared</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
@@ -365,7 +361,7 @@ export const ContrastFactors: React.FC = () => {
                         <strong>η²ₚ = SSH / (SSH + SSE)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Effect size untuk set kontras
+                        Effect size for contrast set
                     </p>
                 </div>
 
@@ -375,7 +371,7 @@ export const ContrastFactors: React.FC = () => {
                         <strong>λ = F × df_hypothesis</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Parameter noncentral untuk perhitungan power
+                        Noncentrality parameter for power calculation
                     </p>
                 </div>
 
@@ -385,130 +381,121 @@ export const ContrastFactors: React.FC = () => {
                         <strong>Power = P(F {">"} F_critical | λ)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Power observasi untuk set kontras
+                        Observed power for contrast set
                     </p>
                 </div>
 
-                <h2 className="mt-8">Aplikasi Praktis</h2>
+                <h2 className="mt-8">Practical Applications</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
-                            Kapan Menggunakan Deviation
+                            When to Use Deviation
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>
-                                • Ingin membandingkan dengan rata-rata
-                                keseluruhan
-                            </li>
-                            <li>
-                                • Level referensi tidak memiliki makna khusus
-                            </li>
-                            <li>• Fokus pada deviasi dari grand mean</li>
+                            <li>• Want to compare with overall average</li>
+                            <li>• Reference level has no special meaning</li>
+                            <li>• Focus on deviations from grand mean</li>
                         </ul>
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <h4 className="font-bold text-blue-800 mb-2">
-                            Kapan Menggunakan Simple
+                            When to Use Simple
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Ada level kontrol atau baseline</li>
-                            <li>• Ingin membandingkan dengan level tertentu</li>
-                            <li>• Level referensi memiliki makna teoritis</li>
+                            <li>• There is a control or baseline level</li>
+                            <li>• Want to compare with specific level</li>
+                            <li>• Reference level has theoretical meaning</li>
                         </ul>
                     </div>
 
                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                         <h4 className="font-bold text-yellow-800 mb-2">
-                            Kapan Menggunakan Helmert
+                            When to Use Helmert
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Level memiliki urutan natural</li>
-                            <li>
-                                • Ingin membandingkan dengan level berikutnya
-                            </li>
-                            <li>• Cocok untuk variabel ordinal</li>
+                            <li>• Levels have natural ordering</li>
+                            <li>• Want to compare with subsequent levels</li>
+                            <li>• Suitable for ordinal variables</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">
-                            Kapan Menggunakan Polynomial
+                            When to Use Polynomial
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Level memiliki urutan numerik</li>
-                            <li>• Ingin menguji trend linear</li>
-                            <li>• Variabel interval atau rasio</li>
+                            <li>• Levels have numerical ordering</li>
+                            <li>• Want to test linear trends</li>
+                            <li>• Interval or ratio variables</li>
                         </ul>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Interpretasi Hasil</h2>
+                <h2 className="mt-8">Interpreting Results</h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Tabel Contrast Result:
+                        Contrast Result Table:
                     </h4>
                     <ul className="text-sm text-blue-700 space-y-1">
                         <li>
-                            <strong>Contrast Estimate:</strong> Nilai estimasi
-                            kontras
+                            <strong>Contrast Estimate:</strong> Estimated
+                            contrast value
                         </li>
                         <li>
-                            <strong>Standard Error:</strong> Standard error
-                            estimasi
+                            <strong>Standard Error:</strong> Standard error of
+                            estimate
                         </li>
                         <li>
-                            <strong>Significance:</strong> p-value untuk
-                            pengujian t
+                            <strong>Significance:</strong> p-value for t-test
                         </li>
                         <li>
-                            <strong>Confidence Interval:</strong> Interval
-                            kepercayaan
+                            <strong>Confidence Interval:</strong> Confidence
+                            interval
                         </li>
                     </ul>
                 </div>
 
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Tabel Contrast Test:
+                        Contrast Test Table:
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-1">
                         <li>
-                            <strong>Sum of Squares:</strong> SSH untuk set
-                            kontras
+                            <strong>Sum of Squares:</strong> SSH for contrast
+                            set
                         </li>
                         <li>
-                            <strong>F Value:</strong> Statistik F untuk set
-                            kontras
+                            <strong>F Value:</strong> F-statistic for contrast
+                            set
                         </li>
                         <li>
-                            <strong>Significance:</strong> p-value untuk
-                            pengujian F
+                            <strong>Significance:</strong> p-value for F-test
                         </li>
                         <li>
                             <strong>Partial Eta Squared:</strong> Effect size
                         </li>
                         <li>
-                            <strong>Observed Power:</strong> Power observasi
+                            <strong>Observed Power:</strong> Observed power
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
                         <code>rust/src/stats/contrast_factors.rs</code> -
-                        Implementasi contrast factors
+                        Contrast factors implementation
                     </li>
                     <li>
-                        <code>rust/src/models/result.rs</code> - Struktur hasil
-                        contrast
+                        <code>rust/src/models/result.rs</code> - Contrast result
+                        structures
                     </li>
                     <li>
-                        <code>rust/src/models/config.rs</code> - Konfigurasi
-                        contrast methods
+                        <code>rust/src/models/config.rs</code> - Contrast method
+                        configuration
                     </li>
                     <li>
                         <code>

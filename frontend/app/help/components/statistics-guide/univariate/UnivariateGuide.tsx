@@ -13,19 +13,19 @@ export const UnivariateGuide: React.FC = () => {
     return (
         <HelpContentWrapper
             title="GLM Univariate"
-            description="Analisis General Linear Model (GLM) Univariate untuk regresi, ANOVA, dan ANCOVA dengan rumus matematika lengkap."
+            description="General Linear Model (GLM) Univariate analysis for regression, ANOVA, and ANCOVA with complete mathematical formulas."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
                     <HelpCircle className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
                     <div>
                         <AlertTitle className="text-blue-800 font-medium mb-1">
-                            Ringkasan GLM Univariate
+                            GLM Univariate Overview
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            GLM Univariate adalah framework statistik yang
-                            menyatukan regresi, ANOVA, dan ANCOVA dalam satu
-                            model matematika yang komprehensif.
+                            GLM Univariate is a statistical framework that
+                            unifies regression, ANOVA, and ANCOVA into one
+                            comprehensive mathematical model.
                         </AlertDescription>
                     </div>
                 </div>
@@ -34,55 +34,56 @@ export const UnivariateGuide: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <Calculator className="h-6 w-6" />
-                    Model Matematika Umum GLM
+                    General Mathematical Model of GLM
                 </h2>
 
-                <p>GLM Univariate menggunakan model linear umum:</p>
+                <p>GLM Univariate uses the general linear model:</p>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Model GLM Univariate:</h4>
+                    <h4 className="font-bold mb-2">GLM Univariate Model:</h4>
                     <div className="text-center text-lg font-mono">
                         <strong>Y = Xβ + ε</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>Y</strong> = vektor variabel dependen (n ×
+                            <strong>Y</strong> = dependent variable vector (n ×
                             1)
                         </li>
                         <li>
-                            <strong>X</strong> = matriks desain (n × p)
+                            <strong>X</strong> = design matrix (n × p)
                         </li>
                         <li>
-                            <strong>β</strong> = vektor parameter (p × 1)
+                            <strong>β</strong> = parameter vector (p × 1)
                         </li>
                         <li>
-                            <strong>ε</strong> = vektor error (n × 1)
+                            <strong>ε</strong> = error vector (n × 1)
                         </li>
                     </ul>
                 </div>
 
                 <p>
-                    Dengan asumsi: <strong>ε ~ N(0, σ²I)</strong>
+                    With assumption: <strong>ε ~ N(0, σ²I)</strong>
                 </p>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <TrendingUp className="h-6 w-6" />
-                    Analisis Regresi
+                    Regression Analysis
                 </h2>
 
                 <p>
-                    Regresi linear memodelkan hubungan antara variabel dependen
-                    kontinu dengan satu atau lebih variabel independen.
+                    Linear regression models the relationship between a
+                    continuous dependent variable with one or more independent
+                    variables.
                 </p>
 
-                <h3>Regresi Linear Sederhana</h3>
+                <h3>Simple Linear Regression</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Y = β₀ + β₁X + ε</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Estimasi parameter:
+                        Parameter estimation:
                     </p>
                     <div className="text-sm font-mono">
                         <div>β₁ = Σ(xᵢ - x̄)(yᵢ - ȳ) / Σ(xᵢ - x̄)²</div>
@@ -90,13 +91,13 @@ export const UnivariateGuide: React.FC = () => {
                     </div>
                 </div>
 
-                <h3>Regresi Linear Berganda</h3>
+                <h3>Multiple Linear Regression</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Y = β₀ + β₁X₁ + β₂X₂ + ... + βₖXₖ + ε</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Estimasi dengan OLS:
+                        OLS estimation:
                     </p>
                     <div className="text-sm font-mono">
                         <div>
@@ -105,12 +106,12 @@ export const UnivariateGuide: React.FC = () => {
                     </div>
                 </div>
 
-                <h3>Koefisien Determinasi (R²)</h3>
+                <h3>Coefficient of Determination (R²)</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>R² = 1 - (SSE/SST)</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>SSE = Σ(yᵢ - ŷᵢ)² (Sum of Squares Error)</li>
                         <li>SST = Σ(yᵢ - ȳ)² (Total Sum of Squares)</li>
@@ -119,35 +120,35 @@ export const UnivariateGuide: React.FC = () => {
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <BarChart3 className="h-6 w-6" />
-                    Analisis Varians (ANOVA)
+                    Analysis of Variance (ANOVA)
                 </h2>
 
                 <p>
-                    ANOVA digunakan untuk membandingkan rata-rata dari tiga atau
-                    lebih kelompok dengan menguji hipotesis nol bahwa semua
-                    rata-rata populasi sama.
+                    ANOVA is used to compare means from three or more groups by
+                    testing the null hypothesis that all population means are
+                    equal.
                 </p>
 
-                <h3>ANOVA Satu Arah (One-Way ANOVA)</h3>
+                <h3>One-Way ANOVA</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Yᵢⱼ = μ + αᵢ + εᵢⱼ</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
-                        <li>Yᵢⱼ = observasi ke-j dalam kelompok ke-i</li>
-                        <li>μ = rata-rata keseluruhan</li>
-                        <li>αᵢ = efek kelompok ke-i</li>
-                        <li>εᵢⱼ = error random</li>
+                        <li>Yᵢⱼ = j-th observation in i-th group</li>
+                        <li>μ = overall mean</li>
+                        <li>αᵢ = i-th group effect</li>
+                        <li>εᵢⱼ = random error</li>
                     </ul>
                 </div>
 
-                <h4>Statistik F untuk One-Way ANOVA:</h4>
+                <h4>F-Statistic for One-Way ANOVA:</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>F = MSB / MSW</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>MSB = SSB / (k-1) (Mean Square Between)</li>
                         <li>MSW = SSW / (N-k) (Mean Square Within)</li>
@@ -156,20 +157,20 @@ export const UnivariateGuide: React.FC = () => {
                     </ul>
                 </div>
 
-                <h3>ANOVA Dua Arah (Two-Way ANOVA)</h3>
+                <h3>Two-Way ANOVA</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Yᵢⱼₖ = μ + αᵢ + βⱼ + (αβ)ᵢⱼ + εᵢⱼₖ</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
-                        <li>αᵢ = efek faktor A level ke-i</li>
-                        <li>βⱼ = efek faktor B level ke-j</li>
-                        <li>(αβ)ᵢⱼ = efek interaksi</li>
+                        <li>αᵢ = factor A level i effect</li>
+                        <li>βⱼ = factor B level j effect</li>
+                        <li>(αβ)ᵢⱼ = interaction effect</li>
                     </ul>
                 </div>
 
-                <h4>Sum of Squares untuk Two-Way ANOVA:</h4>
+                <h4>Sum of Squares for Two-Way ANOVA:</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
@@ -192,7 +193,7 @@ export const UnivariateGuide: React.FC = () => {
                     </div>
                 </div>
 
-                <h3>ANOVA N-Arah (N-Way ANOVA)</h3>
+                <h3>N-Way ANOVA</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>
@@ -200,41 +201,41 @@ export const UnivariateGuide: React.FC = () => {
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Model ini mencakup:
+                        This model includes:
                     </p>
                     <ul className="text-sm text-gray-600 mt-1">
-                        <li>Efek utama untuk setiap faktor</li>
-                        <li>Efek interaksi dua arah</li>
-                        <li>Efek interaksi tiga arah</li>
-                        <li>Dan seterusnya hingga interaksi N-arah</li>
+                        <li>Main effects for each factor</li>
+                        <li>Two-way interaction effects</li>
+                        <li>Three-way interaction effects</li>
+                        <li>And so on up to N-way interactions</li>
                     </ul>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Layers className="h-6 w-6" />
-                    Analisis Kovarians (ANCOVA)
+                    Analysis of Covariance (ANCOVA)
                 </h2>
 
                 <p>
-                    ANCOVA menggabungkan ANOVA dengan regresi untuk mengontrol
-                    efek variabel kovariat yang tidak dapat dimanipulasi.
+                    ANCOVA combines ANOVA with regression to control for the
+                    effects of covariate variables that cannot be manipulated.
                 </p>
 
-                <h3>Model ANCOVA Satu Arah</h3>
+                <h3>One-Way ANCOVA Model</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Yᵢⱼ = μ + αᵢ + β(Xᵢⱼ - X̄) + εᵢⱼ</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
-                        <li>Yᵢⱼ = variabel dependen</li>
-                        <li>Xᵢⱼ = kovariat</li>
-                        <li>αᵢ = efek kelompok</li>
-                        <li>β = koefisien regresi kovariat</li>
+                        <li>Yᵢⱼ = dependent variable</li>
+                        <li>Xᵢⱼ = covariate</li>
+                        <li>αᵢ = group effect</li>
+                        <li>β = covariate regression coefficient</li>
                     </ul>
                 </div>
 
-                <h3>Model ANCOVA Dua Arah</h3>
+                <h3>Two-Way ANCOVA Model</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>
@@ -243,93 +244,90 @@ export const UnivariateGuide: React.FC = () => {
                     </div>
                 </div>
 
-                <h3>Adjusted Means dalam ANCOVA</h3>
+                <h3>Adjusted Means in ANCOVA</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>Ȳᵢ(adj) = Ȳᵢ - b(X̄ᵢ - X̄)</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
-                        <li>
-                            Ȳᵢ(adj) = rata-rata yang disesuaikan untuk kelompok
-                            i
-                        </li>
-                        <li>Ȳᵢ = rata-rata observasi kelompok i</li>
-                        <li>b = koefisien regresi kovariat</li>
-                        <li>X̄ᵢ = rata-rata kovariat kelompok i</li>
-                        <li>X̄ = rata-rata kovariat keseluruhan</li>
+                        <li>Ȳᵢ(adj) = adjusted mean for group i</li>
+                        <li>Ȳᵢ = observed mean for group i</li>
+                        <li>b = covariate regression coefficient</li>
+                        <li>X̄ᵢ = covariate mean for group i</li>
+                        <li>X̄ = overall covariate mean</li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Asumsi GLM Univariate</h2>
+                <h2 className="mt-8">GLM Univariate Assumptions</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                         <h4 className="font-bold text-yellow-800 mb-2">
-                            1. Normalitas
+                            1. Normality
                         </h4>
                         <p className="text-sm text-yellow-700">
-                            Residual harus berdistribusi normal:{" "}
+                            Residuals must be normally distributed:{" "}
                             <strong>ε ~ N(0, σ²)</strong>
                         </p>
                     </div>
 
                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                         <h4 className="font-bold text-yellow-800 mb-2">
-                            2. Homoskedastisitas
+                            2. Homoscedasticity
                         </h4>
                         <p className="text-sm text-yellow-700">
-                            Varians residual konstan:{" "}
+                            Constant residual variance:{" "}
                             <strong>Var(εᵢ) = σ²</strong>
                         </p>
                     </div>
 
                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                         <h4 className="font-bold text-yellow-800 mb-2">
-                            3. Independensi
+                            3. Independence
                         </h4>
                         <p className="text-sm text-yellow-700">
-                            Residual saling independen:{" "}
+                            Residuals are mutually independent:{" "}
                             <strong>Cov(εᵢ, εⱼ) = 0</strong>
                         </p>
                     </div>
 
                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                         <h4 className="font-bold text-yellow-800 mb-2">
-                            4. Linearitas
+                            4. Linearity
                         </h4>
                         <p className="text-sm text-yellow-700">
-                            Hubungan linear antara variabel:{" "}
+                            Linear relationship between variables:{" "}
                             <strong>E(Y) = Xβ</strong>
                         </p>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Uji Hipotesis</h2>
+                <h2 className="mt-8">Hypothesis Testing</h2>
 
-                <h3>Uji F untuk Signifikansi Model</h3>
+                <h3>F-Test for Model Significance</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>F = (SSR/p) / (SSE/(n-p-1))</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>SSR = Sum of Squares Regression</li>
                         <li>SSE = Sum of Squares Error</li>
-                        <li>p = jumlah parameter (tidak termasuk intercept)</li>
-                        <li>n = jumlah observasi</li>
+                        <li>p = number of parameters (excluding intercept)</li>
+                        <li>n = number of observations</li>
                     </ul>
                 </div>
 
-                <h3>Uji t untuk Koefisien Individual</h3>
+                <h3>t-Test for Individual Coefficients</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>t = β̂ᵢ / SE(β̂ᵢ)</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>SE(β̂ᵢ) = √(MSE × Cᵢᵢ)</li>
-                        <li>Cᵢᵢ = elemen diagonal ke-i dari (X'X)⁻¹</li>
+                        <li>Cᵢᵢ = i-th diagonal element of (X'X)⁻¹</li>
                     </ul>
                 </div>
 
@@ -351,23 +349,23 @@ export const UnivariateGuide: React.FC = () => {
 
                 <h2 className="mt-8">Power Analysis</h2>
 
-                <h3>Power untuk ANOVA</h3>
+                <h3>Power for ANOVA</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>
                             Power = P(F {">"} F₍α,k-1,N-k₎ | F ~ F₍k-1,N-k,λ₎)
                         </strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
                             λ = n × Σ(μᵢ - μ)² / σ² (noncentrality parameter)
                         </li>
-                        <li>F₍α,k-1,N-k₎ = critical value F</li>
+                        <li>F₍α,k-1,N-k₎ = critical F value</li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
                         <code>

@@ -14,7 +14,7 @@ export const LackOfFitTests: React.FC = () => {
     return (
         <HelpContentWrapper
             title="GLM Univariate: Lack of Fit Tests"
-            description="Penjelasan lengkap tentang uji lack of fit untuk mengevaluasi kecukupan model dalam analisis GLM Univariate."
+            description="Complete explanation of lack of fit tests for evaluating model adequacy in GLM Univariate analysis."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
@@ -24,10 +24,10 @@ export const LackOfFitTests: React.FC = () => {
                             Lack of Fit Tests
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            Uji lack of fit menentukan apakah model yang dipilih
-                            sudah cukup baik dalam menjelaskan hubungan antara
-                            prediktor dan respons. Uji ini membandingkan error
-                            total dengan pure error.
+                            Lack of fit tests determine whether the chosen model
+                            adequately explains the relationship between
+                            predictors and response. These tests compare total
+                            error with pure error.
                         </AlertDescription>
                     </div>
                 </div>
@@ -36,58 +36,58 @@ export const LackOfFitTests: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <CheckCircle className="h-6 w-6" />
-                    Konsep Dasar Lack of Fit
+                    Basic Concepts of Lack of Fit
                 </h2>
 
                 <p>
-                    Lack of fit test adalah uji untuk menentukan apakah model
-                    yang dipilih sudah cukup baik dalam menjelaskan hubungan
-                    antara variabel prediktor (X) dan variabel respons (Y). Uji
-                    ini membandingkan variasi di sekitar rata-rata model dengan
-                    variasi murni dalam data.
+                    Lack of fit test is a test to determine whether the chosen
+                    model adequately explains the relationship between predictor
+                    variables (X) and response variable (Y). This test compares
+                    variation around the model mean with pure variation in the
+                    data.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
-                            Model Cukup (H₀)
+                            Adequate Model (H₀)
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Model sudah sesuai dengan data</li>
-                            <li>• Tidak ada lack of fit</li>
-                            <li>• Error hanya random error</li>
-                            <li>• F-value tidak signifikan</li>
+                            <li>• Model fits the data well</li>
+                            <li>• No lack of fit</li>
+                            <li>• Error is only random error</li>
+                            <li>• F-value not significant</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">
-                            Model Tidak Cukup (H₁)
+                            Inadequate Model (H₁)
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Model tidak sesuai dengan data</li>
-                            <li>• Ada lack of fit</li>
-                            <li>• Error termasuk systematic error</li>
-                            <li>• F-value signifikan</li>
+                            <li>• Model does not fit the data well</li>
+                            <li>• Lack of fit present</li>
+                            <li>• Error includes systematic error</li>
+                            <li>• F-value significant</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Calculator className="h-6 w-6" />
-                    Komponen Lack of Fit Test
+                    Lack of Fit Test Components
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <h4 className="font-bold text-blue-800 mb-2">
-                            Error Total
+                            Total Error
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Variasi yang tidak dapat dijelaskan model</li>
+                            <li>• Variation not explained by model</li>
                             <li>• SSE = Σ(yᵢ - ŷᵢ)²</li>
                             <li>• df = n - p</li>
-                            <li>• Mengandung random + systematic error</li>
+                            <li>• Contains random + systematic error</li>
                         </ul>
                     </div>
 
@@ -96,10 +96,10 @@ export const LackOfFitTests: React.FC = () => {
                             Pure Error
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Variasi murni dalam data</li>
+                            <li>• Pure variation in data</li>
                             <li>• SS_PE = ΣΣ(yᵢⱼ - ȳᵢ)²</li>
                             <li>• df = n - c</li>
-                            <li>• Hanya random error</li>
+                            <li>• Only random error</li>
                         </ul>
                     </div>
 
@@ -108,88 +108,88 @@ export const LackOfFitTests: React.FC = () => {
                             Lack of Fit
                         </h4>
                         <ul className="text-sm text-purple-700 space-y-1">
-                            <li>• Variasi systematic</li>
+                            <li>• Systematic variation</li>
                             <li>• SS_LOF = SS_Error - SS_PE</li>
                             <li>• df = c - p</li>
-                            <li>• Mengukur ketidakcukupan model</li>
+                            <li>• Measures model inadequacy</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">
-                            Replikasi
+                            Replication
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Observasi dengan X yang sama</li>
-                            <li>• Diperlukan untuk pure error</li>
-                            <li>• Minimal 2 observasi per kombinasi</li>
-                            <li>• Tanpa replikasi, uji tidak valid</li>
+                            <li>• Observations with same X</li>
+                            <li>• Required for pure error</li>
+                            <li>• At least 2 observations per combination</li>
+                            <li>• Without replication, test invalid</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <BarChart3 className="h-6 w-6" />
-                    Algoritma Lack of Fit Test
+                    Lack of Fit Test Algorithm
                 </h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah dalam calculate_lack_of_fit_tests:
+                        Steps in calculate_lack_of_fit_tests:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Fit Model Utama:</strong> Buat matriks
-                            desain dan lakukan sweep
+                            <strong>1. Fit Main Model:</strong> Create design
+                            matrix and perform sweep
                         </li>
                         <li>
-                            <strong>2. Hitung Error Total:</strong> SSE = Σ(yᵢ -
-                            ŷᵢ)²
+                            <strong>2. Calculate Total Error:</strong> SSE =
+                            Σ(yᵢ - ŷᵢ)²
                         </li>
                         <li>
-                            <strong>3. Kelompokkan Data:</strong> Berdasarkan
-                            kombinasi unik X
+                            <strong>3. Group Data:</strong> Based on unique X
+                            combinations
                         </li>
                         <li>
-                            <strong>4. Hitung Pure Error:</strong> SS_PE =
+                            <strong>4. Calculate Pure Error:</strong> SS_PE =
                             ΣΣ(yᵢⱼ - ȳᵢ)²
                         </li>
                         <li>
-                            <strong>5. Hitung Lack of Fit:</strong> SS_LOF = SSE
-                            - SS_PE
+                            <strong>5. Calculate Lack of Fit:</strong> SS_LOF =
+                            SSE - SS_PE
                         </li>
                         <li>
-                            <strong>6. Hitung Statistik F:</strong> F = MS_LOF /
-                            MS_PE
+                            <strong>6. Calculate F Statistic:</strong> F =
+                            MS_LOF / MS_PE
                         </li>
                         <li>
-                            <strong>7. Uji Signifikansi:</strong> Bandingkan
-                            dengan F(df_LOF, df_PE)
+                            <strong>7. Test Significance:</strong> Compare with
+                            F(df_LOF, df_PE)
                         </li>
                     </ol>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <TrendingUp className="h-6 w-6" />
-                    Perhitungan Matematika
+                    Mathematical Calculations
                 </h2>
 
-                <h3>Error Total (SSE)</h3>
+                <h3>Total Error (SSE)</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>SSE = Σ(yᵢ - ŷᵢ)²</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>yᵢ</strong> = nilai observasi ke-i
+                            <strong>yᵢ</strong> = observed value i
                         </li>
                         <li>
-                            <strong>ŷᵢ</strong> = nilai prediksi ke-i
+                            <strong>ŷᵢ</strong> = predicted value i
                         </li>
                         <li>
-                            <strong>df_error</strong> = n - p (n = jumlah
-                            observasi, p = jumlah parameter)
+                            <strong>df_error</strong> = n - p (n = number of
+                            observations, p = number of parameters)
                         </li>
                     </ul>
                 </div>
@@ -199,18 +199,17 @@ export const LackOfFitTests: React.FC = () => {
                     <div className="text-center text-lg font-mono">
                         <strong>SS_PE = ΣΣ(yᵢⱼ - ȳᵢ)²</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>yᵢⱼ</strong> = observasi ke-j dalam grup
-                            ke-i
+                            <strong>yᵢⱼ</strong> = observation j in group i
                         </li>
                         <li>
-                            <strong>ȳᵢ</strong> = rata-rata grup ke-i
+                            <strong>ȳᵢ</strong> = mean of group i
                         </li>
                         <li>
-                            <strong>df_pure_error</strong> = n - c (c = jumlah
-                            kombinasi unik X)
+                            <strong>df_pure_error</strong> = n - c (c = number
+                            of unique X combinations)
                         </li>
                     </ul>
                 </div>
@@ -220,7 +219,7 @@ export const LackOfFitTests: React.FC = () => {
                     <div className="text-center text-lg font-mono">
                         <strong>SS_LOF = SSE - SS_PE</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
                             <strong>df_lack_of_fit</strong> = c - p
@@ -234,12 +233,12 @@ export const LackOfFitTests: React.FC = () => {
                     </ul>
                 </div>
 
-                <h3>Statistik F</h3>
+                <h3>F Statistic</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>F = MS_LOF / MS_PE</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
                             <strong>df₁</strong> = df_lack_of_fit = c - p
@@ -248,60 +247,60 @@ export const LackOfFitTests: React.FC = () => {
                             <strong>df₂</strong> = df_pure_error = n - c
                         </li>
                         <li>
-                            <strong>F ~ F(df₁, df₂)</strong> di bawah H₀
+                            <strong>F ~ F(df₁, df₂)</strong> under H₀
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Pengelompokan Data</h2>
+                <h2 className="mt-8">Data Grouping</h2>
 
                 <p>
-                    Pengelompokan data berdasarkan kombinasi unik dari nilai
-                    prediktor adalah langkah kritis dalam lack of fit test.
-                    Setiap kombinasi unik X membentuk satu grup.
+                    Grouping data based on unique combinations of predictor
+                    values is a critical step in lack of fit test. Each unique X
+                    combination forms one group.
                 </p>
 
-                <h3>Algoritma Pengelompokan</h3>
+                <h3>Grouping Algorithm</h3>
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah pengelompokan:
+                        Grouping steps:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Hash Baris X:</strong> Setiap baris X
-                            di-hash untuk identifikasi unik
+                            <strong>1. Hash X Rows:</strong> Each X row is
+                            hashed for unique identification
                         </li>
                         <li>
-                            <strong>2. Kelompokkan Y:</strong> Y dengan hash X
-                            yang sama dikelompokkan
+                            <strong>2. Group Y:</strong> Y values with same X
+                            hash are grouped
                         </li>
                         <li>
-                            <strong>3. Hitung Rata-rata:</strong> ȳᵢ untuk
-                            setiap grup
+                            <strong>3. Calculate Means:</strong> ȳᵢ for each
+                            group
                         </li>
                         <li>
-                            <strong>4. Hitung Pure Error:</strong> Deviasi dari
-                            rata-rata grup
+                            <strong>4. Calculate Pure Error:</strong> Deviations
+                            from group means
                         </li>
                     </ol>
                 </div>
 
-                <h3>Contoh Pengelompokan</h3>
+                <h3>Grouping Example</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Contoh data dengan replikasi:
+                        Example data with replication:
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-2">
                         <div>
-                            <strong>Grup 1 (X = [1, 2]):</strong> Y = [10, 12,
+                            <strong>Group 1 (X = [1, 2]):</strong> Y = [10, 12,
                             11] → ȳ₁ = 11
                         </div>
                         <div>
-                            <strong>Grup 2 (X = [1, 3]):</strong> Y = [15, 16] →
-                            ȳ₂ = 15.5
+                            <strong>Group 2 (X = [1, 3]):</strong> Y = [15, 16]
+                            → ȳ₂ = 15.5
                         </div>
                         <div>
-                            <strong>Grup 3 (X = [2, 2]):</strong> Y = [20, 21,
+                            <strong>Group 3 (X = [2, 2]):</strong> Y = [20, 21,
                             19] → ȳ₃ = 20
                         </div>
                         <div>
@@ -310,7 +309,7 @@ export const LackOfFitTests: React.FC = () => {
                     </div>
                 </div>
 
-                <h2 className="mt-8">Effect Size dan Power</h2>
+                <h2 className="mt-8">Effect Size and Power</h2>
 
                 <h3>Partial Eta Squared</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
@@ -318,9 +317,8 @@ export const LackOfFitTests: React.FC = () => {
                         <strong>η²ₚ = SS_LOF / (SS_LOF + SS_PE)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Effect size untuk lack of fit, menunjukkan proporsi
-                        varians dalam error total yang disebabkan oleh
-                        ketidakcukupan model
+                        Effect size for lack of fit, showing proportion of
+                        variance in total error caused by model inadequacy
                     </p>
                 </div>
 
@@ -330,7 +328,7 @@ export const LackOfFitTests: React.FC = () => {
                         <strong>λ = df_lack_of_fit × F</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Parameter noncentral untuk perhitungan power
+                        Noncentrality parameter for power calculation
                     </p>
                 </div>
 
@@ -342,11 +340,11 @@ export const LackOfFitTests: React.FC = () => {
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Power observasi untuk mendeteksi lack of fit
+                        Observed power to detect lack of fit
                     </p>
                 </div>
 
-                <h2 className="mt-8">Interpretasi Hasil</h2>
+                <h2 className="mt-8">Interpreting Results</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -354,10 +352,10 @@ export const LackOfFitTests: React.FC = () => {
                             p-value ≥ 0.05
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Gagal menolak H₀</li>
-                            <li>• Model sudah cukup</li>
-                            <li>• Tidak ada lack of fit</li>
-                            <li>• Model dapat digunakan</li>
+                            <li>• Fail to reject H₀</li>
+                            <li>• Model is adequate</li>
+                            <li>• No lack of fit</li>
+                            <li>• Model can be used</li>
                         </ul>
                     </div>
 
@@ -366,96 +364,96 @@ export const LackOfFitTests: React.FC = () => {
                             p-value {"<"} 0.05
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Menolak H₀</li>
-                            <li>• Model tidak cukup</li>
-                            <li>• Ada lack of fit</li>
-                            <li>• Pertimbangkan model lain</li>
+                            <li>• Reject H₀</li>
+                            <li>• Model is inadequate</li>
+                            <li>• Lack of fit present</li>
+                            <li>• Consider alternative models</li>
                         </ul>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Kondisi Validitas</h2>
+                <h2 className="mt-8">Validity Conditions</h2>
 
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Uji Lack of Fit memerlukan:
+                        Lack of Fit test requires:
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-2">
                         <li>
-                            <strong>1. Replikasi:</strong> Minimal 2 observasi
-                            dengan X yang sama
+                            <strong>1. Replication:</strong> At least 2
+                            observations with same X
                         </li>
                         <li>
                             <strong>2. df_lack_of_fit {">"} 0:</strong> c {">"}{" "}
-                            p (jumlah kombinasi {">"} parameter)
+                            p (combinations {">"} parameters)
                         </li>
                         <li>
                             <strong>3. df_pure_error {">"} 0:</strong> n {">"} c
-                            (observasi {">"} kombinasi)
+                            (observations {">"} combinations)
                         </li>
                         <li>
-                            <strong>4. MS_PE {">"} 0:</strong> Ada variasi dalam
-                            replikasi
+                            <strong>4. MS_PE {">"} 0:</strong> Variation exists
+                            in replication
                         </li>
                     </ul>
                 </div>
 
-                <h3>Kasus Khusus</h3>
+                <h3>Special Cases</h3>
                 <div className="bg-red-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-red-800 mb-2">
-                        Ketika uji tidak valid:
+                        When test is invalid:
                     </h4>
                     <ul className="text-sm text-red-700 space-y-1">
-                        <li>• Tidak ada replikasi (c = n)</li>
-                        <li>• Model jenuh (p ≥ c)</li>
-                        <li>• MS_PE = 0 (tidak ada variasi dalam replikasi)</li>
+                        <li>• No replication (c = n)</li>
+                        <li>• Saturated model (p ≥ c)</li>
+                        <li>• MS_PE = 0 (no variation in replication)</li>
                         <li>• df_lack_of_fit ≤ 0</li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Solusi untuk Lack of Fit</h2>
+                <h2 className="mt-8">Solutions for Lack of Fit</h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Ketika Lack of Fit Terdeteksi:
+                        When Lack of Fit is Detected:
                     </h4>
                     <ul className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Tambah Prediktor:</strong> Masukkan
-                            variabel yang relevan
+                            <strong>1. Add Predictors:</strong> Include relevant
+                            variables
                         </li>
                         <li>
-                            <strong>2. Transformasi:</strong> Transformasi
-                            variabel dependen atau prediktor
+                            <strong>2. Transformation:</strong> Transform
+                            dependent or predictor variables
                         </li>
                         <li>
-                            <strong>3. Interaksi:</strong> Tambahkan interaksi
-                            antar prediktor
+                            <strong>3. Interactions:</strong> Add predictor
+                            interactions
                         </li>
                         <li>
-                            <strong>4. Model Non-linear:</strong> Gunakan model
-                            polinomial atau non-linear
+                            <strong>4. Non-linear Models:</strong> Use
+                            polynomial or non-linear models
                         </li>
                         <li>
-                            <strong>5. Outlier:</strong> Periksa dan tangani
-                            outlier
+                            <strong>5. Outliers:</strong> Check and handle
+                            outliers
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
-                        <code>rust/src/stats/lack_of_fit.rs</code> -
-                        Implementasi lack of fit tests
+                        <code>rust/src/stats/lack_of_fit.rs</code> - Lack of fit
+                        tests implementation
                     </li>
                     <li>
-                        <code>rust/src/models/result.rs</code> - Struktur hasil
-                        uji
+                        <code>rust/src/models/result.rs</code> - Test result
+                        structures
                     </li>
                     <li>
-                        <code>rust/src/stats/core.rs</code> - Fungsi bantu
-                        perhitungan
+                        <code>rust/src/stats/core.rs</code> - Helper calculation
+                        functions
                     </li>
                     <li>
                         <code>

@@ -13,7 +13,7 @@ export const DesignMatrix: React.FC = () => {
     return (
         <HelpContentWrapper
             title="GLM Univariate: Design Matrix & Sweep Operations"
-            description="Penjelasan lengkap tentang konstruksi matriks desain dan operasi sweep dalam analisis GLM Univariate."
+            description="Complete explanation of design matrix construction and sweep operations in GLM Univariate analysis."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
@@ -23,11 +23,10 @@ export const DesignMatrix: React.FC = () => {
                             Design Matrix & Sweep Operations
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            Matriks desain adalah komponen fundamental dalam GLM
-                            yang merepresentasikan model linear dalam bentuk
-                            matriks. Operasi sweep Gauss-Jordan digunakan untuk
-                            menyelesaikan sistem persamaan dan mengekstrak
-                            estimasi parameter.
+                            The design matrix is a fundamental component in GLM
+                            that represents the linear model in matrix form.
+                            Gauss-Jordan sweep operations are used to solve
+                            equation systems and extract parameter estimates.
                         </AlertDescription>
                     </div>
                 </div>
@@ -36,129 +35,124 @@ export const DesignMatrix: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <LayoutDashboard className="h-6 w-6" />
-                    Konsep Dasar Design Matrix
+                    Basic Concepts of Design Matrix
                 </h2>
 
                 <p>
-                    Design Matrix (X) adalah matriks yang merepresentasikan
-                    model linear dalam bentuk matriks. Setiap baris
-                    merepresentasikan satu observasi, dan setiap kolom
-                    merepresentasikan satu prediktor atau kombinasi prediktor.
+                    The Design Matrix (X) is a matrix that represents the linear
+                    model in matrix form. Each row represents one observation,
+                    and each column represents one predictor or combination of
+                    predictors.
                 </p>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold mb-2">
-                        Model Linear dalam Bentuk Matriks:
+                        Linear Model in Matrix Form:
                     </h4>
                     <div className="text-center text-lg font-mono">
                         <strong>Y = Xβ + ε</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>Y</strong> = vektor respons (n × 1)
+                            <strong>Y</strong> = response vector (n × 1)
                         </li>
                         <li>
-                            <strong>X</strong> = matriks desain (n × p)
+                            <strong>X</strong> = design matrix (n × p)
                         </li>
                         <li>
-                            <strong>β</strong> = vektor parameter (p × 1)
+                            <strong>β</strong> = parameter vector (p × 1)
                         </li>
                         <li>
-                            <strong>ε</strong> = vektor error (n × 1)
+                            <strong>ε</strong> = error vector (n × 1)
                         </li>
                     </ul>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Calculator className="h-6 w-6" />
-                    Konstruksi Design Matrix
+                    Design Matrix Construction
                 </h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah dalam create_design_response_weights:
+                        Steps in create_design_response_weights:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Ekstraksi Data:</strong> Mengambil
-                            variabel dependen dan WLS weights
+                            <strong>1. Data Extraction:</strong> Extract
+                            dependent variable and WLS weights
                         </li>
                         <li>
-                            <strong>2. Validasi Data:</strong> Memastikan semua
-                            nilai numerik dan valid
+                            <strong>2. Data Validation:</strong> Ensure all
+                            values are numeric and valid
                         </li>
                         <li>
-                            <strong>3. Generasi Term Model:</strong> Membuat
-                            daftar term berdasarkan konfigurasi
+                            <strong>3. Model Term Generation:</strong> Create
+                            list of terms based on configuration
                         </li>
                         <li>
-                            <strong>4. Cache Data:</strong> Pre-cache faktor
-                            levels dan kovariat untuk efisiensi
+                            <strong>4. Data Caching:</strong> Pre-cache factor
+                            levels and covariates for efficiency
                         </li>
                         <li>
-                            <strong>5. Konstruksi Kolom:</strong> Membuat kolom
-                            untuk setiap term model
+                            <strong>5. Column Construction:</strong> Create
+                            columns for each model term
                         </li>
                         <li>
-                            <strong>6. Assembly Matrix:</strong> Menggabungkan
-                            semua kolom menjadi matriks desain
+                            <strong>6. Matrix Assembly:</strong> Combine all
+                            columns into design matrix
                         </li>
                     </ol>
                 </div>
 
-                <h3>Jenis Term dalam Model</h3>
+                <h3>Types of Terms in Model</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
                             Intercept
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>
-                                • Kolom dengan nilai 1 untuk semua observasi
-                            </li>
-                            <li>• Merepresentasikan konstanta dalam model</li>
-                            <li>
-                                • Biasanya kolom pertama dalam matriks desain
-                            </li>
+                            <li>• Column with value 1 for all observations</li>
+                            <li>• Represents constant in model</li>
+                            <li>• Usually first column in design matrix</li>
                         </ul>
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <h4 className="font-bold text-blue-800 mb-2">
-                            Kovariat
+                            Covariates
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Variabel kontinu</li>
-                            <li>• Nilai asli dari data</li>
-                            <li>• Tidak memerlukan dummy coding</li>
+                            <li>• Continuous variables</li>
+                            <li>• Original values from data</li>
+                            <li>• No dummy coding required</li>
                         </ul>
                     </div>
 
                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                         <h4 className="font-bold text-yellow-800 mb-2">
-                            Faktor (Main Effects)
+                            Factors (Main Effects)
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Dummy coding untuk setiap level</li>
+                            <li>• Dummy coding for each level</li>
                             <li>
-                                • Satu kolom per level (kecuali level referensi)
+                                • One column per level (except reference level)
                             </li>
                             <li>
-                                • Nilai 1 jika observasi pada level tersebut, 0
-                                jika tidak
+                                • Value 1 if observation at that level, 0 if not
                             </li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">
-                            Interaksi
+                            Interactions
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Produk dari kolom-kolom komponen</li>
-                            <li>• Merepresentasikan efek interaksi</li>
-                            <li>• Dapat melibatkan faktor dan kovariat</li>
+                            <li>• Product of component columns</li>
+                            <li>• Represents interaction effects</li>
+                            <li>• Can involve factors and covariates</li>
                         </ul>
                     </div>
                 </div>
@@ -169,95 +163,92 @@ export const DesignMatrix: React.FC = () => {
                 </h2>
 
                 <p>
-                    Matriks Z'WZ adalah matriks hasil perkalian silang yang
-                    menjadi pusat operasi sweep Gauss-Jordan. Z dibentuk dengan
-                    menggabungkan matriks desain X dan vektor respons Y.
+                    The Z'WZ matrix is the cross-product matrix that becomes the
+                    center of Gauss-Jordan sweep operations. Z is formed by
+                    combining design matrix X and response vector Y.
                 </p>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Konstruksi Matriks Z:</h4>
+                    <h4 className="font-bold mb-2">Z Matrix Construction:</h4>
                     <div className="text-center text-lg font-mono">
                         <strong>Z = [X Y]</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Matriks Z menggabungkan matriks desain X dengan vektor
-                        respons Y
+                        Matrix Z combines design matrix X with response vector Y
                     </p>
                 </div>
 
-                <h3>Struktur Matriks Z'WZ</h3>
+                <h3>Z'WZ Matrix Structure</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Matriks Z'WZ memiliki struktur:
+                        Z'WZ matrix has structure:
                     </h4>
                     <div className="text-center text-lg font-mono">
                         <strong>
                             [ X'WX X'WY ]<br />[ Y'WX Y'WY ]
                         </strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>X'WX:</strong> Matriks p×p (p = jumlah
-                            parameter)
+                            <strong>X'WX:</strong> p×p matrix (p = number of
+                            parameters)
                         </li>
                         <li>
-                            <strong>X'WY:</strong> Vektor p×1
+                            <strong>X'WY:</strong> p×1 vector
                         </li>
                         <li>
-                            <strong>Y'WX:</strong> Vektor 1×p (transpose dari
+                            <strong>Y'WX:</strong> 1×p vector (transpose of
                             X'WY)
                         </li>
                         <li>
-                            <strong>Y'WY:</strong> Skalar (jumlah kuadrat total)
+                            <strong>Y'WY:</strong> scalar (total sum of squares)
                         </li>
                     </ul>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <TrendingUp className="h-6 w-6" />
-                    Operasi Sweep Gauss-Jordan
+                    Gauss-Jordan Sweep Operations
                 </h2>
 
                 <p>
-                    Operasi sweep adalah algoritma fundamental untuk
-                    menyelesaikan sistem persamaan linear dan mengekstrak
-                    estimasi parameter dari matriks Z'WZ.
+                    Sweep operations are fundamental algorithms for solving
+                    linear equation systems and extracting parameter estimates
+                    from the Z'WZ matrix.
                 </p>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Algoritma Sweep (AS 178):
+                        Sweep Algorithm (AS 178):
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Deteksi Kolinearitas:</strong> Periksa
-                            elemen pivot c[k,k]
+                            <strong>1. Collinearity Detection:</strong> Check
+                            pivot element c[k,k]
                         </li>
                         <li>
-                            <strong>2. Validasi Pivot:</strong> Jika |c[k,k]| ≤
-                            ε × |s_k|, parameter kolinear
+                            <strong>2. Pivot Validation:</strong> If |c[k,k]| ≤
+                            ε × |s_k|, parameter is collinear
                         </li>
                         <li>
-                            <strong>3. Operasi Sweep:</strong> Untuk setiap
-                            baris/kolom k yang valid
+                            <strong>3. Sweep Operations:</strong> For each valid
+                            row/column k
                         </li>
                         <li>
-                            <strong>4. Update Matriks:</strong> Terapkan
-                            transformasi sweep
+                            <strong>4. Matrix Update:</strong> Apply sweep
+                            transformations
                         </li>
                         <li>
-                            <strong>5. Ekstraksi Hasil:</strong> Ambil G⁻¹, β̂,
-                            dan S dari matriks yang di-sweep
+                            <strong>5. Result Extraction:</strong> Extract G⁻¹,
+                            β̂, and S from swept matrix
                         </li>
                     </ol>
                 </div>
 
-                <h3>Operasi Sweep Standar</h3>
+                <h3>Standard Sweep Operations</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">
-                        Untuk setiap baris/kolom k:
-                    </h4>
+                    <h4 className="font-bold mb-2">For each row/column k:</h4>
                     <div className="text-sm font-mono space-y-2">
                         <div>
                             <strong>1. c[k,k] = -1/c[k,k]</strong>
@@ -277,58 +268,57 @@ export const DesignMatrix: React.FC = () => {
                     </div>
                 </div>
 
-                <h3>Hasil Setelah Sweep</h3>
+                <h3>Results After Sweep</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Matriks setelah sweep pada p baris/kolom pertama:
+                        Matrix after sweeping first p rows/columns:
                     </h4>
                     <div className="text-center text-lg font-mono">
                         <strong>
                             [ -G B̂ ]<br />[ B̂' S ]
                         </strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>G:</strong> Generalized inverse dari X'WX
+                            <strong>G:</strong> Generalized inverse of X'WX
                             (p×p)
                         </li>
                         <li>
-                            <strong>B̂:</strong> Estimasi parameter (p×1)
+                            <strong>B̂:</strong> Parameter estimates (p×1)
                         </li>
                         <li>
-                            <strong>B̂':</strong> Transpose dari B̂ (1×p)
+                            <strong>B̂':</strong> Transpose of B̂ (1×p)
                         </li>
                         <li>
-                            <strong>S:</strong> Matriks residual (1×1, berisi
+                            <strong>S:</strong> Residual matrix (1×1, contains
                             SSE)
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Deteksi Kolinearitas</h2>
+                <h2 className="mt-8">Collinearity Detection</h2>
 
                 <p>
-                    Algoritma sweep mendeteksi kolinearitas dengan memeriksa
-                    elemen pivot. Parameter yang kolinear tidak dapat diestimasi
-                    secara unik.
+                    The sweep algorithm detects collinearity by checking pivot
+                    elements. Collinear parameters cannot be uniquely estimated.
                 </p>
 
                 <div className="bg-red-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-red-800 mb-2">
-                        Kondisi Kolinearitas:
+                        Collinearity Conditions:
                     </h4>
                     <ul className="text-sm text-red-700 space-y-1">
-                        <li>• |c[k,k]| ≤ ε × |s_k| (pivot terlalu kecil)</li>
-                        <li>• Inconsistency dalam swept flags</li>
-                        <li>• Parameter aliased (tidak dapat diestimasi)</li>
+                        <li>• |c[k,k]| ≤ ε × |s_k| (pivot too small)</li>
+                        <li>• Inconsistency in swept flags</li>
+                        <li>• Aliased parameters (cannot be estimated)</li>
                         <li>
-                            • Estimasi parameter = 0 untuk parameter kolinear
+                            • Parameter estimate = 0 for collinear parameters
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Estimasi Parameter</h2>
+                <h2 className="mt-8">Parameter Estimation</h2>
 
                 <h3>Ordinary Least Squares (OLS)</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
@@ -336,7 +326,7 @@ export const DesignMatrix: React.FC = () => {
                         <strong>β̂ = (X'X)⁻¹X'y</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Estimasi parameter menggunakan metode kuadrat terkecil
+                        Parameter estimation using least squares method
                     </p>
                 </div>
 
@@ -346,18 +336,17 @@ export const DesignMatrix: React.FC = () => {
                         <strong>β̂ = (X'WX)⁻¹X'Wy</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Estimasi parameter dengan bobot untuk
-                        heteroskedastisitas
+                        Parameter estimation with weights for heteroscedasticity
                     </p>
                 </div>
 
                 <h3>Generalized Inverse</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
-                        <strong>G⁻¹ = -G (dari hasil sweep)</strong>
+                        <strong>G⁻¹ = -G (from sweep results)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Generalized inverse untuk kasus matriks singular
+                        Generalized inverse for singular matrix cases
                     </p>
                 </div>
 
@@ -365,11 +354,11 @@ export const DesignMatrix: React.FC = () => {
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
-                        <strong>SSE = S[0,0] (dari hasil sweep)</strong>
+                        <strong>SSE = S[0,0] (from sweep results)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Sum of Squares Error diekstrak dari elemen S[0,0]
-                        matriks hasil sweep
+                        Sum of Squares Error extracted from S[0,0] element of
+                        swept matrix
                     </p>
                 </div>
 
@@ -379,7 +368,7 @@ export const DesignMatrix: React.FC = () => {
                         <strong>df_error = n - rank(X)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Degrees of freedom untuk error
+                        Degrees of freedom for error
                     </p>
                 </div>
 
@@ -389,42 +378,44 @@ export const DesignMatrix: React.FC = () => {
                         <strong>MSE = SSE / df_error</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Estimasi varians error
+                        Error variance estimate
                     </p>
                 </div>
 
-                <h2 className="mt-8">Aplikasi Praktis</h2>
+                <h2 className="mt-8">Practical Applications</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <h4 className="font-bold text-green-800 mb-2">
-                            Keuntungan Sweep Operations
+                            Advantages of Sweep Operations
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Deteksi kolinearitas otomatis</li>
-                            <li>• Penanganan matriks singular</li>
-                            <li>• Ekstraksi semua statistik sekaligus</li>
+                            <li>• Automatic collinearity detection</li>
+                            <li>• Handling of singular matrices</li>
+                            <li>
+                                • Extraction of all statistics simultaneously
+                            </li>
                             <li>• Numerically stable</li>
                         </ul>
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <h4 className="font-bold text-blue-800 mb-2">
-                            Kapan Menggunakan
+                            When to Use
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Model dengan interaksi kompleks</li>
-                            <li>• Data dengan kolinearitas</li>
-                            <li>• Model dengan kovariat</li>
-                            <li>• Analisis yang memerlukan G⁻¹</li>
+                            <li>• Models with complex interactions</li>
+                            <li>• Data with collinearity</li>
+                            <li>• Models with covariates</li>
+                            <li>• Analysis requiring G⁻¹</li>
                         </ul>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Referensi</h2>
+                <h2 className="mt-8">References</h2>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Algoritma AS 178:</h4>
+                    <h4 className="font-bold mb-2">Algorithm AS 178:</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
                         <li>
                             • Clarke, M.R.B. (1982) "Algorithm AS 178: The
@@ -432,7 +423,7 @@ export const DesignMatrix: React.FC = () => {
                             Collinearity"
                         </li>
                         <li>
-                            • Ridout, M.S. dan Cobby, J.M. (1989) "Algorithm AS
+                            • Ridout, M.S. and Cobby, J.M. (1989) "Algorithm AS
                             R78: A Remark on Algorithm AS 178"
                         </li>
                         <li>
@@ -442,19 +433,19 @@ export const DesignMatrix: React.FC = () => {
                     </ul>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
-                        <code>rust/src/stats/design_matrix.rs</code> -
-                        Implementasi matriks desain dan sweep
+                        <code>rust/src/stats/design_matrix.rs</code> - Design
+                        matrix and sweep implementation
                     </li>
                     <li>
-                        <code>rust/src/models/result.rs</code> - Struktur
-                        DesignMatrixInfo dan SweptMatrixInfo
+                        <code>rust/src/models/result.rs</code> -
+                        DesignMatrixInfo and SweptMatrixInfo structures
                     </li>
                     <li>
-                        <code>rust/src/stats/core.rs</code> - Fungsi bantu
-                        perhitungan
+                        <code>rust/src/stats/core.rs</code> - Helper calculation
+                        functions
                     </li>
                     <li>
                         <code>

@@ -14,7 +14,7 @@ export const HeteroscedasticityTests: React.FC = () => {
     return (
         <HelpContentWrapper
             title="GLM Univariate: Heteroscedasticity Tests"
-            description="Penjelasan lengkap tentang uji heteroskedastisitas dalam analisis GLM Univariate."
+            description="Complete explanation of heteroscedasticity tests in GLM Univariate analysis."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
@@ -24,10 +24,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Heteroscedasticity Tests
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            Uji heteroskedastisitas memeriksa apakah varians
-                            error konstan di semua level prediktor. Pelanggaran
-                            asumsi ini dapat mempengaruhi validitas inferensi
-                            statistik.
+                            Heteroscedasticity tests check whether error
+                            variance is constant across all predictor levels.
+                            Violation of this assumption can affect the validity
+                            of statistical inference.
                         </AlertDescription>
                     </div>
                 </div>
@@ -36,14 +36,14 @@ export const HeteroscedasticityTests: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <TestTube className="h-6 w-6" />
-                    Konsep Dasar Heteroscedasticity
+                    Basic Concepts of Heteroscedasticity
                 </h2>
 
                 <p>
-                    Heteroscedasticity adalah kondisi dimana varians error tidak
-                    konstan di semua level prediktor. Ini melanggar asumsi
-                    homoscedasticity yang diperlukan untuk validitas inferensi
-                    statistik dalam model linear.
+                    Heteroscedasticity is a condition where error variance is
+                    not constant across all predictor levels. This violates the
+                    homoscedasticity assumption required for valid statistical
+                    inference in linear models.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
@@ -52,10 +52,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Homoscedasticity (H₀)
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Varians error konstan</li>
-                            <li>• Var(εᵢ) = σ² untuk semua i</li>
-                            <li>• Asumsi terpenuhi</li>
-                            <li>• Inferensi statistik valid</li>
+                            <li>• Constant error variance</li>
+                            <li>• Var(εᵢ) = σ² for all i</li>
+                            <li>• Assumption satisfied</li>
+                            <li>• Valid statistical inference</li>
                         </ul>
                     </div>
 
@@ -64,17 +64,17 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Heteroscedasticity (H₁)
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Varians error tidak konstan</li>
-                            <li>• Var(εᵢ) ≠ σ² untuk beberapa i</li>
-                            <li>• Asumsi dilanggar</li>
-                            <li>• Inferensi statistik bias</li>
+                            <li>• Non-constant error variance</li>
+                            <li>• Var(εᵢ) ≠ σ² for some i</li>
+                            <li>• Assumption violated</li>
+                            <li>• Biased statistical inference</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Calculator className="h-6 w-6" />
-                    Metode Uji Heteroscedasticity
+                    Heteroscedasticity Test Methods
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
@@ -83,10 +83,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             White Test
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Deteksi umum heteroskedastisitas</li>
-                            <li>• Tidak memerlukan asumsi bentuk</li>
-                            <li>• Menggunakan kuadrat dan interaksi</li>
-                            <li>• Statistik: LM = n × R²</li>
+                            <li>• General heteroscedasticity detection</li>
+                            <li>• No form assumption required</li>
+                            <li>• Uses squares and interactions</li>
+                            <li>• Statistic: LM = n × R²</li>
                         </ul>
                     </div>
 
@@ -95,10 +95,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Breusch-Pagan Test
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Deteksi heteroskedastisitas linear</li>
-                            <li>• Berdasarkan nilai prediksi</li>
-                            <li>• Mengasumsikan normalitas</li>
-                            <li>• Statistik: BP = ESS / (2 × σ̂⁴)</li>
+                            <li>• Linear heteroscedasticity detection</li>
+                            <li>• Based on predicted values</li>
+                            <li>• Assumes normality</li>
+                            <li>• Statistic: BP = ESS / (2 × σ̂⁴)</li>
                         </ul>
                     </div>
 
@@ -107,57 +107,56 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Modified Breusch-Pagan
                         </h4>
                         <ul className="text-sm text-purple-700 space-y-1">
-                            <li>• Versi robust dari BP test</li>
-                            <li>• Tahan terhadap non-normalitas</li>
+                            <li>• Robust version of BP test</li>
+                            <li>• Robust to non-normality</li>
                             <li>• Koenker-Bassett version</li>
-                            <li>• Statistik: LM = n × R²</li>
+                            <li>• Statistic: LM = n × R²</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">F-Test</h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Alternatif untuk uji Chi-kuadrat</li>
-                            <li>• Performa lebih baik pada sampel kecil</li>
-                            <li>• Berdasarkan nilai prediksi</li>
-                            <li>• Statistik: F = (R²/df₁) / ((1-R²)/df₂)</li>
+                            <li>• Alternative to Chi-square test</li>
+                            <li>• Better performance on small samples</li>
+                            <li>• Based on predicted values</li>
+                            <li>• Statistic: F = (R²/df₁) / ((1-R²)/df₂)</li>
                         </ul>
                     </div>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <BarChart3 className="h-6 w-6" />
-                    Algoritma Umum
+                    General Algorithm
                 </h2>
 
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Langkah-langkah dalam
-                        calculate_heteroscedasticity_tests:
+                        Steps in calculate_heteroscedasticity_tests:
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Fit Model Utama:</strong> Buat matriks
-                            desain dan lakukan sweep
+                            <strong>1. Fit Main Model:</strong> Create design
+                            matrix and perform sweep
                         </li>
                         <li>
-                            <strong>2. Hitung Residual:</strong> ε = y - ŷ
+                            <strong>2. Calculate Residuals:</strong> ε = y - ŷ
                         </li>
                         <li>
-                            <strong>3. Kuadratkan Residual:</strong> ε² sebagai
-                            variabel dependen
+                            <strong>3. Square Residuals:</strong> ε² as
+                            dependent variable
                         </li>
                         <li>
-                            <strong>4. Buat Model Pembantu:</strong> Regresi ε²
-                            pada prediktor
+                            <strong>4. Create Auxiliary Model:</strong> Regress
+                            ε² on predictors
                         </li>
                         <li>
-                            <strong>5. Hitung Statistik:</strong> Berdasarkan
-                            metode yang dipilih
+                            <strong>5. Calculate Statistics:</strong> Based on
+                            selected method
                         </li>
                         <li>
-                            <strong>6. Uji Signifikansi:</strong> Bandingkan
-                            dengan distribusi teoritis
+                            <strong>6. Test Significance:</strong> Compare with
+                            theoretical distribution
                         </li>
                     </ol>
                 </div>
@@ -168,105 +167,105 @@ export const HeteroscedasticityTests: React.FC = () => {
                 </h2>
 
                 <p>
-                    White test adalah uji heteroskedastisitas yang paling umum
-                    digunakan karena tidak memerlukan asumsi tentang bentuk
-                    spesifik heteroskedastisitas.
+                    White test is the most commonly used heteroscedasticity test
+                    because it requires no assumptions about the specific form
+                    of heteroscedasticity.
                 </p>
 
-                <h3>Konstruksi Model Pembantu</h3>
+                <h3>Auxiliary Model Construction</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Matriks Pembantu White:</h4>
+                    <h4 className="font-bold mb-2">White Auxiliary Matrix:</h4>
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>1. Intercept:</strong> Kolom dengan nilai 1
+                            <strong>1. Intercept:</strong> Column with value 1
                         </div>
                         <div>
-                            <strong>2. Prediktor Asli:</strong> X₁, X₂, ..., Xₚ
+                            <strong>2. Original Predictors:</strong> X₁, X₂,
+                            ..., Xₚ
                         </div>
                         <div>
-                            <strong>3. Kuadrat Prediktor:</strong> X₁², X₂²,
+                            <strong>3. Squared Predictors:</strong> X₁², X₂²,
                             ..., Xₚ²
                         </div>
                         <div>
-                            <strong>4. Interaksi:</strong> X₁×X₂, X₁×X₃, ...,
+                            <strong>4. Interactions:</strong> X₁×X₂, X₁×X₃, ...,
                             Xₚ₋₁×Xₚ
                         </div>
                     </div>
                 </div>
 
-                <h3>Statistik White Test</h3>
+                <h3>White Test Statistic</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>LM = n × R²</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>n</strong> = jumlah observasi
+                            <strong>n</strong> = number of observations
                         </li>
                         <li>
-                            <strong>R²</strong> = koefisien determinasi dari
-                            regresi pembantu
+                            <strong>R²</strong> = coefficient of determination
+                            from auxiliary regression
                         </li>
                         <li>
-                            <strong>df</strong> = jumlah prediktor dalam model
-                            pembantu - 1
+                            <strong>df</strong> = number of predictors in
+                            auxiliary model - 1
                         </li>
                     </ul>
                 </div>
 
-                <h3>Distribusi dan Interpretasi</h3>
+                <h3>Distribution and Interpretation</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        White Test mengikuti distribusi Chi-kuadrat:
+                        White Test follows Chi-square distribution:
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-1">
-                        <li>• LM ~ χ²(df) di bawah H₀</li>
+                        <li>• LM ~ χ²(df) under H₀</li>
                         <li>• p-value = P(χ²(df) {">"} LM)</li>
                         <li>
-                            • p {"<"} 0.05: Tolak H₀, ada heteroskedastisitas
+                            • p {"<"} 0.05: Reject H₀, heteroscedasticity
+                            present
                         </li>
-                        <li>• p ≥ 0.05: Gagal tolak H₀, homoskedastisitas</li>
+                        <li>• p ≥ 0.05: Fail to reject H₀, homoscedasticity</li>
                     </div>
                 </div>
 
                 <h2 className="mt-8">Breusch-Pagan Test</h2>
 
                 <p>
-                    Breusch-Pagan test mengasumsikan bahwa varians error adalah
-                    fungsi linear dari variabel penjelas.
+                    Breusch-Pagan test assumes that error variance is a linear
+                    function of explanatory variables.
                 </p>
 
-                <h3>Model Pembantu BP</h3>
+                <h3>BP Auxiliary Model</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Regresi Pembantu:</h4>
+                    <h4 className="font-bold mb-2">Auxiliary Regression:</h4>
                     <div className="text-center text-lg font-mono">
                         <strong>ε² = α₀ + α₁ŷ + u</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Dimana ε² adalah kuadrat residual dan ŷ adalah nilai
-                        prediksi
+                        Where ε² is squared residuals and ŷ is predicted values
                     </p>
                 </div>
 
-                <h3>Statistik Breusch-Pagan</h3>
+                <h3>Breusch-Pagan Statistic</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>BP = ESS / (2 × σ̂⁴)</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>ESS</strong> = Explained Sum of Squares dari
-                            regresi pembantu
+                            <strong>ESS</strong> = Explained Sum of Squares from
+                            auxiliary regression
                         </li>
                         <li>
-                            <strong>σ̂²</strong> = RSS/n (estimasi varians error
-                            model utama)
+                            <strong>σ̂²</strong> = RSS/n (error variance estimate
+                            from main model)
                         </li>
                         <li>
-                            <strong>df</strong> = 1 (karena hanya ŷ sebagai
-                            prediktor)
+                            <strong>df</strong> = 1 (since only ŷ as predictor)
                         </li>
                     </ul>
                 </div>
@@ -274,79 +273,79 @@ export const HeteroscedasticityTests: React.FC = () => {
                 <h2 className="mt-8">Modified Breusch-Pagan Test</h2>
 
                 <p>
-                    Modified Breusch-Pagan test (Koenker-Bassett) adalah versi
-                    yang lebih robust terhadap pelanggaran asumsi normalitas.
+                    Modified Breusch-Pagan test (Koenker-Bassett) is a more
+                    robust version against normality assumption violations.
                 </p>
 
-                <h3>Statistik Modified BP</h3>
+                <h3>Modified BP Statistic</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>LM = n × R²</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Sama dengan White test, tetapi model pembantu hanya
-                        menggunakan ŷ
+                        Same as White test, but auxiliary model only uses ŷ
                     </p>
                 </div>
 
-                <h3>Keunggulan Modified BP</h3>
+                <h3>Advantages of Modified BP</h3>
                 <div className="bg-green-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-green-800 mb-2">
-                        Keunggulan dibanding BP klasik:
+                        Advantages over classical BP:
                     </h4>
                     <ul className="text-sm text-green-700 space-y-1">
-                        <li>• Lebih robust terhadap non-normalitas</li>
-                        <li>• Tidak memerlukan asumsi distribusi</li>
-                        <li>• Performa lebih baik pada sampel kecil</li>
-                        <li>• Lebih konsisten secara asimptotik</li>
+                        <li>• More robust to non-normality</li>
+                        <li>• No distributional assumptions required</li>
+                        <li>• Better performance on small samples</li>
+                        <li>• More asymptotically consistent</li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">F-Test untuk Heteroscedasticity</h2>
+                <h2 className="mt-8">F-Test for Heteroscedasticity</h2>
 
                 <p>
-                    F-test adalah alternatif untuk uji Chi-kuadrat yang sering
-                    memiliki performa lebih baik pada sampel kecil.
+                    F-test is an alternative to Chi-square test that often
+                    performs better on small samples.
                 </p>
 
-                <h3>Statistik F</h3>
+                <h3>F-Statistic</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>F = (R²/df₁) / ((1-R²)/df₂)</strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>df₁</strong> = jumlah prediktor dalam model
-                            pembantu - 1
+                            <strong>df₁</strong> = number of predictors in
+                            auxiliary model - 1
                         </li>
                         <li>
-                            <strong>df₂</strong> = n - jumlah prediktor dalam
-                            model pembantu
+                            <strong>df₂</strong> = n - number of predictors in
+                            auxiliary model
                         </li>
                         <li>
-                            <strong>R²</strong> = koefisien determinasi dari
-                            regresi pembantu
+                            <strong>R²</strong> = coefficient of determination
+                            from auxiliary regression
                         </li>
                     </ul>
                 </div>
 
-                <h3>Distribusi F</h3>
+                <h3>F Distribution</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        F-test mengikuti distribusi F:
+                        F-test follows F distribution:
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-1">
-                        <li>• F ~ F(df₁, df₂) di bawah H₀</li>
+                        <li>• F ~ F(df₁, df₂) under H₀</li>
                         <li>• p-value = P(F(df₁, df₂) {">"} F_observed)</li>
                         <li>
-                            • p {"<"} 0.05: Tolak H₀, ada heteroskedastisitas
+                            • p {"<"} 0.05: Reject H₀, heteroscedasticity
+                            present
                         </li>
-                        <li>• p ≥ 0.05: Gagal tolak H₀, homoskedastisitas</li>
+                        <li>• p ≥ 0.05: Fail to reject H₀, homoscedasticity</li>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Interpretasi Hasil</h2>
+                <h2 className="mt-8">Interpreting Results</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -354,10 +353,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             p-value ≥ 0.05
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Gagal menolak H₀</li>
-                            <li>• Homoskedastisitas</li>
-                            <li>• Asumsi terpenuhi</li>
-                            <li>• Inferensi statistik valid</li>
+                            <li>• Fail to reject H₀</li>
+                            <li>• Homoscedasticity</li>
+                            <li>• Assumption satisfied</li>
+                            <li>• Valid statistical inference</li>
                         </ul>
                     </div>
 
@@ -366,55 +365,53 @@ export const HeteroscedasticityTests: React.FC = () => {
                             p-value {"<"} 0.05
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Menolak H₀</li>
-                            <li>• Heteroskedastisitas</li>
-                            <li>• Asumsi dilanggar</li>
-                            <li>• Pertimbangkan solusi</li>
+                            <li>• Reject H₀</li>
+                            <li>• Heteroscedasticity</li>
+                            <li>• Assumption violated</li>
+                            <li>• Consider solutions</li>
                         </ul>
                     </div>
                 </div>
 
-                <h2 className="mt-8">Solusi untuk Heteroscedasticity</h2>
+                <h2 className="mt-8">Solutions for Heteroscedasticity</h2>
 
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Ketika Heteroskedastisitas Terdeteksi:
+                        When Heteroscedasticity is Detected:
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-2">
                         <li>
                             <strong>1. Weighted Least Squares (WLS):</strong>{" "}
-                            Gunakan bobot yang berbanding terbalik dengan
-                            varians
+                            Use weights inversely proportional to variance
                         </li>
                         <li>
-                            <strong>2. Robust Standard Errors:</strong> Gunakan
-                            standard error yang tahan terhadap
-                            heteroskedastisitas
+                            <strong>2. Robust Standard Errors:</strong> Use
+                            standard errors robust to heteroscedasticity
                         </li>
                         <li>
-                            <strong>3. Transformasi Data:</strong> Log, square
-                            root, atau transformasi lain
+                            <strong>3. Data Transformation:</strong> Log, square
+                            root, or other transformations
                         </li>
                         <li>
                             <strong>4. Generalized Least Squares (GLS):</strong>{" "}
-                            Estimasi varians error secara eksplisit
+                            Explicitly estimate error variance
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
                         <code>rust/src/stats/heteroscedasticity.rs</code> -
-                        Implementasi uji heteroskedastisitas
+                        Heteroscedasticity test implementation
                     </li>
                     <li>
-                        <code>rust/src/models/result.rs</code> - Struktur hasil
-                        uji
+                        <code>rust/src/models/result.rs</code> - Test result
+                        structures
                     </li>
                     <li>
-                        <code>rust/src/stats/core.rs</code> - Fungsi bantu
-                        perhitungan
+                        <code>rust/src/stats/core.rs</code> - Helper calculation
+                        functions
                     </li>
                     <li>
                         <code>

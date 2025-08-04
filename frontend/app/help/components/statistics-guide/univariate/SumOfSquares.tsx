@@ -13,20 +13,20 @@ export const SumOfSquares: React.FC = () => {
     return (
         <HelpContentWrapper
             title="GLM Univariate: Sum of Squares"
-            description="Penjelasan lengkap tentang perhitungan Sum of Squares dalam analisis GLM Univariate."
+            description="Complete explanation of Sum of Squares calculation in GLM Univariate analysis."
         >
             <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
                 <div className="flex">
                     <HelpCircle className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
                     <div>
                         <AlertTitle className="text-blue-800 font-medium mb-1">
-                            Sum of Squares dalam GLM
+                            Sum of Squares in GLM
                         </AlertTitle>
                         <AlertDescription className="text-blue-700">
-                            Sum of Squares adalah komponen fundamental dalam
-                            analisis varians yang mengukur variabilitas dalam
-                            data. GLM menggunakan empat tipe SS yang berbeda
-                            untuk berbagai tujuan analisis.
+                            Sum of Squares is a fundamental component in
+                            analysis of variance that measures variability in
+                            data. GLM uses four different types of SS for
+                            various analysis purposes.
                         </AlertDescription>
                     </div>
                 </div>
@@ -35,150 +35,149 @@ export const SumOfSquares: React.FC = () => {
             <div className="prose max-w-none">
                 <h2 className="flex items-center gap-2">
                     <Calculator className="h-6 w-6" />
-                    Konsep Dasar Sum of Squares
+                    Basic Concepts of Sum of Squares
                 </h2>
 
                 <p>
-                    Sum of Squares (SS) mengukur total variabilitas dalam data
-                    dan dapat dipecah menjadi beberapa komponen. Dalam GLM, SS
-                    dihitung menggunakan matriks hipotesis L:
+                    Sum of Squares (SS) measures total variability in data and
+                    can be decomposed into several components. In GLM, SS is
+                    calculated using hypothesis matrix L:
                 </p>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold mb-2">
-                        Formula Umum Sum of Squares:
+                        General Sum of Squares Formula:
                     </h4>
                     <div className="text-center text-lg font-mono">
                         <strong>
                             SS(H) = (L × β̂)ᵀ × (L × G⁻¹ × Lᵀ)⁻¹ × (L × β̂)
                         </strong>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                    <p className="mt-2 text-sm text-gray-600">Where:</p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            <strong>L</strong> = matriks hipotesis
-                            (menggambarkan hipotesis yang diuji)
+                            <strong>L</strong> = hypothesis matrix (describes
+                            the hypothesis being tested)
                         </li>
                         <li>
-                            <strong>β̂</strong> = vektor estimasi parameter
+                            <strong>β̂</strong> = parameter estimate vector
                         </li>
                         <li>
-                            <strong>G⁻¹</strong> = generalized inverse dari
-                            matriks (X'WX)
+                            <strong>G⁻¹</strong> = generalized inverse of matrix
+                            (X'WX)
                         </li>
                         <li>
-                            <strong>SS(H)</strong> = Sum of Squares untuk
-                            hipotesis H
+                            <strong>SS(H)</strong> = Sum of Squares for
+                            hypothesis H
                         </li>
                     </ul>
                 </div>
 
                 <h2 className="flex items-center gap-2 mt-8">
                     <Layers className="h-6 w-6" />
-                    Tipe Sum of Squares
+                    Types of Sum of Squares
                 </h2>
 
                 <p>
-                    GLM menggunakan empat tipe Sum of Squares yang berbeda,
-                    masing-masing dengan karakteristik dan kegunaan yang
-                    spesifik:
+                    GLM uses four different types of Sum of Squares, each with
+                    specific characteristics and uses:
                 </p>
 
                 <h3>Type I Sum of Squares (Sequential)</h3>
                 <div className="bg-blue-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-blue-800 mb-2">
-                        Karakteristik Type I SS:
+                        Type I SS Characteristics:
                     </h4>
                     <ul className="text-sm text-blue-700 space-y-1">
                         <li>
-                            • <strong>Sekuensial:</strong> Bergantung pada
-                            urutan term dalam model
+                            • <strong>Sequential:</strong> Depends on order of
+                            terms in model
                         </li>
                         <li>
-                            • <strong>Hierarkis:</strong> Setiap term dievaluasi
-                            setelah term sebelumnya
+                            • <strong>Hierarchical:</strong> Each term evaluated
+                            after previous terms
                         </li>
                         <li>
-                            • <strong>Kumulatif:</strong> Efek term sebelumnya
-                            dikontrol
+                            • <strong>Cumulative:</strong> Effects of previous
+                            terms are controlled
                         </li>
                         <li>
-                            • <strong>Aplikasi:</strong> Model dengan urutan
-                            teoretis yang jelas
+                            • <strong>Application:</strong> Models with clear
+                            theoretical ordering
                         </li>
                     </ul>
                 </div>
 
-                <h4>Konstruksi Matriks L untuk Type I</h4>
+                <h4>L Matrix Construction for Type I</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
                             <strong>
-                                1. Ambil L₀ = submatriks p×p dari Z'WZ
+                                1. Take L₀ = p×p submatrix from Z'WZ
                             </strong>
                         </div>
                         <div>
                             <strong>
-                                2. Lakukan SWEEP pada kolom-kolom sebelum term
+                                2. Perform SWEEP on columns before term Fⱼ
+                            </strong>
+                        </div>
+                        <div>
+                            <strong>
+                                3. Zero out rows and columns for effects before
                                 Fⱼ
                             </strong>
                         </div>
                         <div>
                             <strong>
-                                3. Nol-kan baris dan kolom untuk efek sebelum Fⱼ
+                                4. Zero out rows for effects after Fⱼ
                             </strong>
                         </div>
                         <div>
-                            <strong>
-                                4. Nol-kan baris untuk efek setelah Fⱼ
-                            </strong>
+                            <strong>5. Remove zero-valued rows</strong>
                         </div>
                         <div>
-                            <strong>5. Hapus baris yang bernilai nol</strong>
-                        </div>
-                        <div>
-                            <strong>6. Ekstrak basis baris independen</strong>
+                            <strong>6. Extract independent row basis</strong>
                         </div>
                     </div>
                 </div>
 
-                <h4>Formula Type I SS</h4>
+                <h4>Type I SS Formula</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>SS₁(Fⱼ) = SS(Fⱼ | F₁, F₂, ..., Fⱼ₋₁)</strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Sum of Squares untuk term Fⱼ setelah mengontrol efek
-                        term F₁ hingga Fⱼ₋₁
+                        Sum of Squares for term Fⱼ after controlling for effects
+                        of terms F₁ through Fⱼ₋₁
                     </p>
                 </div>
 
                 <h3>Type II Sum of Squares (Marginal)</h3>
                 <div className="bg-green-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-green-800 mb-2">
-                        Karakteristik Type II SS:
+                        Type II SS Characteristics:
                     </h4>
                     <ul className="text-sm text-green-700 space-y-1">
                         <li>
-                            • <strong>Marginal:</strong> Menguji efek term
-                            setelah term lain yang tidak mengandungnya
+                            • <strong>Marginal:</strong> Tests term effect after
+                            other terms that don't contain it
                         </li>
                         <li>
-                            • <strong>Prinsip Marginalitas:</strong> Menghormati
-                            hierarki model
+                            • <strong>Marginality Principle:</strong> Respects
+                            model hierarchy
                         </li>
                         <li>
-                            • <strong>Independen Urutan:</strong> Tidak
-                            bergantung pada urutan dalam model
+                            • <strong>Order Independent:</strong> Not dependent
+                            on order in model
                         </li>
                         <li>
-                            • <strong>Aplikasi:</strong> Model tanpa interaksi
-                            signifikan
+                            • <strong>Application:</strong> Models without
+                            significant interactions
                         </li>
                     </ul>
                 </div>
 
-                <h4>Konstruksi Matriks L untuk Type II</h4>
+                <h4>L Matrix Construction for Type II</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
@@ -187,197 +186,195 @@ export const SumOfSquares: React.FC = () => {
                                 (X₂ᵀ × W^½ × M₁ × W^½ × X₃)]
                             </strong>
                         </div>
-                        <p className="mt-2 text-sm text-gray-600">Dimana:</p>
+                        <p className="mt-2 text-sm text-gray-600">Where:</p>
                         <ul className="text-sm text-gray-600 mt-1">
                             <li>
-                                <strong>X₁:</strong> Kolom untuk efek yang tidak
-                                mengandung F
+                                <strong>X₁:</strong> Columns for effects that
+                                don't contain F
                             </li>
                             <li>
-                                <strong>X₂:</strong> Kolom untuk efek F (term of
-                                interest)
+                                <strong>X₂:</strong> Columns for effect F (term
+                                of interest)
                             </li>
                             <li>
-                                <strong>X₃:</strong> Kolom untuk efek yang
-                                mengandung F
+                                <strong>X₃:</strong> Columns for effects that
+                                contain F
                             </li>
                             <li>
-                                <strong>M₁:</strong> Matriks proyeksi ortogonal
-                                ke ruang kolom X₁
+                                <strong>M₁:</strong> Orthogonal projection
+                                matrix to column space of X₁
                             </li>
                             <li>
-                                <strong>C:</strong> Generalized inverse dari
-                                (X₂ᵀ × W^½ × M₁ × W^½ × X₂)
+                                <strong>C:</strong> Generalized inverse of (X₂ᵀ
+                                × W^½ × M₁ × W^½ × X₂)
                             </li>
                         </ul>
                     </div>
                 </div>
 
-                <h4>Formula Type II SS</h4>
+                <h4>Type II SS Formula</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>
-                            SS₂(F) = SS(F | semua term yang tidak mengandung F)
+                            SS₂(F) = SS(F | all terms that don't contain F)
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Sum of Squares untuk term F setelah mengontrol semua
-                        term yang tidak mengandung F
+                        Sum of Squares for term F after controlling for all
+                        terms that don't contain F
                     </p>
                 </div>
 
                 <h3>Type III Sum of Squares (Partial)</h3>
                 <div className="bg-yellow-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-yellow-800 mb-2">
-                        Karakteristik Type III SS:
+                        Type III SS Characteristics:
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-1">
                         <li>
-                            • <strong>Partial:</strong> Menguji efek term
-                            setelah SEMUA term lain dalam model
+                            • <strong>Partial:</strong> Tests term effect after
+                            ALL other terms in model
                         </li>
                         <li>
-                            • <strong>Equal-Weighted:</strong> Menggunakan
-                            rata-rata sel berbobot sama
+                            • <strong>Equal-Weighted:</strong> Uses equally
+                            weighted cell means
                         </li>
                         <li>
-                            • <strong>Marginal:</strong> Menguji hipotesis
-                            marginal
+                            • <strong>Marginal:</strong> Tests marginal
+                            hypotheses
                         </li>
                         <li>
-                            • <strong>Aplikasi:</strong> Model dengan interaksi,
-                            desain tidak seimbang
+                            • <strong>Application:</strong> Models with
+                            interactions, unbalanced designs
                         </li>
                     </ul>
                 </div>
 
-                <h4>Konstruksi Matriks L untuk Type III</h4>
+                <h4>L Matrix Construction for Type III</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>Intercept:</strong> L = rata-rata dari semua
-                            parameter berbasis faktor
+                            <strong>Intercept:</strong> L = average of all
+                            factor-based parameters
                         </div>
                         <div>
-                            <strong>Kovariat:</strong> L = [0, 0, ..., 1, 0,
-                            ...] (1 pada posisi kovariat)
+                            <strong>Covariates:</strong> L = [0, 0, ..., 1, 0,
+                            ...] (1 at covariate position)
                         </div>
                         <div>
-                            <strong>Efek Utama Faktor:</strong> Kontras antar
-                            level, dirata-ratakan terhadap level faktor lain
+                            <strong>Factor Main Effects:</strong> Contrasts
+                            between levels, averaged over other factor levels
                         </div>
                         <div>
-                            <strong>Interaksi:</strong> Produk dari kontras efek
-                            utama yang terlibat
+                            <strong>Interactions:</strong> Product of contrasts
+                            from involved main effects
                         </div>
                     </div>
                 </div>
 
-                <h4>Formula Type III SS</h4>
+                <h4>Type III SS Formula</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>
-                            SS₃(F) = SS(F | semua term lain dalam model)
+                            SS₃(F) = SS(F | all other terms in model)
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Sum of Squares untuk term F setelah mengontrol semua
-                        term lain dalam model
+                        Sum of Squares for term F after controlling for all
+                        other terms in model
                     </p>
                 </div>
 
                 <h3>Type IV Sum of Squares (Balanced)</h3>
                 <div className="bg-red-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold text-red-800 mb-2">
-                        Karakteristik Type IV SS:
+                        Type IV SS Characteristics:
                     </h4>
                     <ul className="text-sm text-red-700 space-y-1">
                         <li>
-                            • <strong>Balanced:</strong> Dirancang untuk desain
-                            dengan sel kosong
+                            • <strong>Balanced:</strong> Designed for designs
+                            with empty cells
                         </li>
                         <li>
-                            • <strong>Distributed:</strong> Kontras
-                            didistribusikan secara seimbang di sel yang ada
+                            • <strong>Distributed:</strong> Contrasts
+                            distributed equally across available cells
                         </li>
                         <li>
-                            • <strong>Modified Type III:</strong> Modifikasi
-                            dari Type III untuk data tidak lengkap
+                            • <strong>Modified Type III:</strong> Modification
+                            of Type III for incomplete data
                         </li>
                         <li>
-                            • <strong>Aplikasi:</strong> Desain faktorial dengan
-                            missing cells
+                            • <strong>Application:</strong> Factorial designs
+                            with missing cells
                         </li>
                     </ul>
                 </div>
 
-                <h4>Konstruksi Matriks L untuk Type IV</h4>
+                <h4>L Matrix Construction for Type IV</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
                         <div>
-                            <strong>1. Mulai dengan matriks L Type III</strong>
+                            <strong>1. Start with Type III L matrix</strong>
                         </div>
                         <div>
                             <strong>
-                                2. Identifikasi efek yang mengandung term of
-                                interest
+                                2. Identify effects containing term of interest
                             </strong>
                         </div>
                         <div>
                             <strong>
-                                3. Sesuaikan koefisien berdasarkan sel yang ada
+                                3. Adjust coefficients based on available cells
                             </strong>
                         </div>
                         <div>
-                            <strong>
-                                4. Distribusikan kontras secara seimbang
-                            </strong>
+                            <strong>4. Distribute contrasts equally</strong>
                         </div>
                         <div>
-                            <strong>5. Ekstrak basis baris independen</strong>
+                            <strong>5. Extract independent row basis</strong>
                         </div>
                     </div>
                 </div>
 
-                <h4>Formula Type IV SS</h4>
+                <h4>Type IV SS Formula</h4>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-center text-lg font-mono">
                         <strong>
-                            SS₄(F) = SS₃(F) dengan penyesuaian untuk sel kosong
+                            SS₄(F) = SS₃(F) with adjustment for empty cells
                         </strong>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Sum of Squares Type III yang disesuaikan untuk menangani
-                        missing cells
+                        Type III Sum of Squares adjusted to handle missing cells
                     </p>
                 </div>
 
-                <h2 className="mt-8">Perbandingan Tipe Sum of Squares</h2>
+                <h2 className="mt-8">Sum of Squares Types Comparison</h2>
 
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-sm border border-gray-300">
                         <thead>
                             <tr className="bg-gray-100">
-                                <th className="border p-2 text-left">Tipe</th>
+                                <th className="border p-2 text-left">Type</th>
                                 <th className="border p-2 text-left">
-                                    Karakteristik
+                                    Characteristic
                                 </th>
                                 <th className="border p-2 text-left">
-                                    Kontrol
+                                    Control
                                 </th>
                                 <th className="border p-2 text-left">
-                                    Aplikasi
+                                    Application
                                 </th>
-                                <th className="border p-2 text-left">Urutan</th>
+                                <th className="border p-2 text-left">Order</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td className="border p-2 font-bold">Type I</td>
-                                <td className="border p-2">Sekuensial</td>
-                                <td className="border p-2">Term sebelumnya</td>
-                                <td className="border p-2">Model hierarkis</td>
-                                <td className="border p-2">Bergantung</td>
+                                <td className="border p-2">Sequential</td>
+                                <td className="border p-2">Previous terms</td>
+                                <td className="border p-2">
+                                    Hierarchical models
+                                </td>
+                                <td className="border p-2">Dependent</td>
                             </tr>
                             <tr>
                                 <td className="border p-2 font-bold">
@@ -385,60 +382,60 @@ export const SumOfSquares: React.FC = () => {
                                 </td>
                                 <td className="border p-2">Marginal</td>
                                 <td className="border p-2">
-                                    Term yang tidak mengandung F
+                                    Terms that don't contain F
                                 </td>
                                 <td className="border p-2">
-                                    Model tanpa interaksi
+                                    Models without interactions
                                 </td>
-                                <td className="border p-2">Independen</td>
+                                <td className="border p-2">Independent</td>
                             </tr>
                             <tr>
                                 <td className="border p-2 font-bold">
                                     Type III
                                 </td>
                                 <td className="border p-2">Partial</td>
-                                <td className="border p-2">Semua term lain</td>
+                                <td className="border p-2">All other terms</td>
                                 <td className="border p-2">
-                                    Model dengan interaksi
+                                    Models with interactions
                                 </td>
-                                <td className="border p-2">Independen</td>
+                                <td className="border p-2">Independent</td>
                             </tr>
                             <tr>
                                 <td className="border p-2 font-bold">
                                     Type IV
                                 </td>
                                 <td className="border p-2">Balanced</td>
-                                <td className="border p-2">Semua term lain</td>
+                                <td className="border p-2">All other terms</td>
                                 <td className="border p-2">
-                                    Desain dengan sel kosong
+                                    Designs with empty cells
                                 </td>
-                                <td className="border p-2">Independen</td>
+                                <td className="border p-2">Independent</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>Algoritma Perhitungan SS</h3>
+                <h3>SS Calculation Algorithm</h3>
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <h4 className="font-bold mb-2">
-                        Langkah-langkah dalam calculate_ss_for_term:
+                        Steps in calculate_ss_for_term:
                     </h4>
                     <ol className="text-sm text-gray-600 space-y-1">
-                        <li>1. Validasi dimensi matriks L dan β̂</li>
+                        <li>1. Validate L matrix and β̂ dimensions</li>
                         <li>
-                            2. Hitung L × β̂ (estimasi kombinasi linier
-                            hipotesis)
+                            2. Calculate L × β̂ (hypothesis linear combination
+                            estimate)
                         </li>
-                        <li>3. Hitung L × G⁻¹ × Lᵀ (matriks kovarians)</li>
+                        <li>3. Calculate L × G⁻¹ × Lᵀ (covariance matrix)</li>
                         <li>
-                            4. Hitung rank dari matriks kovarians (degrees of
+                            4. Calculate rank of covariance matrix (degrees of
                             freedom)
                         </li>
-                        <li>5. Hitung pseudo-inverse dari matriks kovarians</li>
-                        <li>6. Hitung SS = (L×β̂)ᵀ × (L×G⁻¹×Lᵀ)⁻¹ × (L×β̂)</li>
                         <li>
-                            7. Pastikan SS ≥ 0 (ambil nilai maksimal dengan 0)
+                            5. Calculate pseudo-inverse of covariance matrix
                         </li>
+                        <li>6. Calculate SS = (L×β̂)ᵀ × (L×G⁻¹×Lᵀ)⁻¹ × (L×β̂)</li>
+                        <li>7. Ensure SS ≥ 0 (take maximum with 0)</li>
                     </ol>
                 </div>
 
@@ -451,12 +448,12 @@ export const SumOfSquares: React.FC = () => {
                         </div>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Degrees of freedom untuk setiap tipe SS ditentukan oleh
-                        rank dari matriks kovarians hipotesis
+                        Degrees of freedom for each SS type determined by rank
+                        of hypothesis covariance matrix
                     </p>
                 </div>
 
-                <h2 className="mt-8">Mean Squares dan F-Statistics</h2>
+                <h2 className="mt-8">Mean Squares and F-Statistics</h2>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
                     <div className="text-sm font-mono space-y-2">
@@ -468,8 +465,8 @@ export const SumOfSquares: React.FC = () => {
                         </div>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Mean Squares dan F-statistics dihitung menggunakan SS
-                        dan df yang sesuai
+                        Mean Squares and F-statistics calculated using
+                        appropriate SS and df
                     </p>
                 </div>
 
@@ -493,19 +490,19 @@ export const SumOfSquares: React.FC = () => {
                     </div>
                 </div>
 
-                <h2 className="mt-8">File Terkait</h2>
+                <h2 className="mt-8">Related Files</h2>
                 <ul>
                     <li>
-                        <code>rust/src/stats/sum_of_squares.rs</code> -
-                        Implementasi perhitungan SS
+                        <code>rust/src/stats/sum_of_squares.rs</code> - SS
+                        calculation implementation
                     </li>
                     <li>
-                        <code>rust/src/stats/hypothesis_matrix.rs</code> -
-                        Konstruksi matriks L
+                        <code>rust/src/stats/hypothesis_matrix.rs</code> - L
+                        matrix construction
                     </li>
                     <li>
-                        <code>rust/src/models/result.rs</code> - Struktur hasil
-                        analisis
+                        <code>rust/src/models/result.rs</code> - Analysis result
+                        structures
                     </li>
                     <li>
                         <code>
