@@ -248,16 +248,10 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
     }, [tourActive, currentStep, targetElements]);
 
     const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        e.preventDefault();
         const text = e.clipboardData.getData('text');
         if (text) {
             onTextPaste(text);
-            setClipboardApiError(null);
-        }
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        onTextPaste(e.target.value);
-        if (e.target.value) {
             setClipboardApiError(null);
         }
     };
@@ -266,9 +260,6 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
         try {
             const text = await readTextFromClipboard();
             onTextPaste(text);
-            if (textareaRef.current) {
-                textareaRef.current.value = text;
-            }
             setClipboardApiError(null);
         } catch (err: any) {
             setClipboardApiError(err.message || "Clipboard access denied. Please manually paste text (Ctrl+V / Cmd+V).");
@@ -335,7 +326,6 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
                         className={cn(`w-full h-full min-h-[200px] font-mono text-sm`, error ? 'border-destructive' : '', tourActive && currentStep === 1 && "focus:ring-primary")}
                         placeholder="Paste your tabular data here..."
                         onPaste={handlePaste}
-                        onChange={handleChange}
                         disabled={isLoading}
                         value={pastedText || ''}
                     />

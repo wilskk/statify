@@ -9,12 +9,49 @@ export class CSVProcessingError extends Error {
 }
 
 export const processCSVContent = (fileContent: string, options: CSVProcessingOptions) => {
-    const { firstLineContains, removeLeading, removeTrailing, delimiter, decimal } = options;
-    
+    const { firstLineContains, removeLeading, removeTrailing, delimiter, decimal, textQualifier } = options;
+
+    // New helper to parse a single CSV line while respecting text qualifiers
+    const parseCsvLine = (line: string, delim: string, qualifier: string | null): string[] => {
+        const cells: string[] = [];
+        let current = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (qualifier && ch === qualifier) {
+                // If we are inside quotes and next char is also qualifier, it's an escape (""
+                if (inQuotes && i + 1 < line.length && line[i + 1] === qualifier) {
+                    current += qualifier;
+                    i++; // Skip the escaped quote
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch === delim && !inQuotes) {
+                cells.push(current);
+                current = "";
+            } else {
+                current += ch;
+            }
+        }
+        cells.push(current);
+        return cells.map((cell) => {
+            if (!qualifier) return cell;
+            // Remove surrounding qualifier if present
+            const trimmed = cell.trim();
+            if (trimmed.startsWith(qualifier) && trimmed.endsWith(qualifier)) {
+                return trimmed.substring(1, trimmed.length - 1).replace(new RegExp(`${qualifier}${qualifier}`, 'g'), qualifier);
+            }
+            return cell;
+        });
+    };
+
     try {
         let delimChar = ',';
         if (delimiter === 'semicolon') delimChar = ';';
         else if (delimiter === 'tab') delimChar = '\t';
+
+        const qualifierChar = textQualifier === 'doubleQuote' ? '"' : textQualifier === 'singleQuote' ? "'" : null;
 
         const lines = fileContent.split(/\r\n|\n|\r/);
         
@@ -25,8 +62,8 @@ export const processCSVContent = (fileContent: string, options: CSVProcessingOpt
             let currentLine = line;
             if (removeLeading) currentLine = currentLine.replace(/^\s+/, '');
             if (removeTrailing) currentLine = currentLine.replace(/\s+$/, '');
-            
-            parsedRows.push(currentLine.split(delimChar)); 
+
+            parsedRows.push(parseCsvLine(currentLine, delimChar, qualifierChar)); 
         }
 
         if (parsedRows.length === 0) {
