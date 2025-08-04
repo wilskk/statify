@@ -3,26 +3,6 @@ use crate::models::{ config::UnivariateConfig, data::AnalysisData, result::Desig
 
 use super::core::*;
 
-/**
- * Menghitung Sum of Squares (SS) untuk suatu term hipotesis berdasarkan matriks L.
- * Fungsi ini merupakan implementasi inti dari uji hipotesis linier umum.
- *
- * Rumus Statistik yang Digunakan:
- * - Nama: Statistik Kuadratik untuk Hipotesis Linier Umum (sering digunakan dalam konteks Uji Wald).
- * - Formula: SS(H) = (L * beta_hat)^T * (L * G_inv * L')^-1 * (L * beta_hat)
- *   di mana G_inv adalah generalized inverse dari matriks (X'WX), yang proporsional
- *   dengan matriks kovarians dari beta_hat.
- *
- * Tujuan:
- * Menguji hipotesis nol H0: L * beta = 0. Jika nilai SS(H) besar, ini memberikan bukti
- * untuk menolak H0, yang berarti kombinasi linier dari parameter yang diuji (didefinisikan
- * oleh matriks L) secara statistik signifikan.
- *
- * Interpretasi Hasil:
- * - `ss`: Nilai Sum of Squares. Semakin besar nilainya, semakin signifikan efek term tersebut.
- * - `df`: Derajat kebebasan (degrees of freedom) yang terkait dengan SS, yang digunakan dalam
- *         perhitungan Mean Square (MS) dan uji-F.
- */
 pub fn calculate_ss_for_term(
     l_matrix: &DMatrix<f64>,
     beta_hat_model: &DVector<f64>,

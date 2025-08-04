@@ -7,18 +7,7 @@ pub fn save_variables(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<SavedVariables, String> {
-    let mut result = SavedVariables {
-        predicted_values: Vec::new(),
-        weighted_predicted_values: Vec::new(),
-        residuals: Vec::new(),
-        weighted_residuals: Vec::new(),
-        deleted_residuals: Vec::new(),
-        standardized_residuals: Vec::new(),
-        studentized_residuals: Vec::new(),
-        standard_errors: Vec::new(),
-        cook_distances: Vec::new(),
-        leverages: Vec::new(),
-    };
+    let mut result = SavedVariables::default();
 
     let design_info = create_design_response_weights(data, config)?;
 

@@ -22,10 +22,7 @@ pub fn calculate_contrast_coefficients(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<ContrastCoefficients, String> {
-    let mut processed_contrast_data_map: HashMap<
-        String,
-        (ContrastCoefficientsEntry, ContrastResult, ContrastTestResult, ContrastInformation)
-    > = HashMap::new();
+    let mut processed_contrast_data_map = HashMap::new();
 
     let design_info = create_design_response_weights(data, config)?;
     let all_model_parameters_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
@@ -75,19 +72,7 @@ pub fn calculate_contrast_coefficients(
 
     for spec_str in &factors_to_process_specs {
         let parsed_spec = parse_contrast_factor_spec(spec_str)?;
-
-        let levels_of_contrasted_factor = match get_factor_levels(data, &parsed_spec.factor_name) {
-            Ok(levels) => levels,
-            Err(e) => {
-                return Err(
-                    format!(
-                        "Failed to get levels for contrast factor {}: {}",
-                        parsed_spec.factor_name,
-                        e
-                    )
-                );
-            }
-        };
+        let levels_of_contrasted_factor = get_factor_levels(data, &parsed_spec.factor_name)?;
 
         let (l_matrix, cce_row_descriptions, l_labels) = generate_l_matrix_and_descriptions(
             &parsed_spec,

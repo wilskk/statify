@@ -12,22 +12,19 @@ pub fn calculate_levene_test(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<Vec<LeveneTest>, String> {
-    let dep_var_name = config.main.dep_var
-        .as_ref()
-        .ok_or_else(|| "Dependent variable not specified in the configuration".to_string())?;
-
+    let dep_var_name = config.main.dep_var.as_ref().unwrap();
     let design_info = create_design_response_weights(data, config)?;
     let design_string = generate_design_string(&design_info);
 
-    let (data_for_levene, _indices) = if config.main.covar.as_ref().map_or(true, |c| c.is_empty()) {
-        (design_info.y.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
+    let data_for_levene = if config.main.covar.as_ref().map_or(true, |c| c.is_empty()) {
+        design_info.y.as_slice().to_vec()
     } else {
         let ztwz_matrix = create_cross_product_matrix(&design_info)?;
         let swept_info = perform_sweep_and_extract_results(&ztwz_matrix, design_info.p_parameters)?;
 
         let y_hat = &design_info.x * &swept_info.beta_hat;
         let residuals = &design_info.y - y_hat;
-        (residuals.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
+        residuals.as_slice().to_vec()
     };
 
     let mut groups = create_groups_from_design_matrix(&design_info, &data_for_levene);

@@ -12,17 +12,7 @@ pub fn calculate_hypothesis_l_matrices(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<HypothesisLMatrices, String> {
-    let design_info = create_design_response_weights(data, config).map_err(|e| {
-        format!("Failed to create design matrix for L-Matrices: {}", e)
-    })?;
-
-    if design_info.p_parameters == 0 {
-        return Ok(HypothesisLMatrices {
-            matrices: vec![],
-            note: Some("No parameters in the model to generate L-matrices for.".to_string()),
-            interpretation: None,
-        });
-    }
+    let design_info = create_design_response_weights(data, config)?;
 
     let all_param_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
     let all_model_terms_in_design = &design_info.term_names;
@@ -33,9 +23,7 @@ pub fn calculate_hypothesis_l_matrices(
         // Membuat matriks L
         let l_matrix_result = match config.model.sum_of_square_method {
             SumOfSquaresMethod::TypeI => {
-                let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e| {
-                    format!("Failed to create cross-product matrix for L-Matrices: {}", e)
-                })?;
+                let ztwz_matrix = create_cross_product_matrix(&design_info)?;
 
                 construct_type_i_l_matrix(
                     &design_info,

@@ -413,7 +413,7 @@ pub struct FTest {
     pub interpretation: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SavedVariables {
     pub predicted_values: Vec<f64>,
     pub weighted_predicted_values: Vec<f64>,

@@ -350,7 +350,7 @@ pub fn construct_type_iii_l_matrix(
             Err(e) => {
                 return Err(
                     format!(
-                        "Error getting levels for presumed factor '{}': {}. This might indicate an inconsistency.",
+                        "Error getting levels for presumed factor '{}': {}.",
                         factor_name_str,
                         e
                     )

@@ -500,6 +500,7 @@ pub fn create_groups_from_design_matrix(
                 break;
             }
         }
+
         if !found_group {
             group_indices.push(vec![i]);
         }

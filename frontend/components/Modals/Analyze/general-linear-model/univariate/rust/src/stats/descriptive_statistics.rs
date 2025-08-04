@@ -51,7 +51,7 @@ pub fn calculate_descriptive_statistics(
         }
 
         if !found {
-            return Err(format!("Definisi untuk faktor '{}' tidak ditemukan.", factor_name));
+            return Err(format!("Definition for factor '{}' not found.", factor_name));
         }
     }
 
