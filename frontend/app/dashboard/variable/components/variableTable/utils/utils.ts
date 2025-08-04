@@ -58,7 +58,8 @@ export function nullSafeEnhancedRenderer(
     cellProperties: Handsontable.CellProperties
 ): HTMLTableCellElement {
     if (value == null || value === undefined) {
-        return Handsontable.renderers.TextRenderer(instance, td, row, col, prop, '', cellProperties);
+        Handsontable.renderers.TextRenderer(instance, td, row, col, prop, '', cellProperties);
+        return td;
     }
     return enhancedTextRenderer(instance, td, row, col, prop, value, cellProperties);
 }

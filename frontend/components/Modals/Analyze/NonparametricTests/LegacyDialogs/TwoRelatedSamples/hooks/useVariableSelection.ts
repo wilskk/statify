@@ -164,7 +164,7 @@ export const useVariableSelection = () => {
         }
         
         setHighlightedVariable(null);
-    }, [testVariables1, testVariables2, pairNumbers]);
+    }, [testVariables1, testVariables2]);
 
     // Remove a variable from a test list
     const removeVariable = useCallback((sourceList: 'test1' | 'test2', rowIndex: number) => {
@@ -302,7 +302,7 @@ export const useVariableSelection = () => {
         setTestVariables2(prev => prev.filter((_, i) => i !== index));
         setPairNumbers(Array.from({ length: Math.max(testVariables1.length, testVariables2.length) }).map((_, i) => i + 1));
         setHighlightedPair(null);
-    }, []);
+    }, [testVariables1.length, testVariables2.length]);
 
     // Reorder pairs based on a new array of pairs
     const reorderPairs = useCallback((pairs: [Variable, Variable][]) => {
@@ -429,4 +429,4 @@ export const useVariableSelection = () => {
         reorderPairs,
         resetVariableSelection
     };
-}; 
+};
