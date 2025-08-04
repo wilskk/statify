@@ -6,15 +6,12 @@ pub fn create_cluster_plot(
     data: &ProcessedData,
     config: &KMeansConfig
 ) -> Result<ClusterPlot, String> {
-    // Validasi
     if data.variables.len() < 2 {
         return Err("Data must have at least 2 variables to create a plot.".to_string());
     }
 
-    // Mengghitung pusat cluster final
     let final_centers_result = generate_final_cluster_centers(data, config)?;
 
-    // Mengonversi pusat cluster dari format peta (HashMap) ke format matriks.
     let centers_matrix = convert_map_to_matrix(&final_centers_result.centers, &data.variables);
 
     let x_variable = data.variables[0].clone(); // Variabel pertama sebagai sumbu x
@@ -29,7 +26,6 @@ pub fn create_cluster_plot(
         data.data_matrix.len() + centers_matrix.len()
     );
 
-    // Menambahkan titik data ke plot
     for case in &data.data_matrix {
         x_coords.push(case[x_col_index]); // Koordinat x = nilai variabel pertama
         y_coords.push(case[y_col_index]); // Koordinat y = nilai variabel kedua
@@ -39,7 +35,6 @@ pub fn create_cluster_plot(
         is_center.push(false); // Tandai bukan center cluster
     }
 
-    // Menambahkan pusat cluster ke plot
     for (i, center) in centers_matrix.iter().enumerate() {
         x_coords.push(center[x_col_index]); // Koordinat x pusat cluster
         y_coords.push(center[y_col_index]); // Koordinat y pusat cluster
@@ -51,16 +46,13 @@ pub fn create_cluster_plot(
     let num_points = data.data_matrix.len();
 
     if let Some(case_names) = &data.case_names {
-        // Jika nama kasus tersedia, gunakan nama tersebut
         cluster_labels.extend(case_names.iter().cloned());
     } else {
-        // Jika tidak ada nama kasus, gunakan format "Cluster X"
         for i in 0..num_points {
             cluster_labels.push(format!("Cluster {}", clusters[i]));
         }
     }
 
-    // Label untuk pusat cluster
     for i in 0..centers_matrix.len() {
         cluster_labels.push(format!("Center {}", clusters[num_points + i]));
     }

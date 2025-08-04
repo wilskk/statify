@@ -22,7 +22,6 @@ pub fn initialize_clusters(
 
     let mut initial_centers: Vec<Vec<f64>>;
 
-    // Memilih pusat awal untuk cluster
     if !config.options.initial_cluster {
         initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
     } else {

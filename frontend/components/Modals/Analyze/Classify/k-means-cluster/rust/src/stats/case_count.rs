@@ -9,10 +9,8 @@ pub fn generate_case_count(
     let num_clusters = config.main.cluster as usize;
     let membership = generate_cluster_membership(data, config)?;
 
-    // Menghitung jumlah data point (kasus) dalam setiap cluster.
     let counts = (1..=num_clusters)
         .map(|i| {
-            // Untuk setiap cluster `i`, filter dan hitung anggota dari `membership`.
             let count = membership.data
                 .iter()
                 .filter(|m| m.cluster == (i as i32))

@@ -9,17 +9,13 @@ pub fn generate_cluster_membership(
     data: &ProcessedData,
     config: &KMeansConfig
 ) -> Result<ClusterMembership, String> {
-    // Menghitung pusat cluster final
     let final_centers_result = generate_final_cluster_centers(data, config)?;
-
-    // Mengonversi pusat cluster dari format peta (HashMap) ke format matriks.
     let final_centers = convert_map_to_matrix(&final_centers_result.centers, &data.variables);
 
     let membership_data = data.data_matrix
         .iter()
         .enumerate()
         .map(|(idx, case)| {
-            // Mencari cluster terdekat dan menghitung jaraknya.
             let (cluster, distance) = find_nearest_cluster(case, &final_centers);
 
             // Ambil nama kasus
