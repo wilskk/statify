@@ -19,7 +19,6 @@ export const useGroupSettings = ({
     const [group2, setGroup2] = useState<number | null>(initialGroup2);
     const [cutPointValue, setCutPointValue] = useState<number | null>(initialCutPointValue);
     const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(initialEstimateEffectSize);
-    const [groupRangeError, setGroupRangeError] = useState<boolean>(false);
     
     const resetGroupSettings = useCallback(() => {
         setDefineGroups(initialDefineGroups);
@@ -27,7 +26,6 @@ export const useGroupSettings = ({
         setGroup2(initialGroup2);
         setCutPointValue(initialCutPointValue);
         setEstimateEffectSize(initialEstimateEffectSize);
-        setGroupRangeError(false);
     }, [initialDefineGroups, initialGroup1, initialGroup2, initialCutPointValue, initialEstimateEffectSize]);
     
     return {
@@ -41,8 +39,6 @@ export const useGroupSettings = ({
         setCutPointValue,
         estimateEffectSize,
         setEstimateEffectSize,
-        groupRangeError,
-        setGroupRangeError,
         resetGroupSettings
     };
 };

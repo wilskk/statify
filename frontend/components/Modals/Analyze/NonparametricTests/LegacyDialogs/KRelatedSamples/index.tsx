@@ -244,7 +244,7 @@ const KRelatedSamplesContent: FC<BaseModalProps> = ({ onClose, containerType = "
                         onClick={runAnalysis}
                         disabled={
                             isCalculating ||
-                            testVariables.length === 0 ||
+                            testVariables.length < 2 ||
                             (
                                 testType.friedman === false &&
                                 testType.kendallsW === false &&

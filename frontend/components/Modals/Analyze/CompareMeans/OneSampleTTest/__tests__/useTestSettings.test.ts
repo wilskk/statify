@@ -2,61 +2,65 @@ import { renderHook, act } from '@testing-library/react';
 import { useTestSettings } from '../hooks/useTestSettings';
 
 describe('useTestSettings hook', () => {
-  it('initializes with default values', () => {
+  const initialTestValue = 10;
+  const initialEstimateEffectSize = true;
+
+  it('should initialize with default values when no params provided', () => {
     const { result } = renderHook(() => useTestSettings());
-
-    const { testValue, estimateEffectSize } = result.current;
-
-    expect(testValue).toBe(0);
-    expect(estimateEffectSize).toBe(false);
+    
+    expect(result.current.testValue).toBe(0);
+    expect(result.current.estimateEffectSize).toBe(false);
   });
 
-  it('initializes with provided values', () => {
+  it('should initialize with provided values', () => {
     const { result } = renderHook(() => useTestSettings({
-      initialTestValue: 10,
-      initialEstimateEffectSize: true
+      initialTestValue,
+      initialEstimateEffectSize
     }));
-
-    expect(result.current.testValue).toBe(10);
-    expect(result.current.estimateEffectSize).toBe(true);
+    
+    expect(result.current.testValue).toBe(initialTestValue);
+    expect(result.current.estimateEffectSize).toBe(initialEstimateEffectSize);
   });
 
-  it('allows updating test value', () => {
+  it('should update testValue when setTestValue is called', () => {
     const { result } = renderHook(() => useTestSettings());
-
+    
     act(() => {
       result.current.setTestValue(5);
     });
-
+    
     expect(result.current.testValue).toBe(5);
   });
 
-  it('allows updating estimate effect size flag', () => {
+  it('should update estimateEffectSize when setEstimateEffectSize is called', () => {
     const { result } = renderHook(() => useTestSettings());
-
+    
     act(() => {
       result.current.setEstimateEffectSize(true);
     });
-
+    
     expect(result.current.estimateEffectSize).toBe(true);
   });
 
-  it('resets to default values', () => {
+  it('should reset all values when resetTestSettings is called', () => {
     const { result } = renderHook(() => useTestSettings({
-      initialTestValue: 0,
-      initialEstimateEffectSize: false
+      initialTestValue,
+      initialEstimateEffectSize
     }));
-
+    
+    // Change values
     act(() => {
       result.current.setTestValue(5);
-      result.current.setEstimateEffectSize(true);
+      result.current.setEstimateEffectSize(false);
     });
-
+    
+    // Reset values
     act(() => {
       result.current.resetTestSettings();
     });
-
-    expect(result.current.testValue).toBe(0);
-    expect(result.current.estimateEffectSize).toBe(false);
+    
+    // Verify reset to initial values
+    expect(result.current.testValue).toBe(initialTestValue);
+    expect(result.current.estimateEffectSize).toBe(initialEstimateEffectSize);
   });
 }); 

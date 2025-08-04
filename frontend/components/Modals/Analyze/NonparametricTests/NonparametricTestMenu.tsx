@@ -19,13 +19,13 @@ const NonparametricTestsMenu: FC = () => {
         <MenubarMenu>
             <MenubarTrigger>Nonparametric Test</MenubarTrigger>
             <MenubarContent>
-                <MenubarItem>
-                    One Sample...
+                <MenubarItem disabled>
+                    One Sample... 
                 </MenubarItem>
-                <MenubarItem>
+                <MenubarItem disabled>
                     Independent Samples...
                 </MenubarItem>
-                <MenubarItem>
+                <MenubarItem disabled>
                     Related Samples...
                 </MenubarItem>
                 <MenubarSub>

@@ -156,6 +156,10 @@ export interface KRelatedSamplesResult {
     };
   testStatistics?: TestStatistics;
   descriptiveStatistics?: DescriptiveStatistics;
+  metadata?: {
+    hasInsufficientDataEmpty: boolean;
+    hasInsufficientDataSingle: boolean;
+  };
 }
 
 // KRelatedSamples Test Results Collection

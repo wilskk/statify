@@ -240,7 +240,7 @@ describe('OneSampleTTest VariablesTab component', () => {
   // Initial Rendering Tests
   // ------------------------------
   describe('Initial Rendering', () => {
-    it('renders available and test variable lists correctly', () => {
+    it('should render available and test variable lists correctly', () => {
       render(
         <VariablesTab
           availableVariables={[mockVariables[0], mockVariables[2]]}
@@ -267,7 +267,7 @@ describe('OneSampleTTest VariablesTab component', () => {
       expect(screen.getByTestId(`test-${mockVariables[1].tempId}`)).toBeInTheDocument();
     });
     
-    it('displays variable names with correct format', () => {
+    it('should display variable names with correct format', () => {
       render(
         <VariablesTab
           availableVariables={[mockVariables[0], mockVariables[4]]} // One with label, one without
@@ -293,7 +293,7 @@ describe('OneSampleTTest VariablesTab component', () => {
       expect(varWithoutLabel).toHaveAttribute('data-display-name', 'no_label_var');
     });
     
-    it('renders effect size checkbox as disabled', () => {
+    it('should render effect size checkbox as disabled', () => {
       render(
         <VariablesTab
           availableVariables={[]}
@@ -320,7 +320,7 @@ describe('OneSampleTTest VariablesTab component', () => {
   // Variable Interaction & Logic Tests
   // ------------------------------
   describe('Variable Interaction & Logic', () => {
-    it('moves variables between available and test lists on double-click', async () => {
+    it('should move variables between available and test lists on double-click', async () => {
       const moveToTestVariables = jest.fn();
       const moveToAvailableVariables = jest.fn();
       
@@ -353,7 +353,7 @@ describe('OneSampleTTest VariablesTab component', () => {
       expect(moveToAvailableVariables).toHaveBeenCalledWith(mockVariables[1]);
     });
   
-    it('disables nominal and string variables', () => {
+    it('should disable nominal and string variables', () => {
       const moveToTestVariables = jest.fn();
       
       render(
@@ -381,7 +381,7 @@ describe('OneSampleTTest VariablesTab component', () => {
       expect(nominalVar).toHaveAttribute('data-disabled', 'true');
     });
     
-    it('disables unknown variables by default but enables them after checkbox is checked', async () => {
+    it('should disable unknown variables by default but enable them after checkbox is checked', async () => {
       const moveToTestVariables = jest.fn();
       const user = userEvent.setup();
       
@@ -422,7 +422,7 @@ describe('OneSampleTTest VariablesTab component', () => {
       expect(moveToTestVariables).toHaveBeenCalledWith(mockVariables[3]);
     });
   
-    it('allows changing test value', async () => {
+    it('should allow changing test value', async () => {
       const setTestValue = jest.fn();
       
       render(
@@ -451,7 +451,7 @@ describe('OneSampleTTest VariablesTab component', () => {
       expect(setTestValue).toHaveBeenCalled();
     });
   
-    it('prevents effect size checkbox from being toggled', async () => {
+    it('should prevent effect size checkbox from being toggled', async () => {
       const setEstimateEffectSize = jest.fn();
       
       render(
@@ -485,8 +485,7 @@ describe('OneSampleTTest VariablesTab component', () => {
   // Interactive Tour Tests
   // ------------------------------
   describe('Interactive Tour Functionality', () => {
-    // For tour tests, we'll use a simpler approach
-    it('renders the component with tour active', () => {
+    it('should render the component with tour active', () => {
       // Render with tour active
       render(
         <VariablesTab
@@ -512,8 +511,7 @@ describe('OneSampleTTest VariablesTab component', () => {
       expect(screen.getByTestId('test-variables-section')).toBeInTheDocument();
     });
     
-    // Test each tour step's target element exists
-    it('has all required tour target elements', () => {
+    it('should have all required tour target elements', () => {
       render(
         <VariablesTab
           availableVariables={[mockVariables[0]]}

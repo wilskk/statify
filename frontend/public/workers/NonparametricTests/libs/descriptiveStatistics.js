@@ -10,20 +10,13 @@ import { checkIsMissing, isNumeric } from './utils.js';
 class DescriptiveStatisticsCalculator {
     /**
      * @param {object} params - Parameter untuk analisis.
-     * @param {object} params.variable - Objek definisi variabel.
-     * @param {Array<any>} params.data - Array data untuk variabel ini.
-     * @param {object} params.variable1 - Objek definisi variabel pertama (optional, untuk paired).
+     * @param {object} params.variable1 - Objek definisi variabel pertama.
+     * @param {Array<any>} params.data1 - Array data untuk variabel pertama.
      * @param {object} params.variable2 - Objek definisi variabel kedua (optional, untuk paired).
-     * @param {Array<any>} params.data1 - Array data untuk variabel pertama (optional, untuk paired).
      * @param {Array<any>} params.data2 - Array data untuk variabel kedua (optional, untuk paired).
      * @param {object} params.options - Opsi tambahan dari main thread.
      */
-    constructor({ variable, data, variable1, variable2, data1, data2, options = {} }) {
-        // Simpan variable utama (single) jika ada
-        this.variable = variable;
-        this.data = data;
-
-        // Simpan variable1, variable2, data1, data2 jika diberikan (untuk paired/dua variabel)
+    constructor({ variable1, variable2, data1, data2, options = {} }) {
         this.variable1 = variable1;
         this.variable2 = variable2;
         this.data1 = data1;
@@ -55,16 +48,7 @@ class DescriptiveStatisticsCalculator {
     #initialize() {
         if (this.initialized) return;
 
-        // Untuk single variable
-        if (this.variable && this.data) {
-            const isNumericType = ['scale', 'date'].includes(this.variable.measure);
-            this.validData = this.data
-                .filter(value => !checkIsMissing(value, this.variable.missing, isNumericType) && isNumeric(value))
-                .map(value => parseFloat(value));
-            this.N = this.validData.length;
-        }
-
-        // Untuk paired variables
+        // Untuk single variable atau variable1
         if (this.variable1 && this.data1) {
             const isNumericType1 = ['scale', 'date'].includes(this.variable1.measure);
             this.validData1 = this.data1
@@ -72,6 +56,8 @@ class DescriptiveStatisticsCalculator {
                 .map(value => parseFloat(value));
             this.N1 = this.validData1.length;
         }
+
+        // Untuk paired variables (variable2)
         if (this.variable2 && this.data2) {
             const isNumericType2 = ['scale', 'date'].includes(this.variable2.measure);
             this.validData2 = this.data2
@@ -99,10 +85,6 @@ class DescriptiveStatisticsCalculator {
             arr = this.validData2;
             N = this.N2;
             key = 'mean2';
-        } else {
-            arr = this.validData;
-            N = this.N;
-            key = 'mean';
         }
         if (this.memo[key] !== undefined) return this.memo[key];
         if (!arr || N === 0) return null;
@@ -128,10 +110,6 @@ class DescriptiveStatisticsCalculator {
             arr = this.validData2;
             N = this.N2;
             key = 'stdDev2';
-        } else {
-            arr = this.validData;
-            N = this.N;
-            key = 'stdDev';
         }
         if (this.memo[key] !== undefined) return this.memo[key];
         if (!arr || N <= 1) return null;
@@ -158,10 +136,6 @@ class DescriptiveStatisticsCalculator {
             arr = this.validData2;
             N = this.N2;
             key = 'seMean2';
-        } else {
-            arr = this.validData;
-            N = this.N;
-            key = 'seMean';
         }
         if (this.memo[key] !== undefined) return this.memo[key];
         if (!arr || N === 0) return null;
@@ -188,10 +162,6 @@ class DescriptiveStatisticsCalculator {
             arr = this.validData2;
             N = this.N2;
             key = 'min2';
-        } else {
-            arr = this.validData;
-            N = this.N;
-            key = 'min';
         }
         if (this.memo[key] !== undefined) return this.memo[key];
         if (!arr || N === 0) return null;
@@ -216,10 +186,6 @@ class DescriptiveStatisticsCalculator {
             arr = this.validData2;
             N = this.N2;
             key = 'max2';
-        } else {
-            arr = this.validData;
-            N = this.N;
-            key = 'max';
         }
         if (this.memo[key] !== undefined) return this.memo[key];
         if (!arr || N === 0) return null;
@@ -245,10 +211,6 @@ class DescriptiveStatisticsCalculator {
             arr = this.validData2;
             N = this.N2;
             key = `percentile2_${percentile}`;
-        } else {
-            arr = this.validData;
-            N = this.N;
-            key = `percentile_${percentile}`;
         }
         if (this.memo[key] !== undefined) return this.memo[key];
         if (!arr || N === 0) return null;
@@ -273,18 +235,9 @@ class DescriptiveStatisticsCalculator {
      */
     getDescriptiveStatistics() {
         this.#initialize();
-        const result = {
-            variable: this.variable,
-            N: this.N,
-            Mean: this.getMean(),
-            StdDev: this.getStdDev(),
-            Min: this.getMin(),
-            Max: this.getMax(),
-            Percentile25: this.getPercentile(25),
-            Percentile50: this.getPercentile(50),
-            Percentile75: this.getPercentile(75)
-        };
-        // Jika paired variables tersedia, tambahkan statistiknya juga
+        const result = {};
+        
+        // Untuk single variable atau variable1
         if (this.variable1 && this.data1) {
             result.variable1 = this.variable1;
             result.N1 = this.N1;
@@ -296,6 +249,8 @@ class DescriptiveStatisticsCalculator {
             result.Percentile50_1 = this.getPercentile(50, '1');
             result.Percentile75_1 = this.getPercentile(75, '1');
         }
+        
+        // Jika paired variables tersedia, tambahkan statistiknya juga
         if (this.variable2 && this.data2) {
             result.variable2 = this.variable2;
             result.N2 = this.N2;

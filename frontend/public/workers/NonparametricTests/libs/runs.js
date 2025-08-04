@@ -30,6 +30,9 @@ class RunsCalculator {
         // Properti yang akan dihitung
         this.validData = [];
         this.N = 0;
+
+        this.hasInsufficientData = false;
+        this.insufficientType = [];
         
         /** @private */
         this.memo = {};
@@ -51,6 +54,10 @@ class RunsCalculator {
         
         // Hitung Total N
         this.N = this.validData.length;
+        if (this.N === 0) {
+            this.hasInsufficientData = true;
+            this.insufficientType.push('empty');
+        }
 
         this.initialized = true;
     }
@@ -176,6 +183,23 @@ class RunsCalculator {
                 runs++;
             }
         }
+        if (runs === 1) {
+            this.hasInsufficientData = true;
+            if (typeof testValueType === 'number') {
+                this.insufficientType.push(`single custom`);
+            } else {
+                this.insufficientType.push(`single ${testValueType}`);
+            }
+            return {
+                TestValue: testValue,
+                CasesBelow: casesBelow,
+                CasesAbove: casesAbove,
+                Total: this.N,
+                Runs: runs,
+                Z: null,
+                PValue: null
+            };
+        }
 
         // Hitung ekspektasi (mean) jumlah runs dan standar deviasi
         const mu_R = 1 + (2 * casesBelow * casesAbove) / this.N;
@@ -246,12 +270,10 @@ class RunsCalculator {
         }
         
         this.memo.runsTest = {
-            variable: this.variable,
             ...results
         };
         
         return {
-            variable: this.variable,
             ...results
         };
     }
@@ -261,10 +283,21 @@ class RunsCalculator {
      * @returns {Object} Objek hasil yang berisi hasil uji runs.
      */
     getOutput() {
+        this.#initialize();
+        
+        
+        const variable1 = this.variable;
         const runsTest = this.getRunsTest();
 
         return {
-            runsTest
+            variable1,
+            runsTest,
+            metadata: {
+                hasInsufficientData: this.hasInsufficientData,
+                insufficientType: this.insufficientType,
+                variableName: this.variable.name,
+                variableLabel: this.variable.label
+            }
         };
     }
 }

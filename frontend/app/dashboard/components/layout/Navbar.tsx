@@ -103,9 +103,9 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Nonparametric Tests</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem >One Sample...</MenubarItem>
-                        <MenubarItem >Independent Samples...</MenubarItem>
-                        <MenubarItem >Related Samples...</MenubarItem>
+                        <MenubarItem disabled>One Sample...</MenubarItem>
+                        <MenubarItem disabled>Independent Samples...</MenubarItem>
+                        <MenubarItem disabled>Related Samples...</MenubarItem>
                         <MenubarSub>
                             <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
                             <MenubarSubContent>

@@ -1,6 +1,5 @@
-import React, { FC, useCallback, useState } from "react";
+import React, { FC, useCallback } from "react";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { Variable } from "@/types/Variable";
@@ -26,7 +25,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
     tourSteps = [],
 }) => {
     const variableIdKeyToUse: keyof Variable = 'tempId';
-    const [allowUnknown, setAllowUnknown] = useState(false);
 
     const getDisplayName = (variable: Variable) => {
         if (!variable.label) return variable.name;
@@ -34,14 +32,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const isVariableDisabled = useCallback((variable: Variable): boolean => {   
-        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
-                                (variable.measure === 'scale' || variable.measure === 'ordinal');
-        
-        if (isNormallyValid) return false;
-        if (variable.measure === 'unknown') return !allowUnknown;
-        
-        return true;
-    }, [allowUnknown]);
+        return variable.type !== 'NUMERIC';
+    }, []);
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         if (sourceListId === 'available' && isVariableDisabled(variable)) {
@@ -112,22 +104,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return tourSteps[currentStep]?.targetId === elementId;
     }, [tourActive, currentStep, tourSteps]);
 
-    const renderAllowUnknown = () => (
-        <>
-            <div className="flex items-center mt-2 p-1.5">
-                <Checkbox
-                    id="allowUnknown"
-                    checked={allowUnknown}
-                    onCheckedChange={(checked: boolean) => setAllowUnknown(checked)}
-                    className="mr-2 h-4 w-4"
-                />
-                <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                    Treat &apos;unknown&apos; as Scale and allow selection
-                </Label>
-            </div>
-        </>
-    );
-
     const groupingFooter = useCallback((listId: string) => {
         if (listId === 'grouping') {
             return (
@@ -143,8 +119,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     <Input
                                         id="group1"
                                         type="number"
-                                        value={group1 || ""}
-                                        onChange={(e) => setGroup1(e.target.value ? Number(e.target.value) : null)}
+                                        value={group1 !== null && group1 !== undefined ? group1 : ""}
+                                        onChange={(e) => setGroup1(e.target.value === "" ? null : Number(e.target.value))}
                                         className="w-20 h-8 text-sm"
                                     />
                                 </div>
@@ -155,8 +131,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     <Input
                                         id="group2"
                                         type="number"
-                                        value={group2 || ""}
-                                        onChange={(e) => setGroup2(e.target.value ? Number(e.target.value) : null)}
+                                        value={group2 !== null && group2 !== undefined ? group2 : ""}
+                                        onChange={(e) => setGroup2(e.target.value === "" ? null : Number(e.target.value))}
                                         className="w-20 h-8 text-sm"
                                     />
                                 </div>
@@ -186,7 +162,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 isVariableDisabled={isVariableDisabled}
                 renderListFooter={groupingFooter}
                 showArrowButtons={true}
-                renderExtraInfoContent={renderAllowUnknown}
             />
 
             <div id="two-independent-samples-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">

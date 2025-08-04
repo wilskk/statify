@@ -16,10 +16,10 @@ class OneSampleTTestCalculator {
      * @param {Array<any>} params.data - Array data untuk variabel ini.
      * @param {object} params.options - Opsi tambahan dari main thread.
      */
-    constructor({ variable, data, options = {} }) {
+    constructor({ variable1, data1, options = {} }) {
         console.log('OneSampleTTestCalculator constructor');
-        this.variable = variable;
-        this.data = data;
+        this.variable1 = variable1;
+        this.data1 = data1;
         this.options = options;
         this.initialized = false;
         
@@ -45,11 +45,11 @@ class OneSampleTTestCalculator {
     #initialize() {
         if (this.initialized) return;
 
-        const isNumericType = ['scale', 'date'].includes(this.variable.measure);
+        const isNumericType = ['scale', 'date'].includes(this.variable1.measure);
 
         // Filter data yang valid
-        this.validData = this.data
-            .filter(value => !checkIsMissing(value, this.variable.missing, isNumericType) && isNumeric(value))
+        this.validData = this.data1
+            .filter(value => !checkIsMissing(value, this.variable1.missing, isNumericType) && isNumeric(value))
             .map(value => parseFloat(value));
         
         // Hitung Total N
@@ -58,7 +58,7 @@ class OneSampleTTestCalculator {
         this.initialized = true;
     }
     
-    getN() { this.#initialize(); return this.data.length; }
+    getN() { this.#initialize(); return this.data1.length; }
     getValidN() { this.#initialize(); return this.N; }
     
     /**
@@ -67,8 +67,8 @@ class OneSampleTTestCalculator {
      * @returns {number} Mean
      */
     #mean(arr) {
-        if (!arr || arr.length === 0) return 0;
-        return arr.reduce((sum, x) => sum + x, 0) / arr.length;
+        if (!arr || arr.length === 0) return null;
+        return arr.reduce((sum, x) => sum + x, 0) / this.N;
     }
     
     /**
@@ -78,7 +78,7 @@ class OneSampleTTestCalculator {
      * @returns {number} Standard deviation
      */
     #stdDev(arr, meanValue) {
-        if (!arr || arr.length <= 1) return 0;
+        if (!arr || arr.length <= 1) return null;
         const sumSq = arr.reduce((sum, x) => sum + Math.pow(x - meanValue, 2), 0);
         return Math.sqrt(sumSq / (arr.length - 1));
     }
@@ -90,7 +90,7 @@ class OneSampleTTestCalculator {
      * @returns {number} Standard error mean
      */
     #stdError(stdDev, n) {
-        if (n <= 1) return 0;
+        if (n <= 1) return null;
         return stdDev / Math.sqrt(n);
     }
     
@@ -108,7 +108,6 @@ class OneSampleTTestCalculator {
         const stdErrMean = this.#stdError(stdDevValue, this.N);
         
         const result = {
-            variable: this.variable,
             N: this.N,
             Mean: meanValue,
             StdDev: stdDevValue,
@@ -188,7 +187,6 @@ class OneSampleTTestCalculator {
         const tTestResult = this.#tTest();
         
         const result = {
-            variable: this.variable,
             T: tTestResult.t,
             DF: tTestResult.df,
             PValue: tTestResult.sig,
@@ -209,21 +207,33 @@ class OneSampleTTestCalculator {
         this.#initialize();
         
         // Check if we have sufficient valid data
-        const hasInsufficientData = this.validData.length === 0 || this.validData.length <= 1;
-        const totalData = this.data.length;
-        const validData = this.validData.length;
-        
+        let hasInsufficientData = false;
+        let insufficientType = [];
+        if (this.validData.length === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('empty');
+        }
+        if (this.validData.length <= 1) {
+            hasInsufficientData = true;
+            insufficientType.push('single');
+        }
         const oneSampleStatistics = this.getOneSampleStatistics();
+        if ((oneSampleStatistics.StdDev === null || oneSampleStatistics.StdDev === undefined || oneSampleStatistics.StdDev === 0) && this.validData.length > 1) {
+            hasInsufficientData = true;
+            insufficientType.push('stdDev');
+        }
+        
         const oneSampleTest = this.getOneSampleTest();
         
         return {
+            variable1: this.variable1,
             oneSampleStatistics,
             oneSampleTest,
             metadata: {
                 hasInsufficientData,
-                totalData,
-                validData,
-                variableName: this.variable.name
+                variableName: this.variable1.name,
+                variableLabel: this.variable1.label,
+                insufficientType
             }
         };
     }
