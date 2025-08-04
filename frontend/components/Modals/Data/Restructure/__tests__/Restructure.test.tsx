@@ -104,7 +104,7 @@ describe('RestructureDataWizard UI', () => {
         expect(mockHandleNext).toHaveBeenCalled();
         expect(screen.getByText('Variables to Restructure')).toBeInTheDocument();
         expect(screen.getByText(/Identifier Variables/)).toBeInTheDocument();
-        expect(screen.queryByText(/Index Variables/)).not.toBeInTheDocument();
+        expect(screen.getByText(/Index Variables \(e\.g\., Subject ID\)/)).toBeInTheDocument();
     });
 
     it('should show correct options on step 3 for "Variables to Cases"', async () => {
@@ -129,4 +129,4 @@ describe('RestructureDataWizard UI', () => {
         
         expect(screen.getByText('This is a test error.')).toBeInTheDocument();
     });
-}); 
+});

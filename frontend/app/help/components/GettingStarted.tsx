@@ -156,26 +156,7 @@ export const GettingStarted = () => {
     }
   ];
 
-  const quickActions = [
-    {
-      label: 'Import Data Now',
-      onClick: () => {
-        // Navigate to import data
-        console.log('Navigate to import data');
-      },
-      variant: 'default' as const,
-      icon: FileVideo
-    },
-    {
-      label: 'View Sample Datasets',
-      onClick: () => {
-        // Navigate to example datasets
-        console.log('Navigate to example datasets');
-      },
-      variant: 'outline' as const,
-      icon: Database
-    }
-  ];
+
 
   const tips = [
     {
@@ -183,11 +164,7 @@ export const GettingStarted = () => {
       title: 'Pro Tip',
       content: 'Start with a small dataset to understand Statify\'s workflow before using larger datasets.'
     },
-    {
-      type: 'info' as const,
-      title: 'Keyboard Shortcuts',
-      content: 'Use Ctrl+O to open files and Ctrl+S to save your work.'
-    }
+
   ];
 
   const relatedTopics = [
@@ -204,7 +181,7 @@ export const GettingStarted = () => {
       category="Getting Started"
       lastUpdated="2024-01-15"
       sections={sections}
-      quickActions={quickActions}
+
       tips={tips}
       relatedTopics={relatedTopics}
     />

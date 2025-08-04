@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     question: "Does Statify save data automatically?",
-    answer: "Yes, Statify has an autosave feature that will save your work automatically if the application detects you've been inactive for some time. However, we still recommend saving your work regularly by clicking 'File' > 'Save' or using the shortcut Ctrl+S (Windows) or Cmd+S (Mac)."
+    answer: "Yes, Statify has an autosave feature that will save your work automatically if the application detects you've been inactive for some time. However, we still recommend saving your work regularly by clicking 'File' > 'Save'."
   },
   {
     question: "How do I export analysis results?",
@@ -151,24 +151,7 @@ export const FAQ = () => {
     }
   ];
 
-  const quickActions = [
-    {
-      label: 'Search Help',
-      onClick: () => {
-        console.log('Search help');
-      },
-      variant: 'outline' as const,
-      icon: Search
-    },
-    {
-      label: 'Contact Support',
-      onClick: () => {
-        console.log('Contact support');
-      },
-      variant: 'default' as const,
-      icon: MessageCircle
-    }
-  ];
+
 
   const tips = [
     {
@@ -197,7 +180,7 @@ export const FAQ = () => {
       category="FAQ"
       lastUpdated="2024-01-15"
       sections={sections}
-      quickActions={quickActions}
+
       tips={tips}
       relatedTopics={relatedTopics}
     />

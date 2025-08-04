@@ -130,13 +130,12 @@ describe('restructureService', () => {
                 options: { dropEmptyVariables: true, createCount: false, createIndex: false },
             };
 
-            // Data with a missing timepoint for subject 1, which will create an empty column if not dropped
+            // Data where all subjects are missing timepoint 1, creating an empty Score_1 column
             const dataWithMissing = [
-                /* [1, 1, 85], */ [1, 2, 90], [1, 3, 78], // No timepoint 1 for subject 1
-                [2, 1, 92], [2, 2, 88], [2, 3, 95],
-                [3, 1, 75], [3, 2, 82], [3, 3, 80],
+                [1, 2, 90], [1, 3, 78], // No timepoint 1 for any subject
+                [2, 2, 88], [2, 3, 95], // No timepoint 1 for any subject
+                [3, 2, 82], [3, 3, 80], // No timepoint 1 for any subject
             ];
-            const uniqueTimePoints = [1, 2, 3]; // from original data, not sparse data
 
             const { data, variables } = restructureData(dataWithMissing, mockLongVariables, config);
             
@@ -146,6 +145,7 @@ describe('restructureService', () => {
             expect(data).toHaveLength(3);
             expect(data[0]).toEqual([1, 90, 78]); // Subject 1 has no value for Score_1
             expect(data[1]).toEqual([2, 88, 95]); // Subject 2 has values for Score_2 and Score_3
+            expect(data[2]).toEqual([3, 82, 80]); // Subject 3 has values for Score_2 and Score_3
         });
     });
 
@@ -171,4 +171,4 @@ describe('restructureService', () => {
             expect(data).toEqual([[1, 3], [2, 4]]);
         });
     });
-}); 
+});

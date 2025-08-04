@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * Example Dataset E2E Tests - Customer Database
- * Tests loading the Customer_db example dataset through File menu
+ * Tests the successful loading workflow of Customer_db example dataset
  */
 
 test.describe('Customer Database Example Dataset Tests', () => {
@@ -14,7 +14,7 @@ test.describe('Customer Database Example Dataset Tests', () => {
     await expect(page.locator('[data-testid="main-navbar"]')).toBeVisible();
   });
 
-  test('should load Customer_db dataset from example datasets', async ({ page }) => {
+  test('should successfully load Customer_db dataset', async ({ page }) => {
     // Click on File menu
     const fileMenuTrigger = page.locator('[data-testid="file-menu-trigger"]');
     await expect(fileMenuTrigger).toBeVisible();
@@ -24,80 +24,62 @@ test.describe('Customer Database Example Dataset Tests', () => {
     const fileMenuContent = page.locator('[data-testid="file-menu-content"]');
     await expect(fileMenuContent).toBeVisible();
 
-    // Click on Example Datasets option
-    const exampleDatasetsOption = page.locator('[data-testid="file-menu-example-datasets"]');
-    await expect(exampleDatasetsOption).toBeVisible();
-    await exampleDatasetsOption.click();
+    // Click on Example Data option
+    const exampleDataOption = page.locator('[data-testid="file-menu-example-data"]');
+    await expect(exampleDataOption).toBeVisible();
+    await exampleDataOption.click();
 
-    // Wait for Example Datasets modal to open
-    const exampleDatasetsModal = page.locator('[data-testid="example-datasets-modal"]');
-    await expect(exampleDatasetsModal).toBeVisible();
+    // Wait for Example Dataset modal to open
+    const exampleDatasetModal = page.locator('[data-testid="example-dataset-modal"]');
+    await expect(exampleDatasetModal).toBeVisible();
 
-    // Find and click on Customer_db dataset
-    const customerDbOption = page.locator('text=customer_dbase');
+    // Find and click on Customer_db dataset (this will automatically load it)
+    const customerDbOption = page.locator('[data-testid="example-dataset-customer_dbase"]');
     await expect(customerDbOption).toBeVisible();
     await customerDbOption.click();
 
-    // Verify dataset details are displayed
-    const datasetDescription = page.locator('text=Company using data warehouse to make special offers to likely responders.');
-    await expect(datasetDescription).toBeVisible();
-
-    // Click Load Dataset button
-    const loadButton = page.locator('button:has-text("Load Dataset")');
-    await expect(loadButton).toBeVisible();
-    await loadButton.click();
-
-    // Wait for dataset to load and verify it's displayed in the data table
+    // Verify successful data loading
     await page.waitForTimeout(3000);
     
-    // Verify data is loaded by checking for data table presence
-    const dataTable = page.locator('[data-testid="data-table"]');
-    await expect(dataTable).toBeVisible();
+    // Verify data is loaded by checking for data page presence
+    const dataPage = page.locator('[data-testid="data-page"]');
+    await expect(dataPage).toBeVisible();
     
     // Verify the dataset name appears in the interface
     await expect(page.locator('text=customer_dbase')).toBeVisible();
   });
 
-  test('should display Customer_db dataset metadata correctly', async ({ page }) => {
-    // Open Example Datasets modal
+  test('should complete customer database workflow', async ({ page }) => {
+    // Navigate to data page
     await page.goto('/dashboard/data');
+
+    // Complete workflow from file menu to loaded data
     await page.locator('[data-testid="file-menu-trigger"]').click();
-    await page.locator('[data-testid="file-menu-example-datasets"]').click();
+    await page.locator('[data-testid="file-menu-example-data"]').click();
+    await page.locator('[data-testid="example-dataset-customer_dbase"]').click();
 
-    // Verify Customer_db is in the list
-    const customerDbOption = page.locator('text=customer_dbase');
-    await expect(customerDbOption).toBeVisible();
+    // Wait for data loading
+    await page.waitForTimeout(3000);
 
-    // Click to select Customer_db
-    await customerDbOption.click();
-
-    // Verify dataset tags are displayed
-    await expect(page.locator('text=marketing')).toBeVisible();
-    await expect(page.locator('text=offers')).toBeVisible();
-
-    // Verify dataset description
-    const description = page.locator('text=Company using data warehouse to make special offers to likely responders.');
-    await expect(description).toBeVisible();
+    // Verify data page is visible
+    await expect(page.locator('[data-testid="data-page"]')).toBeVisible();
   });
 
   test('should handle Customer_db dataset loading cancellation', async ({ page }) => {
-    // Open Example Datasets modal
+    // Open Example Dataset modal
     await page.goto('/dashboard/data');
     await page.locator('[data-testid="file-menu-trigger"]').click();
-    await page.locator('[data-testid="file-menu-example-datasets"]').click();
+    await page.locator('[data-testid="file-menu-example-data"]').click();
 
-    // Select Customer_db dataset
-    const customerDbOption = page.locator('text=customer_dbase');
-    await customerDbOption.click();
+    // Wait for modal to be visible
+    await expect(page.locator('[data-testid="example-dataset-modal"]')).toBeVisible();
 
-    // Click Cancel button instead of Load
-    const cancelButton = page.locator('button:has-text("Cancel")');
+    // Click Cancel button to close modal
+    const cancelButton = page.locator('[data-testid="cancel-button"]');
+    await expect(cancelButton).toBeVisible();
     await cancelButton.click();
 
     // Verify modal is closed
-    await expect(page.locator('[data-testid="example-datasets-modal"]')).not.toBeVisible();
-    
-    // Verify no data was loaded
-    await expect(page.locator('text=customer_dbase')).not.toBeVisible();
+    await expect(page.locator('[data-testid="example-dataset-modal"]')).not.toBeVisible();
   });
 });

@@ -217,22 +217,24 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
 
             if (Object.keys(aggregatedResults).length > 0) {
                 const outputSections = [
-                    { formatter: formatCaseProcessingSummary, componentName: 'Case Processing Summary' },
-                    { formatter: formatDescriptivesTable, componentName: 'Descriptives' },
-                    { formatter: formatMEstimatorsTable, componentName: 'M-Estimators' },
-                    { formatter: formatPercentilesTable, componentName: 'Percentiles' },
-                    { formatter: formatExtremeValuesTable, componentName: 'Extreme Values' },
+                    { formatter: formatCaseProcessingSummary, componentName: 'Case Processing Summary', condition: true },
+                    { formatter: formatDescriptivesTable, componentName: 'Descriptives', condition: localParams.showDescriptives },
+                    { formatter: formatMEstimatorsTable, componentName: 'M-Estimators', condition: localParams.showMEstimators },
+                    { formatter: formatPercentilesTable, componentName: 'Percentiles', condition: localParams.showPercentiles },
+                    { formatter: formatExtremeValuesTable, componentName: 'Extreme Values', condition: localParams.showOutliers },
                 ];
 
                 for (const section of outputSections) {
-                    const formatted = section.formatter(aggregatedResults, localParams);
-                    if (formatted) {
-                        await addStatistic(analyticId!, {
-                            title: formatted.title,
-                            output_data: JSON.stringify({ tables: [formatted] }),
-                            components: section.componentName,
-                            description: formatted.footnotes ? formatted.footnotes.join('\n') : '',
-                        });
+                    if (section.condition) {
+                        const formatted = section.formatter(aggregatedResults, localParams);
+                        if (formatted) {
+                            await addStatistic(analyticId!, {
+                                title: formatted.title,
+                                output_data: JSON.stringify({ tables: [formatted] }),
+                                components: section.componentName,
+                                description: formatted.footnotes ? formatted.footnotes.join('\n') : '',
+                            });
+                        }
                     }
                 }
 

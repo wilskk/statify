@@ -179,7 +179,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             data-testid="display-order-variable-list"
                             value="variableList" 
                             className="mr-2 border-[#CCCCCC]" 
-                            {...({ changeHandler: handleDisplayOrderChange } as any)} 
                         />
                         <Label htmlFor="variableList" className="text-sm cursor-pointer">Variable list</Label>
                     </div>
@@ -189,7 +188,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             data-testid="display-order-alphabetic"
                             value="alphabetic" 
                             className="mr-2 border-[#CCCCCC]" 
-                            {...({ changeHandler: handleDisplayOrderChange } as any)} 
                         />
                         <Label htmlFor="alphabetic" className="text-sm cursor-pointer">Alphabetic</Label>
                     </div>
@@ -199,7 +197,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             data-testid="display-order-ascending-means"
                             value="ascendingMeans" 
                             className="mr-2 border-[#CCCCCC]" 
-                            {...({ changeHandler: handleDisplayOrderChange } as any)} 
                         />
                         <Label htmlFor="ascendingMeans" className="text-sm cursor-pointer">Ascending means</Label>
                     </div>
@@ -209,7 +206,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             data-testid="display-order-descending-means"
                             value="descendingMeans" 
                             className="mr-2 border-[#CCCCCC]" 
-                            {...({ changeHandler: handleDisplayOrderChange } as any)} 
                         />
                         <Label htmlFor="descendingMeans" className="text-sm cursor-pointer">Descending means</Label>
                     </div>

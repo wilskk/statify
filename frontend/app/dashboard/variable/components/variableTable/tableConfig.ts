@@ -1,6 +1,7 @@
 import Handsontable from 'handsontable';
 import 'handsontable/dist/handsontable.full.min.css';
 import { VariableType, Variable } from '@/types/Variable';
+import { nullSafeEnhancedRenderer } from './utils/utils';
 
 // Default UI constants
 export const DEFAULT_MIN_ROWS = 50;
@@ -55,7 +56,7 @@ export const COLUMN_INDEX_TO_FIELD_MAP: (keyof Variable | string)[] = [
 
 // Updated column configs to match new order and data indices
 export const columns: Handsontable.GridSettings['columns'] = [
-    { data: COLUMN_INDEX.NAME, type: 'text', numericFormat: undefined, width: 200 },
+    { data: COLUMN_INDEX.NAME, type: 'text', renderer: nullSafeEnhancedRenderer, numericFormat: undefined, width: 200 },
     {
       data: COLUMN_INDEX.TYPE,
       type: 'text',
@@ -66,9 +67,9 @@ export const columns: Handsontable.GridSettings['columns'] = [
     { data: COLUMN_INDEX.WIDTH, type: 'numeric', numericFormat: { pattern: '0' }, width: 100 },
     { data: COLUMN_INDEX.DECIMALS, type: 'numeric', numericFormat: { pattern: '0' }, width: 100 },
     { data: COLUMN_INDEX.MEASURE, type: 'dropdown', width: 125, className: 'htDropdownCell' },
-    { data: COLUMN_INDEX.LABEL, type: 'text', width: 175 },
-    { data: COLUMN_INDEX.VALUES, type: 'text', readOnly: true, width: 175, className: 'htDropdownCell' },
-    { data: COLUMN_INDEX.MISSING, type: 'text', readOnly: true, width: 175, className: 'htDropdownCell' },
+    { data: COLUMN_INDEX.LABEL, type: 'text', renderer: nullSafeEnhancedRenderer, width: 175 },
+    { data: COLUMN_INDEX.VALUES, type: 'text', renderer: nullSafeEnhancedRenderer, readOnly: true, width: 175, className: 'htDropdownCell' },
+    { data: COLUMN_INDEX.MISSING, type: 'text', renderer: nullSafeEnhancedRenderer, readOnly: true, width: 175, className: 'htDropdownCell' },
     { data: COLUMN_INDEX.ROLE, type: 'dropdown', source: ['input','target','both','none','partition','split'], strict: true, allowInvalid: false, width: 125, className: 'htDropdownCell' },
     { data: COLUMN_INDEX.ALIGN, type: 'dropdown', source: ['left','right','center'], width: 125, className: 'htDropdownCell' }
 ];

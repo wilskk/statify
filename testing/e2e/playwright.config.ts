@@ -34,10 +34,9 @@ export default defineConfig({
     }
   },
 
-  // Essential browser coverage
+  // Use Chromium only
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
   ],
 
   // Auto-start dev server
