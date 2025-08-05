@@ -115,6 +115,7 @@ export default function HelpPage() {
 				{ key: 'frequencies', label: 'Frequencies', parentKey: 'statistics-guide', childContent: 'frequencies' },
 				{ key: 'descriptives', label: 'Descriptives', parentKey: 'statistics-guide', childContent: 'descriptives' },
 				{ key: 'explore', label: 'Explore', parentKey: 'statistics-guide', childContent: 'explore' },
+                { key: 'linear', label: 'Linear Regression', parentKey: 'statistics-guide', childContent: 'linear' },
 				{ key: 'crosstabs', label: 'Crosstabs', parentKey: 'statistics-guide', childContent: 'crosstabs' },
 			]
 		},

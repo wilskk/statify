@@ -32,26 +32,12 @@ self.onmessage = function (e) {
       }
     }
 
-    /* ---------------------------------------------------------------------- */
-    /*                    Build matrices for regression                       */
-    /* ---------------------------------------------------------------------- */
-
     // X matrix with rows = observations, cols = variables
     const X = transpose(independentVars);
-
-    /* ---------------------------------------------------------------------- */
-    /*                    Restricted (linear) regression                       */
-    /* ---------------------------------------------------------------------- */
-
     const restricted = multipleLinearRegression(dependentData, X);
     const restrictedSSE = restricted.sse;
     const yHat = restricted.yHat;
 
-    /* ---------------------------------------------------------------------- */
-    /*                  Unrestricted regression with yHat powers               */
-/* ---------------------------------------------------------------------- */
-
-    const maxPower = 3; // statsmodels default includes powers 2 and 3
     const augmentedX = X.map((row, i) => {
       const extras = [];
       for (let pw = 2; pw <= maxPower; pw++) {
@@ -63,9 +49,6 @@ self.onmessage = function (e) {
     const unrestricted = multipleLinearRegression(dependentData, augmentedX);
     const unrestrictedSSE = unrestricted.sse;
 
-/* ---------------------------------------------------------------------- */
-/*                         Compute F-statistic                             */
-/* ---------------------------------------------------------------------- */
 
     const q = maxPower - 1; // number of added terms
     const p = independentVars.length; // original regressors
@@ -82,9 +65,6 @@ self.onmessage = function (e) {
       throw new Error("jStat library not available for exact F CDF calculation.");
     }
 
-    /* ---------------------------------------------------------------------- */
-    /*                          Compose response                               */
-    /* ---------------------------------------------------------------------- */
 
     const isLinear = pValue > 0.05;
 
@@ -108,9 +88,6 @@ self.onmessage = function (e) {
   }
 };
 
-/* -------------------------------------------------------------------------- */
-/*                               Helper functions                             */
-/* -------------------------------------------------------------------------- */
 
 // Multiple linear regression using ordinary least squares (simple implementation)
 function multipleLinearRegression(y, X) {
@@ -229,10 +206,6 @@ function matrixInverse(A) {
 
   return I;
 }
-
-/* -------------------------------------------------------------------------- */
-/*                 F-distribution CDF approximation functions                 */
-/* -------------------------------------------------------------------------- */
 
 function pf(x, df1, df2) {
   if (x <= 0) return 0;

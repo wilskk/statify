@@ -16,7 +16,12 @@ import {
   TabsTrigger
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, HelpCircle } from 'lucide-react';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { TourPopup, ActiveElementHighlight } from '@/components/Common/TourComponents';
+import { useTourGuide, TabControlProps } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
+import { baseTourSteps } from './hooks/tourConfig';
+import { AnimatePresence } from 'framer-motion';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useResultStore } from '@/stores/useResultStore';
@@ -30,6 +35,7 @@ import { Separator } from '@/components/ui/separator';
 import VariablesTab from './VariablesTab';
 import ModelsTab from './ModelsTab';
 
+// Register Chart.js components (must run after all imports)
 Chart.register(...registerables);
 
 // Updated to match OpenSavFile pattern
@@ -41,7 +47,24 @@ export interface ModalCurveEstimationProps {
 // Using named export like OpenSavFile
 export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose, containerType = "dialog" }) => {
   // State for variables
-  const [activeTab, setActiveTab] = useState("variables");
+  const [activeTab, setActiveTab] = useState<'variables' | 'models'>('variables');
+
+  // ------------------ Help Tour ------------------
+  const tabControl = React.useMemo<TabControlProps>(() => ({
+    setActiveTab: (tab: string) => setActiveTab(tab as any),
+    currentActiveTab: activeTab,
+  }), [activeTab]);
+
+  const {
+    tourActive,
+    currentStep,
+    tourSteps,
+    currentTargetElement,
+    startTour,
+    nextStep,
+    prevStep,
+    endTour,
+  } = useTourGuide(baseTourSteps, containerType as any, tabControl);
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
@@ -508,14 +531,16 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
         )}
 
         {/* Main content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v)=>setActiveTab(v as any)} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger
+                id="curve-variables-tab-trigger"
                 value="variables"
                 >
                 Variables
                 </TabsTrigger>
                 <TabsTrigger
+                id="curve-models-tab-trigger"
                 value="models"
                 >
                 Models
@@ -558,45 +583,69 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
       </div>
 
 
+      {/* Feature tour overlay */}
+      <AnimatePresence>
+        {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+          <TourPopup
+            step={tourSteps[currentStep]}
+            currentStep={currentStep}
+            totalSteps={tourSteps.length}
+            onNext={nextStep}
+            onPrev={prevStep}
+            onClose={endTour}
+            targetElement={currentTargetElement}
+          />
+        )}
+      </AnimatePresence>
+      <ActiveElementHighlight active={tourActive} />
+
       {/* Footer section */}
-      <div className="px-6 py-4 border-t border-border bg-muted mt-auto">
-        <div className="flex justify-center space-x-4">
-          <Button
-            onClick={handleRunRegression}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              "OK"
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleReset}
-            disabled={isProcessing}
-          >
-            Reset
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={isProcessing}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="outline"
-            disabled={isProcessing}
-          >
-            Help
-          </Button>
-        </div>
+      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary mt-auto">
+          {/* Left: Help button with tooltip */}
+          <div className="flex items-center text-muted-foreground">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    data-testid="curve-help-button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={startTour}
+                    aria-label="Start feature tour"
+                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                    disabled={isProcessing}
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">Start feature tour</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          {/* Right: Action buttons */}
+          <div className="flex items-center space-x-4">
+            <Button onClick={handleRunRegression} disabled={isProcessing}>
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "OK"
+              )}
+            </Button>
+            <Button variant="outline" onClick={handleReset} disabled={isProcessing}>
+              Reset
+            </Button>
+            <Button variant="outline" onClick={handleClose} disabled={isProcessing}>
+              Cancel
+            </Button>
+          </div>
+                </div>
       </div>
-    </div>
   );
 };
 

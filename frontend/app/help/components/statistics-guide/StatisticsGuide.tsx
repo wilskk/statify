@@ -6,6 +6,7 @@ import { Crosstabs } from './crosstabs';
 import { DescriptiveAnalysis } from './descriptive';
 import { Explore } from './explore';
 import { Frequencies } from './frequencies';
+import { LinearRegression } from './linear';
 
 type StatisticsGuideProps = {
   section?: string;
@@ -27,6 +28,8 @@ export const StatisticsGuide: React.FC<StatisticsGuideProps> = ({ section }) => 
         return <Explore />;
       case 'crosstabs':
         return <Crosstabs />;
+      case 'linear':
+        return <LinearRegression />;
       default:
         return (
           <HelpGuideTemplate

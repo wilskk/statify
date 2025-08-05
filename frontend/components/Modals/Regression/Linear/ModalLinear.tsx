@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { DialogFooter } from '@/components/ui/dialog';
 import {
@@ -36,7 +37,11 @@ import AssumptionTest, { AssumptionTestParams } from './AssumptionTest';
 import { Variable } from '@/types/Variable';
 import { CellUpdate } from '@/stores/useDataStore';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
+import { Loader2, HelpCircle } from "lucide-react";
+import { TourPopup, ActiveElementHighlight } from '@/components/Common/TourComponents';
+import { useTourGuide, TabControlProps } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
+import { baseTourSteps } from './hooks/tourConfig';
+import { AnimatePresence } from 'framer-motion';
 
 interface ModalLinearProps {
   onClose: () => void;
@@ -114,7 +119,25 @@ const defaultAssumptionTestParams: AssumptionTestParams = {
 
 const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dialog" }) => {
   // State variables - menggunakan struktur versi baru
+  const [activeTab, setActiveTab] = useState<'variables' | 'statistics' | 'plots' | 'save' | 'options' | 'assumption'>('variables');
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+
+  // -------------------- Help Tour --------------------
+  const tabControl = React.useMemo<TabControlProps>(() => ({
+    setActiveTab: (tab: string) => setActiveTab(tab as any),
+    currentActiveTab: activeTab
+  }), [activeTab]);
+
+  const {
+    tourActive,
+    currentStep,
+    tourSteps,
+    currentTargetElement,
+    startTour,
+    nextStep,
+    prevStep,
+    endTour
+  } = useTourGuide(baseTourSteps, containerType, tabControl);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
   const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
@@ -1629,20 +1652,35 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
   return (
     <div className="flex flex-col h-full">
+      {/* Feature Tour elements */}
+      <AnimatePresence>
+        {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+          <TourPopup
+            step={tourSteps[currentStep]}
+            currentStep={currentStep}
+            totalSteps={tourSteps.length}
+            onNext={nextStep}
+            onPrev={prevStep}
+            onClose={endTour}
+            targetElement={currentTargetElement}
+          />
+        )}
+      </AnimatePresence>
+      <ActiveElementHighlight targetElement={currentTargetElement} active={tourActive} />
       <ValidationAlert />
       <div className="px-6 py-4">
         <Separator className="my-2" />
       </div>
 
       <div className="flex-grow px-6 overflow-y-auto">
-        <Tabs defaultValue="variables" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger data-testid="linear-variables-tab" value="variables">Variables</TabsTrigger>
-            <TabsTrigger data-testid="linear-statistics-tab" value="statistics">Statistics</TabsTrigger>
-            <TabsTrigger data-testid="linear-plots-tab" value="plots">Plots</TabsTrigger>
-            <TabsTrigger data-testid="linear-save-tab" value="save">Save</TabsTrigger>
+            <TabsTrigger id="linear-variables-tab-trigger" data-testid="linear-variables-tab" value="variables">Variables</TabsTrigger>
+            <TabsTrigger id="linear-statistics-tab-trigger" data-testid="linear-statistics-tab" value="statistics">Statistics</TabsTrigger>
+            <TabsTrigger id="linear-plots-tab-trigger" data-testid="linear-plots-tab" value="plots">Plots</TabsTrigger>
+            <TabsTrigger id="linear-save-tab-trigger" data-testid="linear-save-tab" value="save">Save</TabsTrigger>
             <TabsTrigger data-testid="linear-options-tab" value="options">Options</TabsTrigger>
-            <TabsTrigger data-testid="linear-assumption-tab" value="assumption">Assumption</TabsTrigger>
+            <TabsTrigger id="linear-assumption-tab-trigger" data-testid="linear-assumption-tab" value="assumption">Assumption</TabsTrigger>
           </TabsList>
 
           {/* Variables Tab */}
@@ -1705,16 +1743,47 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-border bg-muted mt-auto">
-        <div className="flex justify-center space-x-4">
+      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+        {/* Left: Help button with tooltip */}
+        <div className="flex items-center text-muted-foreground">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  data-testid="linear-help-button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={startTour}
+                  aria-label="Start feature tour"
+                  className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Start feature tour</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {/* Right: Action buttons */}
+        <div className="flex items-center space-x-4">
           <Button onClick={handleAnalyze} disabled={isLoading}>
-            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : 'OK'}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...
+              </>
+            ) : (
+              'OK'
+            )}
           </Button>
-          <Button variant="outline" onClick={handleReset} disabled={isLoading}>Reset</Button>
+          <Button variant="outline" onClick={handleReset} disabled={isLoading}>
+            Reset
+          </Button>
           <Button variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button variant="outline" disabled={isLoading}>Help</Button>
         </div>
       </div>
     </div>
