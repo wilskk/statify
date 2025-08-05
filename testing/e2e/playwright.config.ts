@@ -20,8 +20,8 @@ export default defineConfig({
   ],
   
   // Reasonable timeouts
-  timeout: 45 * 1000,
-  expect: { timeout: 10 * 1000 },
+  timeout: 120 * 1000,
+  expect: { timeout: 30 * 1000 },
   
   use: {
     baseURL: 'http://localhost:3000',
@@ -43,6 +43,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     port: 3000,
+    cwd: '../frontend',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

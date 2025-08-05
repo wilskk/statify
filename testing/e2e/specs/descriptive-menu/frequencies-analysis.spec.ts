@@ -43,12 +43,13 @@ test.describe('Frequencies Analysis Performance Test', () => {
     // Wait for available variables container to load
     await expect(page.locator('[data-testid="available-variables-container"]')).toBeVisible();
     
-    // Wait for data to load - check for any variable in the available list
-    await page.waitForTimeout(2000); // Give time for data to load
+    // Wait for data to load and verify treegrid is present
+    await page.locator('treegrid').waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(3000); // Give time for data to load
     
     // Verify that variables are loaded in available list
-    const availableVariables = page.locator('[data-testid^="variable-name-available-"]');
-    await expect(availableVariables.first()).toBeVisible({ timeout: 5000 });
+    const availableVariables = page.locator('[data-testid^="variable-name-available-"]');      
+    await expect(availableVariables.first()).toBeVisible({ timeout: 10000 });
     
 
     

@@ -136,4 +136,4 @@ export interface TableColumnHeader {
 export interface TableRow {
   rowHeader: string[];
   [key: string]: any;
-} 
+}
