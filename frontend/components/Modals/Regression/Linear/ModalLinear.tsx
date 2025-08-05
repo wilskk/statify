@@ -1666,14 +1666,14 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           />
         )}
       </AnimatePresence>
-      <ActiveElementHighlight targetElement={currentTargetElement} active={tourActive} />
+      <ActiveElementHighlight active={tourActive} />
       <ValidationAlert />
       <div className="px-6 py-4">
         <Separator className="my-2" />
       </div>
 
       <div className="flex-grow px-6 overflow-y-auto">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="w-full">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger id="linear-variables-tab-trigger" data-testid="linear-variables-tab" value="variables">Variables</TabsTrigger>
             <TabsTrigger id="linear-statistics-tab-trigger" data-testid="linear-statistics-tab" value="statistics">Statistics</TabsTrigger>
