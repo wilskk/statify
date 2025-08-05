@@ -10,24 +10,37 @@ pub fn initialize_clusters(
 ) -> Result<InitialClusterCenters, String> {
     let num_clusters = config.main.cluster as usize;
 
-    if data.data_matrix.len() < num_clusters {
+    let mut initial_centers: Vec<Vec<f64>>;
+
+    let valid_cases: Vec<&Vec<f64>> = data.data_matrix
+        .iter()
+        .filter(|case| case.iter().any(|&val| !val.is_nan()))
+        .collect();
+
+    if valid_cases.len() < num_clusters {
         return Err(
             format!(
-                "Not enough data points ({}) for requested clusters ({})",
-                data.data_matrix.len(),
+                "Not enough valid data points ({}) for requested clusters ({})",
+                valid_cases.len(),
                 num_clusters
             )
         );
     }
 
-    let mut initial_centers: Vec<Vec<f64>>;
-
     if !config.options.initial_cluster {
-        initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
+        initial_centers = valid_cases
+            .iter()
+            .take(num_clusters)
+            .map(|&case| case.clone())
+            .collect();
     } else {
-        initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
-        for k in num_clusters..data.data_matrix.len() {
-            let x_k = &data.data_matrix[k];
+        initial_centers = valid_cases
+            .iter()
+            .take(num_clusters)
+            .map(|&case| case.clone())
+            .collect();
+        for k in num_clusters..valid_cases.len() {
+            let x_k = valid_cases[k];
 
             // Cari pusat cluster terdekat dan jarak minimum
             let (closest, min_dist) = find_nearest_cluster(x_k, &initial_centers);
@@ -40,7 +53,7 @@ pub fn initialize_clusters(
             if min_dist > min_center_dist {
                 // Kondisi 1: Jika jarak titik x_k ke pusat terdekatnya lebih besar dari jarak
                 // minimum antar pusat, ganti salah satu dari dua pusat terdekat
-                // satu sama lain (m atau n) dengan x_k..
+                // satu sama lain (m atau n) dengan x_k.
                 if
                     euclidean_distance(x_k, &initial_centers[m]) >
                     euclidean_distance(x_k, &initial_centers[n])
@@ -62,12 +75,28 @@ pub fn initialize_clusters(
         }
     }
 
-    // Mengubah format pusat cluster
     let mut centers_map = HashMap::new();
     for (i, var) in data.variables.iter().enumerate() {
-        let var_values = initial_centers
+        let var_values: Vec<f64> = initial_centers
             .iter()
-            .map(|center| center[i]) // Ekstrak nilai variabel i dari setiap pusat cluster
+            .map(|center| {
+                let val = center[i];
+
+                if val.is_nan() {
+                    let valid_values: Vec<f64> = data.data_matrix
+                        .iter()
+                        .map(|row| row[i])
+                        .filter(|x| !x.is_nan())
+                        .collect();
+                    if valid_values.is_empty() {
+                        0.0
+                    } else {
+                        mean(&valid_values)
+                    }
+                } else {
+                    val
+                }
+            })
             .collect();
         centers_map.insert(var.clone(), var_values);
     }

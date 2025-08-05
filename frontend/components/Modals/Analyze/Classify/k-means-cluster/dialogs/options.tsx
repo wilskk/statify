@@ -199,7 +199,7 @@ export const KMeansClusterOptions = ({
                                         <RadioGroupItem
                                             value="ExcludePairWise"
                                             id="ExcludePairWise"
-                                            disabled={true}
+                                            // disabled={true}
                                         />
                                         <Label htmlFor="ExcludePairWise">
                                             Exclude Cases Pairwise

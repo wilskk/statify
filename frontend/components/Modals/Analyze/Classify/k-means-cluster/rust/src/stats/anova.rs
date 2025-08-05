@@ -32,7 +32,13 @@ pub fn calculate_anova(data: &ProcessedData, config: &KMeansConfig) -> Result<AN
         let ssb: f64 = cluster_data
             .iter()
             .enumerate()
-            .map(|(i, cluster)| (cluster.len() as f64) * (cluster_means[i] - overall_mean).powi(2))
+            .map(|(i, cluster)| {
+                let valid_count = cluster
+                    .iter()
+                    .filter(|x| !x.is_nan())
+                    .count() as f64;
+                valid_count * (cluster_means[i] - overall_mean).powi(2)
+            })
             .sum();
 
         let ssw: f64 = cluster_data
@@ -41,10 +47,34 @@ pub fn calculate_anova(data: &ProcessedData, config: &KMeansConfig) -> Result<AN
             .map(|(i, cluster)| sum_squared_deviations(cluster, cluster_means[i]))
             .sum();
 
+        // Hitung total kasus valid untuk degrees of freedom
+        let total_valid_cases: usize = cluster_data
+            .iter()
+            .map(|cluster|
+                cluster
+                    .iter()
+                    .filter(|x| !x.is_nan())
+                    .count()
+            )
+            .sum();
+
         let df_between = (num_clusters as i32) - 1;
-        let df_within = (data.data_matrix.len() as i32) - (num_clusters as i32);
+        let df_within = (total_valid_cases as i32) - (num_clusters as i32);
+
+        if df_within <= 0 {
+            anova_clusters.insert(var_name.clone(), ANOVACluster {
+                mean_square: 0.0,
+                error_mean_square: 0.0,
+                df: df_between,
+                error_df: df_within,
+                f: 0.0,
+                significance: 1.0,
+            });
+            continue;
+        }
+
         let mean_square_between = ssb / (df_between as f64);
-        let mean_square_within = if df_within > 0 { ssw / (df_within as f64) } else { 0.0 };
+        let mean_square_within = ssw / (df_within as f64);
 
         let f_statistic = if mean_square_within > 0.0 {
             mean_square_between / mean_square_within

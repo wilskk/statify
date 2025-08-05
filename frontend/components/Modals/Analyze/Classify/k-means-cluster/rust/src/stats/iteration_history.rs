@@ -29,11 +29,13 @@ pub fn generate_iteration_history(
 
     if use_running_means {
         let mut new_centers = current_centers.clone();
-        let mut cluster_counts = vec![0; num_clusters];
+        let mut cluster_counts = vec![0; num_clusters]; // Count per cluster (not per variable)
 
         for iteration in 1..=max_iterations {
             let old_centers_for_change_calc = new_centers.clone();
 
+            // Dalam running means, kita memproses seluruh dataset sekali per iterasi
+            // dan update running mean untuk setiap assignment
             for case in &data.data_matrix {
                 let closest = find_nearest_cluster(case, &new_centers).0;
                 cluster_counts[closest] += 1;
@@ -44,11 +46,14 @@ pub fn generate_iteration_history(
                 //
                 // Dimana:
                 // - μ_i^t = pusat cluster i pada iterasi t
-                // - n_i = jumlah titik yang telah ditugaskan ke cluster i
+                // - n_i = jumlah total titik yang telah ditugaskan ke cluster i
                 // - x = titik data baru
                 for (j, &val) in case.iter().enumerate() {
-                    new_centers[closest][j] =
-                        new_centers[closest][j] + (val - new_centers[closest][j]) / count;
+                    // Skip NaN values untuk pairwise deletion
+                    if !val.is_nan() {
+                        new_centers[closest][j] =
+                            new_centers[closest][j] + (val - new_centers[closest][j]) / count;
+                    }
                 }
             }
 
@@ -87,28 +92,36 @@ pub fn generate_iteration_history(
     } else {
         for iteration in 1..=max_iterations {
             let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
-            let mut cluster_counts = vec![0; num_clusters];
+            let mut cluster_counts = vec![vec![0; data.variables.len()]; num_clusters]; // Count per variable per cluster
 
             for case in &data.data_matrix {
                 let closest = find_nearest_cluster(case, &current_centers).0;
-                cluster_counts[closest] += 1;
-                for (j, &val) in case.iter().enumerate() {
-                    new_centers[closest][j] += val;
-                }
-            }
 
-            // Hitung pusat cluster baru sebagai mean dari semua titik dalam cluster.
-            for i in 0..num_clusters {
-                if cluster_counts[i] > 0 {
-                    for j in 0..data.variables.len() {
-                        new_centers[i][j] /= cluster_counts[i] as f64;
+                for (j, &val) in case.iter().enumerate() {
+                    if !val.is_nan() {
+                        cluster_counts[closest][j] += 1;
+                        new_centers[closest][j] += val;
                     }
                 }
             }
 
-            // Jika suatu cluster tidak memiliki anggota, pertahankan posisi pusat cluster sebelumnya.
+            // Hitung mean untuk setiap variabel di setiap cluster
             for i in 0..num_clusters {
-                if cluster_counts[i] == 0 {
+                for j in 0..data.variables.len() {
+                    if cluster_counts[i][j] > 0 {
+                        new_centers[i][j] /= cluster_counts[i][j] as f64;
+                    } else {
+                        // Jika tidak ada nilai valid untuk variabel ini di cluster ini,
+                        // pertahankan nilai center sebelumnya
+                        new_centers[i][j] = current_centers[i][j];
+                    }
+                }
+            }
+
+            // Check untuk cluster yang benar-benar kosong (tidak ada nilai valid untuk semua variabel)
+            for i in 0..num_clusters {
+                let total_valid_vars = cluster_counts[i].iter().sum::<i32>();
+                if total_valid_vars == 0 {
                     new_centers[i] = current_centers[i].clone();
                 }
             }

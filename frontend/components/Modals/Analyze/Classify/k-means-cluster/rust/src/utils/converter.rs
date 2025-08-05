@@ -57,12 +57,12 @@ struct FormattedIterationHistory {
 #[derive(Serialize)]
 struct FormattedIterationStep {
     iteration: i32,
-    changes: Vec<VariableChange>,
+    changes: Vec<ClusterChange>,
 }
 
 #[derive(Serialize)]
-struct VariableChange {
-    variable: String,
+struct ClusterChange {
+    cluster: String,
     change: f64,
 }
 
@@ -132,9 +132,9 @@ impl FormatResult {
                 .map(|step| {
                     let changes = step.changes
                         .iter()
-                        .map(|(var_name, change)| {
-                            VariableChange {
-                                variable: var_name.clone(),
+                        .map(|(cluster, change)| {
+                            ClusterChange {
+                                cluster: cluster.clone(),
                                 change: *change,
                             }
                         })
