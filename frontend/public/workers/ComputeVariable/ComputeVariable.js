@@ -49,20 +49,20 @@ math.import(
       const flat = args.flat();
       return math.mode(flat);
     },
-    var_p: function (...args) {
+    varp: function (...args) {
       const data = args.flat();
       return math.variance(data, "uncorrected");
     },
 
-    var_s: function (...args) {
+    vars: function (...args) {
       const data = args.flat();
       return math.variance(data, "unbiased");
     },
-    std_p: function (...args) {
+    stdp: function (...args) {
       const data = args.flat();
       return math.std(data, "uncorrected");
     },
-    std_s: function (...args) {
+    stds: function (...args) {
       const data = args.flat();
       return math.std(data, "unbiased");
     },
@@ -115,7 +115,7 @@ function safeEvaluate(expression, context) {
   try {
     // 👉 Tangani fungsi kolom secara khusus di awal
     const colFuncMatch = expression.match(
-      /^\s*(colmean|colsum|colmedian|colmin|colmax|colvar_p|colvar_s|colstd_p|colstd_s)\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)\s*$/
+      /^\s*(colmean|colsum|colmedian|colmin|colmax|colvarp|colvars|colstdp|colstds)\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)\s*$/
     );
     if (colFuncMatch) {
       const [_, funcName, varName] = colFuncMatch;
@@ -154,17 +154,17 @@ function safeEvaluate(expression, context) {
         case "colmax":
           result = math.max(colValues);
           break;
-        case "colvar_p":
-          result = math.var_p(colValues);
+        case "colvarp":
+          result = math.varp(colValues);
           break;
-        case "colvar_s":
-          result = math.var_s(colValues);
+        case "colvars":
+          result = math.vars(colValues);
           break;
-        case "colstd_p":
-          result = math.std_p(colValues);
+        case "colstdp":
+          result = math.stdp(colValues);
           break;
-        case "colstd_s":
-          result = math.std_s(colValues);
+        case "colstds":
+          result = math.stds(colValues);
           break;
         default:
           throw new Error(`Fungsi '${funcName}' tidak didukung`);
@@ -196,16 +196,36 @@ function safeEvaluate(expression, context) {
 
     return math.evaluate(processedExpr, context);
   } catch (error) {
-    // Deteksi error undefined symbol
-    if (error.message && error.message.startsWith("Undefined symbol ")) {
+    // Improved error handling with user-friendly messages
+    let userFriendlyMessage = error.message;
+
+    // Handle specific error types
+    if (error.message && error.message.includes("Parenthesis")) {
+      userFriendlyMessage =
+        "Missing or mismatched parentheses in your formula. Please check that all opening parentheses '(' have matching closing parentheses ')'";
+    } else if (error.message && error.message.includes("Cannot convert")) {
+      // Handle string to number conversion errors
+      userFriendlyMessage = `Invalid data type detected. Please ensure all variables in your formula are compatibel with function you used.`;
+    } else if (error.message && error.message.startsWith("Undefined symbol ")) {
       // Ambil nama symbol
       const match = error.message.match(/Undefined symbol ([^ ]+)/);
-      const symbol = match ? match[1] : "?";
-      throw new Error(
-        `Unknown expression '${symbol}'. Did you mean something else?`
-      );
+      const symbol = match ? match[1] : "unknown";
+      userFriendlyMessage = `The variable or function '${symbol}' is not recognized. Please check the spelling or make sure the variable exists in your dataset.`;
+    } else if (error.message && error.message.includes("Unexpected")) {
+      userFriendlyMessage =
+        "There's a syntax error in your formula. Please check for missing operators, extra symbols, or incorrect function usage.";
+    } else if (error.message && error.message.includes("expected")) {
+      userFriendlyMessage =
+        "Your formula is incomplete or has incorrect syntax. Please review the expression for missing parts or typos.";
+    } else if (error.message && error.message.includes("division by zero")) {
+      userFriendlyMessage =
+        "Division by zero detected. Please check your formula to avoid dividing by zero values.";
+    } else if (error.message && error.message.includes("Invalid")) {
+      userFriendlyMessage =
+        "Invalid expression or function usage. Please check your formula syntax and function parameters.";
     }
-    throw new Error(`Error evaluating expression: ${error.message}`);
+
+    throw new Error(userFriendlyMessage);
   }
 }
 
@@ -218,10 +238,26 @@ self.onmessage = function (event) {
   self.variables = variables;
 
   try {
+    // Validasi: Cek apakah ada variabel string yang digunakan dalam ekspresi numerik
+    const variableNamesInExpression =
+      numericExpression.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+    const stringVariablesUsed = variables.filter(
+      (v) => v.type === "String" && variableNamesInExpression.includes(v.name)
+    );
+
+    if (stringVariablesUsed.length > 0) {
+      const variableNames = stringVariablesUsed
+        .map((v) => `'${v.name}'`)
+        .join(", ");
+      throw new Error(
+        `Cannot perform numeric operations on string variable(s): ${variableNames}. Please use only numeric variables in your formula.`
+      );
+    }
+
     let computedValues;
 
     const isGlobalAggregateOnly =
-      /^\s*(colmean|colsum|colmedian|colmin|colmax|colvar_p|colvar_s|colstd_p|colstd_s)\(\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)\s*$/i.test(
+      /^\s*(colmean|colsum|colmedian|colmin|colmax|colvarp|colvars|colstdp|colstds)\(\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)\s*$/i.test(
         numericExpression
       );
 
@@ -237,7 +273,7 @@ self.onmessage = function (event) {
       // Preprocess untuk mendapatkan nilai fungsi kolom terlebih dahulu
       let processedExpr = numericExpression;
       const colFuncRegex =
-        /(colmean|colsum|colmedian|colmin|colmax|colvar_p|colvar_s|colstd_p|colstd_s)\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)/g;
+        /(colmean|colsum|colmedian|colmin|colmax|colvarp|colvars|colstdp|colstds)\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)/g;
 
       // Ganti semua fungsi kolom dengan nilainya
       processedExpr = processedExpr.replace(
@@ -279,17 +315,17 @@ self.onmessage = function (event) {
             case "colmax":
               result = math.max(colValues);
               break;
-            case "colvar_p":
-              result = math.var_p(colValues);
+            case "colvarp":
+              result = math.varp(colValues);
               break;
-            case "colvar_s":
-              result = math.var_s(colValues);
+            case "colvars":
+              result = math.vars(colValues);
               break;
-            case "colstd_p":
-              result = math.std_p(colValues);
+            case "colstdp":
+              result = math.stdp(colValues);
               break;
-            case "colstd_s":
-              result = math.std_s(colValues);
+            case "colstds":
+              result = math.stds(colValues);
               break;
             default:
               throw new Error(`Fungsi '${funcName}' tidak didukung`);
@@ -302,32 +338,55 @@ self.onmessage = function (event) {
       computedValues = data.map((row, rowIndex) => {
         const context = {};
 
+        // Hapus validasi duplikat ini - sudah ada di awal
+        // const variableNamesInExpression = ...
+        // const stringVariablesUsed = ...
+        // if (stringVariablesUsed.length > 0) { ... }
+
         variables.forEach((variable) => {
           const colIndex = variable.columnIndex;
           const cellValue = row[colIndex];
-          context[variable.name] =
-            variable.type === "Numeric" ? parseFloat(cellValue) : cellValue;
+
+          if (variable.type === "Numeric") {
+            const numValue = parseFloat(cellValue);
+            if (isNaN(numValue)) {
+              throw new Error(
+                `Invalid numeric value '${cellValue}' in variable '${variable.name}'. Please check your data.`
+              );
+            }
+            context[variable.name] = numValue;
+          } else {
+            // Untuk variabel string, hanya izinkan jika tidak digunakan dalam operasi numerik
+            context[variable.name] = cellValue;
+          }
         });
 
         let computedValue;
         try {
           computedValue = safeEvaluate(processedExpr, context);
         } catch (error) {
-          throw new Error(
-            `An error occurred on row ${rowIndex + 1}: ${
-              error.message
-            }. Please check your formula.`
-          );
+          // More user-friendly error message without row information
+          let rowErrorMessage = error.message;
+
+          if (error.message.includes("Parenthesis")) {
+            rowErrorMessage =
+              "Missing or mismatched parentheses in your formula";
+          } else if (error.message.includes("Undefined symbol")) {
+            rowErrorMessage = "Unknown variable or function in your formula";
+          } else if (error.message.includes("division by zero")) {
+            rowErrorMessage = "Division by zero occurred";
+          }
+
+          // Remove row number from error message
+          throw new Error(`${rowErrorMessage}. Please check your formula.`);
         }
 
-        if (computedValue === undefined || Number.isNaN(computedValue))
+        if (computedValue === undefined || Number.isNaN(computedValue)) {
+          // Remove row number from error message
           throw new Error(
-            `An error occurred on row ${
-              rowIndex + 1
-            }: The expression is invalid. Please review your formula for missing parentheses or typos.\nDetails: ${
-              error.message
-            }`
+            "The formula produced an invalid result. Please check for missing values or incorrect calculations."
           );
+        }
 
         // Apply rounding if needed
         if (roundDecimals !== null && roundDecimals !== undefined) {

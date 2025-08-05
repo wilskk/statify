@@ -41,6 +41,8 @@ interface CustomizationPanelProps {
   setYAxisOptions: (options: any) => void;
   y2AxisOptions: any;
   setY2AxisOptions: (options: any) => void;
+  zAxisOptions: any;
+  setZAxisOptions: (options: any) => void;
   // Statistic selection
   selectedStatistic: "mean" | "median" | "mode" | "min" | "max";
   setSelectedStatistic: (
@@ -81,6 +83,8 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   setYAxisOptions,
   y2AxisOptions,
   setY2AxisOptions,
+  zAxisOptions,
+  setZAxisOptions,
   selectedStatistic,
   setSelectedStatistic,
   errorBarType,
@@ -206,6 +210,12 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             show: !isAxisConfigAllFalse(chartConfigOptions[chartType].axis.y),
           },
         ]),
+    {
+      key: "z-axis",
+      label: "Z-Axis",
+      icon: <BarChartIcon className="w-4 h-4 mr-2" />,
+      show: "z" in config.axis && !isAxisConfigAllFalse((config.axis as any).z),
+    },
     {
       key: "error-bar",
       label: "Error Bar",
@@ -816,6 +826,103 @@ const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                 )}
               </div>
             )}
+            {selectedSetting === "z-axis" && (
+              <div className="space-y-2">
+                {chartConfigOptions[chartType].axis.z.label && (
+                  <>
+                    <Label htmlFor="zAxisLabel" className="text-xs">
+                      Label
+                    </Label>
+                    <input
+                      id="zAxisLabel"
+                      type="text"
+                      className="w-full p-1.5 border rounded-md text-xs"
+                      value={zAxisOptions.label}
+                      onChange={(e) =>
+                        setZAxisOptions({
+                          ...zAxisOptions,
+                          label: e.target.value,
+                        })
+                      }
+                      placeholder="Enter Z-axis label"
+                    />
+                  </>
+                )}
+                {chartConfigOptions[chartType].axis.z.min && (
+                  <>
+                    <Label htmlFor="zAxisMin">Minimum</Label>
+                    <input
+                      id="zAxisMin"
+                      type="number"
+                      className="w-full p-2 border rounded-md"
+                      value={zAxisOptions.min}
+                      onChange={(e) =>
+                        setZAxisOptions({
+                          ...zAxisOptions,
+                          min: e.target.value,
+                        })
+                      }
+                      placeholder="Min value"
+                    />
+                  </>
+                )}
+                {chartConfigOptions[chartType].axis.z.max && (
+                  <>
+                    <Label htmlFor="zAxisMax">Maximum</Label>
+                    <input
+                      id="zAxisMax"
+                      type="number"
+                      className="w-full p-2 border rounded-md"
+                      value={zAxisOptions.max}
+                      onChange={(e) =>
+                        setZAxisOptions({
+                          ...zAxisOptions,
+                          max: e.target.value,
+                        })
+                      }
+                      placeholder="Max value"
+                    />
+                  </>
+                )}
+                {chartConfigOptions[chartType].axis.z.majorIncrement && (
+                  <>
+                    <Label htmlFor="zAxisMajorIncrement">Major Increment</Label>
+                    <input
+                      id="zAxisMajorIncrement"
+                      type="number"
+                      className="w-full p-2 border rounded-md"
+                      value={zAxisOptions.majorIncrement}
+                      onChange={(e) =>
+                        setZAxisOptions({
+                          ...zAxisOptions,
+                          majorIncrement: e.target.value,
+                        })
+                      }
+                      placeholder="Major increment"
+                    />
+                  </>
+                )}
+                {chartConfigOptions[chartType].axis.z.origin && (
+                  <>
+                    <Label htmlFor="zAxisOrigin">Origin</Label>
+                    <input
+                      id="zAxisOrigin"
+                      type="number"
+                      className="w-full p-2 border rounded-md"
+                      value={zAxisOptions.origin}
+                      onChange={(e) =>
+                        setZAxisOptions({
+                          ...zAxisOptions,
+                          origin: e.target.value,
+                        })
+                      }
+                      placeholder="Origin value"
+                    />
+                  </>
+                )}
+              </div>
+            )}
+
             {selectedSetting === "error-bar" &&
               config.errorBar &&
               isErrorBarEnabled(config.errorBar) && (

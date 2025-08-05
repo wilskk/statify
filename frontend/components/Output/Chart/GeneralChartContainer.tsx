@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo} from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,7 +107,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
     [data]
   );
 
-
+  console.log("parsedData", parsedData);
   // Helper function to convert string axisScaleOptions to number
   const convertAxisScaleOptions = (options?: {
     x?: {
@@ -1347,7 +1347,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis,
+                useAxis
               );
               break;
             case "Dual Axes Scatter Plot":
@@ -1432,8 +1432,8 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                   subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
                 },
                 chartConfig?.axisLabels,
-                chartConfig?.axisScaleOptions,
                 chartConfig?.chartColor
+                // chartConfig?.axisScaleOptions,
               );
               break;
             case "Grouped 3D Scatter Plot (ECharts)":
@@ -1734,7 +1734,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
           </div>
         </div>
       ))}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+      {/* <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="flex flex-col items-center justify-center max-w-4xl w-full h-[80vh]">
           {previewChart && (
             <div className="overflow-auto w-full h-full flex items-center justify-center">
@@ -1749,7 +1749,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
             </div>
           )}
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </div>
   );
 };
