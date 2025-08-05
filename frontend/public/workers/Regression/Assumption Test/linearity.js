@@ -1,19 +1,8 @@
 // Worker for overall linearity (Ramsey RESET) test in multiple linear regression
 importScripts("https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js");
-// This test examines whether the relationship between the dependent variable and
-// ALL independent variables combined is linear. We compare the restricted model
-// (original set of regressors) with an unrestricted model that additionally
-// contains a non-linear transformation of the fitted values (\hat{y}^2).
-// If the additional term(s) are NOT significant (p-value > 0.05), we conclude
-// that the model is linear. Otherwise, non-linearity is indicated.
-
 self.onmessage = function (e) {
   try {
     const { dependentData, independentData } = e.data;
-
-    /* ---------------------------------------------------------------------- */
-    /*                        Input validation & shaping                      */
-    /* ---------------------------------------------------------------------- */
 
     if (!Array.isArray(dependentData) || dependentData.length === 0) {
       self.postMessage({ error: "Missing or empty dependent variable data" });

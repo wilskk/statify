@@ -22,11 +22,6 @@ self.onmessage = function(e) {
       self.postMessage({ error: "Empty data arrays provided for normality test" });
       return;
     }
-
-    // For normality test, we need to:
-    // 1. Compute the linear regression
-    // 2. Get residuals
-    // 3. Test normality of residuals
     
     // Prepare independent data as a matrix of observations × variables
     const X = prepareIndependentData(independentData);
@@ -164,8 +159,6 @@ function prepareIndependentData(independentData) {
       // Single variable case
       return independentData.map(value => [value]);
     } else {
-      // Try to guess correct format
-      // If first element is an array of values for one observation, transform it
       if (independentData.length === 1 && independentData[0].length > 1) {
         return independentData[0].map(val => [val]);
       }
@@ -265,7 +258,6 @@ function matrixMultiplyVector(A, v) {
   return result;
 }
 
-// Simple matrix inverse (for 2x2 and 3x3 matrices)
 function matrixInverse(A) {
   const n = A.length;
   
