@@ -377,7 +377,7 @@ export const KMeansClusterDialog = ({
                                                 id="kmeans-number-of-clusters"
                                                 type="number"
                                                 placeholder=""
-                                                value={mainState.Cluster ?? 0}
+                                                value={mainState.Cluster || ""}
                                                 min={2}
                                                 onChange={(e) =>
                                                     handleChange(
@@ -406,7 +406,7 @@ export const KMeansClusterDialog = ({
                                                 />
                                                 <label
                                                     htmlFor="ReadInitial"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    className="text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                                 >
                                                     Read Initial
                                                 </label>
@@ -431,9 +431,10 @@ export const KMeansClusterDialog = ({
                                                             <RadioGroupItem
                                                                 value="OpenDataset"
                                                                 id="OpenDataset"
+                                                                disabled={true}
                                                             />
                                                             <Label
-                                                                className="w-[175px]"
+                                                                className="w-[175px] text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                                                 htmlFor="OpenDataset"
                                                             >
                                                                 Open Dataset
@@ -466,9 +467,10 @@ export const KMeansClusterDialog = ({
                                                             <RadioGroupItem
                                                                 value="ExternalDatafile"
                                                                 id="ExternalDatafile"
+                                                                disabled={true}
                                                             />
                                                             <Label
-                                                                className="w-[175px]"
+                                                                className="w-[175px] text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                                                 htmlFor="ExternalDatafile"
                                                             >
                                                                 External
@@ -519,7 +521,7 @@ export const KMeansClusterDialog = ({
                                                 />
                                                 <label
                                                     htmlFor="WriteFinal"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    className="text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                                 >
                                                     Write Final
                                                 </label>
@@ -532,6 +534,7 @@ export const KMeansClusterDialog = ({
                                                             : "DataFile"
                                                     }
                                                     disabled={
+                                                        true ||
                                                         !mainState.WriteFinal
                                                     }
                                                     onValueChange={
@@ -543,9 +546,10 @@ export const KMeansClusterDialog = ({
                                                             <RadioGroupItem
                                                                 value="NewDataset"
                                                                 id="NewDataset"
+                                                                disabled={true}
                                                             />
                                                             <Label
-                                                                className="w-[175px]"
+                                                                className="w-[175px] text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                                                 htmlFor="NewDataset"
                                                             >
                                                                 New Dataset
@@ -578,9 +582,10 @@ export const KMeansClusterDialog = ({
                                                             <RadioGroupItem
                                                                 value="DataFile"
                                                                 id="DataFile"
+                                                                disabled={true}
                                                             />
                                                             <Label
-                                                                className="w-[175px]"
+                                                                className="w-[175px] text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                                                 htmlFor="DataFile"
                                                             >
                                                                 Data File

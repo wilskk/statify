@@ -104,7 +104,7 @@ export const UnivariateSave = ({
                         />
                     )}
             </AnimatePresence>
-            <div className="flex flex-col gap-2 p-4">
+            <div className="flex flex-col gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
                     className="w-full min-h-[550px] rounded-lg border md:min-w-[200px]"
@@ -361,12 +361,12 @@ export const UnivariateSave = ({
                                 />
                                 <label
                                     htmlFor="CoeffStats"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                 >
                                     Create Coefficient Statistics
                                 </label>
                             </div>
-                            <Label className="font-bold">Type</Label>
+                            <Label className="font-bold cursor-not-allowed opacity-50">Type</Label>
                             <RadioGroup
                                 value={
                                     saveState.StandardStats
@@ -384,7 +384,7 @@ export const UnivariateSave = ({
                                             value="StandardStats"
                                             id="StandardStats"
                                         />
-                                        <Label htmlFor="StandardStats">
+                                        <Label htmlFor="StandardStats" className="cursor-not-allowed opacity-50">
                                             Standard Statistics
                                         </Label>
                                     </div>
@@ -393,14 +393,14 @@ export const UnivariateSave = ({
                                             value="Heteroscedasticity"
                                             id="Heteroscedasticity"
                                         />
-                                        <Label htmlFor="Heteroscedasticity">
+                                        <Label htmlFor="Heteroscedasticity" className="cursor-not-allowed opacity-50">
                                             Heteroscedasticity-consistent
                                             Statistics
                                         </Label>
                                     </div>
                                 </div>
                             </RadioGroup>
-                            <Label className="font-bold">Destination</Label>
+                            <Label className="font-bold cursor-not-allowed opacity-50">Destination</Label>
                             <RadioGroup
                                 value={
                                     saveState.NewDataSet
@@ -418,12 +418,12 @@ export const UnivariateSave = ({
                                             value="NewDataSet"
                                             id="NewDataSet"
                                         />
-                                        <Label htmlFor="NewDataSet">
+                                        <Label htmlFor="NewDataSet" className="cursor-not-allowed opacity-50">
                                             Create a New Dataset
                                         </Label>
                                     </div>
                                     <div className="flex items-center space-x-2 pl-6">
-                                        <Label className="w-[150px]">
+                                        <Label className="w-[150px] cursor-not-allowed opacity-50">
                                             Dataset Name:
                                         </Label>
                                         <div className="w-[150px]">
@@ -452,7 +452,7 @@ export const UnivariateSave = ({
                                             value="WriteNewDataSet"
                                             id="WriteNewDataSet"
                                         />
-                                        <Label htmlFor="WriteNewDataSet">
+                                        <Label htmlFor="WriteNewDataSet" className="cursor-not-allowed opacity-50">
                                             Write New Dataset File
                                         </Label>
                                     </div>

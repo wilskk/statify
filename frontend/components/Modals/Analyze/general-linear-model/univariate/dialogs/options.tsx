@@ -418,7 +418,7 @@ export const UnivariateOptions = ({
                                 />
                                 <label
                                     htmlFor="ParamEstRobStdErr"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                 >
                                     Parameter Estimates with Robust Standard
                                     Errors
@@ -443,23 +443,48 @@ export const UnivariateOptions = ({
                             >
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC0" id="HC0" />
-                                    <Label htmlFor="HC0">HC0</Label>
+                                    <Label
+                                        htmlFor="HC0"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC0
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC1" id="HC1" />
-                                    <Label htmlFor="HC1">HC1</Label>
+                                    <Label
+                                        htmlFor="HC1"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC1
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC2" id="HC2" />
-                                    <Label htmlFor="HC2">HC2</Label>
+                                    <Label
+                                        htmlFor="HC2"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC2
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC3" id="HC3" />
-                                    <Label htmlFor="HC3">HC3</Label>
+                                    <Label
+                                        htmlFor="HC3"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC3
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC4" id="HC4" />
-                                    <Label htmlFor="HC4">HC4</Label>
+                                    <Label
+                                        htmlFor="HC4"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC4
+                                    </Label>
                                 </div>
                             </RadioGroup>
                         </div>
@@ -477,7 +502,7 @@ export const UnivariateOptions = ({
                             placeholder=""
                             min={0}
                             max={1}
-                            value={optionsState.SigLevel ?? ""}
+                            value={optionsState.SigLevel || ""}
                             onChange={(e) =>
                                 handleChange("SigLevel", Number(e.target.value))
                             }

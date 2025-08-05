@@ -819,6 +819,7 @@ export const UnivariateModel = ({
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={
+                                                    true ||
                                                     !modelState.BuildCustomTerm ||
                                                     currentBuildTerm.trim() ===
                                                         "" || // Periksa apakah term kosong

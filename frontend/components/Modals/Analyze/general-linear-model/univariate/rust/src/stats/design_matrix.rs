@@ -24,9 +24,34 @@ pub fn create_design_response_weights(
             format!("Non-numeric dependent variable value for case {}", i)
         )?;
         if let Some(wls_var_name) = &config.main.wls_weight {
-            let wls_val = extract_numeric_from_record(record, wls_var_name).ok_or_else(||
-                format!("Non-numeric WLS weight for case {}", i)
-            )?;
+            let wls_val = if let Some(wls_data_sets) = &data.wls_data {
+                let wls_data_set_index = data.wls_data_defs
+                    .as_ref()
+                    .and_then(|wls_defs|
+                        wls_defs
+                            .iter()
+                            .position(|def_group|
+                                def_group.iter().any(|def| def.name == *wls_var_name)
+                            )
+                    );
+
+                if let Some(index) = wls_data_set_index {
+                    if let Some(wls_data_set) = wls_data_sets.get(index) {
+                        wls_data_set
+                            .get(i)
+                            .and_then(|r| extract_numeric_from_record(r, wls_var_name))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            let wls_val = wls_val.ok_or_else(|| format!("Non-numeric WLS weight for case {}", i))?;
+
             if wls_val > 0.0 {
                 y_values.push(dep_val);
                 wls_weights.as_mut().unwrap().push(wls_val);
