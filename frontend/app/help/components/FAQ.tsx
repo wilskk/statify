@@ -1,143 +1,188 @@
 import React from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpContentWrapper } from "./HelpContentWrapper";
-import { Badge } from "@/components/ui/badge";
-import { HelpCircle, Search, FileQuestion, FileCode, BarChart4, Clock, Save } from "lucide-react";
+import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
+import { HelpCard, HelpAlert, HelpSection } from "../ui/HelpLayout";
+import { HelpCircle, Search, FileQuestion, FileCode, BarChart4, Clock, Save, MessageCircle, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Data spesifik untuk Statify
+// Statify-specific FAQ data
 const faqs = [
   {
-    question: "Apa itu file .sav?",
-    answer: "File .sav adalah format file data yang digunakan oleh SPSS (Statistical Package for the Social Sciences). Statify dapat membaca dan menulis file format ini, memungkinkan interoperabilitas dengan SPSS."
+    question: "What is a .sav file?",
+    answer: "A .sav file is the data format used by SPSS (Statistical Package for the Social Sciences). Statify can read and write this format, enabling seamless interoperability with SPSS."
   },
   {
-    question: "Bagaimana cara mengimpor data dari Excel?",
-    answer: "Untuk mengimpor data dari Excel, klik menu 'File' kemudian pilih 'Import Excel'. Anda dapat menyesuaikan pengaturan impor seperti sheet yang akan dibaca, baris header, dan tipe data variabel."
+    question: "How do I import data from Excel?",
+    answer: "To import data from Excel, click the 'File' menu and select 'Import Excel'. You can customize import settings such as which sheet to read, header rows, and variable data types."
   },
   {
-    question: "Bagaimana cara melakukan analisis deskriptif?",
-    answer: "Untuk melakukan analisis deskriptif, pilih variabel yang ingin dianalisis dari panel variabel, kemudian klik menu 'Analyze' dan pilih 'Descriptive Statistics'. Anda dapat memilih statistik yang ingin ditampilkan seperti mean, median, modus, dan deviasi standar."
+    question: "How do I perform descriptive analysis?",
+    answer: "To perform descriptive analysis, select the variables you want to analyze from the variables panel, then click the 'Analyze' menu and choose 'Descriptive Statistics'. You can select which statistics to display such as mean, median, mode, and standard deviation."
   },
   {
-    question: "Apakah Statify dapat membuat grafik?",
-    answer: "Ya, Statify dilengkapi dengan berbagai jenis grafik seperti bar chart, histogram, scatter plot, dan box plot. Anda dapat membuat grafik dengan memilih menu 'Graphs' dan kemudian memilih jenis grafik yang diinginkan."
+    question: "Can Statify create graphs?",
+    answer: "Yes, Statify includes various chart types such as bar charts, histograms, scatter plots, and box plots. You can create charts by selecting the 'Graphs' menu and then choosing your desired chart type."
   },
   {
-    question: "Bagaimana cara melakukan uji hipotesis?",
-    answer: "Untuk melakukan uji hipotesis, pilih menu 'Analyze', kemudian pilih jenis uji yang sesuai seperti T-Test, ANOVA, atau Chi-Square. Pilih variabel yang relevan dan sesuaikan parameter uji sesuai kebutuhan."
+    question: "How do I perform hypothesis testing?",
+    answer: "To perform hypothesis testing, select the 'Analyze' menu, then choose the appropriate test type such as T-Test, ANOVA, or Chi-Square. Select relevant variables and adjust test parameters as needed."
   },
   {
-    question: "Apakah Statify menyimpan data secara otomatis?",
-    answer: "Ya, Statify memiliki fitur autosave yang akan menyimpan pekerjaan Anda secara otomatis jika aplikasi mendeteksi Anda tidak aktif untuk beberapa waktu. Meskipun begitu, kami tetap menyarankan untuk menyimpan pekerjaan Anda secara berkala dengan mengklik 'File' > 'Save' atau menggunakan shortcut Ctrl+S (Windows) atau Cmd+S (Mac)."
+    question: "Does Statify save data automatically?",
+    answer: "Yes, Statify has an autosave feature that will save your work automatically if the application detects you've been inactive for some time. However, we still recommend saving your work regularly by clicking 'File' > 'Save'."
   },
   {
-    question: "Bagaimana cara mengekspor hasil analisis?",
-    answer: "Hasil analisis dapat diekspor dalam format PDF, Excel, atau gambar. Klik kanan pada output hasil analisis dan pilih opsi 'Export', kemudian pilih format yang diinginkan."
+    question: "How do I export analysis results?",
+    answer: "Analysis results can be exported in PDF, Excel, or image formats. Right-click on the analysis output and select the 'Export' option, then choose your desired format."
   },
   {
-    question: "Bagaimana cara menangani data yang hilang dalam analisis?",
-    answer: "Dalam analisis statistik di Statify, Anda dapat memilih cara menangani missing values pada setiap jenis analisis. Di kotak dialog analisis, Anda dapat memilih opsi seperti 'Exclude cases pairwise', 'Exclude cases listwise', atau menggunakan metode estimasi tertentu sesuai dengan kebutuhan analisis Anda."
+    question: "How do I handle missing data in analysis?",
+    answer: "In Statify's statistical analysis, you can choose how to handle missing values for each type of analysis. In the analysis dialog box, you can select options like 'Exclude cases pairwise', 'Exclude cases listwise', or use specific estimation methods according to your analysis needs."
   }
 ];
 
-// Pengelompokan FAQ berdasarkan kategori
+// FAQ categories
 const faqCategories = [
   {
-    name: "Data & File",
+    name: "Data & Files",
     icon: <FileCode className="h-5 w-5 mr-2 text-primary/70" />,
     faqs: [faqs[0], faqs[1], faqs[5], faqs[6]]
   },
   {
-    name: "Analisis Statistik",
+    name: "Statistical Analysis",
     icon: <BarChart4 className="h-5 w-5 mr-2 text-primary/70" />,
     faqs: [faqs[2], faqs[3], faqs[4], faqs[7]]
   }
 ];
 
 export const FAQ = () => {
-  return (
-    <HelpContentWrapper
-      title="Pertanyaan yang Sering Diajukan"
-      description="Temukan jawaban untuk pertanyaan umum tentang penggunaan Statify."
-    >
-      <Card className="bg-primary/5 border-primary/10 mb-6">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="flex items-center">
-              <HelpCircle className="text-primary h-6 w-6 mr-3" />
-              <h3 className="text-lg font-medium">Tidak menemukan yang Anda cari?</h3>
+  const sections = [
+    {
+      id: 'overview',
+      title: 'Quick Help',
+      description: 'Important information to get you started',
+      icon: BookOpen,
+      content: (
+        <div className="space-y-4">
+          <HelpAlert variant="info" title="Can't find what you're looking for?">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-3">
+              <p className="text-sm flex-1">
+                Use the search feature or contact our support team for further assistance.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm">
+                  <Search className="h-4 w-4 mr-2" />
+                  Search Help
+                </Button>
+                <Button variant="default" size="sm">
+                  <FileQuestion className="h-4 w-4 mr-2" />
+                  Contact Support
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2 sm:ml-auto">
-              <Button variant="outline" size="sm" className="h-9">
-                <Search className="h-4 w-4 mr-2" />
-                Cari Bantuan
-              </Button>
-              <Button variant="default" size="sm" className="h-9">
-                <FileQuestion className="h-4 w-4 mr-2" />
-                Hubungi Support
-              </Button>
+          </HelpAlert>
+          
+          <HelpCard title="Autosave Feature" icon={Clock} variant="feature">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Statify automatically saves your work when the application detects periods of inactivity. 
+                This helps prevent data loss if the application is accidentally closed.
+              </p>
+              <div className="flex items-center gap-2 text-xs font-medium text-primary">
+                <Save className="h-3.5 w-3.5" />
+                <span>Work automatically saved</span>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <div className="space-y-8">
-        {faqCategories.map((category, idx) => (
-          <div key={idx}>
-            <h3 className="text-lg font-medium mb-3 pb-2 border-b flex items-center">
-              {category.icon}
-              {category.name}
-            </h3>
-            <Accordion type="single" collapsible className="w-full">
-              {category.faqs.map((faq, index) => (
-                <AccordionItem 
-                  key={index} 
-                  value={`item-${category.name}-${index}`}
-                  className="border-b border-border/50"
-                >
-                  <AccordionTrigger className="text-left font-medium hover:text-primary py-3 text-foreground">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground py-2 pb-4 text-sm leading-relaxed">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
-        ))}
-      </div>
-      
-      <Card className="mt-10 border-primary/10">
-        <CardContent className="p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <Clock className="h-5 w-5 text-primary" />
-            <h3 className="text-base font-medium">Fitur Autosave</h3>
-          </div>
-          <p className="text-sm text-muted-foreground mb-3">
-            Statify menyimpan pekerjaan Anda secara otomatis saat aplikasi mendeteksi periode tidak aktif. 
-            Ini membantu mencegah kehilangan data jika aplikasi ditutup tanpa sengaja.
-          </p>
-          <div className="flex items-center gap-2 text-xs font-medium text-primary">
-            <Save className="h-3.5 w-3.5" />
-            <span>Pekerjaan terakhir disimpan otomatis</span>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <div className="mt-10 pt-5 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between">
-        <p className="text-sm text-muted-foreground mb-4 sm:mb-0">Apakah informasi ini membantu?</p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            Ya
-          </Button>
-          <Button variant="outline" size="sm">
-            Tidak
-          </Button>
+          </HelpCard>
         </div>
-      </div>
-    </HelpContentWrapper>
+      )
+    },
+    {
+      id: 'data-file',
+      title: 'Data & Files',
+      description: 'Frequently asked questions about data and file management',
+      icon: FileCode,
+      content: (
+        <div className="space-y-4">
+          <Accordion type="single" collapsible className="w-full">
+            {faqCategories[0].faqs.map((faq, index) => (
+              <AccordionItem 
+                key={index} 
+                value={`data-file-${index}`}
+                className="border-b border-border/50"
+              >
+                <AccordionTrigger className="text-left font-medium hover:text-primary py-3 text-foreground">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground py-2 pb-4 text-sm leading-relaxed">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      )
+    },
+    {
+      id: 'statistics',
+      title: 'Statistical Analysis',
+      description: 'Frequently asked questions about statistical analysis',
+      icon: BarChart4,
+      content: (
+        <div className="space-y-4">
+          <Accordion type="single" collapsible className="w-full">
+            {faqCategories[1].faqs.map((faq, index) => (
+              <AccordionItem 
+                key={index} 
+                value={`statistics-${index}`}
+                className="border-b border-border/50"
+              >
+                <AccordionTrigger className="text-left font-medium hover:text-primary py-3 text-foreground">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground py-2 pb-4 text-sm leading-relaxed">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      )
+    }
+  ];
+
+
+
+  const tips = [
+    {
+      type: 'tip' as const,
+      title: 'Feedback',
+      content: 'Help us improve documentation by providing feedback on each help page.'
+    },
+    {
+      type: 'info' as const,
+      title: 'Search',
+      content: 'Use the search feature to quickly find answers using keywords.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Getting Started', href: '/help/getting-started' },
+    { title: 'Import SPSS Files', href: '/help/file-guide/import-sav' },
+    { title: 'Descriptive Statistics', href: '/help/statistics-guide/descriptive' },
+    { title: 'Data Management', href: '/help/data-guide' }
+  ];
+
+  return (
+    <HelpGuideTemplate
+      title="Frequently Asked Questions"
+      description="Find answers to common questions about using Statify"
+      category="FAQ"
+      lastUpdated="2024-01-15"
+      sections={sections}
+
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
-}; 
+};

@@ -55,9 +55,8 @@ export async function analyzeUnivariate({
     const varDefsForCovariate = getVarDefs(variables, CovariateVariables);
     const varDefsForWlsWeight = getVarDefs(variables, WlsWeightVariable);
 
-    console.log(configData);
-
     await init();
+
     const univariate = new UnivariateAnalysis(
         slicedDataForDependent,
         slicedDataForFixFactor,
@@ -75,8 +74,7 @@ export async function analyzeUnivariate({
     const results = univariate.get_formatted_results();
     const errorsString = univariate.get_all_errors();
 
-    console.log("Results", results);
-    console.log("Univariate errors", errorsString);
+    console.log(results);
 
     let errors: string[] = [];
     if (errorsString) {
@@ -86,7 +84,6 @@ export async function analyzeUnivariate({
     }
 
     const formattedResults = transformUnivariateResult(results, errors);
-    console.log("formattedResults", formattedResults);
 
     /*
      * 🎉 Final Result Process 🎯

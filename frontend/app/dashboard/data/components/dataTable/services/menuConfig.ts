@@ -11,15 +11,26 @@ export interface ContextMenuHandlers {
   isRangeSelected: () => boolean;
 }
 
+// Cache for menu configurations to prevent recreation
+const menuConfigCache = new WeakMap<ContextMenuHandlers, Handsontable.GridSettings['contextMenu']>();
+
 /**
- * Returns a Handsontable context menu configuration based on provided handlers.
+ * Returns a cached Handsontable context menu configuration based on provided handlers.
+ * Uses WeakMap caching to prevent object recreation when handlers haven't changed.
  */
 export function getContextMenuConfig(
   handlers: ContextMenuHandlers
 ): Handsontable.GridSettings['contextMenu'] {
+  // Check cache first
+  const cached = menuConfigCache.get(handlers);
+  if (cached) {
+    return cached;
+  }
+
   const { insertRow, insertColumn, removeRow, removeColumn, applyAlignment, clearColumn, isRangeSelected } = handlers;
   const SEP = Handsontable.plugins.ContextMenu.SEPARATOR;
-  return {
+  
+  const config = {
     items: {
       // Row operations
       row_above: { name: 'Insert row above', callback: () => insertRow(true), disabled: () => !isRangeSelected() },
@@ -50,4 +61,8 @@ export function getContextMenuConfig(
       clear_contents: { name: 'Clear contents', callback: clearColumn, disabled: () => !isRangeSelected() },
     },
   };
+
+  // Cache the configuration
+  menuConfigCache.set(handlers, config);
+  return config;
 }

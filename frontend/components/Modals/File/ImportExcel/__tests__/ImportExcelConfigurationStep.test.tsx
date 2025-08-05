@@ -9,9 +9,7 @@ import * as utils from '../importExcel.utils';
 jest.mock('@/stores/useDataStore');
 jest.mock('@/stores/useVariableStore');
 jest.mock('../importExcel.utils');
-jest.mock('@handsontable/react-wrapper', () => ({
-  HotTable: jest.fn(() => <div>Mocked HotTable</div>),
-}));
+// Mock tidak diperlukan lagi karena menggunakan tabel HTML biasa
 
 const mockResetVariables = jest.fn();
 const mockOverwriteAll = jest.fn();
@@ -53,7 +51,10 @@ describe('ImportExcelConfigurationStep Component', () => {
         renderComponent();
         expect(screen.getByText(/configure: test.xlsx/i)).toBeInTheDocument();
         expect(screen.getByText('Sheet1')).toBeInTheDocument(); // Select trigger display value
-        expect(screen.getByText('Mocked HotTable')).toBeInTheDocument();
+        // Periksa apakah tabel preview muncul
+        expect(screen.getByRole('table')).toBeInTheDocument();
+        expect(screen.getByText('Name')).toBeInTheDocument();
+        expect(screen.getByText('Age')).toBeInTheDocument();
         expect(mockParseSheetForPreview).toHaveBeenCalledTimes(1);
     });
 
@@ -101,4 +102,4 @@ describe('ImportExcelConfigurationStep Component', () => {
         expect(mockOverwriteAll).not.toHaveBeenCalled();
     });
 
-}); 
+});

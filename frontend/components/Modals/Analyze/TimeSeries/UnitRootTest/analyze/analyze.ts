@@ -1,4 +1,4 @@
-import init, {DickeyFuller, AugmentedDickeyFuller, get_t} from '../../wasm/pkg/wasm.js';
+import init, {DickeyFuller, AugmentedDickeyFuller, get_t} from '@/components/Modals/Analyze/TimeSeries/wasm/pkg/wasm';
 
 export async function handleUnitRootTest(
     data: (number)[], 

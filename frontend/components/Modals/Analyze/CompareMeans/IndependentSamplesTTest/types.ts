@@ -10,7 +10,6 @@ import { BaseModalProps } from "@/types/modalTypes";
 // Tab Constants
 export const TABS = {
     VARIABLES: 'variables' as const,
-    OPTIONS: 'options' as const,
 };
 
 // ---------------------------------
@@ -18,7 +17,7 @@ export const TABS = {
 // ---------------------------------
 
 // Tab Type
-export type TabType = typeof TABS.VARIABLES | typeof TABS.OPTIONS;
+export type TabType = typeof TABS.VARIABLES;
 
 // TourStep Type
 export type TourStep = BaseTourStep & {
@@ -175,18 +174,23 @@ export interface IndependentSamplesEffectSizeStatistics {
     Percentile75?: number;
 }
   
+// IndependentSamplesTTest Result Metadata
+export interface IndependentSamplesTTestResultMetadata {
+    hasInsufficientData: boolean;
+    insufficientType: string[];
+    variableName: string;
+    variableLabel: string;
+}
+
 // IndependentSamplesTTest Analysis Result
 export interface IndependentSamplesTTestResult {
-    variable: Variable;
-    stats: GroupStatistics | IndependentSamplesTest | IndependentSamplesEffectSizeStatistics;
+    variable1?: Variable;
+    variable2?: Variable;
+    groupStatistics?: GroupStatistics;
+    independentSamplesTest?: IndependentSamplesTest;
+    independentSamplesEffectSize?: IndependentSamplesEffectSizeStatistics;
+    metadata?: IndependentSamplesTTestResultMetadata;
 }
-  
-  // IndependentSamplesTTest Results Collection
-  export interface IndependentSamplesTTestResults {
-    groupStatistics?: IndependentSamplesTTestResult[];
-    independentSamplesTest?: IndependentSamplesTTestResult[];
-    independentSamplesEffectSize?: IndependentSamplesTTestResult[];
-  }
   
   // ---------------------------------
   // Table Types

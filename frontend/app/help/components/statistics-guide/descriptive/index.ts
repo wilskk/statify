@@ -1,1 +1,1 @@
-export * from './DescriptiveAnalysis'; 
+export * from './DescriptiveAnalysis';

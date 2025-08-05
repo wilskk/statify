@@ -34,6 +34,12 @@ yarn-error.log*
 # Test results
 /coverage
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # =============================================================================
 # FRAMEWORK & TOOLING
 # =============================================================================
@@ -84,3 +90,10 @@ backend/dist
 _tes/
 /_skripsi penulisan
 /frontend/coverage
+frontend/.trae/rules/project_rules.md
+/testing/reports
+/testing/test-results
+/testing/test-results
+/testing/reports/e2e
+/testing/test-results
+/testing/reports/e2e

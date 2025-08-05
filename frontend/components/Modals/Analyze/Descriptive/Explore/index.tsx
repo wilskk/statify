@@ -213,12 +213,12 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
 
     return (
         <>
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="w-full flex flex-col flex-grow overflow-hidden">
+            <Tabs data-testid="explore-tabs" value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
-                    <TabsList>
-                        <TabsTrigger value="variables" id="explore-variables-tab-trigger">Variables</TabsTrigger>
-                        <TabsTrigger value="statistics" id="explore-statistics-tab-trigger">Statistics</TabsTrigger>
-                        <TabsTrigger value="plots" id="explore-plots-tab-trigger">Plots</TabsTrigger>
+                    <TabsList data-testid="explore-tabs-list">
+                        <TabsTrigger data-testid="explore-variables-tab" value="variables" id="explore-variables-tab-trigger">Variables</TabsTrigger>
+                        <TabsTrigger data-testid="explore-statistics-tab" value="statistics" id="explore-statistics-tab-trigger">Statistics</TabsTrigger>
+                        <TabsTrigger data-testid="explore-plots-tab" value="plots" id="explore-plots-tab-trigger">Plots</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -256,25 +256,25 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
             </Tabs>
 
             {displayError && (
-                <div className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-t border-destructive/20">
+                <div data-testid="explore-error-message" className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-t border-destructive/20">
                     {displayError}
                 </div>
             )}
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+            <div data-testid="explore-footer" className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <Button variant="ghost" size="icon" onClick={startTour} aria-label="Help" className="h-8 w-8">
+                    <Button data-testid="explore-help-button" variant="ghost" size="icon" onClick={startTour} aria-label="Help" className="h-8 w-8">
                         <HelpCircle size={18} />
                     </Button>
                 </div>
                 <div>
-                    <Button variant="outline" className="mr-2" onClick={handleReset} disabled={isCalculating}>
+                    <Button data-testid="explore-reset-button" variant="outline" className="mr-2" onClick={handleReset} disabled={isCalculating}>
                         Reset
                     </Button>
-                    <Button variant="outline" className="mr-2" onClick={onClose} disabled={isCalculating}>
+                    <Button data-testid="explore-cancel-button" variant="outline" className="mr-2" onClick={onClose} disabled={isCalculating}>
                         Cancel
                     </Button>
-                    <Button onClick={handleExplore} disabled={isCalculating || variableManager.dependentVariables.length === 0}>
+                    <Button data-testid="explore-ok-button" onClick={handleExplore} disabled={isCalculating || variableManager.dependentVariables.length === 0}>
                         {isCalculating ? "Processing..." : "OK"}
                     </Button>
                 </div>
@@ -309,7 +309,7 @@ const Explore: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...pro
     }
 
     return (
-        <DialogContent className="max-w-3xl p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
+        <DialogContent data-testid="explore-dialog" className="max-w-3xl p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
             <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                 <DialogTitle className="text-xl font-semibold">Explore</DialogTitle>
             </DialogHeader>

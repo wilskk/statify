@@ -1,10 +1,14 @@
 // components/Modals/CurveEstimation/ModalCurveEstimation.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  DialogHeader,
-  DialogTitle,
-  DialogFooter
-} from '@/components/ui/dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Tabs,
   TabsContent,
@@ -14,10 +18,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { useDataStore } from '@/stores/useDataStore';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useResultStore } from '@/stores/useResultStore';
 import { Variable, VariableType } from '@/types/Variable';
 import { Chart, registerables } from 'chart.js';
+// Import ChartService for generating scatter plot JSON with multiple fit lines
+import { ChartService } from '@/services/chart/ChartService';
+import { Separator } from '@/components/ui/separator';
 
 // Import our custom tab components (menggunakan struktur baru)
 import VariablesTab from './VariablesTab';
@@ -32,14 +39,15 @@ export interface ModalCurveEstimationProps {
 }
 
 // Using named export like OpenSavFile
-export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose, containerType }) => {
-  // State variables dari desain baru
+export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose, containerType = "dialog" }) => {
+  // State for variables
   const [activeTab, setActiveTab] = useState("variables");
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
-  const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
-  const [selectedCaseLabels, setSelectedCaseLabels] = useState<Variable | null>(null);
+  const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable | null>(null);
+
+  // State for models
   const [selectedModels, setSelectedModels] = useState<string[]>(['Linear']);
   const [includeConstant, setIncludeConstant] = useState<boolean>(true); // State ini ada, tapi tidak dikirim ke worker oleh handleRunRegression versi lama
   const [plotModels, setPlotModels] = useState<boolean>(true);
@@ -47,85 +55,89 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
   const [upperBound, setUpperBound] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState({ title: "", description: "" });
+  const [inlineAlertMessage, setInlineAlertMessage] = useState<string | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
 
-  const variables = useVariableStore((state) => state.variables);
-  const data = useDataStore((state) => state.data);
+  const variablesFromStore = useVariableStore((state) => state.variables);
+  const { data } = useAnalysisData();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
   // useEffect untuk memfilter availableVariables (dari kode baru)
   useEffect(() => {
-    const allVarsFiltered = variables.filter(v => {
-      if (!v.name) return false;
-      const isDependent = selectedDependentVariable?.columnIndex === v.columnIndex;
-      const isIndependent = selectedIndependentVariables.some(iv => iv.columnIndex === v.columnIndex);
-      const isCaseLabel = selectedCaseLabels?.columnIndex === v.columnIndex;
-      return !isDependent && !isIndependent && !isCaseLabel;
-    });
-    setAvailableVariables(allVarsFiltered);
-  }, [variables, selectedDependentVariable, selectedIndependentVariables, selectedCaseLabels]);
+    // Initial population of available variables
+    const initialVars = variablesFromStore.filter(
+      (v) =>
+        v.type !== 'STRING' &&
+        v.columnIndex !== selectedDependentVariable?.columnIndex &&
+        v.columnIndex !== selectedIndependentVariables?.columnIndex
+    );
+    setAvailableVariables(initialVars);
+  }, [variablesFromStore, selectedDependentVariable?.columnIndex, selectedIndependentVariables?.columnIndex]);
+
+  const showAlert = (title: string, description: string) => {
+    if (containerType === "sidebar") {
+        setInlineAlertMessage(`${title}: ${description}`);
+    } else {
+        setAlertMessage({ title, description });
+        setAlertOpen(true);
+    }
+  };
 
   // Handlers untuk VariablesTab (dari kode baru)
   const handleDependentDoubleClick = (variable: Variable) => {
+    if (isProcessing) return;
+    if (!variable) return;
+
     if (selectedDependentVariable) {
-      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
+        setAvailableVariables(prev => [...prev, selectedDependentVariable]);
     }
+
     setSelectedDependentVariable(variable);
     setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
     setHighlightedVariable(null);
   };
 
   const handleIndependentDoubleClick = (variable: Variable) => {
-    setSelectedIndependentVariables(prev => [...prev, variable]);
-    setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-    setHighlightedVariable(null);
-  };
+    if (isProcessing) return;
 
-  const handleCaseLabelsDoubleClick = (variable: Variable) => {
-    if (selectedCaseLabels) {
-      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
+    if (selectedIndependentVariables) {
+        setAvailableVariables(prev => [...prev, selectedIndependentVariables]);
     }
-    setSelectedCaseLabels(variable);
+    
+    setSelectedIndependentVariables(variable);
     setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
     setHighlightedVariable(null);
   };
 
   const moveToDependent = () => {
-    if (!highlightedVariable) return;
+    if (isProcessing || !highlightedVariable) return;
     const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) handleDependentDoubleClick(variable);
+    if (variable) {
+        handleDependentDoubleClick(variable);
+    }
   };
 
   const moveToIndependent = () => {
-    if (!highlightedVariable) return;
+    if (isProcessing || !highlightedVariable) return;
     const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) handleIndependentDoubleClick(variable);
-  };
-
-  const moveToCaseLabels = () => {
-    if (!highlightedVariable) return;
-    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) handleCaseLabelsDoubleClick(variable);
+    if (variable) {
+        handleIndependentDoubleClick(variable);
+    }
   };
 
   const removeDependent = () => {
-    if (selectedDependentVariable) {
-      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
-      setSelectedDependentVariable(null);
-    }
+    if (isProcessing || !selectedDependentVariable) return;
+    setAvailableVariables(prev => [...prev, selectedDependentVariable]);
+    setSelectedDependentVariable(null);
   };
 
-  const removeIndependent = (variable: Variable) => {
-    setSelectedIndependentVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-    setAvailableVariables(prev => [...prev, variable]);
-  };
-
-  const removeCaseLabels = () => {
-    if (selectedCaseLabels) {
-      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
-      setSelectedCaseLabels(null);
-    }
+  const removeIndependent = () => {
+    if (isProcessing || !selectedIndependentVariables) return;
+    setAvailableVariables(prev => [...prev, selectedIndependentVariables]);
+    setSelectedIndependentVariables(null);
   };
 
   // Handler untuk ModelsTab (dari kode baru)
@@ -149,15 +161,11 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
     if (selectedDependentVariable) {
       setAvailableVariables(prev => [...prev, selectedDependentVariable]);
     }
-    if (selectedIndependentVariables.length > 0) {
-      setAvailableVariables(prev => [...prev, ...selectedIndependentVariables]);
-    }
-    if (selectedCaseLabels) {
-      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
+    if (selectedIndependentVariables) {
+      setAvailableVariables(prev => [...prev, selectedIndependentVariables]);
     }
     setSelectedDependentVariable(null);
-    setSelectedIndependentVariables([]);
-    setSelectedCaseLabels(null);
+    setSelectedIndependentVariables(null);
     setHighlightedVariable(null);
     setSelectedModels(['Linear']);
     setIncludeConstant(true);
@@ -172,9 +180,16 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
   // Menggunakan filtering data lama dan payload postMessage lama
   // ========================================================================
   const handleRunRegression = async () => {
-    if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
-      setErrorMessage("Please select a dependent variable and at least one independent variable.");
+    setInlineAlertMessage(null);
+    if (!selectedDependentVariable || !selectedIndependentVariables) {
+      showAlert('Input Error', 'Please select both a dependent and an independent variable.');
+      setIsProcessing(false);
       return;
+    }
+
+    if (selectedModels.includes('Logistic') && (upperBound === '' || isNaN(parseFloat(upperBound)))) {
+        showAlert("Invalid Input", "Please provide a valid numeric upper bound for the Logistic model.");
+        return;
     }
 
     setErrorMessage(null);
@@ -182,27 +197,33 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
 
     try {
       const depCol = selectedDependentVariable.columnIndex;
-      // Kode lama hanya benar-benar menggunakan kolom independen pertama untuk data X
-      const indepColX = selectedIndependentVariables[0].columnIndex;
-      const independentVarNames = selectedIndependentVariables.map(iv => iv.name); // Tetap ambil semua nama untuk log
+      const indepColX = selectedIndependentVariables.columnIndex;
+      const independentVarNames = [selectedIndependentVariables.name];
       const dependentVarName = selectedDependentVariable.name;
 
-      // Logika filtering data LAMA
-      const Y_temp = data.map(row => depCol < row.length ? Number(row[depCol]) : NaN)
-          .filter(val => !isNaN(val));
-      const X_temp = data.map(row => indepColX < row.length ? Number(row[indepColX]) : NaN)
-          .filter(val => !isNaN(val));
+      // New data filtering: Perform listwise deletion on the data from useAnalysisData
+      const X_data: number[] = [];
+      const Y_data: number[] = [];
 
-      const length = Math.min(X_temp.length, Y_temp.length);
-      const Xtrim = X_temp.slice(0, length); // Data X yang akan dikirim
-      const Ytrim = Y_temp.slice(0, length); // Data Y yang akan dikirim
+      data.forEach(row => {
+        // Ensure column indices are valid for the row
+        if (depCol < row.length && indepColX < row.length) {
+          const yVal = Number(row[depCol]);
+          const xVal = Number(row[indepColX]);
 
-      if (Xtrim.length === 0 || Ytrim.length === 0) {
-        setErrorMessage("No valid data pairs found after filtering (using old method).");
+          // Include row only if both values are valid numbers
+          if (!isNaN(yVal) && !isNaN(xVal)) {
+            Y_data.push(yVal);
+            X_data.push(xVal);
+          }
+        }
+      });
+
+      if (X_data.length === 0) {
+        setErrorMessage("No valid data pairs found after listwise deletion.");
         setIsProcessing(false);
         return;
       }
-      // Akhir logika filtering data LAMA
 
       const method = selectedModels.join(', ');
 
@@ -250,7 +271,142 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
             try {
               await addStatistic(analyticId, regressionSummaryStat);
               console.log("[CurveEstimation OLD CALC] Statistics saved successfully");
-              onClose(); // Tetap tutup modal setelah sukses
+
+              // ============================================================
+              // Generate Scatter Plot With Multiple Fit Line (NEW)
+              // ============================================================
+
+              // 1. Prepare scatter data [{x, y}]
+              const scatterData = X_data.map((xVal, idx) => ({ x: xVal, y: Y_data[idx] }));
+
+              // 2. Build fitFunctions array based on worker results
+              const buildFitFunctions = (rows: any[]) => {
+                  const colors = [
+                      "#ff6b6b",
+                      "#6a4c93",
+                      "#4ecdc4",
+                      "#f9c74f",
+                      "#90be6d",
+                      "#577590",
+                      "#ffbe0b",
+                      "#8338ec",
+                      "#3a86ff",
+                      "#ff006e",
+                  ];
+                  let colorIdx = 0;
+                  const fits: any[] = [];
+
+                  rows.forEach((row: any) => {
+                      const model = row.rowHeader?.[0] || row["Equation"] || "Unknown";
+                      // Skip rows without constant (failed fit)
+                      if (!row["Constant"] || row["Constant"] === "") return;
+
+                      const a = parseFloat(row["Constant"]);
+                      const b1 = row["b1"] !== "" ? parseFloat(row["b1"]) : undefined;
+                      const b2 = row["b2"] !== "" ? parseFloat(row["b2"]) : undefined;
+                      const b3 = row["b3"] !== "" ? parseFloat(row["b3"]) : undefined;
+
+                      let fn = "x => x"; // default placeholder
+                      let parameters: Record<string, number> = { a };
+
+                      switch (model) {
+                          case "Linear":
+                              fn = "x => parameters.a + parameters.b * x";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Logarithmic":
+                              fn = "x => parameters.a + parameters.b * Math.log(x)";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Inverse":
+                              fn = "x => parameters.a + parameters.b / x";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Quadratic":
+                              fn = "x => parameters.a + parameters.b * x + parameters.c * Math.pow(x, 2)";
+                              parameters = { a, b: b1 as number, c: b2 as number };
+                              break;
+                          case "Cubic":
+                              fn = "x => parameters.a + parameters.b * x + parameters.c * Math.pow(x, 2) + parameters.d * Math.pow(x, 3)";
+                              parameters = { a, b: b1 as number, c: b2 as number, d: b3 as number };
+                              break;
+                          case "Compound":
+                              fn = "x => parameters.a * Math.pow(parameters.b, x)";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Power":
+                              fn = "x => parameters.a * Math.pow(x, parameters.b)";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "S":
+                              fn = "x => parameters.a / (1 + Math.exp(parameters.b + parameters.c * x))";
+                              parameters = { a, b: b1 as number, c: b2 as number };
+                              break;
+                          case "Growth":
+                          case "Exponential":
+                              fn = "x => parameters.a * Math.exp(parameters.b * x)";
+                              parameters = { a, b: b1 as number };
+                              break;
+                          case "Logistic":
+                              fn = "x => parameters.c / (1 + parameters.a * Math.pow(parameters.b, x))";
+                              parameters = { a: a, b: b1 as number, c: b2 as number };
+                              break;
+                          default:
+                              fn = "x => 0";
+                              parameters = { a: 0, b: 0 };
+                      }
+
+                      fits.push({
+                          fn,
+                          equation: model,
+                          color: colors[colorIdx % colors.length],
+                          parameters,
+                      });
+                      colorIdx += 1;
+                  });
+
+                  return fits;
+              };
+
+              const regressionRows = workerData.result?.tables?.[0]?.rows || [];
+              const fitFunctions = buildFitFunctions(regressionRows);
+
+              const chartJSON = ChartService.createChartJSON({
+                  chartType: "Scatter Plot With Multiple Fit Line",
+                  chartData: scatterData,
+                  chartVariables: {
+                      x: independentVarNames,
+                      y: [dependentVarName],
+                  },
+                  chartMetadata: {
+                      title: `Scatter Plot: ${dependentVarName} vs ${independentVarNames[0]}`,
+                      subtitle: "With Multiple Regression Fit Lines",
+                      description: "Scatter plot showing data points with regression fit lines for each selected model",
+                  },
+                  chartConfig: {
+                      fitFunctions,
+                      axisLabels: {
+                          x: independentVarNames[0],
+                          y: dependentVarName,
+                      },
+                  },
+              });
+
+              const scatterStat = {
+                  title: "Scatter Plot With Multiple Fit Lines",
+                  output_data: JSON.stringify(chartJSON),
+                  components: "ScatterPlotWithMultipleFitLine",
+                  description: "Scatter plot with multiple regression fit lines",
+              };
+
+              try {
+                  await addStatistic(analyticId, scatterStat);
+                  console.log("[CurveEstimation OLD CALC] Scatter plot statistic saved successfully");
+              } catch (error) {
+                  console.error("[CurveEstimation OLD CALC] Failed to save scatter plot statistic:", error);
+              }
+
+              onClose(); // Close modal after saving statistics
             } catch (error) {
               console.error("[CurveEstimation OLD CALC] Failed to save statistics:", error);
               setErrorMessage("Failed to save regression results.");
@@ -279,14 +435,14 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
         }
       };
 
-      console.log("[CurveEstimation OLD CALC] Sending data to worker:", { models: selectedModels, X_length: Xtrim.length, Y_length: Ytrim.length, upperBound: upperBound });
+      console.log("[CurveEstimation OLD CALC] Sending data to worker:", { models: selectedModels, X_length: X_data.length, Y_length: Y_data.length, upperBound: upperBound });
       // Payload postMessage LAMA (tidak mengirim includeConstant/displayANOVA)
       workerRef.current.postMessage({
         action: 'runRegression',
         data: {
           models: selectedModels,
-          X: Xtrim, // Data X dari metode lama
-          Y: Ytrim, // Data Y dari metode lama
+          X: X_data, // Data X dari metode baru
+          Y: Y_data, // Data Y dari metode baru
           dependentName: dependentVarName,
           independentNames: independentVarNames, // Nama tetap dikirim semua
           upperBound: selectedModels.includes('Logistic') ? parseFloat(upperBound) : undefined
@@ -309,83 +465,92 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
 
   // Render function (JSX) modified to work with ModalRenderer
   return (
-    <div className="flex flex-col h-full max-h-[85vh] overflow-hidden">
-      {/* Header section */}
-      <div className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-        <h3 className="text-[22px] font-semibold">Curve Estimation</h3>
+    <div className="flex flex-col h-full">
+      <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{alertMessage.title}</AlertDialogTitle>
+                <AlertDialogDescription>{alertMessage.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setAlertOpen(false)}>OK</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <div className="px-6 py-4">
+        <Separator className="my-2" />
       </div>
 
-      {/* Error message section */}
-      {errorMessage && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mx-6 mt-2 rounded">
-          {errorMessage}
-        </div>
-      )}
+      <div className="flex-grow px-6 overflow-y-auto">
+        {/* Error and Warning Messages */}
+        {errorMessage && (
+          <div className="px-6 py-2 text-destructive">{errorMessage}</div>
+        )}
+        {containerType === "sidebar" && inlineAlertMessage && (
+            <div className="p-2 mb-2 mx-6 text-sm text-destructive-foreground bg-destructive rounded-md">
+                {inlineAlertMessage}
+                <Button variant="ghost" size="sm" onClick={() => setInlineAlertMessage(null)} className="ml-2 text-destructive-foreground hover:bg-destructive/80">Dismiss</Button>
+            </div>
+        )}
 
-      {/* Main content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-        <div className="border-b border-[#E6E6E6] flex-shrink-0">
-          <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-            <TabsTrigger
-              value="variables"
-              className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-            >
-              Variables
-            </TabsTrigger>
-            <TabsTrigger
-              value="models"
-              className={`px-4 h-8 rounded-none text-sm ${activeTab === 'models' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-            >
-              Models
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        {/* Main content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger
+                value="variables"
+                >
+                Variables
+                </TabsTrigger>
+                <TabsTrigger
+                value="models"
+                >
+                Models
+                </TabsTrigger>
+            </TabsList>
 
-        {/* Variables Tab Content */}
-        <TabsContent value="variables" className="overflow-y-auto flex-grow p-6 data-[state=inactive]:hidden">
-          <VariablesTab
-            availableVariables={availableVariables}
-            highlightedVariable={highlightedVariable}
-            setHighlightedVariable={setHighlightedVariable}
-            selectedDependentVariable={selectedDependentVariable}
-            selectedIndependentVariables={selectedIndependentVariables}
-            selectedCaseLabels={selectedCaseLabels}
-            handleDependentDoubleClick={handleDependentDoubleClick}
-            handleIndependentDoubleClick={handleIndependentDoubleClick}
-            handleCaseLabelsDoubleClick={handleCaseLabelsDoubleClick}
-            moveToDependent={moveToDependent}
-            moveToIndependent={moveToIndependent}
-            moveToCaseLabels={moveToCaseLabels}
-            removeDependent={removeDependent}
-            removeIndependent={removeIndependent}
-            removeCaseLabels={removeCaseLabels}
-            isProcessing={isProcessing}
-          />
-        </TabsContent>
+            {/* Variables Tab Content */}
+            <TabsContent value="variables" className="mt-4">
+            <VariablesTab
+                availableVariables={availableVariables}
+                highlightedVariable={highlightedVariable}
+                setHighlightedVariable={setHighlightedVariable}
+                selectedDependentVariable={selectedDependentVariable}
+                selectedIndependentVariables={selectedIndependentVariables}
+                handleDependentDoubleClick={handleDependentDoubleClick}
+                handleIndependentDoubleClick={handleIndependentDoubleClick}
+                moveToDependent={moveToDependent}
+                moveToIndependent={moveToIndependent}
+                removeDependent={removeDependent}
+                removeIndependent={removeIndependent}
+                isProcessing={isProcessing}
+            />
+            </TabsContent>
 
-        {/* Models Tab Content */}
-        <TabsContent value="models" className="overflow-y-auto flex-grow data-[state=inactive]:hidden">
-          <ModelsTab
-            selectedModels={selectedModels}
-            handleModelChange={handleModelChange}
-            includeConstant={includeConstant}
-            setIncludeConstant={setIncludeConstant}
-            plotModels={plotModels}
-            setPlotModels={setPlotModels}
-            displayANOVA={displayANOVA}
-            setDisplayANOVA={setDisplayANOVA}
-            upperBound={upperBound}
-            setUpperBound={setUpperBound}
-            isProcessing={isProcessing}
-          />
-        </TabsContent>
-      </Tabs>
+            {/* Models Tab Content */}
+            <TabsContent value="models" className="mt-4">
+            <ModelsTab
+                selectedModels={selectedModels}
+                handleModelChange={handleModelChange}
+                includeConstant={includeConstant}
+                setIncludeConstant={setIncludeConstant}
+                plotModels={plotModels}
+                setPlotModels={setPlotModels}
+                displayANOVA={displayANOVA}
+                setDisplayANOVA={setDisplayANOVA}
+                upperBound={upperBound}
+                setUpperBound={setUpperBound}
+                isProcessing={isProcessing}
+            />
+            </TabsContent>
+        </Tabs>
+      </div>
+
 
       {/* Footer section */}
-      <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-        <div className="flex justify-end space-x-3">
+      <div className="px-6 py-4 border-t border-border bg-muted mt-auto">
+        <div className="flex justify-center space-x-4">
           <Button
-            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
             onClick={handleRunRegression}
             disabled={isProcessing}
           >
@@ -400,14 +565,6 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
           </Button>
           <Button
             variant="outline"
-            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-            disabled={isProcessing}
-          >
-            Paste
-          </Button>
-          <Button
-            variant="outline"
-            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
             onClick={handleReset}
             disabled={isProcessing}
           >
@@ -415,7 +572,6 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
           </Button>
           <Button
             variant="outline"
-            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
             onClick={handleClose}
             disabled={isProcessing}
           >
@@ -423,7 +579,6 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
           </Button>
           <Button
             variant="outline"
-            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
             disabled={isProcessing}
           >
             Help

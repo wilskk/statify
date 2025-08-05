@@ -96,5 +96,72 @@ describe('Crosstabs Formatters', () => {
             const formatted = formatCrosstabulationTable(null as any, mockParams);
             expect(formatted).toBeNull();
         });
+
+        it('should handle zero row totals for row percentages', () => {
+            // Create a mock result where one row has zero total
+            const zeroRowResult: CrosstabsWorkerResult = {
+                ...mockResult,
+                summary: {
+                    ...mockResult.summary,
+                    rowTotals: [0, 258], // First row has zero total
+                },
+                contingencyTable: [
+                    [0, 0, 0], // First row has all zeros
+                    [183, 27, 48],
+                ],
+            };
+
+            const paramsWithRowPct: CrosstabsAnalysisParams = {
+                ...mockParams,
+                options: {
+                    ...mockParams.options,
+                    cells: { ...mockParams.options.cells, row: true },
+                },
+            };
+
+            const formatted = formatCrosstabulationTable(zeroRowResult, paramsWithRowPct);
+            
+            expect(formatted).not.toBeNull();
+            expect(formatted?.title).toBe('Gender * Job Category Crosstabulation');
+            
+            // Check that the first row (with zero total) has empty percentage values
+            const mainRow = formatted?.rows[0] as any;
+            const firstDataRow = mainRow.children[0]; // First data row (Female)
+            
+            // All percentage cells should show 0.0% for the row with zero total
+            expect(firstDataRow.c1).toBe('0.0%'); // Should show 0.0% instead of empty
+            expect(firstDataRow.c2).toBe('0.0%'); // Should show 0.0% instead of empty
+            expect(firstDataRow.c3).toBe('0.0%'); // Should show 0.0% instead of empty
+            expect(firstDataRow.total).toBe('100.0%'); // Total should show 100.0% for valid rows
+            
+            // Second row should still have valid percentages
+            const secondDataRow = mainRow.children[1]; // Second data row (Male)
+            expect(secondDataRow.total).toBe('100.0%'); // This should still work
+        });
+
+        it('should show column percentages in total row for row percentages', () => {
+            const paramsWithRowPct: CrosstabsAnalysisParams = {
+                ...mockParams,
+                options: {
+                    ...mockParams.options,
+                    cells: { ...mockParams.options.cells, row: true },
+                },
+            };
+
+            const formatted = formatCrosstabulationTable(mockResult, paramsWithRowPct);
+            
+            expect(formatted).not.toBeNull();
+            
+            // Check total row - should show column percentages for row percentage statistic
+            const totalRow = formatted?.rows[1] as any; // Total row
+            expect(totalRow.rowHeader).toEqual(['Total', null, '% within Gender']);
+            
+            // Check that total row shows column percentages (colTotals/totalCases)
+            // 363/474 = 76.6%, 27/474 = 5.7%, 84/474 = 17.7%
+            expect(totalRow.c1).toBe('76.6%'); // Clerical percentage of total
+            expect(totalRow.c2).toBe('5.7%');  // Custodial percentage of total  
+            expect(totalRow.c3).toBe('17.7%'); // Manager percentage of total
+            expect(totalRow.total).toBe('100.0%'); // Always 100% for total
+        });
     });
 }); 

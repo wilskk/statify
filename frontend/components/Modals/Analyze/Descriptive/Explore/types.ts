@@ -65,7 +65,7 @@ export interface ExploreAnalysisParams {
     showMEstimators: boolean;
     showOutliers: boolean;
     showPercentiles: boolean;
-    boxplotType: 'none' | 'dependents-together' | 'factor-levels-together';
+    boxplotType: 'none' | 'dependents-together' | 'factor-levels-together' | 'dependents-separately';
     showStemAndLeaf: boolean;
     showHistogram: boolean;
     showNormalityPlots: boolean;
@@ -77,4 +77,4 @@ export interface ExploreResults {
     type: 'explore';
     params: ExploreAnalysisParams;
     results: ExploreResultsData; // This will hold the structured results
-} 
+}

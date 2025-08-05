@@ -17,15 +17,24 @@ const DescriptiveMenu: React.FC = () => {
 
     return (
         <MenubarMenu>
-            <MenubarTrigger>Descriptive</MenubarTrigger>
-            <MenubarContent>
-                <MenubarItem onClick={() => openModal(ModalType.Descriptives)}>
+            <MenubarTrigger data-testid="descriptive-menu-trigger">Descriptive</MenubarTrigger>
+            <MenubarContent data-testid="descriptive-menu-content">
+                <MenubarItem 
+                    data-testid="descriptive-menu-descriptives"
+                    onClick={() => openModal(ModalType.Descriptives)}
+                >
                     Descriptives...
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Explore)}>
+                <MenubarItem 
+                    data-testid="descriptive-menu-explore"
+                    onClick={() => openModal(ModalType.Explore)}
+                >
                     Explore...
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Frequencies)}>
+                <MenubarItem 
+                    data-testid="descriptive-menu-frequencies"
+                    onClick={() => openModal(ModalType.Frequencies)}
+                >
                     Frequencies...
                 </MenubarItem>
                 <MenubarSeparator />

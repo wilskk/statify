@@ -19,7 +19,7 @@ pub fn calculate_levene_test(
     // Tentukan variabel dependen yang akan dianalisis.
     let dep_var_name = config.main.dep_var
         .as_ref()
-        .ok_or_else(|| "Variabel dependen tidak ditentukan dalam konfigurasi".to_string())?;
+        .ok_or_else(|| "Dependent variable not specified in the configuration".to_string())?;
 
     // Buat matriks desain untuk variabel dependen.
     let design_info = match create_design_response_weights(data, config) {

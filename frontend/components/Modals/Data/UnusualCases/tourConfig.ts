@@ -22,7 +22,7 @@ export const baseTourSteps: TourStep[] = [
     targetId: "unusual-cases-analysis-variables",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: 'left',
-    icon: "📊",
+    icon: null,
     requiredTab: TABS.VARIABLES
   },
   {
@@ -31,7 +31,7 @@ export const baseTourSteps: TourStep[] = [
     targetId: "unusual-cases-identifier-variable",
     defaultPosition: 'top',
     defaultHorizontalPosition: 'left',
-    icon: "🆔",
+    icon: null,
     requiredTab: TABS.VARIABLES
   },
   {
@@ -40,7 +40,7 @@ export const baseTourSteps: TourStep[] = [
     targetId: "options-tab-trigger",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "⚙️",
+    icon: null,
     requiredTab: TABS.VARIABLES,
     forceChangeTab: true
   },
@@ -51,7 +51,7 @@ export const baseTourSteps: TourStep[] = [
     targetId: "unusual-cases-identification-criteria",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "🎯",
+    icon: null,
     requiredTab: TABS.OPTIONS
   },
 ]; 

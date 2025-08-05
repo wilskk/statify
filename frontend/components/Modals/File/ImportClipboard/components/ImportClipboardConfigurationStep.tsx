@@ -1,33 +1,99 @@
 "use client";
 
-import React, { useState, FC, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, FC, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, RefreshCw, HelpCircle, Clipboard, Table, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, RefreshCw, HelpCircle, Clipboard, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { ImportClipboardConfigurationStepProps, ClipboardProcessingOptions } from "../types";
-import { HotTable } from "@handsontable/react-wrapper";
-import "handsontable/dist/handsontable.full.min.css";
-import { registerAllModules } from 'handsontable/registry';
 import { useImportClipboardProcessor } from "../hooks/useImportClipboardProcessor";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 
-// Register Handsontable modules
-registerAllModules();
-
-// Define the specific types for Handsontable settings
-type StretchH = 'all' | 'none' | 'last';
-
 const PREVIEW_ROW_LIMIT = 100;
 const PREVIEW_COL_LIMIT = 25;
+
+// CSS styles for clipboard preview table
+const clipboardPreviewStyles = `
+.clipboard-preview-table {
+    font-size: 0.875rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    min-width: max-content;
+}
+
+.clipboard-preview-table th,
+.clipboard-preview-table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 80px;
+    max-width: 200px;
+    padding: 8px 12px;
+    border-right: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--border));
+    text-align: left;
+    background: hsl(var(--background));
+}
+
+.clipboard-preview-table th {
+    background-color: hsl(var(--muted));
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-bottom: 2px solid hsl(var(--border));
+}
+
+.clipboard-preview-table th:first-child,
+.clipboard-preview-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: hsl(var(--muted) / 0.8);
+    border-right: 2px solid hsl(var(--border));
+}
+
+.clipboard-preview-table th:first-child {
+    z-index: 3;
+    background-color: hsl(var(--muted));
+}
+
+.clipboard-preview-table tbody tr:nth-child(even) td {
+    background-color: hsl(var(--muted) / 0.2);
+}
+
+.clipboard-preview-table tbody tr:nth-child(even) td:first-child {
+    background-color: hsl(var(--muted) / 0.6);
+}
+
+.clipboard-preview-table tbody tr:hover td {
+    background-color: hsl(var(--muted) / 0.4);
+}
+
+.clipboard-preview-table tbody tr:hover td:first-child {
+    background-color: hsl(var(--muted) / 0.8);
+}
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+    const styleId = 'clipboard-preview-styles';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = clipboardPreviewStyles;
+        document.head.appendChild(style);
+    }
+}
 
 // Tipe data untuk tour
 type PopupPosition = 'top' | 'bottom';
@@ -220,7 +286,6 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
     pastedText,
     parsedData,
 }) => {
-    const hotTableRef = useRef<any>(null);
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
@@ -228,6 +293,7 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
     const [textQualifierOption, setTextQualifierOption] = useState<string>('"');
     const [originalRowCount, setOriginalRowCount] = useState(0);
     const [originalColCount, setOriginalColCount] = useState(0);
+    const [isPreviewTruncated, setIsPreviewTruncated] = useState(false);
 
     const [options, setOptions] = useState<ClipboardProcessingOptions>({
         delimiter: "tab",
@@ -238,13 +304,6 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
     });
 
     const [customDelimiter, setCustomDelimiter] = useState<string>("");
-    const [hotSettings, setHotSettings] = useState({
-        stretchH: 'all' as StretchH, 
-        autoWrapRow: true,
-        autoWrapCol: false,
-        manualColumnResize: true,
-        manualRowResize: true,
-    });
 
     const { excelStyleTextToColumns, processClipboardData } = useImportClipboardProcessor();
 
@@ -318,11 +377,12 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
 
     }, [options, customDelimiter, pastedText, excelStyleTextToColumns, textQualifierOption, getDelimiterCharacter]);
 
-    const { dataForTable, columnHeaders, columnsSetting } = useMemo(() => {
+    const { dataForTable, columnHeaders, variables } = useMemo(() => {
         if (!previewData || previewData.length === 0) {
             setOriginalRowCount(0);
             setOriginalColCount(0);
-            return { dataForTable: [], columnHeaders: [], columnsSetting: [] };
+            setIsPreviewTruncated(false);
+            return { dataForTable: [], columnHeaders: [], variables: [] };
         }
 
         let fullHeaders: string[];
@@ -346,9 +406,16 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
 
         const slicedHeaders = fullHeaders.slice(0, PREVIEW_COL_LIMIT);
         const slicedData = fullData.slice(0, PREVIEW_ROW_LIMIT).map(row => row.slice(0, PREVIEW_COL_LIMIT));
-        const slicedColumnsSetting = slicedHeaders.map((_, index) => ({ data: index }));
+        
+        setIsPreviewTruncated(fullData.length > PREVIEW_ROW_LIMIT || fullHeaders.length > PREVIEW_COL_LIMIT);
+        
+        const variables = slicedHeaders.map((header, index) => ({
+            name: header,
+            type: 'string' as const,
+            index
+        }));
 
-        return { dataForTable: slicedData, columnHeaders: slicedHeaders, columnsSetting: slicedColumnsSetting };
+        return { dataForTable: slicedData, columnHeaders: slicedHeaders, variables };
     }, [previewData, options.firstRowAsHeader]);
 
     const handleOptionChange = (key: keyof ClipboardProcessingOptions, value: any) => {
@@ -382,15 +449,9 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
         }
     };
 
-    const toggleStretchH = () => {
-        if (hotTableRef.current?.hotInstance) {
-            const newStretchH: StretchH = hotSettings.stretchH === 'all' ? 'none' : 'all';
-            hotTableRef.current.hotInstance.updateSettings({ stretchH: newStretchH });
-            setHotSettings(prev => ({ ...prev, stretchH: newStretchH }));
-        }
-    };
 
-    const isPreviewTruncated = originalRowCount > PREVIEW_ROW_LIMIT || originalColCount > PREVIEW_COL_LIMIT;
+
+
 
     return (
         <div className="flex flex-col h-full">
@@ -427,144 +488,213 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
             </div>
 
             {/* Main Content Area */}
-            <div className="p-6 flex-grow flex flex-col gap-6">
-                {/* Options Panel */}
-                <div className="w-full space-y-4 overflow-y-auto pr-2 pb-4">
-                    <div className="space-y-3 relative" id="config-step-delimiter-wrapper">
-                        <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 0 && "text-primary")}>Delimiter</Label>
-                        <div className="relative">
-                            <Select
-                                value={options.delimiter}
-                                onValueChange={(value) => handleOptionChange("delimiter", value)}
-                                disabled={isProcessing}
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select delimiter" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="tab">Tab</SelectItem>
-                                    <SelectItem value="comma">Comma (,)</SelectItem>
-                                    <SelectItem value="semicolon">Semicolon (;)</SelectItem>
-                                    <SelectItem value="space">Space</SelectItem>
-                                    <SelectItem value="custom">Custom</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <ActiveElementHighlight active={tourActive && currentStep === 0} />
+            <div className="p-6 flex-grow overflow-y-auto space-y-6">
+                {/* 1. Format Settings */}
+                <Card className="border-border">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <span className="text-lg">🔧</span>
+                            Format Settings
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* First row: Delimiter and Text Qualifier */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div id="config-step-delimiter-wrapper" className="space-y-2 relative">
+                                <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 0 && "text-primary")}>Delimiter</Label>
+                                <div className="relative">
+                                    <Select
+                                        value={options.delimiter}
+                                        onValueChange={(value) => handleOptionChange("delimiter", value)}
+                                        disabled={isProcessing}
+                                    >
+                                        <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder="Select delimiter" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="tab">Tab</SelectItem>
+                                            <SelectItem value="comma">Comma (,)</SelectItem>
+                                            <SelectItem value="semicolon">Semicolon (;)</SelectItem>
+                                            <SelectItem value="space">Space</SelectItem>
+                                            <SelectItem value="custom">Custom</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <ActiveElementHighlight active={tourActive && currentStep === 0} />
+                                </div>
+                                {options.delimiter === "custom" && (
+                                    <div className="pt-2">
+                                        <Label htmlFor="custom-delimiter" className="text-xs font-medium text-muted-foreground">
+                                            Custom Delimiter
+                                        </Label>
+                                        <Input
+                                            id="custom-delimiter"
+                                            value={customDelimiter}
+                                            onChange={(e) => setCustomDelimiter(e.target.value)}
+                                            placeholder="Enter custom delimiter"
+                                            className="mt-1 h-9"
+                                            disabled={isProcessing}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div id="config-step-qualifier-wrapper" className="space-y-2 relative">
+                                <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 1 && "text-primary")}>Text Qualifier</Label>
+                                <div className="relative">
+                                    <Select
+                                        value={textQualifierOption}
+                                        onValueChange={setTextQualifierOption}
+                                        disabled={isProcessing}
+                                    >
+                                        <SelectTrigger className="w-full h-9">
+                                            <SelectValue placeholder="Select text qualifier" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value='"'>Double Quote (&quot;)</SelectItem>
+                                            <SelectItem value="'">Single Quote (&apos;)</SelectItem>
+                                            <SelectItem value="NO_QUALIFIER">None</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <ActiveElementHighlight active={tourActive && currentStep === 1} />
+                                </div>
+                            </div>
                         </div>
+                    </CardContent>
+                </Card>
 
-                        {options.delimiter === "custom" && (
-                            <div className="pt-2">
-                                <Label htmlFor="custom-delimiter" className="text-xs font-medium text-muted-foreground">
-                                    Custom Delimiter
-                                </Label>
-                                <Input
-                                    id="custom-delimiter"
-                                    value={customDelimiter}
-                                    onChange={(e) => setCustomDelimiter(e.target.value)}
-                                    placeholder="Enter custom delimiter"
-                                    className="mt-1"
+                {/* 2. Import Options */}
+                <Card className="border-border">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">
+                            Import Options
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* First row: Header row option */}
+                        <div className="grid grid-cols-1">
+                            <div id="config-step-header-row-wrapper" className="flex items-center space-x-2 relative">
+                                <Checkbox
+                                    id="firstRowAsHeader"
+                                    checked={options.firstRowAsHeader}
+                                    onCheckedChange={(checked) => handleOptionChange("firstRowAsHeader", Boolean(checked))}
                                     disabled={isProcessing}
                                 />
+                                <Label htmlFor="firstRowAsHeader" className={cn("text-sm font-normal cursor-pointer flex items-center", tourActive && currentStep === 2 && "text-primary")}>
+                                    First row as headers
+                                    <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>Use the first row as variable names</TooltipContent></Tooltip></TooltipProvider>
+                                </Label>
+                                <ActiveElementHighlight active={tourActive && currentStep === 2} />
                             </div>
-                        )}
-                    </div>
-
-                    <div className="space-y-3 pt-2 relative" id="config-step-qualifier-wrapper">
-                        <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 1 && "text-primary")}>Text Qualifier</Label>
-                         <div className="relative">
-                            <Select
-                                value={textQualifierOption}
-                                onValueChange={setTextQualifierOption}
-                                disabled={isProcessing}
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select text qualifier" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value='"'>Double Quote (&quot;)</SelectItem>
-                                    <SelectItem value="'">Single Quote (&apos;)</SelectItem>
-                                    <SelectItem value="NO_QUALIFIER">None</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <ActiveElementHighlight active={tourActive && currentStep === 1} />
                         </div>
-                    </div>
-
-                    <div className="space-y-3 pt-2">
-                        <Label className="text-xs font-medium text-muted-foreground">Options</Label>
-
-                        <div id="config-step-header-row-wrapper" className="flex items-center space-x-2 relative">
-                            <Checkbox
-                                id="firstRowAsHeader"
-                                checked={options.firstRowAsHeader}
-                                onCheckedChange={(checked) => handleOptionChange("firstRowAsHeader", Boolean(checked))}
-                                disabled={isProcessing}
-                            />
-                            <Label htmlFor="firstRowAsHeader" className={cn("text-sm font-normal cursor-pointer flex items-center", tourActive && currentStep === 2 && "text-primary")}>
-                                First row as headers
-                                <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>Use the first row as variable names</TooltipContent></Tooltip></TooltipProvider>
-                            </Label>
-                            <ActiveElementHighlight active={tourActive && currentStep === 2} />
+                        
+                        {/* Second row: Data processing options */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="trimWhitespace" checked={options.trimWhitespace} onCheckedChange={(checked) => handleOptionChange("trimWhitespace", Boolean(checked))} disabled={isProcessing} />
+                                <Label htmlFor="trimWhitespace" className="text-sm font-normal cursor-pointer flex items-center">Trim whitespace<TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>Remove leading and trailing whitespace</TooltipContent></Tooltip></TooltipProvider></Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="skipEmptyRows" checked={options.skipEmptyRows} onCheckedChange={(checked) => handleOptionChange("skipEmptyRows", Boolean(checked))} disabled={isProcessing} />
+                                <Label htmlFor="skipEmptyRows" className="text-sm font-normal cursor-pointer flex items-center">Skip empty rows<TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>Ignore rows with no data</TooltipContent></Tooltip></TooltipProvider></Label>
+                            </div>
                         </div>
-
-                        <div className="flex items-center space-x-2">
-                            <Checkbox id="trimWhitespace" checked={options.trimWhitespace} onCheckedChange={(checked) => handleOptionChange("trimWhitespace", Boolean(checked))} disabled={isProcessing} />
-                            <Label htmlFor="trimWhitespace" className="text-sm font-normal cursor-pointer flex items-center">Trim whitespace<TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>Remove leading and trailing whitespace</TooltipContent></Tooltip></TooltipProvider></Label>
+                        
+                        {/* Third row: Data type detection */}
+                        <div className="grid grid-cols-1">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="detectDataTypes" checked={options.detectDataTypes} onCheckedChange={(checked) => handleOptionChange("detectDataTypes", Boolean(checked))} disabled={isProcessing} />
+                                <Label htmlFor="detectDataTypes" className="text-sm font-normal cursor-pointer flex items-center">Detect data types<TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>Automatically detect numeric values</TooltipContent></Tooltip></TooltipProvider></Label>
+                            </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox id="skipEmptyRows" checked={options.skipEmptyRows} onCheckedChange={(checked) => handleOptionChange("skipEmptyRows", Boolean(checked))} disabled={isProcessing} />
-                            <Label htmlFor="skipEmptyRows" className="text-sm font-normal cursor-pointer flex items-center">Skip empty rows<TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>Ignore rows with no data</TooltipContent></Tooltip></TooltipProvider></Label>
+                        
+                        {/* Reset button */}
+                        <div className="pt-2">
+                            <Button variant="outline" size="sm" onClick={() => { setOptions({ delimiter: "tab", firstRowAsHeader: true, trimWhitespace: true, skipEmptyRows: true, detectDataTypes: true }); setTextQualifierOption('"'); }} disabled={isProcessing || isPreviewLoading} className="w-full h-9">
+                                <RefreshCw size={14} className="mr-1.5" />
+                                Reset Options
+                            </Button>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox id="detectDataTypes" checked={options.detectDataTypes} onCheckedChange={(checked) => handleOptionChange("detectDataTypes", Boolean(checked))} disabled={isProcessing} />
-                            <Label htmlFor="detectDataTypes" className="text-sm font-normal cursor-pointer flex items-center">Detect data types<TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>Automatically detect numeric values</TooltipContent></Tooltip></TooltipProvider></Label>
-                        </div>
-                    </div>
-
-                    <Button variant="outline" size="sm" onClick={() => { setOptions({ delimiter: "tab", firstRowAsHeader: true, trimWhitespace: true, skipEmptyRows: true, detectDataTypes: true }); setTextQualifierOption('"'); }} disabled={isProcessing || isPreviewLoading} className="w-full mt-3">Reset Options</Button>
-                </div>
+                    </CardContent>
+                </Card>
 
                 {/* Data Preview Panel */}
-                <div id="config-step-preview-wrapper" className="w-full flex flex-col overflow-hidden relative">
-                    <div className="flex justify-between items-center mb-1.5">
-                        <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 3 && "text-primary")}>Data Preview</Label>
-                        <div className="flex items-center space-x-2">
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={toggleStretchH}><Table size={14} className="mr-1" />{hotSettings.stretchH === 'all' ? 'Auto-width' : 'Fixed-width'}</Button>
-                        </div>
-                    </div>
-                    <div className="border border-border rounded-md overflow-auto flex-grow bg-background hot-container relative min-h-[200px]">
+                <div id="config-step-preview-wrapper" className="relative">
+                    <Card className="border-border">
+                        <CardHeader className="pb-3">
+                            <CardTitle className={cn("text-sm font-medium flex items-center justify-between", tourActive && currentStep === 3 && "text-primary")}>
+                                Data Preview
+                                <span className="text-xs font-normal text-muted-foreground">(max 100 rows shown)</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="border-t border-border bg-background hot-container-clipboard relative" 
+                                 style={{
+                                     zIndex: 0,
+                                     minHeight: 'clamp(200px, 30vh, 300px)',
+                                     maxHeight: 'clamp(300px, 50vh, 500px)',
+                                     overflow: 'auto',
+                                     scrollbarWidth: 'thin',
+                                     scrollbarColor: 'hsl(var(--muted-foreground) / 0.5) hsl(var(--muted) / 0.3)'
+                                 }}>
                         {isPreviewLoading ? (
-                            <div className="absolute inset-0 flex items-center justify-center h-full text-muted-foreground bg-background/80 z-10"><RefreshCw size={18} className="animate-spin mr-2" /> Loading preview...</div>
+                            <div className="absolute inset-0 flex items-center justify-center h-full text-muted-foreground bg-background/80 z-10">
+                                <RefreshCw size={18} className="animate-spin mr-2" /> Loading preview...
+                            </div>
                         ) : previewData.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center"><span>No data to preview. Try adjusting options.</span></div>
+                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                                <span>No data to preview. Try adjusting options.</span>
+                            </div>
                         ) : (
-                            <HotTable key={options.firstRowAsHeader ? 'headers-on' : 'headers-off'} ref={hotTableRef} data={dataForTable} colHeaders={columnHeaders} columns={columnsSetting} rowHeaders={true} width="100%" height="100%" licenseKey="non-commercial-and-evaluation" readOnly={true} manualColumnResize={true} manualRowResize={true} stretchH={hotSettings.stretchH} autoWrapRow={hotSettings.autoWrapRow} autoWrapCol={hotSettings.autoWrapCol} className={'excel-parser'} afterGetColHeader={(col, TH) => { if (options.firstRowAsHeader) { TH.classList.add('header-row'); } else { TH.classList.remove('header-row'); }}} />
+                            <table className="clipboard-preview-table">
+                                <thead>
+                                    <tr>
+                                        <th className="w-12 text-center">#</th>
+                                        {columnHeaders.map((header, index) => (
+                                            <th key={index} title={String(header)}>
+                                                {header}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {dataForTable.map((row, rowIndex) => (
+                                        <tr key={rowIndex}>
+                                            <td className="w-12 text-center text-muted-foreground font-mono text-xs">
+                                                {rowIndex + 1}
+                                            </td>
+                                            {row.map((cell, cellIndex) => (
+                                                <td key={cellIndex} title={String(cell || '')}>
+                                                    {cell || ''}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         )}
-                    </div>
-                    {error && <p className="text-xs text-destructive mt-1.5">{error}</p>}
-                    <div className="text-xs text-muted-foreground mt-1.5">
-                        {dataForTable.length > 0 && (
-                            <span>
-                                {isPreviewTruncated ? `Showing first ${dataForTable.length} of ${originalRowCount} rows × ${columnHeaders.length} of ${originalColCount} columns` : `${originalRowCount} rows × ${originalColCount} columns`}
-                            </span>
-                        )}
-                    </div>
-                     <ActiveElementHighlight active={tourActive && currentStep === 3} />
+                            </div>
+                            {error && (
+                                <div className="p-3 border-t border-border bg-destructive/5">
+                                    <p className="text-xs text-destructive">Error while previewing: {error}</p>
+                                </div>
+                            )}
+                            <div className="p-3 border-t border-border bg-muted/20">
+                                <div className="text-xs text-muted-foreground">
+                                    {dataForTable.length > 0 && (
+                                        <span>
+                                            {isPreviewTruncated ? `Showing first ${dataForTable.length} of ${originalRowCount} rows × ${columnHeaders.length} of ${originalColCount} columns` : `${originalRowCount} rows × ${originalColCount} columns`}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <ActiveElementHighlight active={tourActive && currentStep === 3} />
                 </div>
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                <div className="flex items-center text-muted-foreground">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"><HelpCircle className="h-4 w-4" /></Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top"><p className="text-xs">Start feature tour</p></TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
                 <div>
                     <Button variant="outline" onClick={onBack} disabled={isProcessing} className="mr-2">Back</Button>
                     <div id="config-step-import-button-wrapper" className="relative inline-block">
@@ -578,4 +708,4 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
             </div>
         </div>
     );
-}; 
+};

@@ -19,19 +19,19 @@ class IndependentSamplesTTestCalculator {
      * @param {Array<any>} params.groupingData - Array data untuk variabel pengelompokan.
      * @param {object} params.options - Opsi tambahan dari main thread.
      */
-    constructor({ variable, data, groupingVariable, groupingData, options = {} }) {
+    constructor({ variable1, data1, variable2, data2, options = {} }) {
         console.log('IndependentSamplesTTestCalculator constructor');
-        this.variable = variable;
-        this.data = data;
-        this.groupingVariable = groupingVariable;
-        this.groupingData = groupingData;
+        this.variable1 = variable1;
+        this.data1 = data1;
+        this.variable2 = variable2;
+        this.data2 = data2;
         this.options = options;
         this.initialized = false;
         
         // Ekstrak opsi dari options
         this.defineGroups = options.defineGroups || { useSpecifiedValues: true };
-        this.group1 = options.group1 || null;
-        this.group2 = options.group2 || null;
+        this.group1 = options.group1 || 0;
+        this.group2 = options.group2 || 0;
         this.cutPointValue = options.cutPointValue || 0;
         this.estimateEffectSize = options.estimateEffectSize || false;
         
@@ -54,25 +54,25 @@ class IndependentSamplesTTestCalculator {
     #initialize() {
         if (this.initialized) return;
 
-        const isNumericType = ['scale', 'date'].includes(this.variable.measure);
-        const isNumericGroupingType = ['scale', 'date'].includes(this.groupingVariable.measure);
+        const isNumericType = ['scale', 'date'].includes(this.variable1.measure);
+        const isNumericGroupingType = ['scale', 'date'].includes(this.variable2.measure);
 
         // Filter data yang valid
-        this.validData = this.data
+        this.validData = this.data1
             .filter((value, index) => {
-                const isValidData = !checkIsMissing(value, this.variable.missing, isNumericType) && isNumeric(value);
-                const isValidGrouping = index < this.groupingData.length && 
-                    !checkIsMissing(this.groupingData[index], this.groupingVariable.missing, isNumericGroupingType);
+                const isValidData = !checkIsMissing(value, this.variable1.missing, isNumericType) && isNumeric(value);
+                const isValidGrouping = index < this.data2.length && 
+                    !checkIsMissing(this.data2[index], this.variable2.missing, isNumericGroupingType);
                 return isValidData && isValidGrouping;
             })
             .map(value => parseFloat(value));
         
-        this.validGroupingData = this.groupingData
+        this.validGroupingData = this.data2
             .filter((value, index) => {
-                const isValidData = index < this.data.length && 
-                    !checkIsMissing(this.data[index], this.variable.missing, isNumericType) && 
-                    isNumeric(this.data[index]);
-                const isValidGrouping = !checkIsMissing(value, this.groupingVariable.missing, isNumericGroupingType);
+                const isValidData = index < this.data1.length && 
+                    !checkIsMissing(this.data1[index], this.variable1.missing, isNumericType) && 
+                    isNumeric(this.data1[index]);
+                const isValidGrouping = !checkIsMissing(value, this.variable2.missing, isNumericGroupingType);
                 return isValidData && isValidGrouping;
             });
         
@@ -109,7 +109,7 @@ class IndependentSamplesTTestCalculator {
      * @returns {number} Mean
      */
     #mean(arr) {
-        if (!arr || arr.length === 0) return 0;
+        if (!arr || arr.length === 0) return null;
         return arr.reduce((sum, x) => sum + x, 0) / arr.length;
     }
     
@@ -120,7 +120,7 @@ class IndependentSamplesTTestCalculator {
      * @returns {number} Standard deviation
      */
     #stdDev(arr, meanValue) {
-        if (!arr || arr.length <= 1) return 0;
+        if (!arr || arr.length <= 1) return null;
         const sumSq = arr.reduce((sum, x) => sum + Math.pow(x - meanValue, 2), 0);
         return Math.sqrt(sumSq / (arr.length - 1));
     }
@@ -132,7 +132,7 @@ class IndependentSamplesTTestCalculator {
      * @returns {number} Standard error mean
      */
     #stdError(stdDev, n) {
-        if (n <= 1) return 0;
+        if (n <= 1) return null;
         return stdDev / Math.sqrt(n);
     }
     
@@ -221,9 +221,15 @@ class IndependentSamplesTTestCalculator {
         
         const pooledVar = ((n1 - 1) * var1 + (n2 - 1) * var2) / df;
         const stdErrorDifference = Math.sqrt(pooledVar * (1/n1 + 1/n2));
-        const t = (mean1 - mean2) / stdErrorDifference;
+        let t = null;
+        if (stdErrorDifference !== 0) {
+            t = (mean1 - mean2) / stdErrorDifference;
+        }
         
-        const sig = 2 * (1 - stdlibstatsBaseDistsTCdf(Math.abs(t), df));
+        let sig = null;
+        if (stdErrorDifference !== 0) {
+            sig = 2 * (1 - stdlibstatsBaseDistsTCdf(Math.abs(t), df));
+        }
         
         // Calculate confidence intervals
         const tCritical = stdlibstatsBaseDistsTQuantile(0.975, df);
@@ -314,7 +320,7 @@ class IndependentSamplesTTestCalculator {
         let group1Label, group2Label;
         
         if (this.defineGroups.useSpecifiedValues) {
-            const values = this.groupingVariable.values || [];
+            const values = this.variable2.values || [];
             group1Label = values.find(v => v.value === this.group1)?.label || this.group1;
             group2Label = values.find(v => v.value === this.group2)?.label || this.group2;
         } else if (this.defineGroups.cutPoint) {
@@ -323,8 +329,7 @@ class IndependentSamplesTTestCalculator {
         }
         
         const result = {
-            variable: this.variable,
-            groupingVariable: this.groupingVariable,
+            variable2: this.variable2,
             group1: {
                 label: group1Label,
                 N: this.group1N,
@@ -359,7 +364,6 @@ class IndependentSamplesTTestCalculator {
         const unequalVarTest = this.#tTestUnequalVariance();
         
         const result = {
-            variable: this.variable,
             levene: {
                 F: levene.F,
                 Sig: levene.Sig
@@ -397,12 +401,32 @@ class IndependentSamplesTTestCalculator {
      * @returns {Object} Objek hasil yang berisi statistik grup dan hasil uji.
      */
     getOutput() {
+        this.#initialize();
+
+        let hasInsufficientData = false;
+        let insufficientType = [];
+
+        if (this.group1N === 0 || this.group2N === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('empty');
+        }
         const groupStatistics = this.getGroupStatistics();
+        if (groupStatistics.group1.StdDev === 0 && groupStatistics.group2.StdDev === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('stdDev');
+        }
         const independentSamplesTest = this.getIndependentSamplesTest();
         
         return {
+            variable1: this.variable1,
             groupStatistics,
-            independentSamplesTest
+            independentSamplesTest,
+            metadata: {
+                hasInsufficientData,
+                insufficientType,
+                variableName: this.variable1.name,
+                variableLabel: this.variable1.label
+            }
         };
     }
 }

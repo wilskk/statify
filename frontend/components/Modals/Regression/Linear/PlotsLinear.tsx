@@ -13,9 +13,8 @@ import { Variable } from "@/types/Variable";
 export interface PlotsLinearParams {
   selectedY: string | null;
   selectedX: string | null;
-  histogramChecked: boolean;
-  normalProbabilityChecked: boolean;
-  producePartialChecked: boolean;
+  histogramForXChecked: boolean;
+  histogramVariable?: string | null;
 }
 
 interface PlotVariable {
@@ -74,6 +73,19 @@ const PlotsLinear: React.FC<PlotsLinearProps> = ({ params, onChange, availablePl
     }
   };
 
+  const handleMoveToHistogram = () => {
+    if (highlightedVariable) {
+      onChange({ histogramVariable: highlightedVariable.name });
+      setHighlightedVariable(null);
+    }
+  };
+
+  const handleRemoveHistogram = () => {
+    if (params.histogramVariable) {
+      onChange({ histogramVariable: null });
+    }
+  };
+
   return (
     <div className="p-4">
       <div className="grid grid-cols-2 gap-4 py-4">
@@ -103,7 +115,7 @@ const PlotsLinear: React.FC<PlotsLinearProps> = ({ params, onChange, availablePl
 
         <div className="flex flex-col space-y-4">
           <div className="border p-4 rounded-md">
-            <span className="font-semibold mb-4 block">Scatter Plot</span>
+            <span className="font-semibold mb-4 block">Scatterplot</span>
 
             <div className="flex items-center mb-3">
               <Label className="w-10">Y:</Label>
@@ -144,43 +156,17 @@ const PlotsLinear: React.FC<PlotsLinearProps> = ({ params, onChange, availablePl
                 <ChevronsRight className="h-5 w-5" />
               </Button>
             </div>
-          </div>
 
-          <div className="border p-4 rounded-md">
-            <div className="mb-4 font-semibold">Standardized Residual Plots</div>
-            <div className="flex justify-between">
-              <div className="flex flex-col space-y-2">
-                <div className="flex items-center">
-                  <Checkbox
-                    id="histogram"
-                    checked={params.histogramChecked}
-                    onCheckedChange={(checked) => handleChange('histogramChecked', Boolean(checked))}
-                  />
-                  <Label htmlFor="histogram" className="ml-2 text-sm">
-                    Histogram
-                  </Label>
-                </div>
-                <div className="flex items-center">
-                  <Checkbox
-                    id="normalProbabilityPlot"
-                    checked={params.normalProbabilityChecked}
-                    onCheckedChange={(checked) => handleChange('normalProbabilityChecked', Boolean(checked))}
-                  />
-                  <Label htmlFor="normalProbabilityPlot" className="ml-2 text-sm">
-                    Normal probability plot
-                  </Label>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <Checkbox
-                  id="produceAllPartialPlots"
-                  checked={params.producePartialChecked}
-                  onCheckedChange={(checked) => handleChange('producePartialChecked', Boolean(checked))}
-                />
-                <Label htmlFor="produceAllPartialPlots" className="ml-2 text-sm">
-                  Produce all partial plots
-                </Label>
-              </div>
+            <div className="flex items-center mt-4">
+              <Checkbox
+                id="histogramForX"
+                checked={params.histogramForXChecked}
+                onCheckedChange={(checked) => handleChange('histogramForXChecked', Boolean(checked))}
+                disabled={!params.selectedX}
+              />
+              <Label htmlFor="histogramForX" className="ml-2 text-sm">
+                Generate histogram for X-axis variable
+              </Label>
             </div>
           </div>
         </div>

@@ -1,128 +1,169 @@
 /* eslint-disable react/no-unescaped-entities */
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
+import { Filter, Search, Settings, FileText } from 'lucide-react';
 
 const SelectCasesGuide = () => {
+  const sections = [
+    {
+      id: 'selection-methods',
+      title: 'Selection Methods',
+      description: 'Different ways to select cases in your dataset',
+      icon: Filter,
+      content: (
+        <div className="space-y-4">
+          <HelpCard title="All Cases" variant="feature">
+            <p className="text-sm">
+              Select this option to include all cases in your dataset. This effectively
+              removes any previously applied filters.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Based on Condition" variant="feature">
+            <p className="text-sm mb-3">
+              Create logical expressions to filter cases. Only cases that meet your
+              condition will be selected.
+            </p>
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="font-semibold text-sm mb-1">Available operators:</p>
+              <p className="text-xs font-mono">&gt;, &lt;, ==, != (comparison)</p>
+              <p className="text-xs font-mono">& (AND), | (OR), ~ (NOT)</p>
+            </div>
+          </HelpCard>
+          
+          <HelpCard title="Random Sample" variant="feature">
+            <p className="text-sm mb-3">Select a random subset of cases:</p>
+            <div className="space-y-2 text-sm">
+              <div><strong>Approximately</strong>: Selects about a certain percentage of total cases.</div>
+              <div><strong>Exactly</strong>: Selects an exact number of cases from the first N cases.</div>
+            </div>
+          </HelpCard>
+          
+          <HelpCard title="Based on Range" variant="feature">
+            <p className="text-sm">
+              Select cases based on their position in your dataset (1-based index).
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Use Filter Variable" variant="feature">
+            <p className="text-sm">
+              Use an existing variable as a filter. Non-zero/non-empty values will be selected.
+            </p>
+          </HelpCard>
+        </div>
+      )
+    },
+    {
+      id: 'output-options',
+      title: 'Output Options',
+      description: 'Options for handling unselected cases',
+      icon: Settings,
+      content: (
+        <div className="space-y-4">
+          <HelpCard title="Filter Unselected Cases" variant="step">
+            <p className="text-sm">
+              A filter is applied to temporarily hide unselected cases. A filter variable 
+              (<code className="text-xs bg-gray-100 px-1 rounded">filter_$</code>) will be created or updated. 
+              Your original dataset remains intact.
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Delete Unselected Cases" variant="step">
+            <p className="text-sm">
+              Unselected cases will be{' '}
+              <strong>permanently deleted</strong> from your dataset. This operation
+              cannot be undone.
+            </p>
+          </HelpCard>
+          
+          <HelpAlert variant="warning" title="Important">
+            <p className="text-sm mt-2">
+              Always backup your data before using the permanent delete option.
+            </p>
+          </HelpAlert>
+        </div>
+      )
+    },
+    {
+      id: 'usage-examples',
+      title: 'Usage Examples',
+      description: 'Practical examples of using the Select Cases feature',
+      icon: FileText,
+      content: (
+        <div className="space-y-4">
+          <HelpSection title="Filter by Condition">
+            <p className="text-sm mb-2">
+              To select cases where age &gt; 30 AND income &gt;= 50000:
+            </p>
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <code className="text-sm font-mono">age &gt; 30 & income &gt;= 50000</code>
+            </div>
+          </HelpSection>
+          
+          <HelpSection title="Create Random Sample">
+            <p className="text-sm mb-2">
+              To create a 10% random sample:
+            </p>
+            <div className="bg-gray-50 p-3 rounded-lg text-sm">
+              1. Select "Random sample"<br/>
+              2. Choose "Approximately"<br/>
+              3. Enter "10"
+            </div>
+          </HelpSection>
+          
+          <HelpSection title="Select Range">
+            <p className="text-sm mb-2">
+              To select cases 100 to 500:
+            </p>
+            <div className="bg-gray-50 p-3 rounded-lg text-sm">
+              1. Select "Based on... range"<br/>
+              2. Enter "100" in "First Case"<br/>
+              3. Enter "500" in "Last Case"
+            </div>
+          </HelpSection>
+        </div>
+      )
+    }
+  ];
+
+
+  const tips = [
+    {
+      type: 'tip' as const,
+      title: 'Condition Syntax',
+      content: 'Use quotes for string values and ensure variable names are spelled correctly.'
+    },
+    {
+      type: 'warning' as const,
+      title: 'Permanent Operations',
+      content: 'Be careful with permanent delete options - this operation cannot be undone.'
+    },
+    {
+      type: 'info' as const,
+      title: 'Filter Variable',
+      content: 'A filter_$ variable will be automatically created to track selected cases.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Data Management', href: '/help/data-guide' },
+    { title: 'Sort Cases', href: '/help/data-guide/sort-cases' },
+    { title: 'Weight Cases', href: '/help/data-guide/weight-cases' },
+    { title: 'Split File', href: '/help/data-guide/split-file' }
+  ];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Fitur Pilih Kasus (Select Cases)</CardTitle>
-        <CardDescription>
-          Dokumen ini menjelaskan fungsionalitas fitur "Pilih Kasus", yang
-          memungkinkan pengguna untuk memfilter atau menghapus baris (kasus)
-          berdasarkan berbagai kriteria.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-lg">1. Metode Seleksi</h3>
-          <div className="ml-4 mt-2 space-y-4">
-            <div>
-              <h4 className="font-semibold">a. Semua Kasus</h4>
-              <p>
-                Pilih opsi ini untuk memilih semua kasus dalam dataset. Opsi
-                ini secara efektif akan menghapus filter yang sebelumnya
-                diterapkan.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold">
-                b. Berdasarkan Kondisi (If condition is satisfied)
-              </h4>
-              <p>
-                Opsi ini memungkinkan Anda membuat ekspresi logika untuk
-                memfilter kasus. Hanya kasus yang memenuhi kondisi yang akan
-                dipilih. Gunakan operator perbandingan (`&gt;`, `&lt;`, `==`, `!=`) dan
-                operator logika (`&` untuk AND, `|` untuk OR, `~` untuk NOT).
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold">
-                c. Sampel Acak (Random sample of cases)
-              </h4>
-              <p>
-                Pilih subset acak dari kasus:
-                <ul className="list-disc list-inside ml-4">
-                  <li>
-                    <strong>Perkiraan (Approximately)</strong>: Memilih sekitar
-                    persentase tertentu dari total kasus.
-                  </li>
-                  <li>
-                    <strong>Tepat (Exactly)</strong>: Memilih jumlah kasus yang
-                    tepat dari N kasus pertama.
-                  </li>
-                </ul>
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold">
-                d. Berdasarkan Rentang (Based on time or case range)
-              </h4>
-              <p>
-                Memilih kasus berdasarkan posisinya dalam dataset (indeks
-                berbasis 1).
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold">e. Gunakan Variabel Filter</h4>
-              <p>
-                Menggunakan variabel yang sudah ada sebagai filter. Nilai bukan
-                nol/kosong akan dipilih.
-              </p>
-            </div>
-          </div>
-        </div>
+    <HelpGuideTemplate
+      title="Select Cases Feature"
+      description="This guide explains the Select Cases feature, which allows you to filter or delete rows (cases) based on various criteria."
+      category="Data Management"
+      lastUpdated="2024-01-15"
+      sections={sections}
 
-        <div>
-          <h3 className="font-semibold text-lg">2. Opsi Output</h3>
-          <div className="ml-4 mt-2 space-y-4">
-            <div>
-              <h4 className="font-semibold">a. Filter Kasus yang Tidak Dipilih</h4>
-              <p>
-                Filter diterapkan untuk menyembunyikan sementara kasus yang
-                tidak dipilih. Variabel filter (`filter_$`) akan dibuat atau
-                diperbarui. Dataset asli tetap utuh.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold">b. Hapus Kasus yang Tidak Dipilih</h4>
-              <p>
-                Kasus yang tidak dipilih akan dihapus{' '}
-                <strong>secara permanen</strong> dari dataset. Operasi ini tidak
-                dapat dibatalkan.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-lg">3. Contoh Penggunaan</h3>
-          <ul className="list-disc list-inside ml-4">
-            <li>
-              <strong>Filter berdasarkan Kondisi</strong>: Untuk memilih kasus
-              dengan `usia &gt; 30` DAN `pendapatan &gt;= 50000`, gunakan ekspresi:{' '}
-              <code>age &gt; 30 &amp; income &gt;= 50000</code>.
-            </li>
-            <li>
-              <strong>Membuat Sampel Acak</strong>: Untuk membuat sampel acak
-              10%, pilih "Random sample", lalu "Approximately", dan masukkan
-              "10".
-            </li>
-            <li>
-              <strong>Memilih Rentang</strong>: Untuk memilih kasus 100 hingga
-              500, pilih "Based on... range", lalu masukkan "100" di "First Case"
-              dan "500" di "Last Case".
-            </li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
 };
 
-export default SelectCasesGuide; 
+export default SelectCasesGuide;

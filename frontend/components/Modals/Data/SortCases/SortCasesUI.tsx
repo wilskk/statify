@@ -139,7 +139,7 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
         <>
             {containerType === "dialog" && (
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-xl font-semibold">Sort Cases</DialogTitle>
+                    <DialogTitle className="text-xl font-semibold" data-testid="sortcases-dialog-title">Sort Cases</DialogTitle>
                 </DialogHeader>
             )}
             <div className="p-6 overflow-y-auto flex-grow">
@@ -172,9 +172,9 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
                     <HelpCircle size={18} className="mr-1" />
                 </div>
                 <div>
-                    <Button variant="outline" className="mr-2" onClick={handleReset}>Reset</Button>
-                    <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleOk}>OK</Button>
+                    <Button variant="outline" className="mr-2" onClick={handleReset} data-testid="sortcases-reset-button">Reset</Button>
+                    <Button variant="outline" className="mr-2" onClick={onClose} data-testid="sortcases-cancel-button">Cancel</Button>
+                    <Button onClick={handleOk} data-testid="sortcases-ok-button">OK</Button>
                 </div>
             </div>
         </>
@@ -196,7 +196,7 @@ export const SortCasesUI: FC<SortCasesUIProps> = (props) => {
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="max-w-lg p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogContent className="max-w-lg p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]" data-testid="sortcases-dialog-content">
                 <SortCasesUIContent {...props} />
             </DialogContent>
         </Dialog>

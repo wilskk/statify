@@ -1,18 +1,18 @@
 use wasm_bindgen::prelude::*;
 
 use crate::models::{
-    config::ClusterConfig,
+    config::KMeansConfig,
     data::{ AnalysisData, DataRecord, VariableDefinition, DataValue },
-    result::ClusteringResult,
+    result::KMeansResult,
 };
 use crate::utils::{ converter::string_to_js_error, error::ErrorCollector, log::FunctionLogger };
 use crate::wasm::function;
 
 #[wasm_bindgen]
 pub struct KMeansClusterAnalysis {
-    config: ClusterConfig,
+    config: KMeansConfig,
     data: AnalysisData,
-    result: Option<ClusteringResult>,
+    result: Option<KMeansResult>,
     error_collector: ErrorCollector,
     logger: FunctionLogger,
 }
@@ -103,7 +103,7 @@ impl KMeansClusterAnalysis {
             return Err(string_to_js_error(msg));
         }
 
-        let config: ClusterConfig = match serde_wasm_bindgen::from_value(config_data.clone()) {
+        let config: KMeansConfig = match serde_wasm_bindgen::from_value(config_data.clone()) {
             Ok(data) => data,
             Err(e) => {
                 let msg =

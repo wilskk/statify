@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import * as XLSX from "xlsx"; 
-import { HotTable } from "@handsontable/react-wrapper";
-import "handsontable/dist/handsontable.full.min.css";
-import { registerAllModules } from 'handsontable/registry';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InfoIcon, RefreshCw, ArrowLeft, FileSpreadsheet, HelpCircle, Loader2, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -26,8 +24,71 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 
-// Register Handsontable modules
-registerAllModules();
+// Komponen tabel dasar untuk preview data Excel
+
+// CSS untuk tabel preview Excel
+const excelPreviewStyles = `
+.excel-preview-table {
+    font-size: 0.875rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    min-width: max-content;
+}
+
+.excel-preview-table th,
+.excel-preview-table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 80px;
+    max-width: 200px;
+    padding: 8px 12px;
+    border-right: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--border));
+    text-align: left;
+    background: hsl(var(--background));
+}
+
+.excel-preview-table th {
+    background-color: hsl(var(--muted));
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-bottom: 2px solid hsl(var(--border));
+}
+
+.excel-preview-table th:first-child,
+.excel-preview-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: hsl(var(--muted) / 0.8);
+    border-right: 2px solid hsl(var(--border));
+}
+
+.excel-preview-table th:first-child {
+    z-index: 3;
+    background-color: hsl(var(--muted));
+}
+
+.excel-preview-table tbody tr:nth-child(even) td {
+    background-color: hsl(var(--muted) / 0.2);
+}
+
+.excel-preview-table tbody tr:nth-child(even) td:first-child {
+    background-color: hsl(var(--muted) / 0.6);
+}
+
+.excel-preview-table tbody tr:hover td {
+    background-color: hsl(var(--muted) / 0.4);
+}
+
+.excel-preview-table tbody tr:hover td:first-child {
+    background-color: hsl(var(--muted) / 0.8);
+}
+`;
 
 
 // Tipe data untuk tour
@@ -239,7 +300,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
     const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    const hotTableRef = useRef<any>(null);
+    // Ref untuk tabel preview (tidak diperlukan untuk tabel dasar)
 
     // Tour state and logic
     const [tourActive, setTourActive] = useState(false);
@@ -390,13 +451,17 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
         setError(null);
     };
     
-    const hotTableColHeaders = 
-        previewColumnHeaders === false || (Array.isArray(previewColumnHeaders) && previewColumnHeaders.length === 0 && parsedPreviewData[0]?.length > 0)
-        ? (parsedPreviewData[0]?.length > 0 ? Array.from({length: parsedPreviewData[0].length}, (_,i)=> XLSX.utils.encode_col(i)) : true) 
-        : previewColumnHeaders;
+    // Fungsi untuk mendapatkan header kolom tabel
+    const getTableHeaders = () => {
+        if (previewColumnHeaders === false || (Array.isArray(previewColumnHeaders) && previewColumnHeaders.length === 0 && parsedPreviewData[0]?.length > 0)) {
+            return parsedPreviewData[0]?.length > 0 ? Array.from({length: parsedPreviewData[0].length}, (_,i)=> XLSX.utils.encode_col(i)) : [];
+        }
+        return Array.isArray(previewColumnHeaders) ? previewColumnHeaders : [];
+    };
         
     return (
         <div className="flex flex-col h-full"> 
+            <style dangerouslySetInnerHTML={{ __html: excelPreviewStyles }} />
             <AnimatePresence>
                 {tourActive && (
                     <TourPopup
@@ -410,85 +475,134 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                     />
                 )}
             </AnimatePresence>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
+            {/* Header - Responsive */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border flex-shrink-0">
                 <div className="flex items-center flex-1 min-w-0">
-                    <Button variant="ghost" size="icon" onClick={onBack} className="mr-3 -ml-2 h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 sm:mr-3 -ml-1 sm:-ml-2 h-8 w-8 text-muted-foreground hover:text-foreground">
                         <ArrowLeft size={18} />
                     </Button>
-                    <FileSpreadsheet size={20} className="mr-2.5 text-primary flex-shrink-0 relative top-[-1px]" />
+                    <FileSpreadsheet size={18} className="mr-2 sm:mr-2.5 text-primary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                        <h2 className="text-lg font-semibold truncate text-popover-foreground" title={`Configure Import: ${fileName}`}>
-                            Configure: {fileName}
+                        <h2 className="text-base sm:text-lg font-semibold truncate text-popover-foreground" title={`Configure Import: ${fileName}`}>
+                            <span className="hidden sm:inline">Configure: </span>{fileName}
                         </h2>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate hidden sm:block">
                             Review and configure options for your Excel file.
                         </p>
                     </div>
                 </div>
-                <div className="w-8"></div> 
             </div>
 
-            <div className="p-6 flex-grow overflow-y-auto space-y-6">
-                <div className="space-y-3 p-4 bg-muted/30 border border-border rounded-md">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-3 sm:space-y-0">
-                        <div id="excel-config-worksheet-wrapper" className="flex-1 min-w-0 relative">
-                            <Label htmlFor="worksheet-select" className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 0 && "text-primary")}>Worksheet</Label>
-                            <Select value={selectedSheet} onValueChange={setSelectedSheet} disabled={isLoadingPreview || isProcessing || sheetNames.length === 0}>
-                                <SelectTrigger className="w-full mt-1" data-testid="worksheet-select-trigger">
-                                    <SelectValue placeholder={sheetNames.length === 0 ? "No sheets found" : "Select a sheet"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {sheetNames.map(name => (
-                                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <ActiveElementHighlight active={tourActive && currentStep === 0} />
-                        </div>
+            {/* Main Content - Responsive */}
+            <div className="p-4 sm:p-6 flex-grow overflow-y-auto space-y-4 sm:space-y-6">
+                {/* 1. Worksheet and Range Selection - Improved Layout */}
+                <div id="excel-config-worksheet-wrapper" className="relative">
+                    <Card className="border-border">
+                        <CardHeader className="pb-3">
+                            <CardTitle className={cn("text-sm font-medium", tourActive && currentStep === 0 && "text-primary")}>
+                                Worksheet and Range Selection
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="worksheet-select" className="text-xs font-medium text-muted-foreground">
+                                        Worksheet
+                                    </Label>
+                                    <Select 
+                                        value={selectedSheet} 
+                                        onValueChange={setSelectedSheet} 
+                                        disabled={isLoadingPreview || isProcessing || sheetNames.length === 0}
+                                    >
+                                        <SelectTrigger className="w-full h-9" data-testid="worksheet-select-trigger">
+                                            <SelectValue placeholder={sheetNames.length === 0 ? "No sheets found" : "Select a sheet"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {sheetNames.map(name => (
+                                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="range-input" className="text-xs font-medium text-muted-foreground">Read range (optional)</Label>
-                                <TooltipProvider delayDuration={100}>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <InfoIcon size={13} className="text-muted-foreground cursor-help" />
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-xs z-50">
-                                            <p>E.g., A1, A1:G10. If blank, reads entire used range.</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="range-input" className="text-xs font-medium text-muted-foreground">
+                                            Read range (optional)
+                                        </Label>
+                                        <TooltipProvider delayDuration={100}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <InfoIcon size={13} className="text-muted-foreground cursor-help" />
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-xs z-50">
+                                                    <p>E.g., A1, A1:G10. If blank, reads entire used range.</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </div>
+                                    <Input 
+                                        id="range-input" 
+                                        value={range} 
+                                        onChange={(e) => setRange(e.target.value)} 
+                                        placeholder="e.g., A1:G10"
+                                        className="w-full h-9 text-sm"
+                                        disabled={isLoadingPreview || isProcessing || !selectedSheet}
+                                    />
+                                </div>
                             </div>
-                            <Input 
-                                id="range-input" 
-                                value={range} 
-                                onChange={(e) => setRange(e.target.value)} 
-                                placeholder="e.g., A1:G10"
-                                className="w-full mt-1 h-9 text-sm"
-                                disabled={isLoadingPreview || isProcessing || !selectedSheet}
-                            />
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
+                    <ActiveElementHighlight active={tourActive && currentStep === 0} />
                 </div>
 
-                <div className="grid lg:grid-cols-3 gap-6">
-                    <div id="excel-config-options-wrapper" className="lg:col-span-1 relative">
-                        <div className="space-y-4">
-                            <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 1 && "text-primary")}>Options</Label>
-                            <div className="space-y-3">
+                {/* 2. Import Options - Improved Layout */}
+                <div id="excel-config-options-wrapper" className="relative">
+                    <Card className="border-border">
+                        <CardHeader className="pb-3">
+                            <CardTitle className={cn("text-sm font-medium", tourActive && currentStep === 1 && "text-primary")}>
+                                Import Options
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Row 1: Checkboxes */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="flex items-center space-x-2">
-                                    <Checkbox id="firstLineContainsExcelConfig" checked={firstLineContains} onCheckedChange={(checked) => setFirstLineContains(Boolean(checked))} disabled={isLoadingPreview || isProcessing || !selectedSheet}/>
-                                    <Label htmlFor="firstLineContainsExcelConfig" className="text-sm font-normal cursor-pointer select-none">First row as variable names</Label>
+                                    <Checkbox 
+                                        id="firstLineContainsExcelConfig" 
+                                        checked={firstLineContains} 
+                                        onCheckedChange={(checked) => setFirstLineContains(Boolean(checked))} 
+                                        disabled={isLoadingPreview || isProcessing || !selectedSheet}
+                                    />
+                                    <Label htmlFor="firstLineContainsExcelConfig" className="text-sm font-normal cursor-pointer select-none">
+                                        First row as variable names
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <Checkbox id="readHiddenRowsColsConfig" checked={readHiddenRowsCols} onCheckedChange={(checked) => setReadHiddenRowsCols(Boolean(checked))} disabled={isLoadingPreview || isProcessing || !selectedSheet}/>
-                                    <Label htmlFor="readHiddenRowsColsConfig" className="text-sm font-normal cursor-pointer select-none">Read hidden rows & columns</Label>
+                                    <Checkbox 
+                                        id="readHiddenRowsColsConfig" 
+                                        checked={readHiddenRowsCols} 
+                                        onCheckedChange={(checked) => setReadHiddenRowsCols(Boolean(checked))} 
+                                        disabled={isLoadingPreview || isProcessing || !selectedSheet}
+                                    />
+                                    <Label htmlFor="readHiddenRowsColsConfig" className="text-sm font-normal cursor-pointer select-none">
+                                        Read hidden rows & columns
+                                    </Label>
                                 </div>
-                                <div>
-                                    <Label htmlFor="empty-cells-select" className="text-xs font-medium text-muted-foreground">Read empty cells as</Label>
-                                    <Select value={readEmptyCellsAs} onValueChange={(val) => setReadEmptyCellsAs(val as "empty" | "missing")} disabled={isLoadingPreview || isProcessing || !selectedSheet}>
-                                        <SelectTrigger id="empty-cells-select" className="w-full mt-1 h-9">
+                            </div>
+                            
+                            {/* Row 2: Select and Button */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="empty-cells-select" className="text-xs font-medium text-muted-foreground">
+                                        Read empty cells as
+                                    </Label>
+                                    <Select 
+                                        value={readEmptyCellsAs} 
+                                        onValueChange={(val) => setReadEmptyCellsAs(val as "empty" | "missing")} 
+                                        disabled={isLoadingPreview || isProcessing || !selectedSheet}
+                                    >
+                                        <SelectTrigger id="empty-cells-select" className="w-full h-9">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -497,19 +611,46 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-medium text-muted-foreground">
+                                        Actions
+                                    </Label>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={updatePreview} 
+                                        disabled={isLoadingPreview || isProcessing || !selectedSheet} 
+                                        className="w-full h-9"
+                                    >
+                                        <RefreshCw size={14} className={`mr-1.5 ${isLoadingPreview ? 'animate-spin' : ''}`} />
+                                        Refresh Preview
+                                    </Button>
+                                </div>
                             </div>
-                            <Button variant="outline" size="sm" onClick={updatePreview} disabled={isLoadingPreview || isProcessing || !selectedSheet} className="w-full mt-3 h-8">
-                                <RefreshCw size={14} className={`mr-1.5 ${isLoadingPreview ? 'animate-spin' : ''}`} />
-                                Refresh Preview
-                            </Button>
-                        </div>
-                        <ActiveElementHighlight active={tourActive && currentStep === 1} />
-                    </div>
+                        </CardContent>
+                    </Card>
+                    <ActiveElementHighlight active={tourActive && currentStep === 1} />
+                </div>
 
-                    <div id="excel-config-preview-wrapper" className="lg:col-span-2 relative">
-                        <div className="space-y-2">
-                            <Label className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 2 && "text-primary")}>Data Preview (max 100 rows shown)</Label>
-                            <div className="border border-border rounded-md bg-background hot-container-excel relative min-h-[220px] max-h-[220px] overflow-auto" style={{zIndex: 0}}>
+                {/* 3. Data Preview - Improved Layout */}
+                <div id="excel-config-preview-wrapper" className="relative">
+                    <Card className="border-border">
+                        <CardHeader className="pb-3">
+                            <CardTitle className={cn("text-sm font-medium flex items-center justify-between", tourActive && currentStep === 2 && "text-primary")}>
+                                Data Preview
+                                <span className="text-xs font-normal text-muted-foreground">(max 100 rows shown)</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="border-t border-border bg-background hot-container-excel relative" 
+                                 style={{
+                                     zIndex: 0,
+                                     minHeight: 'clamp(200px, 30vh, 300px)',
+                                     maxHeight: 'clamp(300px, 50vh, 500px)',
+                                     overflow: 'auto',
+                                     scrollbarWidth: 'thin',
+                                     scrollbarColor: 'hsl(var(--muted-foreground) / 0.5) hsl(var(--muted) / 0.3)'
+                                 }}>
                                 {(isLoadingPreview && !isProcessing) ? (
                                     <div className="absolute inset-0 flex items-center justify-center h-full text-muted-foreground bg-background/80 z-10">
                                         <RefreshCw size={18} className="animate-spin mr-2" /> Loading preview...
@@ -527,54 +668,64 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                                         { !selectedSheet ? "Please select a worksheet to see a preview." : "No data to preview. Try adjusting options."}
                                     </div>
                                 ) : (parsedPreviewData && parsedPreviewData.length > 0) ? (
-                                    <HotTable
-                                        ref={hotTableRef}
-                                        data={parsedPreviewData}
-                                        colHeaders={hotTableColHeaders}
-                                        rowHeaders={true}
-                                        width="100%"
-                                        height="220px"
-                                        manualColumnResize={true}
-                                        manualRowResize={true}
-                                        columnSorting={false}
-                                        filters={false}
-                                        dropdownMenu={false}
-                                        comments={false}
-                                        licenseKey="non-commercial-and-evaluation"
-                                        className="htMiddle htCenter text-sm htNoEmpty"
-                                        readOnly
-                                    />
+                                    <>
+                                            <table className="excel-preview-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="w-12 text-center">#</th>
+                                                        {getTableHeaders().map((header, index) => (
+                                                            <th key={index} title={String(header)}>
+                                                                {String(header)}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {parsedPreviewData.slice(0, 100).map((row, rowIndex) => (
+                                                        <tr key={rowIndex}>
+                                                            <td className="w-12 text-center text-muted-foreground font-mono text-xs">
+                                                                {rowIndex + 1}
+                                                            </td>
+                                                            {Array.isArray(row) ? row.map((cell, cellIndex) => (
+                                                                <td key={cellIndex} title={String(cell || '')}>
+                                                                    {String(cell || '')}
+                                                                </td>
+                                                            )) : (
+                                                                <td colSpan={getTableHeaders().length}>
+                                                                    {String(row || '')}
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                    </>
                                 ) : null }
                             </div>
-                            {error && parsedPreviewData && parsedPreviewData.length > 0 && <p className="text-xs text-destructive mt-1.5">Error while previewing: {error}</p>}
-                        </div>
-                        <ActiveElementHighlight active={tourActive && currentStep === 2} />
-                    </div>
+                            {error && parsedPreviewData && parsedPreviewData.length > 0 && (
+                                <div className="p-3 border-t border-border bg-destructive/5">
+                                    <p className="text-xs text-destructive">Error while previewing: {error}</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                    <ActiveElementHighlight active={tourActive && currentStep === 2} />
                 </div>
             </div>
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                <div className="flex items-center text-muted-foreground">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"><HelpCircle className="h-4 w-4" /></Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top"><p className="text-xs">Start feature tour</p></TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
-                <div>
-                    <Button variant="outline" onClick={onBack} disabled={isProcessing} className="mr-2">Back</Button>
-                    <Button variant="outline" onClick={handleReset} disabled={isProcessing} className="mr-2">Reset</Button>
-                    <div id="excel-config-import-button-wrapper" className="relative inline-block">
+            {/* Footer - Responsive */}
+            <div className="px-4 sm:px-6 py-3 border-t border-border flex flex-col sm:flex-row items-center justify-end bg-secondary flex-shrink-0 gap-3 sm:gap-0">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" onClick={onBack} disabled={isProcessing} className="text-sm px-3 py-1.5 h-8">Back</Button>
+                    <Button variant="outline" onClick={handleReset} disabled={isProcessing} className="text-sm px-3 py-1.5 h-8">Reset</Button>
+                    <div id="excel-config-import-button-wrapper" className="relative">
                         <Button
                             onClick={handleImport}
                             disabled={isProcessing || !!error || (parsedPreviewData.length === 0 && !previewColumnHeaders) || !selectedSheet || isLoadingPreview}
-                            className={cn(tourActive && currentStep === 3 && "focus:ring-primary")}
+                            className={cn("text-sm px-4 py-1.5 h-8", tourActive && currentStep === 3 && "focus:ring-primary")}
                             {...(isProcessing ? { loading: true } : {})}
                         >
-                            {isProcessing && <Loader2 className="mr-2 animate-spin" size={16} />}
+                            {isProcessing && <Loader2 className="mr-2 animate-spin" size={14} />}
                             Import Data
                         </Button>
                         <ActiveElementHighlight active={tourActive && currentStep === 3} />
@@ -583,4 +734,4 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             </div>
         </div>
     );
-}; 
+};

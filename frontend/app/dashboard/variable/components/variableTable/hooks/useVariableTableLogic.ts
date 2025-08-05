@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import Handsontable from 'handsontable';
+import { useStoreMediator } from '@/stores/useStoreMediator';
 import { useVariableStore } from '@/stores/useVariableStore';
 import {
     COLUMN_INDEX,
@@ -21,6 +22,7 @@ type MissingChangePayload = MissingValuesSpec | null;
  * @returns An object containing all necessary state and handlers for the VariableTable component.
  */
 export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
+    const mediator = useStoreMediator();
     const { variables, addVariable, updateMultipleFields, deleteVariables } = useVariableStore();
 
     // --- DIALOG STATE MANAGEMENT ---
@@ -59,7 +61,7 @@ export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
             await addVariable({ ...payload, columnIndex: rowIndex });
         }
         setShowTypeDialog(false);
-    }, [selectedCell, selectedVariable, addVariable, updateMultipleFields]);
+    }, [selectedCell, selectedVariable, updateMultipleFields, addVariable]);
 
     const handleValuesChange = useCallback(async (newValueLabels: ValuesChangePayload) => {
         if (!selectedCell) return;
@@ -72,7 +74,7 @@ export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
             await addVariable({ ...payload, columnIndex: rowIndex });
         }
         setShowValuesDialog(false);
-    }, [selectedCell, selectedVariable, addVariable, updateMultipleFields]);
+    }, [selectedCell, selectedVariable, updateMultipleFields, addVariable]);
 
     const handleMissingChange = useCallback(async (newMissingSpec: MissingChangePayload) => {
         if (!selectedCell) return;
@@ -85,7 +87,7 @@ export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
             await addVariable({ ...payload, columnIndex: rowIndex });
         }
         setShowMissingDialog(false);
-    }, [selectedCell, selectedVariable, addVariable, updateMultipleFields]);
+    }, [selectedCell, selectedVariable, updateMultipleFields, addVariable]);
 
     // --- GRID EVENT HANDLERS ---
     const handleBeforeChange = useCallback((
@@ -110,15 +112,14 @@ export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
             const field = COLUMN_INDEX_TO_FIELD_MAP[columnIndex];
             if (field) {
                 const existingVar = variables.find(v => v.columnIndex === row);
-                const payload = { [field]: newValue, columnIndex: row };
                 if (existingVar) {
                     updateMultipleFields(row, { [field]: newValue });
                 } else {
-                    addVariable(payload);
+                    addVariable({ [field]: newValue, columnIndex: row });
                 }
             }
         }
-    }, [variables, addVariable, updateMultipleFields, openDialog, hotTableRef]);
+    }, [variables, updateMultipleFields, addVariable, openDialog, hotTableRef]);
 
     const handleAfterSelectionEnd = useCallback((row: number, col: number, row2: number, col2: number) => {
         if (row === row2 && col === col2) {
@@ -196,4 +197,4 @@ export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
         handleValuesChange,
         handleMissingChange,
     };
-} 
+}

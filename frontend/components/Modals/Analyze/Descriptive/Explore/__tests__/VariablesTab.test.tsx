@@ -1,5 +1,5 @@
 // @ts-nocheck
-/* eslint-disable @typescript-eslint/ban-ts-comment */
+// /* eslint-disable @typescript-eslint/ban-ts-comment */
 import React from 'react';
 import { render } from '@testing-library/react';
 import VariablesTab from '../VariablesTab';
@@ -118,6 +118,6 @@ describe('VariablesTab Component', () => {
       />
     );
 
-    expect(queryByTestId('highlight')).toBeInTheDocument();
+    expect(getByTestId('highlight')).toBeInTheDocument();
   });
 }); 

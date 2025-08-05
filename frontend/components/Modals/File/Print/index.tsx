@@ -29,7 +29,7 @@ export const PrintModal: React.FC<PrintProps> = ({
     } = usePrintLogic({ onClose });
 
     return (
-        <div className="flex-grow overflow-y-auto flex flex-col h-full">
+        <div data-testid="print-modal-container" className="flex-grow overflow-y-auto flex flex-col h-full">
             <PrintOptions
                 fileName={fileName}
                 onFileNameChange={setFileName}

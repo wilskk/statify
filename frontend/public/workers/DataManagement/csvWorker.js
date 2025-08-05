@@ -1,11 +1,45 @@
 // Web Worker for parsing CSV files
 self.onmessage = (e) => {
   const { fileContent, options } = e.data;
-  const { firstLineContains, removeLeading, removeTrailing, delimiter, decimal } = options;
+  const { firstLineContains, removeLeading, removeTrailing, delimiter, decimal, textQualifier } = options;
   try {
+    // Helper to parse a single line respecting text qualifier
+    const parseCsvLine = (line, delim, qualifier) => {
+      const cells = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (qualifier && ch === qualifier) {
+          if (inQuotes && i + 1 < line.length && line[i + 1] === qualifier) {
+            current += qualifier; // Escaped qualifier
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === delim && !inQuotes) {
+          cells.push(current);
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      cells.push(current);
+      return cells.map((cell) => {
+        if (!qualifier) return cell;
+        const trimmed = cell.trim();
+        if (trimmed.startsWith(qualifier) && trimmed.endsWith(qualifier)) {
+          return trimmed.substring(1, trimmed.length - 1).split(qualifier + qualifier).join(qualifier);
+        }
+        return cell;
+      });
+    };
+
     let delimChar = ',';
     if (delimiter === 'semicolon') delimChar = ';';
     else if (delimiter === 'tab') delimChar = '\t';
+
+    const qualifierChar = textQualifier === 'doubleQuote' ? '"' : textQualifier === 'singleQuote' ? "'" : null;
 
     const lines = fileContent.split(/\r\n|\n|\r/);
     const parsedRows = [];
@@ -13,7 +47,7 @@ self.onmessage = (e) => {
       if (line.trim() === '') continue;
       if (removeLeading) line = line.replace(/^\s+/, '');
       if (removeTrailing) line = line.replace(/\s+$/, '');
-      parsedRows.push(line.split(delimChar));
+      parsedRows.push(parseCsvLine(line, delimChar, qualifierChar));
     }
     if (parsedRows.length === 0) throw new Error('No data found in the file after processing.');
 

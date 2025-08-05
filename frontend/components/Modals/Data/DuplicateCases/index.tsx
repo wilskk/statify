@@ -187,6 +187,7 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                             className="mr-2"
                             onClick={handleResetClick}
                             disabled={isProcessing}
+                            data-testid="duplicatecases-reset-button"
                         >
                             Reset
                         </Button>
@@ -195,13 +196,14 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                             className="mr-2"
                             onClick={onClose}
                             disabled={isProcessing}
+                            data-testid="duplicatecases-cancel-button"
                         >
                             Cancel
                         </Button>
                         <Button
                             onClick={handleConfirm}
                             disabled={isProcessing}
-                            data-testid="duplicatecases-main-ok"
+                            data-testid="duplicatecases-ok-button"
                         >
                             {isProcessing ? "Processing..." : "OK"}
                         </Button>
@@ -237,6 +239,7 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                             <Button
                                 className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                                 onClick={() => setErrorDialogOpen(false)}
+                                data-testid="duplicatecases-error-ok-button"
                             >
                                 OK
                             </Button>
@@ -262,7 +265,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose, containerType = "dia
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl w-full p-0 flex flex-col">
+            <DialogContent className="max-w-4xl w-full p-0 flex flex-col" data-testid="duplicatecases-dialog-content">
                 <DuplicateCasesContent onClose={onClose} containerType={containerType} />
             </DialogContent>
         </Dialog>

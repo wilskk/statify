@@ -3,15 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle
-} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { useMobile } from '@/hooks/useMobile';
 import { TourStep } from "./hooks/useTourGuide";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
@@ -56,10 +48,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         kurtosisChecked, setKurtosisChecked
     } = settings;
 
-    // Keep alert state internal to this component
-    const [alertOpen, setAlertOpen] = useState(false);
-    const [alertMessage, setAlertMessage] = useState({ title: "", description: "" });
-    const [inlineAlertMessage, setInlineAlertMessage] = useState<string | null>(null); // For sidebar alerts
+    // No longer need alert state since we're using toast
 
     const { isMobile, isPortrait } = useMobile();
 
@@ -76,17 +65,13 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     };
 
     const showAlert = (title: string, description: string) => {
-        if (containerType === "sidebar") {
-            setInlineAlertMessage(`${title}: ${description}`);
-        } else {
-            setAlertMessage({ title, description });
-            setAlertOpen(true);
-        }
+        toast.error(title, {
+            description: description,
+        });
     };
 
     // Update percentile handlers to use props
     const handleAddPercentile = () => {
-        setInlineAlertMessage(null); // Clear previous inline alert
         if (!currentPercentileInput) return; // Use prop state
 
         // Validate the percentile value is between 0-100
@@ -112,7 +97,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     };
 
     const handleChangePercentile = () => {
-        setInlineAlertMessage(null); // Clear previous inline alert
         if (!selectedPercentileItem || !currentPercentileInput) return; // Use prop states
 
         // Skip if no actual change
@@ -150,7 +134,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     };
 
     const handleRemovePercentile = () => {
-        setInlineAlertMessage(null); // Clear previous inline alert
         if (selectedPercentileItem) { // Use prop state
             setPercentileValues(percentileValues.filter(p => p !== selectedPercentileItem)); // Use prop setter & state
             setSelectedPercentileItem(null); // Use prop setter
@@ -162,25 +145,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
 
     return (
         <div className={`grid ${isMobile && isPortrait ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
-            {containerType === "dialog" && (
-                <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>{alertMessage.title}</AlertDialogTitle>
-                            <AlertDialogDescription>{alertMessage.description}</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogAction onClick={() => setAlertOpen(false)}>OK</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
-            {containerType === "sidebar" && inlineAlertMessage && (
-                <div className="col-span-full p-2 mb-2 text-sm text-destructive-foreground bg-destructive rounded-md">
-                    {inlineAlertMessage}
-                     <Button variant="ghost" size="sm" onClick={() => setInlineAlertMessage(null)} className="ml-2 text-destructive-foreground hover:bg-destructive/80">Dismiss</Button>
-                </div>
-            )}
 
             <div id="percentile-values-section" className="border border-border rounded-md p-4 space-y-3 bg-card relative">
                 <div className={`text-sm font-medium ${getTextClass(!showStatistics)}`}>Percentile Values</div>
@@ -282,13 +246,14 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             <div id="central-tendency-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Central Tendency</div>
                 {[
-                    { id: "mean", label: "Mean", checked: meanChecked, setter: setMeanChecked },
-                    { id: "median", label: "Median", checked: medianChecked, setter: setMedianChecked },
-                    { id: "mode", label: "Mode", checked: modeChecked, setter: setModeChecked },
-                    { id: "sum", label: "Sum", checked: sumChecked, setter: setSumChecked },
-                ].map(({ id, label, checked, setter }) => (
+                    { id: "mean", label: "Mean", checked: meanChecked, setter: setMeanChecked, testId: "frequencies-mean" },
+                    { id: "median", label: "Median", checked: medianChecked, setter: setMedianChecked, testId: "frequencies-median" },
+                    { id: "mode", label: "Mode", checked: modeChecked, setter: setModeChecked, testId: "frequencies-mode" },
+                    { id: "sum", label: "Sum", checked: sumChecked, setter: setSumChecked, testId: "frequencies-sum" },
+                ].map(({ id, label, checked, setter, testId }) => (
                     <div key={id} className="flex items-center">
                         <Checkbox
+                            data-testid={testId}
                             id={id}
                             className="mr-2"
                             disabled={!showStatistics}
@@ -304,15 +269,16 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             <div id="dispersion-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Dispersion</div>
                 {[
-                    { id: "stddev", label: "Std. deviation", checked: stdDevChecked, setter: setStdDevChecked },
-                    { id: "variance", label: "Variance", checked: varianceChecked, setter: setVarianceChecked },
-                    { id: "range", label: "Range", checked: rangeChecked, setter: setRangeChecked },
-                    { id: "minimum", label: "Minimum", checked: minChecked, setter: setMinChecked },
-                    { id: "maximum", label: "Maximum", checked: maxChecked, setter: setMaxChecked },
-                    { id: "semean", label: "S. E. mean", checked: seMeanChecked, setter: setSeMeanChecked },
-                ].map(({ id, label, checked, setter }) => (
+                    { id: "stddev", label: "Std. deviation", checked: stdDevChecked, setter: setStdDevChecked, testId: "frequencies-stddev" },
+                    { id: "variance", label: "Variance", checked: varianceChecked, setter: setVarianceChecked, testId: "frequencies-variance" },
+                    { id: "range", label: "Range", checked: rangeChecked, setter: setRangeChecked, testId: "frequencies-range" },
+                    { id: "minimum", label: "Minimum", checked: minChecked, setter: setMinChecked, testId: "frequencies-minimum" },
+                    { id: "maximum", label: "Maximum", checked: maxChecked, setter: setMaxChecked, testId: "frequencies-maximum" },
+                    { id: "semean", label: "S. E. mean", checked: seMeanChecked, setter: setSeMeanChecked, testId: "frequencies-semean" },
+                ].map(({ id, label, checked, setter, testId }) => (
                     <div key={id} className="flex items-center">
                         <Checkbox
+                            data-testid={testId}
                             id={id}
                             className="mr-2"
                             disabled={!showStatistics}
@@ -328,11 +294,12 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             <div id="distribution-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Distribution</div>
                 {[
-                    { id: "skewness", label: "Skewness", checked: skewnessChecked, setter: setSkewnessChecked },
-                    { id: "kurtosis", label: "Kurtosis", checked: kurtosisChecked, setter: setKurtosisChecked },
-                ].map(({ id, label, checked, setter }) => (
+                    { id: "skewness", label: "Skewness", checked: skewnessChecked, setter: setSkewnessChecked, testId: "frequencies-skewness" },
+                    { id: "kurtosis", label: "Kurtosis", checked: kurtosisChecked, setter: setKurtosisChecked, testId: "frequencies-kurtosis" },
+                ].map(({ id, label, checked, setter, testId }) => (
                     <div key={id} className="flex items-center">
                         <Checkbox
+                            data-testid={testId}
                             id={id}
                             className="mr-2"
                             disabled={!showStatistics}

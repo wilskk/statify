@@ -454,8 +454,8 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
-                        <TabsTrigger id="aggregate-options-tab-trigger" value="options">Options</TabsTrigger>
+                        <TabsTrigger data-testid="aggregate-variables-tab" value="variables">Variables</TabsTrigger>
+                        <TabsTrigger data-testid="aggregate-options-tab" id="aggregate-options-tab-trigger" value="options">Options</TabsTrigger>
                         {/* <TabsTrigger
                             value="save"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
@@ -548,6 +548,7 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
                         variant="outline"
                         className="mr-2"
                         onClick={handleReset}
+                        data-testid="aggregate-reset-button"
                     >
                         Reset
                     </Button>
@@ -555,11 +556,13 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
                         variant="outline"
                         className="mr-2"
                         onClick={onClose}
+                        data-testid="aggregate-cancel-button"
                     >
                         Cancel
                     </Button>
                     <Button
                         id="aggregate-ok-button"
+                        data-testid="aggregate-ok-button"
                         onClick={() => handleConfirm(closeModal)}
                     >
                         OK
@@ -622,10 +625,10 @@ const Aggregate: FC<AggregateDataProps> = ({ onClose, containerType = "dialog" }
     // For dialog mode, use Dialog and DialogContent
     return (
         <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[650px] p-0">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold text-foreground">Aggregate Data</DialogTitle>
-                    <DialogDescription className="text-sm text-muted-foreground">
+            <DialogContent className="max-w-[650px] p-0" data-testid="aggregate-dialog-content">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0" data-testid="aggregate-dialog-header">
+                    <DialogTitle className="text-[22px] font-semibold text-foreground" data-testid="aggregate-dialog-title">Aggregate Data</DialogTitle>
+                    <DialogDescription className="text-sm text-muted-foreground" data-testid="aggregate-dialog-description">
                         Create summary statistics for variables, grouped by one or more break variables.
                     </DialogDescription>
                 </DialogHeader>

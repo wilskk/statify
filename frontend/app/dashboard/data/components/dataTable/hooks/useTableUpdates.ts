@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useEffect } from 'react';
 import debounce from 'lodash/debounce';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
+import { useStoreMediator } from '@/stores/useStoreMediator';
 import { Variable } from '@/types/Variable';
 import { toast } from '@/hooks/use-toast';
 import Handsontable from 'handsontable';
@@ -10,6 +11,7 @@ import Handsontable from 'handsontable';
 async function handleNewColumns(
   updates: Array<{ row: number; col: number; value: string | number }>,
   currentVariables: Variable[],
+  mediator: any
 ) {
   const addVariablesAction = useVariableStore.getState().addVariables;
 
@@ -47,6 +49,12 @@ async function handleNewColumns(
   try {
     // Pass both the definitions and the data to be applied atomically
     await addVariablesAction(newVariableDefinitions, updates);
+    
+    // Notify mediator of structure change
+    mediator.emit({
+      type: 'STRUCTURE_CHANGED',
+      payload: { source: 'variables' }
+    });
   } catch (error) {
     console.error('Failed to add new variables/columns:', error);
     toast({
@@ -62,12 +70,46 @@ async function handleNewColumns(
  * It handles data validation, type enforcement, and state persistence.
  */
 export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
+    // Use selective subscription to minimize re-renders
     const variables = useVariableStore(state => state.variables);
     const updateCells = useDataStore(state => state.updateCells);
     const updateMultipleFields = useVariableStore(state => state.updateMultipleFields);
+    const mediator = useStoreMediator();
+    
+    // Memoize variable map for performance
+    const variableMap = useMemo(() => 
+        new Map(variables.map(v => [v.columnIndex, v])), 
+        [variables]
+    );
 
-    // Debounced version of updateCells for performance
-    const debouncedUpdateCells = useMemo(() => debounce(updateCells, 200), [updateCells]);
+    // Adaptive debouncing: different delays for single vs bulk operations
+    const pendingUpdatesRef = useRef<Array<{ row: number; col: number; value: any }>>([]);
+    const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
+    const adaptiveUpdateCells = useMemo(() => {
+        return (updates: Array<{ row: number; col: number; value: any }>) => {
+            // Add to pending updates
+            pendingUpdatesRef.current.push(...updates);
+            
+            // Clear existing timeout
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+            
+            // Determine delay based on operation type
+            const isBulkOperation = pendingUpdatesRef.current.length > 5;
+            const delay = isBulkOperation ? 500 : 50; // 50ms for single cell, 500ms for bulk
+            
+            updateTimeoutRef.current = setTimeout(() => {
+                const batchedUpdates = [...pendingUpdatesRef.current];
+                pendingUpdatesRef.current = []; // Clear pending updates
+                
+                if (batchedUpdates.length > 0) {
+                    updateCells(batchedUpdates);
+                }
+            }, delay);
+        };
+    }, [updateCells]);
 
     const handleBeforeChange = useCallback(
         (changes: (Handsontable.CellChange | null)[] | null, source: string): void | boolean => {
@@ -79,7 +121,7 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
                 if (!change) continue;
                 const [, , , newValue] = change;
                 const col = change[1] as number;
-                const variable = variables.find(v => v.columnIndex === col);
+                const variable = variableMap.get(col);
                 
                 if (variable?.type === 'STRING' && newValue && newValue.length > variable.width) {
                     change[3] = newValue.substring(0, variable.width);
@@ -113,8 +155,9 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
          }
  
              try {
-                 const variableMap = new Map<number, Variable>(variables.map(v => [v.columnIndex, v]));
- 
+                 // Batch process changes for better performance
+                 const changeMap = new Map<number, Map<number, any>>();
+                 
                  const validUpdates = changes
                      .filter((change): change is Handsontable.CellChange => !!change && change[2] !== change[3])
                      .map(([row, col, , newValue]) => {
@@ -126,8 +169,11 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
                              if (variable?.values?.length && newValue !== null && newValue !== undefined) {
                                  const sNewValue = String(newValue).trim();
                                  
+                                 // Create label map for O(1) lookup (case-insensitive)
+                                 const labelMap = new Map(variable.values.map(v => [v.label.toLowerCase(), v]));
+                                 
                                  // Attempt to match a label first (case-insensitive)
-                                 const labelMatch = variable.values.find(v => v.label.toLowerCase() === sNewValue.toLowerCase());
+                                 const labelMatch = labelMap.get(sNewValue.toLowerCase());
                                  
                                  if (labelMatch) {
                                      valueToSave = labelMatch.value;
@@ -151,12 +197,12 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
  
                  // Handle new column creation and their initial data atomically
                  if (updatesForNewCols.length > 0) {
-                     await handleNewColumns(updatesForNewCols, variables);
+                     await handleNewColumns(updatesForNewCols, variables, mediator);
                  }
  
-                 // Handle updates for existing columns
+                 // Handle updates for existing columns with adaptive debouncing
                  if (updatesForExistingCols.length > 0) {
-                     debouncedUpdateCells(updatesForExistingCols);
+                     adaptiveUpdateCells(updatesForExistingCols);
                  }
  
              } catch (error) {
@@ -168,11 +214,13 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
                  });
              }
         },
-        [variables, debouncedUpdateCells, viewMode]
+        [variableMap, adaptiveUpdateCells, viewMode, mediator]
     );
 
      const handleAfterColumnResize = useCallback((newSize: number, col: number) => {
-         const variable = variables.find(v => v.columnIndex === col);
+         // Create variable map for O(1) lookup
+         const variableMap = new Map(variables.map(v => [v.columnIndex, v]));
+         const variable = variableMap.get(col);
          if (variable && variable.columns !== newSize) {
              const newWidth = Math.max(20, newSize); 
              updateMultipleFields(variable.name, { columns: newWidth });

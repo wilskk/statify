@@ -18,27 +18,21 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <>
-            <html lang="en" suppressHydrationWarning>
-                <head />
-                <body
-                    className={
-                        "h-full w-full m-0 p-0 grid grid-rows-[auto_1fr_auto] overflow-y-auto"
-                    }
+        <html lang="en" suppressHydrationWarning>
+            <head />
+            <body className="h-full w-full m-0 p-0 grid grid-rows-[auto_1fr_auto] overflow-y-auto">
+                <ThemeProvider
+                    attribute="class"
+                    defaultTheme="light"
+                    enableSystem
+                    disableTransitionOnChange
                 >
-                    <ThemeProvider
-                        attribute="class"
-                        defaultTheme="light"
-                        enableSystem
-                        disableTransitionOnChange
-                    >
-                        <div className="min-h-screen flex flex-col">
-                            <main className="flex-grow">{children}</main>
-                        </div>
-                    </ThemeProvider>
-                    <Toaster position="bottom-right" richColors closeButton />
-                </body>
-            </html>
-        </>
+                    <div className="min-h-screen flex flex-col">
+                        <main className="flex-grow">{children}</main>
+                    </div>
+                </ThemeProvider>
+                <Toaster position="bottom-right" richColors closeButton />
+            </body>
+        </html>
     );
 }

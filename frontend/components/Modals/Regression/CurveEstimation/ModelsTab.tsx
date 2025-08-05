@@ -46,11 +46,11 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
     ];
 
     return (
-        <div className="p-6">
-            <div className="space-y-6">
+        <div className="p-4">
+            <div className="space-y-4">
                 {/* Model Selection */}
-                <div className="border border-[#E6E6E6] rounded-md p-4 bg-white">
-                    <div className="text-sm font-medium mb-3">Model Selection</div>
+                <div className="border border-border rounded-md p-4 bg-background">
+                    <div className="text-sm font-medium mb-3 text-muted-foreground">Model Selection</div>
                     <div className="grid grid-cols-3 gap-2">
                         {availableModels.map((model) => (
                             <div key={model} className="flex items-center">
@@ -59,9 +59,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                                     checked={selectedModels.includes(model)}
                                     onCheckedChange={() => handleModelChange(model)}
                                     disabled={isProcessing}
-                                    className="mr-2 border-[#CCCCCC]"
+                                    className="mr-2"
                                 />
-                                <Label htmlFor={`model-${model}`} className="text-sm cursor-pointer">{model}</Label>
+                                <Label htmlFor={`model-${model}`} className="text-sm font-normal cursor-pointer">{model}</Label>
                             </div>
                         ))}
                     </div>
@@ -75,7 +75,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                                 placeholder="Enter upper bound"
                                 value={upperBound}
                                 onChange={(e) => setUpperBound(e.target.value)}
-                                className="mt-1 h-8 text-sm border-[#CCCCCC]"
+                                className="mt-1 h-8 text-sm"
                                 disabled={isProcessing}
                             />
                         </div>
@@ -83,8 +83,8 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                 </div>
 
                 {/* Options */}
-                <div className="border border-[#E6E6E6] rounded-md p-4 bg-white">
-                    <div className="text-sm font-medium mb-3">Options</div>
+                <div className="border border-border rounded-md p-4 bg-background">
+                    <div className="text-sm font-medium mb-3 text-muted-foreground">Options</div>
 
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -93,9 +93,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                                 checked={includeConstant}
                                 onCheckedChange={(checked) => setIncludeConstant(!!checked)}
                                 disabled={isProcessing}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
-                            <Label htmlFor="includeConstant" className="text-sm cursor-pointer">Include constant in equation</Label>
+                            <Label htmlFor="includeConstant" className="text-sm font-normal cursor-pointer">Include constant in equation</Label>
                         </div>
 
                         <div className="flex items-center">
@@ -104,9 +104,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                                 checked={plotModels}
                                 onCheckedChange={(checked) => setPlotModels(!!checked)}
                                 disabled={isProcessing}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
-                            <Label htmlFor="plotModels" className="text-sm cursor-pointer">Plot models</Label>
+                            <Label htmlFor="plotModels" className="text-sm font-normal cursor-pointer">Plot models</Label>
                         </div>
 
                         <div className="flex items-center">
@@ -115,9 +115,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                                 checked={displayANOVA}
                                 onCheckedChange={(checked) => setDisplayANOVA(!!checked)}
                                 disabled={isProcessing}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
-                            <Label htmlFor="displayANOVA" className="text-sm cursor-pointer">Display ANOVA table</Label>
+                            <Label htmlFor="displayANOVA" className="text-sm font-normal cursor-pointer">Display ANOVA table</Label>
                         </div>
                     </div>
                 </div>

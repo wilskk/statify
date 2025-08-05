@@ -30,6 +30,7 @@ export const ActiveElementHighlight: FC<{active: boolean}> = ({active}) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none"
+      data-testid="tour-element-highlight"
     />
   );
 };
@@ -182,6 +183,7 @@ export const TourPopup: FC<{
           pointerEvents: 'auto'
         }}
         className="popup-tour-fixed"
+        data-testid="tour-popup-container"
       >
         <Card 
           ref={popupRef}
@@ -189,35 +191,36 @@ export const TourPopup: FC<{
             "shadow-lg border-primary/10 dark:border-primary/20 rounded-lg",
             "relative backdrop-blur-sm bg-white/90 dark:bg-gray-800/90"
           )}
+          data-testid="tour-popup-card"
         >
           {getArrowStyles()}
           
-          <CardHeader className="p-3 pb-2 border-b border-primary/10 dark:border-primary/20">
+          <CardHeader className="p-3 pb-2 border-b border-primary/10 dark:border-primary/20" data-testid="tour-popup-header">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {step.icon && <span className="text-lg">{step.icon}</span>}
-                <CardTitle className="text-base font-medium">{step.title}</CardTitle>
+                {step.icon && <span className="text-lg" data-testid="tour-popup-icon">{step.icon}</span>}
+                <CardTitle className="text-base font-medium" data-testid="tour-popup-title">{step.title}</CardTitle>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6 rounded-full hover:bg-primary/10">
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6 rounded-full hover:bg-primary/10" data-testid="tour-popup-close-button">
                 <X className="h-3 w-3" />
               </Button>
             </div>
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className="text-xs text-muted-foreground mt-1" data-testid="tour-popup-step-counter">
               Step {currentStep + 1} of {totalSteps}
             </div>
           </CardHeader>
           
-          <CardContent className="p-3 text-sm">
+          <CardContent className="p-3 text-sm" data-testid="tour-popup-content">
             <div className="flex space-x-2">
               <Info className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-              <p>{step.content}</p>
+              <p data-testid="tour-popup-description">{step.content}</p>
             </div>
           </CardContent>
           
-          <CardFooter className="flex justify-between p-3 pt-2 border-t border-primary/10 dark:border-primary/20">
+          <CardFooter className="flex justify-between p-3 pt-2 border-t border-primary/10 dark:border-primary/20" data-testid="tour-popup-footer">
             <div>
               {currentStep !== 0 && (
-                <Button variant="outline" size="sm" onClick={onPrev} className="h-7 px-2 py-0">
+                <Button variant="outline" size="sm" onClick={onPrev} className="h-7 px-2 py-0" data-testid="tour-popup-prev-button">
                   <ChevronLeft className="mr-1 h-3 w-3" />
                   <span className="text-xs">Previous</span>
                 </Button>
@@ -225,12 +228,12 @@ export const TourPopup: FC<{
             </div>
             <div>
               {currentStep + 1 !== totalSteps ? (
-                <Button size="sm" onClick={onNext} className="h-7 px-2 py-0">
+                <Button size="sm" onClick={onNext} className="h-7 px-2 py-0" data-testid="tour-popup-next-button">
                   <span className="text-xs">Next</span>
                   <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
               ) : (
-                <Button size="sm" onClick={onClose} className="h-7 px-2 py-0 bg-green-600 hover:bg-green-700">
+                <Button size="sm" onClick={onClose} className="h-7 px-2 py-0 bg-green-600 hover:bg-green-700" data-testid="tour-popup-finish-button">
                   <span className="text-xs">Finish</span>
                 </Button>
               )}
@@ -240,4 +243,4 @@ export const TourPopup: FC<{
       </motion.div>
     </TourPopupPortal>
   );
-}; 
+};

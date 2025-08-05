@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import React, { FC, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -8,24 +8,36 @@ const OptionsTab: FC<OptionsTabProps> = ({
     estimateEffectSize,
     setEstimateEffectSize,
     calculateStandardizer,
-    setCalculateStandardizer
+    setCalculateStandardizer,
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = []
 }) => {
+    const isTourElementActive = useCallback((elementId: string) => {
+        if (!tourActive || currentStep >= tourSteps.length) return false;
+        return tourSteps[currentStep]?.targetId === elementId;
+    }, [tourActive, currentStep, tourSteps]);
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-4 border rounded-md p-4">
                 {/* Effect Size Option */}
-                <div className="flex items-center mb-2">
+                <div id="estimate-effect-size-section" className="flex items-center mb-2 relative">
                     <Checkbox
                         id="estimate-effect-size"
                         checked={estimateEffectSize}
                         onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
                         className="mr-2"
+                        disabled
                     />
                     <Label htmlFor="estimate-effect-size">Estimate effect sizes</Label>
+                    {tourActive && isTourElementActive("estimate-effect-size-section") && (
+                        <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                    )}
                 </div>
 
                 {/* Standardizer Options */}
-                <div>
+                <div id="calculate-standardizer-section" className="relative">
                     <Label className="text-sm font-medium mb-2 block">Calculate standardizer using:</Label>
                     <RadioGroup
                         value={
@@ -86,6 +98,9 @@ const OptionsTab: FC<OptionsTabProps> = ({
                             </Label>
                         </div>
                     </RadioGroup>
+                    {tourActive && isTourElementActive("calculate-standardizer-section") && (
+                        <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                    )}
                 </div>
             </div>
         </div>

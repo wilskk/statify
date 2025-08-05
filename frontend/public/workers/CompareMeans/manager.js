@@ -32,27 +32,15 @@ const calculators = {
  * @param {MessageEvent} event - Event pesan yang diterima.
  */
 onmessage = (event) => {
-    const { analysisType, variable, variable1, variable2, data, data1, data2, factorVariable, factorData, groupingVariable, groupingData, options } = event.data;
+    const { analysisType, pair, variable1, variable2, data1, data2, options } = event.data;
     
     // --- Start of Debugging ---
     console.log(`[Worker] Received analysis request: ${analysisType}`);
-    if (variable && data) {
-        console.log('[Worker] Received variable:', JSON.parse(JSON.stringify(variable)));
-        console.log('[Worker] Received data (first 5 rows):', data ? data.slice(0, 5) : 'No data');
-    }
-    if (variable1 && variable2 && data1 && data2) {
-        console.log('[Worker] Received variable1:', JSON.parse(JSON.stringify(variable1)));
+    console.log('[Worker] Received variable1:', JSON.parse(JSON.stringify(variable1)));
+    console.log('[Worker] Received data1 (first 5 rows):', data1 ? data1.slice(0, 5) : 'No data');
+    if (variable2 && data2) {
         console.log('[Worker] Received variable2:', JSON.parse(JSON.stringify(variable2)));
-        console.log('[Worker] Received data1 (first 5 rows):', data1 ? data1.slice(0, 5) : 'No data');
         console.log('[Worker] Received data2 (first 5 rows):', data2 ? data2.slice(0, 5) : 'No data');
-    }
-    if (groupingVariable && groupingData) {
-        console.log('[Worker] Received grouping variable:', JSON.parse(JSON.stringify(groupingVariable)));
-        console.log('[Worker] Received grouping data (first 5 rows):', groupingData ? groupingData.slice(0, 5) : 'No data');
-    }
-    if (factorVariable && factorData) {
-        console.log('[Worker] Received factor variable:', JSON.parse(JSON.stringify(factorVariable)));
-        console.log('[Worker] Received factor data (first 5 rows):', factorData ? factorData.slice(0, 5) : 'No data');
     }
     console.log('[Worker] Received options:', JSON.parse(JSON.stringify(options || {})));
     // --- End of Debugging ---
@@ -69,79 +57,96 @@ onmessage = (event) => {
 
             if (type === 'oneSampleTTest') {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data, 
+                    variable1, 
+                    data1, 
                     options 
                 });
 
-                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                // console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
                 console.log('[Worker] One Sample Statistics Results:', JSON.stringify(calculator.getOutput().oneSampleStatistics));
                 console.log('[Worker] One Sample Test Results:', JSON.stringify(calculator.getOutput().oneSampleTest));
+                results.variable1 = calculator.getOutput().variable1;
                 results.oneSampleStatistics = calculator.getOutput().oneSampleStatistics;
                 results.oneSampleTest = calculator.getOutput().oneSampleTest;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'independentSamplesTTest') {
                 calculator = new CalculatorClass({ 
-                    variable,
-                    groupingVariable,
-                    data,
-                    groupingData,
+                    variable1,
+                    data1,
+                    variable2,
+                    data2,
                     options
                 });
 
-                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                // console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
                 console.log('[Worker] Group Statistics Results:', JSON.stringify(calculator.getOutput().groupStatistics));
                 console.log('[Worker] Independent Samples Test Results:', JSON.stringify(calculator.getOutput().independentSamplesTest));
+                results.variable1 = calculator.getOutput().variable1;
                 results.groupStatistics = calculator.getOutput().groupStatistics;
                 results.independentSamplesTest = calculator.getOutput().independentSamplesTest;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'pairedSamplesTTest') {
                 calculator = new CalculatorClass({ 
+                    pair,
                     variable1, 
-                    variable2, 
+                    variable2,
                     data1, 
                     data2, 
                     options 
                 });
 
-                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                // console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
+                console.log('[Worker] Variable2:', JSON.stringify(calculator.getOutput().variable2));
                 console.log('[Worker] Paired Samples Statistics Results:', JSON.stringify(calculator.getOutput().pairedSamplesStatistics));
                 console.log('[Worker] Paired Samples Correlation Results:', JSON.stringify(calculator.getOutput().pairedSamplesCorrelation));
                 console.log('[Worker] Paired Samples Test Results:', JSON.stringify(calculator.getOutput().pairedSamplesTest));
+                console.log('[Worker] Metadata:', JSON.stringify(calculator.getOutput().metadata));
+                results.variable1 = calculator.getOutput().variable1;
+                results.variable2 = calculator.getOutput().variable2;
                 results.pairedSamplesStatistics = calculator.getOutput().pairedSamplesStatistics;
                 results.pairedSamplesCorrelation = calculator.getOutput().pairedSamplesCorrelation;
                 results.pairedSamplesTest = calculator.getOutput().pairedSamplesTest;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'oneWayAnova') {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data, 
-                    factorVariable,
-                    factorData,
+                    variable1, 
+                    data1, 
+                    variable2,
+                    data2,
                     options 
                 });
 
-                console.log('[Worker] One Way ANOVA Results:', JSON.stringify(calculator.getOutput().oneWayAnova));
-                console.log('[Worker] One Way ANOVA Descriptives Results:', JSON.stringify(calculator.getOutput().descriptives));
-                console.log('[Worker] One Way ANOVA Homogeneity of Variance Results:', JSON.stringify(calculator.getOutput().homogeneityOfVariances));
-                console.log('[Worker] One Way ANOVA Multiple Comparisons Results:', JSON.stringify(calculator.getOutput().multipleComparisons));
-                console.log('[Worker] One Way ANOVA Homogeneous Subsets Results:', JSON.stringify(calculator.getOutput().homogeneousSubsets));
+                console.log('[Worker] Variable1:', JSON.stringify(calculator.getOutput().variable1));
+                // console.log('[Worker] One Way ANOVA Results:', JSON.stringify(calculator.getOutput().oneWayAnova));
+                // console.log('[Worker] One Way ANOVA Descriptives Results:', JSON.stringify(calculator.getOutput().descriptives));
+                // console.log('[Worker] One Way ANOVA Homogeneity of Variance Results:', JSON.stringify(calculator.getOutput().homogeneityOfVariances));
+                // console.log('[Worker] One Way ANOVA Multiple Comparisons Results:', JSON.stringify(calculator.getOutput().multipleComparisons));
+                // console.log('[Worker] One Way ANOVA Homogeneous Subsets Results:', JSON.stringify(calculator.getOutput().homogeneousSubsets));
+                console.log('[Worker] One Way ANOVA Metadata:', JSON.stringify(calculator.getOutput().metadata));
+                results.variable1 = calculator.getOutput().variable1;
                 results.oneWayAnova = calculator.getOutput().oneWayAnova;
                 results.descriptives = calculator.getOutput().descriptives;
                 results.homogeneityOfVariances = calculator.getOutput().homogeneityOfVariances;
                 results.multipleComparisons = calculator.getOutput().multipleComparisons;
                 results.homogeneousSubsets = calculator.getOutput().homogeneousSubsets;
+                results.metadata = calculator.getOutput().metadata;
             } else if (type === 'effectSize') {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data, 
+                    variable1, 
+                    data1, 
                     options 
                 });
             } else {
                 calculator = new CalculatorClass({ 
-                    variable, 
-                    data, 
+                    variable1, 
+                    data1, 
                     options 
                 });
             }
-            console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+            // console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
             console.log('[Worker] Results:', JSON.stringify(results));
         });
 
@@ -155,12 +160,12 @@ onmessage = (event) => {
         } else {
             postMessage({
                 status: 'success',
-                variableName: variable.name || 'unknown',
+                variableName: variable1.name || 'unknown',
                 results: results,
             });
         }
     } catch (error) {
-        console.error(`[Worker] Error dalam worker untuk variabel ${variable?.name || 'unknown'}:`, error);
+        console.error(`[Worker] Error dalam worker untuk variabel ${variable1?.name || 'unknown'}:`, error);
         if (analysisType.includes('pairedSamplesTTest')) {
         postMessage({
                 status: 'error',
@@ -170,7 +175,7 @@ onmessage = (event) => {
         } else {
             postMessage({
                 status: 'error',
-                variableName: variable.name || 'unknown',
+                variableName: variable1.name || 'unknown',
                 error: error.message,
             });
         }

@@ -29,8 +29,8 @@ import {
 } from "lucide-react";
 
 import { useModal, ModalType } from "@/hooks/useModal";
-import { useFileMenuActions } from "@/components/Modals/File/hooks/useFileMenuActions";
-import { useEditMenuActions } from "@/components/Modals/Edit/hooks/useEditMenuActions";
+import { useFileMenuActions } from "@/components/Modals/File/Actions/useFileMenuActions";
+import { useEditMenuActions } from "@/components/Modals/Edit/Actions/useEditMenuActions";
 import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
 import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
 // NOTE: We don't need useMobile *inside* this component,
@@ -71,10 +71,10 @@ const HamburgerMenu: React.FC = () => {
   const { handleAction: handleEditAction } = useEditMenuActions();
 
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background">
+    <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background" data-testid="mobile-header">
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="sm" className="px-1.5 hover:bg-accent">
+          <Button variant="ghost" size="sm" className="px-1.5 hover:bg-accent" data-testid="hamburger-menu-trigger">
             <MenuIcon className="h-5 w-5 text-foreground" />
             <span className="sr-only">Open Menu</span>
           </Button>
@@ -82,6 +82,7 @@ const HamburgerMenu: React.FC = () => {
         <SheetContent
           side="left"
           className="overflow-y-auto w-[85vw] sm:w-[300px] p-0 border-r border-border bg-background"
+          data-testid="mobile-menu-content"
         >
           <SheetHeader className="px-4 py-3 border-b border-border">
             <SheetTitle className="text-sm font-medium text-foreground">
@@ -92,9 +93,9 @@ const HamburgerMenu: React.FC = () => {
             </SheetDescription>
           </SheetHeader>
           <div className="py-1 overflow-y-auto">
-            <Accordion type="multiple" className="w-full">
+            <Accordion type="multiple" className="w-full" data-testid="mobile-menu-accordion">
               {/* --- File Accordion Item --- */}
-              <AccordionItem value="file" className="border-b border-border">
+              <AccordionItem value="file" className="border-b border-border" data-testid="mobile-file-menu">
                 <AccordionTrigger className="px-4 py-2 text-sm font-medium text-foreground hover:text-foreground hover:bg-accent bg-background">
                   <div className="flex items-center">
                     <FileIcon className="h-4 w-4 mr-2 text-muted-foreground" />

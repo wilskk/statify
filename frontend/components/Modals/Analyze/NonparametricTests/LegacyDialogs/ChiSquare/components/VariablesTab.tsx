@@ -1,6 +1,4 @@
-import React, { FC, useCallback, useState } from "react";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import React, { FC, useCallback } from "react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { Variable } from "@/types/Variable";
@@ -19,22 +17,15 @@ const VariablesTab: FC<VariablesTabProps> = ({
     tourSteps = [],
 }) => {
     const variableIdKeyToUse: keyof Variable = 'tempId';
-    const [allowUnknown, setAllowUnknown] = useState(false);
 
     const getDisplayName = (variable: Variable) => {
         if (!variable.label) return variable.name;
         return `${variable.label} [${variable.name}]`;
     };
 
-    const isVariableDisabled = useCallback((variable: Variable): boolean => {   
-        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
-                                (variable.measure === 'scale' || variable.measure === 'ordinal');
-        
-        if (isNormallyValid) return false;
-        if (variable.measure === 'unknown') return !allowUnknown;
-        
-        return true;
-    }, [allowUnknown]);
+    const isVariableDisabled = useCallback((variable: Variable): boolean => {
+        return variable.type !== 'NUMERIC';
+    }, []);
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         if (sourceListId === 'available' && isVariableDisabled(variable)) {
@@ -92,23 +83,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return tourSteps[currentStep]?.targetId === elementId;
     }, [tourActive, currentStep, tourSteps]);
 
-
-    const renderAllowUnknown = () => (
-        <>
-            <div className="flex items-center mt-2 p-1.5">
-                <Checkbox
-                    id="allowUnknown"
-                    checked={allowUnknown}
-                    onCheckedChange={(checked: boolean) => setAllowUnknown(checked)}
-                    className="mr-2 h-4 w-4"
-                />
-                <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                    Treat &apos;unknown&apos; as Scale and allow selection
-                </Label>
-            </div>
-        </>
-    );
-
     return (
         <div className="space-y-2">
             <VariableListManager
@@ -123,7 +97,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 getDisplayName={getDisplayName}
                 isVariableDisabled={isVariableDisabled}
                 showArrowButtons={true}
-                renderExtraInfoContent={renderAllowUnknown}
             />
 
             <div id="chi-square-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">

@@ -61,6 +61,7 @@ export interface VariablesTabProps {
   availableVariables: Variable[];
   testVariables1: Variable[];
   testVariables2: Variable[];
+  pairNumbers: number[];
   highlightedPair: HighlightedPair | null;
   setHighlightedPair: Dispatch<SetStateAction<HighlightedPair | null>>;
   highlightedVariable: HighlightedVariable | null;
@@ -103,6 +104,7 @@ export interface VariableSelectionProps {
 export interface PairedSamplesTTestAnalysisProps extends Pick<BaseModalProps, 'onClose'> {
   testVariables1: Variable[];
   testVariables2: Variable[];
+  pairNumbers: number[];
   calculateStandardizer: CalculateStandardizer;
   estimateEffectSize: boolean;
   areAllPairsValid: () => boolean;
@@ -145,10 +147,10 @@ export interface PairedSamplesStatistics {
 
 // PairedSamplesCorrelation
 export interface PairedSamplesCorrelation {
-  Label: String;
+  correlationLabel: String;
   N: number;
   Correlation: number;
-  PValue: number;
+  correlationPValue: number;
 }
 
 // PairedSamplesTestStatistics
@@ -168,16 +170,20 @@ export interface PairedSamplesTest {
 export interface PairedSamplesTTestResult {
   variable1: Variable;
   variable2: Variable;
+  pair: number;
+  metadata: {
+    pair: number,
+    hasInsufficientData: boolean,
+    totalData1: number,
+    validData1: number,
+    totalData2: number,
+    validData2: number,
+    variable1Name: string,
+    variable2Name: string
+  };
   pairedSamplesStatistics?: PairedSamplesStatistics;
   pairedSamplesCorrelation?: PairedSamplesCorrelation;
   pairedSamplesTest?: PairedSamplesTest;
-}
-  
-// PairedSamplesTTestResults
-export interface PairedSamplesTTestResults {
-  pairedSamplesStatistics?: PairedSamplesTTestResult[];
-  pairedSamplesCorrelation?: PairedSamplesTTestResult[];
-  pairedSamplesTest?: PairedSamplesTTestResult[];
 }
   
 // ---------------------------------

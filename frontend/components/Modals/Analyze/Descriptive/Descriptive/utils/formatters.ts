@@ -1,12 +1,25 @@
-import { DescriptiveStatisticsOptions, DisplayOrderType, DescriptiveResult, DescriptiveStats } from '../types';
+import type { DescriptiveResult, DescriptiveStatisticsOptions, DisplayOrderType } from '../types';
 import { spssDateTypes } from '@/types/Variable';
 import { spssSecondsToDateString } from '@/lib/spssDateConverter';
-import type { TableRow, TableColumnHeader } from '../types';
+
+// Konstanta untuk precision yang konsisten
+const STATS_DECIMAL_PLACES = 2;
 
 export interface DescriptiveTable {
   title: string;
   columnHeaders: TableColumnHeader[];
   rows: TableRow[];
+}
+
+export interface TableColumnHeader {
+  header: string;
+  key?: string;
+  children?: TableColumnHeader[];
+}
+
+export interface TableRow {
+  rowHeader: string[];
+  [key: string]: any;
 }
 
 /**
@@ -53,18 +66,18 @@ export const formatDescriptiveTable = (results: DescriptiveResult[]): any => {
             const row: TableRow = {
                 rowHeader: [result.variable.label || result.variable.name],
                 N_Statistic: stats.N,
-                Range_Statistic: stats.Range?.toFixed(2),
-                Minimum_Statistic: stats.Minimum?.toFixed(2),
-                Maximum_Statistic: stats.Maximum?.toFixed(2),
-                Sum_Statistic: stats.Sum?.toFixed(2),
-                Mean_Statistic: stats.Mean?.toFixed(4),
-                Mean_StdError: stats.SEMean?.toFixed(5),
-                StdDeviation_Statistic: stats.StdDev?.toFixed(5),
-                Variance_Statistic: stats.Variance?.toFixed(3),
-                Skewness_Statistic: stats.Skewness?.toFixed(3),
-                Skewness_StdError: stats.SESkewness?.toFixed(3),
-                Kurtosis_Statistic: stats.Kurtosis?.toFixed(3),
-                Kurtosis_StdError: stats.SEKurtosis?.toFixed(3),
+                Range_Statistic: stats.Range?.toFixed(STATS_DECIMAL_PLACES),
+                Minimum_Statistic: stats.Minimum?.toFixed(STATS_DECIMAL_PLACES),
+                Maximum_Statistic: stats.Maximum?.toFixed(STATS_DECIMAL_PLACES),
+                Sum_Statistic: stats.Sum?.toFixed(STATS_DECIMAL_PLACES),
+                Mean_Statistic: stats.Mean?.toFixed(STATS_DECIMAL_PLACES),
+                Mean_StdError: stats.SEMean?.toFixed(STATS_DECIMAL_PLACES),
+                StdDeviation_Statistic: stats.StdDev?.toFixed(STATS_DECIMAL_PLACES),
+                Variance_Statistic: stats.Variance?.toFixed(STATS_DECIMAL_PLACES),
+                Skewness_Statistic: stats.Skewness?.toFixed(STATS_DECIMAL_PLACES),
+                Skewness_StdError: stats.SESkewness?.toFixed(STATS_DECIMAL_PLACES),
+                Kurtosis_Statistic: stats.Kurtosis?.toFixed(STATS_DECIMAL_PLACES),
+                Kurtosis_StdError: stats.SEKurtosis?.toFixed(STATS_DECIMAL_PLACES),
             };
             return row;
         });
@@ -141,23 +154,25 @@ export function formatDescriptiveTableOld(
     columnHeaders.push({ header: "Kurtosis", children: kurtChildren });
   }
 
-  // 2. Urutkan Data
+  // ------------------------------------------------------------------
+  // 2. Sort data based on display order
+  // ------------------------------------------------------------------
   const sortedStats = [...data].sort((a, b) => {
-    if (displayOrder === 'alphabetic') return a.variable.name.localeCompare(b.variable.name);
-    if (displayOrder === 'mean' || displayOrder === 'ascendingMeans') {
-        const meanA = typeof a.stats.Mean === 'number' ? a.stats.Mean : Infinity;
-        const meanB = typeof b.stats.Mean === 'number' ? b.stats.Mean : Infinity;
-        return meanA - meanB;
+    switch (displayOrder) {
+      case 'alphabetic':
+        return (a.variable.label || a.variable.name).localeCompare(b.variable.label || b.variable.name);
+      case 'mean':
+        return (a.stats?.Mean || 0) - (b.stats?.Mean || 0);
+      case 'descendingMeans':
+        return (b.stats?.Mean || 0) - (a.stats?.Mean || 0);
+      default: // 'variableList' - maintain original order
+        return 0;
     }
-    if (displayOrder === 'descendingMeans') {
-        const meanA = typeof a.stats.Mean === 'number' ? a.stats.Mean : -Infinity;
-        const meanB = typeof b.stats.Mean === 'number' ? b.stats.Mean : -Infinity;
-        return meanB - meanA;
-    }
-    return 0; // default (variableList)
   });
 
+  // ------------------------------------------------------------------
   // 3. Buat Baris Tabel
+  // ------------------------------------------------------------------
   const rows: TableRow[] = sortedStats.map(({ variable, stats }) => {
     let headerText = variable.label || variable.name;
     if (headerText.length > 50) { // Truncate long labels
@@ -165,7 +180,7 @@ export function formatDescriptiveTableOld(
     }
     const row: TableRow = { rowHeader: [headerText] };
     const isDateType = variable.type ? spssDateTypes.has(variable.type) : false;
-    const decimals = variable.decimals;
+    const decimals = STATS_DECIMAL_PLACES; // Use consistent decimal places
 
     // Fungsi helper untuk memformat nilai
     const format = (value: number | null | undefined, formatAs: 'date' | 'number') => {
@@ -199,9 +214,13 @@ export function formatDescriptiveTableOld(
       row.Kurtosis = format(stats.Kurtosis, 'number');
       row.SEKurtosis = format(stats.SEKurtosis, 'number');
     }
-
+    
     return row;
   });
 
-  return { title: "Descriptive Statistics", columnHeaders, rows };
+  return {
+    title: "Descriptive Statistics",
+    columnHeaders: columnHeaders,
+    rows: rows,
+  };
 } 

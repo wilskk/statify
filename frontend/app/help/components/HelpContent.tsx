@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { HelpLayout } from "../ui/HelpLayout";
 
 // Recursive type for nested sections
 export type SectionItem = {
@@ -332,11 +332,9 @@ export const HelpContent: React.FC<HelpContentProps> = ({
 				</div>
 
 				<div className="max-w-4xl mx-auto px-4 py-6 lg:px-8">
-					<Card className="border shadow-sm">
-						<CardContent className="p-6 lg:p-8">
-							{renderContent()}
-						</CardContent>
-					</Card>
+					<HelpLayout title={selectedSectionKey}>
+						{renderContent()}
+					</HelpLayout>
 
 					{/* Quick navigation section */}
 					<div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-border pt-4">

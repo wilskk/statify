@@ -1,28 +1,73 @@
-# Fitur: Dataset Contoh (Example Dataset)
+# Fitur: Dataset Contoh
 
-Dokumen ini menguraikan fungsionalitas fitur "Dataset Contoh", yang menyediakan akses mudah ke kumpulan data sampel untuk pengguna.
+# Example Dataset Modal
 
-## 1. Gambaran Umum
+Komponen ini menyediakan modal yang memungkinkan pengguna memuat dataset contoh berformat `.sav`. Tujuannya adalah memfasilitasi pengguna baru agar dapat langsung mencoba fitur analisis tanpa perlu menyiapkan file data sendiri.
 
-Fitur ini dirancang untuk memungkinkan pengguna, terutama yang baru, agar dapat segera memulai eksplorasi dan analisis tanpa perlu menyediakan file data mereka sendiri. Sebuah modal menampilkan daftar dataset `.sav` yang telah disiapkan sebelumnya, yang dapat dimuat ke dalam aplikasi hanya dengan satu klik.
+## Logika & Alur Kerja
 
-## 2. Komponen Antarmuka & Fungsionalitas
+Logika utama komponen ini diatur dalam *custom hook* `useExampleDatasetLogic.ts` untuk memisahkan logika bisnis dari antarmuka pengguna (UI) yang didefinisikan di `index.tsx`. Alur kerja dimulai saat pengguna memilih sebuah dataset, yang kemudian memicu serangkaian proses untuk memuat, memproses, dan mengintegrasikan data ke dalam state global aplikasi menggunakan Zustand.
 
--   **Header**: Menampilkan judul "Example Data" dan deskripsi singkat, memberikan konteks kepada pengguna.
--   **Daftar Dataset**: Komponen utama yang menampilkan serangkaian tombol. Setiap tombol mewakili satu file dataset contoh (`.sav`), menampilkan nama filenya dengan jelas.
--   **Indikator Loading**: Saat sebuah dataset sedang diproses, sebuah overlay dengan ikon pemuatan (`Loader2`) akan muncul, menonaktifkan interaksi lebih lanjut hingga proses selesai.
--   **Pesan Error**: Jika terjadi kesalahan selama proses pengambilan atau pemrosesan file, sebuah `Alert` akan ditampilkan di bagian atas, menjelaskan masalah yang terjadi.
--   **Tombol Cancel**: Sebuah tombol di bagian footer yang memungkinkan pengguna untuk menutup modal tanpa memuat dataset apa pun.
+Berikut adalah diagram alur kerja yang menggambarkan proses tersebut:
 
-## 3. Alur Kerja & Logika
+```mermaid
+flowchart TD
+    A([Start: User selects dataset]) --> B[Call loadDataset function]
+    B --> C[Set isLoading to true]
+    C --> D[Reset data in Zustand store]
+    D --> E[Call processSavFileFromUrl]
+    E --> F{Success?}
+    F -- Yes --> G[Process response with processSavApiResponse]
+    G --> H[Save variables and data to Zustand store]
+    H --> I[Close modal]
+    I --> Z([End])
 
-1.  **Inisiasi**: Pengguna membuka modal "Dataset Contoh".
-2.  **Pemilihan**: Pengguna mengklik salah satu tombol dataset dari daftar.
-3.  **Aksi `loadDataset`**: Fungsi `loadDataset` dari hook `useExampleDatasetLogic` dipanggil dengan path file yang dipilih.
-4.  **Pengambilan File**: Logika di dalam `services.ts` melakukan `fetch` ke path publik dari file yang dipilih (misalnya, `/exampleData/accidents.sav`).
-5.  **Pengiriman ke Backend**: File yang telah diambil kemudian dibungkus dalam `FormData` dan dikirim ke endpoint API backend yang sama dengan yang digunakan untuk unggahan file manual. Ini memastikan logika pemrosesan file terpusat di backend.
-6.  **Pembaruan State**: Setelah backend mengembalikan data yang telah diproses (variabel, matriks data, dan metadata), state global aplikasi (Zustand stores: `useVariableStore`, `useDataStore`, `useMetaStore`) di-overwrite dengan data baru.
-7.  **Selesai**: Setelah data berhasil dimuat, modal secara otomatis ditutup (`onClose()`), dan pengguna akan melihat data yang baru dimuat di grid utama.
+    F -- No --> J[Capture and display error message]
+    J --> Z
+
+    classDef ui fill:#cde4ff,stroke:#5a96e6,color:#000
+    classDef logic fill:#d5e8d4,stroke:#82b366,color:#000
+    classDef data fill:#fff2cc,stroke:#d6b656,color:#000
+    classDef end fill:#ffcccc,stroke:#ff6666,color:#000
+
+    A:::ui
+    B:::logic
+    C:::ui
+    D:::data
+    E:::logic
+    F:::logic
+    G:::logic
+    H:::data
+    I:::ui
+    J:::ui
+    Z:::end
+
+    subgraph Legend
+        direction TB
+        subgraph Types
+            direction LR
+            ui_node([UI/Interaction]):::ui
+            logic_node{Logic/Hook}:::logic
+            data_node[Data/Store]:::data
+        end
+    end
+```
+
+### Penjelasan Alur
+
+1.  **Inisiasi (UI)**: Pengguna memilih salah satu dataset dari daftar yang ditampilkan oleh komponen `ExampleDatasetModal` (`index.tsx`).
+2.  **Panggilan Logika (Hook)**: Aksi ini memanggil fungsi `loadDataset` dari *hook* `useExampleDatasetLogic.ts`.
+3.  **Manajemen State (Zustand)**: *Hook* segera mengatur state `isLoading` menjadi `true` dan membersihkan data sebelumnya dari *store* Zustand (`useDataStore`, `useVariableStore`) untuk mencegah inkonsistensi.
+4.  **Service Layer**: Fungsi `processSavFileFromUrl` dari `services/services.ts` dipanggil untuk mengambil file `.sav` dari lokasinya di direktori `public` dan memprosesnya.
+5.  **Parsing & Integrasi (Zustand)**: Jika berhasil, respons dari *service* akan di-parse oleh `processSavApiResponse` untuk mengekstrak variabel, matriks data, dan metadata. Data yang bersih ini kemudian disimpan ke dalam *store* Zustand.
+6.  **Feedback (UI)**: Setelah data berhasil terintegrasi, modal akan ditutup. Jika terjadi kegagalan, pesan *error* akan disimpan dalam *state* dan ditampilkan kepada pengguna.
+7.  **Finalisasi**: State `isLoading` diatur kembali ke `false` setelah proses selesai, baik berhasil maupun gagal.
+
+### Komponen Pendukung
+
+-   **`index.tsx`**: Bertanggung jawab untuk me-render UI, termasuk daftar file dan filter tag.
+-   **`example-datasets.ts`**: Menyediakan daftar statis dataset contoh, termasuk metadata seperti nama dan tag.
+-   **`types.ts`**: Mendefinisikan struktur data untuk memastikan *type safety*.
 
 ## 4. Rencana Pengembangan di Masa Depan
 

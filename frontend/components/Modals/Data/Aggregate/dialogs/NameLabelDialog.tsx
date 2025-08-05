@@ -10,13 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+import { useMobile } from '@/hooks/useMobile';
 
 interface NameLabelDialogProps {
     open: boolean;
@@ -39,41 +33,31 @@ const NameLabelDialog: React.FC<NameLabelDialogProps> = ({
     setNewVariableLabel,
     onApply
 }) => {
+    const { isMobile } = useMobile();
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent 
-                className="w-full p-0 border border-border rounded-md"
-                style={{ 
-                    maxWidth: "450px",
+            <DialogContent
+                className="w-full p-0 border border-border rounded-md shadow-lg"
+                style={{
+                    maxWidth: isMobile ? "95vw" : "480px",
                     width: "100%",
-                    maxHeight: "400px",
+                    maxHeight: isMobile ? "100vh" : "65vh",
                     display: "flex",
                     flexDirection: "column",
                     overflow: "hidden"
                 }}
             >
-                <div className="px-3 py-2 flex-shrink-0">
+                <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
                     <DialogHeader className="p-0">
-                        <DialogTitle className="text-sm font-semibold flex items-center">
-                            <span>Aggregate Data: Variable Name</span>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
-                                            <HelpCircle size={14} />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p className="text-xs">Set name and label for the new aggregated variable.</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                        <DialogTitle className="text-base font-semibold">
+                            Aggregate Data: Variable Name
                         </DialogTitle>
                     </DialogHeader>
                 </div>
                 <Separator className="flex-shrink-0" />
-                <div className="p-3 flex-grow overflow-y-auto">
-                    <div className="text-center mb-3 text-xs bg-muted/50 p-2 rounded-md font-mono">
+                <div className="flex-grow overflow-y-auto p-3">
+                    <div className="text-center mb-4 text-xs bg-muted/50 p-2 rounded-md font-mono">
                         {currentEditingVariable && (() => {
                             const func = currentEditingVariable.calculationFunction || currentEditingVariable.function;
                             let displayFormula;
@@ -92,36 +76,35 @@ const NameLabelDialog: React.FC<NameLabelDialogProps> = ({
                         })()}
                     </div>
 
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <Label htmlFor="name" className="text-xs whitespace-nowrap min-w-12">Name:</Label>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
+                            <Label htmlFor="name" className="text-sm text-right">Name:</Label>
                             <Input
                                 id="name"
                                 value={newVariableName}
                                 onChange={(e) => setNewVariableName(e.target.value)}
-                                className="h-7 text-xs"
+                                className="h-7 text-sm w-full"
+                                placeholder="Enter variable name"
                             />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Label htmlFor="label" className="text-xs whitespace-nowrap min-w-12">Label:</Label>
+                            <Label htmlFor="label" className="text-sm text-right">Label:</Label>
                             <Input
                                 id="label"
                                 value={newVariableLabel}
                                 onChange={(e) => setNewVariableLabel(e.target.value)}
-                                className="h-7 text-xs"
+                                className="h-7 text-sm w-full"
+                                placeholder="Enter variable label (optional)"
                             />
                         </div>
                     </div>
                 </div>
                 <Separator className="flex-shrink-0" />
-                <DialogFooter className="px-3 py-2 flex-shrink-0">
+                <DialogFooter className="px-4 py-2 flex-shrink-0 bg-muted/30">
                     <div className="flex gap-2 ml-auto">
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onOpenChange(false)}>
+                        <Button variant="outline" size="sm" className="h-7 text-sm" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
-                        <Button size="sm" className="h-7 text-xs" onClick={onApply}>
-                            Continue
+                        <Button size="sm" className="h-7 text-sm" onClick={onApply}>
+                            OK
                         </Button>
                     </div>
                 </DialogFooter>

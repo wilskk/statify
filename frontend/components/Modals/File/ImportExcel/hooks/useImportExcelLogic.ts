@@ -20,11 +20,10 @@ export const useImportExcelLogic = ({
         if (selectedFile) {
             setFile(selectedFile);
             setFileName(selectedFile.name);
-            setError(null); // Clear previous errors on new file selection
+            setError(null);
         } else {
             setFile(null);
             setFileName("");
-            // Optionally clear error if you want: setError(null);
         }
     }, []);
 
@@ -52,15 +51,11 @@ export const useImportExcelLogic = ({
     const handleBackToSelect = useCallback(() => {
         setStage("select");
         setParsedSheets(null);
-        // Clear file to allow re-selection if needed, or keep it if user might go back and forth
-        // setFile(null);
-        // setFileName("");
-        setError(null); // Clear errors when going back
+        setError(null);
     }, []);
 
     const handleModalClose = useCallback(() => {
         onClose();
-        // Reset state if modal is closed completely
         setFile(null);
         setParsedSheets(null);
         setFileName("");

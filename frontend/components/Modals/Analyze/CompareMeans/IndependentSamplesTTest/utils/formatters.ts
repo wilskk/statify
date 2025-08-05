@@ -1,11 +1,10 @@
 import {
-    IndependentSamplesTTestResults,
     IndependentSamplesTTestTable,
     TableColumnHeader,
     TableRow,
     GroupStatistics,
     IndependentSamplesTest,
-    IndependentSamplesEffectSizeStatistics,
+    IndependentSamplesTTestResult,
 } from '../types';
 
 /**
@@ -15,10 +14,10 @@ import {
  * @returns Formatted table
  */
 export function formatGroupStatisticsTable(
-    results: IndependentSamplesTTestResults,
+    results: IndependentSamplesTTestResult[],
     groupingVariableLabel: string
 ): IndependentSamplesTTestTable {
-    if (!results || !results.groupStatistics || results.groupStatistics.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Group Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -42,26 +41,26 @@ export function formatGroupStatisticsTable(
     };
 
     // Process each result
-    results.groupStatistics.forEach((result) => {
-        const stats = result.stats as GroupStatistics;
-        const decimals = result.variable.decimals || 2;
+    results.forEach((result) => {
+        const stats = result.groupStatistics as GroupStatistics;
+        const decimals = result.variable1?.decimals;
 
         table.rows.push(
-            {
-                rowHeader: [result.variable.name],
+            {   
+                rowHeader: [result.variable1?.name],
                 label: stats.group1.label,
                 N: stats.group1.N,
-                Mean: formatNumber(stats.group1.Mean, decimals + 3),
-                StdDev: formatNumber(stats.group1.StdDev, decimals + 3),
-                SEMean: formatNumber(stats.group1.SEMean, decimals + 3)
+                Mean: formatNumber(stats.group1.Mean, decimals! + 2),
+                StdDev: formatNumber(stats.group1.StdDev, decimals! + 3),
+                SEMean: formatNumber(stats.group1.SEMean, decimals! + 3)
             },
             {
-                rowHeader: [result.variable.name],
+                rowHeader: [result.variable1?.name],
                 label: stats.group2.label,
                 N: stats.group2.N,
-                Mean: formatNumber(stats.group2.Mean, decimals + 3),
-                StdDev: formatNumber(stats.group2.StdDev, decimals + 3),
-                SEMean: formatNumber(stats.group2.SEMean, decimals + 3)
+                Mean: formatNumber(stats.group2.Mean, decimals! + 2),
+                StdDev: formatNumber(stats.group2.StdDev, decimals! + 3),
+                SEMean: formatNumber(stats.group2.SEMean, decimals! + 3)
             }
         );
     });
@@ -75,9 +74,9 @@ export function formatGroupStatisticsTable(
  * @returns Formatted table
  */
 export function formatIndependentSamplesTestTable (
-    results: IndependentSamplesTTestResults
+    results: IndependentSamplesTTestResult[]
 ): IndependentSamplesTTestTable {
-    if (!results || !results.independentSamplesTest || results.independentSamplesTest.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "No Data",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -122,36 +121,42 @@ export function formatIndependentSamplesTestTable (
     };
 
     // Process each result
-    results.independentSamplesTest.forEach((result) => {
-        const stats = result.stats as IndependentSamplesTest;
-        const decimals = result.variable.decimals || 2;
+    results.forEach((result) => {
+        if (result.metadata && result.metadata.hasInsufficientData && (result.metadata.insufficientType.includes('empty') || result.metadata.insufficientType.includes('stdDev'))) {
+            return;
+        }
+
+        const stats = result.independentSamplesTest as IndependentSamplesTest;
+        const decimals = result.variable1?.decimals;
         
         table.rows.push(
             {
-                rowHeader: [result.variable.name],
+                rowHeader: [result.variable1?.name],
                 type: 'Equal variances assumed',
-                FL: formatNumber(stats.levene.F, decimals + 3),
+                FL: formatNumber(stats.levene.F, decimals! + 3),
                 SigL: formatPValue(stats.levene.Sig),
-                T: formatNumber(stats.equalVariances.t, decimals + 3),
+                T: formatNumber(stats.equalVariances.t, decimals! + 3),
                 DF: formatDF(stats.equalVariances.df),
                 Sig2tailed: formatPValue(stats.equalVariances.sig),
-                MeanDifference: formatNumber(stats.equalVariances.meanDifference, decimals + 3),
-                StdErrorDifference: formatNumber(stats.equalVariances.stdErrorDifference, decimals + 3),
-                Lower: formatNumber(stats.equalVariances.confidenceInterval.lower, decimals + 3),
-                Upper: formatNumber(stats.equalVariances.confidenceInterval.upper, decimals + 3)
+                MeanDifference: formatNumber(stats.equalVariances.meanDifference, decimals! + 3),
+                StdErrorDifference: formatNumber(stats.equalVariances.stdErrorDifference, decimals! + 3),
+                Lower: formatNumber(stats.equalVariances.confidenceInterval.lower, decimals! + 3),
+                Upper: formatNumber(stats.equalVariances.confidenceInterval.upper, decimals! + 3)
             },
             {
-                rowHeader: [result.variable.name],
+                rowHeader: [result.variable1?.name],
                 type: 'Equal variances not assumed',
                 FL: '',
                 SigL: '',
-                T: formatNumber(stats.unequalVariances.t, decimals + 3),
+                T: formatNumber(stats.unequalVariances.t, decimals! + 3),
                 DF: formatDF(stats.unequalVariances.df),
                 Sig2tailed: formatPValue(stats.unequalVariances.sig),
-                MeanDifference: formatNumber(stats.unequalVariances.meanDifference, decimals + 3),
-                StdErrorDifference: formatNumber(stats.unequalVariances.stdErrorDifference, decimals + 3),
-                Lower: formatNumber(stats.unequalVariances.confidenceInterval.lower, decimals + 3),
-                Upper: formatNumber(stats.unequalVariances.confidenceInterval.upper, decimals + 3)
+                MeanDifference: formatNumber(stats.unequalVariances.meanDifference, decimals! + 3),
+                StdErrorDifference: stats.unequalVariances.stdErrorDifference === 0
+                    ? ''
+                    : formatNumber(stats.unequalVariances.stdErrorDifference, decimals! + 3),
+                Lower: formatNumber(stats.unequalVariances.confidenceInterval.lower, decimals! + 3),
+                Upper: formatNumber(stats.unequalVariances.confidenceInterval.upper, decimals! + 3)
             }
         );
     });
@@ -166,7 +171,7 @@ export function formatIndependentSamplesTestTable (
  * @returns Formatted number
  */
 export const formatNumber = (value: number | null | undefined, precision: number) => {
-    if (value === null || value === undefined) return null;
+    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) return '';
     return value.toFixed(precision);
 };
 
@@ -176,7 +181,7 @@ export const formatNumber = (value: number | null | undefined, precision: number
  * @returns Formatted p-value
  */
 export const formatPValue = (pValue: number | null | undefined) => {
-    if (pValue === null || pValue === undefined) return null;
+    if (pValue === null || pValue === undefined || isNaN(pValue) || !isFinite(pValue)) return '';
     
     if (pValue < 0.001) {
         return '<.001';
@@ -191,19 +196,10 @@ export const formatPValue = (pValue: number | null | undefined) => {
  * @returns Formatted degrees of freedom
  */
 export const formatDF = (df: number | null | undefined) => {
-    if (df === null || df === undefined) return null;
+    if (df === null || df === undefined || isNaN(df) || !isFinite(df)) return '';
     if (Number.isInteger(df)) {
         return df;
     } else {
         return df.toFixed(3);
     }
-};
-
-/**
- * Formats error message
- * @param error Error message
- * @returns Formatted error message
- */
-export const formatErrorMessage = (error: string): string => {
-    return `Error: ${error}`;
 };

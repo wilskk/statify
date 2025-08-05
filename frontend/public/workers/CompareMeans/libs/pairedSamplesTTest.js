@@ -18,8 +18,9 @@ class PairedSamplesTTestCalculator {
      * @param {Array<any>} params.data2 - Data array for the second variable.
      * @param {object} params.options - Additional options from the main thread.
      */
-    constructor({ variable1, data1, variable2, data2, options = {} }) {
+    constructor({ pair, variable1, data1, variable2, data2, options = {} }) {
         console.log('PairedSamplesTTestCalculator constructor');
+        this.pair = pair;
         this.variable1 = variable1;
         this.data1 = data1;
         this.variable2 = variable2;
@@ -132,6 +133,14 @@ class PairedSamplesTTestCalculator {
         return sumSq / (arr.length - 1);
     }
 
+    #meanDiff() {
+        return this.#mean(this.differences);
+    }
+
+    #stdDevDiff() {
+        return this.#stdDev(this.differences, this.#meanDiff());
+    }
+
     /**
      * Calculate covariance between two arrays
      * @param {Array<number>} arr1 - First array
@@ -173,8 +182,6 @@ class PairedSamplesTTestCalculator {
         // Validate input
         if (this.N === 0) {
             const result = {
-                variable1: this.variable1,
-                variable2: this.variable2,
                 group1: {
                     label: this.variable1.label || this.variable1.name,
                     N: 0,
@@ -193,19 +200,38 @@ class PairedSamplesTTestCalculator {
             this.memo.statistics = result;
             return result;
         }
+        
 
         // Calculate statistics for each variable
         const mean1 = this.#mean(this.validData1);
+        const mean2 = this.#mean(this.validData2);
+
+        if (this.N <= 1) {
+            const result = {
+                group1: {
+                    label: this.variable1.label || this.variable1.name,
+                    N: this.N,
+                    Mean: mean1,
+                    StdDev: 0,
+                    SEMean: 0
+                },
+                group2: {
+                    label: this.variable2.label || this.variable2.name,
+                    N: this.N,
+                    Mean: mean2,
+                    StdDev: 0,
+                    SEMean: 0
+                }
+            };
+            this.memo.statistics = result;
+            return result;
+        }
         const stdDev1 = this.#stdDev(this.validData1, mean1);
         const stdErr1 = this.#stdError(stdDev1, this.N);
-
-        const mean2 = this.#mean(this.validData2);
         const stdDev2 = this.#stdDev(this.validData2, mean2);
         const stdErr2 = this.#stdError(stdDev2, this.N);
 
         const result = {
-            variable1: this.variable1,
-            variable2: this.variable2,
             group1: {
                 label: this.variable1.label || this.variable1.name,
                 N: this.N,
@@ -237,12 +263,10 @@ class PairedSamplesTTestCalculator {
         // Validate input
         if (this.N === 0) {
             const result = {
-                variable1: this.variable1,
-                variable2: this.variable2,
-                Label: label,
+                correlationLabel: label,
                 N: 0,
                 Correlation: 0,
-                PValue: 1
+                correlationPValue: 1
             };
             this.memo.correlations = result;
             return result;
@@ -257,12 +281,10 @@ class PairedSamplesTTestCalculator {
         const pValue = 2 * (1 - stdlibstatsBaseDistsTCdf(Math.abs(t), df)); // Two-tailed p-value
 
         const result = {
-            variable1: this.variable1,
-            variable2: this.variable2,
-            Label: label,
+            correlationLabel: label,
             N: this.N,
             Correlation: correlation,
-            PValue: pValue
+            correlationPValue: pValue
         };
 
         this.memo.correlations = result;
@@ -280,8 +302,6 @@ class PairedSamplesTTestCalculator {
         // Validate input
         if (this.N === 0) {
             const result = {
-                variable1: this.variable1,
-                variable2: this.variable2,
                 label: label,
                 N: 0,
                 Mean: 0,
@@ -344,8 +364,6 @@ class PairedSamplesTTestCalculator {
         }
 
         const result = {
-            variable1: this.variable1,
-            variable2: this.variable2,
             label: label,
             Mean: meanDiff,
             StdDev: stdDevDiff,
@@ -360,14 +378,46 @@ class PairedSamplesTTestCalculator {
     }
 
     getOutput() {
+        this.#initialize();
+
+        let hasInsufficientData = false;
+        let insufficientType = [];
+
+        if (this.pairedData.length === 0) {
+            hasInsufficientData = true;
+            insufficientType.push('empty');
+        }
+
+        if (this.pairedData.length === 1) {
+            hasInsufficientData = true;
+            insufficientType.push('single');
+        }
+
         const pairedSamplesStatistics = this.getStatistics();
+        const stdDevDiff = this.#stdDevDiff();
+        if (stdDevDiff === 0 && this.pairedData.length > 1) {
+            hasInsufficientData = true;
+            insufficientType.push('stdDev');
+        }
+
         const pairedSamplesCorrelation = this.getCorrelations();
         const pairedSamplesTest = this.getTestResults();
 
         return {
+            variable1: this.variable1,
+            variable2: this.variable2,
             pairedSamplesStatistics,
             pairedSamplesCorrelation,
-            pairedSamplesTest
+            pairedSamplesTest,
+            metadata: {
+                pair: this.pair,
+                hasInsufficientData,
+                insufficientType,
+                variable1Label: this.variable1.label,
+                variable1Name: this.variable1.name,
+                variable2Label: this.variable2.label,
+                variable2Name: this.variable2.name
+            }
         };
     }
 }

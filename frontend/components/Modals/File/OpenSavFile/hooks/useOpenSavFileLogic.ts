@@ -3,13 +3,11 @@ import { useMobile } from "@/hooks/useMobile";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useMetaStore } from "@/stores/useMetaStore";
-import { processSavFile } from "../services/services"; // Path updated
+import { processSavFile } from "../services/services";
 import { spssSecondsToDateString } from "@/lib/spssDateConverter";
-import { UseOpenSavFileLogicProps, UseOpenSavFileLogicOutput } from "../types"; // Path updated
+import { UseOpenSavFileLogicProps, UseOpenSavFileLogicOutput } from "../types";
 import { processSavApiResponse } from "@/utils/savFileUtils";
 
-// ========================= HOOK LOGIC =========================
-// Main logic hook
 export const useOpenSavFileLogic = ({
     onClose,
 }: UseOpenSavFileLogicProps): UseOpenSavFileLogicOutput => {

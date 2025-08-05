@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon, Database, RotateCcw, ArrowRightLeft, AlertTriangle, HelpCircle } from "lucide-react";
+import { InfoIcon, AlertTriangle, HelpCircle } from "lucide-react";
 import { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 import { RestructureMethod } from "./types";
@@ -49,20 +49,6 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
         handleReorderVariable,
     } = hook;
 
-    // Helper function to get variable icon
-    const getVariableIcon = (variable: Variable) => {
-        switch (variable.measure) {
-            case 'scale':
-                return <Database className="w-4 h-4 text-blue-600" />;
-            case 'ordinal':
-                return <ArrowRightLeft className="w-4 h-4 text-green-600" />;
-            case 'nominal':
-                return <RotateCcw className="w-4 h-4 text-orange-600" />;
-            default:
-                return <Database className="w-4 h-4 text-gray-600" />;
-        }
-    };
-
     // Get step configuration based on current step
     const getStepConfig = () => {
         return {
@@ -80,7 +66,8 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
             id: 'selected',
             title: 'Variables to Restructure',
             variables: selectedVariables,
-            height: '150px',
+            height: method === RestructureMethod.CasesToVariables ? '110px' : '150px',
+            maxItems: undefined, // Allow multiple items
             droppable: true,
             draggableItems: true
         }];
@@ -96,10 +83,19 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
             });
         } else if (method === RestructureMethod.CasesToVariables) {
             configs.push({
+                id: 'index',
+                title: 'Index Variables (e.g., Subject ID)',
+                variables: indexVariables,
+                height: '90px',
+                droppable: true,
+                draggableItems: true
+            });
+            configs.push({
                 id: 'identifier',
-                title: 'Identifier Variables (Variables that identify cases, e.g., Subject ID)',
+                title: 'Identifier Variables (e.g., Time)',
                 variables: identifierVariables,
-                height: '120px',
+                height: '90px',
+                maxItems: 1,
                 droppable: true,
                 draggableItems: true
             });
@@ -107,6 +103,15 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
 
         return configs;
     };
+
+    const targetLists = getTargetListConfigs();
+
+    // Calculate the total height of the right column to sync the left column's height
+    const rightColumnHeight = targetLists.reduce((total, list) => {
+        // Extract numeric value from height string (e.g., "110px" -> 110)
+        const heightValue = parseInt(list.height, 10) || 0;
+        return total + heightValue;
+    }, 0) + (targetLists.length - 1) * 8; // Add space between lists (e.g., space-y-2 -> 8px)
 
     return (
         <div className="flex flex-col h-full">
@@ -266,7 +271,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                                     <p className="text-sm text-muted-foreground mt-1">
                                         {method === RestructureMethod.VariablesToCases 
                                             ? 'Select variables to convert to cases and specify index variables.'
-                                            : 'Select variables to convert to columns and specify identifier variables.'
+                                            : 'Select variables to restructure, and specify index and identifier variables.'
                                         }
                                     </p>
                                 )}
@@ -291,13 +296,13 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                             ) : (                                <div className="h-[400px]">
                                     <VariableListManager
                                         availableVariables={availableVariables}
-                                        targetLists={getTargetListConfigs()}
+                                        targetLists={targetLists}
+                                        availableListHeight={`${rightColumnHeight}px`}
                                         variableIdKey="tempId"
                                         onMoveVariable={handleMoveVariable}
                                         onReorderVariable={handleReorderVariable}
                                         highlightedVariable={highlightedVariable}
                                         setHighlightedVariable={setHighlightedVariable}
-                                        getVariableIcon={getVariableIcon}
                                         showArrowButtons={true}
                                     />
                                 </div>
@@ -393,11 +398,11 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                                     {method !== RestructureMethod.TransposeAllData && (
                                         <div><strong>Variables selected:</strong> {selectedVariables.length}</div>
                                     )}
-                                    {method === RestructureMethod.VariablesToCases && indexVariables.length > 0 && (
-                                        <div><strong>Index variables:</strong> {indexVariables.length}</div>
-                                    )}
                                     {method === RestructureMethod.CasesToVariables && identifierVariables.length > 0 && (
                                         <div><strong>Identifier variables:</strong> {identifierVariables.length}</div>
+                                    )}
+                                    {method === RestructureMethod.CasesToVariables && indexVariables.length > 0 && (
+                                        <div><strong>Index variables:</strong> {indexVariables.length}</div>
                                     )}
                                 </div>
                             </div>
@@ -419,16 +424,18 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                         onClick={handleBack}
                         disabled={!stepConfig.canGoBack}
                         className="mr-2"
+                        data-testid="restructure-back-button"
                     >
                         Back
                     </Button>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={onClose} className="mr-2">
+                        <Button variant="outline" onClick={onClose} className="mr-2" data-testid="restructure-cancel-button">
                             Cancel
                         </Button>
                         {stepConfig.showFinish ? (
                             <Button 
                                 onClick={() => handleFinish(onClose)}
+                                data-testid="restructure-finish-button"
                             >
                                 Finish
                             </Button>
@@ -436,6 +443,7 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                             <Button 
                                 onClick={handleNext}
                                 disabled={!stepConfig.canProceed}
+                                data-testid="restructure-next-button"
                             >
                                 Next
                             </Button>

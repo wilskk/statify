@@ -49,6 +49,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
             <div id="chart-type-section" className="border border-border rounded-md p-4 bg-card relative">
                 <div className="flex items-center mb-4">
                     <Checkbox
+                        data-testid="display-charts-checkbox"
                         id="displayCharts"
                         checked={showCharts}
                         onCheckedChange={(checked) => setShowCharts(!!checked)}
@@ -67,28 +68,28 @@ const ChartsTab: FC<ChartsTabProps> = ({
                     disabled={!showCharts}
                 >
                     <div className="flex items-center">
-                        <RadioGroupItem id="none" value="none" className="mr-2" disabled={!showCharts} />
+                        <RadioGroupItem data-testid="chart-type-none" id="none" value="none" className="mr-2" disabled={!showCharts} />
                         <Label htmlFor="none" className={`text-sm cursor-pointer ${getTextClass(!showCharts)}`}>
                             None
                         </Label>
                     </div>
 
                     <div className="flex items-center">
-                        <RadioGroupItem id="barCharts" value="barCharts" className="mr-2" disabled={!showCharts} />
+                        <RadioGroupItem data-testid="chart-type-bar" id="barCharts" value="barCharts" className="mr-2" disabled={!showCharts} />
                         <Label htmlFor="barCharts" className={`text-sm cursor-pointer ${getTextClass(!showCharts)}`}>
                             Bar charts
                         </Label>
                     </div>
 
                     <div className="flex items-center">
-                        <RadioGroupItem id="pieCharts" value="pieCharts" className="mr-2" disabled={!showCharts} />
+                        <RadioGroupItem data-testid="chart-type-pie" id="pieCharts" value="pieCharts" className="mr-2" disabled={!showCharts} />
                         <Label htmlFor="pieCharts" className={`text-sm cursor-pointer ${getTextClass(!showCharts)}`}>
                             Pie charts
                         </Label>
                     </div>
 
                     <div className="flex items-center">
-                        <RadioGroupItem id="histograms" value="histograms" className="mr-2" disabled={!showCharts} />
+                        <RadioGroupItem data-testid="chart-type-histogram" id="histograms" value="histograms" className="mr-2" disabled={!showCharts} />
                         <Label htmlFor="histograms" className={`text-sm cursor-pointer ${getTextClass(!showCharts)}`}>
                             Histograms
                         </Label>
@@ -107,6 +108,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
                 >
                     <div className="flex items-center">
                         <RadioGroupItem
+                            data-testid="chart-values-frequencies"
                             id="frequencies"
                             value="frequencies"
                             className="mr-2"
@@ -122,6 +124,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
 
                     <div className="flex items-center">
                         <RadioGroupItem
+                            data-testid="chart-values-percentages"
                             id="percentages"
                             value="percentages"
                             className="mr-2"

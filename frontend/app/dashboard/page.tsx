@@ -19,7 +19,6 @@ export default function DashboardPage() {
 
     useEffect(() => {
         if (metaIsLoaded && meta.name) {
-            console.log("Navigating to /dashboard/data because project is active:", meta.name);
             router.push('/dashboard/data');
         }
     }, [metaIsLoaded, meta.name, router]);
@@ -62,11 +61,11 @@ export default function DashboardPage() {
     ];
 
     if (metaIsLoading || !metaIsLoaded) {
-        return <DashboardLandingSkeleton />;
+        return <DashboardLandingSkeleton data-testid="dashboard-loading" />;
     }
 
     if (meta.name) {
-        return <DashboardLandingSkeleton />;
+        return <DashboardLandingSkeleton data-testid="dashboard-loading" />;
         // return null;
     }
 
@@ -82,8 +81,8 @@ export default function DashboardPage() {
     ];
 
     return (
-        <>
+        <div data-testid="dashboard-page">
             <DashboardLanding dataActions={dataActions} resources={resources} />
-        </>
+        </div>
     );
 }

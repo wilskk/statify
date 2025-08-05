@@ -4,6 +4,7 @@ import {
     CorrelationCoefficient,
     TestOfSignificance,
     StatisticsOptions,
+    MissingValuesOptions,
 } from '../types';
 
 export const useTestSettings = ({
@@ -16,13 +17,17 @@ export const useTestSettings = ({
         oneTailed: false,
         twoTailed: true
     },
-    initialFlagSignificantCorrelations = true,
+    initialFlagSignificantCorrelations = false,
     initialShowOnlyTheLowerTriangle = false,
     initialShowDiagonal = true,
     initialPartialCorrelationKendallsTauB = false,
     initialStatisticsOptions = {
         meansAndStandardDeviations: false,
         crossProductDeviationsAndCovariances: false
+    },
+    initialMissingValuesOptions = {
+        excludeCasesPairwise: true,
+        excludeCasesListwise: false
     }
 }: Omit<TestSettingsProps, 'resetTestSettings'> = {}) => {
     const [correlationCoefficient, setCorrelationCoefficient] = useState<CorrelationCoefficient>(initialCorrelationCoefficient);
@@ -32,6 +37,7 @@ export const useTestSettings = ({
     const [showDiagonal, setShowDiagonal] = useState<boolean>(initialShowDiagonal);
     const [statisticsOptions, setStatisticsOptions] = useState<StatisticsOptions>(initialStatisticsOptions);
     const [partialCorrelationKendallsTauB, setPartialCorrelationKendallsTauB] = useState<boolean>(initialPartialCorrelationKendallsTauB);
+    const [missingValuesOptions, setMissingValuesOptions] = useState<MissingValuesOptions>(initialMissingValuesOptions);
 
     const resetTestSettings = useCallback(() => {
         setCorrelationCoefficient(initialCorrelationCoefficient);
@@ -41,7 +47,8 @@ export const useTestSettings = ({
         setShowDiagonal(initialShowDiagonal);
         setPartialCorrelationKendallsTauB(initialPartialCorrelationKendallsTauB);
         setStatisticsOptions(initialStatisticsOptions);
-    }, [initialCorrelationCoefficient, initialTestOfSignificance, initialFlagSignificantCorrelations, initialShowOnlyTheLowerTriangle, initialShowDiagonal, initialStatisticsOptions]);
+        setMissingValuesOptions(initialMissingValuesOptions);
+    }, [initialCorrelationCoefficient, initialTestOfSignificance, initialFlagSignificantCorrelations, initialShowOnlyTheLowerTriangle, initialShowDiagonal, initialStatisticsOptions, initialPartialCorrelationKendallsTauB, initialMissingValuesOptions]);
     
     return {
         correlationCoefficient,
@@ -58,6 +65,8 @@ export const useTestSettings = ({
         setPartialCorrelationKendallsTauB,
         statisticsOptions,
         setStatisticsOptions,
+        missingValuesOptions,
+        setMissingValuesOptions,
         resetTestSettings
     };
 };

@@ -8,7 +8,7 @@ export const formatCaseProcessingSummary = (
   results: ExploreAggregatedResults,
   params: ExploreAnalysisParams,
 ): FormattedTable | null => {
-  console.log('--- [Formatter] formatCaseProcessingSummary ---');
+
   console.log('Received results:', JSON.parse(JSON.stringify(results)));
   console.log('Received params:', JSON.parse(JSON.stringify(params)));
 
@@ -84,4 +84,4 @@ export const formatCaseProcessingSummary = (
   }
 
   return { title: 'Case Processing Summary', columnHeaders, rows };
-}; 
+};

@@ -6,7 +6,8 @@ import { useDataStore } from '@/stores/useDataStore';
 import {
     TwoIndependentSamplesTestAnalysisProps,
     TwoIndependentSamplesTestResults,
-    TwoIndependentSamplesTestResult
+    TwoIndependentSamplesTestResult,
+    DescriptiveStatistics
 } from '../types';
 
 import {
@@ -32,10 +33,11 @@ export const useTwoIndependentSamplesAnalysis = ({
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
     const workerRef = useRef<Worker | null>(null);
-    
+    const insufficientDataVarsRef = useRef<{ variableName: string; variableLabel: string; insufficentType: string[]}[]>([]);
     const resultsRef = useRef<TwoIndependentSamplesTestResult[]>([]);
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
+    const descriptiveStatisticsRef = useRef<DescriptiveStatistics[]>([]);
 
     const runAnalysis = useCallback(async (): Promise<void> => {
         if (testVariables.length === 0) {
@@ -72,124 +74,65 @@ export const useTwoIndependentSamplesAnalysis = ({
 
         // Reset refs for new analysis run
         resultsRef.current = [];
+        descriptiveStatisticsRef.current = [];
         errorCountRef.current = 0;
         processedCountRef.current = 0;
+        insufficientDataVarsRef.current = [];
+        let workerCount = 0;
 
         const worker = new Worker('/workers/NonparametricTests/manager.js', { type: 'module' });
         workerRef.current = worker;
 
-        let analysisTypes;
         if (displayStatistics.descriptive || displayStatistics.quartiles) {
-            analysisTypes = ['descriptiveStatistics', 'twoIndependentSamples'];
-        } else {
-            analysisTypes = ['twoIndependentSamples'];
+            testVariables.forEach(variable => {
+                const dataForVar = analysisData.map(row => row[variable.columnIndex]);
+                const payload = {
+                    analysisType: ['descriptiveStatistics'],
+                    variable1: variable,
+                    data1: dataForVar,
+                    options: { testType, displayStatistics, group1, group2 }
+                };
+                worker.postMessage(payload);
+                workerCount += 1;
+            }); 
+            const dataForVar = analysisData.map(row => row[groupingVariable.columnIndex]);
+            const payload = {
+                analysisType: ['descriptiveStatistics'],
+                variable1: groupingVariable,
+                data1: dataForVar,
+                options: { testType, displayStatistics, group1, group2 }
+            };
+            worker.postMessage(payload);
+            workerCount += 1;
         }
 
         testVariables.forEach(variable => {
             const dataForVar = analysisData.map(row => row[variable.columnIndex]);
             const groupingDataForVar = analysisData.map(row => row[groupingVariable.columnIndex]);
             const payload = {
-                analysisType: analysisTypes,
-                variable,
-                data: dataForVar,
-                groupingVariable,
-                groupingData: groupingDataForVar,
+                analysisType: ['twoIndependentSamples'],
+                variable1: variable,
+                data1: dataForVar,
+                variable2: groupingVariable,
+                data2: groupingDataForVar,
                 options: { testType, displayStatistics, group1, group2 }
             };
             worker.postMessage(payload);
+            workerCount += 1;
         });
 
         worker.onmessage = async (event) => {
             const { variableName, results, status, error: workerError } = event.data;
-
+            // console.log('results', JSON.stringify(results));
             if (status === 'success' && results) {
+                if (results.metadata && results.metadata.hasInsufficientData) {
+                    insufficientDataVarsRef.current.push({ variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficentType: results.metadata.insufficentType });
+                    // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}.`);
+                }
                 if (results.descriptiveStatistics) {
-                    const { variable, N, Mean, StdDev, Min, Max, Percentile25, Percentile50, Percentile75 } = results.descriptiveStatistics;
-
-                    if (variable && N && Mean && StdDev && Min && Max && Percentile25 && Percentile50 && Percentile75) {
-                        resultsRef.current.push({
-                            variable,
-                            descriptiveStatistics: {
-                                N,
-                                Mean,
-                                StdDev,
-                                Min,
-                                Max,
-                                Percentile25,
-                                Percentile50,
-                                Percentile75
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
-                }
-
-                if (results.frequenciesRanks) {
-                    const { variable, group1, group2 } = results.frequenciesRanks;
-
-                    if (variable && group1 && group2) {
-                        resultsRef.current.push({
-                            variable,
-                            frequenciesRanks: {
-                                group1,
-                                group2
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing frequencies ranks for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
-                }
-
-                if (results.testStatisticsMannWhitneyU) {
-                    const { variable, U, W, Z, pValue, pExact, showExact } = results.testStatisticsMannWhitneyU;
-
-                    if (variable && U !== undefined && W !== undefined && Z !== undefined && pValue !== undefined && pExact !== undefined && showExact !== undefined) {
-                        resultsRef.current.push({
-                            variable,
-                            testStatisticsMannWhitneyU: {
-                                U,
-                                W,
-                                Z,
-                                pValue,
-                                pExact,
-                                showExact
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing test statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
-                }
-
-                if (results.testStatisticsKolmogorovSmirnovZ) {
-                    const { variable, D_absolute, D_positive, D_negative, d_stat, pValue } = results.testStatisticsKolmogorovSmirnovZ;
-
-                    if (variable && D_absolute !== undefined && D_positive !== undefined && D_negative !== undefined && d_stat !== undefined && pValue !== undefined) {
-                        resultsRef.current.push({
-                            variable,
-                            testStatisticsKolmogorovSmirnovZ: {
-                                D_absolute,
-                                D_positive,
-                                D_negative,
-                                d_stat,
-                                pValue
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing test statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
+                    descriptiveStatisticsRef.current.push(results.descriptiveStatistics);
+                } else {
+                    resultsRef.current.push(results);
                 }
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
@@ -200,23 +143,10 @@ export const useTwoIndependentSamplesAnalysis = ({
 
             processedCountRef.current += 1;
             
-            if (processedCountRef.current === testVariables.length) {
+            if (processedCountRef.current === workerCount) {
                 if (resultsRef.current.length > 0) {
                     try {
-                        const descriptiveStatistics = resultsRef.current.filter(r => 'descriptiveStatistics' in (r as any));
-                        const frequenciesRanks = resultsRef.current.filter(r => 'frequenciesRanks' in (r as any));
-                        const testStatisticsMannWhitneyU = resultsRef.current.filter(r => 'testStatisticsMannWhitneyU' in (r as any));
-                        const testStatisticsKolmogorovSmirnovZ = resultsRef.current.filter(r => 'testStatisticsKolmogorovSmirnovZ' in (r as any));
-                      
-                        const results: TwoIndependentSamplesTestResults = {
-                            descriptiveStatistics,
-                            frequenciesRanks,
-                            testStatisticsMannWhitneyU,
-                            testStatisticsKolmogorovSmirnovZ
-                        };
-
-                        console.log('Results to format:', JSON.stringify(results));
-
+                        // console.log('[Results] Results:', JSON.stringify(resultsRef.current));
                         // Prepare log message
                         const variableNames = testVariables.map(v => v.name).join(" ");
                         let logMsg = `NPAR TESTS`;
@@ -246,12 +176,45 @@ export const useTwoIndependentSamplesAnalysis = ({
 
                         // Save to database
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "Two Independent Samples Test" });
+
+                        let mannWhitneyUTestNote = "";
+                        let kolmogorovSmirnovZTestNote = "";
+                        let note = "";
+                        let typeToVars: Record<string, string[]> = {};
+                        if (insufficientDataVarsRef.current.length > 0) {
+                            for (const { variableName, variableLabel, insufficentType } of insufficientDataVarsRef.current) {
+                                for (const type of insufficentType) {
+                                    if (!typeToVars[type]) typeToVars[type] = [];
+                                    typeToVars[type].push(variableLabel || variableName);
+                                }
+                            }
+                            if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+                                let testNames = [];
+                                if (testType.mannWhitneyU) testNames.push("Mann-Whitney U Test");
+                                if (testType.kolmogorovSmirnovZ) testNames.push("Kolmogorov-Smirnov Z Test");
+                                if (testType.mosesExtremeReactions) testNames.push("Moses Extreme Reactions Test");
+                                if (testType.waldWolfowitzRuns) testNames.push("Wald-Wolfowitz Runs Test");
+                                if (testNames.length > 0) {
+                                    note += `Note: There are not enough valid cases to perform the ${testNames.join(" and ")} for ${typeToVars["empty"].join(", ")}. No statistics are computed.`;
+                                }
+                            }
+                            if (typeToVars["hasEmptyGroup"] && typeToVars["hasEmptyGroup"].length > 0) {
+                                if (testType.mannWhitneyU) {
+                                    mannWhitneyUTestNote += `Note: The Mann-Whitney U Test cannot be performed for variable(s): ${typeToVars["hasEmptyGroup"].join(", ")}. Mann-Whitney Test cannot be performed on empty groups.`;
+                                }
+                                if (testType.kolmogorovSmirnovZ) {
+                                    kolmogorovSmirnovZTestNote += `Note: The Kolmogorov-Smirnov Z Test cannot be performed for variable(s): ${typeToVars["hasEmptyGroup"].join(", ")}. There are not enough cases in one or more groups.`;
+                                }
+                            }
+                        }
+
+                        const analyticId = await addAnalytic(logId, { title: "NPar Tests", note: note || undefined });
 
                         // Add descriptive statistics table
                          if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
-                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results, displayStatistics);
-                            console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
+                            // console.log('descriptiveStatisticsRef.current', JSON.stringify(descriptiveStatisticsRef.current));
+                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(descriptiveStatisticsRef.current, displayStatistics);
+                            // console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
                        
                             await addStatistic(analyticId, {
                                 title: "Descriptive Statistics",
@@ -261,48 +224,59 @@ export const useTwoIndependentSamplesAnalysis = ({
                             });
                         }
 
+                        const empty = typeToVars["empty"] || [];
+                        // console.log('empty', JSON.stringify(empty));
+                        
                         if (testType.mannWhitneyU) {
-                            const formattedFrequenciesRanksTable = formatFrequenciesRanksTable(results, groupingVariable.label || groupingVariable.name, "M-W");
-                            console.log('Formatted frequencies ranks table:', JSON.stringify(formattedFrequenciesRanksTable));
+                            const formattedFrequenciesRanksTable = formatFrequenciesRanksTable(resultsRef.current, groupingVariable.label || groupingVariable.name, "M-W");
+                            // console.log('Formatted frequencies ranks table:', JSON.stringify(formattedFrequenciesRanksTable));
+                            
+                            if (empty.length < testVariables.length) {
+                                await addStatistic(analyticId, {
+                                    title: "Ranks",
+                                    output_data: JSON.stringify({ tables: [formattedFrequenciesRanksTable] }),
+                                    components: "Mann-Whitney Test",
+                                    description: mannWhitneyUTestNote
+                                });
+                            }
 
-                            await addStatistic(analyticId, {
-                                title: "Ranks",
-                                output_data: JSON.stringify({ tables: [formattedFrequenciesRanksTable] }),
-                                components: "Mann-Whitney Test",
-                                description: ""
-                            });
+                            if (insufficientDataVarsRef.current.length < testVariables.length) {
+                                const formattedTestStatisticsTable = formatMannWhitneyUTestStatisticsTable(resultsRef.current);
+                                // console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
 
-                            const formattedTestStatisticsTable = formatMannWhitneyUTestStatisticsTable(results);
-                            console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
-
-                            await addStatistic(analyticId, {
-                                title: "Test Statistics",
-                                output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
-                                components: "Mann-Whitney Test",
-                                description: ""
-                            });
+                                await addStatistic(analyticId, {
+                                    title: "Test Statistics",
+                                    output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
+                                    components: "Mann-Whitney Test",
+                                    description: ""
+                                });
+                            }
                         }
 
                         if (testType.kolmogorovSmirnovZ) {
-                            const formattedFrequenciesRanksTable = formatFrequenciesRanksTable(results, groupingVariable.label || groupingVariable.name, "K-S");
-                            console.log('Formatted frequencies ranks table:', JSON.stringify(formattedFrequenciesRanksTable));
+                            const formattedFrequenciesRanksTable = formatFrequenciesRanksTable(resultsRef.current, groupingVariable.label || groupingVariable.name, "K-S");
+                            // console.log('Formatted frequencies ranks table:', JSON.stringify(formattedFrequenciesRanksTable));
 
-                            await addStatistic(analyticId, {
-                                title: "Frequencies",
-                                output_data: JSON.stringify({ tables: [formattedFrequenciesRanksTable] }),
-                                components: "Two-Samples Kolmogorov-Smirnov Test",
-                                description: ""
-                            });
+                            if (empty.length < testVariables.length) {
+                                await addStatistic(analyticId, {
+                                    title: "Frequencies",
+                                    output_data: JSON.stringify({ tables: [formattedFrequenciesRanksTable] }),
+                                    components: "Two-Samples Kolmogorov-Smirnov Test",
+                                    description: kolmogorovSmirnovZTestNote
+                                });
+                            }
 
-                            const formattedTestStatisticsTable = formatKolmogorovSmirnovZTestStatisticsTable(results);
-                            console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
+                            if (insufficientDataVarsRef.current.length < testVariables.length) {
+                                const formattedTestStatisticsTable = formatKolmogorovSmirnovZTestStatisticsTable(resultsRef.current);
+                                // console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
 
-                            await addStatistic(analyticId, {
-                                title: "Test Statistics",
-                                output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
-                                components: "Two-Samples Kolmogorov-Smirnov Test",
-                                description: ""
-                            });
+                                await addStatistic(analyticId, {
+                                    title: "Test Statistics",
+                                    output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
+                                    components: "Two-Samples Kolmogorov-Smirnov Test",
+                                    description: ""
+                                });
+                            }
                         }
 
                         if (onClose) {

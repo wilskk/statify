@@ -18,19 +18,19 @@ class KIndependentSamplesCalculator {
      * @param {Array<any>} params.groupingData - Array data untuk variabel ini.
      * @param {object} params.options - Opsi tambahan dari main thread.
      */
-    constructor({ variable, data, groupingVariable, groupingData, options = {} }) {
+    constructor({ variable1, data1, variable2, data2, options = {} }) {
         console.log('KIndependentSamplesCalculator constructor');
-        this.variable = variable;
-        this.data = data;
-        this.groupingVariable = groupingVariable;
-        this.groupingData = groupingData;
+        this.variable1 = variable1;
+        this.data1 = data1;
+        this.variable2 = variable2;
+        this.data2 = data2;
         this.options = options;
         this.initialized = false;
 
         // Ekstrak opsi dari options
+        this.testType = options.testType || { kruskalWallisH: true, median: false, jonckheereTerpstra: false };
         this.minimum = options.minimum || null;
         this.maximum = options.maximum || null;
-        this.testType = options.testType || { kruskalWallisH: true, median: false, jonckheereTerpstra: false };
 
         // Properti yang akan dihitung
         this.validData = [];
@@ -40,6 +40,8 @@ class KIndependentSamplesCalculator {
         this.groupingN = 0;
         this.uniqueGroups = [];
         this.groupCounts = {};
+        this.hasInsufficientData = false;
+        this.insufficientType = [];
 
         /** @private */
         this.memo = {};
@@ -49,18 +51,18 @@ class KIndependentSamplesCalculator {
         if (this.initialized) return;
 
         // Filter data yang valid
-        const isNumericType = ['scale', 'date'].includes(this.variable.measure);
-        const isNumericGroupingType = ['scale', 'date'].includes(this.groupingVariable.measure);
+        const isNumericType = ['scale', 'date'].includes(this.variable1.measure);
+        const isNumericGroupingType = ['scale', 'date'].includes(this.variable2.measure);
 
         // Filter data yang valid dan hanya untuk grup dalam rentang minimum-maximum
-        this.validData = this.data
+        this.validData = this.data1
             .filter((value, index) => {
-                const isValidData = !checkIsMissing(value, this.variable.missing, isNumericType) && isNumeric(value);
-                const isValidGrouping = index < this.groupingData.length && 
-                    !checkIsMissing(this.groupingData[index], this.groupingVariable.missing, isNumericGroupingType);
+                const isValidData = !checkIsMissing(value, this.variable1.missing, isNumericType) && isNumeric(value);
+                const isValidGrouping = index < this.data2.length && 
+                    !checkIsMissing(this.data2[index], this.variable2.missing, isNumericGroupingType);
                 
                 // Cek apakah nilai grup dalam rentang yang ditentukan
-                const groupValue = parseFloat(this.groupingData[index]);
+                const groupValue = parseFloat(this.data2[index]);
                 const isInRange = !this.minimum || !this.maximum || 
                     (groupValue >= this.minimum && groupValue <= this.maximum);
                 
@@ -68,12 +70,12 @@ class KIndependentSamplesCalculator {
             })
             .map(value => parseFloat(value));
         
-        this.validGroupingData = this.groupingData
+        this.validGroupingData = this.data2
             .filter((value, index) => {
-                const isValidData = index < this.data.length && 
-                    !checkIsMissing(this.data[index], this.variable.missing, isNumericType) && 
-                    isNumeric(this.data[index]);
-                const isValidGrouping = !checkIsMissing(value, this.groupingVariable.missing, isNumericGroupingType);
+                const isValidData = index < this.data1.length && 
+                    !checkIsMissing(this.data1[index], this.variable1.missing, isNumericType) && 
+                    isNumeric(this.data1[index]);
+                const isValidGrouping = !checkIsMissing(value, this.variable2.missing, isNumericGroupingType);
                 
                 // Cek apakah nilai grup dalam rentang yang ditentukan
                 const groupValue = parseFloat(value);
@@ -97,7 +99,18 @@ class KIndependentSamplesCalculator {
             this.groupedData[group].push(this.validData[i]);
             this.groupCounts[group]++;
         }
-        
+
+        // Periksa apakah hanya ada satu grup yang panjangnya tidak nol
+        const nonEmptyGroups = Object.values(this.groupedData).filter(arr => arr.length > 0);
+        if (nonEmptyGroups.length === 1) {
+            this.hasInsufficientData = true;
+            this.insufficientType.push('single');
+        }
+        // Jika tidak ada grup unik yang ditemukan (artinya data grup kosong), tandai data sebagai tidak cukup
+        if (this.validData.length === 0) {
+            this.hasInsufficientData = true;
+            this.insufficientType.push('empty');
+        }
         // Hitung statistik dasar
         this.groupingN = this.validGroupingData.length;
         this.N = this.validData.length;
@@ -182,9 +195,8 @@ class KIndependentSamplesCalculator {
 
         // Buat output dengan label grup
         const result = {
-            variable: this.variable,
             groups: this.uniqueGroups.map(group => {
-                const label = this.groupingVariable.values?.find(v => v.value === group)?.label || group.toString();
+                const label = this.variable2.values?.find(v => v.value === group)?.label || group.toString();
                 return {
                     value: group,
                     label,
@@ -217,7 +229,6 @@ class KIndependentSamplesCalculator {
         // Validasi input
         if (this.N === 0 || this.uniqueGroups.length <= 1) {
             const result = {
-                variable: this.variable,
                 H: 0,
                 df: 0,
                 pValue: 1
@@ -262,7 +273,6 @@ class KIndependentSamplesCalculator {
         const pValue = 1 - stdlibstatsBaseDistsChisquareCdf(H, df);
 
         const result = {
-            variable: this.variable,
             H,
             df,
             pValue
@@ -283,7 +293,7 @@ class KIndependentSamplesCalculator {
     //     // Validasi input
     //     if (this.N === 0 || this.uniqueGroups.length <= 1) {
     //         const result = {
-    //             variable: this.variable,
+    //             variable1: this.variable1,
     //             chi2: 0,
     //             df: 0,
     //             pValue: 1
@@ -353,7 +363,7 @@ class KIndependentSamplesCalculator {
     //     const pValue = 1 - stdlibstatsBaseDistsChisquareCdf(chi2, df);
         
     //     const result = {
-    //         variable: this.variable,
+    //         variable1: this.variable1,
     //         chi2,
     //         df,
     //         pValue,
@@ -375,7 +385,7 @@ class KIndependentSamplesCalculator {
     //     // Validasi input
     //     if (this.N === 0 || this.uniqueGroups.length <= 1) {
     //         const result = {
-    //             variable: this.variable,
+    //             variable1: this.variable1,
     //             JT: 0,
     //             Z: 0,
     //             pValue: 1
@@ -448,7 +458,7 @@ class KIndependentSamplesCalculator {
     //     const pValue = 2 * (1 - stdlibstatsBaseDistsNormalCdf(Math.abs(Z), 0, 1));
         
     //     const result = {
-    //         variable: this.variable,
+    //         variable1: this.variable1,
     //         JT,
     //         expectedJT,
     //         varianceJT,
@@ -480,8 +490,15 @@ class KIndependentSamplesCalculator {
         // }
 
         return {
+            variable1: this.variable1,
             ranks,
             testStatisticsKruskalWallisH,
+            metadata: {
+                hasInsufficientData: this.hasInsufficientData,
+                insufficientType: this.insufficientType,
+                variableName: this.variable1.name,
+                variableLabel: this.variable1.label
+            }
             // frequencies,
             // testStatisticsMedian,
             // jonckheereTerpstraTest

@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
-import { useOptionHook } from "./hook/optionHook";
-import { useTimeHook } from "../timeSeriesTimeHook";
-import { useAnalyzeHook } from "./hook/analyzeHook";
-import VariablesTab from "./VariablesTab";
-import OptionTab from "./OptionTab";
-import TimeTab from "../TimeSeriesTimeTab";
+import { useOptionHook } from "@/components/Modals/Analyze/TimeSeries/Decomposition/hooks/optionHook";
+import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeHook";
+import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/Decomposition/hooks/analyzeHook";
+import VariablesTab from "@/components/Modals/Analyze/TimeSeries/Decomposition/VariablesTab";
+import OptionTab from "@/components/Modals/Analyze/TimeSeries/Decomposition/OptionTab";
+import TimeTab from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 import { DataRow } from "@/types/Data";
 import { toast } from "sonner";
@@ -87,7 +87,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                     setPrevDataRef(savedData.prevDataRef);
                     if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
                         // Clear saved state if previous data doesn't match current
-                        await clearFormData("Autocorrelation");
+                        await clearFormData("Decomposition");
                         setAvailableVariables(filteredVariables);
                         setSelectedVariables([]);
                         return;
@@ -158,11 +158,6 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
     }, [availableVariables, selectedVariables, saveAsVariable, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
-        if (selectedVariables.length > 0) {
-            setErrorMsg("You may only select one variable.");
-            return;
-        }
-        setErrorMsg(null); // clear error if successful
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setSelectedVariables(prev => {
             if (prev.some(v => v.columnIndex === variable.columnIndex)) {
@@ -306,6 +301,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         disabled={isCalculating}
+                        onClick={() => window.open("https://drive.google.com/file/d/1RkrwpeQQqO3YDJdSKxtcos2fdMax49ML/view?usp=sharing", "_blank")}
                     >
                         Help
                     </Button>
