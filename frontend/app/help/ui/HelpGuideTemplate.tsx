@@ -77,14 +77,7 @@ export const HelpGuideTemplate: React.FC<HelpGuideTemplateProps> = ({
       category={category}
       lastUpdated={lastUpdated}
     >
-      {/* Quick Actions */}
-      {quickActions && quickActions.length > 0 && (
-        <div className="mb-6">
-          <HelpCard title="Aksi Cepat" variant="feature">
-            <HelpQuickActions actions={quickActions} />
-          </HelpCard>
-        </div>
-      )}
+
 
       {/* Overview Section */}
       {overview && (
@@ -183,7 +176,7 @@ export const HelpGuideTemplate: React.FC<HelpGuideTemplateProps> = ({
 
       {/* Footer */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Related Topics */}
+        {/* Related Topics - COMMENTED OUT
         {relatedTopics && relatedTopics.length > 0 && (
           <HelpCard title="Topik Terkait">
             <div className="space-y-2">
@@ -203,8 +196,9 @@ export const HelpGuideTemplate: React.FC<HelpGuideTemplateProps> = ({
             </div>
           </HelpCard>
         )}
+        */}
 
-        {/* Help & Support */}
+        {/* Help & Support - COMMENTED OUT
         <HelpCard title="Butuh Bantuan?">
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
@@ -220,15 +214,16 @@ export const HelpGuideTemplate: React.FC<HelpGuideTemplateProps> = ({
             </div>
           </div>
         </HelpCard>
+        */}
       </div>
     </HelpLayout>
   );
 };
 
 /**
- * Hook untuk navigasi guide
+ * Hook untuk navigasi guide - COMMENTED OUT
  */
-export const useGuideNavigation = () => {
+/* export const useGuideNavigation = () => {
   const [currentSection, setCurrentSection] = React.useState<string>("");
   const [history, setHistory] = React.useState<string[]>([]);
 
@@ -254,4 +249,4 @@ export const useGuideNavigation = () => {
     canGoBack,
     history
   };
-};
+}; */

@@ -6,6 +6,38 @@ import {
 import { DEFAULT_COLUMN_WIDTH } from '../constants';
 import { Variable } from '@/types/Variable';
 
+/**
+ * Enhanced renderer that prevents word breaking and ensures proper text overflow handling
+ */
+const enhancedTextRenderer = (
+    instance: any,
+    td: HTMLTableCellElement,
+    row: number,
+    col: number,
+    prop: string | number,
+    value: any,
+    cellProperties: any
+) => {
+    // Apply the base text renderer first
+    textRenderer(instance, td, row, col, prop, value, cellProperties);
+    
+    // Apply enhanced CSS properties to prevent word breaking
+    td.style.whiteSpace = 'nowrap';
+    td.style.overflow = 'hidden';
+    td.style.textOverflow = 'ellipsis';
+    td.style.wordBreak = 'keep-all';
+    td.style.wordWrap = 'normal';
+    td.style.hyphens = 'none';
+    td.style.overflowWrap = 'normal';
+    td.style.lineHeight = '1.2';
+    td.style.maxWidth = '100%';
+    
+    // Add title attribute for full text on hover
+    if (value && String(value).length > 0) {
+        td.title = String(value);
+    }
+};
+
 const nullSafeRenderer = (
     renderer: (...args: any[]) => void
 ) => (
@@ -18,9 +50,25 @@ const nullSafeRenderer = (
     cellProperties: any
 ) => {
     if (value === null || value === undefined) {
-        textRenderer(instance, td, row, col, prop, '', cellProperties);
+        enhancedTextRenderer(instance, td, row, col, prop, '', cellProperties);
     } else {
         renderer(instance, td, row, col, prop, value, cellProperties);
+        
+        // Apply enhanced CSS properties to all rendered cells
+        td.style.whiteSpace = 'nowrap';
+        td.style.overflow = 'hidden';
+        td.style.textOverflow = 'ellipsis';
+        td.style.wordBreak = 'keep-all';
+        td.style.wordWrap = 'normal';
+        td.style.hyphens = 'none';
+        td.style.overflowWrap = 'normal';
+        td.style.lineHeight = '1.2';
+        td.style.maxWidth = '100%';
+        
+        // Add title attribute for full text on hover
+        if (value && String(value).length > 0) {
+            td.title = String(value);
+        }
     }
 };
 
@@ -114,7 +162,7 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
         config.strict = false; // Let our custom validator handle logic
         config.allowInvalid = false; // DISALLOW invalid values completely
         config.validator = createHybridAutocompleteValidator(variable);
-        config.renderer = valueLabelRenderer(textRenderer);
+        config.renderer = valueLabelRenderer(enhancedTextRenderer);
     } else {
         switch (type) {
             case 'NUMERIC':
@@ -143,7 +191,7 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
             case 'STRING':
             default:
                 config.type = 'text';
-                config.renderer = valueLabelRenderer(textRenderer);
+                config.renderer = valueLabelRenderer(enhancedTextRenderer);
                 break;
         }
     }

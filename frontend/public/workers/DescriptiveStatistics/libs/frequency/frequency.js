@@ -14,6 +14,11 @@ class FrequencyCalculator {
 
         this.descCalc = new DescriptiveCalculator({ variable, data, weights, options });
 
+        // Periksa apakah data mengandung tanggal dd-mm-yyyy
+        this.isDateData = this.data.some(value => 
+            typeof value === 'string' && isDateString(value)
+        );
+
         this.memo = {};
     }
 
@@ -29,7 +34,15 @@ class FrequencyCalculator {
 
             if (!isNumeric(value) || typeof weight !== 'number' || weight <= 0) continue;
             
-            const numValue = parseFloat(value);
+            let numValue;
+            // Jika value adalah string tanggal dd-mm-yyyy, konversi ke SPSS seconds
+            if (typeof value === 'string' && isDateString(value)) {
+                numValue = dateStringToSpssSeconds(value);
+                if (numValue === null) continue;
+            } else {
+                numValue = parseFloat(value);
+            }
+            
             weightedValues.set(numValue, (weightedValues.get(numValue) || 0) + weight);
             totalWeight += weight;
         }
@@ -62,7 +75,18 @@ class FrequencyCalculator {
         
         const { y, c } = sortedData;
         const maxFreq = Math.max(...c);
-        const modes = y.filter((_, index) => c[index] === maxFreq);
+        let modes = y.filter((_, index) => c[index] === maxFreq);
+
+        // Konversi kembali ke format tanggal jika data adalah tanggal
+        if (this.isDateData) {
+            modes = modes.map(value => {
+                if (typeof value === 'number') {
+                    const dateString = spssSecondsToDateString(value);
+                    return dateString || value;
+                }
+                return value;
+            });
+        }
 
         this.memo.mode = modes;
         return this.memo.mode;
@@ -373,8 +397,17 @@ class FrequencyCalculator {
             const validPercent = parseFloat(rawValidPercent.toFixed(1));
             cumulativePercent = parseFloat((cumulativePercent + validPercent).toFixed(1));
 
+            // Konversi kembali ke format tanggal jika data adalah tanggal
+            let displayLabel;
+            if (this.isDateData && typeof value === 'number') {
+                const dateString = spssSecondsToDateString(value);
+                displayLabel = dateString || String(value);
+            } else {
+                displayLabel = String(value);
+            }
+
             return {
-                label: String(value), // placeholder; worker may convert based on value-labels
+                label: displayLabel, // placeholder; worker may convert based on value-labels
                 frequency,
                 percent,
                 validPercent,

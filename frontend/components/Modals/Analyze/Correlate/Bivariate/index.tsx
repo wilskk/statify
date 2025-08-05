@@ -49,10 +49,13 @@ const BivariateContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
     const {
         availableVariables,
         testVariables,
+        controlVariables,
         highlightedVariable,
         setHighlightedVariable,
         moveToTestVariables,
         moveToAvailableVariables,
+        moveToKendallsTauBControlVariables,
+        moveToKendallsTauBAvailableVariables,
         reorderVariables,
         resetVariableSelection
     } = useVariableSelection();
@@ -72,6 +75,8 @@ const BivariateContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
         setPartialCorrelationKendallsTauB,
         statisticsOptions,
         setStatisticsOptions,
+        missingValuesOptions,
+        setMissingValuesOptions,
         resetTestSettings
     } = useTestSettings();
 
@@ -89,6 +94,8 @@ const BivariateContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
         showDiagonal,
         partialCorrelationKendallsTauB,
         statisticsOptions,
+        missingValuesOptions,
+        controlVariables,
         onClose
     });
 
@@ -159,14 +166,7 @@ const BivariateContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                         moveToTestVariables={moveToTestVariables}
                         moveToAvailableVariables={moveToAvailableVariables}
                         reorderVariables={reorderVariables}
-                        tourActive={tourActive}
-                        currentStep={currentStep}
-                        tourSteps={tourSteps}
-                    />
-                </TabsContent>
-
-                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
-                    <OptionsTab
+                        // Moved from OptionsTab
                         correlationCoefficient={correlationCoefficient}
                         setCorrelationCoefficient={setCorrelationCoefficient}
                         testOfSignificance={testOfSignificance}
@@ -177,14 +177,33 @@ const BivariateContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                         setShowOnlyTheLowerTriangle={setShowOnlyTheLowerTriangle}
                         showDiagonal={showDiagonal}
                         setShowDiagonal={setShowDiagonal}
-                        statisticsOptions={statisticsOptions}
-                        setStatisticsOptions={setStatisticsOptions}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
+                    />
+                </TabsContent>
+
+                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
+                    <OptionsTab
+                        // Removed options moved to VariablesTab
                         partialCorrelationKendallsTauB={partialCorrelationKendallsTauB}
                         setPartialCorrelationKendallsTauB={setPartialCorrelationKendallsTauB}
+                        statisticsOptions={statisticsOptions}
+                        setStatisticsOptions={setStatisticsOptions}
+                        missingValuesOptions={missingValuesOptions}
+                        setMissingValuesOptions={setMissingValuesOptions}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToKendallsTauBControlVariables={moveToKendallsTauBControlVariables}
+                        moveToKendallsTauBAvailableVariables={moveToKendallsTauBAvailableVariables}
+                        controlVariables={controlVariables}
+                        reorderVariables={reorderVariables}
                         tourActive={tourActive}
                         currentStep={currentStep}
                         tourSteps={tourSteps}
                         testVariables={testVariables}
+                        // Added back for dependency
+                        correlationCoefficient={correlationCoefficient}
                     />
                 </TabsContent>
             </>
@@ -269,7 +288,7 @@ const BivariateContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                         Cancel
                     </Button>
                     <Button
-                        id="independent-samples-t-test-ok-button"
+                        id="bivariate-ok-button"
                         onClick={runAnalysis}
                         disabled={
                             isCalculating ||
@@ -277,7 +296,8 @@ const BivariateContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                             (
                                 !correlationCoefficient.pearson &&
                                 !correlationCoefficient.kendallsTauB &&
-                                !correlationCoefficient.spearman
+                                !correlationCoefficient.spearman ||
+                                (missingValuesOptions.excludeCasesListwise && partialCorrelationKendallsTauB && controlVariables.length === 0)
                             )
                         }
                     >

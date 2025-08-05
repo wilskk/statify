@@ -61,7 +61,7 @@ export interface FrequenciesAnalysisParams extends Pick<BaseModalProps, 'onClose
 export interface WorkerInput {
     variableData: {
         variable: Variable;
-        data: (string | number)[];
+        data: (string | number | null | undefined)[];
     }[];
     weightVariableData: number[] | null;
     options: {
@@ -136,4 +136,4 @@ export interface TableColumnHeader {
 export interface TableRow {
   rowHeader: string[];
   [key: string]: any;
-} 
+}

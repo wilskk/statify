@@ -8,7 +8,7 @@ export const formatMEstimatorsTable = (
   results: ExploreAggregatedResults,
   params: ExploreAnalysisParams,
 ): FormattedTable | null => {
-  console.log('--- [Formatter] formatMEstimatorsTable ---');
+
   console.log('Received results:', JSON.parse(JSON.stringify(results)));
   console.log('Received params:', JSON.parse(JSON.stringify(params)));
 
@@ -109,4 +109,4 @@ export const formatMEstimatorsTable = (
     // Keep only `footer` so descriptions are not duplicated (footnotes already rendered via footer).
     footer: footnotes,
   };
-}; 
+};

@@ -8,49 +8,49 @@ export const ExampleDataset = () => {
   const sections = [
     {
       id: 'load-steps',
-      title: 'Langkah Memuat Dataset Contoh',
-      description: 'Panduan step-by-step untuk memuat dataset contoh',
+      title: 'Steps to Load Sample Dataset',
+      description: 'Step-by-step guide to load sample datasets',
       icon: Database,
       content: (
         <div className="space-y-4">
           <HelpStep
             number={1}
-            title="Buka Menu File"
-            description="Navigasi ke menu 'File' di toolbar aplikasi utama."
+            title="Open File Menu"
+            description="Navigate to the 'File' menu in the main application toolbar."
           />
           <HelpStep
             number={2}
-            title="Pilih Example Datasets"
-            description="Pilih 'Example Datasets' dari dropdown menu yang muncul."
+            title="Select Example Datasets"
+            description="Click 'Example Datasets' to see the list of available datasets."
           />
           <HelpStep
             number={3}
-            title="Pilih Dataset"
-            description="Dialog akan terbuka menampilkan dataset yang tersedia. Setiap dataset memiliki deskripsi singkat tentang isinya."
+            title="Select Dataset"
+            description="Choose the dataset you want to use from the available list. Each dataset has a brief description of its contents."
           />
           <HelpStep
             number={4}
             title="Load Dataset"
-            description="Klik pada card dataset untuk memuat langsung ke dalam data editor."
+            description="Click 'Load' to load the dataset into Statify's data editor."
           />
         </div>
       )
     },
     {
       id: 'features',
-      title: 'Fitur & Keunggulan',
-      description: 'Informasi penting tentang dataset contoh',
+      title: 'Features & Benefits',
+      description: 'Important information about sample datasets',
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="info" title="Tidak Perlu Internet">
+          <HelpAlert variant="info" title="No Internet Required">
             <p className="text-sm mt-2">
-              Semua dataset contoh sudah terbundel dengan aplikasi, sehingga Anda dapat mengaksesnya bahkan saat offline.
+              All sample datasets are bundled with the application, so you can access them even when offline.
             </p>
           </HelpAlert>
-          <HelpAlert variant="tip" title="Eksplorasi Fitur">
+          <HelpAlert variant="tip" title="Feature Exploration">
             <p className="text-sm mt-2">
-              Dataset contoh dirancang khusus untuk membantu Anda mengeksplorasi berbagai fitur analisis statistik dalam Statify.
+              Sample datasets are specifically designed to help you explore various statistical analysis features in Statify.
             </p>
           </HelpAlert>
         </div>
@@ -61,13 +61,13 @@ export const ExampleDataset = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Pembelajaran Cepat',
-      content: 'Gunakan dataset contoh untuk mempelajari fitur-fitur baru tanpa perlu menyiapkan data sendiri.'
+      title: 'Quick Learning',
+      content: 'Use sample datasets to learn new features without needing to prepare your own data.'
     },
     {
       type: 'info' as const,
-      title: 'Variasi Data',
-      content: 'Setiap dataset contoh memiliki karakteristik yang berbeda untuk mendemonstrasikan berbagai jenis analisis.'
+      title: 'Data Variety',
+      content: 'Each sample dataset has different characteristics to demonstrate various types of analysis.'
     }
   ];
 
@@ -80,8 +80,8 @@ export const ExampleDataset = () => {
 
   return (
     <HelpGuideTemplate
-      title="Menggunakan Dataset Contoh"
-      description="Statify menyediakan berbagai dataset contoh untuk membantu Anda mengeksplorasi fitur-fiturnya"
+      title="Using Sample Datasets"
+      description="Statify provides various sample datasets to help you explore its features"
       category="File Management"
       lastUpdated="2024-01-15"
       sections={sections}

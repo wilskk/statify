@@ -32,6 +32,7 @@ export const useRunsAnalysis = ({
   const resultsRef = useRef<RunsTestResult[]>([]);
   const errorCountRef = useRef<number>(0);
   const processedCountRef = useRef<number>(0);
+  const insufficientDataVarsRef = useRef<{ variableName: string; variableLabel: string; insufficientType: string[] }[]>([]);
 
   // Perform analysis
   const runAnalysis = useCallback(async (): Promise<void> => {
@@ -80,8 +81,8 @@ export const useRunsAnalysis = ({
       const dataForVar = analysisData.map(row => row[variable.columnIndex]);
       const payload = {
         analysisType: analysisTypes,
-        variable,
-        data: dataForVar,
+        variable1: variable,
+        data1: dataForVar,
         options: { cutPoint, customValue, displayStatistics }
       };
       worker.postMessage(payload);
@@ -89,136 +90,14 @@ export const useRunsAnalysis = ({
 
     worker.onmessage = async (event) => {
       const { variableName, results, status, error: workerError } = event.data;
-
+      
       if (status === 'success' && results) {
-        if (results.descriptiveStatistics) {
-          console.log('results.descriptiveStatistics', JSON.stringify(results.descriptiveStatistics));
-          const { variable, N, Mean, StdDev, Min, Max, Percentile25, Percentile50, Percentile75 } = results.descriptiveStatistics;
-
-          if (variable && N && Mean && StdDev && Min && Max && Percentile25 && Percentile50 && Percentile75) {
-            resultsRef.current.push({
-              variable,
-              stats: {
-                N,
-                Mean,
-                StdDev,
-                Min,
-                Max,
-                Percentile25,
-                Percentile50,
-                Percentile75
-              }
-            });
-          } else {
-            console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
-            const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-            setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-          }
+        // console.log(variableName, 'results', JSON.stringify(results));
+        if (results.metadata?.hasInsufficientData) {
+          insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
+          // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
         }
-
-        if (results.runsTest) {
-          const { variable, median, mean, mode, custom } = results.runsTest;
-          console.log('results.runsTest', JSON.stringify(results.runsTest));
-          console.log('median', JSON.stringify(median));
-          console.log('mean', JSON.stringify(mean));
-          console.log('mode', JSON.stringify(mode));
-          console.log('custom', JSON.stringify(custom));
-
-          if (variable) {
-            if (cutPoint.median && median) {
-              const { TestValue, CasesBelow, CasesAbove, Total, Runs, Z, PValue } = median;
-              resultsRef.current.push({
-                variable,
-                cutPoint: 'Median',
-                stats: {
-                  TestValue,
-                  CasesBelow,
-                  CasesAbove,
-                  Total,
-                  Runs,
-                  Z,
-                  PValue
-                }
-              });
-            } else if (cutPoint.median && !median) {
-              console.error(`Error processing median runs test for ${variableName}:`, workerError);
-              const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-              setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-              errorCountRef.current += 1;
-            }
-
-            if (cutPoint.mean && mean) {
-              const { TestValue, CasesBelow, CasesAbove, Total, Runs, Z, PValue } = mean;
-              resultsRef.current.push({
-                variable,
-                cutPoint: 'Mean',
-                stats: {
-                  TestValue,
-                  CasesBelow,
-                  CasesAbove,
-                  Total,
-                  Runs,
-                  Z,
-                  PValue
-                }
-              });
-            } else if (cutPoint.mean && !mean) {
-              console.error(`Error processing runs test for ${variableName}:`, workerError);
-              const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-              setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-              errorCountRef.current += 1;
-            }
-
-            if (cutPoint.mode && mode) {
-              const { TestValue, CasesBelow, CasesAbove, Total, Runs, Z, PValue } = mode;
-              resultsRef.current.push({
-                variable,
-                cutPoint: 'Mode',
-                stats: {
-                  TestValue,
-                  CasesBelow,
-                  CasesAbove,
-                  Total,
-                  Runs,
-                  Z,
-                  PValue
-                }
-              });
-            } else if (cutPoint.mode && !mode) {
-              console.error(`Error processing mode runs test for ${variableName}:`, workerError);
-              const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-              setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);  
-              errorCountRef.current += 1;
-            }
-
-            if (cutPoint.custom && custom) {
-              const { TestValue, CasesBelow, CasesAbove, Total, Runs, Z, PValue } = custom;
-              resultsRef.current.push({
-                variable,
-                cutPoint: 'Custom',
-                stats: {
-                  TestValue,
-                  CasesBelow,
-                  CasesAbove,
-                  Total,
-                  Runs,
-                  Z,
-                  PValue
-                }
-              });
-            } else if (cutPoint.custom && !custom) {
-              console.error(`Error processing custom runs test for ${variableName}:`, workerError);
-              const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-              setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-              errorCountRef.current += 1;
-            }
-          } else {
-            console.error(`Error processing runs test for ${variableName}:`, workerError);
-            const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-            setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-            errorCountRef.current += 1;
-          }
-        }
+        resultsRef.current.push(results);
       } else {
         console.error(`Error processing ${variableName}:`, workerError);
         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
@@ -231,23 +110,9 @@ export const useRunsAnalysis = ({
       if (processedCountRef.current === testVariables.length) {
         if (resultsRef.current.length > 0) {
           try {
-            console.log('resultsRef.current', JSON.stringify(resultsRef.current));
-            const descriptiveStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
-            const runsTest = resultsRef.current.filter(r => 'TestValue' in (r.stats as any));
-
-            const results: RunsTestResults = {
-              descriptiveStatistics,
-              runsTest
-            };
-
-            console.log('Results to format:', JSON.stringify(results));
-
             // Format tables
-            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results, displayStatistics);
-            const formattedRunsTestTable = formatRunsTestTable(results);
-
-            console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
-            console.log('Formatted runs test table:', JSON.stringify(formattedRunsTestTable));
+            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current, displayStatistics);
+            const formattedRunsTestTable = formatRunsTestTable(resultsRef.current);
 
             // Prepare log message
             const variableNames = testVariables.map(v => v.name).join(" ");
@@ -278,7 +143,38 @@ export const useRunsAnalysis = ({
 
             // Save to database
             const logId = await addLog({ log: logMsg });
-            const analyticId = await addAnalytic(logId, { title: "Runs Test" });
+
+            let runsTestNote: Record<string, string> = {};
+            let note = "";
+            let typeToVars: Record<string, string[]> = {};
+            // console.log('insufficientDataVarsRef.current', JSON.stringify(insufficientDataVarsRef.current));
+            if (insufficientDataVarsRef.current.length > 0) {
+              for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
+                for (const type of insufficientType) {
+                  if (!typeToVars[type]) typeToVars[type] = [];
+                  typeToVars[type].push(variableLabel || variableName);
+                }
+              }
+              if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+                note += `Note: There are not enough valid cases to perform the Runs Test for ${typeToVars["empty"].join(", ")}. No statistics are computed.`;
+              }
+              if (typeToVars["single median"] && typeToVars["single median"].length > 0) {
+                runsTestNote["Median"] = `Note: The Runs Test cannot be performed for variable(s): ${typeToVars["single median"].join(", ")}. All values are greater than or less than the cutoff (Only one run occurs).`;
+              }
+              if (typeToVars["single mode"] && typeToVars["single mode"].length > 0) {
+                runsTestNote["Mode"] = `Note: The Runs Test cannot be performed for variable(s): ${typeToVars["single mode"].join(", ")}. All values are greater than or less than the cutoff (Only one run occurs).`;
+              }
+              if (typeToVars["single mean"] && typeToVars["single mean"].length > 0) {
+                runsTestNote["Mean"] = `Note: The Runs Test cannot be performed for variable(s): ${typeToVars["single mean"].join(", ")}. All values are greater than or less than the cutoff (Only one run occurs).`;
+              }
+              if (typeToVars["single custom"] && typeToVars["single custom"].length > 0) {
+                runsTestNote[`Custom (${customValue})`] = `Note: The Runs Test cannot be performed for variable(s): ${typeToVars["single custom"].join(", ")}. All values are greater than or less than the cutoff (Only one run occurs).`;
+              }
+
+            }
+            // console.log('runsTestNote', JSON.stringify(runsTestNote));
+
+            const analyticId = await addAnalytic(logId, { title: "Runs Test", note: note || undefined });
 
             // Add descriptive statistics table
             if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
@@ -311,7 +207,7 @@ export const useRunsAnalysis = ({
                   title: `Runs Test (${cutPointType})`,
                   output_data: JSON.stringify({ tables: [table] }),
                   components: `Runs Test (${cutPointType})`,
-                  description: ""
+                  description: runsTestNote[cutPointType] || ""
                 });
               }
             }

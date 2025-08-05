@@ -6,7 +6,6 @@ import { useDataStore } from '@/stores/useDataStore';
 import {
     BivariateAnalysisProps,
     BivariateResults,
-    BivariateResult,
     BivariateTable
 } from '../types';
 
@@ -25,6 +24,8 @@ export const useBivariateAnalysis = ({
     showDiagonal,
     partialCorrelationKendallsTauB,
     statisticsOptions,
+    missingValuesOptions,
+    controlVariables,
     onClose
 }: BivariateAnalysisProps) => {
     const { addLog, addAnalytic, addStatistic } = useResultStore();
@@ -36,14 +37,18 @@ export const useBivariateAnalysis = ({
         showOnlyTheLowerTriangle,
         showDiagonal,
         statisticsOptions,
-        partialCorrelationKendallsTauB
+        partialCorrelationKendallsTauB,
+        missingValuesOptions,
+        controlVariables
     }), [
         testOfSignificance,
         flagSignificantCorrelations,
         showOnlyTheLowerTriangle,
         showDiagonal,
         statisticsOptions,
-        partialCorrelationKendallsTauB
+        partialCorrelationKendallsTauB,
+        missingValuesOptions,
+        controlVariables
     ]);
 
     const [isCalculating, setIsCalculating] = useState(false);
@@ -51,11 +56,30 @@ export const useBivariateAnalysis = ({
     
     const workerRef = useRef<Worker | null>(null);
     
-    const resultsRef = useRef<BivariateResult[]>([]);
+    const resultsRef = useRef<BivariateResults>();
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
+    const insufficientDataVarsRef = useRef<{ variableName: string; variableLabel: string; insufficientType: string[] }[]>([]);
+
+    // Timing refs
+    const timingRef = useRef<{
+        analysisStart: number;
+        dataSentToWorker: number;
+        dataReceivedFromWorker: number;
+        dataFormattedToTable: number;
+        processCompleted: number;
+    }>({
+        analysisStart: 0,
+        dataSentToWorker: 0,
+        dataReceivedFromWorker: 0,
+        dataFormattedToTable: 0,
+        processCompleted: 0
+    });
 
     const runAnalysis = useCallback(async (): Promise<void> => {
+        // 1. Catat waktu ketika runAnalysis dimulai
+        timingRef.current.analysisStart = performance.now();
+        
         if (testVariables.length === 0) {
             setErrorMsg('Please select at least one variable to analyze.');
             return;
@@ -73,7 +97,6 @@ export const useBivariateAnalysis = ({
         }
 
         // Reset refs for new analysis run
-        resultsRef.current = [];
         errorCountRef.current = 0;
         processedCountRef.current = 0;
 
@@ -81,6 +104,11 @@ export const useBivariateAnalysis = ({
         workerRef.current = worker;
 
         const batch = testVariables.map(variable => ({
+            variable,
+            data: analysisData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
+        }));
+
+        const batchControl = controlVariables.map(variable => ({
             variable,
             data: analysisData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
         }));
@@ -96,97 +124,42 @@ export const useBivariateAnalysis = ({
                 showOnlyTheLowerTriangle,
                 showDiagonal,
                 statisticsOptions,
-                partialCorrelationKendallsTauB
+                partialCorrelationKendallsTauB,
+                missingValuesOptions,
+                controlVariables: batchControl.map(vd => vd.variable),
+                controlData: batchControl.map(vd => vd.data)
             }
         };
+
+        // 2. Catat waktu ketika data dikirim ke web worker
+        timingRef.current.dataSentToWorker = performance.now();
+
         worker.postMessage(payload);
 
         worker.onmessage = async (event) => {
-            console.log('Received message:', JSON.stringify(event.data));
+            // console.log('Received message:', JSON.stringify(event.data));
             const { variableName, results, status, error: workerError } = event.data;
 
+            // 3. Catat waktu ketika data diterima dari web worker
+            if (processedCountRef.current === 0) {
+                timingRef.current.dataReceivedFromWorker = performance.now();
+            }
+
             if (status === 'success' && results) {
-                // Handle descriptive statistics
-                if (results.descriptiveStatistics && Array.isArray(results.descriptiveStatistics)) {
-                    for (const stats of results.descriptiveStatistics) {
-                        const { variable, N, Mean, StdDev } = stats;
-                        
-                        if (variable && N !== undefined && Mean !== undefined && StdDev !== undefined) {
-                            // Find the corresponding variable object
-                            const variableObj = testVariables.find(v => v.name === variable);
-                            if (variableObj) {
-                                resultsRef.current.push({
-                                    variable1: variableObj,
-                                    descriptiveStatistics: {
-                                        N,
-                                        Mean,
-                                        StdDev
-                                    },
-                                });
-                            }
+                // Check for metadata about insufficient data
+                if (Array.isArray(results.metadata)) {
+                    results.metadata.forEach((meta: any) => {
+                        if (meta.hasInsufficientData) {
+                            insufficientDataVarsRef.current.push({
+                                variableName: meta.variableName,
+                                variableLabel: meta.variableLabel,
+                                insufficientType: meta.insufficientType
+                            });
+                            // console.warn(`Insufficient valid data for variable: ${meta.variableLabel || meta.variableName}. Insufficient type: ${meta.insufficientType.join(', ')}`);
                         }
-                    }
+                    });
                 }
-
-                // Handle correlations
-                if (results.correlation && Array.isArray(results.correlation)) {
-                    for (const correlation of results.correlation) {
-                        const { variable1, variable2, pearsonCorrelation, kendallsTauBCorrelation, spearmanCorrelation } = correlation;
-
-                        if (variable1 && variable2 && (pearsonCorrelation !== undefined || kendallsTauBCorrelation !== undefined || spearmanCorrelation !== undefined)) {
-                            // Find the corresponding variable object
-                            const variableObj = testVariables.find(v => v.name === variable1);
-                            if (variableObj) {
-                                resultsRef.current.push({
-                                    variable1,
-                                    variable2,
-                                    correlation: {
-                                        pearsonCorrelation,
-                                        kendallsTauBCorrelation,
-                                        spearmanCorrelation
-                                    }
-                                });
-                            }
-                        } else {
-                            console.error(`Error processing correlation:`, correlation);
-                            const errorMsg = `Calculation failed for correlation: ${workerError || 'Missing data'}`;
-                            setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                            errorCountRef.current += 1;
-                        }
-                    }
-                }
-
-                // Handle partial correlation
-                if (results.partialCorrelation && Array.isArray(results.partialCorrelation)) {
-                    for (const partial of results.partialCorrelation) {
-                        const { controlVariable, variable1, variable2, partialCorrelation } = partial;
-
-                        if (controlVariable && variable1 && variable2 && partialCorrelation) {
-                            // Find the corresponding variable objects
-                            const controlVarObj = testVariables.find(v => v.name === controlVariable);
-                            const var1Obj = testVariables.find(v => v.name === variable1);
-                            const var2Obj = testVariables.find(v => v.name === variable2);
-                            
-                            if (controlVarObj && var1Obj && var2Obj) {
-                                resultsRef.current.push({
-                                    controlVariable: controlVarObj,
-                                    variable1: var1Obj,
-                                    variable2: var2Obj,
-                                    partialCorrelation: {
-                                        PartialCorrelation: partialCorrelation.Correlation,
-                                        PValue: partialCorrelation.PValue,
-                                        df: partialCorrelation.df
-                                    }
-                                });
-                            }
-                        } else {
-                            console.error(`Error processing partial correlation:`, partial);
-                            const errorMsg = `Calculation failed for partial correlation: ${workerError || 'Missing data'}`;
-                            setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                            errorCountRef.current += 1;
-                        }
-                    }
-                }
+                resultsRef.current = results;
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
                 const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
@@ -195,35 +168,63 @@ export const useBivariateAnalysis = ({
             }
 
             processedCountRef.current += 1;
-            console.log('Processed count:', processedCountRef.current);
-            console.log('Results ref:', JSON.stringify(resultsRef.current));
             if (processedCountRef.current === 1) {
-                if (resultsRef.current.length > 0) {
+                if (resultsRef.current) {
                     try {
-                        const descriptiveStatistics = resultsRef.current.filter(r => r.descriptiveStatistics);
-                        const correlation = resultsRef.current.filter(r => r.correlation);
-                        const partialCorrelation = resultsRef.current.filter(r => r.partialCorrelation);
-                        
-                        const results: BivariateResults = {
-                            descriptiveStatistics,
-                            correlation,
-                            partialCorrelation
-                        };
-
-                        console.log('Results to format:', JSON.stringify(results));
-
+                        // console.log('Results ref:', JSON.stringify(resultsRef.current));
                         // Prepare log message
                         const variableNames = testVariables.map(v => v.name).join(" ");
                         let logMsg = `CORRELATIONS {VARIABLES=${variableNames}}`;
 
+                        // 4. Catat waktu ketika data diubah ke format tabel
+                        timingRef.current.dataFormattedToTable = performance.now();
+
                         // Save to database
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "Correlation" });
+                        
+                        // Prepare note about matrix validation issues if needed
+                        let note = "";
+                        if (partialCorrelationKendallsTauB && resultsRef.current.matrixValidation && 
+                            (resultsRef.current.matrixValidation.hasInvalidCorrelations || resultsRef.current.matrixValidation.hasInvalidNs)) {
+                            const issues = [];
+                            if (resultsRef.current.matrixValidation.hasInvalidCorrelations) {
+                                issues.push("invalid correlation values (less than -1 or greater than +1)");
+                            }
+                            if (resultsRef.current.matrixValidation.hasInvalidNs) {
+                                issues.push("invalid N values (less than 1)");
+                            }
+                            note = `Note: Matrix validation detected ${issues.join(" and ")}. Partial correlation is not displayed.`;
+                        }
+                        
+                        let correlationNote = "";
+                        if (insufficientDataVarsRef.current.length > 0) {
+                            correlationNote += "Note: ";
+                            const typeToVars: Record<string, string[]> = {};
+                            for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
+                                for (const type of insufficientType) {
+                                    if (!typeToVars[type]) typeToVars[type] = [];
+                                    typeToVars[type].push(variableLabel || variableName);
+                                }
+                            }
+                            if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+                                correlationNote += `[Cannot be computed for variable(s): ${typeToVars["empty"].join(", ")}. There are no valid cases for this analysis because all caseweights are not positive.]`;
+                            }
+                            if (typeToVars["single"] && typeToVars["single"].length > 0) {
+                                correlationNote += `[Cannot be computed for variable(s): ${typeToVars["single"].join(", ")}. The sum of caseweights is less than or equal 1.]`;
+                            }
+                            if (typeToVars["stdDev"] && typeToVars["stdDev"].length > 0) {
+                                correlationNote += `[Cannot be computed for variable(s): ${typeToVars["stdDev"].join(", ")}. The standard deviation is 0.]`;
+                            }
+                        }
+                        // Create analytic with or without note
+                        const analyticId = await addAnalytic(logId, { 
+                            title: "Correlation", 
+                            note: note || undefined 
+                        });
 
                         // Add descriptive statistics table
                         if (statisticsOptions.meansAndStandardDeviations) {
-                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results);
-                            console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
+                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current);
                        
                             await addStatistic(analyticId, {
                                 title: "Descriptive Statistics",
@@ -234,15 +235,13 @@ export const useBivariateAnalysis = ({
                         }
 
                         if (correlationCoefficient.pearson) {
-                            console.log(`const formattedCorrelationTable = formatCorrelationTable(results:${JSON.stringify(results)}, options:${JSON.stringify(options)}, testVariables:${JSON.stringify(testVariables)}, correlationType:["Pearson"])`);
-                            const formattedCorrelationTable = formatCorrelationTable(results, options, testVariables, ["Pearson"]);
-                            console.log('Formatted correlation table:', JSON.stringify(formattedCorrelationTable));
+                            const formattedCorrelationTable = formatCorrelationTable(resultsRef.current, options, testVariables, ["Pearson"]);
 
                             await addStatistic(analyticId, {
                                 title: "Correlation",
                                 output_data: JSON.stringify({ tables: [formattedCorrelationTable] }),
                                 components: "Correlation",
-                                description: ""
+                                description: correlationNote
                             });
                         }
 
@@ -254,9 +253,8 @@ export const useBivariateAnalysis = ({
                             if (correlationCoefficient.spearman) {
                                 correlationType.push("Spearman's rho");
                             }
-                            console.log(`const formattedCorrelationTable = formatCorrelationTable(results:${JSON.stringify(results)}, options:${JSON.stringify(options)}, testVariables:${JSON.stringify(testVariables)}, correlationType:${JSON.stringify(correlationType)})`);
-                            const formattedCorrelationTable = formatCorrelationTable(results, options, testVariables, correlationType);
-                            console.log('Formatted nonparametric correlation table:', JSON.stringify(formattedCorrelationTable));
+                            const formattedCorrelationTable = formatCorrelationTable(resultsRef.current, options, testVariables, correlationType);
+                            // console.log('formattedCorrelationTable:', JSON.stringify(formattedCorrelationTable));
 
                             await addStatistic(analyticId, {
                                 title: "Nonparametric Correlation",
@@ -265,19 +263,53 @@ export const useBivariateAnalysis = ({
                                 description: ""
                             });
 
-                            if (partialCorrelationKendallsTauB && correlationCoefficient.kendallsTauB && partialCorrelation.length > 0) {
-                                const formattedPartialCorrelationTable = formatPartialCorrelationTable(results, options, testVariables);
-                                console.log('Formatted partial correlation table:', JSON.stringify(formattedPartialCorrelationTable));
+                            if (partialCorrelationKendallsTauB && correlationCoefficient.kendallsTauB && testVariables.length > 2 && missingValuesOptions.excludeCasesListwise) {
+                                // Check for matrix validation issues
+                                const hasMatrixIssues = resultsRef.current.matrixValidation && 
+                                    (resultsRef.current.matrixValidation.hasInvalidCorrelations || resultsRef.current.matrixValidation.hasInvalidNs);
+                                
+                                if (!hasMatrixIssues) {
+                                    const formattedPartialCorrelationTable = formatPartialCorrelationTable(resultsRef.current, options, testVariables);
+                                    // console.log('Formatted partial correlation table:', JSON.stringify(formattedPartialCorrelationTable));
 
-                                await addStatistic(analyticId, {
-                                    title: "Partial Correlation",
-                                    output_data: JSON.stringify({ tables: [formattedPartialCorrelationTable] }),
-                                    components: "Partial Correlation",
-                                    description: ""
-                                });
+                                    await addStatistic(analyticId, {
+                                        title: "Partial Correlation",
+                                        output_data: JSON.stringify({ tables: [formattedPartialCorrelationTable] }),
+                                        components: "Partial Correlation",
+                                        description: ""
+                                    });
+                                }
                             }
                         }
 
+                        
+                        // 5. Catat waktu ketika proses selesai
+                        timingRef.current.processCompleted = performance.now();
+
+                        // Hitung semua timing durations
+
+                        const timeToSendData = timingRef.current.dataSentToWorker - timingRef.current.analysisStart;
+                        const timeToReceiveData = timingRef.current.dataReceivedFromWorker - timingRef.current.dataSentToWorker;
+                        const timeToFormatData = timingRef.current.dataFormattedToTable - timingRef.current.dataReceivedFromWorker;
+                        const timeToComplete = timingRef.current.processCompleted - timingRef.current.dataFormattedToTable;
+                        const totalTime = timingRef.current.processCompleted - timingRef.current.analysisStart;
+
+                        // Hitung jumlah data (total rows dari analysisData)
+                        const totalDataRows = analysisData.length;
+
+                        // Single console.log dengan format yang diminta
+                        // console.log(`[BivariateCorrelation][${testVariables.length} var][${totalDataRows} data] TIMING SUMMARY:
+                        //     Analysis start to data sent: ${timeToSendData}ms
+                        //     Data sent to data received: ${timeToReceiveData}ms
+                        //     Data received to formatting: ${timeToFormatData}ms
+                        //     Formatting to completion: ${timeToComplete}ms
+                        //     TOTAL TIME: ${totalTime}ms`);
+
+                        setIsCalculating(false);
+                        worker.terminate();
+                        workerRef.current = null;
+                        onClose?.();
+                            
                         if (onClose) {
                             onClose();
                         }
@@ -305,7 +337,7 @@ export const useBivariateAnalysis = ({
                 workerRef.current = null;
             }
         };
-    }, [testVariables, correlationCoefficient, testOfSignificance, flagSignificantCorrelations, showOnlyTheLowerTriangle, showDiagonal, statisticsOptions, partialCorrelationKendallsTauB, options, addLog, addAnalytic, addStatistic, onClose, analysisData]);
+    }, [testVariables, correlationCoefficient, testOfSignificance, flagSignificantCorrelations, showOnlyTheLowerTriangle, showDiagonal, statisticsOptions, partialCorrelationKendallsTauB, missingValuesOptions, controlVariables, options, addLog, addAnalytic, addStatistic, onClose, analysisData]);
 
     const cancelCalculation = useCallback(() => {
         if (workerRef.current) {

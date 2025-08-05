@@ -1,7 +1,30 @@
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
-import type { ExploreAnalysisParams } from "../types";
-import type { Variable } from "@/types/Variable";
+import { ExploreAnalysisParams } from "../types";
+import { Variable } from "@/types/Variable";
+
+// Date utility functions
+function isDateString(value: string): boolean {
+    if (typeof value !== 'string') return false;
+    const datePattern = /^\d{2}-\d{2}-\d{4}$/;
+    if (!datePattern.test(value)) return false;
+    
+    const [day, month, year] = value.split('-').map(Number);
+    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 2100) return false;
+    
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function dateStringToSpssSeconds(dateStr: string): number | null {
+    if (!isDateString(dateStr)) return null;
+    
+    const [day, month, year] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const spssEpoch = new Date(1582, 9, 14); // October 14, 1582
+    const diffMs = date.getTime() - spssEpoch.getTime();
+    return Math.floor(diffMs / 1000);
+}
 
 // Internal helper – build stem/leaf structure from numeric values
 function buildStemLeaf(values: number[]): Array<{ stem: string; leaves: number[] }> {
@@ -28,9 +51,23 @@ function buildStemLeaf(values: number[]): Array<{ stem: string; leaves: number[]
 
 // Helper – extract numeric values for a variable from row list
 function extractValues(rows: any[], variable: Variable): number[] {
-  return rows
-    .map((row) => Number(row[variable.columnIndex]))
+  const result = rows
+    .map((row) => {
+      // Access data from rowData array using columnIndex
+      const value = row.rowData ? row.rowData[variable.columnIndex] : row[variable.columnIndex];
+      
+      // Check if the value is a date string and convert to SPSS seconds
+      if (typeof value === 'string' && isDateString(value)) {
+        const spssSeconds = dateStringToSpssSeconds(value);
+        return spssSeconds !== null ? spssSeconds : NaN;
+      }
+      
+      // Otherwise, convert to number
+      return Number(value);
+    })
     .filter((v) => !Number.isNaN(v));
+  
+  return result;
 }
 
 // Public API – called by useExploreAnalysis
@@ -45,6 +82,7 @@ export const processAndAddPlots = async (
   >,
   params: ExploreAnalysisParams
 ) => {
+
   const { addStatistic } = useResultStore.getState();
 
   const {
@@ -56,11 +94,14 @@ export const processAndAddPlots = async (
   } = params;
 
   // Early exit – no plot option selected
-  if (!showHistogram && !showStemAndLeaf && boxplotType === "none") return;
+  if (!showHistogram && !showStemAndLeaf && boxplotType === "none") {
+
+    return;
+  }
 
   // Determine output order: Boxplot(s), Histogram(s), then Stem-and-Leaf plot(s)
   const order: Array<{ type: string; enabled: boolean }> = [
-    { type: boxplotType === "factor-levels-together" ? "Clustered Boxplot" : "Boxplot", enabled: boxplotType !== "none" },
+    { type: "Boxplot", enabled: boxplotType !== "none" },
     { type: "Histogram", enabled: showHistogram },
     { type: "Stem And Leaf Plot", enabled: showStemAndLeaf },
   ];
@@ -70,18 +111,27 @@ export const processAndAddPlots = async (
   // Accumulator for "dependents together" boxplot
   const dependentsTogetherData: { category: string; value: number }[] = [];
 
+
+  
   for (const groupKey in groupedData) {
     const group = groupedData[groupKey];
     const groupLabel = groupKey === "all_data" ? "" : ` (${groupKey})`;
+    
 
     for (const depVar of dependentVariables) {
+      
       const values = extractValues(group.data, depVar);
-      if (values.length === 0) continue;
+      
+      if (values.length === 0) {
+        
+        continue;
+      }
 
       // Histogram collect
       if (showHistogram) {
         // Title only contains variable (and optional group) – component already implies plot type
         const histTitle = `${depVar.name}${groupLabel}`;
+        
         try {
           const chartJSON = ChartService.createChartJSON({
             chartType: "Histogram",
@@ -90,6 +140,7 @@ export const processAndAddPlots = async (
           });
           chartsByType["Histogram"] = chartsByType["Histogram"] || [];
           chartsByType["Histogram"].push({ title: histTitle, output: chartJSON, component: "Histogram" });
+          
         } catch (err) {
           console.error("[plotProcessor] Histogram generation failed:", err);
         }
@@ -98,6 +149,7 @@ export const processAndAddPlots = async (
       // Stem-and-leaf collect
       if (showStemAndLeaf) {
         const stemLeafData = buildStemLeaf(values);
+        
         if (stemLeafData.length === 0) continue;
         const slTitle = `${depVar.name}${groupLabel}`;
         try {
@@ -107,7 +159,8 @@ export const processAndAddPlots = async (
             chartMetadata: { title: slTitle, description: "Generated by Explore analysis" },
           });
           chartsByType["Stem And Leaf Plot"] = chartsByType["Stem And Leaf Plot"] || [];
-          chartsByType["Stem And Leaf Plot"].push({ title: slTitle, output: chartJSON, component: "Stem And Leaf" });
+          chartsByType["Stem And Leaf Plot"].push({ title: slTitle, output: chartJSON, component: "Stem And Leaf Plot" });
+          
         } catch (err) {
           console.error("[plotProcessor] Stem-and-Leaf generation failed:", err);
         }
@@ -117,6 +170,7 @@ export const processAndAddPlots = async (
       if (boxplotType !== "none") {
         // Helper to push chart into maps
         const pushChart = (chartType: string, title: string, data: any[], component: string) => {
+          
           try {
             const chartJSON = ChartService.createChartJSON({
               chartType,
@@ -125,6 +179,7 @@ export const processAndAddPlots = async (
             });
             chartsByType[chartType] = chartsByType[chartType] || [];
             chartsByType[chartType].push({ title, output: chartJSON, component });
+            
           } catch (err) {
             console.error(`[plotProcessor] ${chartType} generation failed:`, err);
           }
@@ -135,6 +190,10 @@ export const processAndAddPlots = async (
           values.forEach((v) => {
             dependentsTogetherData.push({ category: depVar.name, value: v });
           });
+        } else if (boxplotType === "dependents-separately" as const) {
+          // Create individual boxplot for each dependent variable
+          const boxTitle = `${depVar.name}${groupLabel}`;
+          pushChart("Boxplot", boxTitle, values, "Boxplot");
         }
       }
     }
@@ -169,7 +228,7 @@ export const processAndAddPlots = async (
       }
       if (clusterData.length > 0) {
         const chartTitle = dep.name; // Variable name only
-        pushChart("Clustered Boxplot", chartTitle, clusterData, "Boxplot");
+        pushChart("Boxplot", chartTitle, clusterData, "Boxplot");
       }
     }
   }
@@ -177,6 +236,7 @@ export const processAndAddPlots = async (
   // After looping through all groups/dependents, handle dependents-together boxplot output
   if (boxplotType === "dependents-together" && dependentsTogetherData.length > 0) {
     const title = "Dependents Together";
+    
     try {
       const chartJSON = ChartService.createChartJSON({
         chartType: "Boxplot",
@@ -185,23 +245,36 @@ export const processAndAddPlots = async (
       });
       chartsByType["Boxplot"] = chartsByType["Boxplot"] || [];
       chartsByType["Boxplot"].push({ title, output: chartJSON, component: "Boxplot" }); // component name stays as Boxplot (already spaced)
+      
     } catch (err) {
       console.error("[plotProcessor] Boxplot generation failed:", err);
     }
   }
 
-  // Output charts in desired order
+  // Output in desired order
+  let totalChartsAdded = 0;
+
+  
   for (const o of order) {
     if (!o.enabled) continue;
     const list = chartsByType[o.type];
-    if (!list) continue;
+    if (!list) {
+      
+      continue;
+    }
+    
     for (const chart of list) {
+      
       await addStatistic(analyticId, {
         title: chart.title,
         output_data: JSON.stringify(chart.output),
         components: chart.component,
         description: "",
       });
+      totalChartsAdded++;
+      
     }
   }
-}; 
+  
+
+};

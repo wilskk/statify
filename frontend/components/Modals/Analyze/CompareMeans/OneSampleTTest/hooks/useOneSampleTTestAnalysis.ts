@@ -5,14 +5,12 @@ import { useDataStore } from '@/stores/useDataStore';
 
 import {
   OneSampleTTestAnalysisProps,
-  OneSampleTTestResults,
   OneSampleTTestResult
 } from '../types';
 
 import {
   formatOneSampleTestTable,
   formatOneSampleStatisticsTable,
-  formatErrorTable
 } from '../utils/formatters'
 
 export const useOneSampleTTestAnalysis = ({
@@ -21,27 +19,40 @@ export const useOneSampleTTestAnalysis = ({
   estimateEffectSize,
   onClose
 }: OneSampleTTestAnalysisProps) => {
-  const { addLog, addAnalytic, addStatistic } = useResultStore();
-  const { data: analysisData } = useAnalysisData();
-
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { addLog, addAnalytic, addStatistic } = useResultStore();
+  const { data: analysisData } = useAnalysisData();
 
   const workerRef = useRef<Worker | null>(null);
 
   const resultsRef = useRef<OneSampleTTestResult[]>([]);
   const errorCountRef = useRef<number>(0);
   const processedCountRef = useRef<number>(0);
-  const insufficientDataVarsRef = useRef<string[]>([]);
+  const insufficientDataVarsRef = useRef<{variableName: string, variableLabel: string, insufficientType: string[]}[]>([]);
+
+  // Timing refs
+  const timingRef = useRef<{
+    analysisStart: number;
+    dataSentToWorker: number;
+    dataReceivedFromWorker: number;
+    dataFormattedToTable: number;
+    processCompleted: number;
+  }>({
+    analysisStart: 0,
+    dataSentToWorker: 0,
+    dataReceivedFromWorker: 0,
+    dataFormattedToTable: 0,
+    processCompleted: 0
+  });
 
   const runAnalysis = useCallback(async () => {
-    if (testVariables.length === 0) {
-      setErrorMsg("Please select at least one variable.");
-      return;
-    }
+    // 1. Catat waktu ketika runAnalysis dimulai
+    timingRef.current.analysisStart = performance.now();
     
-    setErrorMsg(null);
     setIsCalculating(true);
+    setErrorMsg(null);
 
     try {
       await useDataStore.getState().checkAndSave();
@@ -68,12 +79,15 @@ export const useOneSampleTTestAnalysis = ({
         analysisTypes = ['oneSampleTTest'];
     }
 
+    // 2. Catat waktu ketika data dikirim ke web worker
+    timingRef.current.dataSentToWorker = performance.now();
+
     testVariables.forEach(variable => {
       const dataForVar = analysisData.map(row => row[variable.columnIndex]);
       const payload = {
         analysisType: analysisTypes,
-        variable,
-        data: dataForVar,
+        variable1: variable,
+        data1: dataForVar,
         options: { testValue, estimateEffectSize }
       };
       worker.postMessage(payload);
@@ -82,48 +96,18 @@ export const useOneSampleTTestAnalysis = ({
     worker.onmessage = async (event) => {
       const { variableName, results, status, error: workerError } = event.data;
 
+      // 3. Catat waktu ketika data diterima dari web worker
+      if (processedCountRef.current === 0) {
+        timingRef.current.dataReceivedFromWorker = performance.now();
+      }
+
       if (status === 'success' && results) {
         // Check for metadata about insufficient data
         if (results.metadata && results.metadata.hasInsufficientData) {
-          insufficientDataVarsRef.current.push(results.metadata.variableName);
-          console.warn(`Insufficient valid data for variable: ${results.metadata.variableName}. Total: ${results.metadata.totalData}, Valid: ${results.metadata.validData}`);
+          insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
+          // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
         }
-        
-        if (results.oneSampleStatistics) {
-          const { variable, N, Mean, StdDev, SEMean } = results.oneSampleStatistics;
-
-          if (variable && N && Mean !== undefined && StdDev !== undefined && SEMean !== undefined) {
-            resultsRef.current.push({
-              variable,
-              stats: {
-                N,
-                Mean,
-                StdDev,
-                SEMean
-              }
-            });
-          }
-        }
-
-        if (results.oneSampleTest) {
-          const { variable, T, DF, PValue, MeanDifference, Lower, Upper } = results.oneSampleTest;
-          
-          if (variable && T !== undefined && DF !== undefined && PValue !== undefined && 
-              MeanDifference !== undefined && Lower !== undefined && Upper !== undefined) {
-            resultsRef.current.push({
-              variable,
-              testValue,
-              stats: {
-                T,
-                DF,
-                PValue,
-                MeanDifference,
-                Lower,
-                Upper
-              }
-            });
-          }
-        }
+        resultsRef.current.push(results);
       } else {
         console.error(`Error processing ${variableName}:`, workerError);
         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
@@ -135,6 +119,9 @@ export const useOneSampleTTestAnalysis = ({
 
       if (processedCountRef.current === testVariables.length) {
         try {
+          // 4. Catat waktu ketika data diubah ke format tabel
+          timingRef.current.dataFormattedToTable = performance.now();
+
           // Prepare log message
           const variableNames = testVariables.map(v => v.name).join(" ");
           let logMsg = `T-TEST {TESTVAL=${testValue}} {VARIABLES=${variableNames}}`;
@@ -151,40 +138,46 @@ export const useOneSampleTTestAnalysis = ({
           const logId = await addLog({ log: logMsg });
           
           // Prepare note about insufficient data if needed
-          let note = "";
+          let oneSampleStatisticsNote = "";
           if (insufficientDataVarsRef.current.length > 0) {
-            note = `Note: The following variables did not have sufficient valid data for analysis: ${insufficientDataVarsRef.current.join(', ')}. 
-                These variables require at least two valid numeric values for T-Test calculation.`;
+            oneSampleStatisticsNote += "Note: ";
+            const typeToVars: Record<string, string[]> = {};
+            for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
+              for (const type of insufficientType) {
+                if (!typeToVars[type]) typeToVars[type] = [];
+                typeToVars[type].push(variableLabel || variableName);
+              }
+            }
+            if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+              oneSampleStatisticsNote += `[t cannot be computed for variable(s): ${typeToVars["empty"].join(", ")}. There are no valid cases for this analysis because all caseweights are not positive.]`;
+            }
+            if (typeToVars["single"] && typeToVars["single"].length > 0) {
+              oneSampleStatisticsNote += `[t cannot be computed for variable(s): ${typeToVars["single"].join(", ")}. The sum of caseweights is less than or equal 1.]`;
+            }
+            if (typeToVars["stdDev"] && typeToVars["stdDev"].length > 0) {
+              oneSampleStatisticsNote += `[t cannot be computed for variable(s): ${typeToVars["stdDev"].join(", ")}. The standard deviation is 0.]`;
+            }
+          }
+
+          let note = "";
+          if (insufficientDataVarsRef.current.length === testVariables.length) {
+            note = "Note: The One-Sample Test table is not produced because all variables have insufficient data.";
           }
           
           // Create analytic with or without note
-          const analyticId = await addAnalytic(logId, { 
-            title: "T-Test", 
-            note: note || undefined 
+          const analyticId = await addAnalytic(logId, { title: "T-Test", note: note || undefined });
+
+          const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(resultsRef.current);
+
+          await addStatistic(analyticId, {
+            title: "One-Sample Statistics",
+            output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
+            components: "One-Sample Statistics",
+            description: oneSampleStatisticsNote
           });
 
-          // Check if we have any valid results
-          const oneSampleStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
-          const oneSampleTest = resultsRef.current.filter(r => 'T' in (r.stats as any));
-          
-          const results: OneSampleTTestResults = {
-            oneSampleStatistics,
-            oneSampleTest
-          };
-
-          // If we have valid results and not all variables have insufficient data
           if (resultsRef.current.length > 0 && insufficientDataVarsRef.current.length < testVariables.length) {
-            // Format tables
-            const formattedOneSampleStatisticsTable = formatOneSampleStatisticsTable(results);
-            const formattedOneSampleTestTable = formatOneSampleTestTable(results);
-
-            await addStatistic(analyticId, {
-              title: "One-Sample Statistics",
-              output_data: JSON.stringify({ tables: [formattedOneSampleStatisticsTable] }),
-              components: "One-Sample Statistics",
-              description: ""
-            });
-
+            const formattedOneSampleTestTable = formatOneSampleTestTable(resultsRef.current, testValue);
             await addStatistic(analyticId, {
               title: "One-Sample Test",
               output_data: JSON.stringify({ tables: [formattedOneSampleTestTable] }),
@@ -192,16 +185,27 @@ export const useOneSampleTTestAnalysis = ({
               description: ""
             });
           } 
-          // If no valid results or all variables have insufficient data, show error table
-          else {
-            const formattedErrorTable = formatErrorTable();
-            await addStatistic(analyticId, {
-              title: "One-Sample T Test Error",
-              output_data: JSON.stringify({ tables: [formattedErrorTable] }),
-              components: "Error",
-              description: ""
-            });
-          }
+
+          // 5. Catat waktu ketika proses selesai
+          timingRef.current.processCompleted = performance.now();
+          
+          // Hitung semua timing durations
+          const timeToSendData = timingRef.current.dataSentToWorker - timingRef.current.analysisStart;
+          const timeToReceiveData = timingRef.current.dataReceivedFromWorker - timingRef.current.dataSentToWorker;
+          const timeToFormatData = timingRef.current.dataFormattedToTable - timingRef.current.dataReceivedFromWorker;
+          const timeToComplete = timingRef.current.processCompleted - timingRef.current.dataFormattedToTable;
+          const totalTime = timingRef.current.processCompleted - timingRef.current.analysisStart;
+          
+          // Hitung jumlah data (total rows dari analysisData)
+          const totalDataRows = analysisData.length;
+          
+          // Single console.log dengan format yang diminta
+//           console.log(`[OneSampleTTest][${testVariables.length} var][${totalDataRows} data] TIMING SUMMARY:
+// Analysis start to data sent: ${timeToSendData}ms
+// Data sent to data received: ${timeToReceiveData}ms
+// Data received to formatting: ${timeToFormatData}ms
+// Formatting to completion: ${timeToComplete}ms
+// TOTAL TIME: ${totalTime}ms`);
 
           setIsCalculating(false);
           worker.terminate();

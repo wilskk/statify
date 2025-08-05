@@ -34,18 +34,8 @@ export const useKRelatedSamplesAnalysis = ({
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
     const processedCountBatchRef = useRef<number>(0);
-
+   
     const runAnalysis = useCallback(async (): Promise<void> => {
-        if (testVariables.length < 2) {
-            setErrorMsg('Please select at least two variables to analyze.');
-            return;
-        }
-
-        if (!testType.friedman && !testType.kendallsW && !testType.cochransQ) {
-            setErrorMsg("Please select at least one test type.");
-            return;
-        }
-
         setIsCalculating(true);
         setErrorMsg(null);
 
@@ -76,21 +66,21 @@ export const useKRelatedSamplesAnalysis = ({
                 const dataForVar = analysisData.map(row => row[variable.columnIndex]);
                 const descriptiveStatisticsPayload = {
                     analysisType: ['descriptiveStatistics'],
-                    variable,
-                    data: dataForVar,
+                    variable1: variable,
+                    data1: dataForVar,
                     options: { displayStatistics }
                 };
                 worker.postMessage(descriptiveStatisticsPayload);
-                console.log('[Results] processedCountBatchRef.current:', processedCountBatchRef.current);
+                // console.log('[Results] processedCountBatchRef.current:', processedCountBatchRef.current);
                 processedCountBatchRef.current += 1;
             });
         }
 
         const payload = {
             analysisType: ['kRelatedSamples'],
-            variable: 'K-Related Samples Test',
+            variable1: 'K-Related Samples Test',
             batchVariable: batch.map(vd => vd.variable),
-            data: batch.map(vd => vd.data),
+            data1: batch.map(vd => vd.data),
             batchData: batch.flatMap(vd => vd.data),
             options: { 
                 testType,
@@ -98,131 +88,30 @@ export const useKRelatedSamplesAnalysis = ({
             }
         };
         worker.postMessage(payload);
-        console.log('[Results] processedCountBatchRef.current:', processedCountBatchRef.current);
+        // console.log('[Results] processedCountBatchRef.current:', processedCountBatchRef.current);
         processedCountBatchRef.current += 1;
         worker.onmessage = async (event) => {
             const { variableName, results, status, error: workerError } = event.data;
             
             if (status === 'success' && results) {
-                if (results.descriptiveStatistics) {
-                    const { variable, N, Mean, StdDev, Min, Max, Percentile25, Percentile50, Percentile75 } = results.descriptiveStatistics;
-
-                    if (variable && N && Mean && StdDev && Min && Max && Percentile25 && Percentile50 && Percentile75) {
-                        resultsRef.current.push({
-                            variable,
-                            descriptiveStatistics: {
-                                N,
-                                Mean,
-                                StdDev,
-                                Min,
-                                Max,
-                                Percentile25,
-                                Percentile50,
-                                Percentile75
-                            }
-                        });
-                    }
-                    // else {
-                    //     console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
-
-                if (results.ranks) {
-                    const { variable, groups } = results.ranks;
-
-                    if (variable && Array.isArray(groups)) {
-                        resultsRef.current.push({
-                            variable,
-                            ranks: { groups }
-                        });
-                    }
-                    // else {
-                    //     console.error(`Error processing ranks for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
-
-                if (results.frequencies) {
-                    const { variable, groups } = results.frequencies;
-
-                    if (variable && Array.isArray(groups)) {
-                        resultsRef.current.push({
-                            variable,
-                            frequencies: {
-                                groups
-                            }
-                        });
-                    }
-                    // else {
-                    //     console.error(`Error processing ranks for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
-
-                console.log('[Results] testStatistics:', JSON.stringify(results.testStatistics));
-                // Jika results.testStatistics undefined, maka blok di bawah ini tidak akan dijalankan
-                // Artinya, tidak ada hasil statistik uji yang akan diproses atau dimasukkan ke resultsRef.current
-                if (results.testStatistics) {
-                    const { variable, TestType, N, W, TestValue, PValue, df } = results.testStatistics;
-
-                    // if (variable && TestType && N && TestValue && PValue && df) {
-                        resultsRef.current.push({
-                            variable,
-                            testStatistics: {
-                                TestType,
-                                N,
-                                W,
-                                TestValue,
-                                PValue,
-                                df
-                            }
-                        });
-                    // }
-                    // else {
-                    //     console.error(`Error processing test statistics for ${variableName}:`, workerError);
-                    //     const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                    //     setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                    //     errorCountRef.current += 1;
-                    // }
-                }
+                resultsRef.current.push(results);
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
                 const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
                 setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
                 errorCountRef.current += 1;
             }
-            console.log('[Results before] processedCountRef.current:', processedCountRef.current);
-            console.log('[Results] processedCountBatchRef.current:', processedCountBatchRef.current);
+            // console.log('[Results before] processedCountRef.current:', processedCountRef.current);
+            // console.log('[Results] processedCountBatchRef.current:', processedCountBatchRef.current);
             processedCountRef.current += 1;
-            console.log('[Results after] processedCountRef.current:', processedCountRef.current);
-            console.log('[Results after] processedCountBatchRef.current:', processedCountBatchRef.current);
+            // console.log('[Results after] processedCountRef.current:', processedCountRef.current);
+            // console.log('[Results after] processedCountBatchRef.current:', processedCountBatchRef.current);
 
             if (processedCountRef.current === processedCountBatchRef.current) {
 
                 if (resultsRef.current.length > 0) {
                     try {
-                        console.log('[Results] resultsRef.current:', JSON.stringify(resultsRef.current));
-                        const descriptiveStatistics = resultsRef.current.filter(r => 'descriptiveStatistics' in (r as any));
-                        const ranks = resultsRef.current.filter(r => 'ranks' in (r as any));
-                        const frequencies = resultsRef.current.filter(r => 'frequencies' in (r as any));
-                        const testStatistics = resultsRef.current.filter(r => 'testStatistics' in (r as any));
-                        
-                        const results: KRelatedSamplesResults = {
-                            descriptiveStatistics,
-                            ranks,
-                            frequencies,
-                            testStatistics,
-                        };
-
-                        console.log('Results to format:', JSON.stringify(results));
-
+                        // console.log('[Results] resultsRef.current:', JSON.stringify(resultsRef.current));
                         // Prepare log message
                         const variableNames = testVariables.map(v => v.name).join(" ");
                         let logMsg = `NPAR TESTS`;
@@ -248,12 +137,30 @@ export const useKRelatedSamplesAnalysis = ({
 
                         // Save to database
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "K Related Samples Test" });
+                        let note = "";
+                        let hasInsufficientDataEmpty = false;
+                        let hasInsufficientDataSingle = false;
+                        
+                        // Check all results for insufficient data and add note if any
+                        for (const res of resultsRef.current) {
+                            if (res?.metadata?.hasInsufficientDataEmpty) {
+                                hasInsufficientDataEmpty = true;
+                            }
+                            if (res?.metadata?.hasInsufficientDataSingle) {
+                                hasInsufficientDataSingle = true;
+                            }
+                            // Early exit if both are true
+                            if (hasInsufficientDataEmpty && hasInsufficientDataSingle) break;
+                        }
+                        if (hasInsufficientDataEmpty || hasInsufficientDataSingle) {
+                            note += "Note: There are not enough valid cases to perform the K Related Samples Test. No statistics are computed.";
+                        }
+                        const analyticId = await addAnalytic(logId, { title: "K Related Samples Test", note: note || "" });
 
                         // Add descriptive statistics table
-                            if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
-                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results, displayStatistics);
-                            console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
+                        if (displayStatistics?.descriptive || displayStatistics?.quartiles || !hasInsufficientDataEmpty) {
+                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current, displayStatistics);
+                            // console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
                         
                             await addStatistic(analyticId, {
                                 title: "Descriptive Statistics",
@@ -263,9 +170,9 @@ export const useKRelatedSamplesAnalysis = ({
                             });
                         }
 
-                        if (testType.friedman) {
-                            const formattedRanksTable = formatRanksTable(results);
-                            console.log('Formatted ranks table:', JSON.stringify(formattedRanksTable));
+                        if (testType.friedman && !hasInsufficientDataEmpty && !hasInsufficientDataSingle && !hasInsufficientDataEmpty) {
+                            const formattedRanksTable = formatRanksTable(resultsRef.current);
+                            // console.log('Formatted ranks table:', JSON.stringify(formattedRanksTable));
 
                             await addStatistic(analyticId, {
                                 title: "Ranks",
@@ -274,8 +181,8 @@ export const useKRelatedSamplesAnalysis = ({
                                 description: ""
                             });
 
-                            const formattedTestStatisticsTable = formatTestStatisticsTable(results, "Friedman Test");
-                            console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
+                            const formattedTestStatisticsTable = formatTestStatisticsTable(resultsRef.current, "Friedman Test");
+                            // console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
 
                             await addStatistic(analyticId, {
                                 title: "Test Statistics",
@@ -285,9 +192,9 @@ export const useKRelatedSamplesAnalysis = ({
                             });
                         }
 
-                        if (testType.cochransQ) {
-                            const formattedFrequenciesTable = formatFrequenciesTable(results);
-                            console.log('Formatted frequencies table:', JSON.stringify(formattedFrequenciesTable));
+                        if (testType.cochransQ && !hasInsufficientDataEmpty && !hasInsufficientDataSingle && !hasInsufficientDataEmpty) {
+                            const formattedFrequenciesTable = formatFrequenciesTable(resultsRef.current);
+                            // console.log('Formatted frequencies table:', JSON.stringify(formattedFrequenciesTable));
 
                             await addStatistic(analyticId, {
                                 title: "Frequencies",
@@ -296,8 +203,8 @@ export const useKRelatedSamplesAnalysis = ({
                                 description: ""
                             });
 
-                            const formattedTestStatisticsTable = formatTestStatisticsTable(results, "Cochran's Q Test");
-                            console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
+                            const formattedTestStatisticsTable = formatTestStatisticsTable(resultsRef.current, "Cochran's Q Test");
+                            // console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
 
                             await addStatistic(analyticId, {
                                 title: "Test Statistics",
@@ -307,9 +214,9 @@ export const useKRelatedSamplesAnalysis = ({
                             });
                         }
 
-                        if (testType.kendallsW) {
-                            const formattedRanksTable = formatRanksTable(results);
-                            console.log('Formatted ranks table:', JSON.stringify(formattedRanksTable));
+                        if (testType.kendallsW && !hasInsufficientDataEmpty && !hasInsufficientDataSingle) {
+                            const formattedRanksTable = formatRanksTable(resultsRef.current);
+                            // console.log('Formatted ranks table:', JSON.stringify(formattedRanksTable));
 
                             await addStatistic(analyticId, {
                                 title: "Ranks",
@@ -318,8 +225,8 @@ export const useKRelatedSamplesAnalysis = ({
                                 description: ""
                             });
 
-                            const formattedTestStatisticsTable = formatTestStatisticsTable(results, "Kendall's W Test");
-                            console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
+                            const formattedTestStatisticsTable = formatTestStatisticsTable(resultsRef.current, "Kendall's W Test");
+                            // console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
 
                             await addStatistic(analyticId, {
                                 title: "Test Statistics",

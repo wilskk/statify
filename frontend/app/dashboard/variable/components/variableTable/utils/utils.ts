@@ -1,5 +1,68 @@
 import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
 import { DEFAULT_MIN_ROWS, COLUMN_INDEX_TO_FIELD_MAP } from '../tableConfig';
+import Handsontable from 'handsontable';
+
+/**
+ * Enhanced text renderer that prevents word breaking and ensures proper text overflow handling
+ * @param instance - Handsontable instance
+ * @param td - Table cell element
+ * @param row - Row index
+ * @param col - Column index
+ * @param prop - Property name
+ * @param value - Cell value
+ * @param cellProperties - Cell properties
+ */
+export function enhancedTextRenderer(
+    instance: Handsontable,
+    td: HTMLTableCellElement,
+    row: number,
+    col: number,
+    prop: string | number,
+    value: any,
+    cellProperties: Handsontable.CellProperties
+): HTMLTableCellElement {
+    // Use the default text renderer first
+    Handsontable.renderers.TextRenderer(instance, td, row, col, prop, value, cellProperties);
+    
+    // Apply enhanced CSS properties programmatically
+    td.style.whiteSpace = 'nowrap';
+    td.style.overflow = 'hidden';
+    td.style.textOverflow = 'ellipsis';
+    td.style.wordBreak = 'keep-all';
+    td.style.wordWrap = 'normal';
+    td.style.hyphens = 'none';
+    td.style.overflowWrap = 'normal';
+    td.style.lineHeight = '1.2';
+    td.style.maxWidth = '100%';
+    
+    // Add title attribute for tooltip on hover
+    if (value != null && value !== '') {
+        td.title = String(value);
+    } else {
+        td.removeAttribute('title');
+    }
+    
+    return td;
+}
+
+/**
+ * Null-safe wrapper for the enhanced text renderer
+ */
+export function nullSafeEnhancedRenderer(
+    instance: Handsontable,
+    td: HTMLTableCellElement,
+    row: number,
+    col: number,
+    prop: string | number,
+    value: any,
+    cellProperties: Handsontable.CellProperties
+): HTMLTableCellElement {
+    if (value == null || value === undefined) {
+        Handsontable.renderers.TextRenderer(instance, td, row, col, prop, '', cellProperties);
+        return td;
+    }
+    return enhancedTextRenderer(instance, td, row, col, prop, value, cellProperties);
+}
 
 export function formatMissingValuesDisplay(variable: Variable): string {
     if (!variable.missing) {

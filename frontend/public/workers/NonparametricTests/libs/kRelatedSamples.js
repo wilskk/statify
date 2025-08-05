@@ -33,6 +33,9 @@ class KRelatedSamplesCalculator {
         this.validData = [];
         this.N = 0;
 
+        this.hasInsufficientDataEmpty = false;
+        this.hasInsufficientDataSingle = false;
+
         /** @private */
         this.memo = {};
     }
@@ -73,7 +76,14 @@ class KRelatedSamplesCalculator {
         
         this.dataMatrix = dataMatrix;
         this.N = dataMatrix.length; // Jumlah subjek/kasus
-        
+
+        if (this.N < 1) {
+            this.hasInsufficientDataEmpty = true;
+        }
+        if (this.N === 1) {
+            this.hasInsufficientDataSingle = true;
+        }
+
         this.initialized = true;
     }
 
@@ -454,7 +464,11 @@ class KRelatedSamplesCalculator {
         return {
             ranks,
             frequencies,
-            testStatistics
+            testStatistics,
+            metadata: {
+                hasInsufficientDataEmpty: this.hasInsufficientDataEmpty,
+                hasInsufficientDataSingle: this.hasInsufficientDataSingle
+            }
         };
     }
 }

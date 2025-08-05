@@ -53,8 +53,8 @@ export const Feedback = () => {
           </HelpAlert>
           
           <HelpCard title="Feedback Form" variant="step">
-            <form className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+            <form className="space-y-4 max-w-full">
+              <div className="grid gap-4 md:grid-cols-2 w-full">
                 <div className="space-y-1">
                   <Label htmlFor="name" className="text-sm">Name</Label>
                   <Input
@@ -106,7 +106,7 @@ export const Feedback = () => {
                 <Textarea
                   id="message"
                   placeholder="Describe your issue or suggestion in detail..."
-                  className="min-h-[120px] resize-y"
+                  className="min-h-[120px] resize-y w-full"
                   required
                 />
               </div>
@@ -131,25 +131,7 @@ export const Feedback = () => {
     }
   ];
 
-  const quickActions = [
-    {
-      label: 'Send Feedback',
-      onClick: () => {
-        // Scroll to feedback form
-        document.getElementById('feedback-form')?.scrollIntoView({ behavior: 'smooth' });
-      },
-      variant: 'default' as const,
-      icon: SendHorizontal
-    },
-    {
-      label: 'Contact Support',
-      onClick: () => {
-        console.log('Contact support');
-      },
-      variant: 'outline' as const,
-      icon: Users
-    }
-  ];
+
 
   const tips = [
     {
@@ -178,7 +160,7 @@ export const Feedback = () => {
       category="Support"
       lastUpdated="2024-01-15"
       sections={sections}
-      quickActions={quickActions}
+
       tips={tips}
       relatedTopics={relatedTopics}
     />

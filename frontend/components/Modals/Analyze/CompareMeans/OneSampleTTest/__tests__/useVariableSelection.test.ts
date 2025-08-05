@@ -72,14 +72,14 @@ describe('useVariableSelection hook for OneSampleTTest', () => {
     mockedUseVariableStore.mockReturnValue(createMockStore(mockVariables));
   });
 
-  it('initializes availableVariables with variables from the global store', () => {
+  it('should initialize availableVariables with variables from the global store', () => {
     const { result } = renderHook(() => useVariableSelection({}));
 
     expect(result.current.availableVariables).toHaveLength(mockVariables.length);
     expect(result.current.testVariables).toHaveLength(0);
   });
 
-  it('moves a variable from available to test variables', () => {
+  it('should move a variable from available to test variables', () => {
     const { result } = renderHook(() => useVariableSelection({}));
 
     act(() => {
@@ -90,7 +90,7 @@ describe('useVariableSelection hook for OneSampleTTest', () => {
     expect(result.current.availableVariables).toHaveLength(mockVariables.length - 1);
   });
 
-  it('moves a variable back to available variables', () => {
+  it('should move a variable back to available variables', () => {
     const { result } = renderHook(() => useVariableSelection({}));
 
     // Move to test variables first
@@ -107,7 +107,7 @@ describe('useVariableSelection hook for OneSampleTTest', () => {
     expect(result.current.availableVariables).toHaveLength(mockVariables.length);
   });
 
-  it('reorders variables in the test list', () => {
+  it('should reorder variables in the test list', () => {
     const { result } = renderHook(() => useVariableSelection({}));
 
     // Move both variables to test
@@ -124,7 +124,7 @@ describe('useVariableSelection hook for OneSampleTTest', () => {
     expect(result.current.testVariables[0].name).toBe('height');
   });
 
-  it('resets variable selection correctly', () => {
+  it('should reset variable selection correctly', () => {
     const { result } = renderHook(() => useVariableSelection({}));
 
     // Move variable to test
@@ -141,7 +141,7 @@ describe('useVariableSelection hook for OneSampleTTest', () => {
     expect(result.current.availableVariables).toHaveLength(mockVariables.length);
   });
 
-  it('handles highlighting a variable', () => {
+  it('should handle highlighting a variable', () => {
     const { result } = renderHook(() => useVariableSelection({}));
 
     const highlightedVar: HighlightedVariable = {

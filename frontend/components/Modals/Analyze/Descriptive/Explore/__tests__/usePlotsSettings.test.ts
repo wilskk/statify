@@ -20,6 +20,12 @@ describe('usePlotsSettings Hook', () => {
         });
 
         expect(result.current.boxplotType).toBe('factor-levels-together');
+
+        act(() => {
+            result.current.setBoxplotType('dependents-separately');
+        });
+
+        expect(result.current.boxplotType).toBe('dependents-separately');
     });
 
     it('should update showStemAndLeaf correctly', () => {
@@ -76,4 +82,4 @@ describe('usePlotsSettings Hook', () => {
         expect(result.current.showHistogram).toBe(false);
         expect(result.current.showNormalityPlots).toBe(false);
     });
-}); 
+});

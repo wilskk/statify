@@ -52,7 +52,7 @@ const DataMenu: React.FC = () => {
                     Sort Cases
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.SortVars)} data-testid="data-menu-sort-variables">
-                    Sort Variables...
+                    Sort Variables
                 </MenubarItem>                <MenubarItem onClick={() => openModal(ModalType.Transpose)} data-testid="data-menu-transpose">
                     Transpose
                 </MenubarItem>

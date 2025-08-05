@@ -2,12 +2,12 @@
  * Descriptive Modal
  *
  * Komponen ini menampilkan dialog/layar "Descriptives" untuk melakukan analisis statistik deskriptif.
- * Pengguna dapat:
- *   1. Memilih variabel yang akan dianalisis (tab "Variables").
- *   2. Mengatur statistik apa saja yang ingin ditampilkan (tab "Statistics").
- *   3. Menjalankan proses kalkulasi atau mereset pilihan.
+ * Users can:
+ *   1. Select variables to analyze ("Variables" tab).
+ *   2. Configure which statistics to display ("Statistics" tab).
+ *   3. Run the calculation process or reset selections.
  *
- * Catatan:
+ * Notes:
  * - Komponen ini bersifat agnostik terhadap container, sehingga dapat dirender di dalam <Dialog />
  *   maupun di sidebar. Lihat properti `containerType`.
  * - State form disimpan di IndexedDB (lihat hooks/useIndexedDB) agar pilihan user bertahan

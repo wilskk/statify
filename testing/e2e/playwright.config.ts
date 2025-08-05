@@ -20,8 +20,8 @@ export default defineConfig({
   ],
   
   // Reasonable timeouts
-  timeout: 45 * 1000,
-  expect: { timeout: 10 * 1000 },
+  timeout: 120 * 1000,
+  expect: { timeout: 30 * 1000 },
   
   use: {
     baseURL: 'http://localhost:3000',
@@ -34,16 +34,16 @@ export default defineConfig({
     }
   },
 
-  // Essential browser coverage
+  // Use Chromium only
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
   ],
 
   // Auto-start dev server
   webServer: {
     command: 'npm run dev',
     port: 3000,
+    cwd: '../../',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

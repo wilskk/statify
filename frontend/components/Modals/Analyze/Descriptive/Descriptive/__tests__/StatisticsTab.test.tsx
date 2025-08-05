@@ -22,10 +22,10 @@ jest.mock('@/components/ui/radio-group', () => {
   return {
     __esModule: true,
     RadioGroup: ({ children, onValueChange }: any) => (
-      <div>{React.Children.map(children, (child: any) => React.cloneElement(child, { changeHandler: onValueChange }))}</div>
+      <div>{React.Children.map(children, (child: any) => React.cloneElement(child, { onValueChange }))}</div>
     ),
-    RadioGroupItem: ({ id, value, changeHandler }: any) => (
-      <input type="radio" data-testid={id} value={value} onClick={() => changeHandler(value)} />
+    RadioGroupItem: ({ id, value, onValueChange }: any) => (
+      <input type="radio" data-testid={id} value={value} onClick={() => onValueChange?.(value)} />
     ),
   };
 });
@@ -68,4 +68,4 @@ describe('StatisticsTab component', () => {
     fireEvent.click(alphabeticRadio);
     expect(setDisplayOrder).toHaveBeenCalledWith('alphabetic');
   });
-}); 
+});

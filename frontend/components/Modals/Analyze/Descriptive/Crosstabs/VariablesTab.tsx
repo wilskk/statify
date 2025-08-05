@@ -21,6 +21,9 @@ const CrosstabsVariablesTab: FC<VariablesTabProps> = ({
 }) => {
     // --- Configuration for VariableListManager ---
     const variableIdKeyToUse: keyof Variable = 'id';
+    
+    // Filter to show only NUMERIC variables in available list
+    const filteredAvailableVariables = availableVariables.filter(variable => variable.type === 'NUMERIC');
 
     const targetLists: TargetListConfig[] = [
         {
@@ -79,7 +82,7 @@ const CrosstabsVariablesTab: FC<VariablesTabProps> = ({
         <div className="p-4" data-testid="crosstabs-variables-tab-content">
             <div className="relative" data-testid="crosstabs-variable-lists-container">
                 <VariableListManager
-                    availableVariables={availableVariables}
+                    availableVariables={filteredAvailableVariables}
                     targetLists={targetLists}
                     variableIdKey={variableIdKeyToUse}
                     highlightedVariable={highlightedVariable}

@@ -196,13 +196,19 @@ export interface DescriptiveStatistics {
   
 // K Independent Samples Test Result
 export interface KIndependentSamplesTestResult {
-    variable: Variable;
+    variable1: Variable;
     descriptiveStatistics?: DescriptiveStatistics;
     ranks?: Ranks;  // Changed from Ranks[] to Ranks
     testStatisticsKruskalWallisH?: KruskalWallisHTestStatistics;
     frequencies?: Frequencies;
     testStatisticsMedian?: MedianTestStatistics;
     jonckheereTerpstraTest?: JonckheereTerpstraTest;
+    metadata?: {
+        hasInsufficientData: boolean;
+        insufficientType: string[];
+        variableName: string;
+        variableLabel: string;
+    };
 }
   
   // K Independent Samples Test Results Collection

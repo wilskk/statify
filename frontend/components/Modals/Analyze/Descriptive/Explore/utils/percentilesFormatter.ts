@@ -11,7 +11,7 @@ export const formatPercentilesTable = (
   results: ExploreAggregatedResults,
   params: ExploreAnalysisParams,
 ): FormattedTable | null => {
-  console.log('--- [Formatter] formatPercentilesTable ---');
+
   console.log('Received results:', JSON.parse(JSON.stringify(results)));
   console.log('Received params:', JSON.parse(JSON.stringify(params)));
 
@@ -116,4 +116,4 @@ export const formatPercentilesTable = (
   }
 
   return { title: 'Percentiles', columnHeaders, rows };
-}; 
+};

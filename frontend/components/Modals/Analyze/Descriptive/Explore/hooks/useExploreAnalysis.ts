@@ -125,9 +125,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
 
         // Helper to perform analysis for a given subset of factor variables
         const performAnalysisForFactors = async (factorVars: Variable[], logId: number) => {
-            // === Debug logging start ===
-            console.log("[Explore] Perform analysis for factors:", factorVars.map(v => v.name));
-            // === Debug logging end ===
+
 
             const localParams: ExploreAnalysisParams = {
                 ...params,
@@ -150,7 +148,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 console.error('[Explore] Failed to create analytic:', logErr);
             }
 
-            console.log("[Explore] Grouped data keys:", Object.keys(groupedData));
+
             const analysisPromises: Promise<any>[] = [];
 
             for (const groupKey in groupedData) {
@@ -217,29 +215,34 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
 
             if (Object.keys(aggregatedResults).length > 0) {
                 const outputSections = [
-                    { formatter: formatCaseProcessingSummary, componentName: 'Case Processing Summary' },
-                    { formatter: formatDescriptivesTable, componentName: 'Descriptives' },
-                    { formatter: formatMEstimatorsTable, componentName: 'M-Estimators' },
-                    { formatter: formatPercentilesTable, componentName: 'Percentiles' },
-                    { formatter: formatExtremeValuesTable, componentName: 'Extreme Values' },
+                    { formatter: formatCaseProcessingSummary, componentName: 'Case Processing Summary', condition: true },
+                    { formatter: formatDescriptivesTable, componentName: 'Descriptives', condition: localParams.showDescriptives },
+                    { formatter: formatMEstimatorsTable, componentName: 'M-Estimators', condition: localParams.showMEstimators },
+                    { formatter: formatPercentilesTable, componentName: 'Percentiles', condition: localParams.showPercentiles },
+                    { formatter: formatExtremeValuesTable, componentName: 'Extreme Values', condition: localParams.showOutliers },
                 ];
 
                 for (const section of outputSections) {
-                    const formatted = section.formatter(aggregatedResults, localParams);
-                    if (formatted) {
-                        await addStatistic(analyticId!, {
-                            title: formatted.title,
-                            output_data: JSON.stringify({ tables: [formatted] }),
-                            components: section.componentName,
-                            description: formatted.footnotes ? formatted.footnotes.join('\n') : '',
-                        });
+                    if (section.condition) {
+                        const formatted = section.formatter(aggregatedResults, localParams);
+                        if (formatted) {
+                            await addStatistic(analyticId!, {
+                                title: formatted.title,
+                                output_data: JSON.stringify({ tables: [formatted] }),
+                                components: section.componentName,
+                                description: formatted.footnotes ? formatted.footnotes.join('\n') : '',
+                            });
+                        }
                     }
                 }
 
+
+                
                 try {
                     await processAndAddPlots(analyticId!, groupedData as any, localParams);
+
                 } catch (plotErr) {
-                    console.error('Explore plot generation failed:', plotErr);
+                    console.error('[useExploreAnalysis] Explore plot generation failed:', plotErr);
                 }
             } else {
                 if (!taskFailed) setError('Analysis produced no results.');

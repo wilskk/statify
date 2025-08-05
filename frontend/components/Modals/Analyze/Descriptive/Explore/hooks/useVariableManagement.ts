@@ -43,14 +43,14 @@ export const useVariableManagement = (): UseVariableManagementResult => {
     const getInitialAvailable = useCallback(() => {
         return allVariables
             .filter(v => v.name !== "")
-            // Pastikan setiap variabel memiliki properti `id`; jika belum ada, gunakan `columnIndex` sebagai cadangan
+            // Ensure each variable has an `id` property; if not, use `columnIndex` as fallback
             .map(v => ({ ...v, id: v.id ?? v.columnIndex }))
             .sort((a, b) => a.columnIndex - b.columnIndex);
     }, [allVariables]);
 
     useEffect(() => {
         const initialVars = getInitialAvailable();
-        // Gunakan `id` (string) sebagai kunci unik
+        // Use `id` (string) as unique key
         const dependentIds = new Set(dependentVariables.map(v => String(v.id)));
         const factorIds = new Set(factorVariables.map(v => String(v.id)));
         const labelId = labelVariable?.id ? String(labelVariable.id) : null;
@@ -66,17 +66,17 @@ export const useVariableManagement = (): UseVariableManagementResult => {
     }, [allVariables, dependentVariables, factorVariables, labelVariable, getInitialAvailable]);
 
     const moveToDependentVariables = useCallback((variable: Variable, targetIndex?: number) => {
-        // Hanya izinkan tipe numerik pada daftar dependent
+        // Only allow numeric types in dependent list
         const numericTypes: Variable['type'][] = ["NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "RESTRICTED_NUMERIC"];
         if (variable.id === undefined || variable.id === null) return;
         if (variable.type && !numericTypes.includes(variable.type)) {
-            console.warn(`[Explore] Variable '${variable.name}' bertipe '${variable.type}' bukan numerik; abaikan.`);
-            return; // Tolak variabel non-numerik
+            console.warn(`[Explore] Variable '${variable.name}' of type '${variable.type}' is not numeric; ignoring.`);
+            return; // Reject non-numeric variables
         }
-        // Hilangkan variabel dari daftar available
+        // Remove variable from available list
         setAvailableVariables(prev => prev.filter(v => String(v.id) !== String(variable.id)));
         setDependentVariables(prev => {
-            // Hindari duplikasi
+            // Avoid duplication
             if (prev.some(v => String(v.id) === String(variable.id))) return prev;
             const newList = [...prev];
             if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
@@ -170,4 +170,4 @@ export const useVariableManagement = (): UseVariableManagementResult => {
         setHighlightedVariable,
         resetVariableSelections
     };
-}; 
+};
