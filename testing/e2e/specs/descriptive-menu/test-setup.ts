@@ -48,8 +48,9 @@ export class DescriptiveTestSetup {
       
       await this.page.locator('[data-testid="data-page"]').waitFor({ state: 'visible', timeout: 10000 });
       
-      // Verify treegrid is loaded with data
-      await this.page.locator('treegrid').waitFor({ state: 'visible', timeout: 10000 });
+      // Verify data interface is loaded (variable list manager)
+      const dataInterface = this.page.locator('[data-testid="available-variables-list-container"], [data-testid="available-variable-list"], .variable-list-manager').first();
+      await dataInterface.waitFor({ state: 'visible', timeout: 10000 });
       
       // Wait for data to fully load before proceeding
       await this.page.waitForTimeout(3000);
