@@ -29,7 +29,9 @@ const customJestConfig = {
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
-    '^/workers/DescriptiveStatistics/(.*)$': '<rootDir>/public/workers/DescriptiveStatistics/$1'
+    '^/workers/DescriptiveStatistics/(.*)$': '<rootDir>/public/workers/DescriptiveStatistics/$1',
+    '^d3$': '<rootDir>/__mocks__/d3.js',
+    '^d3-(.*)$': '<rootDir>/__mocks__/d3-$1.js'
   },
   collectCoverageFrom: [
     'public/workers/DescriptiveStatistics/**/*.js',

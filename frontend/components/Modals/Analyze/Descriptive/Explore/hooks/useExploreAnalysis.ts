@@ -125,9 +125,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
 
         // Helper to perform analysis for a given subset of factor variables
         const performAnalysisForFactors = async (factorVars: Variable[], logId: number) => {
-            // === Debug logging start ===
-            console.log("[Explore] Perform analysis for factors:", factorVars.map(v => v.name));
-            // === Debug logging end ===
+
 
             const localParams: ExploreAnalysisParams = {
                 ...params,
@@ -150,7 +148,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 console.error('[Explore] Failed to create analytic:', logErr);
             }
 
-            console.log("[Explore] Grouped data keys:", Object.keys(groupedData));
+
             const analysisPromises: Promise<any>[] = [];
 
             for (const groupKey in groupedData) {
@@ -238,10 +236,13 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                     }
                 }
 
+
+                
                 try {
                     await processAndAddPlots(analyticId!, groupedData as any, localParams);
+
                 } catch (plotErr) {
-                    console.error('Explore plot generation failed:', plotErr);
+                    console.error('[useExploreAnalysis] Explore plot generation failed:', plotErr);
                 }
             } else {
                 if (!taskFailed) setError('Analysis produced no results.');
