@@ -16,10 +16,11 @@ import { VariableTypeDialog } from './dialog/VariableTypeDialog';
 import { ValueLabelsDialog } from './dialog/ValueLabelsDialog';
 import { MissingValuesDialog } from './dialog/MissingValuesDialog';
 import { Variable, VariableType } from '@/types/Variable';
+import { withDataTableErrorBoundary } from '@/components/Common/DataTableErrorBoundary';
 
 registerAllModules();
 
-export default function VariableTable() {
+function VariableTableComponent() {
     const hotTableRef = useRef(null);
 
     const {
@@ -73,8 +74,8 @@ export default function VariableTable() {
     }, [variables]);
     
     return (
-        <div className="relative w-full h-full border-t border-border">
-            <div className="hot-container w-full h-full overflow-hidden relative z-0">
+        <div className="relative w-full h-full border-t border-border" data-testid="variable-table-container">
+            <div className="hot-container w-full h-full overflow-hidden relative z-0" data-testid="handsontable-container">
                 <HotTable
                     ref={hotTableRef}
                     data={tableData}
@@ -134,3 +135,5 @@ export default function VariableTable() {
         </div>
     );
 }
+
+export default withDataTableErrorBoundary(VariableTableComponent);

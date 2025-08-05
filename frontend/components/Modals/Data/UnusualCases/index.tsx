@@ -58,15 +58,15 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
             <div className={`flex flex-col ${containerType === "sidebar" ? "h-full" : "max-h-[85vh]"} overflow-hidden`}>
                 {containerType === "dialog" && (
                     <DialogHeader className="px-6 py-4 border-b">
-                        <DialogTitle className="text-xl font-semibold">Identify Unusual Cases</DialogTitle>
+                        <DialogTitle className="text-xl font-semibold" data-testid="unusualcases-dialog-title">Identify Unusual Cases</DialogTitle>
                     </DialogHeader>
                 )}
 
                 <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="flex-grow flex flex-col">
                     <div className="border-b">
                         <TabsList className="bg-muted rounded-none h-9 p-0">
-                            <TabsTrigger id="variables-tab-trigger" value="variables" className="px-3 h-8 rounded-none text-xs">Variables</TabsTrigger>
-                            <TabsTrigger id="options-tab-trigger" value="options" className="px-3 h-8 rounded-none text-xs">Options</TabsTrigger>
+                            <TabsTrigger data-testid="unusual-cases-variables-tab" id="variables-tab-trigger" value="variables" className="px-3 h-8 rounded-none text-xs">Variables</TabsTrigger>
+                            <TabsTrigger data-testid="unusual-cases-options-tab" id="options-tab-trigger" value="options" className="px-3 h-8 rounded-none text-xs">Options</TabsTrigger>
                         </TabsList>
                     </div>
                     
@@ -88,9 +88,9 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                         </Tooltip>
                     </TooltipProvider>
                     <div>
-                        <Button variant="outline" className="mr-2" onClick={hookProps.handleReset}>Reset</Button>
-                        <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
-                        <Button onClick={hookProps.handleConfirm}>OK</Button>
+                        <Button variant="outline" className="mr-2" onClick={hookProps.handleReset} data-testid="unusualcases-reset-button">Reset</Button>
+                        <Button variant="outline" className="mr-2" onClick={onClose} data-testid="unusualcases-cancel-button">Cancel</Button>
+                        <Button onClick={hookProps.handleConfirm} data-testid="unusualcases-ok-button">OK</Button>
                     </div>
                 </DialogFooter>
             </div>
@@ -128,7 +128,7 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({
 
     return (
         <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-4xl w-full p-0 flex flex-col">
+            <DialogContent className="max-w-4xl w-full p-0 flex flex-col" data-testid="unusualcases-dialog-content">
                 <UnusualCasesContent onClose={onClose} containerType={containerType} />
             </DialogContent>
         </Dialog>

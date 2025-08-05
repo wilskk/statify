@@ -17,23 +17,23 @@ class TwoIndependentSamplesCalculator {
      * @param {Array<any>} params.groupingData - Array data untuk variabel ini.
      * @param {object} params.options - Opsi tambahan dari main thread.
      */
-    constructor({ variable, data, groupingVariable, groupingData, options = {} }) {
+    constructor({ variable1, data1, variable2, data2, options = {} }) {
         console.log('TwoIndependentSamplesCalculator constructor');
-        this.variable = variable;
-        this.data = data;
-        this.groupingVariable = groupingVariable;
-        this.groupingData = groupingData;
+        this.variable1 = variable1;
+        this.data1 = data1;
+        this.variable2 = variable2;
+        this.data2 = data2;
         this.options = options;
         this.initialized = false;
 
         // Ekstrak opsi dari options
-        this.group1 = options.group1 || null;
-        this.group2 = options.group2 || null;
+        this.group1 = options.group1;
+        this.group2 = options.group2;
         this.testType = options.testType || { mannWhitneyU: true, mosesExtremeReactions: false, kolmogorovSmirnovZ: false, waldWolfowitzRuns: false };
 
         // Properti yang akan dihitung
         this.validData = [];
-        this.validGroupData = [];
+        this.validGroupingData = [];
         this.group1Data = [];
         this.group2Data = [];
         this.N = 0;
@@ -49,34 +49,33 @@ class TwoIndependentSamplesCalculator {
         if (this.initialized) return;
 
         // Filter data yang valid
-        const isNumericType = ['scale', 'date'].includes(this.variable.measure);
-        const isNumericGroupingType = ['scale', 'date'].includes(this.groupingVariable.measure);
+        const isNumericType = ['scale', 'date'].includes(this.variable1.measure);
+        const isNumericGroupingType = ['scale', 'date'].includes(this.variable2.measure);
 
-        // Filter data yang valid dan hanya untuk grup1 atau grup2
-        this.validData = this.data
+        // Filter data yang valid
+        this.validData = this.data1
             .filter((value, index) => {
-                const isValidData = !checkIsMissing(value, this.variable.missing, isNumericType) && isNumeric(value);
-                const isValidGrouping = index < this.groupingData.length && 
-                    !checkIsMissing(this.groupingData[index], this.groupingVariable.missing, isNumericGroupingType);
+                const isValidData = !checkIsMissing(value, this.variable1.missing, isNumericType) && isNumeric(value);
+                const isValidGrouping = index < this.data2.length && 
+                    !checkIsMissing(this.data2[index], this.variable2.missing, isNumericGroupingType);
                 return isValidData && isValidGrouping;
             })
             .map(value => parseFloat(value));
         
-        this.validGroupingData = this.groupingData
+        this.validGroupingData = this.data2
             .filter((value, index) => {
-                const isValidData = index < this.data.length && 
-                    !checkIsMissing(this.data[index], this.variable.missing, isNumericType) && 
-                    isNumeric(this.data[index]);
-                const isValidGrouping = !checkIsMissing(value, this.groupingVariable.missing, isNumericGroupingType);
+                const isValidData = index < this.data1.length && 
+                    !checkIsMissing(this.data1[index], this.variable1.missing, isNumericType) && 
+                    isNumeric(this.data1[index]);
+                const isValidGrouping = !checkIsMissing(value, this.variable2.missing, isNumericGroupingType);
                 return isValidData && isValidGrouping;
             });
 
-        // Separate data into two groups based on grouping variable
         this.group1Data = this.validData.filter((_, index) => 
             this.validGroupingData[index] === this.group1);
         this.group2Data = this.validData.filter((_, index) => 
             this.validGroupingData[index] === this.group2);
-        
+
         // Hitung statistik dasar
         this.groupingN = this.validGroupingData.length;
         this.group1N = this.group1Data.length;
@@ -151,11 +150,10 @@ class TwoIndependentSamplesCalculator {
         const group1MeanRank = this.group1N > 0 ? group1SumRanks / this.group1N : 0;
         const group2MeanRank = this.group2N > 0 ? group2SumRanks / this.group2N : 0;
 
-        const group1Label = this.groupingVariable.values?.find(v => v.value === this.group1)?.label || this.group1?.toString() || '';
-        const group2Label = this.groupingVariable.values?.find(v => v.value === this.group2)?.label || this.group2?.toString() || '';
+        const group1Label = this.variable2.values?.find(v => v.value === this.group1)?.label || this.group1?.toString() || '';
+        const group2Label = this.variable2.values?.find(v => v.value === this.group2)?.label || this.group2?.toString() || '';
 
         const result = {
-            variable: this.variable,
             group1: {
                 label: group1Label,
                 N: this.group1N,
@@ -271,7 +269,6 @@ class TwoIndependentSamplesCalculator {
         // Validasi input
         if (this.group1N === 0 || this.group2N === 0) {
             const result = {
-                variable: this.variable,
                 U: 0,
                 W: 0,
                 Z: 0,
@@ -328,14 +325,15 @@ class TwoIndependentSamplesCalculator {
         // Hitung p-value
         const pValue = 2 * (1 - stdlibstatsBaseDistsNormalCdf(Math.abs(Z), 0, 1));
         
-        // Hitung p-value eksak
-        const pExact = this.getPExactMannWhitneyU(U);
-
+        
         // Tentukan apakah akan menampilkan p-value eksak
         const showExact = (n1 * n2) < 400 && (((n1 * n2) / 2) + Math.min(n1, n2)) <= 220;
-
+        let pExact = null;
+        if (showExact) {
+            // Hitung p-value eksak
+            pExact = this.getPExactMannWhitneyU(U);
+        }
         const result = {
-            variable: this.variable,
             U,
             W,
             Z,
@@ -355,7 +353,6 @@ class TwoIndependentSamplesCalculator {
         // Validasi input
         if (this.group1N === 0 || this.group2N === 0) {
             const result = {
-                variable: this.variable,
                 D_absolute: 0,
                 D_positive: 0,
                 D_negative: 0,
@@ -401,7 +398,6 @@ class TwoIndependentSamplesCalculator {
         if (pValue < 0) pValue = 0;
 
         const result = {
-            variable: this.variable,
             D_absolute,
             D_positive,
             D_negative,
@@ -420,7 +416,6 @@ class TwoIndependentSamplesCalculator {
         // Validasi input
         if (this.group1N === 0 || this.group2N === 0) {
             const result = {
-                variable: this.variable,
                 span: 0,
                 outliers: 0,
                 pValue: 1
@@ -436,7 +431,6 @@ class TwoIndependentSamplesCalculator {
         const pValue = 1 - Math.abs(2 * proportion - 1);
 
         const result = {
-            variable: this.variable,
             span,
             outliers,
             proportion,
@@ -454,7 +448,6 @@ class TwoIndependentSamplesCalculator {
         // Validasi input
         if (this.group1N === 0 || this.group2N === 0) {
             const result = {
-                variable: this.variable,
                 runsCount: 0,
                 Z: 0,
                 pValue: 1
@@ -468,7 +461,7 @@ class TwoIndependentSamplesCalculator {
         for (let i = 0; i < this.validData.length; i++) {
             combinedData.push({
                 value: this.validData[i],
-                group: this.validGroupData[i]
+                group: this.validGroupingData[i]
             });
         }
         combinedData.sort((a, b) => a.value - b.value);
@@ -502,7 +495,6 @@ class TwoIndependentSamplesCalculator {
         const pValue = 2 * (1 - stdlibstatsBaseDistsNormalCdf(Math.abs(Z), 0, 1));
 
         const result = {
-            variable: this.variable,
             runsCount,
             expectedRuns,
             varianceRuns,
@@ -515,6 +507,19 @@ class TwoIndependentSamplesCalculator {
     }
 
     getOutput() {
+        this.#initialize();
+        let hasInsufficientData = false;
+        let insufficentType = [];
+        if (this.group1N === 0 && this.group2N === 0) {
+            hasInsufficientData = true;
+            insufficentType.push('empty');
+        } else 
+        if (this.group1N === 0 || this.group2N === 0) {
+            hasInsufficientData = true;
+            insufficentType.push('hasEmptyGroup');
+        }
+        const variable1 = this.variable1;
+        const variable2 = this.variable2;
         const frequenciesRanks = this.getFrequenciesRanks();
         let testStatisticsMannWhitneyU = null;
         let testStatisticsKolmogorovSmirnovZ = null;
@@ -527,19 +532,18 @@ class TwoIndependentSamplesCalculator {
         if (this.testType.kolmogorovSmirnovZ) {
             testStatisticsKolmogorovSmirnovZ = this.getTestStatisticsKolmogorovSmirnovZ();
         }
-        // if (this.testType.mosesExtremeReactions) {
-        //     testStatisticsMosesExtremeReactions = this.getTestStatisticsMosesExtremeReactions();
-        // }
-        // if (this.testType.waldWolfowitzRuns) {
-        //     testStatisticsWaldWolfowitzRuns = this.getTestStatisticsWaldWolfowitzRuns();
-        // }
-
         return {
+            variable1,
+            variable2,
             frequenciesRanks,
             testStatisticsMannWhitneyU,
             testStatisticsKolmogorovSmirnovZ,
-            // testStatisticsMosesExtremeReactions,
-            // testStatisticsWaldWolfowitzRuns
+            metadata: {
+                hasInsufficientData,
+                insufficentType,
+                variableName: variable1.name,
+                variableLabel: variable1.label
+            }
         };
     }
 }

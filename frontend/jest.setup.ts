@@ -3,9 +3,9 @@ import 'fake-indexeddb/auto';
 // https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util';
-import './public/workers/DescriptiveStatistics/libs/utils';
+import './public/workers/DescriptiveStatistics/libs/utils/utils';
 
-global.TextEncoder = TextEncoder;
+global.TextEncoder = TextEncoder as any;
 global.TextDecoder = TextDecoder as any;
 
 // Polyfill for PointerEvent which is not implemented in JSDOM
@@ -110,4 +110,4 @@ jest.mock('@radix-ui/react-dialog', () => {
       return Primitive;
     },
   });
-}); 
+});

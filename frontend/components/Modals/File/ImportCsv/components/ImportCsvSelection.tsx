@@ -313,17 +313,7 @@ export const ImportCsvSelection: FC<ImportCsvSelectionProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                <div className="flex items-center text-muted-foreground">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"><HelpCircle className="h-4 w-4" /></Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top"><p className="text-xs">Start feature tour</p></TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
                 <div>
                     <Button variant="outline" onClick={onClose} disabled={isLoading} className="mr-2">Cancel</Button>
                     <div id="import-csv-continue-button-wrapper" className="relative inline-block">
@@ -337,4 +327,4 @@ export const ImportCsvSelection: FC<ImportCsvSelectionProps> = ({
             </div>
         </div>
     );
-}; 
+};

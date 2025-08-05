@@ -10,7 +10,7 @@ import { useAnalysisData } from '@/hooks/useAnalysisData';
 interface GroupedData {
     [key: string]: {
         factorLevels: Record<string, string | number>;
-        data: any[];
+        data: { rowData: any, caseNum: number }[];
     };
 }
 
@@ -23,10 +23,11 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
 
     const groupDataByFactors = useCallback((currentData: any[], factorVariables: Variable[]): GroupedData => {
         if (factorVariables.length === 0 || factorVariables.every(v => v === null)) {
-            return { 'all_data': { factorLevels: {}, data: currentData } };
+            const dataWithCaseNumbers = currentData.map((row, index) => ({ rowData: row, caseNum: index + 1 }));
+            return { 'all_data': { factorLevels: {}, data: dataWithCaseNumbers } };
         }
         const grouped: GroupedData = {};
-        currentData.forEach((row: any) => {
+        currentData.forEach((row: any, index: number) => {
             const key = factorVariables.map(v => row[v.columnIndex]).join(' | ');
             if (!grouped[key]) {
                 grouped[key] = {
@@ -37,7 +38,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                     data: []
                 };
             }
-            grouped[key].data.push(row);
+            grouped[key].data.push({ rowData: row, caseNum: index + 1 });
         });
         return grouped;
     }, []);
@@ -107,14 +108,24 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
             return;
         }
 
+        // === Performance Monitoring: Start ===
+        const startTime = performance.now();
+        const dependentVariableCount = params.dependentVariables.length;
+        const factorVariableCount = params.factorVariables.length;
+        const caseCount = analysisData?.length || 0;
+        console.log(`[Explore Analysis] Starting analysis:`);
+        console.log(`  - Dependent variables: ${dependentVariableCount}`);
+        console.log(`  - Factor variables: ${factorVariableCount}`);
+        console.log(`  - Cases: ${caseCount}`);
+        console.log(`  - Start time: ${new Date().toISOString()}`);
+        // === Performance Monitoring: End ===
+
         setIsCalculating(true);
         setError(null);
 
         // Helper to perform analysis for a given subset of factor variables
         const performAnalysisForFactors = async (factorVars: Variable[], logId: number) => {
-            // === Debug logging start ===
-            console.log("[Explore] Perform analysis for factors:", factorVars.map(v => v.name));
-            // === Debug logging end ===
+
 
             const localParams: ExploreAnalysisParams = {
                 ...params,
@@ -137,7 +148,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 console.error('[Explore] Failed to create analytic:', logErr);
             }
 
-            console.log("[Explore] Grouped data keys:", Object.keys(groupedData));
+
             const analysisPromises: Promise<any>[] = [];
 
             for (const groupKey in groupedData) {
@@ -160,12 +171,14 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                             workerClient.terminate();
                         });
 
-                        const dataForVar = group.data.map((d: any) => d[depVar.columnIndex]);
+                        const dataForVar = group.data.map((d: any) => d.rowData[depVar.columnIndex]);
+                        const caseNumbers = group.data.map((d: any) => d.caseNum);
 
                         workerClient.post({
                             analysisType: 'examine',
                             variable: depVar,
                             data: dataForVar,
+                            caseNumbers,
                             weights: weights,
                             options: {
                                 confidenceInterval: parseFloat(localParams.confidenceInterval) || 95,
@@ -202,29 +215,34 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
 
             if (Object.keys(aggregatedResults).length > 0) {
                 const outputSections = [
-                    { formatter: formatCaseProcessingSummary, componentName: 'Case Processing Summary' },
-                    { formatter: formatDescriptivesTable, componentName: 'Descriptives' },
-                    { formatter: formatMEstimatorsTable, componentName: 'M-Estimators' },
-                    { formatter: formatPercentilesTable, componentName: 'Percentiles' },
-                    { formatter: formatExtremeValuesTable, componentName: 'Extreme Values' },
+                    { formatter: formatCaseProcessingSummary, componentName: 'Case Processing Summary', condition: true },
+                    { formatter: formatDescriptivesTable, componentName: 'Descriptives', condition: localParams.showDescriptives },
+                    { formatter: formatMEstimatorsTable, componentName: 'M-Estimators', condition: localParams.showMEstimators },
+                    { formatter: formatPercentilesTable, componentName: 'Percentiles', condition: localParams.showPercentiles },
+                    { formatter: formatExtremeValuesTable, componentName: 'Extreme Values', condition: localParams.showOutliers },
                 ];
 
                 for (const section of outputSections) {
-                    const formatted = section.formatter(aggregatedResults, localParams);
-                    if (formatted) {
-                        await addStatistic(analyticId!, {
-                            title: formatted.title,
-                            output_data: JSON.stringify({ tables: [formatted] }),
-                            components: section.componentName,
-                            description: formatted.footnotes ? formatted.footnotes.join('\n') : '',
-                        });
+                    if (section.condition) {
+                        const formatted = section.formatter(aggregatedResults, localParams);
+                        if (formatted) {
+                            await addStatistic(analyticId!, {
+                                title: formatted.title,
+                                output_data: JSON.stringify({ tables: [formatted] }),
+                                components: section.componentName,
+                                description: formatted.footnotes ? formatted.footnotes.join('\n') : '',
+                            });
+                        }
                     }
                 }
 
+
+                
                 try {
                     await processAndAddPlots(analyticId!, groupedData as any, localParams);
+
                 } catch (plotErr) {
-                    console.error('Explore plot generation failed:', plotErr);
+                    console.error('[useExploreAnalysis] Explore plot generation failed:', plotErr);
                 }
             } else {
                 if (!taskFailed) setError('Analysis produced no results.');
@@ -245,16 +263,35 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                 await performAnalysisForFactors(factorSet, logId);
             }
 
+            // === Performance Monitoring: End ===
+            const endTime = performance.now();
+            const executionTime = endTime - startTime;
+            console.log(`[Explore Analysis] Analysis completed:`);
+            console.log(`  - Dependent variables processed: ${dependentVariableCount}`);
+            console.log(`  - Factor variables processed: ${factorVariableCount}`);
+            console.log(`  - Cases analyzed: ${caseCount}`);
+            console.log(`  - Execution time: ${executionTime.toFixed(2)}ms`);
+            console.log(`  - End time: ${new Date().toISOString()}`);
+            // === Performance Monitoring: End ===
+
             // Close modal after all analyses are complete
             onClose();
         } catch (e) {
             const err = e instanceof Error ? e.message : String(e);
             console.error('Explore Analysis Error:', err);
             setError(`An unexpected error occurred: ${err}`);
+            
+            // === Performance Monitoring: Error ===
+            const endTime = performance.now();
+            const executionTime = endTime - startTime;
+            console.log(`[Explore Analysis] Analysis failed:`);
+            console.log(`  - Execution time before error: ${executionTime.toFixed(2)}ms`);
+            console.log(`  - Error: ${err}`);
+            // === Performance Monitoring: Error ===
         } finally {
             setIsCalculating(false);
         }
     }, [params, analysisData, weights, addLog, addAnalytic, addStatistic, groupDataByFactors, onClose]);
 
     return { runAnalysis, isCalculating, error };
-}; 
+};

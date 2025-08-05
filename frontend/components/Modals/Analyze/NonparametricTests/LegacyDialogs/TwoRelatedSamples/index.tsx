@@ -49,6 +49,7 @@ const TwoRelatedSamplesContent: FC<BaseModalProps> = ({ onClose, containerType =
         availableVariables,
         testVariables1,
         testVariables2,
+        pairNumbers,
         highlightedPair,
         setHighlightedPair,
         highlightedVariable,
@@ -152,6 +153,7 @@ const TwoRelatedSamplesContent: FC<BaseModalProps> = ({ onClose, containerType =
                         availableVariables={availableVariables}
                         testVariables1={testVariables1}
                         testVariables2={testVariables2}
+                        pairNumbers={pairNumbers}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
                         highlightedPair={highlightedPair}

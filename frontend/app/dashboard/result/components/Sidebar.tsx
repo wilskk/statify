@@ -98,11 +98,12 @@ const SidebarMenuItem: React.FC<{
                     size="icon"
                     className="ml-auto h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
+                    data-testid={`sidebar-delete-button-${item.type}-${item.id}`}
                 >
                     <Trash2 size={14} />
                 </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="sm:max-w-[425px] bg-popover text-popover-foreground border-border rounded-lg p-4 shadow-lg">
+            <AlertDialogContent className="sm:max-w-[425px] bg-popover text-popover-foreground border-border rounded-lg p-4 shadow-lg" data-testid={`delete-dialog-${item.type}-${item.id}`}>
                 <AlertDialogHeader className="pb-2">
                     <AlertDialogTitle className="text-lg font-semibold text-popover-foreground">Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription className="text-sm text-muted-foreground pt-1">
@@ -112,8 +113,8 @@ const SidebarMenuItem: React.FC<{
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="pt-3 sm:justify-end">
-                    <AlertDialogCancel className="border border-border hover:bg-accent text-accent-foreground h-8 px-3 text-sm">Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-8 px-3 text-sm">Delete</AlertDialogAction>
+                    <AlertDialogCancel className="border border-border hover:bg-accent text-accent-foreground h-8 px-3 text-sm" data-testid={`delete-cancel-${item.type}-${item.id}`}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-8 px-3 text-sm" data-testid={`delete-confirm-${item.type}-${item.id}`}>Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -123,7 +124,7 @@ const SidebarMenuItem: React.FC<{
     if (!isOpen) {
         if (item.type === 'analytic') {
             return (
-                <div className="flex justify-center py-2 hover:bg-accent rounded-md cursor-pointer">
+                <div className="flex justify-center py-2 hover:bg-accent rounded-md cursor-pointer" data-testid={`sidebar-collapsed-analytic-${item.id}`}>
                     <a href={item.url || `#output-${item.id}`} title={item.title}>
                         <BarChart2 size={20} />
                     </a>
@@ -134,16 +135,19 @@ const SidebarMenuItem: React.FC<{
     }
 
     return (
-        <div className="flex flex-col group">
+        <div className="flex flex-col group" data-testid={`sidebar-item-${item.type}-${item.id}`}>
             {hasChildren ? (
                 <div className={cn(
                     "flex items-center text-sm text-foreground rounded group relative hover:bg-accent",
                     { "pl-3 pr-1 py-1": depth > 0, "py-2 px-3 pr-1": depth === 0 }
                 )}
-                    style={{ paddingLeft: `${paddingLeft}px` }}>
+                    style={{ paddingLeft: `${paddingLeft}px` }}
+                    data-testid={`sidebar-expandable-${item.type}-${item.id}`}
+                >
                     <button
                         onClick={handleToggle}
                         className="flex items-center grow focus:outline-none"
+                        data-testid={`sidebar-toggle-${item.type}-${item.id}`}
                     >
                         <span className="truncate mr-1">{item.title}</span>
                         <span className="ml-auto flex-shrink-0 pl-1">
@@ -161,10 +165,13 @@ const SidebarMenuItem: React.FC<{
                     "flex items-center text-sm text-foreground rounded group relative hover:bg-accent",
                     { "pl-6 pr-1 py-1": depth > 0, "py-2 px-3 pr-1": depth === 0 }
                 )}
-                     style={{ paddingLeft: `${paddingLeft}px` }}>
+                     style={{ paddingLeft: `${paddingLeft}px` }}
+                     data-testid={`sidebar-link-${item.type}-${item.id}`}
+                >
                     <a
                         href={item.url}
                         className="flex items-center grow truncate mr-1 focus:outline-none"
+                        data-testid={`sidebar-link-anchor-${item.type}-${item.id}`}
                     >
                         {item.title}
                     </a>
@@ -177,7 +184,7 @@ const SidebarMenuItem: React.FC<{
             )}
             {/* Nested items rendered outside the clickable area */}
             {open && (
-                <div className="ml-2">
+                <div className="ml-2" data-testid={`sidebar-nested-items-${item.type}-${item.id}`}>
                     {item.items!.map((child, idx) => (
                         <SidebarMenuItem
                             key={generateKey(child, idx)}
@@ -278,9 +285,10 @@ const Sidebar: React.FC = () => {
                 "bg-background border-r border-border transition-all duration-300 flex flex-col h-full overflow-y-auto",
                 isOpen ? "w-64" : "w-14"
             )}
+            data-testid="result-sidebar"
         >
-            <div className="flex items-center p-3 border-b border-border flex-shrink-0">
-                {isOpen && <h1 className="text-md font-semibold truncate">Result</h1>}
+            <div className="flex items-center p-3 border-b border-border flex-shrink-0" data-testid="result-sidebar-header">
+                {isOpen && <h1 className="text-md font-semibold truncate" data-testid="result-sidebar-title">Result</h1>}
 
                 {/* Trash icon to clear all results (only visible when sidebar is expanded) */}
                 {isOpen && (
@@ -292,11 +300,12 @@ const Sidebar: React.FC = () => {
                                 className={cn("flex-shrink-0 ml-2 text-muted-foreground hover:text-destructive")}
                                 disabled={logs.length === 0}
                                 onClick={(e) => e.stopPropagation()}
+                                data-testid="clear-all-results-button"
                             >
                                 <Trash2 size={14} />
                             </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="sm:max-w-[425px] bg-popover text-popover-foreground border-border rounded-lg p-4 shadow-lg">
+                        <AlertDialogContent className="sm:max-w-[425px] bg-popover text-popover-foreground border-border rounded-lg p-4 shadow-lg" data-testid="clear-all-results-dialog">
                             <AlertDialogHeader className="pb-2">
                                 <AlertDialogTitle className="text-lg font-semibold text-popover-foreground">Are you absolutely sure?</AlertDialogTitle>
                                 <AlertDialogDescription className="text-sm text-muted-foreground pt-1">
@@ -304,7 +313,7 @@ const Sidebar: React.FC = () => {
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter className="pt-3 sm:justify-end">
-                                <AlertDialogCancel className="border border-border hover:bg-accent text-accent-foreground h-8 px-3 text-sm">Cancel</AlertDialogCancel>
+                                <AlertDialogCancel className="border border-border hover:bg-accent text-accent-foreground h-8 px-3 text-sm" data-testid="clear-all-cancel">Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                     onClick={async () => {
                                         try {
@@ -322,6 +331,7 @@ const Sidebar: React.FC = () => {
                                         }
                                     }}
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-8 px-3 text-sm"
+                                    data-testid="clear-all-confirm"
                                 >
                                     Delete
                                 </AlertDialogAction>
@@ -335,7 +345,9 @@ const Sidebar: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     className={cn("flex-shrink-0", isOpen ? "ml-auto" : "mx-auto")}
-                    onClick={() => setIsOpen(!isOpen)}>
+                    onClick={() => setIsOpen(!isOpen)}
+                    data-testid="result-sidebar-toggle"
+                >
                     <ChevronRight
                         className={cn(
                             "w-4 h-4 transform transition-transform",
@@ -344,8 +356,8 @@ const Sidebar: React.FC = () => {
                     />
                 </Button>
             </div>
-            <div className={cn("overflow-y-auto flex-grow", { "overflow-x-auto": isOpen })}>
-                <nav className={cn("p-2", { "flex flex-col items-center": !isOpen })}>
+            <div className={cn("overflow-y-auto flex-grow", { "overflow-x-auto": isOpen })} data-testid="result-sidebar-content">
+                <nav className={cn("p-2", { "flex flex-col items-center": !isOpen })} data-testid="result-sidebar-nav">
                     {sidebarData.map((item, index) => (
                         <SidebarMenuItem
                             key={generateKey(item, index)}

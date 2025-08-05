@@ -10,7 +10,10 @@
     "test": "jest --logHeapUsage",
     "test:watch": "jest --watch --logHeapUsage",
     "test:failed": "jest --onlyFailures",
-    "test:bail": "jest --bail"
+    "test:bail": "jest --bail",
+    "test:descriptive": "node test-descriptive.js",
+    "test:descriptive:unit": "jest components/Modals/Analyze/Descriptive/Descriptive/__tests__/ --verbose",
+    "test:descriptive:worker": "jest components/Modals/Analyze/Descriptive/Descriptive/__tests__/DescriptiveWorkerConnection.test.ts components/Modals/Analyze/Descriptive/Descriptive/__tests__/DescriptivesWorkerIntegration.test.ts --verbose"
   },
   "dependencies": {
     "@handsontable/react-wrapper": "^15.3.0",
@@ -86,6 +89,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

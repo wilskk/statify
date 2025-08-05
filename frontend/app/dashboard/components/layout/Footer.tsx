@@ -64,15 +64,16 @@ export default function Footer() {
     const inactiveTabStyle = "text-muted-foreground hover:bg-accent hover:text-accent-foreground";
 
     return (
-        <footer className="w-full bg-background border-t border-border py-1 px-3 flex items-center justify-between flex-shrink-0">
+        <footer id="dashboard-footer" className="w-full bg-background border-t border-border py-1 px-3 flex items-center justify-between flex-shrink-0" data-testid="footer-navigation">
             <TooltipProvider>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1" data-testid="navigation-tabs">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
                                 className={`${tabStyle} ${isDataActive ? activeTabStyle : inactiveTabStyle}`}
                                 onClick={() => router.push('/dashboard/data')}
                                 onMouseEnter={() => router.prefetch('/dashboard/data')}
+                                data-testid="data-tab"
                             >
                                 <DatabaseIcon size={14} />
                                 <span>Data</span>
@@ -89,6 +90,7 @@ export default function Footer() {
                                 className={`${tabStyle} ${isVariableActive ? activeTabStyle : inactiveTabStyle}`}
                                 onClick={() => router.push('/dashboard/variable')}
                                 onMouseEnter={() => router.prefetch('/dashboard/variable')}
+                                data-testid="variable-tab"
                             >
                                 <VariableIcon size={14} />
                                 <span>Variable</span>
@@ -105,6 +107,7 @@ export default function Footer() {
                                 className={`${tabStyle} ${isResultActive ? activeTabStyle : inactiveTabStyle}`}
                                 onClick={() => router.push('/dashboard/result')}
                                 onMouseEnter={() => router.prefetch('/dashboard/result')}
+                                data-testid="result-tab"
                             >
                                 <BarChartIcon size={14} />
                                 <span>Result</span>
@@ -116,9 +119,9 @@ export default function Footer() {
                     </Tooltip>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3" data-testid="footer-status">
                     {connectionStatus === 'offline' && (
-                        <span className="flex items-center text-muted-foreground text-sm">
+                        <span className="flex items-center text-muted-foreground text-sm" data-testid="offline-indicator">
                             <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground mr-1.5"></span>
                             Offline
                         </span>

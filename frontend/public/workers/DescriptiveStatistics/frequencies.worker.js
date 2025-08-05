@@ -1,14 +1,8 @@
-/**
- * @file frequencies.worker.js
- * Dedicated Web Worker for Frequencies analysis (including batched mode).
- */
+importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
+importScripts('/workers/DescriptiveStatistics/libs/frequency/frequency.js');
 
-importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-importScripts('/workers/DescriptiveStatistics/libs/descriptive.js');
-importScripts('/workers/DescriptiveStatistics/libs/frequency.js');
 
-// applyValueLabels now provided by utils.js and attached to globalThis
-// Utility to round stats object according to decimals
 function roundStatsObject(obj, decimals) {
   const rounded = {};
   for (const key in obj) {
@@ -43,7 +37,7 @@ onmessage = function (event) {
   } = event.data || {};
 
   // -------------------------------------------------------------
-  // 1. Batched Frequencies Mode (used by React Frequencies modal)
+  
   // -------------------------------------------------------------
   if (Array.isArray(variableData)) {
     try {
@@ -66,8 +60,8 @@ onmessage = function (event) {
         const { stats, frequencyTable } = calculator.getStatistics();
 
         let processedStats = stats;
-        if (stats && typeof varDef?.decimals === 'number' && varDef.decimals >= 0) {
-          processedStats = roundStatsObject(stats, varDef.decimals);
+        if (stats) {
+          processedStats = roundStatsObject(stats, STATS_DECIMAL_PLACES);
         }
 
         let processedFreqTbl = frequencyTable ? applyValueLabels(frequencyTable, varDef) : null;
@@ -90,8 +84,8 @@ onmessage = function (event) {
   try {
     const calculator = new self.FrequencyCalculator({ variable, data, weights, options });
     const results = calculator.getStatistics();
-    if (results && results.stats && typeof variable?.decimals === 'number' && variable.decimals >= 0) {
-       results.stats = roundStatsObject(results.stats, variable.decimals);
+    if (results && results.stats) {
+       results.stats = roundStatsObject(results.stats, STATS_DECIMAL_PLACES);
     }
     if (results && results.frequencyTable) {
        results.frequencyTable = applyValueLabels(results.frequencyTable, variable);
@@ -101,4 +95,4 @@ onmessage = function (event) {
     console.error('[FrequenciesWorker] Error:', err);
     postMessage({ success: false, error: err?.message || String(err) });
   }
-}; 
+};

@@ -15,8 +15,8 @@ export default function DataPage() {
     }, [setViewMode]);
 
     return (
-        <div className="z-0 h-full w-full">
-            <Suspense fallback={<DataTableSkeleton />}>
+        <div className="z-0 h-full w-full" data-testid="data-page">
+            <Suspense fallback={<DataTableSkeleton data-testid="data-table-loading" />}>
                 <Index />
             </Suspense>
         </div>

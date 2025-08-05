@@ -1,92 +1,250 @@
 # Export to CSV Feature
 
-This document provides a technical overview of the "Export to CSV" feature, detailing its functionality, architecture, and workflow in accordance with the project's architectural guidelines.
+This document provides a comprehensive technical overview of the "Export to CSV" feature for developers, detailing its implementation, architecture, and workflow.
 
 ## 1. Overview
 
-This feature provides a modal dialog that allows users to export the current dataset to a CSV (Comma-Separated Values) file. It offers a range of configuration options to customize the output format, ensuring compatibility with various data analysis tools and workflows. The feature also includes an interactive tour guide to help users understand the available options.
+The Export to CSV feature allows users to export the current dataset to a CSV (Comma-Separated Values) file with customizable formatting options. The implementation follows a feature-sliced design pattern, separating concerns into distinct components, hooks, and utilities.
 
-## 2. Functionality Explained
+## 2. Key Features
 
-The user can configure the following aspects of the CSV export:
+- **Customizable Export Options**:
+  - File name configuration
+  - Multiple delimiter choices (comma, semicolon, pipe, tab)
+  - Option to include variable names as headers
+  - Option to include detailed variable properties as comments
+  - String quoting options
+  - Character encoding selection (UTF-8, UTF-16 LE, Windows-1252)
 
--   **File Name**: A custom name for the exported file (the `.csv` extension is added automatically).
--   **Delimiter**: The character used to separate values. Options include comma (`,`), semicolon (`;`), pipe (`|`), and tab (`\t`).
--   **Include Variable Names**: An option to include a header row containing the names of the variables.
--   **Include Variable Properties**: A special option to prepend a commented-out block at the start of the file containing detailed variable metadata (type, label, measure, value labels, etc.). This is useful for data dictionary purposes.
--   **Quote Strings**: An option to wrap all string values in double quotes.
--   **Encoding**: The character encoding for the file, with options like UTF-8, UTF-16 LE, and Windows-1252.
+- **Interactive Tour Guide**:
+  - Step-by-step walkthrough of the export options
+  - Contextual help for each configuration element
 
-## 3. Architecture and Data Flow
+- **Robust Error Handling**:
+  - Data validation before export
+  - User-friendly error messages via toast notifications
+  - Graceful handling of edge cases
 
-The feature is structured using a feature-sliced design, separating concerns into distinct files.
+## 3. Architecture and Implementation
 
 ### 3.1. Core Components
 
--   **`ExportCsv` (`index.tsx`)**: The **Orchestrator** component. It assembles the UI and wires up the state and handlers. It initializes the `useExportCsv` hook to manage logic and the `useTourGuide` hook for the interactive tour. It is responsible for rendering the UI elements and passing props, but contains no business logic itself.
--   **`hooks/useExportCsv.ts`**: The **Logic Core**. This hook manages all state related to the export options (filename, delimiter, etc.) and handles the core export process. It interacts with Zustand stores to fetch the latest data, validates user input, and uses `exportCsvUtils` to generate the final file content.
--   **`hooks/useTourGuide.ts`**: A dedicated hook to manage the state and logic for the interactive feature tour.
--   **`utils/exportCsvUtils.ts`**: Contains the pure function `generateCsvContent`, which is solely responsible for converting the raw data and variable arrays into a formatted CSV string based on the provided options.
+#### `ExportCsv` (`index.tsx`)
+- **Role**: UI orchestrator component
+- **Responsibilities**:
+  - Renders all UI elements (form fields, buttons, labels)
+  - Manages UI state (loading, disabled states)
+  - Initializes and consumes `useExportCsv` and `useTourGuide` hooks
+  - Handles user interactions and event propagation
+- **Key Implementation Details**:
+  - Uses React functional components with TypeScript
+  - Implements accessibility features (ARIA labels, proper semantic HTML)
+  - Integrates with UI component library (`@/components/ui/*`)
+  - Uses `framer-motion` for tour popup animations
+  - Implements element highlighting for tour steps
 
-### 3.2. Data Flow
+#### `hooks/useExportCsv.ts`
+- **Role**: Business logic core
+- **Responsibilities**:
+  - Manages export configuration state
+  - Handles export process execution
+  - Validates user input
+  - Interacts with Zustand stores
+  - Generates and triggers file download
+- **Key Implementation Details**:
+  - Uses React hooks (`useState`, `useTransition`)
+  - Integrates with Zustand stores (`useDataStore`, `useVariableStore`)
+  - Implements filename sanitization to prevent invalid characters
+  - Uses `useToast` for user feedback
+  - Handles asynchronous operations with proper error boundaries
+  - Uses `useModal` for modal management
+
+#### `hooks/useTourGuide.ts`
+- **Role**: Interactive tour management
+- **Responsibilities**:
+  - Manages tour state (active, current step)
+  - Handles tour navigation (next, previous, end)
+  - Provides tour step definitions
+  - Manages element highlighting
+
+#### `utils/exportCsvUtils.ts`
+- **Role**: Data processing utilities
+- **Responsibilities**:
+  - Converts data and variables to CSV format
+  - Handles CSV escaping and formatting
+  - Generates variable properties section
+- **Key Functions**:
+  - `generateCsvContent`: Main function that creates the CSV string
+  - `escapeCsvCell`: Handles proper escaping of CSV cell values
+  - `formatMissingSpecToString`: Formats missing value specifications
+
+### 3.2. Data Flow and Workflow
 
 ```mermaid
-graph TD
-    subgraph User Interaction
-        A[User opens dialog] --> B{Configure Options};
-        B --> C[Clicks Export];
+
+flowchart TD
+%%{init: {"theme": "base"}}%%
+    A[User opens Export Modal] --> B{Initialize State};
+    B --> C[Render UI Components];
+    
+    C --> D[User Configures Options];
+    D --> E{Update State via Handlers};
+    E --> C;
+    
+    C --> F[User Clicks Export];
+    F --> G{Validate Input};
+    G -- Invalid --> H[Show Error Toast];
+    G -- Valid --> I[Set Loading State];
+    
+    I --> J[Sync with Zustand Stores];
+    J --> K{Fetch Fresh Data};
+    K -- Success --> L[Call generateCsvContent];
+    K -- Failure --> M[Show Error Toast];
+    
+    L --> N[Create CSV Blob];
+    N --> O[Generate Download Link];
+    O --> P[Trigger File Download];
+    
+    P --> Q[Show Success Toast];
+    Q --> R[Close Modal];
+    
+    R --> S[Cleanup Resources];
+    
+    subgraph Legend
+        direction LR
+        subgraph Node Types
+            direction LR
+            ui[UI Component]:::legend
+            hook[Hook]:::legend
+            util[Utility]:::legend
+            store[Zustand Store]:::legend
+            browser[Browser API]:::legend
+        end
     end
-
-    subgraph "Frontend Logic (ExportCsv Feature)"
-        D(ExportCsv Component) -- "initializes" --> E(useExportCsv hook);
-        B -- "triggers" --> F{handleChange in useExportCsv};
-        F -- "updates" --> E(state);
-        E -- "re-renders" --> D;
-
-        C -- "triggers" --> G{handleExport in useExportCsv};
-        G -- "gets latest data" --> H(Zustand Stores);
-        G -- "calls" --> I(generateCsvContent util);
-        H -- "provides data to" --> I;
-        E -- "provides options to" --> I;
-        
-        I -- "returns CSV string" --> G;
-        G -- "creates" --> J[Blob & Download Link];
-        G -- "shows" --> K(Toast Notification);
-        G -- "closes" --> A;
-    end
-
-    A --> D;
-
+    
+    classDef legend fill:#f9f9f9,stroke:#333,stroke-width:1px;
+    classDef ui fill:#cde4ff,stroke:#5a96e6;
+    classDef hook fill:#d5e8d4,stroke:#82b366;
+    classDef util fill:#e1d5e7,stroke:#9673a6;
+    classDef store fill:#fff2cc,stroke:#d6b656;
+    classDef browser fill:#ffe6cc,stroke:#d79b00;
+    
+    class A,C,D,F,C,R ui;
+    class B,E,G,I,J,K,L hook;
+    class L,N,O,P util;
+    class J,K store;
+    class N,O,P browser;
 ```
 
-1.  **Initialization**: The user opens the modal. The `ExportCsv` component renders, and the `useExportCsv` hook initializes the state with default or provided initial values.
-2.  **Configuration**: The user interacts with the UI (e.g., changes the filename or selects a delimiter). Each change calls a handler in `useExportCsv` (like `handleChange` or `handleFilenameChange`) to update the component's state.
-3.  **Execution**: The user clicks the "Export" button.
-    -   The `handleExport` function in `useExportCsv` is triggered.
-    -   It fetches the most up-to-date data and variables from the `useDataStore` and `useVariableStore` to ensure freshness.
-    -   The data, variables, and user-configured options are passed to the `generateCsvContent` utility function.
-    -   This utility returns a single, formatted CSV string.
-4.  **File Generation**: `handleExport` creates a `Blob` from the CSV string, specifying the chosen character encoding. It then generates a temporary object URL for the blob and programmatically clicks a hidden `<a>` tag to trigger the browser's file download dialog.
-5.  **Feedback & Cleanup**: A toast notification is displayed to inform the user of the success or failure of the export. If successful, the modal is closed. The temporary object URL is revoked to free up memory.
+### 3.3. Detailed Workflow Steps
+
+1. **Initialization**:
+   - User opens the export modal
+   - `ExportCsv` component mounts
+   - `useExportCsv` hook initializes with default or provided options
+   - UI renders with initial state
+
+2. **Configuration**:
+   - User interacts with form elements (filename, delimiter, etc.)
+   - Each interaction triggers appropriate handler functions (`handleChange`, `handleFilenameChange`)
+   - State updates trigger re-renders of the UI
+   - Filename sanitization removes invalid characters
+
+3. **Export Execution**:
+   - User clicks the "Export" button
+   - `handleExport` function is called
+   - Input validation checks (filename not empty, data exists)
+   - If validation fails, error toast is shown
+   - If validation passes:
+     - Loading state is set
+     - Zustand stores are synced to get fresh data
+     - `generateCsvContent` is called with data, variables, and options
+     - CSV string is generated
+     - Blob is created with specified encoding
+     - Download link is generated and triggered
+     - Success toast is shown
+     - Modal is closed
+     - Resources are cleaned up (object URL revoked)
 
 ## 4. Component Properties (`ExportCsvProps`)
 
 The `ExportCsv` component accepts the following props:
 
--   `onClose: () => void`: **(Required)** A callback function that is called to close the modal.
--   `containerType?: "dialog" | "sidebar" | "panel"`: **(Optional)** Specifies the rendering context, which is primarily used to adjust the positioning of the tour guide popups.
--   It also accepts `UseExportCsvOptions` (e.g., `initialFilename`, `initialDelimiter`) to pre-fill the export form with custom default values.
+- `onClose: () => void`: **(Required)** Callback function to close the modal
+- `containerType?: "dialog" | "sidebar" | "panel"`: **(Optional)** Rendering context for tour guide positioning
+- All `UseExportCsvOptions` for initial configuration:
+  - `initialFilename?: string`
+  - `initialDelimiter?: string`
+  - `initialIncludeHeaders?: boolean`
+  - `initialIncludeVariableProperties?: boolean`
+  - `initialQuoteStrings?: boolean`
+  - `initialEncoding?: string`
 
-## 5. Testing Strategy
+## 5. Error Handling
 
--   **Component Testing (`__test__/index.test.tsx`)**:
-    -   Focuses on the UI rendering and user interaction.
-    -   The `useExportCsv` and `useTourGuide` hooks are mocked to isolate the component.
-    -   Tests verify that all form elements are rendered, that event handlers (like `onChange`, `onClick`) call the correct functions from the mocked hooks, and that the component's disabled and loading states work as expected.
--   **Hook Testing (`__test__/useExportCsv.test.ts`)**:
-    -   Tests the core business logic within the `useExportCsv` hook.
-    -   It would mock the Zustand stores and `generateCsvContent` utility.
-    -   Tests would cover state initialization, state changes via handlers, input validation (e.g., empty filename), and the successful execution of the `handleExport` flow.
--   **Utility Testing (`__test__/exportCsvUtils.test.ts`)**:
-    -   Tests the pure function `generateCsvContent` in isolation.
-    -   It would be provided with various mock datasets and options to assert that the generated CSV string is correctly formatted (e.g., correct delimiters, headers, quoted strings, and properties block).
+The feature implements comprehensive error handling:
+
+- **Input Validation**:
+  - Checks for empty filenames
+  - Ensures data exists before export
+  - Validates data after syncing with stores
+
+- **Error Feedback**:
+  - Uses toast notifications for user feedback
+  - Provides specific error messages for different failure scenarios
+  - Logs errors to console for debugging
+
+- **Graceful Degradation**:
+  - Handles edge cases in data processing
+  - Properly cleans up resources even on failure
+
+## 6. Testing Strategy
+
+### 6.1. Component Testing (`__test__/index.test.tsx`)
+- **Focus**: UI rendering and user interactions
+- **Approach**: Mock hooks to isolate component
+- **Coverage**:
+  - Form element rendering
+  - Event handler calls
+  - State-dependent UI changes
+  - Loading and disabled states
+  - Tour guide integration
+
+### 6.2. Hook Testing (`__test__/useExportCsv.test.ts`)
+- **Focus**: Business logic in `useExportCsv` hook
+- **Approach**: Mock Zustand stores and utilities
+- **Coverage**:
+  - State initialization
+  - Handler function behavior
+  - Input validation
+  - Export process flow
+  - Error scenarios
+  - Toast notifications
+
+### 6.3. Utility Testing (`__test__/exportCsvUtils.test.ts`)
+- **Focus**: Pure functions in `exportCsvUtils.ts`
+- **Approach**: Test with various mock datasets
+- **Coverage**:
+  - CSV string generation
+  - Proper escaping and formatting
+  - Header inclusion/exclusion
+  - Variable properties section
+  - Different delimiter handling
+  - Edge cases in data values
+
+## 7. Performance Considerations
+
+- Uses `useTransition` for non-blocking export process
+- Efficient state management with Zustand
+- Proper resource cleanup (object URL revocation)
+- Memoization techniques where applicable
+- Optimized rendering with proper React patterns
+
+## 8. Accessibility
+
+- Semantic HTML structure
+- Proper ARIA attributes
+- Keyboard navigation support
+- Sufficient color contrast
+- Focus management
+- Screen reader compatibility

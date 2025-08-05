@@ -4,6 +4,9 @@
     "plugin:testing-library/react",
     "plugin:jest-dom/recommended"
   ],
+  "rules": {
+    "react-hooks/exhaustive-deps": "warn"
+  },
   "overrides": [
     {
       "files": [

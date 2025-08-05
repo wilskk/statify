@@ -1,6 +1,11 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { HelpLayout } from "../ui/HelpLayout";
 
+/**
+ * @deprecated Use HelpLayout from ../ui/HelpLayout instead
+ * This component will be removed in future versions
+ */
 interface HelpContentWrapperProps {
   children: React.ReactNode;
   title?: string;
@@ -8,12 +13,23 @@ interface HelpContentWrapperProps {
   hasCard?: boolean;
 }
 
+/**
+ * @deprecated Use HelpLayout from ../ui/HelpLayout instead
+ * This component will be removed in future versions
+ */
 export const HelpContentWrapper: React.FC<HelpContentWrapperProps> = ({ 
   children, 
   title, 
   description,
   hasCard = true 
 }) => {
+  // Show deprecation warning in development
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(
+      'HelpContentWrapper is deprecated. Use HelpLayout from ../ui/HelpLayout instead.'
+    );
+  }
+
   const content = (
     <>
       {(title || description) && (
@@ -31,4 +47,4 @@ export const HelpContentWrapper: React.FC<HelpContentWrapperProps> = ({
   }
 
   return content;
-}; 
+};

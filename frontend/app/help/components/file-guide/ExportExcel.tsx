@@ -1,34 +1,122 @@
 /* eslint-disable react/no-unescaped-entities */
 import React from 'react';
-import { HelpContentWrapper } from '../HelpContentWrapper';
-import { Card, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb } from 'lucide-react';
+import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
+import { Download, FileSpreadsheet, Lightbulb, Settings, Tags } from 'lucide-react';
 
 export const ExportExcel = () => {
+  const sections = [
+    {
+      id: 'export-steps',
+      title: 'How to Export to Excel',
+      description: 'Step-by-step guide to save your data as an Excel file',
+      icon: Download,
+      content: (
+        <div className="space-y-4">
+          <HelpStep
+            number={1}
+            title="Check Your Data"
+            description="Make sure the data you want to export is loaded in the data editor."
+          />
+          <HelpStep
+            number={2}
+            title="Open File Menu"
+            description="Go to 'File' menu and select 'Export to Excel'."
+          />
+          <HelpStep
+            number={3}
+            title="Set Up Export"
+            description="An export dialog will appear. Give your file a name."
+          />
+          <HelpStep
+            number={4}
+            title="Choose Value Labels"
+            description="You can choose to include variable value labels if you want."
+          />
+          <HelpStep
+            number={5}
+            title="Create Your File"
+            description="Click 'Export' to create and download your .xlsx file."
+          />
+        </div>
+      )
+    },
+    {
+      id: 'features',
+      title: 'Features & Benefits',
+      description: 'Advantages of exporting to Excel format',
+      icon: Tags,
+      content: (
+        <div className="space-y-4">
+          <HelpAlert variant="success" title="Value Labels">
+            <p className="text-sm mt-2">
+              Unlike CSV, Excel export lets you keep value labels. This means if you have a variable with 1="Male" and 2="Female", your exported file can show "Male" and "Female" instead of 1 and 2.
+            </p>
+          </HelpAlert>
+          <HelpAlert variant="info" title="Format Preservation">
+            <p className="text-sm mt-2">
+              Excel format keeps more metadata information compared to CSV, including data types and formatting.
+            </p>
+          </HelpAlert>
+        </div>
+      )
+    },
+    {
+      id: 'options',
+      title: 'Export Options',
+      description: 'Settings you can customize',
+      icon: Settings,
+      content: (
+        <div className="space-y-4">
+          <HelpAlert variant="tip" title="Multiple Worksheets">
+            <p className="text-sm mt-2">
+              Excel files can contain multiple worksheets, allowing better organization for complex datasets.
+            </p>
+          </HelpAlert>
+          <HelpAlert variant="info" title="Compatibility">
+            <p className="text-sm mt-2">
+              .xlsx files work with Microsoft Excel, LibreOffice Calc, Google Sheets, and other spreadsheet applications.
+            </p>
+          </HelpAlert>
+        </div>
+      )
+    }
+  ];
+
+  const tips = [
+    {
+      type: 'success' as const,
+      title: 'Metadata Preservation',
+      content: 'Excel export keeps more metadata information than other formats, including value labels and formatting.'
+    },
+    {
+      type: 'tip' as const,
+      title: 'File Size',
+      content: 'Excel files are generally larger than CSV, but they store more structural information and metadata.'
+    },
+    {
+      type: 'info' as const,
+      title: 'Cross-Platform',
+      content: '.xlsx format works across different platforms and modern spreadsheet applications.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Export to CSV', href: '/help/file-guide/export-csv' },
+    { title: 'Import Excel Files', href: '/help/file-guide/import-excel' },
+    { title: 'Print Your Data', href: '/help/file-guide/print' },
+    { title: 'Data Management Guide', href: '/help/data-guide' }
+  ];
+
   return (
-    <HelpContentWrapper
-      title="Exporting to Excel"
-      description="This guide explains how to save your data as a Microsoft Excel (.xlsx) file."
-    >
-      <Card className="mt-6">
-        <CardContent className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Steps to Export to an Excel File</h3>
-          <ol className="list-decimal list-inside space-y-2">
-            <li>With your data loaded, go to "File" {'>'} "Export to Excel".</li>
-            <li>In the export dialog, provide a name for your file.</li>
-            <li>You can choose to include variable value labels if desired.</li>
-            <li>Click "Export" to generate and download the .xlsx file.</li>
-          </ol>
-        </CardContent>
-      </Card>
-      <Alert variant="default" className="mt-6 bg-green-50 border-green-200">
-        <Lightbulb className="h-5 w-5 text-green-600" />
-        <AlertTitle>Value Labels</AlertTitle>
-        <AlertDescription>
-          Unlike CSV, exporting to Excel allows you to preserve value labels. This means that if you have a variable where 1="Male" and 2="Female", the exported file can contain "Male" and "Female" instead of 1 and 2.
-        </AlertDescription>
-      </Alert>
-    </HelpContentWrapper>
+    <HelpGuideTemplate
+      title="Export to Excel"
+      description="Complete guide for saving your data as Microsoft Excel (.xlsx)"
+      category="File Management"
+      lastUpdated="2024-01-15"
+      sections={sections}
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
-}; 
+};

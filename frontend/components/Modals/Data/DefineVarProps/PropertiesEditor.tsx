@@ -234,7 +234,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
                     </div>
                     <div className="flex justify-between mt-1 text-sm text-muted-foreground">
                         <div>Cases scanned: <Input value={caseLimit} className="w-10 h-8 text-sm border border-input rounded px-2 bg-muted text-muted-foreground" readOnly /></div>
-                        <div>Value list limit: <Input value={valueLimit} className="w-10 h-8 text-sm border border-input rounded px-2 bg-muted text-muted-foreground" readOnly /></div>
+                <div>Value list limit: <Input value={valueLimit} className="w-10 h-8 text-sm border border-input rounded px-2 bg-muted text-muted-foreground" readOnly /></div>
                     </div>
                 </div>
                 <div className="col-span-8 flex flex-col">
@@ -279,15 +279,15 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
                                     </div>
                                     <div className="grid grid-cols-12 items-center gap-x-2">
                                         <div className="col-span-4 text-sm font-semibold text-foreground text-left">Measurement:</div>
-                                        <div className="col-span-6 relative">
+                                        <div className="col-span-8 relative">
                                             <Button variant="outline" className="h-8 w-full text-sm justify-between" onClick={() => setShowMeasureDropdown(!showMeasureDropdown)}>
                                                 {formatDropdownText(currentVariable.measure)} <ChevronDown className="h-3 w-3" />
                                             </Button>
                                             {showMeasureDropdown && renderDropdown(MEASURE_OPTIONS, currentVariable.measure || '', (value) => handleVariableFieldChange('measure', value), () => setShowMeasureDropdown(false))}
                                         </div>
-                                        <div className="col-span-2">
+                                        {/* <div className="col-span-2">
                                             <Button variant="outline" size="sm" className="h-8 w-full text-sm" onClick={handleSuggestMeasurement}>Suggest</Button>
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </div>
                             </TabsContent>

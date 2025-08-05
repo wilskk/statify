@@ -229,6 +229,13 @@ export const useResultStore = create<ResultState>()(
       },
 
       addStatistic: async (analyticId, statisticData) => {
+        console.log('[useResultStore] Adding statistic to analyticId:', analyticId, 'with data:', {
+          title: statisticData.title,
+          components: statisticData.components,
+          description: statisticData.description,
+          outputDataLength: statisticData.output_data?.length || 0
+        });
+        
         try {
           const statistic: Statistic = {
             ...statisticData,
@@ -241,6 +248,8 @@ export const useResultStore = create<ResultState>()(
           );
           const statisticWithId = { ...statistic, id: statisticId };
 
+          console.log('[useResultStore] Statistic saved to database with ID:', statisticId);
+
           // Update state after successful API call
           set((state) => {
             outerLoop: for (const log of state.logs) {
@@ -252,15 +261,17 @@ export const useResultStore = create<ResultState>()(
                     analytic.statistics = [];
                   }
                   analytic.statistics.push(statisticWithId);
+                  console.log('[useResultStore] Statistic added to state. Total statistics for analytic:', analytic.statistics.length);
                   break outerLoop;
                 }
               }
             }
           });
 
+          console.log('[useResultStore] addStatistic completed successfully with ID:', statisticId);
           return statisticId;
         } catch (error) {
-          console.error("Failed to add statistic:", error);
+          console.error('[useResultStore] Failed to add statistic:', error);
           throw error;
         }
       },

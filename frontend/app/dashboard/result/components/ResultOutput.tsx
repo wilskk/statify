@@ -107,32 +107,34 @@ const ResultOutput: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 w-full max-w-full">
+    <div className="p-4 md:p-6 w-full max-w-full" data-testid="results-content">
       {logs.length === 0 ? (
-        <div className="text-center text-muted-foreground py-10">
+        <div className="text-center text-muted-foreground py-10" data-testid="no-results-message">
           No data available
         </div>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-10" data-testid="results-container">
           {logs.map((log) => (
             <div
               key={log.id}
               id={`log-${log.id}`}
               className="space-y-6 scroll-mt-20"
+              data-testid={`result-log-${log.id}`}
             >
-              <div className="text-sm font-medium text-muted-foreground px-1">
+              <div className="text-sm font-medium text-muted-foreground px-1" data-testid={`log-header-${log.id}`}>
                 Log {log.id}: {log.log}
               </div>
               {log.analytics?.map((analytic) => (
                 <Card
                   key={analytic.id}
                   className="p-4 md:p-6 shadow-lg hover:shadow-xl transition-shadow border-t-4 border-primary/20"
+                  data-testid={`result-analytic-${analytic.id}`}
                 >
-                  <div className="text-xl font-bold text-card-foreground mb-4 border-b pb-2">
+                  <div className="text-xl font-bold text-card-foreground mb-4 border-b pb-2" data-testid={`analytic-title-${analytic.id}`}>
                     {analytic.title}
                   </div>
                   {analytic.note && (
-                    <div className="text-sm italic text-muted-foreground mb-6 bg-muted/30 p-2 rounded-md">
+                    <div className="text-sm italic text-muted-foreground mb-6 bg-muted/30 p-2 rounded-md" data-testid={`analytic-note-${analytic.id}`}>
                       {analytic.note}
                     </div>
                   )}
@@ -152,7 +154,7 @@ const ResultOutput: React.FC = () => {
                         return (
                           <div key={stat.id} className="space-y-4">
                             {isFirstAppearance && (
-                              <div className="text-base font-semibold text-card-foreground mt-8 mb-3 flex items-center">
+                              <div className="text-base font-semibold text-card-foreground mt-8 mb-3 flex items-center" data-testid={`component-header-${stat.components.replace(/\s+/g, '-').toLowerCase()}`}>
                                 <div className="h-4 w-1 bg-primary rounded-full mr-2"></div>
                                 {stat.components}
                               </div>
@@ -162,6 +164,7 @@ const ResultOutput: React.FC = () => {
                               className={`mb-6 rounded-md ${
                                 !isFirstAppearance ? "mt-8" : ""
                               }`}
+                              data-testid={`result-output-${analytic.id}-${stat.id}`}
                             >
                               {(() => {
                                 let parsedData;
@@ -198,6 +201,7 @@ const ResultOutput: React.FC = () => {
                                             ? "max-h-[500px] overflow-hidden"
                                             : ""
                                         } overflow-x-auto pb-2`}
+                                        data-testid={`result-table-${stat.id}`}
                                       >
                                         <DataTableRenderer data={stat.output_data} />
                                       </div>
@@ -206,6 +210,7 @@ const ResultOutput: React.FC = () => {
                                           type="button"
                                           onClick={() => toggleTable(statId)}
                                           className="mt-2 text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                                          data-testid={`toggle-table-${statId}`}
                                         >
                                           {isExpandedTable ? (
                                             <>
@@ -224,13 +229,17 @@ const ResultOutput: React.FC = () => {
                                   );
                                 } else if (parsedData.charts) {
                                   return (
-                                    <GeneralChartContainer
-                                      data={stat.output_data}
-                                    />
+                                    <div data-testid={`result-chart-${stat.id}`}>
+                                      <GeneralChartContainer
+                                        data={stat.output_data}
+                                      />
+                                    </div>
                                   );
                                 } else if (parsedData.text) {
                                   return (
-                                    <TextRenderer textData={parsedData.text} />
+                                    <div data-testid={`result-text-${stat.id}`}>
+                                      <TextRenderer textData={parsedData.text} />
+                                    </div>
                                   );
                                 } else {
                                   return (
@@ -243,7 +252,7 @@ const ResultOutput: React.FC = () => {
                             </div>
                             <div className="mt-4 mb-10 relative">
                               <div className="flex items-center justify-between mb-2">
-                                <div className="text-xs font-medium text-muted-foreground">
+                                <div className="text-xs font-medium text-muted-foreground" data-testid={`description-label-${stat.id}`}>
                                   Description
                                 </div>
                                 {!isEditing ? (
@@ -256,12 +265,13 @@ const ResultOutput: React.FC = () => {
                                       )
                                     }
                                     type="button"
+                                    data-testid={`edit-description-button-${stat.id}`}
                                   >
                                     <Edit className="h-3 w-3" />
                                     Edit
                                   </button>
                                 ) : (
-                                  <div className="text-xs">
+                                  <div className="text-xs" data-testid={`save-status-${stat.id}`}>
                                     {status === "saving" && (
                                       <span className="text-yellow-500">
                                         Saving...
@@ -297,6 +307,7 @@ const ResultOutput: React.FC = () => {
                                 }
                                 placeholder="Write description here..."
                                 id={`editor-${statId}`}
+                                data-testid={`description-editor-${stat.id}`}
                               />
                             </div>
                           </div>

@@ -1,12 +1,12 @@
 // components/Skeletons.tsx
 import React from 'react';
 
-export function DataTableSkeleton() {
+export function DataTableSkeleton({ ...props }) {
     const columnCount = 20;
     const rowCount = 25;
 
     return (
-        <div className="h-full w-full relative border border-border rounded animate-pulse">
+        <div className="h-full w-full relative border border-border rounded animate-pulse" {...props}>
             {/* Column Headers */}
             <div className="flex border-b border-border sticky top-0 z-10 bg-muted/50">
                 <div className="w-12 h-8 p-1 flex justify-center items-center border-r border-border">
@@ -37,14 +37,14 @@ export function DataTableSkeleton() {
     );
 }
 
-export function VariableTableSkeleton() {
+export function VariableTableSkeleton({ ...props }) {
     const columnCount = 7;
     const rowCount = 25;
     const columnWidths = ["flex-1", "flex-1", "w-24", "w-24", "flex-1", "flex-1", "flex-1"];
     const columnNames = ["Name", "Type", "Width", "Decimals", "Label", "Values", "Missing"];
 
     return (
-        <div className="h-full w-full relative border border-border rounded animate-pulse">
+        <div className="h-full w-full relative border border-border rounded animate-pulse" {...props}>
             {/* Column Headers */}
             <div className="flex border-b border-border sticky top-0 z-10 bg-muted/50">
                 <div className="w-12 h-8 p-1 flex justify-center items-center border-r border-border">
@@ -76,9 +76,9 @@ export function VariableTableSkeleton() {
     );
 }
 
-export function ResultsSkeleton() {
+export function ResultsSkeleton({ ...props }) {
     return (
-        <div className="p-6 space-y-8 animate-pulse">
+        <div className="p-6 space-y-8 animate-pulse" {...props}>
             {/* Sidebar skeleton - will be hidden on small screens */}
             <div className="hidden md:block fixed top-16 left-0 w-64 h-full border-r border-border bg-card p-4">
                 <div className="h-8 bg-muted rounded w-2/3 mb-4"></div>
@@ -130,9 +130,9 @@ export function ResultsSkeleton() {
     );
 }
 
-export function SidebarSkeleton() {
+export function SidebarSkeleton({ ...props }) {
     return (
-        <div className="bg-card border-r border-border h-full animate-pulse">
+        <div className="bg-card border-r border-border h-full animate-pulse" {...props}>
             <div className="flex items-center justify-between p-3 border-b border-border">
                 <div className="h-6 bg-muted rounded w-24"></div>
                 <div className="h-8 w-8 bg-muted rounded"></div>
@@ -147,11 +147,11 @@ export function SidebarSkeleton() {
 }
 
 // New Skeleton for Dashboard Landing Page Loading State
-export function DashboardLandingSkeleton() {
+export function DashboardLandingSkeleton({ ...props }) {
     const actionCardCount = 3;
 
     return (
-        <div className="container mx-auto px-4 py-12 max-w-6xl animate-pulse">
+        <div className="container mx-auto px-4 py-12 max-w-6xl animate-pulse" {...props}>
             {/* Header Skeleton */}
             <div className="mb-12">
                 <div className="h-8 bg-muted rounded w-1/3 mb-3"></div>

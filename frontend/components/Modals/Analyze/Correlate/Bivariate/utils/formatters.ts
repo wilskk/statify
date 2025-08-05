@@ -73,8 +73,8 @@ export function formatCorrelationTable(
     const correlationMap = new Map();
     
     // Process the correlation data
-    for (const result of results.correlation || []) {
-        if (!result.variable1 || !result.correlation) continue;
+    for (const result of results.correlation) {
+        if (!result.variable1 || !result.variable2) continue;
         
         const key = `${result.variable1}-${result.variable2}`;
         correlationMap.set(key, result);
@@ -137,17 +137,27 @@ export function formatCorrelationTable(
                     const key2 = `${colVar.name}-${rowVar.name}`;
                     const result = correlationMap.get(key1) || correlationMap.get(key2);
 
-                    if (result && result.correlation && result.correlation.pearsonCorrelation) {
-                        const pearson = result.correlation.pearsonCorrelation;
+                    if (result && result.pearsonCorrelation) {
+                        const pearson = result.pearsonCorrelation;
 
                         // Diagonal case (same variable)
-                        if (i === j) {
-                            corrRow[`var_${j}`] = 1;
-                            if (sigRow) sigRow[`var_${j}`] = "";
-                        } else {
-                            corrRow[`var_${j}`] = formatCorrelationValue(pearson.Pearson, pearson.PValue, options);
-                            if (sigRow) sigRow[`var_${j}`] = formatPValue(pearson.PValue);
-                        }
+                        // if (i === j) {
+                        //     corrRow[`var_${j}`] = 1;
+                        //     if (sigRow) sigRow[`var_${j}`] = "";
+                        // } else {
+                            // Check if either variable has insufficient data
+                            const var1Metadata = results.metadata?.find(m => m.variableName === rowVar.name);
+                            const var2Metadata = results.metadata?.find(m => m.variableName === colVar.name);
+                            const hasInsufficientData = var1Metadata?.hasInsufficientData || var2Metadata?.hasInsufficientData;
+
+                            if (hasInsufficientData) {
+                                corrRow[`var_${j}`] = "";
+                                if (sigRow) sigRow[`var_${j}`] = "";
+                            } else {
+                                corrRow[`var_${j}`] = formatCorrelationValue(pearson.Pearson, pearson.PValue, options);
+                                if (sigRow) sigRow[`var_${j}`] = formatPValue(pearson.PValue);
+                            }
+                        // }
 
                         if (options.statisticsOptions.crossProductDeviationsAndCovariances) {
                             sumOfSquaresRow[`var_${j}`] = formatNumber(pearson.SumOfSquares, rowVar.decimals + 3);
@@ -236,17 +246,27 @@ export function formatCorrelationTable(
                     const key2 = `${colVar.name}-${rowVar.name}`;
                     const result = correlationMap.get(key1) || correlationMap.get(key2);
 
-                    if (result && result.correlation && result.correlation.kendallsTauBCorrelation) {
-                        const kendall = result.correlation.kendallsTauBCorrelation;
+                    if (result && result.kendallsTauBCorrelation) {
+                        const kendall = result.kendallsTauBCorrelation;
 
                         // Diagonal case (same variable)
-                        if (i === j) {
-                            corrRow[`var_${j}`] = 1;
-                            if (sigRow) sigRow[`var_${j}`] = "";
-                        } else {
-                            corrRow[`var_${j}`] = formatCorrelationValue(kendall.KendallsTauB, kendall.PValue, options);
-                            if (sigRow) sigRow[`var_${j}`] = formatPValue(kendall.PValue);
-                        }
+                        // if (i === j) {
+                        //     corrRow[`var_${j}`] = 1;
+                        //     if (sigRow) sigRow[`var_${j}`] = "";
+                        // } else {
+                            // Check if either variable has insufficient data
+                            const var1Metadata = results.metadata?.find(m => m.variableName === rowVar.name);
+                            const var2Metadata = results.metadata?.find(m => m.variableName === colVar.name);
+                            const hasInsufficientData = var1Metadata?.hasInsufficientData || var2Metadata?.hasInsufficientData;
+
+                            if (hasInsufficientData) {
+                                corrRow[`var_${j}`] = "";
+                                if (sigRow) sigRow[`var_${j}`] = "";
+                            } else {
+                                corrRow[`var_${j}`] = formatCorrelationValue(kendall.KendallsTauB, kendall.PValue, options);
+                                if (sigRow) sigRow[`var_${j}`] = formatPValue(kendall.PValue);
+                            }
+                        // }
 
                         nRow[`var_${j}`] = kendall.N;
                     } else {
@@ -320,17 +340,27 @@ export function formatCorrelationTable(
                     const key2 = `${colVar.name}-${rowVar.name}`;
                     const result = correlationMap.get(key1) || correlationMap.get(key2);
 
-                    if (result && result.correlation && result.correlation.spearmanCorrelation) {
-                        const spearman = result.correlation.spearmanCorrelation;
+                    if (result && result.spearmanCorrelation) {
+                        const spearman = result.spearmanCorrelation;
 
                         // Diagonal case (same variable)
-                        if (i === j) {
-                            corrRow[`var_${j}`] = 1;
-                            if (sigRow) sigRow[`var_${j}`] = "";
-                        } else {
-                            corrRow[`var_${j}`] = formatCorrelationValue(spearman.Spearman, spearman.PValue, options);
-                            if (sigRow) sigRow[`var_${j}`] = formatPValue(spearman.PValue);
-                        }
+                        // if (i === j) {
+                        //     corrRow[`var_${j}`] = 1;
+                        //     if (sigRow) sigRow[`var_${j}`] = "";
+                        // } else {
+                            // Check if either variable has insufficient data
+                            const var1Metadata = results.metadata?.find(m => m.variableName === rowVar.name);
+                            const var2Metadata = results.metadata?.find(m => m.variableName === colVar.name);
+                            const hasInsufficientData = var1Metadata?.hasInsufficientData || var2Metadata?.hasInsufficientData;
+
+                            if (hasInsufficientData) {
+                                corrRow[`var_${j}`] = "";
+                                if (sigRow) sigRow[`var_${j}`] = "";
+                            } else {
+                                corrRow[`var_${j}`] = formatCorrelationValue(spearman.Spearman, spearman.PValue, options);
+                                if (sigRow) sigRow[`var_${j}`] = formatPValue(spearman.PValue);
+                            }
+                        // }
 
                         nRow[`var_${j}`] = spearman.N;
                     } else {
@@ -388,11 +418,19 @@ export function formatPartialCorrelationTable(
         rows: []
     };
 
+    // Add column headers for all test variables
+    for (let i = 0; i < testVariables.length; i++) {
+        table.columnHeaders.push({
+            header: testVariables[i].label || testVariables[i].name,
+            key: `var_${i}`
+        });
+    }
+
     // Find all unique control variables
     const controlVariables = new Set<string>();
     results.partialCorrelation.forEach(item => {
         if (item.controlVariable) {
-            controlVariables.add(item.controlVariable.name);
+            controlVariables.add(item.controlVariable);
         }
     });
 
@@ -401,46 +439,29 @@ export function formatPartialCorrelationTable(
     for (const controlVar of controlVarArray) {
         // Filter results for this control variable
         const controlResults = results.partialCorrelation.filter(
-            item => item.controlVariable && item.controlVariable.name === controlVar
+            item => item.controlVariable === controlVar
         );
 
-        // Get all unique variables in the results
-        const variables = new Set<string>();
-        controlResults.forEach(item => {
-            if (item.variable1) {
-                variables.add(item.variable1.name);
-            }
-            if (item.variable2) {
-                variables.add(item.variable2.name);
-            }
-        });
-        const variablesList = Array.from(variables).sort();
-
-        // Add column headers for each variable
-        for (let i = 0; i < variablesList.length; i++) {
-            table.columnHeaders.push({
-                header: variablesList[i],
-                key: `var_${i}`
-            });
-        }
+        // Get the variables that are NOT the control variable (these will be our rows)
+        const nonControlVariables = testVariables.filter(v => v.name !== controlVar);
 
         // Create a mapping for easy access to results
         const resultMap = new Map();
         controlResults.forEach(item => {
             if (item.variable1 && item.variable2) {
-                const key = `${item.variable1.name}-${item.variable2.name}`;
+                const key = `${item.variable1}-${item.variable2}`;
                 resultMap.set(key, item);
             }
         });
 
-        // For each variable (row)
-        for (let i = 0; i < variablesList.length; i++) {
-            const rowVar = variablesList[i];
+        // For each non-control variable (row)
+        for (let i = 0; i < nonControlVariables.length; i++) {
+            const rowVar = nonControlVariables[i];
             
             // Create rows for this variable
             const corrRow: any = { 
                 rowHeader: [controlVar], 
-                var1: rowVar,
+                var1: rowVar.name,
                 type: "Correlation" 
             };
             
@@ -448,26 +469,26 @@ export function formatPartialCorrelationTable(
             if (options.testOfSignificance.twoTailed) {
                 sigRow = { 
                     rowHeader: [controlVar], 
-                    var1: rowVar,
+                    var1: rowVar.name,
                     type: "Sig. (2-tailed)" 
                 };
             } else if (options.testOfSignificance.oneTailed) {
                 sigRow = { 
                     rowHeader: [controlVar], 
-                    var1: rowVar,
+                    var1: rowVar.name,
                     type: "Sig. (1-tailed)" 
                 };
             }
             
             const dfRow: any = { 
                 rowHeader: [controlVar], 
-                var1: rowVar,
+                var1: rowVar.name,
                 type: "df" 
             };
             
-            // For each variable (column)
-            for (let j = 0; j < variablesList.length; j++) {
-                const colVar = variablesList[j];
+            // For each test variable (column)
+            for (let j = 0; j < testVariables.length; j++) {
+                const colVar = testVariables[j];
 
                 // Pengaruh: jika showOnlyTheLowerTriangle && !showDiagonal, skip semua sel di atas dan pada diagonal
                 if (options.showOnlyTheLowerTriangle && !options.showDiagonal && j >= i) {
@@ -478,28 +499,36 @@ export function formatPartialCorrelationTable(
                     continue;
                 }
                 
-                // Find the correlation between these variables
-                const key1 = `${rowVar}-${colVar}`;
-                const key2 = `${colVar}-${rowVar}`;
-                const result = resultMap.get(key1) || resultMap.get(key2);
+                // Check if control variable matches the test variable (diagonal case)
+                const isControlVariable = controlVar === colVar.name;
                 
-                if (result && result.partialCorrelation) {
-                    const partialCorr = result.partialCorrelation;
-                    
-                    // Diagonal case (same variable)
-                    if (i === j) {
-                        corrRow[`var_${j}`] = 1;
-                        if (sigRow) sigRow[`var_${j}`] = "";
-                        dfRow[`var_${j}`] = 0;
-                    } else {
-                        corrRow[`var_${j}`] = formatCorrelationValue(partialCorr.PartialCorrelation, partialCorr.PValue, options);
-                        if (sigRow) sigRow[`var_${j}`] = formatPValue(partialCorr.PValue);
-                        dfRow[`var_${j}`] = partialCorr.df;
-                    }
-                } else {
+                if (isControlVariable) {
+                    // Control variable matches test variable - make cell empty
                     corrRow[`var_${j}`] = "";
                     if (sigRow) sigRow[`var_${j}`] = "";
                     dfRow[`var_${j}`] = "";
+                } else if (rowVar.name === colVar.name) {
+                    // Same variable (diagonal) - correlation = 1, df = 0
+                    corrRow[`var_${j}`] = 1;
+                    if (sigRow) sigRow[`var_${j}`] = "";
+                    dfRow[`var_${j}`] = 0;
+                } else {
+                    // Find the correlation between these variables
+                    const key1 = `${rowVar.name}-${colVar.name}`;
+                    const key2 = `${colVar.name}-${rowVar.name}`;
+                    const result = resultMap.get(key1) || resultMap.get(key2);
+                    
+                    if (result && result.partialCorrelation) {
+                        const partialCorr = result.partialCorrelation;
+                        
+                        corrRow[`var_${j}`] = formatCorrelationValue(partialCorr.Correlation, partialCorr.PValue, options);
+                        if (sigRow) sigRow[`var_${j}`] = formatPValue(partialCorr.PValue);
+                        dfRow[`var_${j}`] = partialCorr.df;
+                    } else {
+                        corrRow[`var_${j}`] = "";
+                        if (sigRow) sigRow[`var_${j}`] = "";
+                        dfRow[`var_${j}`] = "";
+                    }
                 }
             }
             
@@ -519,7 +548,7 @@ export function formatPartialCorrelationTable(
  * @returns Formatted table
  */
 export function formatDescriptiveStatisticsTable(
-    results: BivariateResults,
+    results: BivariateResults, 
 ): BivariateTable {
     if (!results || !results.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
         return {
@@ -542,16 +571,13 @@ export function formatDescriptiveStatisticsTable(
 
     // Process each result
     results.descriptiveStatistics.forEach((result) => {
-        if (!result.descriptiveStatistics || !result.variable1) return;
-        
-        const stats = result.descriptiveStatistics;
-        const decimals = result.variable1.decimals;
+        if (!result.variable) return;
         
         table.rows.push({
-            rowHeader: [result.variable1.name],
-            Mean: formatNumber(stats.Mean, decimals + 2),
-            StdDev: formatNumber(stats.StdDev, decimals + 3),
-            N: stats.N
+            rowHeader: [result.variable],
+            Mean: formatNumber(result.Mean, 3),
+            StdDev: formatNumber(result.StdDev, 3),
+            N: result.N
         });
     });
 

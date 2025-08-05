@@ -4,10 +4,7 @@ const path = require('path');
 // Helper to load worker scripts into the Node test environment.
 const loadScript = (scriptPath) => {
   const normalized = scriptPath.startsWith('/') ? scriptPath.slice(1) : scriptPath;
-  let absolutePath = path.resolve(__dirname, '../../', normalized);
-  if (!fs.existsSync(absolutePath)) {
-    absolutePath = path.resolve(__dirname, '../../../../', normalized);
-  }
+  const absolutePath = path.resolve(__dirname, '../', normalized);
   const scriptContent = fs.readFileSync(absolutePath, 'utf8');
   new Function(scriptContent)();
 };
@@ -20,8 +17,8 @@ global.self = global;
 global.importScripts = loadScript;
 
 // Load required scripts
-loadScript('libs/utils.js');
-loadScript('libs/crosstabs.js');
+loadScript('utils/utils.js');
+loadScript('crosstabs/crosstabs.js');
 
 const CrosstabsCalculator = global.self.CrosstabsCalculator;
 
@@ -63,4 +60,4 @@ describe('CrosstabsCalculator', () => {
         // Column totals should each equal 4
         expect(stats.summary.colTotals).toEqual([4, 4]);
     });
-}); 
+});

@@ -185,13 +185,20 @@ function longToWide(
   if (dropEmpty) {
     const dropIndices: number[] = [];
     for (let i = groupVars.length; i < newVars.length; i++) {
-      const allMissing = newData.every(r => r[i] === "" || r[i] === null || r[i] === undefined);
-      if (allMissing) dropIndices.push(i);
+      const columnValues = newData.map(r => r[i]);
+      const allMissing = columnValues.every(value => {
+        return value === "" || value === null || value === undefined;
+      });
+      if (allMissing) {
+        dropIndices.push(i);
+      }
     }
+    // Sort in descending order to remove from right to left
     dropIndices.sort((a, b) => b - a).forEach(i => {
       newVars.splice(i, 1);
       newData.forEach(r => r.splice(i, 1));
     });
+    // Update column indices after removal
     newVars.forEach((v, idx) => (v.columnIndex = idx));
   }
 
@@ -234,4 +241,4 @@ function transposeAll(
     });
   }
   return { data: newData, variables: newVars };
-} 
+}

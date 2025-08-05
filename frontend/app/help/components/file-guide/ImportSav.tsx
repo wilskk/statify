@@ -1,34 +1,94 @@
 /* eslint-disable react/no-unescaped-entities */
 import React from 'react';
-import { HelpContentWrapper } from '../HelpContentWrapper';
-import { Card, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb } from 'lucide-react';
+import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
+import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
+import { FileText, Upload, Lightbulb, BookOpen, Database } from 'lucide-react';
 
 export const ImportSav = () => {
+  const sections = [
+    {
+      id: 'import-steps',
+      title: 'How to Import SPSS Files',
+      description: 'Step-by-step guide to bring your SPSS data into Statify',
+      icon: Upload,
+      content: (
+        <div className="space-y-4">
+          <HelpStep
+            number={1}
+            title="Open File Menu"
+            description="Click 'File' in the top menu bar of the application."
+          />
+          <HelpStep
+            number={2}
+            title="Choose SPSS Import"
+            description="Select 'Open .sav File' from the dropdown options."
+          />
+          <HelpStep
+            number={3}
+            title="Select Your File"
+            description="Browse your computer and choose the .sav file you want to work with."
+          />
+          <HelpStep
+            number={4}
+            title="Load Your Data"
+            description="Click 'Open' to bring your data into Statify's data editor."
+          />
+        </div>
+      )
+    },
+    {
+      id: 'tips',
+      title: 'Helpful Information',
+      description: 'What you need to know about SPSS files',
+      icon: Lightbulb,
+      content: (
+        <div className="space-y-4">
+          <HelpAlert variant="info" title="Did you know?">
+            <p className="text-sm mt-2">
+              Statify can efficiently handle large .sav files. For very large datasets, the import process might take a few moments.
+            </p>
+          </HelpAlert>
+          
+          <HelpCard title="Supported Formats" icon={Database} variant="feature">
+            <p className="text-sm text-muted-foreground">
+              Statify supports SPSS files (.sav) from various versions, including files created with the latest SPSS.
+            </p>
+          </HelpCard>
+        </div>
+      )
+    }
+  ];
+
+  const tips = [
+    {
+      type: 'tip' as const,
+      title: 'Large Files',
+      content: 'For large files (over 10MB), make sure your browser has enough memory available.'
+    },
+    {
+      type: 'warning' as const,
+      title: 'Compatibility',
+      content: 'Some very specific SPSS features may not be fully supported.'
+    }
+  ];
+
+  const relatedTopics = [
+    { title: 'Import CSV Files', href: '/help/file-guide/import-csv' },
+    { title: 'Import Excel Files', href: '/help/file-guide/import-excel' },
+    { title: 'Export Your Data', href: '/help/file-guide/export-csv' },
+    { title: 'Data Management Guide', href: '/help/data-guide' }
+  ];
+
   return (
-    <HelpContentWrapper
-      title="Importing .sav Files"
-      description="This guide explains how to import data from SPSS (.sav) files into Statify."
-    >
-      <Card className="mt-6">
-        <CardContent className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Steps to Import a .sav File</h3>
-          <ol className="list-decimal list-inside space-y-2">
-            <li>Navigate to the "File" menu in the main application toolbar.</li>
-            <li>Select "Open .sav File" from the dropdown menu.</li>
-            <li>A file dialog will appear. Locate and select your .sav file.</li>
-            <li>Click "Open" to load the data into the data editor.</li>
-          </ol>
-        </CardContent>
-      </Card>
-      <Alert variant="default" className="mt-6 bg-blue-50 border-blue-200">
-        <Lightbulb className="h-5 w-5 text-blue-600" />
-        <AlertTitle>Did you know?</AlertTitle>
-        <AlertDescription>
-          Statify can handle large .sav files efficiently, but for very large datasets, the import process might take a few moments.
-        </AlertDescription>
-      </Alert>
-    </HelpContentWrapper>
+    <HelpGuideTemplate
+      title="Import SPSS Files"
+      description="Complete guide for bringing SPSS data (.sav) into Statify"
+      category="File Management"
+      lastUpdated="2024-01-15"
+      sections={sections}
+
+      tips={tips}
+      relatedTopics={relatedTopics}
+    />
   );
-}; 
+};

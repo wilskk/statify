@@ -34,6 +34,16 @@ export const useDescriptivesAnalysis = ({
     const { data: analysisData, weights } = useAnalysisData();
 
     const runAnalysis = useCallback(async () => {
+        // === Performance Monitoring: Start ===
+        const startTime = performance.now();
+        const variableCount = selectedVariables.length;
+        const caseCount = analysisData?.length || 0;
+        console.log(`[Descriptive Analysis] Starting analysis:`);
+        console.log(`  - Variables: ${variableCount}`);
+        console.log(`  - Cases: ${caseCount}`);
+        console.log(`  - Start time: ${new Date().toISOString()}`);
+        // === Performance Monitoring: End ===
+
         setIsCalculating(true);
         setErrorMsg(null);
 
@@ -54,7 +64,7 @@ export const useDescriptivesAnalysis = ({
         const workerClient = createPooledWorkerClient('descriptives');
         workerClientRef.current = workerClient;
 
-        // Kirim payload untuk setiap variabel
+        // Send payload for each variable
         selectedVariables.forEach(variable => {
             const dataForVar = analysisData.map(row => row[variable.columnIndex]);
             const payload = {
@@ -175,6 +185,19 @@ export const useDescriptivesAnalysis = ({
                         description: ""
                     });
                 }
+                
+                // === Performance Monitoring: End ===
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                console.log(`[Descriptive Analysis] Analysis completed:`);
+                console.log(`  - Variables processed: ${resultsRef.current.length}/${variableCount}`);
+                console.log(`  - Cases analyzed: ${caseCount}`);
+                console.log(`  - Execution time: ${executionTime.toFixed(2)}ms`);
+                console.log(`  - End time: ${new Date().toISOString()}`);
+                if (errorCountRef.current > 0) {
+                    console.log(`  - Errors encountered: ${errorCountRef.current}`);
+                }
+                // === Performance Monitoring: End ===
                 
                 setIsCalculating(false);
                 workerClient.terminate();

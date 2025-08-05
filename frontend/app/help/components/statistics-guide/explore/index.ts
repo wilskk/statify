@@ -1,1 +1,1 @@
-export { Explore } from '../descriptive/Explore'; 
+export { Explore } from './Explore';

@@ -4,10 +4,7 @@ const path = require('path');
 // Helper to load worker scripts into the Node test environment, mimicking `importScripts`.
 const loadScript = (scriptPath) => {
   const normalized = scriptPath.startsWith('/') ? scriptPath.slice(1) : scriptPath;
-  let absolutePath = path.resolve(__dirname, '../../', normalized);
-  if (!fs.existsSync(absolutePath)) {
-    absolutePath = path.resolve(__dirname, '../../../../', normalized);
-  }
+  const absolutePath = path.resolve(__dirname, '../', normalized);
   const scriptContent = fs.readFileSync(absolutePath, 'utf8');
   new Function(scriptContent)();
 };
@@ -19,8 +16,8 @@ global.self = global;
 global.importScripts = loadScript;
 
 // Load dependencies in the same order they are expected inside the workers
-loadScript('libs/utils.js');
-loadScript('libs/descriptive.js');
+loadScript('utils/utils.js');
+loadScript('descriptive/descriptive.js');
 
 const DescriptiveCalculator = global.self.DescriptiveCalculator;
 
@@ -73,4 +70,4 @@ describe('DescriptiveCalculator', () => {
             expect(calc.getValidN()).toBeCloseTo(6);
         });
     });
-}); 
+});

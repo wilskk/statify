@@ -39,10 +39,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
     tourSteps = [],
 }) => {
     const variableIdKeyToUse: keyof Variable = 'id';
-    // Variabel hanya perlu bertipe NUMERIC untuk dapat dipilih – level pengukuran tidak lagi diperiksa
-    const isVariableDisabled = useCallback((variable: Variable): boolean => {
-        return variable.type !== 'NUMERIC';
-    }, []);
+    
+    // Filter to show only NUMERIC variables in available list
+    const filteredAvailableVariables = availableVariables.filter(variable => variable.type === 'NUMERIC');
 
     const getDisplayName = (variable: Variable) => {
         if (!variable.label) return variable.name;
@@ -51,7 +50,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         // Prevent moving from available to selected if it's disabled
-        if (sourceListId === 'available' && isVariableDisabled(variable)) {
+        if (sourceListId === 'available' && variable.type !== 'NUMERIC') {
             return;
         }
 
@@ -85,23 +84,30 @@ const VariablesTab: FC<VariablesTabProps> = ({
     }, [setHighlightedVariable]);
 
     const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
-        // Prevent moving to selected if it's disabled
-        if (toListId === 'selected' && isVariableDisabled(variable)) {
-            return;
-        }
-
         if (toListId === 'selected') {
             moveToSelectedVariables(variable, targetIndex);
         } else if (toListId === 'available') {
             moveToAvailableVariables(variable, targetIndex);
         }
-    }, [moveToSelectedVariables, moveToAvailableVariables, isVariableDisabled]);
+    }, [moveToSelectedVariables, moveToAvailableVariables]);
 
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
         if (listId === 'selected') {
             reorderVariables('selected', variables);
         }
     }, [reorderVariables]);
+
+    // Check for variables with non-scale measurement levels
+    const nonScaleVariables = selectedVariables.filter(variable => 
+        variable.measure && variable.measure !== 'scale' && variable.measure !== 'unknown'
+    );
+    const nonScaleCount = nonScaleVariables.length;
+    
+    // Check for variables with unknown measurement levels
+    const unknownVariables = selectedVariables.filter(variable => 
+        variable.measure === 'unknown'
+    );
+    const unknownCount = unknownVariables.length;
 
     const renderSelectedFooter = useCallback((listId: string) => {
         if (listId === 'selected') {
@@ -111,6 +117,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     <div id="save-standardized-section" className="flex items-center relative">
                         <Checkbox
                             id="saveStandardized"
+                            data-testid="save-standardized-checkbox"
                             checked={saveStandardized}
                             onCheckedChange={(checked) => setSaveStandardized(!!checked)}
                             className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
@@ -128,9 +135,21 @@ const VariablesTab: FC<VariablesTabProps> = ({
     
     return (
         <div className="space-y-4">
+            {/* Warning for unknown measurement levels */}
+            {unknownCount > 0 && (
+                <div className="text-sm text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-md p-2 mb-2">
+                    {unknownCount} variable{unknownCount > 1 ? 's' : ''} with unknown measurement level.
+                </div>
+            )}
+            {/* Warning for non-scale measurement levels */}
+            {nonScaleCount > 0 && (
+                <div className="text-sm text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-md p-2 mb-2">
+                    {nonScaleCount} variable{nonScaleCount > 1 ? 's' : ''} with non-scale measurement level (nominal/ordinal).
+                </div>
+            )}
             <div className="relative">
                 <VariableListManager
-                    availableVariables={availableVariables}
+                    availableVariables={filteredAvailableVariables}
                     targetLists={targetLists}
                     variableIdKey={variableIdKeyToUse}
                     highlightedVariable={managerHighlightedVariable}
@@ -139,7 +158,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     onReorderVariable={handleReorderVariables}
                     onVariableDoubleClick={handleDoubleClick}
                     getDisplayName={getDisplayName}
-                    isVariableDisabled={isVariableDisabled}
                     showArrowButtons={true}
                     renderListFooter={renderSelectedFooter}
                 />
@@ -154,4 +172,4 @@ const VariablesTab: FC<VariablesTabProps> = ({
     );
 };
 
-export default VariablesTab; 
+export default VariablesTab;

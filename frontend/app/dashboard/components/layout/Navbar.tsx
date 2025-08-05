@@ -30,32 +30,33 @@ const Navbar: React.FC = () => {
   const commonMenubarClasses = "ml-0 flex px-2 py-1 border-0";
 
   return (
-    <nav className="bg-background border-b border-border">
+    <nav className="bg-background border-b border-border" data-testid="main-navbar">
       <div className="flex items-center justify-between px-3 py-1.5">
         {/* Desktop: Single Menubar ONLY */}
-        <Menubar className={commonMenubarClasses}>
+        <Menubar className={commonMenubarClasses} data-testid="main-menubar">
           <FileMenu />
           <EditMenu />
           <DataMenu />
           <TransformMenu />
           <MenubarMenu>
-            <MenubarTrigger>Analyze</MenubarTrigger>
+            <MenubarTrigger data-testid="analyze-menu-trigger">Analyze</MenubarTrigger>
             <MenubarContent>
               <MenubarSub>
-                <MenubarSubTrigger>Descriptive Statistics</MenubarSubTrigger>
+                <MenubarSubTrigger data-testid="descriptive-statistics-trigger">Descriptive Statistics</MenubarSubTrigger>
                 <MenubarSubContent>
-                  <MenubarItem onClick={() => openModal(ModalType.Frequencies)}>
+                  <MenubarItem onClick={() => openModal(ModalType.Frequencies)} data-testid="descriptive-statistics-frequencies">
                     Frequencies
                   </MenubarItem>
                   <MenubarItem
                     onClick={() => openModal(ModalType.Descriptives)}
+                    data-testid="descriptive-statistics-descriptives"
                   >
                     Descriptives
                   </MenubarItem>
-                  <MenubarItem onClick={() => openModal(ModalType.Explore)}>
+                  <MenubarItem onClick={() => openModal(ModalType.Explore)} data-testid="descriptive-statistics-explore">
                     Explore
                   </MenubarItem>
-                  <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>
+                  <MenubarItem onClick={() => openModal(ModalType.Crosstabs)} data-testid="descriptive-statistics-crosstabs">
                     Crosstabs
                   </MenubarItem>
                 </MenubarSubContent>
@@ -103,9 +104,9 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Nonparametric Tests</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem >One Sample...</MenubarItem>
-                        <MenubarItem >Independent Samples...</MenubarItem>
-                        <MenubarItem >Related Samples...</MenubarItem>
+                        <MenubarItem disabled>One Sample...</MenubarItem>
+                        <MenubarItem disabled>Independent Samples...</MenubarItem>
+                        <MenubarItem disabled>Related Samples...</MenubarItem>
                         <MenubarSub>
                             <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
                             <MenubarSubContent>
@@ -152,7 +153,7 @@ const Navbar: React.FC = () => {
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger>Graphs</MenubarTrigger>
+            <MenubarTrigger data-testid="graphs-menu-trigger">Graphs</MenubarTrigger>
             <MenubarContent>
               <MenubarItem
                 onClick={() => openModal(ModalType.ChartBuilderModal)}
@@ -186,10 +187,10 @@ const Navbar: React.FC = () => {
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger onClick={() => router.push("/help")}>Help</MenubarTrigger>
+            <MenubarTrigger data-testid="help-menu-trigger" onClick={() => router.push("/help")}>Help</MenubarTrigger>
           </MenubarMenu>
         </Menubar>
-        <div className="font-sans text-lg font-semibold text-foreground">
+        <div className="font-sans text-lg font-semibold text-foreground" data-testid="app-logo">
           Statify
         </div>
       </div>

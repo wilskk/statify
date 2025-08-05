@@ -68,6 +68,7 @@ export interface VariablesTabProps {
   availableVariables: Variable[];
   testVariables1: Variable[];
   testVariables2: Variable[];
+  pairNumbers: number[];
   highlightedPair: HighlightedPair | null;
   setHighlightedPair: Dispatch<SetStateAction<HighlightedPair | null>>;
   highlightedVariable: HighlightedVariable | null;
@@ -174,19 +175,25 @@ export interface RanksFrequencies {
 
 // TestStatistics
 export interface TestStatistics {
-  Z: number;
-  PValue: number;
+  zValue: number;
+  pValue: number;
 }
 
 // TwoRelatedSamplesResult
 export interface TwoRelatedSamplesResult {
-  variable?: Variable;
   variable1: Variable;
   variable2: Variable;
   descriptiveStatistics?: DescriptiveStatistics;
   ranksFrequencies?: RanksFrequencies;
   testStatisticsWilcoxon?: TestStatistics;
   testStatisticsSign?: TestStatistics;
+  metadata?: {
+    hasInsufficientData: boolean;
+    variable1Label: string;
+    variable2Label: string;
+    variable1Name: string;
+    variable2Name: string;
+  };
 }
   
 // TwoRelatedSamplesResults

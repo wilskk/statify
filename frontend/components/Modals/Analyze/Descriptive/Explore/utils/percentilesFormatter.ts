@@ -1,6 +1,9 @@
 import { ExploreAnalysisParams } from '../types';
 import { ColumnHeader, FormattedTable, ExploreAggregatedResults, getFactorLabel, regroupByDepVar, formatNumber } from './helpers';
 
+// Konstanta untuk precision yang konsisten
+const STATS_DECIMAL_PLACES = 2;
+
 /**
  * Build the "Percentiles" table for Explore analysis.
  */
@@ -8,13 +11,9 @@ export const formatPercentilesTable = (
   results: ExploreAggregatedResults,
   params: ExploreAnalysisParams,
 ): FormattedTable | null => {
-  console.log('--- [Formatter] formatPercentilesTable ---');
+
   console.log('Received results:', JSON.parse(JSON.stringify(results)));
   console.log('Received params:', JSON.parse(JSON.stringify(params)));
-
-  if (!params.showPercentiles) return null;
-  const hasData = Object.values(results).some(g => g.results.some(r => r.percentiles || r.descriptives));
-  if (!hasData) return null;
 
   const rows: any[] = [];
   const hasFactors = params.factorVariables.length > 0 && params.factorVariables.every(v => v !== null);
@@ -33,7 +32,7 @@ export const formatPercentilesTable = (
       const depVarLabel = depVarResults[0]?.variable?.label || depVarName;
 
       const createPercentileRowData = (result: any) => {
-        const dec = result.variable?.decimals ?? 2;
+        const dec = STATS_DECIMAL_PLACES; // Use consistent decimal places
         if (method.key === 'wa') {
           const wa = result.percentiles?.waverage;
           if (!wa) return null;
@@ -117,4 +116,4 @@ export const formatPercentilesTable = (
   }
 
   return { title: 'Percentiles', columnHeaders, rows };
-}; 
+};

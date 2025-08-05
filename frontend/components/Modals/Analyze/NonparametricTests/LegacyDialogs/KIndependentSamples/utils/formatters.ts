@@ -1,5 +1,6 @@
 import {
     KIndependentSamplesTestResults,
+    KIndependentSamplesTestResult,
     KIndependentSamplesTestTable,
     TableColumnHeader,
     TableRow,
@@ -13,21 +14,34 @@ import {
 } from '../types';
 
 /**
- * Formats frequencies table for data without specified range
- * @param results Chi Square results
+ * Formats ranks table for K Independent Samples
+ * @param results Array of test results and descriptive statistics
+ * @param groupingVariable Name of the grouping variable
  * @returns Formatted table
  */
 export function formatRanksTable(
-    results: KIndependentSamplesTestResults,
+    results: any[],
     groupingVariable: string,
 ): KIndependentSamplesTestTable {
-    if (!results || !results.ranks || results.ranks.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Ranks",
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
     }
+    
+    // Filter only test results (those with ranks)
+    const testResults = results.filter(result => result.ranks);
+    
+    if (testResults.length === 0) {
+        return {
+            title: "Ranks",
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        };
+    }
+    
     let columnHeaders: TableColumnHeader[] = [
         { header: "", key: "rowHeader" },
         { header: groupingVariable, key: "groupingVariable" },
@@ -36,16 +50,19 @@ export function formatRanksTable(
     ];
 
     const rows: TableRow[] = [];
-    results.ranks.forEach((result) => {
-        const { variable, ranks } = result;
-        if (!variable || !ranks) return;
+    testResults.forEach((result) => {
+        const { variable1, ranks, metadata } = result;
+        if (!variable1 || !ranks || metadata?.insufficientType?.includes("empty")) return;
 
         const { groups } = ranks;
         if (!groups) return;
         
-        groups.forEach((group) => {
+        groups.forEach((group: any) => {
+            // Skip the "Total" row as it's not needed in the display
+            // if (group.value === "Total") return;
+            
             rows.push({
-                rowHeader: [variable.label || variable.name, group.label],
+                rowHeader: [variable1.label || variable1.name, group.label],
                 groupingVariable: group.label,
                 N: group.N,
                 MeanRank: group.meanRank !== undefined ? +group.meanRank?.toFixed(2) : undefined
@@ -61,20 +78,32 @@ export function formatRanksTable(
 }
 
 /**
- * Formats frequencies table for data with specified range
- * @param results Chi Square results
+ * Formats Kruskal-Wallis H test statistics table
+ * @param results Array of test results and descriptive statistics
  * @returns Formatted table
  */
 export function formatKruskalWallisHTestStatisticsTable(
-    results: KIndependentSamplesTestResults
+    results: any[]
 ): KIndependentSamplesTestTable {
-    if (!results || !results.testStatisticsKruskalWallisH || results.testStatisticsKruskalWallisH.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Test Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
     }
+    
+    // Filter only test results (those with testStatisticsKruskalWallisH)
+    const testResults = results.filter(result => result.testStatisticsKruskalWallisH);
+    
+    if (testResults.length === 0) {
+        return {
+            title: "Test Statistics",
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        };
+    }
+    
     // Multiple variables case
     const table: KIndependentSamplesTestTable = {
         title: "Test Statistics",
@@ -83,12 +112,12 @@ export function formatKruskalWallisHTestStatisticsTable(
     };
 
     // Add column headers for each variable (only once for the rowHeader)
-    if (results.testStatisticsKruskalWallisH && results.testStatisticsKruskalWallisH.length > 0) {
+    if (testResults && testResults.length > 0) {
         // Add a column for each variable
-        results.testStatisticsKruskalWallisH.forEach((result, index) => {
-            if (result && result.variable) {
+        testResults.forEach((result, index) => {
+            if (result && result.variable1) {
                 table.columnHeaders.push({
-                    header: result.variable.label || result.variable.name || `Variable ${index + 1}`,
+                    header: result.variable1.label || result.variable1.name || `Variable ${index + 1}`,
                     key: `var_${index}`
                 });
             }
@@ -97,15 +126,15 @@ export function formatKruskalWallisHTestStatisticsTable(
         const HRow: TableRow = { rowHeader: ["Kruskal-Wallis H"] };
         const dfRow: TableRow = { rowHeader: ["df"] };
         const pValueRow: TableRow = { rowHeader: ["Asymp. Sig."] };
-        results.testStatisticsKruskalWallisH.forEach((result, index) => {
-            const stats = result.testStatisticsKruskalWallisH as KruskalWallisHTestStatistics;
+        testResults.forEach((result, index) => {
+            const stats = result.testStatisticsKruskalWallisH;
             const key = `var_${index}`;
             HRow[key] = formatNumber(stats.H, 3);
             dfRow[key] = formatNumber(stats.df, 3);
             pValueRow[key] = formatPValue(stats.pValue);
         });
 
-        // Tambahkan baris ke tabel
+        // Add rows to table
         table.rows.push(HRow, dfRow, pValueRow);
     }
 
@@ -299,16 +328,27 @@ export function formatKruskalWallisHTestStatisticsTable(
 
 /**
  * Formats descriptive statistics table
- * @param results Chi Square results
+ * @param results Array of test results and descriptive statistics
  * @returns Formatted table
  */
 export function formatDescriptiveStatisticsTable (
-    results: KIndependentSamplesTestResults,
+    results: any[],
     displayStatistics?: DisplayStatisticsOptions
 ): KIndependentSamplesTestTable {
-    if (!results || !results.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "No Data",
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        };
+    }
+    
+    // Filter only descriptive statistics results
+    const descriptiveResults = results.filter(result => result.descriptiveStatistics);
+    
+    if (descriptiveResults.length === 0) {
+        return {
+            title: "No Descriptive Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
@@ -319,7 +359,6 @@ export function formatDescriptiveStatisticsTable (
         columnHeaders: [
             { header: '', key: 'rowHeader' },
             { header: 'N', key: 'N' }
-
         ],
         rows: []
     };
@@ -334,33 +373,38 @@ export function formatDescriptiveStatisticsTable (
     }
 
     if (displayStatistics?.quartiles) {
-        table.columnHeaders.push({
-            header: "Percentiles",
-            key: "percentiles",
-            children: [
-                { header: "25th", key: "Percentile25" },
-                { header: "50th (Median)", key: "Percentile50" },
-                { header: "75th", key: "Percentile75" }
-            ]
-        });
+        table.columnHeaders.push(
+            { header: "25th", key: "Percentile25" },
+            { header: "50th (Median)", key: "Percentile50" },
+            { header: "75th", key: "Percentile75" }
+        );
     }
 
-    // Process each result
-    results.descriptiveStatistics.forEach((result) => {
-        const stats = result.descriptiveStatistics as DescriptiveStatistics;
-        const decimals = result.variable.decimals || 2;
+    // Process each descriptive statistics result
+    descriptiveResults.forEach((result) => {
+        const stats = result.descriptiveStatistics;
+        const variable = stats.variable1;
+        const decimals = variable.decimals || 0;
         
-        table.rows.push({
-            rowHeader: [result.variable.name],
-            N: stats.N,
-            Mean: formatNumber(stats.Mean, decimals + 2),
-            StdDev: formatNumber(stats.StdDev, decimals + 3),
-            Min: formatNumber(stats.Min, decimals),
-            Max: formatNumber(stats.Max, decimals),
-            Percentile25: formatNumber(stats.Percentile25, decimals),
-            Percentile50: formatNumber(stats.Percentile50, decimals),
-            Percentile75: formatNumber(stats.Percentile75, decimals)
-        });
+        const row: any = {
+            rowHeader: [variable.name],
+            N: stats.N1,
+        };
+        
+        if (displayStatistics?.descriptive) {
+            row.Mean = formatNumber(stats.Mean1, decimals + 2);
+            row.StdDev = formatNumber(stats.StdDev1, decimals + 3);
+            row.Min = formatNumber(stats.Min1, decimals);
+            row.Max = formatNumber(stats.Max1, decimals);
+        }
+        
+        if (displayStatistics?.quartiles) {
+            row.Percentile25 = formatNumber(stats.Percentile25_1, decimals);
+            row.Percentile50 = formatNumber(stats.Percentile50_1, decimals);
+            row.Percentile75 = formatNumber(stats.Percentile75_1, decimals);
+        }
+        
+        table.rows.push(row);
     });
 
     return table;

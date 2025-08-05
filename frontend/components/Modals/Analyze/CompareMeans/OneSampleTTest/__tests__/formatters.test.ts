@@ -2,12 +2,11 @@ import {
   formatNumber,
   formatPValue,
   formatDF,
-  formatErrorMessage,
   formatOneSampleStatisticsTable,
   formatOneSampleTestTable,
-  formatErrorTable
 } from '../utils/formatters';
-import { OneSampleTTestResults } from '../types';
+import { OneSampleTTestResult } from '../types';
+import { Variable, VariableType } from '@/types/Variable';
 
 describe('OneSampleTTest Formatters', () => {
   describe('formatNumber', () => {
@@ -58,22 +57,15 @@ describe('OneSampleTTest Formatters', () => {
     });
   });
 
-  describe('formatErrorMessage', () => {
-    it('should format error messages correctly', () => {
-      expect(formatErrorMessage('Test error')).toBe('Error: Test error');
-      expect(formatErrorMessage('')).toBe('Error: ');
-    });
-  });
-
   describe('formatOneSampleStatisticsTable', () => {
-    const mockVariable = {
+    const mockVariable: Variable = {
       name: 'var1',
       label: 'Variable 1',
       columnIndex: 0,
-      type: 'NUMERIC',
+      type: 'NUMERIC' as VariableType,
       tempId: '1',
       width: 8,
-      decimals: 2,
+      decimals: 0,
       values: [],
       missing: {},
       align: 'left',
@@ -83,20 +75,17 @@ describe('OneSampleTTest Formatters', () => {
     };
 
     it('should format statistics table with valid data', () => {
-      const mockResults: OneSampleTTestResults = {
-        oneSampleStatistics: [
-          {
-            variable: mockVariable as any,
-            stats: {
-              N: 10,
-              Mean: 15.5,
-              StdDev: 3.2,
-              SEMean: 1.01
-            }
+      const mockResults: OneSampleTTestResult[] = [
+        {
+          variable1: mockVariable,
+          oneSampleStatistics: {
+            N: 10,
+            Mean: 15.5,
+            StdDev: 3.2,
+            SEMean: 1.01
           }
-        ],
-        oneSampleTest: []
-      };
+        }
+      ];
 
       const table = formatOneSampleStatisticsTable(mockResults);
       
@@ -111,10 +100,7 @@ describe('OneSampleTTest Formatters', () => {
     });
 
     it('should handle empty results', () => {
-      const emptyResults: OneSampleTTestResults = {
-        oneSampleStatistics: [],
-        oneSampleTest: []
-      };
+      const emptyResults: OneSampleTTestResult[] = [];
 
       const table = formatOneSampleStatisticsTable(emptyResults);
       
@@ -126,14 +112,14 @@ describe('OneSampleTTest Formatters', () => {
   });
 
   describe('formatOneSampleTestTable', () => {
-    const mockVariable = {
+    const mockVariable: Variable = {
       name: 'var1',
       label: 'Variable 1',
       columnIndex: 0,
-      type: 'NUMERIC',
+      type: 'NUMERIC' as VariableType,
       tempId: '1',
       width: 8,
-      decimals: 2,
+      decimals: 0,
       values: [],
       missing: {},
       align: 'left',
@@ -142,26 +128,25 @@ describe('OneSampleTTest Formatters', () => {
       columns: 8
     };
 
-    it('should format test table with valid data', () => {
-      const mockResults: OneSampleTTestResults = {
-        oneSampleStatistics: [],
-        oneSampleTest: [
-          {
-            variable: mockVariable as any,
-            testValue: 10,
-            stats: {
-              T: 2.5,
-              DF: 9,
-              PValue: 0.034,
-              MeanDifference: 5.5,
-              Lower: 0.48,
-              Upper: 10.52
-            }
-          }
-        ]
-      };
+    const testValue = 10;
 
-      const table = formatOneSampleTestTable(mockResults);
+    it('should format test table with valid data', () => {
+      const mockResults: OneSampleTTestResult[] = [
+        {
+          variable1: mockVariable,
+          testValue: testValue,
+          oneSampleTest: {
+            T: 2.5,
+            DF: 9,
+            PValue: 0.034,
+            MeanDifference: 5.5,
+            Lower: 0.48,
+            Upper: 10.52
+          }
+        }
+      ];
+
+      const table = formatOneSampleTestTable(mockResults, testValue);
       
       expect(table.title).toBe('One-Sample Test');
       expect(table.columnHeaders).toHaveLength(2);
@@ -177,25 +162,11 @@ describe('OneSampleTTest Formatters', () => {
     });
 
     it('should handle empty results', () => {
-      const emptyResults: OneSampleTTestResults = {
-        oneSampleStatistics: [],
-        oneSampleTest: []
-      };
+      const emptyResults: OneSampleTTestResult[] = [];
 
-      const table = formatOneSampleTestTable(emptyResults);
+      const table = formatOneSampleTestTable(emptyResults, testValue);
       
       expect(table.title).toBe('One-Sample Test');
-      expect(table.columnHeaders).toHaveLength(1);
-      expect(table.columnHeaders[0].header).toBe('No Data');
-      expect(table.rows).toHaveLength(0);
-    });
-  });
-
-  describe('formatErrorTable', () => {
-    it('should return an empty table structure', () => {
-      const table = formatErrorTable();
-      
-      expect(table.title).toBe('');
       expect(table.columnHeaders).toHaveLength(1);
       expect(table.columnHeaders[0].header).toBe('No Data');
       expect(table.rows).toHaveLength(0);

@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FindReplaceMode, TabType, FindAndReplaceModalProps } from "../types";
 import { useFindReplaceForm } from "../hooks/useFindReplaceForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AnimatePresence } from "framer-motion";
 import { TourPopup, ActiveElementHighlight, TourStep, PopupPosition, HorizontalPosition } from "./Tour";
@@ -79,83 +80,91 @@ export const FindReplaceContent: React.FC<FindAndReplaceContentProps> = ({
                     <TourPopup step={tourSteps[currentStep]} currentStep={currentStep} totalSteps={tourSteps.length} onNext={nextStep} onPrev={prevStep} onClose={endTour} targetElement={currentTargetElement} />
                 )}
             </AnimatePresence>
-            <div className="p-6 overflow-y-auto flex-grow">
-                <Tabs value={activeTab} onValueChange={val => setActiveTab(val as TabType)} className="mb-6">
-                    <TabsList className="w-full">
-                        <TabsTrigger value={TabType.FIND} className="w-1/2">Find</TabsTrigger>
-                        <TabsTrigger value={TabType.REPLACE} className="w-1/2">Replace</TabsTrigger>
-                    </TabsList>
-                </Tabs>
+            <div className="p-6 overflow-y-auto flex-grow space-y-4">
+                {/* Search Settings */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Search Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Tabs value={activeTab} onValueChange={val => setActiveTab(val as TabType)}>
+                            <TabsList className="w-full">
+                                <TabsTrigger value={TabType.FIND} className="w-1/2">Find</TabsTrigger>
+                                <TabsTrigger value={TabType.REPLACE} className="w-1/2">Replace</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
 
-                <div className="space-y-4">
-                    <div id="fr-column-wrapper" className="relative">
-                        <Label htmlFor="column-select" className="text-xs font-medium text-muted-foreground">Column:</Label>
-                        <Select value={selectedColumnName} onValueChange={setSelectedColumnName}>
-                            <SelectTrigger id="column-select" className="w-full mt-1 h-9"><SelectValue placeholder="Select column" /></SelectTrigger>
-                            <SelectContent>
-                                {columnNames?.map((colName: string) => <SelectItem key={colName} value={colName}>{colName}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-column-wrapper'} />
-                    </div>
-
-                    <div id="fr-find-input-wrapper" className="space-y-1 relative">
-                        <div className="flex justify-between items-baseline">
-                            <Label htmlFor="find-input" className="text-xs font-medium text-muted-foreground">Find:</Label>
-                            {findText && searchResultsCount > 0 && <span className="text-xs text-muted-foreground">{currentResultNumber} of {searchResultsCount}</span>}
-                            {findText && searchResultsCount === 0 && !findError && <span className="text-xs text-muted-foreground">No results</span>}
+                        <div id="fr-column-wrapper" className="space-y-1.5 relative">
+                            <Label htmlFor="column-select" className="text-sm font-medium">Column</Label>
+                            <Select value={selectedColumnName} onValueChange={setSelectedColumnName}>
+                                <SelectTrigger id="column-select"><SelectValue placeholder="Select column" /></SelectTrigger>
+                                <SelectContent>
+                                    {columnNames?.map((colName: string) => <SelectItem key={colName} value={colName}>{colName}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-column-wrapper'} />
                         </div>
-                        <Input id="find-input" type="text" value={findText} onChange={(e) => handleFindChange(e.target.value)} className={cn("h-9 text-sm", findError && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!findError} aria-describedby={findError ? "find-error-message" : undefined} />
-                        {findError && <p id="find-error-message" className="text-xs text-destructive pt-1">{findError}</p>}
-                        <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-find-input-wrapper'} />
-                    </div>
 
-                    {activeTab === TabType.REPLACE && (
-                        <div id="fr-replace-input-wrapper" className="space-y-1 relative">
-                            <Label htmlFor="replace-input" className="text-xs font-medium text-muted-foreground">Replace with:</Label>
-                            <Input id="replace-input" type="text" value={replaceText} onChange={(e) => handleReplaceChange(e.target.value)} className={cn("h-9 text-sm", replaceError && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!replaceError} aria-describedby={replaceError ? "replace-error-message" : undefined} />
-                            {replaceError && <p id="replace-error-message" className="text-xs text-destructive pt-1">{replaceError}</p>}
-                            <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-replace-input-wrapper'} />
+                        <div id="fr-find-input-wrapper" className="space-y-1.5 relative">
+                            <div className="flex justify-between items-baseline">
+                                <Label htmlFor="find-input" className="text-sm font-medium">Find</Label>
+                                {findText && searchResultsCount > 0 && <span className="text-xs text-muted-foreground">{currentResultNumber} of {searchResultsCount}</span>}
+                                {findText && searchResultsCount === 0 && !findError && <span className="text-xs text-muted-foreground">No results</span>}
+                            </div>
+                            <Input id="find-input" type="text" value={findText} onChange={(e) => handleFindChange(e.target.value)} className={cn("text-sm", findError && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!findError} aria-describedby={findError ? "find-error-message" : undefined} />
+                            {findError && <p id="find-error-message" className="text-xs text-destructive pt-1">{findError}</p>}
+                            <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-find-input-wrapper'} />
                         </div>
-                    )}
 
-                    <div id="fr-match-case-wrapper" className="flex items-center space-x-2 pt-2 relative">
-                        <Checkbox id="match-case" checked={matchCase} onCheckedChange={(checked) => setMatchCase(Boolean(checked))} />
-                        <Label htmlFor="match-case" className="text-sm font-normal">Match case</Label>
-                        <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-match-case-wrapper'} />
-                    </div>
+                        {activeTab === TabType.REPLACE && (
+                            <div id="fr-replace-input-wrapper" className="space-y-1.5 relative">
+                                <Label htmlFor="replace-input" className="text-sm font-medium">Replace with</Label>
+                                <Input id="replace-input" type="text" value={replaceText} onChange={(e) => handleReplaceChange(e.target.value)} className={cn("text-sm", replaceError && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!replaceError} aria-describedby={replaceError ? "replace-error-message" : undefined} />
+                                {replaceError && <p id="replace-error-message" className="text-xs text-destructive pt-1">{replaceError}</p>}
+                                <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-replace-input-wrapper'} />
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
-                    <div className="border border-border p-4 rounded-md space-y-4 bg-background mt-2">
-                        <div id="fr-match-in-wrapper" className="relative">
-                            <Label className="text-xs font-medium text-muted-foreground">Match in:</Label>
-                            <RadioGroup value={matchTo} onValueChange={(value) => setMatchTo(value as any)} className="mt-1 space-y-1">
-                                {[{ value: "contains", label: "Any part of cell" }, { value: "entire_cell", label: "Entire cell" }, { value: "begins_with", label: "Beginning of cell" }, { value: "ends_with", label: "End of cell" }].map(o => (
-                                    <div key={o.value} className="flex items-center space-x-2"><RadioGroupItem value={o.value} id={`matchTo-${o.value}`} /><Label htmlFor={`matchTo-${o.value}`} className="text-sm font-normal">{o.label}</Label></div>
-                                ))}
-                            </RadioGroup>
-                            <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-match-in-wrapper'} />
+                {/* Search Options */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Search Options</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div id="fr-match-case-wrapper" className="flex items-center space-x-2 relative">
+                            <Checkbox id="match-case" checked={matchCase} onCheckedChange={(checked) => setMatchCase(Boolean(checked))} />
+                            <Label htmlFor="match-case" className="text-sm font-normal cursor-pointer flex-1">Match case</Label>
+                            <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-match-case-wrapper'} />
                         </div>
-                        <Separator />
-                        <div id="fr-direction-wrapper" className="relative">
-                            <Label className="text-xs font-medium text-muted-foreground">Direction:</Label>
-                            <RadioGroup value={direction} onValueChange={(value) => setDirection(value as any)} className="mt-1 space-y-1">
-                                {[{ value: "down", label: "Down" }, { value: "up", label: "Up" }].map(d => (
-                                    <div key={d.value} className="flex items-center space-x-2"><RadioGroupItem value={d.value} id={`direction-${d.value}`} /><Label htmlFor={`direction-${d.value}`} className="text-sm font-normal">{d.label}</Label></div>
-                                ))}
-                            </RadioGroup>
-                            <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-direction-wrapper'} />
+
+                        <div className="space-y-4">
+                            <div id="fr-match-in-wrapper" className="space-y-2 relative">
+                                <Label className="text-sm font-medium">Match in</Label>
+                                <RadioGroup value={matchTo} onValueChange={(value) => setMatchTo(value as any)} className="space-y-2">
+                                    {[{ value: "contains", label: "Any part of cell" }, { value: "entire_cell", label: "Entire cell" }, { value: "begins_with", label: "Beginning of cell" }, { value: "ends_with", label: "End of cell" }].map(o => (
+                                        <div key={o.value} className="flex items-center space-x-2"><RadioGroupItem value={o.value} id={`matchTo-${o.value}`} /><Label htmlFor={`matchTo-${o.value}`} className="text-sm font-normal cursor-pointer flex-1">{o.label}</Label></div>
+                                    ))}
+                                </RadioGroup>
+                                <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-match-in-wrapper'} />
+                            </div>
+                            
+                            <div id="fr-direction-wrapper" className="space-y-2 relative">
+                                <Label className="text-sm font-medium">Direction</Label>
+                                <RadioGroup value={direction} onValueChange={(value) => setDirection(value as any)} className="space-y-2">
+                                    {[{ value: "down", label: "Down" }, { value: "up", label: "Up" }].map(d => (
+                                        <div key={d.value} className="flex items-center space-x-2"><RadioGroupItem value={d.value} id={`direction-${d.value}`} /><Label htmlFor={`direction-${d.value}`} className="text-sm font-normal cursor-pointer flex-1">{d.label}</Label></div>
+                                    ))}
+                                </RadioGroup>
+                                <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-direction-wrapper'} />
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </div>
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={startTour} className="rounded-full w-8 h-8"><HelpCircle size={18} /></Button></TooltipTrigger>
-                        <TooltipContent><p>Start feature tour</p></TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
                 <div className="flex flex-wrap justify-end items-center gap-2">
                     <Button variant="outline" onClick={onClose}>Close</Button>
                     {activeTab === TabType.REPLACE && (
@@ -175,4 +184,4 @@ export const FindReplaceContent: React.FC<FindAndReplaceContentProps> = ({
             </div>
         </>
     );
-}; 
+};

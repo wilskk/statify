@@ -2,12 +2,12 @@
  * Descriptive Modal
  *
  * Komponen ini menampilkan dialog/layar "Descriptives" untuk melakukan analisis statistik deskriptif.
- * Pengguna dapat:
- *   1. Memilih variabel yang akan dianalisis (tab "Variables").
- *   2. Mengatur statistik apa saja yang ingin ditampilkan (tab "Statistics").
- *   3. Menjalankan proses kalkulasi atau mereset pilihan.
+ * Users can:
+ *   1. Select variables to analyze ("Variables" tab).
+ *   2. Configure which statistics to display ("Statistics" tab).
+ *   3. Run the calculation process or reset selections.
  *
- * Catatan:
+ * Notes:
  * - Komponen ini bersifat agnostik terhadap container, sehingga dapat dirender di dalam <Dialog />
  *   maupun di sidebar. Lihat properti `containerType`.
  * - State form disimpan di IndexedDB (lihat hooks/useIndexedDB) agar pilihan user bertahan
@@ -247,9 +247,15 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
+                        <TabsTrigger 
+                            data-testid="descriptive-variables-tab"
+                            value="variables"
+                        >
+                            Variables
+                        </TabsTrigger>
                         <TabsTrigger 
                             id="descriptive-statistics-tab-trigger"
+                            data-testid="descriptive-statistics-tab"
                             value="statistics"
                         >
                             Statistics
@@ -269,6 +275,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button 
+                                    data-testid="descriptive-help-button"
                                     variant="ghost" 
                                     size="icon" 
                                     onClick={startTour}
@@ -288,6 +295,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                 {/* Right: Buttons */}
                 <div>
                     <Button
+                        data-testid="descriptive-reset-button"
                         variant="outline"
                         className="mr-2"
                         onClick={handleReset}
@@ -296,6 +304,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         Reset
                     </Button>
                     <Button
+                        data-testid="descriptive-cancel-button"
                         variant="outline"
                         className="mr-2"
                         onClick={onClose}
@@ -305,6 +314,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                     </Button>
                     <Button
                         id="descriptive-ok-button"
+                        data-testid="descriptive-ok-button"
                         onClick={runAnalysis}
                         disabled={isCalculating || selectedVariables.length === 0 || isVariablesLoading || !!variablesError}
                     >
@@ -331,7 +341,10 @@ const Descriptives: FC<BaseModalProps> = ({ onClose, containerType = "dialog", .
 
     // Default dialog view with proper Dialog components
     return (
-        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+        <DialogContent 
+            data-testid="descriptive-dialog"
+            className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]"
+        >
             <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                 <DialogTitle className="text-[22px] font-semibold">Descriptives</DialogTitle>
             </DialogHeader>

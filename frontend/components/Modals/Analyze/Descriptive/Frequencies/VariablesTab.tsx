@@ -95,6 +95,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 <div className="mt-4">
                     <div className="flex items-center relative" id="display-frequency-tables">
                         <Checkbox
+                            data-testid="display-frequency-tables-checkbox"
                             checked={showFrequencyTables}
                             onCheckedChange={(checked) => setShowFrequencyTables(!!checked)}
                             className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
@@ -114,9 +115,19 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const availableStepIndex = tourSteps.findIndex(step => step.targetId === 'frequencies-available-variables');
     const selectedStepIndex = tourSteps.findIndex(step => step.targetId === 'frequencies-selected-variables');
 
+    // Check if there are any selected variables with unknown measurement
+    const unknownVariables = selectedVariables.filter(variable => variable.measure === 'unknown');
+    const unknownCount = unknownVariables.length;
+
     // Render wrapper divs with IDs for tour targeting
     return (
         <div className="space-y-4">
+            {/* Conditional info text about measurement levels */}
+            {unknownCount > 0 && (
+                <div className="text-sm text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-md p-2 mb-2">
+                    {unknownCount} variable{unknownCount > 1 ? 's' : ''} with unknown measurement level.
+                </div>
+            )}
             <div className="relative">
                 <VariableListManager
                     availableVariables={availableVariables}

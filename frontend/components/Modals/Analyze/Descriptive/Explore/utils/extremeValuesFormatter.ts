@@ -8,7 +8,7 @@ export const formatExtremeValuesTable = (
   results: ExploreAggregatedResults,
   params: ExploreAnalysisParams,
 ): FormattedTable | null => {
-  console.log('--- [Formatter] formatExtremeValuesTable ---');
+
   console.log('Received results:', JSON.parse(JSON.stringify(results)));
   console.log('Received params:', JSON.parse(JSON.stringify(params)));
 
@@ -52,7 +52,9 @@ export const formatExtremeValuesTable = (
     }
 
     if (ex.lowest && ex.lowest.length > 0) {
-      const lowestChildren = ex.lowest.map((val: any, i: number) => {
+      // Sort lowest values by case number in descending order (highest case numbers first)
+      const sortedLowest = [...ex.lowest].sort((a, b) => b.caseNumber - a.caseNumber);
+      const lowestChildren = sortedLowest.map((val: any, i: number) => {
         if (val.isPartial) isPartialB = true;
         return {
           rowHeader: buildRowHeader(null, (i + 1).toString()),
@@ -129,6 +131,6 @@ export const formatExtremeValuesTable = (
     title: 'Extreme Values',
     columnHeaders,
     rows,
-    footnotes: footnotes.length > 0 ? footnotes : undefined,
+    footer: footnotes.length > 0 ? footnotes : undefined,
   };
-}; 
+};

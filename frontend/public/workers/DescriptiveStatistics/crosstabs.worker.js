@@ -1,10 +1,5 @@
-/**
- * @file crosstabs.worker.js
- * Dedicated Web Worker for Crosstabs analysis.
- */
-
-importScripts('/workers/DescriptiveStatistics/libs/utils.js');
-importScripts('/workers/DescriptiveStatistics/libs/crosstabs.js');
+importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/crosstabs/crosstabs.js');
 
 onmessage = function (event) {
   const { variable, data, weights, options } = event.data || {};
@@ -33,4 +28,4 @@ onmessage = function (event) {
       error: err?.message || String(err),
     });
   }
-}; 
+};

@@ -6,6 +6,7 @@ import {
     RunsTest,
     DescriptiveStatistics,
     DisplayStatisticsOptions,
+    RunsTestResult,
 } from '../types';
 
 /**
@@ -14,9 +15,9 @@ import {
  * @returns Formatted table
  */
 export function formatRunsTestTable(
-    results: RunsTestResults,
+    results: RunsTestResult[],
 ): RunsTestTable[] {
-    if (!results || !results.runsTest || results.runsTest.length === 0) {
+    if (!results || results.length === 0) {
         return [{
             title: "Runs Test",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -26,15 +27,19 @@ export function formatRunsTestTable(
 
     const tables: RunsTestTable[] = [];
     
-    // Group results by cut point type
-    const medianResults = results.runsTest.filter(r => 
-        r.cutPoint === 'Median' && r.stats && 'TestValue' in r.stats && r.stats.TestValue !== undefined);
-    const meanResults = results.runsTest.filter(r => 
-        r.cutPoint === 'Mean' && r.stats && 'TestValue' in r.stats && r.stats.TestValue !== undefined);
-    const modeResults = results.runsTest.filter(r => 
-        r.cutPoint === 'Mode' && r.stats && 'TestValue' in r.stats && r.stats.TestValue !== undefined);
-    const customResults = results.runsTest.filter(r => 
-        r.cutPoint === 'Custom' && r.stats && 'TestValue' in r.stats && r.stats.TestValue !== undefined);
+    // Group results by cut point type, excluding variables with "empty" insufficient type
+    const medianResults = results.filter(r => 
+        r.runsTest && r.runsTest.median && 'TestValue' in r.runsTest.median && r.runsTest.median.TestValue !== undefined &&
+        !r.metadata?.insufficientType.includes("empty"));
+    const meanResults = results.filter(r => 
+        r.runsTest && r.runsTest.mean && 'TestValue' in r.runsTest.mean && r.runsTest.mean.TestValue !== undefined &&
+        !r.metadata?.insufficientType.includes("empty"));
+    const modeResults = results.filter(r => 
+        r.runsTest && r.runsTest.mode && 'TestValue' in r.runsTest.mode && r.runsTest.mode.TestValue !== undefined &&
+        !r.metadata?.insufficientType.includes("empty"));
+    const customResults = results.filter(r => 
+        r.runsTest && r.runsTest.custom && 'TestValue' in r.runsTest.custom && r.runsTest.custom.TestValue !== undefined &&
+        !r.metadata?.insufficientType.includes("empty"));
 
     // Create a table for each cut point type that was used
     if (medianResults.length > 0) {
@@ -54,8 +59,8 @@ export function formatRunsTestTable(
     }
 
     // If no tables were created but we have results, format all results in a single table
-    if (tables.length === 0 && results.runsTest.length > 0) {
-        tables.push(formatSingleRunsTestTable(results.runsTest, 'Test Value'));
+    if (tables.length === 0 && results.length > 0) {
+        tables.push(formatSingleRunsTestTable(results, 'Test Value'));
     }
 
     // If still no tables, return a default empty table
@@ -77,7 +82,7 @@ export function formatRunsTestTable(
  * @returns Formatted table
  */
 function formatSingleRunsTestTable(
-    runsTestResults: RunsTestResults['runsTest'],
+    runsTestResults: RunsTestResult[],
     title: string
 ): RunsTestTable {
     if (!runsTestResults || runsTestResults.length === 0) {
@@ -90,8 +95,14 @@ function formatSingleRunsTestTable(
 
     // Modify title for Custom cut point to include TestValue
     let displayTitle = title;
-    if (title === 'Custom' && runsTestResults.length > 0 && runsTestResults[0].stats && 'TestValue' in runsTestResults[0].stats) {
-        const testValue = runsTestResults[0].stats.TestValue;
+    if (
+        title === 'Custom' &&
+        runsTestResults.length > 0 &&
+        runsTestResults[0].runsTest &&
+        runsTestResults[0].runsTest.custom &&
+        typeof runsTestResults[0].runsTest.custom.TestValue !== 'undefined'
+    ) {
+        const testValue = runsTestResults[0].runsTest.custom.TestValue;
         displayTitle = `Custom (${testValue})`;
     }
 
@@ -103,9 +114,9 @@ function formatSingleRunsTestTable(
     
     // Add column headers for each variable
     runsTestResults.forEach((result, index) => {
-        if (result && result.variable) {
+        if (result && result.variable1) {
             table.columnHeaders.push({
-                header: result.variable.label || result.variable.name || `Variable ${index + 1}`,
+                header: result.variable1.label || result.variable1.name || `Variable ${index + 1}`,
                 key: `var_${index}`
             });
         }
@@ -131,9 +142,22 @@ function formatSingleRunsTestTable(
 
     // Fill in the data for each variable
     runsTestResults.forEach((result, index) => {
-        if (!result || !result.stats || !('TestValue' in result.stats)) return;
+        if (!result || !result.runsTest) return;
         
-        const stats = result.stats as RunsTest;
+        // Determine which test type to use based on the title
+        let stats: RunsTest | undefined;
+        if (title === 'Median' && result.runsTest.median) {
+            stats = result.runsTest.median;
+        } else if (title === 'Mean' && result.runsTest.mean) {
+            stats = result.runsTest.mean;
+        } else if (title === 'Mode' && result.runsTest.mode) {
+            stats = result.runsTest.mode;
+        } else if (title.startsWith('Custom') && result.runsTest.custom) {
+            stats = result.runsTest.custom;
+        }
+        
+        if (!stats || !('TestValue' in stats)) return;
+        
         const key = `var_${index}`;
         
         testValueRow[key] = formatNumber(stats.TestValue, 2);
@@ -165,10 +189,10 @@ function formatSingleRunsTestTable(
  * @returns Formatted table
  */
 export function formatDescriptiveStatisticsTable(
-    results: RunsTestResults,
+    results: RunsTestResult[],
     displayStatistics?: DisplayStatisticsOptions
 ): RunsTestTable {
-    if (!results || !results.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Descriptive Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -207,22 +231,22 @@ export function formatDescriptiveStatisticsTable(
     }
 
     // Process each result
-    results.descriptiveStatistics.forEach((result) => {
-        if (!result || !result.stats || !('N' in result.stats)) return;
+    results.forEach((result) => {
+        if (!result || !result.descriptiveStatistics) return;
         
-        const stats = result.stats as DescriptiveStatistics;
-        const decimals = result.variable.decimals || 2;
+        const stats = result.descriptiveStatistics;
+        const decimals = result.variable1.decimals;
         
         table.rows.push({
-            rowHeader: [result.variable.name],
-            N: stats.N,
-            Mean: formatNumber(stats.Mean, decimals + 2),
-            StdDev: formatNumber(stats.StdDev, decimals + 3),
-            Min: formatNumber(stats.Min, decimals),
-            Max: formatNumber(stats.Max, decimals),
-            Percentile25: formatNumber(stats.Percentile25, decimals),
-            Percentile50: formatNumber(stats.Percentile50, decimals),
-            Percentile75: formatNumber(stats.Percentile75, decimals)
+            rowHeader: [result.variable1.name],
+            N: stats.N1,
+            Mean: formatNumber(stats.Mean1, decimals + 2),
+            StdDev: formatNumber(stats.StdDev1, decimals + 3),
+            Min: formatNumber(stats.Min1, decimals),
+            Max: formatNumber(stats.Max1, decimals),
+            Percentile25: formatNumber(stats.Percentile25_1, decimals),
+            Percentile50: formatNumber(stats.Percentile50_1, decimals),
+            Percentile75: formatNumber(stats.Percentile75_1, decimals)
         });
     });
 

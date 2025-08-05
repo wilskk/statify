@@ -20,15 +20,6 @@ export const baseTourSteps: TourStep[] = [
         requiredTab: TABS.VARIABLES
     },
     {
-        title: "Allow Unknown Variables",
-        content: "Check this option to treat variables with 'unknown' measurement level as Scale variables, allowing them to be selected for analysis.",
-        targetId: "allow-unknown-section",
-        defaultPosition: 'bottom',
-        defaultHorizontalPosition: null,
-        icon: "🔍",
-        requiredTab: TABS.VARIABLES
-    },
-    {
         title: "Test Value",
         content: "Specify the value to test your variables against. This is the hypothesized mean value.",
         targetId: "test-value-section",

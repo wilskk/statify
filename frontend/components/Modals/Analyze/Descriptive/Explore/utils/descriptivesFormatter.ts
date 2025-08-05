@@ -1,6 +1,9 @@
 import { ExploreAnalysisParams } from '../types';
 import { ColumnHeader, FormattedTable, ExploreAggregatedResults, getFactorLabel, regroupByDepVar, formatNumber } from './helpers';
 
+// Konstanta untuk precision yang konsisten
+const STATS_DECIMAL_PLACES = 2;
+
 /**
  * Build the "Descriptives" table for Explore analysis.
  */
@@ -8,7 +11,7 @@ export const formatDescriptivesTable = (
   results: ExploreAggregatedResults,
   params: ExploreAnalysisParams,
 ): FormattedTable | null => {
-  console.log('--- [Formatter] formatDescriptivesTable ---');
+
   console.log('Received results:', JSON.parse(JSON.stringify(results)));
   console.log('Received params:', JSON.parse(JSON.stringify(params)));
 
@@ -38,7 +41,7 @@ export const formatDescriptivesTable = (
           })()
         : '';
 
-      const dec = result.variable?.decimals ?? 2;
+      const dec = STATS_DECIMAL_PLACES; // Use consistent decimal places
 
       // Helper to construct rowHeader based on presence of factors
       const buildRowHeader = (
@@ -144,4 +147,4 @@ export const formatDescriptivesTable = (
   }
 
   return { title: 'Descriptives', columnHeaders, rows };
-}; 
+};

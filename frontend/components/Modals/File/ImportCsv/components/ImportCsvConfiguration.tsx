@@ -22,6 +22,84 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { useToast } from "@/hooks/use-toast";
+import { processCSVContent } from "../importCsvUtils";
+import { RefreshCw } from "lucide-react";
+
+// CSS styles for CSV preview table
+const csvPreviewStyles = `
+.csv-preview-table {
+    font-size: 0.875rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    min-width: max-content;
+}
+
+.csv-preview-table th,
+.csv-preview-table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 80px;
+    max-width: 200px;
+    padding: 8px 12px;
+    border-right: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--border));
+    text-align: left;
+    background: hsl(var(--background));
+}
+
+.csv-preview-table th {
+    background-color: hsl(var(--muted));
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-bottom: 2px solid hsl(var(--border));
+}
+
+.csv-preview-table th:first-child,
+.csv-preview-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: hsl(var(--muted) / 0.8);
+    border-right: 2px solid hsl(var(--border));
+}
+
+.csv-preview-table th:first-child {
+    z-index: 3;
+    background-color: hsl(var(--muted));
+}
+
+.csv-preview-table tbody tr:nth-child(even) td {
+    background-color: hsl(var(--muted) / 0.2);
+}
+
+.csv-preview-table tbody tr:nth-child(even) td:first-child {
+    background-color: hsl(var(--muted) / 0.6);
+}
+
+.csv-preview-table tbody tr:hover td {
+    background-color: hsl(var(--muted) / 0.4);
+}
+
+.csv-preview-table tbody tr:hover td:first-child {
+    background-color: hsl(var(--muted) / 0.8);
+}
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+    const styleId = 'csv-preview-styles';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = csvPreviewStyles;
+        document.head.appendChild(style);
+    }
+}
 
 interface ImportCsvConfigurationProps {
     onClose: () => void;
@@ -245,6 +323,26 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
     
     const { processCSV, isProcessing: hookIsProcessing } = useImportCsvProcessor();
     const [submissionError, setSubmissionError] = useState<string | null>(null);
+    const { toast } = useToast();
+    
+    // Preview data state
+    const [parsedData, setParsedData] = useState<{variables: any[], data: string[][]} | null>(null);
+    const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
+    const [previewError, setPreviewError] = useState<string | null>(null);
+
+    // Update tour step for data preview
+    const updatedTourSteps = useMemo(() => {
+        return baseTourSteps.map(step => {
+            if (step.targetId === 'csv-config-preview-wrapper') {
+                return {
+                    ...step,
+                    title: "Data Preview",
+                    content: "This table shows a preview of your data based on the selected options and delimiter."
+                };
+            }
+            return step;
+        });
+    }, []);
 
     // Tour state and logic
     const [tourActive, setTourActive] = useState(false);
@@ -252,34 +350,53 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
     const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
-    const nextStep = useCallback(() => { if (currentStep < baseTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep]);
+    const nextStep = useCallback(() => { if (currentStep < updatedTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep, updatedTourSteps.length]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);
     
     useEffect(() => {
         if (!tourActive) return;
         const elements: Record<string, HTMLElement | null> = {};
-        baseTourSteps.forEach(step => {
+        updatedTourSteps.forEach(step => {
             elements[step.targetId] = document.getElementById(step.targetId);
         });
         setTargetElements(elements);
-    }, [tourActive]);
+    }, [tourActive, updatedTourSteps]);
 
     const currentTargetElement = useMemo(() => {
         if (!tourActive) return null;
-        return targetElements[baseTourSteps[currentStep].targetId] || null;
-    }, [tourActive, currentStep, targetElements]);
+        return targetElements[updatedTourSteps[currentStep].targetId] || null;
+    }, [tourActive, currentStep, targetElements, updatedTourSteps]);
 
+    // Process CSV data for preview when options change
+    useEffect(() => {
+        const processPreview = async () => {
+            if (!fileContent) return;
+            
+            setIsLoadingPreview(true);
+            setPreviewError(null);
+            
+            try {
+                const result = processCSVContent(fileContent, {
+                    firstLineContains,
+                    removeLeading,
+                    removeTrailing,
+                    delimiter,
+                    decimal,
+                    textQualifier
+                });
+                setParsedData(result);
+            } catch (error: any) {
+                setPreviewError(error.message || 'Failed to process CSV');
+                setParsedData(null);
+            } finally {
+                setIsLoadingPreview(false);
+            }
+        };
+        
+        processPreview();
+    }, [fileContent, firstLineContains, removeLeading, removeTrailing, delimiter, decimal, textQualifier]);
 
-    const previewContent = useMemo(() => {
-        const lines = fileContent.split('\n').slice(0, 10);
-        return lines.map((line, index) => (
-            <div key={index} className={`flex text-xs ${index % 2 === 0 ? 'bg-muted/50' : 'bg-popover'}`}>
-                <div className="w-8 flex-shrink-0 text-right pr-2 text-muted-foreground py-0.5 border-r border-border">{index + 1}</div>
-                <div className="py-0.5 pl-2 whitespace-pre truncate text-popover-foreground">{line}</div>
-            </div>
-        ));
-    }, [fileContent]);
 
     const handleOk = async () => {
         setSubmissionError(null);
@@ -288,9 +405,25 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
                 fileContent,
                 options: { firstLineContains, removeLeading, removeTrailing, delimiter, decimal, textQualifier }
             });
+            
+            // Tampilkan toast sukses
+            toast({
+                title: "Import Berhasil",
+                description: `File ${fileName} berhasil diimpor ke dalam sistem.`,
+                variant: "default"
+            });
+            
             onClose();
         } catch (err: any) {
-            setSubmissionError(err?.message || "Failed to process CSV.");
+            const errorMessage = err?.message || "Failed to process CSV.";
+            setSubmissionError(errorMessage);
+            
+            // Tampilkan toast error
+            toast({
+                title: "Import Gagal",
+                description: errorMessage,
+                variant: "destructive"
+            });
         }
     };
 
@@ -306,9 +439,18 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
 
     return (
         <div className="flex flex-col h-full">
+
             <AnimatePresence>
                 {tourActive && (
-                    <TourPopup step={baseTourSteps[currentStep]} currentStep={currentStep} totalSteps={baseTourSteps.length} onNext={nextStep} onPrev={prevStep} onClose={endTour} targetElement={currentTargetElement} />
+                    <TourPopup 
+                        step={updatedTourSteps[currentStep]} 
+                        currentStep={currentStep} 
+                        totalSteps={updatedTourSteps.length} 
+                        onNext={nextStep} 
+                        onPrev={prevStep} 
+                        onClose={endTour} 
+                        targetElement={currentTargetElement} 
+                    />
                 )}
             </AnimatePresence>
             <div className="flex items-center justify-between px-6 py-3 border-b border-border flex-shrink-0">
@@ -324,71 +466,162 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
                  <div className="w-8"></div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-x-6 gap-y-4 p-6 flex-grow overflow-y-auto">
-                <div className="space-y-4">
-                    <div id="csv-config-preview-wrapper" className="relative">
-                        <Label className={cn("block text-xs font-medium mb-1.5 text-muted-foreground", tourActive && currentStep === 0 && "text-primary")}>Preview (first 10 lines)</Label>
-                        <div className="border border-border rounded-md overflow-hidden bg-background">
-                            <div className="overflow-x-auto max-h-[180px] min-h-[90px] text-xs">
-                                {previewContent.length > 0 ? previewContent : <p className="p-4 text-muted-foreground italic">No content to preview.</p>}
+            <div className="p-6 flex-grow overflow-y-auto space-y-6">
+                {/* 1. Import Options */}
+                <Card className="border-border mb-6">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">
+                            Import Options
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* First row: Variable names checkbox */}
+                        <div className="grid grid-cols-1">
+                            <div id="csv-config-header-wrapper" className="flex items-center space-x-2 relative">
+                                <Checkbox id="firstLineContains" checked={firstLineContains} onCheckedChange={(checked) => setFirstLineContains(Boolean(checked))} />
+                                <Label htmlFor="firstLineContains" className={cn("text-sm font-normal cursor-pointer", tourActive && currentStep === 1 && "text-primary")}>First line contains variable names</Label>
+                                <ActiveElementHighlight active={tourActive && currentStep === 1} />
                             </div>
                         </div>
-                        <ActiveElementHighlight active={tourActive && currentStep === 0} />
-                    </div>
+                        
+                        {/* Second row: Space handling checkboxes */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="removeLeadingSpaces" checked={removeLeading} onCheckedChange={(checked) => setRemoveLeading(Boolean(checked))} />
+                                <Label htmlFor="removeLeadingSpaces" className="text-sm font-normal cursor-pointer">Remove leading spaces</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="removeTrailingSpaces" checked={removeTrailing} onCheckedChange={(checked) => setRemoveTrailing(Boolean(checked))} />
+                                <Label htmlFor="removeTrailingSpaces" className="text-sm font-normal cursor-pointer">Remove trailing spaces</Label>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                    <div className="space-y-3 pt-2">
-                        <div id="csv-config-header-wrapper" className="flex items-center space-x-2 relative">
-                            <Checkbox id="firstLineContains" checked={firstLineContains} onCheckedChange={(checked) => setFirstLineContains(Boolean(checked))} />
-                            <Label htmlFor="firstLineContains" className={cn("text-sm font-normal cursor-pointer", tourActive && currentStep === 1 && "text-primary")}>First line contains variable names</Label>
-                            <ActiveElementHighlight active={tourActive && currentStep === 1} />
+                {/* 2. Format Settings */}
+                <Card className="border-border mb-6">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">
+                            Format Settings
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* First row: Delimiter and Decimal */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div id="csv-config-delimiter-wrapper">
+                                <CustomSelect label="Delimiter" value={delimiter} onChange={(e) => setDelimiter(e.target.value as DelimiterOption)} options={[{ value: "comma", label: "Comma (,)" }, { value: "semicolon", label: "Semicolon (;)" }, { value: "tab", label: "Tab (\t)" }]} isTouring={tourActive && currentStep === 2} />
+                            </div>
+                            <div id="csv-config-decimal-wrapper">
+                                <CustomSelect label="Decimal Symbol for Numerics" value={decimal} onChange={(e) => setDecimal(e.target.value as DecimalOption)} options={[{ value: "period", label: "Period (.)" }, { value: "comma", label: "Comma (,)" }]} />
+                            </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox id="removeLeadingSpaces" checked={removeLeading} onCheckedChange={(checked) => setRemoveLeading(Boolean(checked))} />
-                            <Label htmlFor="removeLeadingSpaces" className="text-sm font-normal cursor-pointer">Remove leading spaces</Label>
+                        
+                        {/* Second row: Text Qualifier */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div id="csv-config-qualifier-wrapper">
+                                <div className="mb-4 relative">
+                                    <div className="flex items-center mb-1.5">
+                                        <Label htmlFor="textQualifierSelect" className="block text-xs font-medium text-muted-foreground">Text Qualifier:</Label>
+                                        <TooltipProvider delayDuration={100}><Tooltip><TooltipTrigger asChild><InfoIcon size={13} className="ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="max-w-xs"><p>Character used to enclose string values.</p></TooltipContent></Tooltip></TooltipProvider>
+                                    </div>
+                                    <div className="relative">
+                                        <select id="textQualifierSelect" value={textQualifier} onChange={(e) => setTextQualifier(e.target.value as TextQualifierOption)} className="w-full appearance-none px-3 py-2 pr-8 text-sm rounded-md border border-input focus:border-ring focus:outline-none focus:ring-1 bg-background h-9">
+                                            <option value="doubleQuote">Double Quote (&quot;)</option>
+                                            <option value="singleQuote">Single Quote (&apos;)</option>
+                                            <option value="none">None</option>
+                                        </select>
+                                        <ChevronDownIcon className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox id="removeTrailingSpaces" checked={removeTrailing} onCheckedChange={(checked) => setRemoveTrailing(Boolean(checked))} />
-                            <Label htmlFor="removeTrailingSpaces" className="text-sm font-normal cursor-pointer">Remove trailing spaces</Label>
-                        </div>
-                    </div>
+                    </CardContent>
+                </Card>
+
+                {/* 3. Data Preview */}
+                <div id="csv-config-preview-wrapper" className="relative">
+                    <Card className="border-border">
+                        <CardHeader className="pb-3">
+                            <CardTitle className={cn("text-sm font-medium flex items-center justify-between", tourActive && currentStep === 0 && "text-primary")}>
+                                Data Preview
+                                <span className="text-xs font-normal text-muted-foreground">(max 100 rows shown)</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="border-t border-border bg-background hot-container-csv relative" 
+                                 style={{
+                                     zIndex: 0,
+                                     minHeight: 'clamp(200px, 30vh, 300px)',
+                                     maxHeight: 'clamp(300px, 50vh, 500px)',
+                                     overflow: 'auto',
+                                     scrollbarWidth: 'thin',
+                                     scrollbarColor: 'hsl(var(--muted-foreground) / 0.5) hsl(var(--muted) / 0.3)'
+                                 }}>
+                                {isLoadingPreview ? (
+                                    <div className="absolute inset-0 flex items-center justify-center h-full text-muted-foreground bg-background/80 z-10">
+                                        <RefreshCw size={18} className="animate-spin mr-2" /> Loading preview...
+                                    </div>
+                                ) : previewError ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-destructive p-4 text-center">
+                                        <InfoIcon size={20} className="mb-2" /> 
+                                        <span className="font-medium">Preview Error</span>
+                                        <span className="text-xs max-w-sm mx-auto">{previewError}</span>
+                                    </div>
+                                ) : (!isLoadingPreview && (!parsedData || parsedData.data.length === 0) && !previewError) ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                                        <InfoIcon size={20} className="mb-2" /> 
+                                        No data to preview. Try adjusting options.
+                                    </div>
+                                ) : (parsedData && parsedData.data.length > 0) ? (
+                                    <>
+                                        <table className="csv-preview-table">
+                                            <thead>
+                                                <tr>
+                                                    <th className="w-12 text-center">#</th>
+                                                    {parsedData.variables.map((variable, index) => (
+                                                        <th key={index} title={variable.name}>
+                                                            {variable.name}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {parsedData.data.slice(0, 100).map((row, rowIndex) => (
+                                                    <tr key={rowIndex}>
+                                                        <td className="w-12 text-center text-muted-foreground font-mono text-xs">
+                                                            {rowIndex + 1}
+                                                        </td>
+                                                        {row.map((cell, cellIndex) => (
+                                                            <td key={cellIndex} title={String(cell || '')}>
+                                                                {String(cell || '')}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </>
+                                ) : (
+                                    <div className="flex items-center justify-center h-32 text-muted-foreground">
+                                        <InfoIcon size={16} className="mr-2" /> No data to preview
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <ActiveElementHighlight active={tourActive && currentStep === 0} />
                 </div>
 
-                <div className="space-y-1">
-                    <div id="csv-config-delimiter-wrapper">
-                        <CustomSelect label="Delimiter" value={delimiter} onChange={(e) => setDelimiter(e.target.value as DelimiterOption)} options={[{ value: "comma", label: "Comma (,)" }, { value: "semicolon", label: "Semicolon (;)" }, { value: "tab", label: "Tab (\t)" }]} isTouring={tourActive && currentStep === 2} />
-                    </div>
-                    <div id="csv-config-decimal-wrapper">
-                         <CustomSelect label="Decimal Symbol for Numerics" value={decimal} onChange={(e) => setDecimal(e.target.value as DecimalOption)} options={[{ value: "period", label: "Period (.)" }, { value: "comma", label: "Comma (,)" }]} />
-                    </div>
-                    <div id="csv-config-qualifier-wrapper"> 
-                        <div className="flex items-center mb-1.5">
-                            <Label htmlFor="textQualifierSelect" className="block text-xs font-medium text-muted-foreground">Text Qualifier:</Label>
-                            <TooltipProvider delayDuration={100}><Tooltip><TooltipTrigger asChild><InfoIcon size={13} className="ml-1.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="max-w-xs"><p>Character used to enclose string values.</p></TooltipContent></Tooltip></TooltipProvider>
-                        </div>
-                        <div className="relative">
-                            <select id="textQualifierSelect" value={textQualifier} onChange={(e) => setTextQualifier(e.target.value as TextQualifierOption)} className="w-full appearance-none px-3 py-2 pr-8 text-sm rounded-md border border-input focus:border-ring focus:outline-none focus:ring-1 bg-background h-9">
-                                <option value="doubleQuote">Double Quote (&quot;)</option>
-                                <option value="singleQuote">Single Quote (&apos;)</option>
-                                <option value="none">None</option>
-                            </select>
-                            <ChevronDownIcon className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                {submissionError && (
+                    <div className="px-6 pb-2">
+                        <div className="text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                            {submissionError}
                         </div>
                     </div>
-                    {submissionError && <div className="text-sm text-destructive pt-3">{submissionError}</div>}
-                </div>
+                )}
             </div>
 
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                <div className="flex items-center text-muted-foreground">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"><HelpCircle className="h-4 w-4" /></Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top"><p className="text-xs">Start feature tour</p></TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
                 <div>
                     <Button variant="outline" onClick={onBack} disabled={hookIsProcessing} className="mr-2">Back</Button>
                     <Button variant="outline" onClick={handleReset} disabled={hookIsProcessing} className="mr-2">Reset</Button>

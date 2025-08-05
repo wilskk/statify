@@ -14,9 +14,9 @@ import {
  * @returns Formatted table
  */
 export function formatRanksTable(
-    results: KRelatedSamplesResults,
+    results: any[],
 ): KRelatedSamplesTable {
-    if (!results || !results.ranks || results.ranks.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Ranks",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -24,8 +24,8 @@ export function formatRanksTable(
         };
     }
     
-    // Use the first result with ranks
-    const ranksResult = results.ranks[0];
+    // Find the result with ranks
+    const ranksResult = results.find(result => result.ranks && result.ranks.groups);
     
     if (!ranksResult || !ranksResult.ranks || !ranksResult.ranks.groups) {
         return {
@@ -40,9 +40,11 @@ export function formatRanksTable(
         { header: "Mean Rank", key: "meanRank" }
     ];
     
-    const rows: TableRow[] = ranksResult.ranks.groups.map(condition => ({
+    const rows: TableRow[] = ranksResult.ranks.groups.map((condition: { label: string; meanRank: number }) => ({
         rowHeader: [condition.label],
-        meanRank: condition.meanRank.toFixed(2)
+        meanRank: typeof condition.meanRank === "number" && !isNaN(condition.meanRank)
+            ? condition.meanRank.toFixed(2)
+            : ""
     }));
     
     return {
@@ -58,9 +60,9 @@ export function formatRanksTable(
  * @returns Formatted table
  */
 export function formatFrequenciesTable(
-    results: KRelatedSamplesResults,
+    results: any[],
 ): KRelatedSamplesTable {
-    if (!results || !results.frequencies || results.frequencies.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Frequencies",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -68,8 +70,8 @@ export function formatFrequenciesTable(
         };
     }
     
-    // Use the first result with frequencies
-    const frequenciesResult = results.frequencies[0];
+    // Find the result with frequencies
+    const frequenciesResult = results.find(result => result.frequencies && result.frequencies.groups);
     
     if (!frequenciesResult || !frequenciesResult.frequencies || !frequenciesResult.frequencies.groups) {
         return {
@@ -84,9 +86,11 @@ export function formatFrequenciesTable(
         { header: "Count", key: "count" }
     ];
     
-    const rows: TableRow[] = frequenciesResult.frequencies.groups.map(condition => ({
+    const rows: TableRow[] = frequenciesResult.frequencies.groups.map((condition: { label: string; count: number }) => ({
         rowHeader: [condition.label],
-        count: condition.count
+        count: typeof condition.count === "number" && !isNaN(condition.count)
+            ? condition.count.toFixed(2)
+            : ""
     }));
     
     return {
@@ -103,10 +107,10 @@ export function formatFrequenciesTable(
  * @returns Formatted table
  */
 export function formatTestStatisticsTable(
-    results: KRelatedSamplesResults,
+    results: any[],
     testName: string
 ): KRelatedSamplesTable {
-    if (!results || !results.testStatistics || results.testStatistics.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Test Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -115,8 +119,9 @@ export function formatTestStatisticsTable(
     }
     
     // Filter results by test type
-    const filteredResults = results.testStatistics.filter(result => 
-        result.testStatistics?.TestType === testName.replace(" Test", "")
+    const filteredResults = results.filter(result => 
+        result.testStatistics?.TestType === testName.replace(" Test", "") || 
+        result.testStatistics?.TestType === testName
     );
     
     if (filteredResults.length === 0) {
@@ -145,19 +150,19 @@ export function formatTestStatisticsTable(
     const rows: TableRow[] = [
         {
             rowHeader: ["N"],
-            value: testStatistics.N
+            value: formatNumber(testStatistics.N, 0)
         },
         {
             rowHeader: ["Chi-Square"],
-            value: testStatistics.TestValue.toFixed(3)
+            value: formatNumber(testStatistics.TestValue, 3)
         },
         {
             rowHeader: ["df"],
-            value: testStatistics.df
+            value: formatNumber(testStatistics.df, 0)
         },
         {
             rowHeader: ["Asymp. Sig."],
-            value: testStatistics.PValue < 0.001 ? "<.001" : testStatistics.PValue.toFixed(3)
+            value: formatPValue(testStatistics.PValue)
         }
     ];
     
@@ -182,10 +187,13 @@ export function formatTestStatisticsTable(
  * @returns Formatted table
  */
 export function formatDescriptiveStatisticsTable (
-    results: KRelatedSamplesResults,
+    results: any[] | any,
     displayStatistics?: DisplayStatisticsOptions
 ): KRelatedSamplesTable {
-    if (!results || !results.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
+    // Ensure results is an array
+    const resultsArray = Array.isArray(results) ? results : [results];
+    
+    if (!resultsArray || resultsArray.length === 0) {
         return {
             title: "No Data",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -225,21 +233,25 @@ export function formatDescriptiveStatisticsTable (
     }
 
     // Process each result
-    results.descriptiveStatistics.forEach((result) => {
-        const stats = result.descriptiveStatistics as DescriptiveStatistics;
-        const decimals = typeof result.variable !== "string" && result.variable.decimals ? result.variable.decimals : 2;
-        const variableName = typeof result.variable !== "string" ? result.variable.name : result.variable;
-        table.rows.push({
-            rowHeader: [variableName],
-            N: stats.N,
-            Mean: formatNumber(stats.Mean, decimals + 2),
-            StdDev: formatNumber(stats.StdDev, decimals + 3),
-            Min: formatNumber(stats.Min, decimals),
-            Max: formatNumber(stats.Max, decimals),
-            Percentile25: formatNumber(stats.Percentile25, decimals),
-            Percentile50: formatNumber(stats.Percentile50, decimals),
-            Percentile75: formatNumber(stats.Percentile75, decimals)
-        });
+    resultsArray.forEach((result) => {
+        if (result.descriptiveStatistics) {
+            const stats = result.descriptiveStatistics;
+            const variable = stats.variable1 || stats.variable;
+            const decimals = variable && typeof variable !== "string" && variable.decimals ? variable.decimals : 2;
+            const variableName = variable && typeof variable !== "string" ? variable.name : (typeof variable === "string" ? variable : "Variable");
+            
+            table.rows.push({
+                rowHeader: [variableName],
+                N: stats.N1 || stats.N,
+                Mean: formatNumber(stats.Mean1 || stats.Mean, decimals + 2),
+                StdDev: formatNumber(stats.StdDev1 || stats.StdDev, decimals + 3),
+                Min: formatNumber(stats.Min1 || stats.Min, decimals),
+                Max: formatNumber(stats.Max1 || stats.Max, decimals),
+                Percentile25: formatNumber(stats.Percentile25_1 || stats.Percentile25, decimals),
+                Percentile50: formatNumber(stats.Percentile50_1 || stats.Percentile50, decimals),
+                Percentile75: formatNumber(stats.Percentile75_1 || stats.Percentile75, decimals)
+            });
+        }
     });
 
     return table;
@@ -252,7 +264,7 @@ export function formatDescriptiveStatisticsTable (
  * @returns Formatted number
  */
 export const formatNumber = (value: number | null | undefined, precision: number) => {
-    if (value === null || value === undefined) return null;
+    if (value === null || value === undefined || isNaN(value)) return "";
     return value.toFixed(precision);
 };
 
@@ -262,7 +274,7 @@ export const formatNumber = (value: number | null | undefined, precision: number
  * @returns Formatted p-value
  */
 export const formatPValue = (pValue: number | null | undefined) => {
-    if (pValue === null || pValue === undefined) return null;
+    if (pValue === null || pValue === undefined || isNaN(pValue)) return "";
     
     if (pValue < 0.001) {
         return '<.001';
@@ -277,7 +289,7 @@ export const formatPValue = (pValue: number | null | undefined) => {
  * @returns Formatted degrees of freedom
  */
 export const formatDF = (df: number | null | undefined) => {
-    if (df === null || df === undefined) return null;
+    if (df === null || df === undefined || isNaN(df)) return "";
     if (Number.isInteger(df)) {
         return df;
     } else {

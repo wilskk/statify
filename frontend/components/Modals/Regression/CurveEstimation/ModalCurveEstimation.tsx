@@ -75,7 +75,7 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
         v.columnIndex !== selectedIndependentVariables?.columnIndex
     );
     setAvailableVariables(initialVars);
-  }, [variablesFromStore]);
+  }, [variablesFromStore, selectedDependentVariable?.columnIndex, selectedIndependentVariables?.columnIndex]);
 
   const showAlert = (title: string, description: string) => {
     if (containerType === "sidebar") {

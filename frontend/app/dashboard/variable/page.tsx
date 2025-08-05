@@ -14,8 +14,8 @@ export default function VariablesPage() {
         return () => setViewMode('numeric');
     }, [setViewMode]);
     return (
-        <div className="h-full w-full">
-            <Suspense fallback={<VariableTableSkeleton />}>
+        <div className="h-full w-full" data-testid="variable-page">
+            <Suspense fallback={<VariableTableSkeleton data-testid="variable-table-loading" />}>
                 <VariableTable />
             </Suspense>
         </div>
