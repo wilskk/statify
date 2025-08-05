@@ -9,6 +9,17 @@ import { Input } from "@/components/ui/input";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { iterateTourSteps } from "../hooks/tourConfig";
 
 export const KMeansClusterIterate = ({
     isIterateOpen,
@@ -20,6 +31,17 @@ export const KMeansClusterIterate = ({
         ...data,
     });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(iterateTourSteps);
 
     useEffect(() => {
         if (isIterateOpen) {
@@ -66,13 +88,31 @@ export const KMeansClusterIterate = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="flex flex-col items-start gap-2 p-4 flex-grow">
-                <div className="flex flex-row items-center gap-2">
+                <div
+                    id="kmeans-iterate-max-iterations"
+                    className="flex flex-row items-center gap-2"
+                >
                     <Label className="w-[290px]">Maximum Iteration: </Label>
                     <Input
                         id="MaximumIterations"
                         type="number"
-                        value={iterateState.MaximumIterations ?? 0}
+                        value={iterateState.MaximumIterations || ""}
                         min={1}
                         max={999}
                         onChange={(e) =>
@@ -84,12 +124,15 @@ export const KMeansClusterIterate = ({
                         placeholder=""
                     />
                 </div>
-                <div className="flex flex-row items-center gap-2">
+                <div
+                    id="kmeans-iterate-convergence-criterion"
+                    className="flex flex-row items-center gap-2"
+                >
                     <Label className="w-[300px]">Convergence Criterion: </Label>
                     <Input
                         id="ConvergenceCriterion"
                         type="number"
-                        value={iterateState.ConvergenceCriterion ?? 0}
+                        value={iterateState.ConvergenceCriterion || ""}
                         min={0}
                         max={1}
                         onChange={(e) =>
@@ -101,7 +144,10 @@ export const KMeansClusterIterate = ({
                         placeholder=""
                     />
                 </div>
-                <div className="flex items-center space-x-2">
+                <div
+                    id="kmeans-iterate-use-running-means"
+                    className="flex items-center space-x-2"
+                >
                     <Checkbox
                         id="UseRunningMeans"
                         checked={iterateState.UseRunningMeans}
@@ -119,18 +165,23 @@ export const KMeansClusterIterate = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1IuU3ZTKbKavWCXiBM9i4B4EA4g-BvjU-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -142,6 +193,7 @@ export const KMeansClusterIterate = ({
                         Cancel
                     </Button>
                     <Button
+                        id="kmeans-iterate-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

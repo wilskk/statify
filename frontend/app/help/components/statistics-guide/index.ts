@@ -1,8 +1,10 @@
-export * from './StatisticsGuide';
-export * from './descriptive';
-export * from './frequencies';
-export * from './crosstabs';
-export * from './explore';
+export * from "./StatisticsGuide";
+export * from "./descriptive";
+export * from "./frequencies";
+export * from "./crosstabs";
+export * from "./explore";
+export * from "./univariate";
+export * from "./k-means/KMeansClustering";
 // export * from './inferential';
 // export * from './modeling';
-// export * from './timeseries'; 
+// export * from './timeseries';

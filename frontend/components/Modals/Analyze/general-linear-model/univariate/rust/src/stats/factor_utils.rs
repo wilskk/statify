@@ -3,185 +3,139 @@ use std::collections::{ HashMap, HashSet };
 use crate::models::{ config::UnivariateConfig, data::AnalysisData, result::DesignMatrixInfo };
 use super::core::*;
 
-/// Mem-parsing sebuah string istilah interaksi (misalnya, "A*B") menjadi komponen faktor individual.
-/// Fungsi ini memecah string berdasarkan karakter '*' untuk mengidentifikasi faktor-faktor
-/// yang terlibat dalam interaksi.
 pub fn parse_interaction_term(term: &str) -> Vec<String> {
+    if term.is_empty() {
+        return Vec::new();
+    }
     term.split('*')
         .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
         .collect()
 }
 
-/// Mem-parsing nama parameter yang terstruktur (misalnya, "[FaktorA=Level1]*[FaktorB=Level2]")
-/// menjadi sebuah `HashMap` di mana kunci adalah nama faktor dan nilai adalah levelnya.
-/// Fungsi ini juga menangani kasus khusus untuk "Intercept".
 pub fn parse_parameter_name(param_str: &str) -> HashMap<String, String> {
     let mut factors = HashMap::new();
     if param_str == "Intercept" {
         factors.insert("Intercept".to_string(), "Intercept".to_string());
         return factors;
     }
-    param_str.split('*').for_each(|part| {
+
+    for part in param_str.split('*') {
         let clean_part = part.trim_matches(|c| (c == '[' || c == ']'));
         if let Some((factor, level)) = clean_part.split_once('=') {
             factors.insert(factor.to_string(), level.to_string());
         }
-    });
+    }
     factors
 }
 
-/// Mengambil semua level unik untuk sebuah faktor dari data analisis.
-///
-/// # Arguments
-/// * `data` - Referensi ke `AnalysisData` yang berisi semua data yang dibutuhkan.
-/// * `factor_name` - Nama faktor yang levelnya ingin dicari.
-///
-/// # Returns
-/// * `Ok(Vec<String>)` - Vektor berisi level-level unik dari faktor jika ditemukan.
-///   Jika `factor_name` adalah kovariat, akan mengembalikan vektor kosong.
-/// * `Err(String)` - Pesan error jika `factor_name` tidak ditemukan dalam definisi
-///   faktor maupun kovariat.
 pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<String>, String> {
     let mut level_set = HashSet::new();
-    let mut factor_definition_found_in_factors = false;
-    let mut factor_definition_found_in_covariates = false;
 
-    // Periksa apakah `factor_name` ada di dalam definisi faktor tetap (fixed factors).
-    // Jika ditemukan, kumpulkan semua level uniknya.
-    for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
-        if def_group.iter().any(|def| def.name == factor_name) {
-            factor_definition_found_in_factors = true;
-            if let Some(data_records_for_group) = data.fix_factor_data.get(group_idx) {
-                for record in data_records_for_group {
-                    if let Some(value) = record.values.get(factor_name) {
-                        level_set.insert(data_value_to_string(value));
-                    }
+    if
+        let Some((group_idx, _)) = data.fix_factor_data_defs
+            .iter()
+            .enumerate()
+            .find(|(_, def_group)| def_group.iter().any(|def| def.name == factor_name))
+    {
+        if let Some(data_records_for_group) = data.fix_factor_data.get(group_idx) {
+            for record in data_records_for_group {
+                if let Some(value) = record.values.get(factor_name) {
+                    level_set.insert(data_value_to_string(value));
                 }
             }
-            break; // Ditemukan, tidak perlu lanjut mencari di definisi lain.
         }
+        let mut levels: Vec<String> = level_set.into_iter().collect();
+        levels.sort();
+        return Ok(levels);
     }
 
-    // Jika tidak ditemukan di faktor tetap, periksa di faktor acak (random factors).
-    if !factor_definition_found_in_factors {
-        if let Some(random_defs_groups) = &data.random_factor_data_defs {
-            for (group_idx, def_group) in random_defs_groups.iter().enumerate() {
-                if def_group.iter().any(|def| def.name == factor_name) {
-                    factor_definition_found_in_factors = true;
-                    if let Some(random_data_groups_vec) = &data.random_factor_data {
-                        if let Some(data_records_for_group) = random_data_groups_vec.get(group_idx) {
-                            for record in data_records_for_group {
-                                if let Some(value) = record.values.get(factor_name) {
-                                    level_set.insert(data_value_to_string(value));
-                                }
-                            }
+    if let Some(random_defs_groups) = &data.random_factor_data_defs {
+        if
+            let Some((group_idx, _)) = random_defs_groups
+                .iter()
+                .enumerate()
+                .find(|(_, def_group)| def_group.iter().any(|def| def.name == factor_name))
+        {
+            if let Some(random_data_groups_vec) = &data.random_factor_data {
+                if let Some(data_records_for_group) = random_data_groups_vec.get(group_idx) {
+                    for record in data_records_for_group {
+                        if let Some(value) = record.values.get(factor_name) {
+                            level_set.insert(data_value_to_string(value));
                         }
                     }
-                    break; // Ditemukan, tidak perlu lanjut.
                 }
             }
+            let mut levels: Vec<String> = level_set.into_iter().collect();
+            levels.sort();
+            return Ok(levels);
         }
     }
 
-    // Secara terpisah, periksa apakah `factor_name` didefinisikan sebagai kovariat.
     if let Some(covar_defs_groups) = &data.covariate_data_defs {
         for def_group in covar_defs_groups {
             if def_group.iter().any(|def| def.name == factor_name) {
-                factor_definition_found_in_covariates = true;
-                break;
+                return Ok(Vec::new());
             }
         }
     }
 
-    // Berdasarkan hasil pencarian, kembalikan nilai yang sesuai.
-    if factor_definition_found_in_factors {
-        // Ini adalah faktor kategorikal, kembalikan level-levelnya yang sudah diurutkan.
-        let mut levels: Vec<String> = level_set.into_iter().collect();
-        levels.sort();
-        Ok(levels)
-    } else if factor_definition_found_in_covariates {
-        // Ini adalah kovariat (kontinu), kembalikan list kosong.
-        Ok(Vec::new())
-    } else {
-        // Istilah tidak ditemukan di mana pun.
-        Err(
-            format!("Term \'{}\' not found as a factor or covariate in the data definitions", factor_name)
-        )
-    }
+    Err(
+        format!("Term '{}' not found as a factor or covariate in the data definitions", factor_name)
+    )
 }
 
-/// Mencari data yang cocok dengan kombinasi level faktor tertentu dan menghasilkan
-/// vektor (kolom matriks desain) yang merepresentasikan kecocokan tersebut.
-/// Vektor ini berisi `1.0` untuk baris data yang cocok dan `0.0` untuk yang tidak.
-/// Ini adalah proses pembuatan variabel dummy untuk kombinasi level tertentu.
 pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData) -> Vec<f64> {
     let n_samples = data.dependent_data[0].len();
     let mut row = vec![0.0; n_samples];
 
-    // Untuk setiap record/baris data, periksa apakah cocok dengan semua kombinasi faktor.
-    for (i, _) in data.dependent_data[0].iter().enumerate() {
-        let mut matches = true;
-
-        for (factor, level) in combo {
-            let mut factor_matches = false;
-
-            // Periksa di faktor tetap (fixed factors)
-            for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
-                if def_group.iter().any(|def| &def.name == factor) {
-                    if let Some(data_records) = data.fix_factor_data.get(group_idx) {
-                        if let Some(record) = data_records.get(i) {
-                            if let Some(value) = record.values.get(factor) {
-                                if data_value_to_string(value) == *level {
-                                    factor_matches = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+    let mut factor_locations = HashMap::new();
+    for (factor, _) in combo {
+        for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
+            if def_group.iter().any(|def| &def.name == factor) {
+                factor_locations.insert(factor.clone(), (true, group_idx));
+                break;
             }
+        }
 
-            // Periksa di faktor acak (random factors)
+        if !factor_locations.contains_key(factor) {
             if let Some(random_defs_groups) = &data.random_factor_data_defs {
                 for (group_idx, def_group) in random_defs_groups.iter().enumerate() {
                     if def_group.iter().any(|def| &def.name == factor) {
-                        if let Some(random_data_groups_vec) = &data.random_factor_data {
-                            if let Some(data_records) = random_data_groups_vec.get(group_idx) {
-                                if let Some(record) = data_records.get(i) {
-                                    if let Some(value) = record.values.get(factor) {
-                                        if data_value_to_string(value) == *level {
-                                            factor_matches = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        factor_locations.insert(factor.clone(), (false, group_idx));
+                        break;
                     }
                 }
             }
+        }
+    }
 
-            // Periksa di kovariat
-            if let Some(covar_defs_groups) = &data.covariate_data_defs {
-                for (group_idx, def_group) in covar_defs_groups.iter().enumerate() {
-                    if def_group.iter().any(|def| &def.name == factor) {
-                        if let Some(covar_data_groups_vec) = &data.covariate_data {
-                            if let Some(data_records) = covar_data_groups_vec.get(group_idx) {
-                                if let Some(record) = data_records.get(i) {
-                                    if let Some(value) = record.values.get(factor) {
-                                        if data_value_to_string(value) == *level {
-                                            factor_matches = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
+    for i in 0..n_samples {
+        let mut matches = true;
+
+        for (factor, expected_level) in combo {
+            if let Some(&(is_fixed, group_idx)) = factor_locations.get(factor) {
+                let data_records = if is_fixed {
+                    data.fix_factor_data.get(group_idx)
+                } else {
+                    data.random_factor_data.as_ref().and_then(|d| d.get(group_idx))
+                };
+
+                if let Some(record) = data_records.and_then(|records| records.get(i)) {
+                    if let Some(value) = record.values.get(factor) {
+                        if data_value_to_string(value) != *expected_level {
+                            matches = false;
+                            break;
                         }
+                    } else {
+                        matches = false;
+                        break;
                     }
+                } else {
+                    matches = false;
+                    break;
                 }
-            }
-
-            if !factor_matches {
+            } else {
                 matches = false;
                 break;
             }
@@ -194,8 +148,6 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
     row
 }
 
-/// Fungsi pembantu rekursif untuk menghasilkan semua kombinasi istilah dari `factors`
-/// dengan ukuran `size` tertentu. Digunakan untuk membuat istilah interaksi.
 pub fn generate_lower_order_terms(
     factors: &[String],
     size: usize,
@@ -204,7 +156,6 @@ pub fn generate_lower_order_terms(
     result: &mut Vec<String>
 ) {
     if current.len() == size {
-        // Gabungkan faktor-faktor dengan "*" untuk membuat istilah interaksi.
         result.push(current.join("*"));
         return;
     }
@@ -216,23 +167,29 @@ pub fn generate_lower_order_terms(
     }
 }
 
-/// Menghasilkan semua kemungkinan istilah interaksi (orde 2 hingga N) dari daftar faktor yang diberikan.
-/// Misalnya, untuk faktor [A, B, C], akan menghasilkan ["A*B", "A*C", "B*C", "A*B*C"].
 pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
     if factors.is_empty() {
         return Vec::new();
     }
-    let mut interactions = Vec::new();
 
-    // Hasilkan semua kombinasi dari ukuran 2 hingga N (jumlah total faktor)
+    let total_combinations: usize = (2..=factors.len())
+        .map(|size| {
+            let mut result = 1;
+            for i in 0..size {
+                result = (result * (factors.len() - i)) / (i + 1);
+            }
+            result
+        })
+        .sum();
+
+    let mut interactions = Vec::with_capacity(total_combinations);
+
     for size in 2..=factors.len() {
         generate_lower_order_terms(factors, size, &mut Vec::new(), 0, &mut interactions);
     }
     interactions
 }
 
-/// Fungsi rekursif untuk menghasilkan semua kemungkinan kombinasi dari level-level faktor.
-/// Hasilnya adalah daftar `HashMap`, di mana setiap `HashMap` merepresentasikan satu kombinasi unik.
 pub fn generate_level_combinations(
     factor_levels: &[(String, Vec<String>)],
     current_combo: &mut HashMap<String, String>,
@@ -251,69 +208,58 @@ pub fn generate_level_combinations(
     }
 }
 
-/// Menghasilkan daftar istilah model untuk model non-kustom (misalnya, full factorial).
-/// Termasuk semua efek utama (main effects) dari faktor dan kovariat, serta semua
-/// interaksi yang mungkin antara faktor-faktor (tetap dan acak).
 pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>, String> {
     let mut terms = Vec::new();
     let mut factors_for_interaction = Vec::new();
+    let mut added_terms = HashSet::new();
 
-    // Tambahkan Kovariat sebagai efek utama. Kovariat tidak diikutkan dalam interaksi.
     if let Some(covariates) = &config.main.covar {
         for covar_name in covariates {
-            if !terms.contains(covar_name) {
+            if added_terms.insert(covar_name.clone()) {
                 terms.push(covar_name.clone());
             }
         }
     }
 
-    // Tambahkan efek utama untuk Faktor Tetap dan kumpulkan untuk generasi interaksi.
     if let Some(fix_factors) = &config.main.fix_factor {
         for factor_name in fix_factors {
-            if !terms.contains(factor_name) {
+            if added_terms.insert(factor_name.clone()) {
                 terms.push(factor_name.clone());
             }
             factors_for_interaction.push(factor_name.clone());
         }
     }
 
-    // Tambahkan efek utama untuk Faktor Acak dan kumpulkan untuk generasi interaksi.
     if let Some(random_factors) = &config.main.rand_factor {
         for factor_name in random_factors {
-            if !terms.contains(factor_name) {
+            if added_terms.insert(factor_name.clone()) {
                 terms.push(factor_name.clone());
             }
             factors_for_interaction.push(factor_name.clone());
         }
     }
 
-    // Tambahkan semua interaksi yang mungkin antara Faktor Tetap dan Acak.
     if factors_for_interaction.len() > 1 {
         terms.extend(generate_interaction_terms(&factors_for_interaction));
     }
     Ok(terms)
 }
 
-/// Menghasilkan daftar istilah model berdasarkan konfigurasi model kustom yang ditentukan pengguna.
-/// Hanya istilah yang secara eksplisit disebutkan dalam `cov_model` dan `factors_model`
-/// yang akan disertakan dalam model.
 pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, String> {
     let mut terms = Vec::new();
+    let mut added_terms = HashSet::new();
 
-    // Tambahkan kovariat dari model kustom sebagai efek utama.
     if let Some(cov_model_str) = &config.model.cov_model {
         for term_name in cov_model_str.split_whitespace() {
-            if !terms.contains(&term_name.to_string()) {
+            if added_terms.insert(term_name.to_string()) {
                 terms.push(term_name.to_string());
             }
         }
     }
 
-    // Tambahkan efek utama dari model faktor kustom.
-    // Interaksi harus didefinisikan secara eksplisit oleh pengguna dalam file konfigurasi.
     if let Some(factors_model) = &config.model.factors_model {
         for factor_name in factors_model {
-            if !terms.contains(factor_name) {
+            if added_terms.insert(factor_name.clone()) {
                 terms.push(factor_name.clone());
             }
         }
@@ -321,36 +267,37 @@ pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, S
     Ok(terms)
 }
 
-/// Membuat representasi string yang mudah dibaca dari desain model statistik,
-/// misalnya, "Design: Intercept + FaktorA + FaktorB". Berguna untuk pelaporan hasil.
 pub fn generate_design_string(design_info: &DesignMatrixInfo) -> String {
-    let mut design_string = if design_info.term_names.contains(&"Intercept".to_string()) {
-        "Design: Intercept".to_string()
-    } else {
-        "Design: ".to_string()
-    };
-
-    // Tambahkan semua istilah selain Intercept ke dalam string.
-    let terms: Vec<_> = design_info.term_names
+    let has_intercept = design_info.term_names.contains(&"Intercept".to_string());
+    let other_terms: Vec<_> = design_info.term_names
         .iter()
         .filter(|&term| term != "Intercept")
         .collect();
 
-    for term in terms {
+    let estimated_capacity = other_terms
+        .iter()
+        .map(|term| term.len())
+        .sum::<usize>();
+
+    let mut design_string = String::with_capacity(estimated_capacity);
+
+    if has_intercept {
+        design_string.push_str("Design: Intercept");
+    } else {
+        design_string.push_str("Design: ");
+    }
+
+    for term in other_terms {
         design_string.push_str(" + ");
         design_string.push_str(term);
     }
     design_string
 }
 
-/// Menghasilkan label-label (misalnya, "L1", "L2", "L3", ...) secara dinamis untuk setiap
-/// kolom dalam matriks desain. Label ini dapat digunakan dalam pengujian kontras atau
-/// analisis post-hoc untuk merujuk pada parameter model tertentu.
 pub fn generate_l_labels(design_info: &DesignMatrixInfo) -> Vec<String> {
-    let mut l_labels = Vec::new();
+    let mut l_labels = Vec::with_capacity(design_info.p_parameters);
     let mut l_counter = 1;
 
-    // Hasilkan label untuk setiap kolom berdasarkan istilah modelnya.
     for term_name in &design_info.term_names {
         if let Some((start_idx, end_idx)) = design_info.term_column_indices.get(term_name) {
             let num_cols = end_idx - start_idx + 1;
@@ -363,35 +310,33 @@ pub fn generate_l_labels(design_info: &DesignMatrixInfo) -> Vec<String> {
     l_labels
 }
 
-/// Menghasilkan nama parameter lengkap untuk setiap baris/estimasi dalam output statistik.
-/// Nama ini mencakup level referensi untuk faktor dan interaksi, dan diurutkan sesuai
-/// dengan urutan dalam matriks desain.
-/// Contoh: "[FaktorA=Level1]", "[FaktorA=Level2]*[FaktorB=LevelX]", "KovariatC".
 pub fn generate_all_row_parameter_names_sorted(
     design_info: &DesignMatrixInfo,
     data: &AnalysisData
 ) -> Result<Vec<String>, String> {
-    let mut all_params = Vec::new();
-    let mut factor_levels_map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut all_params = Vec::with_capacity(design_info.p_parameters);
+    let mut factor_levels_cache: HashMap<String, Vec<String>> = HashMap::new();
 
-    // 1. Kumpulkan semua nama faktor unik dari semua istilah model.
-    let mut unique_factors = HashSet::new();
-    for term in &design_info.term_names {
-        if term == "Intercept" {
-            continue;
-        }
-        // Pecah istilah interaksi (misal: "A*B") menjadi faktor individual ("A", "B").
-        for factor in term.split('*') {
-            unique_factors.insert(factor.trim().to_string());
+    let mut covariate_names = HashSet::new();
+    if let Some(covar_defs_groups) = &data.covariate_data_defs {
+        for def_group in covar_defs_groups {
+            for def in def_group {
+                covariate_names.insert(def.name.clone());
+            }
         }
     }
 
-    // 2. Ambil level untuk setiap faktor unik yang telah diidentifikasi.
+    let unique_factors: HashSet<String> = design_info.term_names
+        .iter()
+        .filter(|&term| term != "Intercept")
+        .flat_map(|term| parse_interaction_term(term))
+        .filter(|factor_name| !covariate_names.contains(factor_name))
+        .collect();
+
     for factor_name in unique_factors {
         match get_factor_levels(data, &factor_name) {
             Ok(levels) => {
-                // `levels` akan kosong jika `factor_name` adalah kovariat.
-                factor_levels_map.insert(factor_name, levels);
+                factor_levels_cache.insert(factor_name, levels);
             }
             Err(e) => {
                 return Err(format!("Error getting levels for factor '{}': {}", factor_name, e));
@@ -399,10 +344,14 @@ pub fn generate_all_row_parameter_names_sorted(
         }
     }
 
-    // 3. Proses setiap istilah dalam matriks desain untuk membuat nama parameter.
     for term_name in &design_info.term_names {
         if term_name == "Intercept" {
             all_params.push("Intercept".to_string());
+            continue;
+        }
+
+        if covariate_names.contains(term_name) {
+            all_params.push(term_name.clone());
             continue;
         }
 
@@ -410,84 +359,81 @@ pub fn generate_all_row_parameter_names_sorted(
             let num_cols = end_idx - start_idx + 1;
 
             if term_name.contains('*') {
-                // Kasus untuk Istilah Interaksi
                 let factors_in_term = parse_interaction_term(term_name);
 
-                // Verifikasi bahwa semua faktor dalam interaksi memiliki data level.
-                for factor_name in &factors_in_term {
-                    if !factor_levels_map.contains_key(factor_name) {
-                        return Err(
-                            format!(
-                                "Levels not found for factor '{}' in interaction '{}'.",
-                                factor_name,
-                                term_name
-                            )
-                        );
-                    }
-                }
+                let has_covariate = factors_in_term.iter().any(|f| covariate_names.contains(f));
 
-                // Siapkan set level untuk setiap faktor dalam interaksi.
-                let mut level_sets: Vec<(&String, &Vec<String>)> = Vec::new();
-                for factor_name in &factors_in_term {
-                    if let Some(levels) = factor_levels_map.get(factor_name) {
-                        if levels.is_empty() {
-                            return Err(
-                                format!(
-                                    "Factor '{}' in interaction '{}' has no defined levels (might be a covariate).",
-                                    factor_name,
-                                    term_name
+                if has_covariate {
+                    for _ in 0..num_cols {
+                        all_params.push(term_name.clone());
+                    }
+                } else {
+                    let level_sets: Result<Vec<_>, String> = factors_in_term
+                        .iter()
+                        .map(|factor_name| {
+                            factor_levels_cache
+                                .get(factor_name)
+                                .ok_or_else(||
+                                    format!(
+                                        "Levels not found for factor '{}' in interaction '{}'.",
+                                        factor_name,
+                                        term_name
+                                    )
                                 )
-                            );
+                                .and_then(|levels| {
+                                    if levels.is_empty() {
+                                        Err(
+                                            format!(
+                                                "Factor '{}' in interaction '{}' has no defined levels (might be a covariate).",
+                                                factor_name,
+                                                term_name
+                                            )
+                                        )
+                                    } else {
+                                        Ok((factor_name, levels))
+                                    }
+                                })
+                        })
+                        .collect();
+
+                    let level_sets = level_sets?;
+
+                    let mut combination_indices = vec![0; level_sets.len()];
+
+                    for _ in 0..num_cols {
+                        let param_parts: Vec<String> = level_sets
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, (factor_name, levels))| {
+                                format!("[{}={}]", factor_name, levels[combination_indices[idx]])
+                            })
+                            .collect();
+                        all_params.push(param_parts.join("*"));
+
+                        let mut carry_pos = level_sets.len();
+                        loop {
+                            if carry_pos == 0 {
+                                break;
+                            }
+                            carry_pos -= 1;
+                            combination_indices[carry_pos] += 1;
+                            if combination_indices[carry_pos] < level_sets[carry_pos].1.len() {
+                                break;
+                            }
+                            combination_indices[carry_pos] = 0;
                         }
-                        level_sets.push((factor_name, levels));
-                    }
-                }
-
-                // Hasilkan semua kombinasi level untuk istilah interaksi.
-                let mut current_combination_indices = vec![0; level_sets.len()];
-                let mut generated = 0;
-
-                'combo_loop: loop {
-                    if generated >= num_cols {
-                        break;
-                    }
-
-                    let mut param_parts = Vec::new();
-                    for (idx, (factor_name, levels)) in level_sets.iter().enumerate() {
-                        let level = &levels[current_combination_indices[idx]];
-                        param_parts.push(format!("[{}={}]", factor_name, level));
-                    }
-                    all_params.push(param_parts.join("*"));
-                    generated += 1;
-
-                    // Logika untuk mendapatkan kombinasi berikutnya (seperti odometer).
-                    let mut carry = level_sets.len() - 1;
-                    loop {
-                        current_combination_indices[carry] += 1;
-                        if current_combination_indices[carry] < level_sets[carry].1.len() {
-                            break;
-                        }
-                        current_combination_indices[carry] = 0;
-                        if carry == 0 {
-                            break 'combo_loop;
-                        }
-                        carry -= 1;
                     }
                 }
             } else {
-                // Kasus untuk Efek Utama (Main Effects)
-                if let Some(levels) = factor_levels_map.get(term_name) {
+                if let Some(levels) = factor_levels_cache.get(term_name) {
                     if levels.is_empty() {
-                        // Ini adalah kovariat, karena `get_factor_levels` mengembalikan vec kosong.
                         all_params.push(term_name.clone());
                     } else {
-                        // Ini adalah faktor kategorikal, buat nama untuk setiap level.
                         for level in levels {
                             all_params.push(format!("[{}={}]", term_name, level));
                         }
                     }
                 } else {
-                    // Fallback, seharusnya tidak terjadi jika semua istilah diproses dengan benar.
                     all_params.push(term_name.clone());
                 }
             }
@@ -496,23 +442,10 @@ pub fn generate_all_row_parameter_names_sorted(
     Ok(all_params)
 }
 
-/// Mengidentifikasi semua kombinasi unik dari level faktor yang ada dalam data (sel yang tidak kosong).
-/// Fungsi ini sangat penting untuk analisis Tipe IV SS, yang sensitif terhadap adanya
-/// sel kosong dalam desain.
-///
-/// # Arguments
-/// * `data` - Referensi ke `AnalysisData` yang berisi semua data.
-/// * `config` - Konfigurasi univariat untuk mengidentifikasi faktor-faktor dalam model.
-///
-/// # Returns
-/// * `Ok(Vec<HashMap<String, String>>)` - Sebuah vektor di mana setiap `HashMap` merepresentasikan
-///   satu sel yang unik dan tidak kosong. Kunci `HashMap` adalah nama faktor dan nilainya adalah level.
-/// * `Err(String)` - Pesan error jika terjadi inkonsistensi data.
 pub fn get_all_non_empty_cells(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<Vec<HashMap<String, String>>, String> {
-    // 1. Kumpulkan semua nama faktor unik dari konfigurasi.
     let mut all_factor_names = HashSet::new();
     if let Some(fix_factors) = &config.main.fix_factor {
         all_factor_names.extend(fix_factors.iter().cloned());
@@ -525,56 +458,45 @@ pub fn get_all_non_empty_cells(
         return Ok(Vec::new());
     }
 
-    // Tentukan jumlah total sampel/baris data.
-    let n_samples = if let Some(dep_data_group) = data.dependent_data.get(0) {
-        dep_data_group.len()
-    } else {
-        return Ok(Vec::new()); // Tidak ada data untuk dianalisis.
-    };
-
+    let n_samples = data.dependent_data.get(0).map_or(0, |d| d.len());
     if n_samples == 0 {
         return Ok(Vec::new());
     }
 
-    // 2. Buat peta lokasi untuk setiap faktor agar pencarian lebih cepat.
-    // Peta ini akan menyimpan: nama_faktor -> (apakah_faktor_tetap, indeks_grup).
-    let mut factor_locations = HashMap::new();
+    let mut factor_locations = HashMap::with_capacity(all_factor_names.len());
     for factor_name in &all_factor_names {
-        // Cari di faktor tetap.
-        let mut found = false;
-        for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
-            if def_group.iter().any(|def| &def.name == factor_name) {
-                factor_locations.insert(factor_name.clone(), (true, group_idx));
-                found = true;
-                break;
-            }
-        }
-        if found {
+        if
+            let Some((group_idx, _)) = data.fix_factor_data_defs
+                .iter()
+                .enumerate()
+                .find(|(_, def_group)| def_group.iter().any(|def| &def.name == factor_name))
+        {
+            factor_locations.insert(factor_name.clone(), (true, group_idx));
             continue;
         }
 
-        // Jika tidak ditemukan, cari di faktor acak.
         if let Some(rand_defs) = &data.random_factor_data_defs {
-            for (group_idx, def_group) in rand_defs.iter().enumerate() {
-                if def_group.iter().any(|def| &def.name == factor_name) {
-                    factor_locations.insert(factor_name.clone(), (false, group_idx));
-                    found = true;
-                    break;
-                }
+            if
+                let Some((group_idx, _)) = rand_defs
+                    .iter()
+                    .enumerate()
+                    .find(|(_, def_group)| def_group.iter().any(|def| &def.name == factor_name))
+            {
+                factor_locations.insert(factor_name.clone(), (false, group_idx));
+                continue;
             }
         }
 
-        if !found {
-            return Err(format!("Definisi untuk faktor '{}' tidak ditemukan.", factor_name));
-        }
+        return Err(format!("Definition for factor '{}' not found.", factor_name));
     }
 
-    // 3. Iterasi melalui setiap baris data untuk membangun sel dan kumpulkan yang unik.
     let mut seen_representations = HashSet::new();
     let mut unique_cells = Vec::new();
 
     for i in 0..n_samples {
-        let mut current_cell = HashMap::new();
+        let mut current_cell = HashMap::with_capacity(all_factor_names.len());
+        let mut cell_complete = true;
+
         for factor_name in &all_factor_names {
             if let Some(&(is_fixed, group_idx)) = factor_locations.get(factor_name) {
                 let data_records = if is_fixed {
@@ -589,19 +511,21 @@ pub fn get_all_non_empty_cells(
                     } else {
                         return Err(
                             format!(
-                                "Inkonsistensi data: Nilai untuk faktor '{}' tidak ditemukan di baris {}.",
+                                "Data inconsistency: Value for factor '{}' not found at row {}.",
                                 factor_name,
                                 i
                             )
                         );
                     }
+                } else {
+                    cell_complete = false;
+                    break;
                 }
             }
         }
-        if !current_cell.is_empty() {
-            // Buat representasi string kanonis dari sel untuk keperluan hashing.
-            // Kunci diurutkan untuk memastikan representasi yang konsisten.
-            let mut pairs: Vec<(&String, &String)> = current_cell.iter().collect();
+
+        if cell_complete && !current_cell.is_empty() {
+            let mut pairs: Vec<_> = current_cell.iter().collect();
             pairs.sort_unstable_by_key(|(k, _)| *k);
             let representation = pairs
                 .into_iter()
@@ -609,13 +533,11 @@ pub fn get_all_non_empty_cells(
                 .collect::<Vec<_>>()
                 .join(";");
 
-            // Jika representasi ini belum pernah terlihat, tambahkan sel ke daftar unik.
             if seen_representations.insert(representation) {
                 unique_cells.push(current_cell);
             }
         }
     }
 
-    // 4. Konversi HashSet yang berisi sel-sel unik menjadi sebuah Vec.
     Ok(unique_cells)
 }

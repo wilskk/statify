@@ -221,6 +221,13 @@ impl UnivariateAnalysis {
             }
         }
 
+        // Check significance level
+        if config.options.sig_level < 0.0 || config.options.sig_level > 1.0 {
+            let msg = "Significance level must be between 0 and 1".to_string();
+            error_collector.add_error("Config : Validation : Significance Level", &msg);
+            return Err(string_to_js_error(msg));
+        }
+
         // Store data
         let data = AnalysisData {
             dependent_data,

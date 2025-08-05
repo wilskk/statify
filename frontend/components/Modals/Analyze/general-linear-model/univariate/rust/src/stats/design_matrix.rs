@@ -9,60 +9,57 @@ use crate::models::{
 
 use super::core::*;
 
-/// Membuat matriks desain, vektor respons, dan bobot dari data analisis.
-///
-/// # Parameter
-///
-/// * `data` - Data analisis yang berisi variabel dependen dan kovariat
-/// * `config` - Konfigurasi untuk analisis univariat
-///
-/// # Hasil
-///
-/// `DesignMatrixInfo` yang berisi:
-/// - x: Matriks desain
-/// - y: Vektor respons
-/// - w: Vektor bobot opsional
-/// - n_samples: Jumlah sampel
-/// - p_parameters: Jumlah parameter
-/// - r_x_rank: Rank dari matriks desain
-/// - term_column_indices: Peta indeks kolom untuk setiap istilah
-/// - intercept_column: Indeks kolom untuk intercept (jika ada)
-/// - term_names: Nama-nama istilah dalam model
-/// - case_indices_to_keep: Indeks kasus yang digunakan dalam analisis
 pub fn create_design_response_weights(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<DesignMatrixInfo, String> {
-    let dep_var_name = config.main.dep_var
-        .as_ref()
-        .ok_or_else(|| "Dependent variable not specified.".to_string())?;
+    let dep_var_name = config.main.dep_var.as_ref().unwrap();
 
-    let mut y_values: Vec<f64> = Vec::new();
-    let mut wls_weights: Option<Vec<f64>> = if config.main.wls_weight.is_some() {
-        Some(Vec::new())
-    } else {
-        None
-    };
-    let mut case_indices_to_keep: Vec<usize> = Vec::new();
+    let mut y_values = Vec::new();
+    let mut wls_weights = config.main.wls_weight.as_ref().map(|_| Vec::new());
+    let mut case_indices_to_keep = Vec::new();
 
     for (i, record) in data.dependent_data[0].iter().enumerate() {
-        if let Some(dep_val) = extract_numeric_from_record(record, dep_var_name) {
-            if let Some(wls_var_name) = &config.main.wls_weight {
-                if let Some(wls_val) = extract_numeric_from_record(record, wls_var_name) {
-                    if wls_val > 0.0 {
-                        y_values.push(dep_val);
-                        wls_weights.as_mut().unwrap().push(wls_val);
-                        case_indices_to_keep.push(i);
+        let dep_val = extract_numeric_from_record(record, dep_var_name).ok_or_else(||
+            format!("Non-numeric dependent variable value for case {}", i)
+        )?;
+        if let Some(wls_var_name) = &config.main.wls_weight {
+            let wls_val = if let Some(wls_data_sets) = &data.wls_data {
+                let wls_data_set_index = data.wls_data_defs
+                    .as_ref()
+                    .and_then(|wls_defs|
+                        wls_defs
+                            .iter()
+                            .position(|def_group|
+                                def_group.iter().any(|def| def.name == *wls_var_name)
+                            )
+                    );
+
+                if let Some(index) = wls_data_set_index {
+                    if let Some(wls_data_set) = wls_data_sets.get(index) {
+                        wls_data_set
+                            .get(i)
+                            .and_then(|r| extract_numeric_from_record(r, wls_var_name))
+                    } else {
+                        None
                     }
                 } else {
-                    return Err(format!("Non-numeric WLS weight for case {}", i));
+                    None
                 }
             } else {
+                None
+            };
+
+            let wls_val = wls_val.ok_or_else(|| format!("Non-numeric WLS weight for case {}", i))?;
+
+            if wls_val > 0.0 {
                 y_values.push(dep_val);
+                wls_weights.as_mut().unwrap().push(wls_val);
                 case_indices_to_keep.push(i);
             }
         } else {
-            return Err(format!("Non-numeric dependent variable value for case {}", i));
+            y_values.push(dep_val);
+            case_indices_to_keep.push(i);
         }
     }
 
@@ -79,136 +76,193 @@ pub fn create_design_response_weights(
             intercept_column: None,
             term_names: Vec::new(),
             case_indices_to_keep: Vec::new(),
+            fixed_factor_indices: HashMap::new(),
+            random_factor_indices: HashMap::new(),
+            covariate_indices: HashMap::new(),
         });
     }
 
     let y_nalgebra = DVector::from_vec(y_values);
     let w_nalgebra_opt = wls_weights.map(DVector::from_vec);
 
-    // Generate model terms using existing functions
     let mut model_terms = Vec::new();
     if config.model.intercept {
         model_terms.push("Intercept".to_string());
     }
-
     if config.model.non_cust {
         model_terms.extend(generate_non_cust_terms(config)?);
     } else if config.model.custom || config.model.build_custom_term {
         model_terms.extend(generate_custom_terms(config)?);
     }
 
-    let mut x_matrix_cols: Vec<DVector<f64>> = Vec::new();
-    let mut term_column_map: HashMap<String, (usize, usize)> = HashMap::new();
+    let mut x_matrix_cols = Vec::new();
+    let mut term_column_map = HashMap::new();
     let mut current_col_idx = 0;
-    let mut intercept_col_idx: Option<usize> = None;
-    let mut final_term_names: Vec<String> = Vec::new();
+    let mut intercept_col_idx = None;
+    let mut final_term_names = Vec::new();
+    let mut fixed_factor_indices = HashMap::new();
+    let mut random_factor_indices = HashMap::new();
+    let mut covariate_indices = HashMap::new();
+
+    let mut factor_levels_cache = HashMap::new();
+    let mut covariate_cols_cache = HashMap::new();
+    let mut factor_cols_cache = HashMap::new();
+
+    let all_terms_for_cache: Vec<_> = model_terms
+        .iter()
+        .filter(|t| t.as_str() != "Intercept")
+        .flat_map(|t| parse_interaction_term(t))
+        .collect();
+
+    // Cache covariate and factor columns
+    for term_component in &all_terms_for_cache {
+        if
+            config.main.covar.as_ref().map_or(false, |c| c.contains(term_component)) &&
+            !covariate_cols_cache.contains_key(term_component)
+        {
+            let mut cov_values_filtered = Vec::with_capacity(case_indices_to_keep.len());
+            let cov_data_set_index = data.covariate_data_defs
+                .as_ref()
+                .and_then(|cov_defs|
+                    cov_defs
+                        .iter()
+                        .position(|def_group|
+                            def_group.iter().any(|def| def.name == *term_component)
+                        )
+                );
+            if let Some(index) = cov_data_set_index {
+                if let Some(cov_data_sets) = &data.covariate_data {
+                    if let Some(cov_data_set) = cov_data_sets.get(index) {
+                        for &idx_to_keep in &case_indices_to_keep {
+                            let val = cov_data_set
+                                .get(idx_to_keep)
+                                .and_then(|r| extract_numeric_from_record(r, term_component))
+                                .ok_or_else(||
+                                    format!("Non-numeric covariate '{}'", term_component)
+                                )?;
+                            cov_values_filtered.push(val);
+                        }
+                    }
+                }
+            }
+            covariate_cols_cache.insert(
+                term_component.clone(),
+                DVector::from_vec(cov_values_filtered)
+            );
+        } else if !factor_levels_cache.contains_key(term_component) {
+            let levels = get_factor_levels(data, term_component)?;
+            let mut level_cols = HashMap::with_capacity(levels.len());
+            for level in &levels {
+                let mut combo = HashMap::new();
+                combo.insert(term_component.clone(), level.clone());
+                let full_col = matches_combination(&combo, data);
+                let filtered_col: Vec<f64> = case_indices_to_keep
+                    .iter()
+                    .map(|&idx| full_col.get(idx).cloned().unwrap_or(0.0))
+                    .collect();
+                level_cols.insert(level.clone(), DVector::from_vec(filtered_col));
+            }
+            factor_cols_cache.insert(term_component.clone(), level_cols);
+            factor_levels_cache.insert(term_component.clone(), levels);
+        }
+    }
 
     for term_name in &model_terms {
         final_term_names.push(term_name.clone());
         let term_start_col = current_col_idx;
-        let mut term_matrix_cols: Vec<DVector<f64>> = Vec::new();
+        let mut term_matrix_cols = Vec::new();
 
         if term_name == "Intercept" {
             if config.model.intercept {
-                let intercept_vec = DVector::from_element(n_samples_effective, 1.0);
-                term_matrix_cols.push(intercept_vec);
+                term_matrix_cols.push(DVector::from_element(n_samples_effective, 1.0));
             } else {
                 continue;
             }
         } else if config.main.covar.as_ref().map_or(false, |c| c.contains(term_name)) {
-            let mut cov_values_filtered: Vec<f64> = Vec::with_capacity(case_indices_to_keep.len());
-            if let Some(cov_data_set_option) = &data.covariate_data {
-                if let Some(cov_data_set) = cov_data_set_option.get(0) {
-                    for &idx_to_keep in &case_indices_to_keep {
-                        if let Some(record) = cov_data_set.get(idx_to_keep) {
-                            if let Some(val) = extract_numeric_from_record(record, term_name) {
-                                cov_values_filtered.push(val);
-                            } else {
-                                return Err(format!("Non-numeric covariate '{}'", term_name));
-                            }
-                        } else {
-                            return Err(
-                                format!("Record index {} out of bounds for covariate data (original case index)", idx_to_keep)
-                            );
-                        }
-                    }
-                } else {
-                    return Err(format!("No data found for covariate '{}'", term_name));
+            if let Some(col) = covariate_cols_cache.get(term_name) {
+                if !col.is_empty() {
+                    term_matrix_cols.push(col.clone());
                 }
-            } else {
-                return Err(
-                    format!("Covariate data structure (covariate_data) is None, but covariate '{}' was specified.", term_name)
-                );
-            }
-            if !cov_values_filtered.is_empty() {
-                term_matrix_cols.push(DVector::from_vec(cov_values_filtered));
             }
         } else if term_name.contains('*') {
-            let factors = parse_interaction_term(term_name);
-            let mut interaction_rows = Vec::new();
-
-            // Get all possible combinations of factor levels
-            let mut factor_levels = Vec::new();
-            for factor in &factors {
-                let levels = get_factor_levels(data, factor)?;
-                factor_levels.push((factor.clone(), levels));
+            let components = parse_interaction_term(term_name);
+            let (factors, covariates): (Vec<_>, Vec<_>) = components
+                .into_iter()
+                .partition(|comp| !covariate_cols_cache.contains_key(comp));
+            let mut factor_interaction_cols = if !factors.is_empty() {
+                let factor_levels: Vec<_> = factors
+                    .iter()
+                    .map(|f| (f.clone(), factor_levels_cache.get(f).unwrap().clone()))
+                    .collect();
+                let mut level_combinations = Vec::new();
+                generate_level_combinations(
+                    &factor_levels,
+                    &mut HashMap::new(),
+                    0,
+                    &mut level_combinations
+                );
+                level_combinations
+                    .iter()
+                    .map(|combo| {
+                        combo
+                            .iter()
+                            .fold(
+                                DVector::from_element(n_samples_effective, 1.0),
+                                |mut acc, (factor_name, level)| {
+                                    if let Some(level_cols) = factor_cols_cache.get(factor_name) {
+                                        if let Some(level_col) = level_cols.get(level) {
+                                            acc.component_mul_assign(level_col);
+                                        }
+                                    }
+                                    acc
+                                }
+                            )
+                    })
+                    .collect()
+            } else {
+                vec![DVector::from_element(n_samples_effective, 1.0)]
+            };
+            let covariate_cols: Vec<_> = covariates
+                .iter()
+                .filter_map(|name| covariate_cols_cache.get(name))
+                .collect();
+            for cov_col in &covariate_cols {
+                factor_interaction_cols = factor_interaction_cols
+                    .into_iter()
+                    .map(|factor_col| factor_col.component_mul(cov_col))
+                    .collect();
             }
-
-            let mut level_combinations = Vec::new();
-            generate_level_combinations(
-                &factor_levels,
-                &mut HashMap::new(),
-                0,
-                &mut level_combinations
-            );
-
-            // Create design matrix rows for each combination
-            for combo in &level_combinations {
-                let row = matches_combination(combo, data);
-                if !row.is_empty() {
-                    interaction_rows.push(row);
+            term_matrix_cols.extend(factor_interaction_cols);
+        } else if let Some(level_cols) = factor_cols_cache.get(term_name) {
+            if let Some(levels) = factor_levels_cache.get(term_name) {
+                for level in levels {
+                    if let Some(col) = level_cols.get(level) {
+                        term_matrix_cols.push(col.clone());
+                    }
                 }
-            }
-
-            if !interaction_rows.is_empty() {
-                for row in interaction_rows {
-                    term_matrix_cols.push(DVector::from_vec(row));
-                }
-            }
-        } else {
-            // Handle main effects
-            let levels = get_factor_levels(data, term_name)?;
-
-            // Create columns for ALL levels observed in the data for this factor
-            for level in levels {
-                let mut combo = HashMap::new();
-                combo.insert(term_name.clone(), level);
-                let row = matches_combination(&combo, data);
-                term_matrix_cols.push(DVector::from_vec(row));
             }
         }
 
         if !term_matrix_cols.is_empty() {
+            let term_end_col = current_col_idx + term_matrix_cols.len() - 1;
+            let added_indices: Vec<usize> = (current_col_idx..=term_end_col).collect();
+
+            if config.main.fix_factor.as_ref().map_or(false, |f| f.contains(term_name)) {
+                fixed_factor_indices.insert(term_name.clone(), added_indices.clone());
+            } else if config.main.rand_factor.as_ref().map_or(false, |r| r.contains(term_name)) {
+                random_factor_indices.insert(term_name.clone(), added_indices.clone());
+            } else if config.main.covar.as_ref().map_or(false, |c| c.contains(term_name)) {
+                covariate_indices.insert(term_name.clone(), added_indices.clone());
+            }
+
             for col_vec in term_matrix_cols {
                 if col_vec.len() == n_samples_effective {
                     x_matrix_cols.push(col_vec);
                     current_col_idx += 1;
-                } else if col_vec.len() == 0 {
-                    // This column was empty (e.g. factor level with no data, or aliased out entirely before full matrix built)
-                    // Do not add it, do not increment current_col_idx
-                } else {
-                    return Err(
-                        format!(
-                            "Column for term '{}' has incorrect length {} (expected {}).",
-                            term_name,
-                            col_vec.len(),
-                            n_samples_effective
-                        )
-                    );
                 }
             }
+
             if current_col_idx > term_start_col {
-                // Only add to map if columns were actually added
                 term_column_map.insert(term_name.clone(), (term_start_col, current_col_idx - 1));
             }
         }
@@ -246,43 +300,20 @@ pub fn create_design_response_weights(
         intercept_column: intercept_col_idx,
         term_names: final_term_names,
         case_indices_to_keep,
+        fixed_factor_indices,
+        random_factor_indices,
+        covariate_indices,
     })
 }
 
-/// Membuat matriks hasil perkalian silang Z'WZ dimana Z = [X Y].
-///
-/// Fungsi ini membangun matriks Z'WZ yang menjadi pusat operasi sweep Gauss-Jordan.
-/// Z dibentuk dengan menggabungkan matriks desain X dan vektor respons Y:
-/// Z = [X Y]
-///
-/// Matriks Z'WZ yang dihasilkan memiliki struktur:
-/// ```text
-/// [  X'WX    X'WY  ]
-/// [  Y'WX    Y'WY  ]
-/// ```
-///
-/// Ketika Z'WZ di-sweep pada p baris dan kolom pertama (dimana p adalah jumlah parameter),
-/// menghasilkan matriks G, B̂, dan S seperti yang dijelaskan dalam fungsi perform_sweep_and_extract_results.
-///
-/// # Parameter
-///
-/// * `design_info` - Berisi matriks desain X, vektor respons Y, dan bobot opsional W
-///
-/// # Hasil
-///
-/// Matriks Z'WZ yang akan digunakan sebagai input untuk operasi sweep
 pub fn create_cross_product_matrix(design_info: &DesignMatrixInfo) -> Result<DMatrix<f64>, String> {
     let x = &design_info.x;
     let y = &design_info.y;
     let n = design_info.n_samples;
-    let p = design_info.p_parameters;
-
-    if n == 0 {
-        return Ok(DMatrix::zeros(p + 1, p + 1));
-    }
 
     let mut z_parts: Vec<DMatrix<f64>> = Vec::new();
     z_parts.push(x.clone_owned());
+
     let y_matrix = DMatrix::from_column_slice(y.nrows(), 1, y.as_slice());
     z_parts.push(y_matrix);
 
@@ -305,53 +336,6 @@ pub fn create_cross_product_matrix(design_info: &DesignMatrixInfo) -> Result<DMa
     }
 }
 
-/// Melakukan operasi sweep pada matriks Z'WZ dan mengekstrak hasilnya.
-///
-/// # Operasi Sweep
-///
-/// Operasi Sweep mengubah matriks Z'WZ (dimana Z = [X Y]) menjadi bentuk yang
-/// langsung memberikan estimasi parameter, invers g₂, dan jumlah kuadrat residual.
-///
-/// Setelah melakukan sweep pada p baris dan kolom pertama dari Z'WZ, matriks yang dihasilkan memiliki bentuk:
-/// ```text
-/// [  -G    B̂  ]
-/// [  B̂'    S  ]
-/// ```
-/// dimana:
-/// - G adalah invers umum g₂ simetris p×p dari X'WX
-/// - B̂ adalah matriks p×r dari estimasi parameter
-/// - S adalah matriks simetris r×r dari jumlah kuadrat dan perkalian silang residual
-///
-/// # Algoritma
-///
-/// Implementasi ini didasarkan pada Algoritma AS 178: "Operator Sweep Gauss-Jordan
-/// dengan Deteksi Kolinearitas" oleh M.R.B. Clarke (1982) yang diterbitkan dalam Journal of
-/// the Royal Statistical Society. Series C (Applied Statistics).
-///
-/// Untuk setiap baris/kolom k yang di-sweep:
-/// 1. Jika elemen pivot c[k,k] mendekati nol, parameter kemungkinan kolinear
-/// 2. Jika tidak, lakukan operasi sweep standar:
-///    - c[k,k] = -1/c[k,k]
-///    - Untuk elemen lain dalam baris k: c[k,j] = c[k,j]/d
-///    - Untuk elemen lain dalam kolom k: c[i,k] = c[i,k]/d
-///    - Untuk semua elemen lainnya: c[i,j] = c[i,j] + c[i,k] * c[k,j] * d
-///
-/// # Parameter
-///
-/// * `ztwz_matrix` - Matriks Z'WZ dimana Z = [X Y]
-/// * `p_params_in_model` - Jumlah parameter p dalam model (kolom dari X)
-///
-/// # Hasil
-///
-/// `SweptMatrixInfo` yang berisi:
-/// - g_inv: Matriks G (dinegasikan dari hasil sweep langsung)
-/// - beta_hat: Matriks B̂ dari estimasi parameter
-/// - s_rss: Matriks S (dalam implementasi ini, hanya elemen pertama dari S yang merupakan jumlah kuadrat residual)
-///
-/// # Referensi
-///
-/// - Clarke, M.R.B. (1982) "Algoritma AS 178: Operator Sweep Gauss-Jordan dengan Deteksi Kolinearitas"
-/// - Ridout, M.S. dan Cobby, J.M. (1989) "Catatan AS R78: Catatan tentang Algoritma AS 178"
 pub fn perform_sweep_and_extract_results(
     ztwz_matrix: &DMatrix<f64>,
     p_params_in_model: usize
@@ -364,6 +348,7 @@ pub fn perform_sweep_and_extract_results(
         } else {
             0.0
         };
+
         return Ok(SweptMatrixInfo {
             g_inv: DMatrix::zeros(0, 0),
             beta_hat: DVector::zeros(0),
@@ -372,6 +357,8 @@ pub fn perform_sweep_and_extract_results(
     }
 
     let total_dims = ztwz_matrix.nrows();
+
+    // Validasi dimensi matriks
     if total_dims != p_params_in_model + 1 {
         return Err(
             format!(
@@ -384,6 +371,7 @@ pub fn perform_sweep_and_extract_results(
             )
         );
     }
+
     if ztwz_matrix.ncols() != total_dims {
         return Err(
             format!("Z'WZ matrix is not square ({}x{}).", ztwz_matrix.nrows(), ztwz_matrix.ncols())
@@ -399,10 +387,12 @@ pub fn perform_sweep_and_extract_results(
     let mut is_param_aliased: Vec<bool> = vec![false; p_params_in_model];
     let epsilon = 1e-12;
 
+    // Proses sweep untuk setiap parameter
     for k in 0..p_params_in_model {
         let pivot_candidate = c_matrix[(k, k)];
         let s_k = original_diagonals[k];
 
+        // Deteksi parameter yang tidak teridentifikasi (aliased)
         if pivot_candidate.abs() <= epsilon * s_k.abs() {
             is_param_aliased[k] = true;
             continue;
@@ -418,6 +408,7 @@ pub fn perform_sweep_and_extract_results(
 
         let pivot_val = c_matrix[(k, k)];
 
+        // Simpan nilai kolom dan baris ke-k sebelum diubah
         let mut old_col_k_vals = DVector::zeros(total_dims);
         let mut old_row_k_vals = DVector::zeros(total_dims);
         for i in 0..total_dims {
@@ -427,6 +418,7 @@ pub fn perform_sweep_and_extract_results(
             old_row_k_vals[j] = c_matrix[(k, j)];
         }
 
+        // Update semua elemen kecuali baris dan kolom pivot
         for i in 0..total_dims {
             if i == k {
                 continue;
@@ -439,6 +431,7 @@ pub fn perform_sweep_and_extract_results(
             }
         }
 
+        // Update baris dan kolom pivot
         for j in 0..total_dims {
             if j == k {
                 continue;
@@ -453,13 +446,16 @@ pub fn perform_sweep_and_extract_results(
             c_matrix[(i, k)] /= pivot_val;
         }
 
+        // Update elemen pivot
         c_matrix[(k, k)] = -1.0 / pivot_val;
 
         swept_k_flags[k] = !swept_k_flags[k];
     }
 
+    // s_rss diambil dari elemen terakhir (baris dan kolom terakhir)
     let s_rss = c_matrix[(p_params_in_model, p_params_in_model)];
 
+    // Ekstrak matriks invers dan estimasi parameter
     let mut final_g_inv = DMatrix::zeros(p_params_in_model, p_params_in_model);
     let mut final_beta_hat = DVector::zeros(p_params_in_model);
 
@@ -489,39 +485,58 @@ pub fn perform_sweep_and_extract_results(
     })
 }
 
-/// Create groups from design matrix for Levene test
 pub fn create_groups_from_design_matrix(
     design_info: &DesignMatrixInfo,
-    data: &[f64],
-    indices: &[usize]
+    data: &[f64]
 ) -> Vec<Vec<f64>> {
-    let mut groups: Vec<Vec<f64>> = Vec::new();
+    let n_rows = design_info.x.nrows();
+    if n_rows == 0 {
+        return Vec::new();
+    }
+
+    let mut factor_col_indices: Vec<usize> = design_info.fixed_factor_indices
+        .values()
+        .flatten()
+        .cloned()
+        .chain(design_info.random_factor_indices.values().flatten().cloned())
+        .collect();
+    factor_col_indices.sort_unstable();
+    factor_col_indices.dedup();
+
     let mut group_indices: Vec<Vec<usize>> = Vec::new();
 
-    // Initialize groups based on design matrix
-    for i in 0..design_info.x.nrows() {
+    for i in 0..n_rows {
         let mut found_group = false;
-        for (_group_idx, group) in group_indices.iter_mut().enumerate() {
-            if design_info.x.row(i) == design_info.x.row(group[0]) {
+        for group in group_indices.iter_mut() {
+            let first_idx_in_group = group[0];
+            let are_in_same_group = if factor_col_indices.is_empty() {
+                design_info.x.row(i) == design_info.x.row(first_idx_in_group)
+            } else {
+                factor_col_indices
+                    .iter()
+                    .all(|&col_idx| {
+                        design_info.x[(i, col_idx)] == design_info.x[(first_idx_in_group, col_idx)]
+                    })
+            };
+
+            if are_in_same_group {
                 group.push(i);
                 found_group = true;
                 break;
             }
         }
+
         if !found_group {
             group_indices.push(vec![i]);
         }
     }
 
-    // Map indices to actual data values
-    for group in group_indices {
-        let mut group_data = Vec::new();
-        for &idx in &group {
-            if idx < indices.len() {
-                let original_idx = indices[idx];
-                if original_idx < data.len() {
-                    group_data.push(data[original_idx]);
-                }
+    let mut groups: Vec<Vec<f64>> = Vec::new();
+    for index_list in group_indices {
+        let mut group_data: Vec<f64> = Vec::with_capacity(index_list.len());
+        for &row_idx in &index_list {
+            if row_idx < data.len() {
+                group_data.push(data[row_idx]);
             }
         }
         if !group_data.is_empty() {

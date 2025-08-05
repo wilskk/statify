@@ -1,32 +1,33 @@
-import { TABS, TourStep } from '../types';
+import { TABS, TourStep } from "../types";
 
 export const baseTourSteps: TourStep[] = [
     {
         title: "Variable Selection",
         content: "Select variables from the available list to analyze with One-Way ANOVA. Only numeric variables are shown.",
         targetId: "one-way-anova-available-variables",
-        defaultPosition: 'bottom',
+        defaultPosition: "bottom",
         defaultHorizontalPosition: null,
         icon: "📊",
-        requiredTab: TABS.VARIABLES
+        requiredTab: TABS.VARIABLES,
     },
     {
         title: "Test Variables",
-        content: "Variables in this list will be analyzed. You can reorder them by dragging.",
+        content:
+            "Variables in this list will be analyzed. You can reorder them by dragging.",
         targetId: "one-way-anova-test-variables",
-        defaultPosition: 'bottom',
-        defaultHorizontalPosition: 'left',
+        defaultPosition: "bottom",
+        defaultHorizontalPosition: "left",
         icon: "📋",
-        requiredTab: TABS.VARIABLES
+        requiredTab: TABS.VARIABLES,
     },
     {
         title: "Factor Variable",
         content: "Choose a categorical variable to act as the factor (grouping) variable. This variable determines how your data will be split into groups for comparison in the ANOVA. The analysis will compare the means of the selected test variables across the different groups defined by this factor.",
         targetId: "factor-variable-section",
-        defaultPosition: 'bottom',
+        defaultPosition: "bottom",
         defaultHorizontalPosition: null,
         icon: "🔢",
-        requiredTab: TABS.VARIABLES
+        requiredTab: TABS.VARIABLES,
     },
     {
         title: "Estimate Effect Size",
@@ -35,7 +36,7 @@ export const baseTourSteps: TourStep[] = [
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
         icon: "📏",
-        requiredTab: TABS.VARIABLES
+        requiredTab: TABS.VARIABLES,
     },
     {
         title: "Equal Variances Assumed",
