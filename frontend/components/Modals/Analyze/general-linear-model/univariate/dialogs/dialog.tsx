@@ -166,7 +166,7 @@ export const UnivariateDialog = ({
     const targetListsConfig: TargetListConfig[] = useMemo(
         () => [
             {
-                id: "univariate-dependent-variable",
+                id: "DepVar",
                 title: "Dependent Variable:",
                 variables: depVar,
                 height: "auto",
@@ -174,28 +174,28 @@ export const UnivariateDialog = ({
                 containerId: "univariate-dependent-variable",
             },
             {
-                id: "univariate-fixed-factors",
+                id: "FixFactor",
                 title: "Fixed Factor(s):",
                 variables: fixFactor,
                 height: "100px",
                 containerId: "univariate-fixed-factors",
             },
             {
-                id: "univariate-random-factors",
+                id: "RandFactor",
                 title: "Random Factor(s):",
                 variables: randFactor,
                 height: "100px",
                 containerId: "univariate-random-factors",
             },
             {
-                id: "univariate-covariates",
+                id: "Covar",
                 title: "Covariate(s):",
                 variables: covar,
                 height: "100px",
                 containerId: "univariate-covariates",
             },
             {
-                id: "univariate-wls-weight",
+                id: "WlsWeight",
                 title: "WLS Weight:",
                 variables: wlsWeight,
                 height: "auto",

@@ -90,19 +90,19 @@ export const SumOfSquares: React.FC = () => {
                     </h4>
                     <ul className="text-sm text-blue-700 space-y-1">
                         <li>
-                            • <strong>Sequential:</strong> Depends on order of
+                            <strong>Sequential:</strong> Depends on order of
                             terms in model
                         </li>
                         <li>
-                            • <strong>Hierarchical:</strong> Each term evaluated
+                            <strong>Hierarchical:</strong> Each term evaluated
                             after previous terms
                         </li>
                         <li>
-                            • <strong>Cumulative:</strong> Effects of previous
+                            <strong>Cumulative:</strong> Effects of previous
                             terms are controlled
                         </li>
                         <li>
-                            • <strong>Application:</strong> Models with clear
+                            <strong>Application:</strong> Models with clear
                             theoretical ordering
                         </li>
                     </ul>
@@ -159,19 +159,19 @@ export const SumOfSquares: React.FC = () => {
                     </h4>
                     <ul className="text-sm text-green-700 space-y-1">
                         <li>
-                            • <strong>Marginal:</strong> Tests term effect after
+                            <strong>Marginal:</strong> Tests term effect after
                             other terms that don't contain it
                         </li>
                         <li>
-                            • <strong>Marginality Principle:</strong> Respects
+                            <strong>Marginality Principle:</strong> Respects
                             model hierarchy
                         </li>
                         <li>
-                            • <strong>Order Independent:</strong> Not dependent
-                            on order in model
+                            <strong>Order Independent:</strong> Not dependent on
+                            order in model
                         </li>
                         <li>
-                            • <strong>Application:</strong> Models without
+                            <strong>Application:</strong> Models without
                             significant interactions
                         </li>
                     </ul>
@@ -232,19 +232,18 @@ export const SumOfSquares: React.FC = () => {
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-1">
                         <li>
-                            • <strong>Partial:</strong> Tests term effect after
+                            <strong>Partial:</strong> Tests term effect after
                             ALL other terms in model
                         </li>
                         <li>
-                            • <strong>Equal-Weighted:</strong> Uses equally
+                            <strong>Equal-Weighted:</strong> Uses equally
                             weighted cell means
                         </li>
                         <li>
-                            • <strong>Marginal:</strong> Tests marginal
-                            hypotheses
+                            <strong>Marginal:</strong> Tests marginal hypotheses
                         </li>
                         <li>
-                            • <strong>Application:</strong> Models with
+                            <strong>Application:</strong> Models with
                             interactions, unbalanced designs
                         </li>
                     </ul>
@@ -292,20 +291,20 @@ export const SumOfSquares: React.FC = () => {
                     </h4>
                     <ul className="text-sm text-red-700 space-y-1">
                         <li>
-                            • <strong>Balanced:</strong> Designed for designs
-                            with empty cells
+                            <strong>Balanced:</strong> Designed for designs with
+                            empty cells
                         </li>
                         <li>
-                            • <strong>Distributed:</strong> Contrasts
-                            distributed equally across available cells
+                            <strong>Distributed:</strong> Contrasts distributed
+                            equally across available cells
                         </li>
                         <li>
-                            • <strong>Modified Type III:</strong> Modification
-                            of Type III for incomplete data
+                            <strong>Modified Type III:</strong> Modification of
+                            Type III for incomplete data
                         </li>
                         <li>
-                            • <strong>Application:</strong> Factorial designs
-                            with missing cells
+                            <strong>Application:</strong> Factorial designs with
+                            missing cells
                         </li>
                     </ul>
                 </div>
@@ -489,27 +488,6 @@ export const SumOfSquares: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>rust/src/stats/sum_of_squares.rs</code> - SS
-                        calculation implementation
-                    </li>
-                    <li>
-                        <code>rust/src/stats/hypothesis_matrix.rs</code> - L
-                        matrix construction
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> - Analysis result
-                        structures
-                    </li>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/
-                        </code>
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

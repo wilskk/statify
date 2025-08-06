@@ -52,10 +52,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Homoscedasticity (H₀)
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Constant error variance</li>
-                            <li>• Var(εᵢ) = σ² for all i</li>
-                            <li>• Assumption satisfied</li>
-                            <li>• Valid statistical inference</li>
+                            <li>Constant error variance</li>
+                            <li>Var(εᵢ) = σ² for all i</li>
+                            <li>Assumption satisfied</li>
+                            <li>Valid statistical inference</li>
                         </ul>
                     </div>
 
@@ -64,10 +64,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Heteroscedasticity (H₁)
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Non-constant error variance</li>
-                            <li>• Var(εᵢ) ≠ σ² for some i</li>
-                            <li>• Assumption violated</li>
-                            <li>• Biased statistical inference</li>
+                            <li>Non-constant error variance</li>
+                            <li>Var(εᵢ) ≠ σ² for some i</li>
+                            <li>Assumption violated</li>
+                            <li>Biased statistical inference</li>
                         </ul>
                     </div>
                 </div>
@@ -83,10 +83,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             White Test
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• General heteroscedasticity detection</li>
-                            <li>• No form assumption required</li>
-                            <li>• Uses squares and interactions</li>
-                            <li>• Statistic: LM = n × R²</li>
+                            <li>General heteroscedasticity detection</li>
+                            <li>No form assumption required</li>
+                            <li>Uses squares and interactions</li>
+                            <li>Statistic: LM = n × R²</li>
                         </ul>
                     </div>
 
@@ -95,10 +95,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Breusch-Pagan Test
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Linear heteroscedasticity detection</li>
-                            <li>• Based on predicted values</li>
-                            <li>• Assumes normality</li>
-                            <li>• Statistic: BP = ESS / (2 × σ̂⁴)</li>
+                            <li>Linear heteroscedasticity detection</li>
+                            <li>Based on predicted values</li>
+                            <li>Assumes normality</li>
+                            <li>Statistic: BP = ESS / (2 × σ̂⁴)</li>
                         </ul>
                     </div>
 
@@ -107,20 +107,20 @@ export const HeteroscedasticityTests: React.FC = () => {
                             Modified Breusch-Pagan
                         </h4>
                         <ul className="text-sm text-purple-700 space-y-1">
-                            <li>• Robust version of BP test</li>
-                            <li>• Robust to non-normality</li>
-                            <li>• Koenker-Bassett version</li>
-                            <li>• Statistic: LM = n × R²</li>
+                            <li>Robust version of BP test</li>
+                            <li>Robust to non-normality</li>
+                            <li>Koenker-Bassett version</li>
+                            <li>Statistic: LM = n × R²</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">F-Test</h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Alternative to Chi-square test</li>
-                            <li>• Better performance on small samples</li>
-                            <li>• Based on predicted values</li>
-                            <li>• Statistic: F = (R²/df₁) / ((1-R²)/df₂)</li>
+                            <li>Alternative to Chi-square test</li>
+                            <li>Better performance on small samples</li>
+                            <li>Based on predicted values</li>
+                            <li>Statistic: F = (R²/df₁) / ((1-R²)/df₂)</li>
                         </ul>
                     </div>
                 </div>
@@ -136,26 +136,26 @@ export const HeteroscedasticityTests: React.FC = () => {
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Fit Main Model:</strong> Create design
+                            <strong>Fit Main Model:</strong> Create design
                             matrix and perform sweep
                         </li>
                         <li>
-                            <strong>2. Calculate Residuals:</strong> ε = y - ŷ
+                            <strong>Calculate Residuals:</strong> ε = y - ŷ
                         </li>
                         <li>
-                            <strong>3. Square Residuals:</strong> ε² as
-                            dependent variable
+                            <strong>Square Residuals:</strong> ε² as dependent
+                            variable
                         </li>
                         <li>
-                            <strong>4. Create Auxiliary Model:</strong> Regress
-                            ε² on predictors
+                            <strong>Create Auxiliary Model:</strong> Regress ε²
+                            on predictors
                         </li>
                         <li>
-                            <strong>5. Calculate Statistics:</strong> Based on
+                            <strong>Calculate Statistics:</strong> Based on
                             selected method
                         </li>
                         <li>
-                            <strong>6. Test Significance:</strong> Compare with
+                            <strong>Test Significance:</strong> Compare with
                             theoretical distribution
                         </li>
                     </ol>
@@ -221,13 +221,12 @@ export const HeteroscedasticityTests: React.FC = () => {
                         White Test follows Chi-square distribution:
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-1">
-                        <li>• LM ~ χ²(df) under H₀</li>
-                        <li>• p-value = P(χ²(df) {">"} LM)</li>
+                        <li>LM ~ χ²(df) under H₀</li>
+                        <li>p-value = P(χ²(df) {">"} LM)</li>
                         <li>
-                            • p {"<"} 0.05: Reject H₀, heteroscedasticity
-                            present
+                            p {"<"} 0.05: Reject H₀, heteroscedasticity present
                         </li>
-                        <li>• p ≥ 0.05: Fail to reject H₀, homoscedasticity</li>
+                        <li>p ≥ 0.05: Fail to reject H₀, homoscedasticity</li>
                     </div>
                 </div>
 
@@ -293,10 +292,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                         Advantages over classical BP:
                     </h4>
                     <ul className="text-sm text-green-700 space-y-1">
-                        <li>• More robust to non-normality</li>
-                        <li>• No distributional assumptions required</li>
-                        <li>• Better performance on small samples</li>
-                        <li>• More asymptotically consistent</li>
+                        <li>More robust to non-normality</li>
+                        <li>No distributional assumptions required</li>
+                        <li>Better performance on small samples</li>
+                        <li>More asymptotically consistent</li>
                     </ul>
                 </div>
 
@@ -335,13 +334,12 @@ export const HeteroscedasticityTests: React.FC = () => {
                         F-test follows F distribution:
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-1">
-                        <li>• F ~ F(df₁, df₂) under H₀</li>
-                        <li>• p-value = P(F(df₁, df₂) {">"} F_observed)</li>
+                        <li>F ~ F(df₁, df₂) under H₀</li>
+                        <li>p-value = P(F(df₁, df₂) {">"} F_observed)</li>
                         <li>
-                            • p {"<"} 0.05: Reject H₀, heteroscedasticity
-                            present
+                            p {"<"} 0.05: Reject H₀, heteroscedasticity present
                         </li>
-                        <li>• p ≥ 0.05: Fail to reject H₀, homoscedasticity</li>
+                        <li>p ≥ 0.05: Fail to reject H₀, homoscedasticity</li>
                     </div>
                 </div>
 
@@ -353,10 +351,10 @@ export const HeteroscedasticityTests: React.FC = () => {
                             p-value ≥ 0.05
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Fail to reject H₀</li>
-                            <li>• Homoscedasticity</li>
-                            <li>• Assumption satisfied</li>
-                            <li>• Valid statistical inference</li>
+                            <li>Fail to reject H₀</li>
+                            <li>Homoscedasticity</li>
+                            <li>Assumption satisfied</li>
+                            <li>Valid statistical inference</li>
                         </ul>
                     </div>
 
@@ -365,60 +363,13 @@ export const HeteroscedasticityTests: React.FC = () => {
                             p-value {"<"} 0.05
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Reject H₀</li>
-                            <li>• Heteroscedasticity</li>
-                            <li>• Assumption violated</li>
-                            <li>• Consider solutions</li>
+                            <li>Reject H₀</li>
+                            <li>Heteroscedasticity</li>
+                            <li>Assumption violated</li>
+                            <li>Consider solutions</li>
                         </ul>
                     </div>
                 </div>
-
-                <h2 className="mt-8">Solutions for Heteroscedasticity</h2>
-
-                <div className="bg-yellow-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-yellow-800 mb-2">
-                        When Heteroscedasticity is Detected:
-                    </h4>
-                    <ul className="text-sm text-yellow-700 space-y-2">
-                        <li>
-                            <strong>1. Weighted Least Squares (WLS):</strong>{" "}
-                            Use weights inversely proportional to variance
-                        </li>
-                        <li>
-                            <strong>2. Robust Standard Errors:</strong> Use
-                            standard errors robust to heteroscedasticity
-                        </li>
-                        <li>
-                            <strong>3. Data Transformation:</strong> Log, square
-                            root, or other transformations
-                        </li>
-                        <li>
-                            <strong>4. Generalized Least Squares (GLS):</strong>{" "}
-                            Explicitly estimate error variance
-                        </li>
-                    </ul>
-                </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>rust/src/stats/heteroscedasticity.rs</code> -
-                        Heteroscedasticity test implementation
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> - Test result
-                        structures
-                    </li>
-                    <li>
-                        <code>rust/src/stats/core.rs</code> - Helper calculation
-                        functions
-                    </li>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/
-                        </code>
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

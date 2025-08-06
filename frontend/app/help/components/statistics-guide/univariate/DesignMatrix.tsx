@@ -80,27 +80,27 @@ export const DesignMatrix: React.FC = () => {
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Data Extraction:</strong> Extract
-                            dependent variable and WLS weights
+                            <strong>Data Extraction:</strong> Extract dependent
+                            variable and WLS weights
                         </li>
                         <li>
-                            <strong>2. Data Validation:</strong> Ensure all
-                            values are numeric and valid
+                            <strong>Data Validation:</strong> Ensure all values
+                            are numeric and valid
                         </li>
                         <li>
-                            <strong>3. Model Term Generation:</strong> Create
-                            list of terms based on configuration
+                            <strong>Model Term Generation:</strong> Create list
+                            of terms based on configuration
                         </li>
                         <li>
-                            <strong>4. Data Caching:</strong> Pre-cache factor
+                            <strong>Data Caching:</strong> Pre-cache factor
                             levels and covariates for efficiency
                         </li>
                         <li>
-                            <strong>5. Column Construction:</strong> Create
-                            columns for each model term
+                            <strong>Column Construction:</strong> Create columns
+                            for each model term
                         </li>
                         <li>
-                            <strong>6. Matrix Assembly:</strong> Combine all
+                            <strong>Matrix Assembly:</strong> Combine all
                             columns into design matrix
                         </li>
                     </ol>
@@ -113,9 +113,9 @@ export const DesignMatrix: React.FC = () => {
                             Intercept
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Column with value 1 for all observations</li>
-                            <li>• Represents constant in model</li>
-                            <li>• Usually first column in design matrix</li>
+                            <li>Column with value 1 for all observations</li>
+                            <li>Represents constant in model</li>
+                            <li>Usually first column in design matrix</li>
                         </ul>
                     </div>
 
@@ -124,9 +124,9 @@ export const DesignMatrix: React.FC = () => {
                             Covariates
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Continuous variables</li>
-                            <li>• Original values from data</li>
-                            <li>• No dummy coding required</li>
+                            <li>Continuous variables</li>
+                            <li>Original values from data</li>
+                            <li>No dummy coding required</li>
                         </ul>
                     </div>
 
@@ -135,12 +135,12 @@ export const DesignMatrix: React.FC = () => {
                             Factors (Main Effects)
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Dummy coding for each level</li>
+                            <li>Dummy coding for each level</li>
                             <li>
-                                • One column per level (except reference level)
+                                One column per level (except reference level)
                             </li>
                             <li>
-                                • Value 1 if observation at that level, 0 if not
+                                Value 1 if observation at that level, 0 if not
                             </li>
                         </ul>
                     </div>
@@ -150,9 +150,9 @@ export const DesignMatrix: React.FC = () => {
                             Interactions
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Product of component columns</li>
-                            <li>• Represents interaction effects</li>
-                            <li>• Can involve factors and covariates</li>
+                            <li>Product of component columns</li>
+                            <li>Represents interaction effects</li>
+                            <li>Can involve factors and covariates</li>
                         </ul>
                     </div>
                 </div>
@@ -224,24 +224,24 @@ export const DesignMatrix: React.FC = () => {
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Collinearity Detection:</strong> Check
-                            pivot element c[k,k]
+                            <strong>Collinearity Detection:</strong> Check pivot
+                            element c[k,k]
                         </li>
                         <li>
-                            <strong>2. Pivot Validation:</strong> If |c[k,k]| ≤
-                            ε × |s_k|, parameter is collinear
+                            <strong>Pivot Validation:</strong> If |c[k,k]| ≤ ε ×
+                            |s_k|, parameter is collinear
                         </li>
                         <li>
-                            <strong>3. Sweep Operations:</strong> For each valid
+                            <strong>Sweep Operations:</strong> For each valid
                             row/column k
                         </li>
                         <li>
-                            <strong>4. Matrix Update:</strong> Apply sweep
+                            <strong>Matrix Update:</strong> Apply sweep
                             transformations
                         </li>
                         <li>
-                            <strong>5. Result Extraction:</strong> Extract G⁻¹,
-                            β̂, and S from swept matrix
+                            <strong>Result Extraction:</strong> Extract G⁻¹, β̂,
+                            and S from swept matrix
                         </li>
                     </ol>
                 </div>
@@ -309,12 +309,10 @@ export const DesignMatrix: React.FC = () => {
                         Collinearity Conditions:
                     </h4>
                     <ul className="text-sm text-red-700 space-y-1">
-                        <li>• |c[k,k]| ≤ ε × |s_k| (pivot too small)</li>
-                        <li>• Inconsistency in swept flags</li>
-                        <li>• Aliased parameters (cannot be estimated)</li>
-                        <li>
-                            • Parameter estimate = 0 for collinear parameters
-                        </li>
+                        <li>|c[k,k]| ≤ ε × |s_k| (pivot too small)</li>
+                        <li>Inconsistency in swept flags</li>
+                        <li>Aliased parameters (cannot be estimated)</li>
+                        <li>Parameter estimate = 0 for collinear parameters</li>
                     </ul>
                 </div>
 
@@ -390,12 +388,10 @@ export const DesignMatrix: React.FC = () => {
                             Advantages of Sweep Operations
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Automatic collinearity detection</li>
-                            <li>• Handling of singular matrices</li>
-                            <li>
-                                • Extraction of all statistics simultaneously
-                            </li>
-                            <li>• Numerically stable</li>
+                            <li>Automatic collinearity detection</li>
+                            <li>Handling of singular matrices</li>
+                            <li>Extraction of all statistics simultaneously</li>
+                            <li>Numerically stable</li>
                         </ul>
                     </div>
 
@@ -404,10 +400,10 @@ export const DesignMatrix: React.FC = () => {
                             When to Use
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Models with complex interactions</li>
-                            <li>• Data with collinearity</li>
-                            <li>• Models with covariates</li>
-                            <li>• Analysis requiring G⁻¹</li>
+                            <li>Models with complex interactions</li>
+                            <li>Data with collinearity</li>
+                            <li>Models with covariates</li>
+                            <li>Analysis requiring G⁻¹</li>
                         </ul>
                     </div>
                 </div>
@@ -415,44 +411,22 @@ export const DesignMatrix: React.FC = () => {
                 <h2 className="mt-8">References</h2>
 
                 <div className="bg-gray-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold mb-2">Algorithm AS 178:</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
                         <li>
-                            • Clarke, M.R.B. (1982) "Algorithm AS 178: The
+                            Clarke, M.R.B. (1982) "Algorithm AS 178: The
                             Gauss-Jordan Sweep Operator with Detection of
                             Collinearity"
                         </li>
                         <li>
-                            • Ridout, M.S. and Cobby, J.M. (1989) "Algorithm AS
+                            Ridout, M.S. and Cobby, J.M. (1989) "Algorithm AS
                             R78: A Remark on Algorithm AS 178"
                         </li>
                         <li>
-                            • Journal of the Royal Statistical Society. Series C
+                            Journal of the Royal Statistical Society. Series C
                             (Applied Statistics)
                         </li>
                     </ul>
                 </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>rust/src/stats/design_matrix.rs</code> - Design
-                        matrix and sweep implementation
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> -
-                        DesignMatrixInfo and SweptMatrixInfo structures
-                    </li>
-                    <li>
-                        <code>rust/src/stats/core.rs</code> - Helper calculation
-                        functions
-                    </li>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/
-                        </code>
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

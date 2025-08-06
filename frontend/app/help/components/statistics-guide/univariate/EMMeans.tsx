@@ -81,37 +81,35 @@ export const EMMeans: React.FC = () => {
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Design Preparation:</strong> Create
-                            design matrix, response vector, and weights
+                            <strong>Design Preparation:</strong> Create design
+                            matrix, response vector, and weights
                         </li>
                         <li>
-                            <strong>2. Extract Model Information:</strong> Get
+                            <strong>Extract Model Information:</strong> Get
                             parameter names and prepare covariate data
                         </li>
                         <li>
-                            <strong>3. Matrix Calculation:</strong> Create
+                            <strong>Matrix Calculation:</strong> Create
                             cross-product matrix (Z'Z)
                         </li>
                         <li>
-                            <strong>4. Model Solution:</strong> Perform SWEEP to
+                            <strong>Model Solution:</strong> Perform SWEEP to
                             obtain β̂, G⁻¹, and SSE
                         </li>
                         <li>
-                            <strong>5. Basic Statistics Calculation:</strong>{" "}
+                            <strong>Basic Statistics Calculation:</strong>{" "}
                             Calculate MSE and df_error
                         </li>
                         <li>
-                            <strong>6. Extract Factors:</strong> Identify all
+                            <strong>Extract Factors:</strong> Identify all
                             factors and their levels
                         </li>
                         <li>
-                            <strong>
-                                7. Iteration & EM Means Calculation:
-                            </strong>{" "}
+                            <strong>Iteration & EM Means Calculation:</strong>{" "}
                             For each requested effect
                         </li>
                         <li>
-                            <strong>8. Aggregate Results:</strong> Collect all
+                            <strong>Aggregate Results:</strong> Collect all
                             results into EM MeansResult structure
                         </li>
                     </ol>
@@ -149,26 +147,6 @@ export const EMMeans: React.FC = () => {
                         <div>
                             <strong>Interactions:</strong> Coefficient is
                             product of component coefficients
-                        </div>
-                    </div>
-                </div>
-
-                <h3>L-Vector Construction Example</h3>
-                <div className="bg-yellow-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-yellow-800 mb-2">
-                        For EM Mean: gender=Male, education=High School
-                    </h4>
-                    <div className="text-sm text-yellow-700 space-y-1">
-                        <div>• Intercept: 1.0</div>
-                        <div>• gender=Male: 1.0 (level matches)</div>
-                        <div>• gender=Female: 0.0 (level doesn't match)</div>
-                        <div>• education=High School: 1.0 (level matches)</div>
-                        <div>
-                            • education=Bachelor: 0.0 (level doesn't match)
-                        </div>
-                        <div>• covariates: covariate means</div>
-                        <div>
-                            • interactions: product of component coefficients
                         </div>
                     </div>
                 </div>
@@ -382,13 +360,13 @@ export const EMMeans: React.FC = () => {
                         L-Vector Construction for Grand Mean:
                     </h4>
                     <div className="text-sm text-yellow-700 space-y-1">
-                        <div>• Intercept: 1.0</div>
-                        <div>• Covariates: covariate means</div>
+                        <div>Intercept: 1.0</div>
+                        <div>Covariates: covariate means</div>
                         <div>
-                            • Factors: 1.0 / number of levels (for averaging)
+                            Factors: 1.0 / number of levels (for averaging)
                         </div>
                         <div>
-                            • Interactions: product of component coefficients
+                            Interactions: product of component coefficients
                         </div>
                     </div>
                 </div>
@@ -407,12 +385,12 @@ export const EMMeans: React.FC = () => {
                     </h4>
                     <ul className="text-sm text-red-700 space-y-1">
                         <li>
-                            • Level combinations not present in data (missing
+                            Level combinations not present in data (missing
                             cells)
                         </li>
-                        <li>• Unbalanced design with empty cells</li>
-                        <li>• Overparameterized model</li>
-                        <li>• Covariates with invalid values</li>
+                        <li>Unbalanced design with empty cells</li>
+                        <li>Overparameterized model</li>
+                        <li>Covariates with invalid values</li>
                     </ul>
                 </div>
 
@@ -424,9 +402,9 @@ export const EMMeans: React.FC = () => {
                             Significant EM Mean
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• CI does not contain 0</li>
-                            <li>• SE relatively small</li>
-                            <li>• Stable estimate</li>
+                            <li>CI does not contain 0</li>
+                            <li>SE relatively small</li>
+                            <li>Stable estimate</li>
                         </ul>
                     </div>
 
@@ -435,9 +413,9 @@ export const EMMeans: React.FC = () => {
                             Non-Estimable EM Mean
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Displayed as NaN</li>
-                            <li>• L-vector all zeros</li>
-                            <li>• Level combination not in data</li>
+                            <li>Displayed as NaN</li>
+                            <li>L-vector all zeros</li>
+                            <li>Level combination not in data</li>
                         </ul>
                     </div>
 
@@ -446,9 +424,9 @@ export const EMMeans: React.FC = () => {
                             Pairwise Comparison
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• p-value {"<"} 0.05: significant</li>
-                            <li>• CI does not contain 0</li>
-                            <li>• Practically important difference</li>
+                            <li>p-value {"<"} 0.05: significant</li>
+                            <li>CI does not contain 0</li>
+                            <li>Practically important difference</li>
                         </ul>
                     </div>
 
@@ -457,9 +435,9 @@ export const EMMeans: React.FC = () => {
                             Univariate Test
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• F-value {">"} F_critical</li>
-                            <li>• p-value {"<"} 0.05</li>
-                            <li>• η²ₚ shows effect size</li>
+                            <li>F-value {">"} F_critical</li>
+                            <li>p-value {"<"} 0.05</li>
+                            <li>η²ₚ shows effect size</li>
                         </ul>
                     </div>
                 </div>
@@ -470,43 +448,27 @@ export const EMMeans: React.FC = () => {
                     <h4 className="font-bold mb-2">When to Use EM Means:</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
                         <li>
-                            • <strong>Unbalanced design:</strong> When number of
+                            <strong>Unbalanced design:</strong> When number of
                             observations differs across cells
                         </li>
                         <li>
-                            • <strong>Models with covariates:</strong> To
-                            control for continuous variable effects
+                            <strong>Models with covariates:</strong> To control
+                            for continuous variable effects
                         </li>
                         <li>
-                            • <strong>Significant interactions:</strong> To
+                            <strong>Significant interactions:</strong> To
                             understand main effects in interaction context
                         </li>
                         <li>
-                            • <strong>Missing cells:</strong> When some level
+                            <strong>Missing cells:</strong> When some level
                             combinations are not present in data
                         </li>
                         <li>
-                            • <strong>Fair comparisons:</strong> To compare
-                            groups in a fair manner
+                            <strong>Fair comparisons:</strong> To compare groups
+                            in a fair manner
                         </li>
                     </ul>
                 </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>rust/src/stats/EM Means.rs</code> - EM Means
-                        calculation implementation
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> - EM Means result
-                        structures
-                    </li>
-                    <li>
-                        <code>rust/src/stats/core.rs</code> - Helper calculation
-                        functions
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

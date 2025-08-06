@@ -51,10 +51,10 @@ export const KMeansClustering: React.FC = () => {
                             K-Means Objectives
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Minimize within-cluster variance</li>
-                            <li>• Maximize between-cluster separation</li>
-                            <li>• Group similar data</li>
-                            <li>• Discover hidden patterns</li>
+                            <li>Minimize within-cluster variance</li>
+                            <li>Maximize between-cluster separation</li>
+                            <li>Group similar data</li>
+                            <li>Discover hidden patterns</li>
                         </ul>
                     </div>
 
@@ -63,10 +63,10 @@ export const KMeansClustering: React.FC = () => {
                             Characteristics
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Iterative algorithm</li>
-                            <li>• Based on Euclidean distance</li>
-                            <li>• Converges to local minimum</li>
-                            <li>• Sensitive to initialization</li>
+                            <li>Iterative algorithm</li>
+                            <li>Based on Euclidean distance</li>
+                            <li>Converges to local minimum</li>
+                            <li>Sensitive to initialization</li>
                         </ul>
                     </div>
                 </div>
@@ -82,20 +82,20 @@ export const KMeansClustering: React.FC = () => {
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Initialize Cluster Centers:</strong>{" "}
+                            <strong>Initialize Cluster Centers:</strong>{" "}
                             Determine initial positions of cluster centers
                         </li>
                         <li>
-                            <strong>2. Calculate Convergence Threshold:</strong>{" "}
+                            <strong>Calculate Convergence Threshold:</strong>{" "}
                             Based on minimum distance between initial centers
                         </li>
                         <li>
-                            <strong>3. Iterate Assignment & Update:</strong>{" "}
-                            Assign points to nearest cluster and update centers
+                            <strong>Iterate Assignment & Update:</strong> Assign
+                            points to nearest cluster and update centers
                         </li>
                         <li>
-                            <strong>4. Check Convergence:</strong> Compare
-                            center position changes with threshold
+                            <strong>Check Convergence:</strong> Compare center
+                            position changes with threshold
                         </li>
                     </ol>
                 </div>
@@ -111,10 +111,10 @@ export const KMeansClustering: React.FC = () => {
                             Random Initialization
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Select K points randomly</li>
-                            <li>• Simple and fast</li>
-                            <li>• Inconsistent results</li>
-                            <li>• Can get trapped in local minima</li>
+                            <li>Select K points randomly</li>
+                            <li>Simple and fast</li>
+                            <li>Inconsistent results</li>
+                            <li>Can get trapped in local minima</li>
                         </ul>
                     </div>
 
@@ -123,10 +123,10 @@ export const KMeansClustering: React.FC = () => {
                             K-Means++
                         </h4>
                         <ul className="text-sm text-purple-700 space-y-1">
-                            <li>• Probabilistic selection</li>
-                            <li>• Initial centers more separated</li>
-                            <li>• Faster convergence</li>
-                            <li>• More consistent results</li>
+                            <li>Probabilistic selection</li>
+                            <li>Initial centers more separated</li>
+                            <li>Faster convergence</li>
+                            <li>More consistent results</li>
                         </ul>
                     </div>
                 </div>
@@ -185,10 +185,10 @@ export const KMeansClustering: React.FC = () => {
                             Running Means
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Update centers incrementally</li>
-                            <li>• μ_new = μ_old + (x - μ_old) / n</li>
-                            <li>• More memory efficient</li>
-                            <li>• Suitable for large datasets</li>
+                            <li>Update centers incrementally</li>
+                            <li>μ_new = μ_old + (x - μ_old) / n</li>
+                            <li>More memory efficient</li>
+                            <li>Suitable for large datasets</li>
                         </ul>
                     </div>
 
@@ -197,10 +197,10 @@ export const KMeansClustering: React.FC = () => {
                             Batch Update
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Update centers after all assignments</li>
-                            <li>• μ = (1/|C|) x Σ_{"x∈C"} x</li>
-                            <li>• More accurate</li>
-                            <li>• Standard K-Means</li>
+                            <li>Update centers after all assignments</li>
+                            <li>μ = (1/|C|) x Σ_{"x∈C"} x</li>
+                            <li>More accurate</li>
+                            <li>Standard K-Means</li>
                         </ul>
                     </div>
                 </div>
@@ -226,12 +226,12 @@ export const KMeansClustering: React.FC = () => {
                         Algorithm stops when:
                     </h4>
                     <ul className="text-sm text-yellow-700 space-y-1">
-                        <li>• max_change ≤ threshold (convergence achieved)</li>
+                        <li>max_change ≤ threshold (convergence achieved)</li>
                         <li>
-                            • iterations ≥ max_iterations (maximum iterations
+                            iterations ≥ max_iterations (maximum iterations
                             reached)
                         </li>
-                        <li>• No assignment changes (perfect convergence)</li>
+                        <li>No assignment changes (perfect convergence)</li>
                     </ul>
                 </div>
 
@@ -266,62 +266,32 @@ export const KMeansClustering: React.FC = () => {
                     </h4>
                     <ul className="text-sm text-blue-700 space-y-1">
                         <li>
-                            • <strong>D[i][j] = 0:</strong> i = j (distance to
+                            <strong>D[i][j] = 0:</strong> i = j (distance to
                             self)
                         </li>
                         <li>
-                            • <strong>D[i][j] small:</strong> Clusters i and j
-                            are close
+                            <strong>D[i][j] small:</strong> Clusters i and j are
+                            close
                         </li>
                         <li>
-                            • <strong>D[i][j] large:</strong> Clusters i and j
-                            are far apart
+                            <strong>D[i][j] large:</strong> Clusters i and j are
+                            far apart
                         </li>
                         <li>
-                            • <strong>D[i][j] = D[j][i]:</strong> Symmetric
-                            matrix
+                            <strong>D[i][j] = D[j][i]:</strong> Symmetric matrix
                         </li>
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Best Practices</h2>
-
-                <div className="bg-yellow-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-yellow-800 mb-2">
-                        Tips for optimal results:
-                    </h4>
-                    <ul className="text-sm text-yellow-700 space-y-2">
+                <h2 className="mt-8">References</h2>
+                <div className="bg-gray-50 p-4 rounded-lg my-4">
+                    <ul>
                         <li>
-                            <strong>1. Data Normalization:</strong> Standardize
-                            variables to avoid scale bias
-                        </li>
-                        <li>
-                            <strong>2. Multiple Runs:</strong> Run algorithm
-                            multiple times with different initializations
-                        </li>
-                        <li>
-                            <strong>3. Elbow Method:</strong> Use to determine
-                            optimal K
-                        </li>
-                        <li>
-                            <strong>4. Silhouette Validation:</strong> Evaluate
-                            clustering quality
-                        </li>
-                        <li>
-                            <strong>5. Domain Interpretation:</strong> Consider
-                            business context
+                            Hartigan, J. A. (1975). Clustering Algorithms. In
+                            John Wiley & Sons. John Wiley & Sons.
                         </li>
                     </ul>
                 </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/Classify/k-means-cluster/
-                        </code>
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

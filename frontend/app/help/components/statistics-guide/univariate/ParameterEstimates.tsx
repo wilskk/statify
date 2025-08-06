@@ -48,10 +48,10 @@ export const ParameterEstimates: React.FC = () => {
                             Parameter Components
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Intercept (β₀)</li>
-                            <li>• Factor coefficients (αᵢ, βⱼ)</li>
-                            <li>• Covariate coefficients (γ)</li>
-                            <li>• Interaction coefficients (αβᵢⱼ)</li>
+                            <li>Intercept (β₀)</li>
+                            <li>Factor coefficients (αᵢ, βⱼ)</li>
+                            <li>Covariate coefficients (γ)</li>
+                            <li>Interaction coefficients (αβᵢⱼ)</li>
                         </ul>
                     </div>
 
@@ -60,10 +60,10 @@ export const ParameterEstimates: React.FC = () => {
                             Interpretation
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Magnitude of predictor effect</li>
-                            <li>• Direction of relationship</li>
-                            <li>• Statistical significance</li>
-                            <li>• Standard error</li>
+                            <li>Magnitude of predictor effect</li>
+                            <li>Direction of relationship</li>
+                            <li>Statistical significance</li>
+                            <li>Standard error</li>
                         </ul>
                     </div>
                 </div>
@@ -195,9 +195,9 @@ export const ParameterEstimates: React.FC = () => {
                             Positive Coefficient
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Increase in predictor → increase in Y</li>
-                            <li>• Positive effect on dependent variable</li>
-                            <li>• Same direction relationship</li>
+                            <li>Increase in predictor → increase in Y</li>
+                            <li>Positive effect on dependent variable</li>
+                            <li>Same direction relationship</li>
                         </ul>
                     </div>
 
@@ -206,9 +206,9 @@ export const ParameterEstimates: React.FC = () => {
                             Negative Coefficient
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Increase in predictor → decrease in Y</li>
-                            <li>• Negative effect on dependent variable</li>
-                            <li>• Opposite direction relationship</li>
+                            <li>Increase in predictor → decrease in Y</li>
+                            <li>Negative effect on dependent variable</li>
+                            <li>Opposite direction relationship</li>
                         </ul>
                     </div>
                 </div>
@@ -219,12 +219,12 @@ export const ParameterEstimates: React.FC = () => {
                         For factor with k levels:
                     </p>
                     <ul className="text-sm text-gray-600 mt-1">
-                        <li>• Level 1: baseline (no coefficient)</li>
+                        <li>Level 1: baseline (no coefficient)</li>
                         <li>
-                            • Level i: coefficient αᵢ shows difference from
+                            Level i: coefficient αᵢ shows difference from
                             baseline
                         </li>
-                        <li>• Interpretation: Y for level i = baseline + αᵢ</li>
+                        <li>Interpretation: Y for level i = baseline + αᵢ</li>
                     </ul>
                 </div>
 
@@ -235,15 +235,14 @@ export const ParameterEstimates: React.FC = () => {
                     </p>
                     <ul className="text-sm text-gray-600 mt-1">
                         <li>
-                            • Coefficient γ shows change in Y per unit change in
-                            X
+                            Coefficient γ shows change in Y per unit change in X
                         </li>
                         <li>
-                            • Interpretation: 1 unit increase in X → γ unit
+                            Interpretation: 1 unit increase in X → γ unit
                             increase in Y
                         </li>
                         <li>
-                            • Controls for effects of other variables in model
+                            Controls for effects of other variables in model
                         </li>
                     </ul>
                 </div>
@@ -297,22 +296,6 @@ export const ParameterEstimates: React.FC = () => {
                         </table>
                     </div>
                 </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>rust/src/wasm/function.rs</code> - Function
-                        calculate_parameter_estimates
-                    </li>
-                    <li>
-                        <code>rust/src/stats/core.rs</code> - Parameter
-                        calculation implementation
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> - Parameter
-                        estimates result structures
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

@@ -365,14 +365,28 @@ export const UnivariateGuide: React.FC = () => {
                     </ul>
                 </div>
 
-                <h2 className="mt-8">Related Files</h2>
+                <h2 className="mt-8">Related Topic</h2>
                 <ul>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/
-                        </code>
-                    </li>
+                    <li>GLM Univariate: Design Matrix</li>
+                    <li>GLM Univariate: Sum of Squares</li>
+                    <li>GLM Univariate: Parameter Estimates</li>
+                    <li>GLM Univariate: Contrast Factors</li>
+                    <li>GLM Univariate: Heteroscedasticity Tests</li>
+                    <li>GLM Univariate: Levene Tests</li>
+                    <li>GLM Univariate: EM Means</li>
+                    <li>GLM Univariate: Lack of Fit Tests</li>
                 </ul>
+
+                <h2 className="mt-8">Reference</h2>
+                <div className="bg-gray-50 p-4 rounded-lg my-4">
+                    <ul>
+                        <li>
+                            Sarty, G. E. (2022). Introduction to Applied
+                            Statistics for Psychology Students. University of
+                            Saskatchewan.
+                        </li>
+                    </ul>
+                </div>
             </div>
         </HelpContentWrapper>
     );
