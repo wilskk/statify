@@ -105,8 +105,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   const parsedData = useMemo(
     () => (typeof data === "string" ? JSON.parse(data) : data),
     [data]
-  );
-
+    );
   console.log("parsedData", parsedData);
   // Helper function to convert string axisScaleOptions to number
   const convertAxisScaleOptions = (options?: {

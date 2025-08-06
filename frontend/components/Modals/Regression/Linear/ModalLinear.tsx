@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { DialogFooter } from '@/components/ui/dialog';
 import {
@@ -34,10 +35,13 @@ import OptionsLinear, { OptionsLinearParams } from './OptionsLinear';
 import VariablesLinearTab from './VariablesLinearTab';
 import AssumptionTest, { AssumptionTestParams } from './AssumptionTest';
 import { Variable } from '@/types/Variable';
-import { v4 as uuidv4 } from 'uuid';
 import { CellUpdate } from '@/stores/useDataStore';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
+import { Loader2, HelpCircle } from "lucide-react";
+import { TourPopup, ActiveElementHighlight } from '@/components/Common/TourComponents';
+import { useTourGuide, TabControlProps } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
+import { baseTourSteps } from './hooks/tourConfig';
+import { AnimatePresence } from 'framer-motion';
 
 interface ModalLinearProps {
   onClose: () => void;
@@ -115,7 +119,25 @@ const defaultAssumptionTestParams: AssumptionTestParams = {
 
 const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dialog" }) => {
   // State variables - menggunakan struktur versi baru
+  const [activeTab, setActiveTab] = useState<'variables' | 'statistics' | 'plots' | 'save' | 'options' | 'assumption'>('variables');
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+
+  // -------------------- Help Tour --------------------
+  const tabControl = React.useMemo<TabControlProps>(() => ({
+    setActiveTab: (tab: string) => setActiveTab(tab as any),
+    currentActiveTab: activeTab
+  }), [activeTab]);
+
+  const {
+    tourActive,
+    currentStep,
+    tourSteps,
+    currentTargetElement,
+    startTour,
+    nextStep,
+    prevStep,
+    endTour
+  } = useTourGuide(baseTourSteps, containerType, tabControl);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
   const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
@@ -360,6 +382,171 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       // Array to hold all statistic-generating promises
       const statisticPromises: Promise<any>[] = [];
 
+      // Declare filtered data arrays ahead so helper functions can reference them
+      let filteredDependentData: number[] = [];
+      let filteredIndependentData: number[][] = [];
+
+      // Flags indicating whether user ticked SAVE checkboxes for predicted and/or residual variables.
+      const predictedSaveSelected =
+        saveParams.predictedUnstandardized ||
+        saveParams.predictedStandardized ||
+        saveParams.predictedAdjusted ||
+        saveParams.predictedSE;
+
+      const residualSaveSelected =
+        saveParams.residualUnstandardized ||
+        saveParams.residualStandardized ||
+        saveParams.residualStudentized ||
+        saveParams.residualDeleted ||
+        saveParams.residualStudentizedDeleted;
+
+      // Will hold the residuals processing function, defined later.
+      let processResiduals: () => Promise<void>;
+
+      /* --------------------------------------------------------------------------------
+         Helper functions so we can reuse the same worker-push code multiple times and
+         keep the correct left-to-right order requested by the user.
+      ---------------------------------------------------------------------------------*/
+
+      // Flags to prevent duplicate queuing of shared workers
+      let modelSummaryQueued = false;
+      let variablesQueued = false;
+      let anovaQueued = false;
+      let coefficientsQueued = false;
+
+      //  H1. Variables Entered/Removed (variables.js)
+      const pushVariablesWorker = () => {
+        if (variablesQueued) return;
+        variablesQueued = true;
+        statisticPromises.push(new Promise((resolve, reject) => {
+          const variablesWorker = new Worker('/workers/Regression/variables.js');
+          variablesWorker.postMessage({
+            dependent: filteredDependentData,
+            independent: filteredIndependentData,
+            dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
+            independentVariableInfos: independentVariableInfos
+          });
+
+          variablesWorker.onmessage = async (e: MessageEvent) => {
+            const variablesResults = e.data;
+            await addStatistic(analyticId, {
+              title: 'Variables Entered/Removed',
+              output_data: JSON.stringify(variablesResults),
+              components: 'VariablesEnteredRemoved',
+              description: 'Variables entered/removed in the regression analysis'
+            });
+            variablesWorker.terminate();
+            resolve(true);
+          };
+
+          variablesWorker.onerror = (err: ErrorEvent) => {
+            variablesWorker.terminate();
+            reject(err);
+          };
+        }));
+      };
+
+      //  H2. Model Summary (model_summary.js)
+      const pushModelSummaryWorker = () => {
+        if (modelSummaryQueued) return; // prevent duplicate queueing
+        modelSummaryQueued = true;
+        statisticPromises.push(new Promise((resolve, reject) => {
+          const modelSummaryWorker = new Worker('/workers/Regression/model_summary.js');
+          modelSummaryWorker.postMessage({
+            dependent: filteredDependentData,
+            independent: filteredIndependentData
+          });
+
+          modelSummaryWorker.onmessage = async (e: MessageEvent) => {
+            const modelSummaryResults = e.data;
+            await addStatistic(analyticId, {
+              title: 'Model Summary',
+              output_data: JSON.stringify(modelSummaryResults),
+              components: 'ModelSummary',
+              description: 'Summary of the regression model'
+            });
+            modelSummaryWorker.terminate();
+            resolve(true);
+          };
+
+          modelSummaryWorker.onerror = (err: ErrorEvent) => {
+            modelSummaryWorker.terminate();
+            reject(err);
+          };
+        }));
+      };
+
+      //  H3. ANOVA (anova.js)
+      const pushAnovaWorker = () => {
+        if (anovaQueued) return;
+        anovaQueued = true;
+        statisticPromises.push(new Promise((resolve, reject) => {
+          const anovaWorker = new Worker('/workers/Regression/anova.js');
+          anovaWorker.postMessage({
+            dependentData: filteredDependentData,
+            independentData: filteredIndependentData
+          });
+
+          anovaWorker.onmessage = async (e: MessageEvent) => {
+            const anovaStat = e.data;
+            if (anovaStat.error) {
+              anovaWorker.terminate();
+              reject(new Error(anovaStat.error));
+              return;
+            }
+            await addStatistic(analyticId, {
+              title: anovaStat.title,
+              output_data: anovaStat.output_data,
+              components: anovaStat.components,
+              description: 'ANOVA analysis results'
+            });
+            anovaWorker.terminate();
+            resolve(true);
+          };
+
+          anovaWorker.onerror = (err: ErrorEvent) => {
+            anovaWorker.terminate();
+            reject(err);
+          };
+        }));
+      };
+
+      //  H4. Coefficients (coefficients.js)
+      const pushCoefficientsWorker = () => {
+        if (coefficientsQueued) return;
+        coefficientsQueued = true;
+        statisticPromises.push(new Promise((resolve, reject) => {
+          const coefficientsWorker = new Worker('/workers/Regression/coefficients.js');
+          coefficientsWorker.postMessage({
+            dependentData: filteredDependentData,
+            independentData: filteredIndependentData,
+            independentVariableInfos: independentVariableInfos
+          });
+
+          coefficientsWorker.onmessage = async (e: MessageEvent) => {
+            const { success, result, error } = e.data;
+            if (success) {
+              await addStatistic(analyticId, {
+                title: 'Coefficients',
+                output_data: JSON.stringify(result),
+                components: 'Coefficients',
+                description: 'Coefficients of the regression model'
+              });
+              coefficientsWorker.terminate();
+              resolve(true);
+            } else {
+              coefficientsWorker.terminate();
+              reject(new Error(error));
+            }
+          };
+
+          coefficientsWorker.onerror = (err: ErrorEvent) => {
+            coefficientsWorker.terminate();
+            reject(err);
+          };
+        }));
+      };
+
       // Persiapkan data dan variabel
       const allVariables = variablesFromStore;
       const dataRows = data;
@@ -382,9 +569,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       const independentData = indepVarIndices.map(index => dataRows.map(row => parseFloat(String(row[index]))));
       console.log("[Analyze] Data awal - Dependent:", dependentData);
       console.log("[Analyze] Data awal - Independent (per variable):", independentData);
-
-      let filteredDependentData: number[];
-      let filteredIndependentData: number[][];
 
       if (optionsParams.replaceWithMean) {
         console.log("[Analyze] Missing value strategy: Replace with mean.");
@@ -482,7 +666,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                 const predictedValues = Array.isArray(response) ? response : [];
                 console.log("[Analyze] Predicted values array:", predictedValues);
                 
-                const existingVars = variablesFromStore.map(v => v.name);
+                const existingVars = useVariableStore.getState().variables.map(v => v.name);
                 
                 const findNextNumber = (prefix: string) => {
                   const pattern = new RegExp(`^${prefix}_(\\d+)$`);
@@ -499,84 +683,116 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                   return maxNum + 1;
                 };
                 
-                const newVariables = [];
+                // 1. Prepare metadata and values for each requested predicted type
+                interface NewPredictedVar { meta: Partial<Variable>; values: number[]; }
+
+                const newPredictedVars: NewPredictedVar[] = [];
 
                 if (saveParams.predictedUnstandardized) {
                   const preNumber = findNextNumber("PRE");
-                  newVariables.push({
-                    name: `PRE_${preNumber}`,
-                    label: `Predicted Values (Unstandardized) - ${selectedDependentVariable.name}`,
-                    values: predictedValues.map(v => v.unstandardized)
-                  });
-                }
-                
-                if (saveParams.predictedAdjusted) {
-                  const adjNumber = findNextNumber("ADJ");
-                  newVariables.push({
-                    name: `ADJ_${adjNumber}`,
-                    label: `Predicted Values (Adjusted) - ${selectedDependentVariable.name}`,
-                    values: predictedValues.map(v => v.adjusted)
+                  newPredictedVars.push({
+                    meta: {
+                      name: `PRE_${preNumber}`,
+                      label: `Predicted Values (Unstandardized) - ${selectedDependentVariable.name}`,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                    },
+                    values: predictedValues.map(v => v.unstandardized),
                   });
                 }
 
                 if (saveParams.predictedStandardized) {
                   const zprNumber = findNextNumber("ZPR");
-                  newVariables.push({
-                    name: `ZPR_${zprNumber}`,
-                    label: `Predicted Values (Standardized) - ${selectedDependentVariable.name}`,
-                    values: predictedValues.map(v => v.standardized)
+                  newPredictedVars.push({
+                    meta: {
+                      name: `ZPR_${zprNumber}`,
+                      label: `Predicted Values (Standardized) - ${selectedDependentVariable.name}`,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                    },
+                    values: predictedValues.map(v => v.standardized),
+                  });
+                }
+
+                if (saveParams.predictedAdjusted) {
+                  const adjNumber = findNextNumber("ADJ");
+                  newPredictedVars.push({
+                    meta: {
+                      name: `ADJ_${adjNumber}`,
+                      label: `Predicted Values (Adjusted) - ${selectedDependentVariable.name}`,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                    },
+                    values: predictedValues.map(v => v.adjusted),
                   });
                 }
 
                 if (saveParams.predictedSE) {
                   const sepNumber = findNextNumber("SEP");
-                  newVariables.push({
-                    name: `SEP_${sepNumber}`,
-                    label: `S.E. of mean predictions - ${selectedDependentVariable.name}`,
-                    values: predictedValues.map(v => v.se)
+                  newPredictedVars.push({
+                    meta: {
+                      name: `SEP_${sepNumber}`,
+                      label: `S.E. of mean predictions - ${selectedDependentVariable.name}`,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                    },
+                    values: predictedValues.map(v => v.se),
                   });
                 }
 
-                // Add each variable to the store
-                for (const newVar of newVariables) {
-                  const variable: Variable = {
-                    tempId: uuidv4(),
-                    columnIndex: variablesFromStore.length + newVariables.indexOf(newVar),
-                    name: newVar.name,
-                    type: "NUMERIC",
-                    width: 12,
-                    decimals: 5,
-                    label: newVar.label,
-                    values: [],
-                    missing: null,
-                    columns: 64,
-                    align: "right",
-                    measure: "scale",
-                    role: "input"
-                  };
-                  
-                  console.log("[Analyze] Created new variable:", variable);
-                  await useVariableStore.getState().addVariable(variable);
+                if (newPredictedVars.length === 0) {
+                  console.warn("[Analyze] No predicted variables selected, skipping variable creation.");
+                } else {
+                  // 2. Convert to structures expected by addVariables and aggregate cell updates
+                  const currentVarCount = useVariableStore.getState().variables.length;
+                  const varsForStore: Partial<Variable>[] = [];
+                  const aggregatedUpdates: CellUpdate[] = [];
 
-                  // Update the data store with the predicted values
-                  const updates: CellUpdate[] = newVar.values.map((value: number, rowIndex: number) => ({
-                    row: rowIndex,
-                    col: variable.columnIndex,
-                    value: Number(value.toFixed(5))
-                  }));
-                  
-                  console.log("[Analyze] Updating data store for", variable.name);
-                  await useDataStore.getState().updateCells(updates);
+                  newPredictedVars.forEach((nv, idx) => {
+                    const columnIndex = currentVarCount + idx;
+                    varsForStore.push({
+                      ...nv.meta,
+                      columnIndex,
+                    });
+
+                    nv.values.forEach((value, rowIndex) => {
+                      aggregatedUpdates.push({
+                        row: rowIndex,
+                        col: columnIndex,
+                        value: Number(value.toFixed(5)),
+                      });
+                    });
+                  });
+
+                  // 3. Add all variables in a single operation and apply updates
+                  await useVariableStore.getState().addVariables(varsForStore, aggregatedUpdates);
+                  console.log("[Analyze] Predicted variables added:", varsForStore.map(v => v.name));
+
+                  // After predicted variables are safely added, run residuals
+                  // if the user requested them.
+                  if (residualSaveSelected) {
+                    await processResiduals();
+                  }
                 }
 
-                console.log("[Analyze] All selected predicted values saved as new variables");
               } catch (error) {
                 console.error("[Analyze] Error saving predicted values:", error);
                 alert("Failed to save predicted values as new variables");
               }
             }
             predictedValuesWorker.terminate();
-            console.log("[Analyze] Worker terminated");
+            
+            // Resolve helper promise in case someone wants to await completion
+            // (currently not used but kept for future sequencing needs)
+            // resolvePredicted?.();
           };
 
           predictedValuesWorker.onerror = (error: ErrorEvent) => {
@@ -597,10 +813,18 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       }
       // End of SaveLinear options processing example
 
-      // Process residuals options
-      if (saveParams.residualUnstandardized || saveParams.residualStandardized || 
-          saveParams.residualStudentized || saveParams.residualDeleted || 
-          saveParams.residualStudentizedDeleted) {
+      // ------------------------------------------------------------------
+      // Residuals processing is wrapped into an async helper so we can call
+      // it after predicted values finish (to prevent column index overlap).
+      // ------------------------------------------------------------------
+      processResiduals = async () => {
+        if (!(saveParams.residualUnstandardized || saveParams.residualStandardized || 
+              saveParams.residualStudentized || saveParams.residualDeleted || 
+              saveParams.residualStudentizedDeleted)) {
+          return; // nothing to do
+        }
+
+        // ----- (original block content begins) -----
         if (regressionResults && regressionResults.coefficients) {
           console.log("[Analyze] Starting Residuals calculation...");
           console.log("[Analyze] Regression results:", regressionResults);
@@ -631,143 +855,151 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependentDataLength: workerData.dependentData.length
           });
           
-          residualsWorker.postMessage(workerData);
-          console.log("[Analyze] Data sent to residuals worker");
+          return new Promise<void>((resolve, reject) => {
+            residualsWorker.postMessage(workerData);
 
-          residualsWorker.onmessage = async (e: MessageEvent) => {
-            console.log("[Analyze] Received response from residuals worker:", e.data);
-            const response = e.data;
-            
-            if (response && response.error) {
-              console.error("[Analyze] Residuals worker error:", response.error);
-              alert(`Error in Residuals worker: ${response.error}`);
-            } else {
-              console.log("[Analyze] Processing residuals worker response...");
+            residualsWorker.onmessage = async (e: MessageEvent) => {
+              console.log("[Analyze] Received response from residuals worker:", e.data);
+              const response = e.data;
               
-              try {
-                // Pastikan response adalah array objek dengan nilai residual
-                const residualValues = Array.isArray(response) ? response : [];
-                console.log("[Analyze] Residual values array:", residualValues);
+              if (response && response.error) {
+                console.error("[Analyze] Residuals worker error:", response.error);
+                alert(`Error in Residuals worker: ${response.error}`);
+              } else {
+                console.log("[Analyze] Processing residuals worker response...");
                 
-                // Get the next save sequence number for each residual type
-                const existingVars = variablesFromStore.map(v => v.name);
-                
-                // Find the highest number for each prefix
-                const findNextNumber = (prefix: string) => {
-                  const pattern = new RegExp(`^${prefix}_(\\d+)$`);
-                  let maxNum = 0;
+                try {
+                  // Pastikan response adalah array objek dengan nilai residual
+                  const residualValues = Array.isArray(response) ? response : [];
+                  console.log("[Analyze] Residual values array:", residualValues);
                   
-                  existingVars.forEach(name => {
-                    const match = name.match(pattern);
-                    if (match) {
-                      const num = parseInt(match[1], 10);
-                      if (num > maxNum) maxNum = num;
-                    }
-                  });
+                  // Get the next save sequence number for each residual type
+                  const existingVars = useVariableStore.getState().variables.map(v => v.name);
                   
-                  return maxNum + 1;
-                };
-                
-                // Create new variables for each type of residual
-                const newVariables = [];
-                
-                if (saveParams.residualUnstandardized) {
-                  const resNumber = findNextNumber("RES");
-                  newVariables.push({
-                    name: `RES_${resNumber}`,
-                    label: `Residuals (Unstandardized) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.unstandardized)
-                  });
-                }
-                
-                if (saveParams.residualStandardized) {
-                  const zresNumber = findNextNumber("ZRE");
-                  newVariables.push({
-                    name: `ZRE_${zresNumber}`,
-                    label: `Residuals (Standardized) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.standardized)
-                  });
-                }
-                
-                if (saveParams.residualStudentized) {
-                  const sreNumber = findNextNumber("SRE");
-                  newVariables.push({
-                    name: `SRE_${sreNumber}`,
-                    label: `Residuals (Studentized) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.studentized)
-                  });
-                }
-                
-                if (saveParams.residualDeleted) {
-                  const dreNumber = findNextNumber("DRE");
-                  newVariables.push({
-                    name: `DRE_${dreNumber}`,
-                    label: `Residuals (Deleted) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.deleted)
-                  });
-                }
-                
-                if (saveParams.residualStudentizedDeleted) {
-                  const sdreNumber = findNextNumber("SDR");
-                  newVariables.push({
-                    name: `SDR_${sdreNumber}`,
-                    label: `Residuals (Studentized Deleted) - ${selectedDependentVariable.name}`,
-                    values: residualValues.map(v => v.studentizedDeleted)
-                  });
-                }
-
-                console.log("[Analyze] New residual variables to create:", newVariables);
-
-                // Add each variable to the store
-                for (const newVar of newVariables) {
-                  const variable: Variable = {
-                    tempId: uuidv4(),
-                    columnIndex: variablesFromStore.length + newVariables.indexOf(newVar),
-                    name: newVar.name,
-                    type: "NUMERIC",
-                    width: 12,
-                    decimals: 5,
-                    label: newVar.label,
-                    values: [],
-                    missing: null,
-                    columns: 64,
-                    align: "right",
-                    measure: "scale",
-                    role: "input"
+                  // Find the highest number for each prefix
+                  const findNextNumber = (prefix: string) => {
+                    const pattern = new RegExp(`^${prefix}_(\\d+)$`);
+                    let maxNum = 0;
+                    
+                    existingVars.forEach(name => {
+                      const match = name.match(pattern);
+                      if (match) {
+                        const num = parseInt(match[1], 10);
+                        if (num > maxNum) maxNum = num;
+                      }
+                    });
+                    
+                    return maxNum + 1;
                   };
                   
-                  console.log("[Analyze] Created new residual variable:", variable);
-                  await useVariableStore.getState().addVariable(variable);
-
-                  // Update the data store with the residual values
-                  const updates: CellUpdate[] = newVar.values.map((value: number, rowIndex: number) => ({
-                    row: rowIndex,
-                    col: variable.columnIndex,
-                    value: Number(value.toFixed(5))
-                  }));
+                  // Create new variables for each type of residual
+                  const newVariables = [];
                   
-                  console.log("[Analyze] Updating data store for", variable.name);
-                  await useDataStore.getState().updateCells(updates);
+                  if (saveParams.residualUnstandardized) {
+                    const resNumber = findNextNumber("RES");
+                    newVariables.push({
+                      name: `RES_${resNumber}`,
+                      label: `Residuals (Unstandardized) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.unstandardized)
+                    });
+                  }
+                  
+                  if (saveParams.residualStandardized) {
+                    const zresNumber = findNextNumber("ZRE");
+                    newVariables.push({
+                      name: `ZRE_${zresNumber}`,
+                      label: `Residuals (Standardized) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.standardized)
+                    });
+                  }
+                  
+                  if (saveParams.residualStudentized) {
+                    const sreNumber = findNextNumber("SRE");
+                    newVariables.push({
+                      name: `SRE_${sreNumber}`,
+                      label: `Residuals (Studentized) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.studentized)
+                    });
+                  }
+                  
+                  if (saveParams.residualDeleted) {
+                    const dreNumber = findNextNumber("DRE");
+                    newVariables.push({
+                      name: `DRE_${dreNumber}`,
+                      label: `Residuals (Deleted) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.deleted)
+                    });
+                  }
+                  
+                  if (saveParams.residualStudentizedDeleted) {
+                    const sdreNumber = findNextNumber("SDR");
+                    newVariables.push({
+                      name: `SDR_${sdreNumber}`,
+                      label: `Residuals (Studentized Deleted) - ${selectedDependentVariable.name}`,
+                      values: residualValues.map(v => v.studentizedDeleted)
+                    });
+                  }
+
+                  console.log("[Analyze] New residual variables to create:", newVariables);
+
+                  // --------------------------------------------------------------
+                  // Bulk-insert all residual variables in a single operation
+                  // --------------------------------------------------------------
+                  if (newVariables.length > 0) {
+                    const currentVarCount = useVariableStore.getState().variables.length;
+
+                    // 1. Build metadata for each new variable
+                    const varsForStore: Partial<Variable>[] = newVariables.map((nv, idx) => ({
+                      name: nv.name,
+                      label: nv.label,
+                      type: "NUMERIC",
+                      width: 12,
+                      decimals: 5,
+                      measure: "scale",
+                      columnIndex: currentVarCount + idx,
+                    }));
+
+                    // 2. Aggregate all cell updates across variables
+                    const aggregatedUpdates: CellUpdate[] = [];
+                    newVariables.forEach((nv, varIdx) => {
+                      const colIdx = currentVarCount + varIdx;
+                      nv.values.forEach((value: number, rowIndex: number) => {
+                        aggregatedUpdates.push({
+                          row: rowIndex,
+                          col: colIdx,
+                          value: Number(value.toFixed(5)),
+                        });
+                      });
+                    });
+
+                    // 3. Persist variables and data in one shot
+                    await useVariableStore.getState().addVariables(varsForStore, aggregatedUpdates);
+
+                    console.log("[Analyze] Residual variables successfully saved (bulk)");
+                  } else {
+                    console.warn("[Analyze] No residual variables selected, skipping save step.");
+                  }
+
+                } catch (error) {
+                  console.error("[Analyze] Error saving residual values:", error);
+                  alert("Failed to save residual values as new variables");
                 }
-
-                console.log("[Analyze] All residual values saved as new variables");
-              } catch (error) {
-                console.error("[Analyze] Error saving residual values:", error);
-                alert("Failed to save residual values as new variables");
               }
-            }
-            residualsWorker.terminate();
-            console.log("[Analyze] Residuals worker terminated");
-          };
+              residualsWorker.terminate();
+              console.log("[Analyze] Residuals worker terminated");
+              resolve(); // Resolve the promise
+            };
 
-          residualsWorker.onerror = (error: ErrorEvent) => {
-            console.error("[Analyze] Residuals worker error:", {
-              message: error.message,
-              error: error
-            });
-            alert(`Failed to run Residuals worker: ${error.message}`);
-            residualsWorker.terminate();
-          };
+            residualsWorker.onerror = (error: ErrorEvent) => {
+              console.error("[Analyze] Residuals worker error:", {
+                message: error.message,
+                error: error
+              });
+              alert(`Failed to run Residuals worker: ${error.message}`);
+              residualsWorker.terminate();
+              reject(error); // Reject the promise
+            };
+          });
         } else {
           console.error("[Analyze] Missing regression results:", {
             hasResults: !!regressionResults,
@@ -775,125 +1007,36 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           });
           alert("Regression results or coefficients not available to calculate residuals.");
         }
+      }; // end processResiduals
+      // ------------------------------------------------------------------
+      // When only residuals are requested (no predicted values), run now.
+      // If predicted values are also requested, residuals will be triggered
+      // from inside predicted worker after it completes.
+      // ------------------------------------------------------------------
+      if (!predictedSaveSelected && residualSaveSelected) {
+        await processResiduals();
       }
 
-      // 1. Variables Entered/Removed Worker
-      statisticPromises.push(new Promise((resolve, reject) => {
-        const variablesEnteredRemovedWorker = new Worker('/workers/Regression/variables.js');
-        console.log("[Analyze] Mengirim data ke Worker untuk Variables Entered/Removed...");
-        variablesEnteredRemovedWorker.postMessage({
-          dependent: filteredDependentData,
-          independent: filteredIndependentData,
-          dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-          independentVariableInfos: independentVariableInfos
-        });
+      // 1. Variables & Coefficients (Estimates)
+      if (currentStatsParams.estimates) {
+        pushVariablesWorker();
+      }
 
-        variablesEnteredRemovedWorker.onmessage = async (e: MessageEvent) => {
-          const variablesEnteredRemovedResults = e.data;
-          console.log("[Analyze] Hasil dari Worker Variables Entered/Removed:", variablesEnteredRemovedResults);
-
-          const variablesEnteredRemovedStat = {
-            title: "Variables Entered/Removed",
-            output_data: JSON.stringify(variablesEnteredRemovedResults),
-            components: "VariablesEnteredRemoved",
-            description: "Variables entered/removed in the regression analysis"
-          };
-
-          await addStatistic(analyticId, variablesEnteredRemovedStat);
-          console.log("[Analyze] Statistik Variables Entered/Removed disimpan.");
-          variablesEnteredRemovedWorker.terminate();
-          resolve(true);
-        };
-
-        variablesEnteredRemovedWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] Worker Variables Entered/Removed error:", error);
-          variablesEnteredRemovedWorker.terminate();
-          reject(error);
-        };
-      }));
-
-      // 2. ANOVA Worker
-      statisticPromises.push(new Promise((resolve, reject) => {
-        const anovaWorker = new Worker('/workers/Regression/anova.js');
-        console.log("[Analyze] Sending data to ANOVA Worker...");
-        anovaWorker.postMessage({
-          dependentData: filteredDependentData,
-          independentData: filteredIndependentData
-        });
-
-        anovaWorker.onmessage = async (e: MessageEvent) => {
-          const anovaStat = e.data;
-          if (anovaStat.error) {
-            console.error("[Analyze] ANOVA Worker Error:", anovaStat.error);
-            alert(`ANOVA Worker Error: ${anovaStat.error}`);
-            reject(anovaStat.error);
-          } else {
-            const completeStats = {
-              title: anovaStat.title,
-              output_data: anovaStat.output_data,
-              components: anovaStat.components,
-              description: "ANOVA analysis results"
-            };
-            await addStatistic(analyticId, completeStats);
-            console.log("[Analyze] ANOVA statistics saved.");
-            resolve(true);
-          }
-          anovaWorker.terminate();
-        };
-
-        anovaWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] ANOVA Worker error:", error, error.message);
-          alert("An error occurred in the ANOVA Worker: " + (error.message || "Unknown error"));
-          anovaWorker.terminate();
-          reject(error);
-        };
-      }));
+      // 2. Model Fit group: variables -> model summary -> anova
+      if (currentStatsParams.modelFit) {
+        pushVariablesWorker();
+        pushModelSummaryWorker();
+        pushAnovaWorker();
+      }
       
-      // 3. Coefficients Worker
-      statisticPromises.push(new Promise((resolve, reject) => {
-        const coefficientsWorker = new Worker('/workers/Regression/coefficients.js');
-        console.log("[Analyze] Sending data to Coefficients Worker...");
-
-        coefficientsWorker.postMessage({
-          dependentData: filteredDependentData,
-          independentData: filteredIndependentData,
-          independentVariableInfos: independentVariableInfos
-        });
-
-        coefficientsWorker.onmessage = async (e: MessageEvent) => {
-          const { success, result, error } = e.data;
-
-          if (success) {
-            const coefficientsTable = result;
-            const coefficientsStat = {
-              title: "Coefficients",
-              output_data: JSON.stringify(coefficientsTable),
-              components: "Coefficients",
-              description: "Coefficients of the regression model"
-            };
-
-            await addStatistic(analyticId, coefficientsStat);
-            console.log("[Analyze] Coefficients statistics saved.");
-            resolve(true);
-          } else {
-            console.error("[Analyze] Coefficients Worker error:", error);
-            alert(`Coefficients Worker Error: ${error}`);
-            reject(error);
-          }
-
-          coefficientsWorker.terminate();
-        };
-
-        coefficientsWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] Coefficients Worker error:", error, error.message);
-          alert("An error occurred in the Coefficients Worker: " + (error.message || "Unknown error"));
-          coefficientsWorker.terminate();
-          reject(error);
-        };
-      }));
+      // 3. Coefficients Worker (needed by estimates, descriptives, casewiseDiagnostics)
+      if (currentStatsParams.estimates || currentStatsParams.descriptives || currentStatsParams.casewiseDiagnostics) {
+        pushCoefficientsWorker();
+      }
 
       // 4. R-Square Change (Conditional)
       if (currentStatsParams.rSquaredChange) {
+        pushVariablesWorker(); // mapping requires variables.js first
         statisticPromises.push(new Promise((resolve, reject) => {
           const worker = new Worker('/workers/Regression/rsquare.js');
           console.log("[Analyze] Mengirim data ke Worker untuk perhitungan regresi (squared changes)...");
@@ -930,6 +1073,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 5. Confidence Intervals (Conditional)
       if (currentStatsParams.confidenceIntervals) {
+        pushVariablesWorker();
         statisticPromises.push(new Promise((resolve, reject) => {
           const confidenceWorker = new Worker('/workers/Regression/confidence_interval.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Confidence Interval...");
@@ -976,6 +1120,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 6. Part and Partial Correlations (Conditional)
       if (currentStatsParams.partAndPartial) {
+        // Ensure Variables table precedes part & partial worker
+        pushVariablesWorker();
         statisticPromises.push(new Promise((resolve, reject) => {
           const partAndPartialWorker = new Worker('/workers/Regression/coefficients_partandpartial.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Coefficients Part & Partial Correlations...");
@@ -1012,6 +1158,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 7. Collinearity Diagnostics (Conditional)
       if (currentStatsParams.collinearityDiagnostics) {
+        pushVariablesWorker();
         // 7a. Coefficients Collinearity
         statisticPromises.push(new Promise((resolve, reject) => {
           const collinearityWorker = new Worker('/workers/Regression/coefficients_collinearity.js');
@@ -1082,6 +1229,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 8. Durbin-Watson (Conditional)
       if (currentStatsParams.durbinWatson) {
+        pushVariablesWorker();
         statisticPromises.push(new Promise((resolve, reject) => {
           const modelDurbinWorker = new Worker('/workers/Regression/model_durbin.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Model Durbin...");
@@ -1111,6 +1259,10 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             reject(error);
           };
         }));
+
+        // After Durbin Worker, queue ANOVA then Coefficients then Residual Statistics will come later
+        pushAnovaWorker();
+        pushCoefficientsWorker();
       } else {
         console.log("[Analyze] Skipping Durbin-Watson test (not selected).");
       }
@@ -1122,7 +1274,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           console.log("[Analyze] Mengirim data ke Worker untuk Residuals Statistics...");
           residualsStatisticsWorker.postMessage({
             dependent: filteredDependentData,
-            independent: filteredIndependentData[0]
+            independent: filteredIndependentData
           });
     
           residualsStatisticsWorker.onmessage = async (e: MessageEvent) => {
@@ -1151,13 +1303,19 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       }
   
       // 10. Casewise Diagnostics (Conditional)
-      if (currentStatsParams.casewiseDiagnostics && currentStatsParams.selectedResidualOption === 'allCases') {
+      if (currentStatsParams.casewiseDiagnostics) {
+        // Variables, Model Summary, ANOVA should always precede any casewise diagnostics tables
+        pushVariablesWorker();
+        pushModelSummaryWorker();
+        pushAnovaWorker();
+
+        if (currentStatsParams.selectedResidualOption === 'allCases') {
         statisticPromises.push(new Promise((resolve, reject) => {
           const casewiseDiagnosticsWorker = new Worker('/workers/Regression/casewise_diagnostics.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Casewise Diagnostics (All Cases selected)...");
           casewiseDiagnosticsWorker.postMessage({
             dependent: filteredDependentData,
-            independent: filteredIndependentData[0],
+            independent: filteredIndependentData,
             // Threshold is only relevant if "outliers" was selected, but worker might still use it.
             // For "all cases", threshold isn't directly used for filtering by this component,
             // but the worker itself might have logic based on it, or it might be ignored.
@@ -1177,6 +1335,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             };
             await addStatistic(analyticId, casewiseDiagnosticsStat);
             console.log("[Analyze] Statistik Casewise Diagnostics disimpan.");
+            // ANOVA & Coefficients after Casewise Diagnostics
             casewiseDiagnosticsWorker.terminate();
             resolve(true);
           };
@@ -1187,6 +1346,9 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             reject(error);
           };
         }));
+        } else {
+          console.log("[Analyze] Skipping Casewise Diagnostics table (Outliers outside selected). Variables/ModelSummary/ANOVA already queued.");
+        }
       } else if (currentStatsParams.casewiseDiagnostics && currentStatsParams.selectedResidualOption === 'outliers') {
         console.log("[Analyze] Skipping Casewise Diagnostics table (Outliers outside selected).");
       } else {
@@ -1195,6 +1357,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
       // 11. Covariance Matrix (Conditional)
       if (currentStatsParams.covarianceMatrix) {
+        pushVariablesWorker();
         statisticPromises.push(new Promise((resolve, reject) => {
           const coefficientCorrelationsWorker = new Worker('/workers/Regression/coefficient_correlations.js');
           console.log("[Analyze] Mengirim data ke Worker untuk Coefficient Correlations...");
@@ -1297,42 +1460,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             reject(error);
           };
         }));
-  
+
+        // 12c. Variables Entered/Removed (after correlations)
+        pushVariablesWorker();
+        // 12d. Model Summary follows variables
+        pushModelSummaryWorker();
+        // 12e. ANOVA after model summary
+        pushAnovaWorker();
+
       } else {
         console.log("[Analyze] Skipping Descriptive Statistics (not selected).");
       }
   
-      // 13. Model Fit / Model Summary (Conditional)
-      if (currentStatsParams.modelFit || currentStatsParams.descriptives) {
-        statisticPromises.push(new Promise((resolve, reject) => {
-          const modelSummaryWorker = new Worker('/workers/Regression/model_summary.js');
-          console.log("[Analyze] Mengirim data ke Worker untuk Model Summary...");
-          modelSummaryWorker.postMessage({
-            dependent: filteredDependentData,
-            independent: filteredIndependentData
-          });
-    
-          modelSummaryWorker.onmessage = async (e: MessageEvent) => {
-            const modelSummaryResults = e.data;
-            console.log("[Analyze] Hasil dari Worker Model Summary:", modelSummaryResults);
-            const modelSummaryStat = {
-              title: "Model Summary",
-              output_data: JSON.stringify(modelSummaryResults),
-              components: "ModelSummary",
-              description: "Summary of the regression model"
-            };
-            await addStatistic(analyticId, modelSummaryStat);
-            console.log("[Analyze] Statistik Model Summary disimpan.");
-            modelSummaryWorker.terminate();
-            resolve(true);
-          };
-    
-          modelSummaryWorker.onerror = (error: ErrorEvent) => {
-            console.error("[Analyze] Worker Model Summary error:", error);
-            modelSummaryWorker.terminate();
-            reject(error);
-          };
-        }));
+      // 13. Model Summary fallback (queue only if not already queued)
+      if (!modelSummaryQueued && (currentStatsParams.modelFit || currentStatsParams.descriptives || currentStatsParams.casewiseDiagnostics)) {
+        pushModelSummaryWorker();
       } else {
         console.log("[Analyze] Skipping Model Summary (model fit not selected).");
       }
@@ -1418,7 +1560,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                         chartVariables: { x: [xVarName], y: [yVarName] },
                         chartMetadata: {
                             title: 'Scatterplot',
-                            subtitle: `${yVarName} vs ${xVarName}`,
+                            subtitle: `Dependent Variable: ${selectedDependentVariable.label ? selectedDependentVariable.label : selectedDependentVariable.name}`,
                             axisInfo: processedData.axisInfo
                         },
                         chartConfig: {
@@ -1430,7 +1572,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                         title: 'Scatterplot',
                         output_data: JSON.stringify(chartJSON),
                         components: 'Chart',
-                        description: `Scatterplot of ${yVarName} vs ${xVarName}`
+                        description: `Dependent Variable: ${selectedDependentVariable.label ? selectedDependentVariable.label : selectedDependentVariable.name}`
                     });
                 } catch(chartError) {
                     console.error("[Analyze] Error creating scatterplot with ChartService:", chartError);
@@ -1464,6 +1606,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                           chartVariables: { y: [histVarName] },
                           chartMetadata: {
                               title: `Histogram of ${histVarName}`,
+                              subtitle: `Dependent Variable: ${selectedDependentVariable.label ? selectedDependentVariable.label : selectedDependentVariable.name}`,
                               axisInfo: processedData.axisInfo
                           },
                           chartConfig: {
@@ -1475,7 +1618,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
                           title: 'Histogram',
                           output_data: JSON.stringify(chartJSON),
                           components: 'Chart',
-                          description: `Histogram for ${histVarName}.`
+                          description: `Dependent Variable: ${selectedDependentVariable.label ? selectedDependentVariable.label : selectedDependentVariable.name}`
                       });
                   } catch(chartError) {
                       console.error("[Analyze] Error creating histogram with ChartService:", chartError);
@@ -1509,20 +1652,35 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   
   return (
     <div className="flex flex-col h-full">
+      {/* Feature Tour elements */}
+      <AnimatePresence>
+        {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+          <TourPopup
+            step={tourSteps[currentStep]}
+            currentStep={currentStep}
+            totalSteps={tourSteps.length}
+            onNext={nextStep}
+            onPrev={prevStep}
+            onClose={endTour}
+            targetElement={currentTargetElement}
+          />
+        )}
+      </AnimatePresence>
+      <ActiveElementHighlight active={tourActive} />
       <ValidationAlert />
       <div className="px-6 py-4">
         <Separator className="my-2" />
       </div>
 
       <div className="flex-grow px-6 overflow-y-auto">
-        <Tabs defaultValue="variables" className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="w-full">
           <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger data-testid="linear-variables-tab" value="variables">Variables</TabsTrigger>
-            <TabsTrigger data-testid="linear-statistics-tab" value="statistics">Statistics</TabsTrigger>
-            <TabsTrigger data-testid="linear-plots-tab" value="plots">Plots</TabsTrigger>
-            <TabsTrigger data-testid="linear-save-tab" value="save">Save</TabsTrigger>
+            <TabsTrigger id="linear-variables-tab-trigger" data-testid="linear-variables-tab" value="variables">Variables</TabsTrigger>
+            <TabsTrigger id="linear-statistics-tab-trigger" data-testid="linear-statistics-tab" value="statistics">Statistics</TabsTrigger>
+            <TabsTrigger id="linear-plots-tab-trigger" data-testid="linear-plots-tab" value="plots">Plots</TabsTrigger>
+            <TabsTrigger id="linear-save-tab-trigger" data-testid="linear-save-tab" value="save">Save</TabsTrigger>
             <TabsTrigger data-testid="linear-options-tab" value="options">Options</TabsTrigger>
-            <TabsTrigger data-testid="linear-assumption-tab" value="assumption">Assumption</TabsTrigger>
+            <TabsTrigger id="linear-assumption-tab-trigger" data-testid="linear-assumption-tab" value="assumption">Assumption</TabsTrigger>
           </TabsList>
 
           {/* Variables Tab */}
@@ -1585,22 +1743,51 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-border bg-muted mt-auto">
-        <div className="flex justify-center space-x-4">
+      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+        {/* Left: Help button with tooltip */}
+        <div className="flex items-center text-muted-foreground">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  data-testid="linear-help-button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={startTour}
+                  aria-label="Start feature tour"
+                  className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Start feature tour</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {/* Right: Action buttons */}
+        <div className="flex items-center space-x-4">
           <Button onClick={handleAnalyze} disabled={isLoading}>
-            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : 'OK'}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...
+              </>
+            ) : (
+              'OK'
+            )}
           </Button>
-          <Button variant="outline" onClick={handleReset} disabled={isLoading}>Reset</Button>
+          <Button variant="outline" onClick={handleReset} disabled={isLoading}>
+            Reset
+          </Button>
           <Button variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button variant="outline" disabled={isLoading}>Help</Button>
         </div>
       </div>
     </div>
   );
 };
 
-// Export the component with both names for backward compatibility
-export { ModalLinear };
 export default ModalLinear;

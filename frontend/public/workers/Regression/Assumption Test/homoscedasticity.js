@@ -1,4 +1,5 @@
 // Worker for homoscedasticity test in linear regression
+importScripts("https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js");
 self.onmessage = function(e) {
   try {
     const { dependentData, independentData, independentVariableInfos } = e.data;
@@ -458,7 +459,11 @@ function variance(data, dataMean = undefined) {
 
 // Calculate standard deviation of an array
 function standardDeviation(data, dataMean = undefined) {
-  return Math.sqrt(variance(data, dataMean));
+  const m = dataMean !== undefined ? dataMean : mean(data);
+  // Use sample standard deviation (divide by n-1) when sample size > 1
+  const divisor = data.length > 1 ? data.length - 1 : data.length;
+  const variance = data.reduce((sum, value) => sum + Math.pow(value - m, 2), 0) / divisor;
+  return Math.sqrt(variance);
 }
 
 // Calculate residual statistics
@@ -526,9 +531,13 @@ function calculateBreuschPaganTest(X, residuals) {
 // Chi-squared cumulative distribution function
 function chiSquareCDF(x, df) {
   if (x <= 0) return 0;
-  
-  // Approximation for chi-squared CDF
-  // This is simplified - more accurate implementations exist
+
+  // Use jStat's chi-square CDF if available for better accuracy
+  if (typeof jStat !== 'undefined' && jStat.chisquare && typeof jStat.chisquare.cdf === 'function') {
+    return jStat.chisquare.cdf(x, df);
+  }
+
+  // Fallback approximation for chi-squared CDF (simplified)
   const p = Math.exp(-0.5 * x) * Math.pow(x, df / 2 - 1) / (Math.pow(2, df / 2) * gamma(df / 2));
   return 1 - p;
 }

@@ -1,280 +1,139 @@
-// Worker for linearity test in linear regression
-self.onmessage = function(e) {
+// Worker for overall linearity (Ramsey RESET) test in multiple linear regression
+importScripts("https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js");
+self.onmessage = function (e) {
   try {
-    const { dependentData, independentData, independentVariableInfos } = e.data;
-    
-    // Add some debug information
-    console.log("Worker received data:", {
-      hasDependent: !!dependentData,
-      hasIndependent: !!independentData,
-      hasVariableInfo: !!independentVariableInfos,
-      dependentLength: dependentData?.length || 0,
-      independentLength: independentData?.length || 0,
-      infoLength: independentVariableInfos?.length || 0
-    });
-    
-    // Make sure we have data to analyze
-    if (!dependentData || !independentData) {
-      self.postMessage({ error: "Missing data: dependent or independent variable data not provided" });
-      return;
-    }
-    
-    if (dependentData.length === 0 || independentData.length === 0) {
-      self.postMessage({ error: "Empty data arrays provided for linearity test" });
-      return;
-    }
-    
-    if (!independentVariableInfos || independentVariableInfos.length === 0) {
-      self.postMessage({ error: "Missing variable information for independent variables" });
-      return;
-    }
-    
-    if (independentData.length !== independentVariableInfos.length) {
-      self.postMessage({ 
-        error: `Data mismatch: ${independentData.length} independent data arrays but ${independentVariableInfos.length} variable info objects` 
-      });
+    const { dependentData, independentData } = e.data;
+
+    if (!Array.isArray(dependentData) || dependentData.length === 0) {
+      self.postMessage({ error: "Missing or empty dependent variable data" });
       return;
     }
 
-    // Transpose independent data if needed (want rows = observations, cols = variables)
-    let independentDataTransposed = independentData;
+    if (!independentData || independentData.length === 0) {
+      self.postMessage({ error: "Missing independent variable data" });
+      return;
+    }
+
+    // Ensure we always work with an array of arrays for independent variables
+    let independentVars = independentData;
     if (!Array.isArray(independentData[0])) {
-      // Need to transpose data
-      console.log("Worker transposing data");
-      independentDataTransposed = [independentData]; // Wrap in array if it's a single array
+      independentVars = [independentData];
     }
 
-    const results = [];
-    
-    // For each independent variable, check linearity with the dependent variable
-    for (let i = 0; i < independentVariableInfos.length; i++) {
-      const independentVarData = independentDataTransposed[i];
-      
-      if (!independentVarData || independentVarData.length === 0) {
-        console.log(`Skipping variable ${i} due to missing data`);
-        continue;
+    const n = dependentData.length;
+
+    // Check length consistency
+    for (let i = 0; i < independentVars.length; i++) {
+      if (independentVars[i].length !== n) {
+        self.postMessage({
+          error: `Length mismatch: dependentData has ${n} observations but independent variable ${i + 1} has ${independentVars[i].length}`,
+        });
+        return;
       }
-      
-      if (independentVarData.length !== dependentData.length) {
-        console.log(`Data length mismatch for variable ${i}: dependent=${dependentData.length}, independent=${independentVarData.length}`);
+    }
+
+    // X matrix with rows = observations, cols = variables
+    const X = transpose(independentVars);
+    const restricted = multipleLinearRegression(dependentData, X);
+    const restrictedSSE = restricted.sse;
+    const yHat = restricted.yHat;
+
+    const augmentedX = X.map((row, i) => {
+      const extras = [];
+      for (let pw = 2; pw <= maxPower; pw++) {
+        extras.push(Math.pow(yHat[i], pw));
       }
-      
-      const variableName = independentVariableInfos[i].name || `Variable ${i+1}`;
-      const variableLabel = independentVariableInfos[i].label || variableName;
-      
-      // Calculate correlation coefficient
-      const correlation = calculateCorrelation(dependentData, independentVarData);
-      
-      // Calculate RESET test
-      const resetTest = calculateRESETTest(dependentData, independentVarData);
-      
-      // Determine if the relationship is linear (p-value > 0.05)
-      const isLinear = resetTest.pValue > 0.05;
-      
-      // Create an interpretation message
-      const interpretation = isLinear
-        ? `The relationship between ${variableName} and the dependent variable appears to be linear (p-value > 0.05).`
-        : `The relationship between ${variableName} and the dependent variable appears to be non-linear (p-value ≤ 0.05).`;
-      
-      // Prepare data for scatter plot visualization
-      const scatterData = dependentData.map((y, index) => ({
-        x: independentVarData[index],
-        y: y
-      }));
-      
-      // Add to results
-      results.push({
-        variable: variableName,
-        variableLabel: variableLabel,
-        correlation: parseFloat(correlation.toFixed(6)),
-        resetTest: {
-          fStatistic: parseFloat(resetTest.fStatistic.toFixed(6)),
-          pValue: parseFloat(resetTest.pValue.toFixed(6))
-        },
-        isLinear: isLinear,
-        interpretation: interpretation,
-        scatterData: scatterData
-      });
+      return [...row, ...extras];
+    });
+
+    const unrestricted = multipleLinearRegression(dependentData, augmentedX);
+    const unrestrictedSSE = unrestricted.sse;
+
+
+    const q = maxPower - 1; // number of added terms
+    const p = independentVars.length; // original regressors
+    const k = p + 1 + q; // intercept + originals + added terms
+
+    const fStatistic = ((restrictedSSE - unrestrictedSSE) / q) / (unrestrictedSSE / (n - k));
+    let pValue;
+    if (typeof jStat !== 'undefined' && jStat.centralF && typeof jStat.centralF.cdf === 'function') {
+      pValue = 1 - jStat.centralF.cdf(fStatistic, q, n - k);
+    } else if (typeof jStat !== 'undefined' && jStat.ftest && typeof jStat.ftest === 'function') {
+      // Older jStat versions expose ftest
+      pValue = 1 - jStat.ftest(fStatistic, q, n - k);
+    } else {
+      throw new Error("jStat library not available for exact F CDF calculation.");
     }
-    
-    if (results.length === 0) {
-      self.postMessage({ error: "Could not calculate linearity results for any variables" });
-      return;
-    }
-    
-    // Count how many variables pass the linearity test
-    const linearCount = results.filter(r => r.isLinear).length;
-    const nonlinearCount = results.length - linearCount;
-    
-    // Create a single summary result
+
+
+    const isLinear = pValue > 0.05;
+
     const summary = {
       title: "Linearity Test Results",
-      description: "Tests if the relationship between dependent and independent variables is linear",
-      allLinear: results.every(r => r.isLinear),
-      summary: {
-        totalVariables: results.length,
-        linearVariables: linearCount,
-        nonlinearVariables: nonlinearCount
-      },
-      results: results,
-      overallInterpretation: linearCount === results.length
-        ? "All independent variables have a linear relationship with the dependent variable."
-        : nonlinearCount === results.length
-          ? "None of the independent variables have a linear relationship with the dependent variable."
-          : `${linearCount} of ${results.length} independent variables have a linear relationship with the dependent variable.`
+      description: "Ramsey RESET test for overall model linearity (powers 2..3 of fitted values added); H0: model is linear.",
+      fStatistic: parseFloat(fStatistic.toFixed(6)),
+      pValue: parseFloat(pValue.toFixed(6)),
+      isLinear,
+      interpretation: isLinear
+        ? "The relationship between dependent and independent variables appears to be linear (p-value > 0.05)."
+        : "The relationship between dependent and independent variables appears to be non-linear (p-value ≤ 0.05).",
     };
-    
+
     self.postMessage(summary);
   } catch (error) {
-    self.postMessage({ 
+    self.postMessage({
       error: "Error in linearity test: " + (error.message || "Unknown error"),
-      stack: error.stack
+      stack: error.stack,
     });
   }
 };
 
-// Function to calculate correlation coefficient
-function calculateCorrelation(x, y) {
-  const n = x.length;
-  
-  // Calculate means
-  const xMean = x.reduce((sum, val) => sum + val, 0) / n;
-  const yMean = y.reduce((sum, val) => sum + val, 0) / n;
-  
-  // Calculate correlation coefficient
-  let numerator = 0;
-  let xDenominator = 0;
-  let yDenominator = 0;
-  
-  for (let i = 0; i < n; i++) {
-    const xDiff = x[i] - xMean;
-    const yDiff = y[i] - yMean;
-    
-    numerator += xDiff * yDiff;
-    xDenominator += xDiff * xDiff;
-    yDenominator += yDiff * yDiff;
-  }
-  
-  const denominator = Math.sqrt(xDenominator * yDenominator);
-  
-  return numerator / denominator;
-}
 
-// Function to calculate RESET test for linearity
-function calculateRESETTest(y, x) {
-  const n = y.length;
-  
-  // Simple linear regression
-  const { beta0, beta1, yHat, residuals, sse, r2 } = simpleLinearRegression(y, x);
-  
-  // Augmented regression with squared fitted values
-  const yHatSquared = yHat.map(val => val * val);
-  
-  // Run regression of y on x and yHat^2
-  const augmentedX = x.map((val, i) => [val, yHatSquared[i]]);
-  const augmentedRegression = multipleLinearRegression(y, augmentedX);
-  
-  // Calculate F-statistic
-  const restrictedSSE = sse;
-  const unrestrictedSSE = augmentedRegression.sse;
-  const q = 1; // Number of restrictions (we added 1 variable)
-  const k = 2 + q; // Number of parameters in unrestricted model
-  
-  const fStat = ((restrictedSSE - unrestrictedSSE) / q) / (unrestrictedSSE / (n - k));
-  
-  // Calculate p-value (approximation)
-  const pValue = 1 - pf(fStat, q, n - k);
-  
-  return {
-    fStatistic: fStat,
-    pValue: pValue,
-    isLinear: pValue > 0.05
-  };
-}
-
-// Simple linear regression function
-function simpleLinearRegression(y, x) {
-  const n = y.length;
-  
-  // Calculate means
-  const xMean = x.reduce((sum, val) => sum + val, 0) / n;
-  const yMean = y.reduce((sum, val) => sum + val, 0) / n;
-  
-  // Calculate beta1 (slope)
-  let numerator = 0;
-  let denominator = 0;
-  
-  for (let i = 0; i < n; i++) {
-    numerator += (x[i] - xMean) * (y[i] - yMean);
-    denominator += (x[i] - xMean) * (x[i] - xMean);
-  }
-  
-  const beta1 = numerator / denominator;
-  
-  // Calculate beta0 (intercept)
-  const beta0 = yMean - beta1 * xMean;
-  
-  // Calculate fitted values and residuals
-  const yHat = x.map(val => beta0 + beta1 * val);
-  const residuals = y.map((val, i) => val - yHat[i]);
-  
-  // Calculate SSE and R^2
-  const sse = residuals.reduce((sum, val) => sum + val * val, 0);
-  const sst = y.map(val => val - yMean).reduce((sum, val) => sum + val * val, 0);
-  const r2 = 1 - (sse / sst);
-  
-  return { beta0, beta1, yHat, residuals, sse, r2 };
-}
-
-// Multiple linear regression function
+// Multiple linear regression using ordinary least squares (simple implementation)
 function multipleLinearRegression(y, X) {
   const n = y.length;
   const p = X[0].length;
-  
+
   // Add column of 1s for intercept
-  const XWithIntercept = X.map(row => [1, ...row]);
-  
+  const XWithIntercept = X.map((row) => [1, ...row]);
+
   // Matrix operations for OLS (X'X)^(-1)X'y
-  // Note: This is a simple implementation and may not be numerically stable for all cases
   const XTranspose = transpose(XWithIntercept);
   const XTX = matrixMultiply(XTranspose, XWithIntercept);
   const XTXInv = matrixInverse(XTX);
   const XTY = matrixMultiplyVector(XTranspose, y);
   const beta = matrixMultiplyVector(XTXInv, XTY);
-  
-  // Calculate fitted values
-  const yHat = XWithIntercept.map(row => 
-    row.reduce((sum, val, idx) => sum + val * beta[idx], 0)
-  );
-  
-  // Calculate residuals
+
+  // Fitted values
+  const yHat = XWithIntercept.map((row) => row.reduce((sum, val, idx) => sum + val * beta[idx], 0));
+
+  // Residuals
   const residuals = y.map((val, i) => val - yHat[i]);
-  
-  // Calculate SSE
+
+  // Sum of squared errors
   const sse = residuals.reduce((sum, val) => sum + val * val, 0);
-  
-  // Calculate yMean and SST
+
+  // Total sum of squares
   const yMean = y.reduce((sum, val) => sum + val, 0) / n;
-  const sst = y.map(val => val - yMean).reduce((sum, val) => sum + val * val, 0);
-  
-  // Calculate R^2
-  const r2 = 1 - (sse / sst);
-  
-  // Calculate adjusted R^2
-  const adjR2 = 1 - ((1 - r2) * (n - 1) / (n - p - 1));
-  
+  const sst = y.map((val) => val - yMean).reduce((sum, val) => sum + val * val, 0);
+
+  // R² and adjusted R² (may not be used but returned for completeness)
+  const r2 = 1 - sse / sst;
+  const adjR2 = 1 - ((1 - r2) * (n - 1)) / (n - p - 1);
+
   return { beta, yHat, residuals, sse, r2, adjR2 };
 }
 
-// Matrix transpose
+// Transpose a matrix given as array of arrays
 function transpose(matrix) {
-  return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
+  return matrix[0].map((_, colIndex) => matrix.map((row) => row[colIndex]));
 }
 
-// Matrix multiplication
+// Matrix multiplication A (m×k) * B (k×n) => (m×n)
 function matrixMultiply(A, B) {
-  const result = Array(A.length).fill().map(() => Array(B[0].length).fill(0));
-  
+  const result = Array(A.length)
+    .fill()
+    .map(() => Array(B[0].length).fill(0));
   for (let i = 0; i < A.length; i++) {
     for (let j = 0; j < B[0].length; j++) {
       for (let k = 0; k < A[0].length; k++) {
@@ -282,120 +141,184 @@ function matrixMultiply(A, B) {
       }
     }
   }
-  
   return result;
 }
 
-// Matrix-vector multiplication
+// Matrix-vector multiplication (A is m×n, v is n×1)
 function matrixMultiplyVector(A, v) {
   const result = Array(A.length).fill(0);
-  
   for (let i = 0; i < A.length; i++) {
     for (let j = 0; j < v.length; j++) {
       result[i] += A[i][j] * v[j];
     }
   }
-  
   return result;
 }
 
-// Simple matrix inverse (for 2x2 and 3x3 matrices)
+// General matrix inverse using Gauss-Jordan elimination (works for any n ≥ 1)
 function matrixInverse(A) {
   const n = A.length;
-  
-  if (n === 1) {
-    return [[1 / A[0][0]]];
+  if (n === 0) throw new Error("Empty matrix");
+
+  // Create copies of A and an identity matrix I
+  const M = A.map((row) => row.slice());
+  const I = Array.from({ length: n }, (_, i) =>
+    Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))
+  );
+
+  for (let i = 0; i < n; i++) {
+    // Find pivot row (largest absolute value in column i below/current i)
+    let maxRow = i;
+    for (let k = i + 1; k < n; k++) {
+      if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) {
+        maxRow = k;
+      }
+    }
+
+    // Matrix is singular if pivot is 0
+    if (Math.abs(M[maxRow][i]) < 1e-12) {
+      throw new Error("Matrix is singular or nearly singular");
+    }
+
+    // Swap rows in M and I if needed
+    if (maxRow !== i) {
+      [M[i], M[maxRow]] = [M[maxRow], M[i]];
+      [I[i], I[maxRow]] = [I[maxRow], I[i]];
+    }
+
+    // Normalize pivot row
+    const pivot = M[i][i];
+    for (let j = 0; j < n; j++) {
+      M[i][j] /= pivot;
+      I[i][j] /= pivot;
+    }
+
+    // Eliminate other rows
+    for (let k = 0; k < n; k++) {
+      if (k === i) continue;
+      const factor = M[k][i];
+      for (let j = 0; j < n; j++) {
+        M[k][j] -= factor * M[i][j];
+        I[k][j] -= factor * I[i][j];
+      }
+    }
   }
-  
-  if (n === 2) {
-    const det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
-    return [
-      [A[1][1] / det, -A[0][1] / det],
-      [-A[1][0] / det, A[0][0] / det]
-    ];
-  }
-  
-  if (n === 3) {
-    // For 3x3, use adjugate matrix method
-    const det = 
-      A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) -
-      A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) +
-      A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
-    
-    const adjugate = [
-      [
-        (A[1][1] * A[2][2] - A[1][2] * A[2][1]),
-        -(A[0][1] * A[2][2] - A[0][2] * A[2][1]),
-        (A[0][1] * A[1][2] - A[0][2] * A[1][1])
-      ],
-      [
-        -(A[1][0] * A[2][2] - A[1][2] * A[2][0]),
-        (A[0][0] * A[2][2] - A[0][2] * A[2][0]),
-        -(A[0][0] * A[1][2] - A[0][2] * A[1][0])
-      ],
-      [
-        (A[1][0] * A[2][1] - A[1][1] * A[2][0]),
-        -(A[0][0] * A[2][1] - A[0][1] * A[2][0]),
-        (A[0][0] * A[1][1] - A[0][1] * A[1][0])
-      ]
-    ];
-    
-    return adjugate.map(row => row.map(val => val / det));
-  }
-  
-  // For larger matrices, use a numerical method like LU decomposition
-  throw new Error("Matrix inverse not implemented for matrices larger than 3x3");
+
+  return I;
 }
 
-// F-distribution CDF approximation
 function pf(x, df1, df2) {
-  // This is a simple approximation of the F-distribution CDF
-  // For more accuracy, you'd want to use a statistical library
-  // or implement a proper F-distribution CDF calculation
-  
   if (x <= 0) return 0;
-  
-  // Use Beta function relationship
   const v1 = df1;
   const v2 = df2;
-  const beta = (v1 * x) / (v1 * x + v2);
-  
-  // Incomplete beta function approximation
-  return incompleteBeta(beta, v1/2, v2/2);
+  const betaVal = (v1 * x) / (v1 * x + v2);
+  return incompleteBeta(betaVal, v1 / 2, v2 / 2);
 }
 
-// Incomplete beta function approximation
 function incompleteBeta(x, a, b) {
-  // Very simplified approximation - use with caution
   if (x <= 0) return 0;
   if (x >= 1) return 1;
-  
-  // Simple approximation
-  return Math.pow(x, a) / (a * beta(a, b));
-}
-
-// Beta function
-function beta(a, b) {
-  return (gamma(a) * gamma(b)) / gamma(a + b);
-}
-
-// Gamma function approximation (Lanczos approximation)
-function gamma(z) {
-  // Simplified Lanczos approximation
-  if (z < 0.5) {
-    return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+  // Use continued fraction for better accuracy (Abramowitz & Stegun 26.5.8)
+  const lnBeta = logGamma(a) + logGamma(b) - logGamma(a + b);
+  const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lnBeta);
+  let cf;
+  if (x < (a + 1) / (a + b + 2)) {
+    cf = betacf(a, b, x);
+    return front * cf / a;
+  } else {
+    cf = betacf(b, a, 1 - x);
+    return 1 - (front * cf / b);
   }
-  
+}
+
+function betacf(a, b, x) {
+  const MAX_ITER = 200;
+  const EPS = 1e-12;
+  let am = 1;
+  let bm = 1;
+  let az = 1;
+  let qab = a + b;
+  let qap = a + 1;
+  let qam = a - 1;
+  let bz = 1 - (qab * x) / qap;
+  if (Math.abs(bz) < EPS) bz = EPS;
+  bz = 1 / bz;
+  az *= bz;
+  for (let m = 1; m <= MAX_ITER; m++) {
+    const m2 = 2 * m;
+    // Even step
+    let d = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+    let ap = az + d * am;
+    let bp = 1 + d * bm;
+    if (Math.abs(bp) < EPS) bp = EPS;
+    bp = 1 / bp;
+    az = ap * bp;
+    bm = bp;
+
+    // Odd step
+    d = -((a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+    ap = az + d * am;
+    bp = 1 + d * bm;
+    if (Math.abs(bp) < EPS) bp = EPS;
+    bp = 1 / bp;
+    az = ap * bp;
+    bm = bp;
+
+    am = az;
+    if (Math.abs(d) < EPS && Math.abs(ap - az) < EPS) break;
+  }
+  return az;
+}
+
+function logGamma(z) {
+  if (z < 0.5) {
+    return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z);
+  }
   z -= 1;
-  const p = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
-            771.32342877765313, -176.61502916214059, 12.507343278686905,
-            -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
-  
+  const p = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7,
+  ];
   let x = p[0];
   for (let i = 1; i < p.length; i++) {
     x += p[i] / (z + i);
   }
-  
+  const t = z + p.length - 1.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+
+function beta(a, b) {
+  return (gamma(a) * gamma(b)) / gamma(a + b);
+}
+
+// Lanczos approximation for the Gamma function
+function gamma(z) {
+  if (z < 0.5) {
+    return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+  }
+  z -= 1;
+  const p = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7,
+  ];
+  let x = p[0];
+  for (let i = 1; i < p.length; i++) {
+    x += p[i] / (z + i);
+  }
   const t = z + p.length - 1.5;
   return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
-} 
+}
