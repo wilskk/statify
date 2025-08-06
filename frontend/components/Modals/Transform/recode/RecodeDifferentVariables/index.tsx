@@ -266,11 +266,12 @@ export const RecodeDifferentVariablesModal: FC<
   const evaluateValueWithRules = (
     value: string | number,
     rules: RecodeRule[],
-    sourceVariableType: "NUMERIC" | "STRING"
+    sourceVariableType: "NUMERIC" | "STRING",
+    variable?: Variable
   ): string | number => {
-    if (value === "") {
-      return value;
-    }
+    // if (value === "") {
+    //   return value;
+    // }
 
     const numericValue = typeof value === "string" ? parseFloat(value) : value;
     const isNumericType = sourceVariableType === "NUMERIC";
@@ -281,6 +282,35 @@ export const RecodeDifferentVariablesModal: FC<
       value === undefined ||
       (typeof value === "number" && isNaN(value)) ||
       (isNumericType && typeof value === "string" && value.trim() === "");
+
+    const isUserMissing = (() => {
+      if (!variable?.missing) return false;
+
+      // Cek nilai diskrit (user-missing values)
+      if (
+        Array.isArray(variable.missing.discrete) &&
+        variable.missing.discrete.includes(value)
+      ) {
+        return true;
+      }
+
+      const range = variable.missing?.range;
+      if (
+        isNumericType &&
+        range?.min !== undefined &&
+        range?.max !== undefined
+      ) {
+        return (
+          isValidNumber &&
+          numericValue >= range.min &&
+          numericValue <= range.max
+        );
+      }
+
+      return false;
+    })();
+
+    const isSystemOrUserMissing = isSystemMissing || isUserMissing;
 
     for (const rule of rules) {
       switch (rule.oldValueType) {
@@ -332,7 +362,7 @@ export const RecodeDifferentVariablesModal: FC<
           break;
 
         case "systemOrUserMissing":
-          if (isSystemMissing) {
+          if (isSystemOrUserMissing) {
             return rule.newValue ?? "";
           }
           break;
@@ -433,13 +463,16 @@ export const RecodeDifferentVariablesModal: FC<
           mapping.sourceVariable
         );
 
+        console.log("Data recpde", data); // lihat cell kosong muncul sebagai apa
+
         // Apply recode rules to create new data
         const newData = data.map((value) => {
           const safeValue = value === null ? "" : value;
           let recodedValue = evaluateValueWithRules(
             safeValue,
             recodeRules,
-            getRecodeType(mapping.sourceVariable.type)
+            getRecodeType(mapping.sourceVariable.type),
+            mapping.sourceVariable
           );
 
           if (effectiveOutputType === "STRING") {

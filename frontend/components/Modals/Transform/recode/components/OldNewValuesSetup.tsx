@@ -164,6 +164,293 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
     populateFieldsFromSelectedRule();
   }, [selectedRuleId, populateFieldsFromSelectedRule]);
 
+  // Function to check if rules overlap
+  const checkRulesOverlap = (
+    rule: RecodeRule,
+    existingRules: RecodeRule[],
+    currentRuleId?: string
+  ): { overlaps: boolean; message: string } => {
+    // Skip checking against the rule being edited
+    const rulesToCheck = existingRules.filter((r) => r.id !== currentRuleId);
+
+    // For non-numeric types, only check exact value matches (case-insensitive)
+    if (!isNumeric && rule.oldValueType === "value") {
+      const duplicate = rulesToCheck.find(
+        (r) =>
+          r.oldValueType === "value" &&
+          String(r.oldValue).toLowerCase() ===
+            String(rule.oldValue).toLowerCase()
+      );
+      if (duplicate) {
+        return {
+          overlaps: true,
+          message: `Duplicate value: "${rule.oldValueDisplay}" already exists in another rule.`,
+        };
+      }
+    }
+
+    // For numeric types, check various overlap scenarios
+    if (isNumeric) {
+      // Check value overlap
+      if (rule.oldValueType === "value") {
+        const numValue =
+          typeof rule.oldValue === "number"
+            ? rule.oldValue
+            : parseFloat(String(rule.oldValue));
+
+        for (const existingRule of rulesToCheck) {
+          if (
+            existingRule.oldValueType === "range" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [min, max] = existingRule.oldValue;
+            if (
+              min !== null &&
+              max !== null &&
+              numValue >= min &&
+              numValue <= max
+            ) {
+              return {
+                overlaps: true,
+                message: `Value ${numValue} overlaps with range ${min}-${max} in another rule.`,
+              };
+            }
+          } else if (
+            existingRule.oldValueType === "rangeLowest" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [, max] = existingRule.oldValue;
+            if (max !== null && numValue <= max) {
+              return {
+                overlaps: true,
+                message: `Value ${numValue} overlaps with range LOWEST-${max} in another rule.`,
+              };
+            }
+          } else if (
+            existingRule.oldValueType === "rangeHighest" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [min] = existingRule.oldValue;
+            if (min !== null && numValue >= min) {
+              return {
+                overlaps: true,
+                message: `Value ${numValue} overlaps with range ${min}-HIGHEST in another rule.`,
+              };
+            }
+          } else if (
+            existingRule.oldValueType === "value" &&
+            existingRule.oldValue === numValue
+          ) {
+            return {
+              overlaps: true,
+              message: `Duplicate value: ${numValue} already exists in another rule.`,
+            };
+          }
+        }
+      }
+
+      // Check range overlap
+      else if (rule.oldValueType === "range" && Array.isArray(rule.oldValue)) {
+        const [ruleMin, ruleMax] = rule.oldValue;
+        if (ruleMin === null || ruleMax === null)
+          return { overlaps: false, message: "" };
+
+        for (const existingRule of rulesToCheck) {
+          if (
+            existingRule.oldValueType === "range" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [existingMin, existingMax] = existingRule.oldValue;
+            if (existingMin === null || existingMax === null) continue;
+
+            // Overlap only if they intersect beyond touching boundaries
+            if (ruleMin < existingMax && ruleMax > existingMin) {
+              return {
+                overlaps: true,
+                message: `Range ${ruleMin}-${ruleMax} overlaps with range ${existingMin}-${existingMax} in another rule.`,
+              };
+            }
+          }
+          // Range vs LOWEST
+          else if (
+            existingRule.oldValueType === "rangeLowest" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [, existingMax] = existingRule.oldValue;
+            if (existingMax !== null && ruleMin < existingMax) {
+              return {
+                overlaps: true,
+                message: `Range ${ruleMin}-${ruleMax} overlaps with range LOWEST-${existingMax} in another rule.`,
+              };
+            }
+          }
+          // Range vs HIGHEST
+          else if (
+            existingRule.oldValueType === "rangeHighest" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [existingMin] = existingRule.oldValue;
+            if (existingMin !== null && ruleMax > existingMin) {
+              return {
+                overlaps: true,
+                message: `Range ${ruleMin}-${ruleMax} overlaps with range ${existingMin}-HIGHEST in another rule.`,
+              };
+            }
+          }
+          // Range vs value
+          else if (existingRule.oldValueType === "value") {
+            const existingValue =
+              typeof existingRule.oldValue === "number"
+                ? existingRule.oldValue
+                : parseFloat(String(existingRule.oldValue));
+
+            if (
+              !isNaN(existingValue) &&
+              existingValue > ruleMin &&
+              existingValue < ruleMax
+            ) {
+              return {
+                overlaps: true,
+                message: `Range ${ruleMin}-${ruleMax} overlaps with value ${existingValue} in another rule.`,
+              };
+            }
+          }
+        }
+      }
+
+      // Check rangeLowest overlap
+      else if (
+        rule.oldValueType === "rangeLowest" &&
+        Array.isArray(rule.oldValue)
+      ) {
+        const [, ruleMax] = rule.oldValue;
+        if (ruleMax === null) return { overlaps: false, message: "" };
+
+        for (const existingRule of rulesToCheck) {
+          if (
+            existingRule.oldValueType === "range" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [existingMin] = existingRule.oldValue;
+            if (existingMin !== null && ruleMax > existingMin) {
+              return {
+                overlaps: true,
+                message: `Range LOWEST-${ruleMax} overlaps with range ${existingMin}-${existingRule.oldValue[1]} in another rule.`,
+              };
+            }
+          } else if (
+            existingRule.oldValueType === "rangeLowest" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [, existingMax] = existingRule.oldValue;
+            if (existingMax !== null && ruleMax === existingMax) {
+              return {
+                overlaps: true,
+                message: `Duplicate range: LOWEST-${ruleMax} already exists in another rule.`,
+              };
+            }
+          } else if (existingRule.oldValueType === "value") {
+            const existingValue =
+              typeof existingRule.oldValue === "number"
+                ? existingRule.oldValue
+                : parseFloat(String(existingRule.oldValue));
+
+            if (!isNaN(existingValue) && existingValue < ruleMax) {
+              return {
+                overlaps: true,
+                message: `Range LOWEST-${ruleMax} overlaps with value ${existingValue} in another rule.`,
+              };
+            }
+          }
+        }
+      }
+
+      // Check rangeHighest overlap
+      else if (
+        rule.oldValueType === "rangeHighest" &&
+        Array.isArray(rule.oldValue)
+      ) {
+        const [ruleMin] = rule.oldValue;
+        if (ruleMin === null) return { overlaps: false, message: "" };
+
+        for (const existingRule of rulesToCheck) {
+          if (
+            existingRule.oldValueType === "range" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [, existingMax] = existingRule.oldValue;
+            if (existingMax !== null && ruleMin < existingMax) {
+              return {
+                overlaps: true,
+                message: `Range ${ruleMin}-HIGHEST overlaps with range ${existingRule.oldValue[0]}-${existingMax} in another rule.`,
+              };
+            }
+          } else if (
+            existingRule.oldValueType === "rangeHighest" &&
+            Array.isArray(existingRule.oldValue)
+          ) {
+            const [existingMin] = existingRule.oldValue;
+            if (existingMin !== null && ruleMin === existingMin) {
+              return {
+                overlaps: true,
+                message: `Duplicate range: ${ruleMin}-HIGHEST already exists in another rule.`,
+              };
+            }
+          } else if (existingRule.oldValueType === "value") {
+            const existingValue =
+              typeof existingRule.oldValue === "number"
+                ? existingRule.oldValue
+                : parseFloat(String(existingRule.oldValue));
+
+            if (!isNaN(existingValue) && existingValue > ruleMin) {
+              return {
+                overlaps: true,
+                message: `Range ${ruleMin}-HIGHEST overlaps with value ${existingValue} in another rule.`,
+              };
+            }
+          }
+        }
+      }
+    }
+
+    // Special types duplicate checks
+    if (rule.oldValueType === "systemMissing") {
+      const duplicate = rulesToCheck.find(
+        (r) => r.oldValueType === "systemMissing"
+      );
+      if (duplicate) {
+        return {
+          overlaps: true,
+          message: "A rule for System Missing values already exists.",
+        };
+      }
+    }
+
+    if (rule.oldValueType === "systemOrUserMissing") {
+      const duplicate = rulesToCheck.find(
+        (r) => r.oldValueType === "systemOrUserMissing"
+      );
+      if (duplicate) {
+        return {
+          overlaps: true,
+          message: "A rule for System or User Missing values already exists.",
+        };
+      }
+    }
+
+    if (rule.oldValueType === "else") {
+      const duplicate = rulesToCheck.find((r) => r.oldValueType === "else");
+      if (duplicate) {
+        return {
+          overlaps: true,
+          message: "An ELSE rule already exists.",
+        };
+      }
+    }
+
+    return { overlaps: false, message: "" };
+  };
+
   const handleRuleAction = (action: "add" | "change") => {
     const newId = action === "add" ? Date.now().toString() : selectedRuleId;
     if (!newId) return;
@@ -325,6 +612,22 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
       newValueDisplay: tempNewValueDisplay,
     };
 
+    // Check for overlapping rules
+    const { overlaps, message } = checkRulesOverlap(
+      rule,
+      recodeRules,
+      action === "change" ? newId : undefined
+    );
+
+    if (overlaps) {
+      setErrorDialog({
+        open: true,
+        title: "Overlapping Rules",
+        description: message,
+      });
+      return;
+    }
+
     if (action === "add") {
       setRecodeRules((prev) => [...prev, rule].sort(sortRules));
     } else {
@@ -361,8 +664,8 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
       "systemMissing",
       "systemOrUserMissing",
       "value",
-      "range",
       "rangeLowest",
+      "range",
       "rangeHighest",
       "else",
     ];

@@ -83,6 +83,8 @@ export async function analyzeUnivariate({
             .filter((line: string) => line.trim() !== "");
     }
 
+    console.log(errors);
+
     const formattedResults = transformUnivariateResult(results, errors);
 
     /*

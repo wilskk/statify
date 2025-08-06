@@ -374,10 +374,8 @@ export const addStandardYAxisForHorizontal = (
 
   // Style the axis
   yAxisGroup
-    .call((g) => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
-    .call((g) =>
-      g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
-    );
+    .call((g) => g.selectAll(".tick line").attr("stroke", "#6b7280"))
+    .call((g) => g.selectAll("text").attr("fill", "#6b7280"));
 
   return yAxisGroup;
 };
@@ -460,16 +458,14 @@ export const addStandardXAxisForHorizontal = (
         .clone()
         .attr("y2", height - marginTop - marginBottom)
         .attr("stroke-opacity", 0.1)
-        .attr("stroke", "hsl(var(--border))")
+        .attr("stroke", "#e5e7eb")
     );
   }
 
   // Style the axis
   xAxisGroup
-    .call((g) => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
-    .call((g) =>
-      g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
-    );
+    .call((g) => g.selectAll(".tick line").attr("stroke", "#6b7280"))
+    .call((g) => g.selectAll("text").attr("fill", "#6b7280"));
 
   return xAxisGroup;
 };
@@ -559,16 +555,14 @@ export const addStandardYAxis = (
         .clone()
         .attr("x2", width - marginLeft - marginRight)
         .attr("stroke-opacity", 0.1)
-        .attr("stroke", "hsl(var(--border))")
+        .attr("stroke", "#e5e7eb")
     );
   }
 
   // Style the axis
   yAxisGroup
-    .call((g) => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
-    .call((g) =>
-      g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
-    );
+    .call((g) => g.selectAll(".tick line").attr("stroke", "#6b7280"))
+    .call((g) => g.selectAll("text").attr("fill", "#6b7280"));
 
   return yAxisGroup;
 };

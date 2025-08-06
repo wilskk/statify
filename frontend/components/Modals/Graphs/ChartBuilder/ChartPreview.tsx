@@ -3436,7 +3436,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               useaxis,
               titleConfig,
               axisLabels,
-              axisScaleOptions,
+              // axisScaleOptions,
               chartColors
             );
             break;

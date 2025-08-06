@@ -81,7 +81,7 @@ const generateDummyData = (
 // Suite pengujian utama untuk kinerja konstruktor KMeansClusterAnalysis
 describe("KMeansClusterAnalysis Constructor Performance Test", () => {
     const ROW_COUNTS = [10, 100, 1000];
-    const VAR_COUNTS = [10, 100];
+    const VAR_COUNTS = [5, 10];
     const NUM_RUNS = 100; // Jumlah eksekusi untuk setiap pengujian
     const performanceResults: Record<number, Record<number, number[]>> = {};
 

@@ -1698,62 +1698,74 @@ export function createEChartsStacked3DBarChart(
   const maxZOriginal = Math.max(...data.map((d) => Number(d.z) || 0));
   const scaleZ = maxZOriginal > 0 ? maxVisualHeight / maxZOriginal : 1;
 
-  const stackMap = new Map<string, number>();
+  // Calculate base heights for stacking
+  const baseHeights = new Map<string, number>();
+
+  // First pass: calculate base heights for each coordinate
+  for (let xi = 0; xi < xCategories.length; xi++) {
+    for (let yi = 0; yi < yCategories.length; yi++) {
+      const xVal = xCategories[xi];
+      const yVal = yCategories[yi];
+      const key = `${xVal}|${yVal}`;
+
+      let baseHeight = 0;
+      for (let i = 0; i < groupCategories.length; i++) {
+        const prevGroup = groupCategories[i];
+        const prevGroupData = data.filter((d) => d.group === prevGroup);
+        const found = prevGroupData.find((d) => d.x === xVal && d.y === yVal);
+        if (found) {
+          baseHeight += Number(found.z) || 0;
+        }
+      }
+      baseHeights.set(key, baseHeight * scaleZ);
+    }
+  }
 
   const series = groupCategories.map((group, idx) => {
     const groupData = data.filter((d) => d.group === group);
-    const dataMap = new Map<string, { zScaled: number; zOriginal: number }>();
-
-    groupData.forEach((d) => {
-      const rawZ = Number(d.z) || 0;
-      const key = `${d.x}|${d.y}`;
-      if (rawZ !== 0 && !isNaN(rawZ)) {
-        dataMap.set(key, {
-          zScaled: rawZ * scaleZ,
-          zOriginal: rawZ,
-        });
-      }
-    });
-
     const seriesData: any[] = [];
 
+    // Create data for each x,y coordinate
     for (let xi = 0; xi < xCategories.length; xi++) {
       for (let yi = 0; yi < yCategories.length; yi++) {
         const xVal = xCategories[xi];
         const yVal = yCategories[yi];
         const key = `${xVal}|${yVal}`;
-        const found = dataMap.get(key);
 
-        if (found) {
-          const zBase = stackMap.get(key) ?? 0;
-          stackMap.set(key, zBase + found.zScaled);
+        // Find data for this group at this x,y coordinate
+        const found = groupData.find((d) => d.x === xVal && d.y === yVal);
 
-          // Data format: [xIndex, yIndex, zHeight, zBase, xRaw, yRaw, zOriginal]
-          seriesData.push([
-            xi,
-            yi,
-            found.zScaled,
-            zBase,
-            xVal,
-            yVal,
-            found.zOriginal,
-          ]);
-        }
+        // Add data point (0 if no data found for this group)
+        const rawZ = found ? Number(found.z) || 0 : 0;
+        const zScaled = rawZ * scaleZ;
+        const baseHeight = baseHeights.get(key) || 0;
+
+        // Data format: [xValue, yValue, zValue, baseHeight]
+        // Always add data point for consistent stacking, but with conditional styling
+        seriesData.push({
+          value: [xVal, yVal, zScaled, baseHeight],
+          itemStyle: {
+            opacity: rawZ > 0 ? 0.8 : 0, // Transparan jika nilai 0
+          },
+        });
       }
     }
 
     return {
       name: group,
       type: "bar3D",
+      stack: "stack", // Add stack property for stacking
       shading: "lambert",
       label: { show: false },
       data: seriesData,
       emphasis: {
-        itemStyle: { opacity: 1 },
+        label: {
+          show: false,
+        },
       },
       itemStyle: {
         color: chartColors ? chartColors[idx % chartColors.length] : undefined,
-        opacity: 0.8,
+        // opacity akan diatur per data point, bukan di level series
       },
     };
   });
@@ -1777,11 +1789,13 @@ export function createEChartsStacked3DBarChart(
     tooltip: {
       show: true,
       formatter: (params: any) => {
-        const [xIdx, yIdx, zHeight, zBase, xRaw, yRaw, zRaw] = params.value;
+        const [xVal, yVal, zValue, baseHeight] = params.value;
+        const zRaw = (zValue / scaleZ).toFixed(2);
+
         return `Group: ${params.seriesName}<br/>
-                X: ${xRaw}<br/>
-                Y: ${yRaw}<br/>
-                Z: ${zRaw}`;
+                   X: ${xVal}<br/>
+                   Y: ${yVal}<br/>
+                   Z: ${zRaw}`;
       },
     },
     legend: {
@@ -1792,51 +1806,35 @@ export function createEChartsStacked3DBarChart(
     },
     xAxis3D: {
       type: "value",
-      min: 0,
-      max: xCategories.length - 1,
       name: axisLabels?.x || "X",
       nameGap: 20,
       show: useAxis,
-      axisLabel: {
-        formatter: (val: number) => xCategories[val] ?? val,
-      },
+      min: Math.min(...xCategories.map((v) => Number(v))),
+      max: Math.max(...xCategories.map((v) => Number(v))),
     },
     yAxis3D: {
       type: "value",
-      min: 0,
-      max: yCategories.length - 1,
       name: axisLabels?.y || "Y",
       nameGap: 20,
       show: useAxis,
-      axisLabel: {
-        formatter: (val: number) => yCategories[val] ?? val,
-      },
+      min: Math.min(...yCategories.map((v) => Number(v))),
+      max: Math.max(...yCategories.map((v) => Number(v))),
     },
     zAxis3D: {
       type: "value",
       name: axisLabels?.z || "Z",
       nameGap: 20,
       show: useAxis,
-      max: maxVisualHeight,
     },
     grid3D: {
-      boxWidth: 100,
-      boxDepth: 100,
-      boxHeight: 100,
       viewControl: {
-        projection: "perspective",
-        autoRotate: false,
-        distance: 200,
-        alpha: 20,
-        beta: 40,
+        // autoRotate: true
       },
       light: {
         main: {
-          intensity: 1.2,
           shadow: true,
-        },
-        ambient: {
-          intensity: 0.3,
+          quality: "ultra",
+          intensity: 1.5,
         },
       },
     },
@@ -2142,8 +2140,8 @@ export function createEChartsGrouped3DScatterPlot(
 
 export function createEChartsClustered3DBarChart(
   data: Array<{
-    x: number;
-    y: number;
+    x: string | number;
+    y: string | number;
     z: number;
     group: string;
   }>,
@@ -2159,31 +2157,25 @@ export function createEChartsClustered3DBarChart(
     subtitleFontSize?: number;
   },
   axisLabels?: { x?: string; y?: string; z?: string },
-  axisScaleOptions?: any,
   chartColors?: string[]
 ): HTMLDivElement {
-  console.log("🎯 createEChartsClustered3DBarChart called with:", {
-    dataLength: data.length,
-    width,
-    height,
-    useAxis,
-    titleOptions,
-    axisLabels,
-    axisScaleOptions,
-    chartColors,
-    data: data.slice(0, 5), // Log first 5 data points
-  });
-
-  // Create container
   const container = document.createElement("div");
   container.style.width = `${width}px`;
   container.style.height = `${height}px`;
 
-  // Get unique groups
-  const groups = Array.from(new Set(data.map((d) => d.group)));
-  console.log("📊 Unique groups found:", groups);
+  // Deteksi apakah X/Y numerik atau kategori
+  const isXNumeric = data.every((d) => typeof d.x === "number");
+  const isYNumeric = data.every((d) => typeof d.y === "number");
 
-  // Default colors for groups
+  const xCategories = isXNumeric
+    ? []
+    : Array.from(new Set(data.map((d) => String(d.x))));
+  const yCategories = isYNumeric
+    ? []
+    : Array.from(new Set(data.map((d) => String(d.y))));
+  const groups = Array.from(new Set(data.map((d) => d.group)));
+
+  // Default colors
   const defaultColors = [
     "#FF6B6B",
     "#4ECDC4",
@@ -2196,67 +2188,40 @@ export function createEChartsClustered3DBarChart(
     "#BB8FCE",
     "#85C1E9",
   ];
+  const colors = chartColors?.length ? chartColors : defaultColors;
 
-  const colors =
-    chartColors && chartColors.length > 0 ? chartColors : defaultColors;
+  const offset = 0.15; // jarak antar-group kecil
 
-  // Prepare series data for each group
-  const series = groups.map((group, index) => {
+  // Series per group
+  const series = groups.map((group, idx) => {
     const groupData = data
       .filter((d) => d.group === group)
-      .map((d) => [d.x, d.y, d.z]);
+      .map((d) => {
+        const xVal = isXNumeric
+          ? (d.x as number) + idx * offset // numerik: geser nilai asli sedikit
+          : xCategories.indexOf(String(d.x)) + idx * offset; // kategori: offset index
+        const yVal = isYNumeric
+          ? (d.y as number) + idx * offset
+          : yCategories.indexOf(String(d.y)) + idx * offset;
+
+        return [xVal, yVal, d.z];
+      });
 
     return {
       name: group,
       type: "bar3D",
       data: groupData,
-      stack: false, // Clustered, not stacked
       shading: "lambert",
-      itemStyle: {
-        color: colors[index % colors.length],
-        opacity: 0.8,
-      },
-      emphasis: {
-        itemStyle: {
-          opacity: 1,
-        },
-      },
-      label: {
-        show: false,
-        textStyle: {
-          fontSize: 10,
-          borderWidth: 1,
-        },
-      },
+      barSize: isXNumeric || isYNumeric ? 6 : 8, // numerik -> kecilkan batang
+      itemStyle: { color: colors[idx % colors.length], opacity: 0.9 },
     };
   });
 
-  console.log("📈 Series prepared:", series.length, "series");
-
-  // Calculate axis ranges if not provided
-  const xValues = data.map((d) => d.x);
-  const yValues = data.map((d) => d.y);
-  const zValues = data.map((d) => d.z);
-
-  const xRange = {
-    min: axisScaleOptions?.x?.min ?? Math.min(...xValues),
-    max: axisScaleOptions?.x?.max ?? Math.max(...xValues),
-  };
-  const yRange = {
-    min: axisScaleOptions?.y?.min ?? Math.min(...yValues),
-    max: axisScaleOptions?.y?.max ?? Math.max(...yValues),
-  };
-  const zRange = {
-    min: axisScaleOptions?.z?.min ?? Math.min(...zValues),
-    max: axisScaleOptions?.z?.max ?? Math.max(...zValues),
-  };
-
-  // Create chart options
   const option = {
     title: titleOptions
       ? {
           text: titleOptions.title || "Clustered 3D Bar Chart",
-          subtext: titleOptions.subtitle || "ECharts 3D Bar Chart",
+          subtext: titleOptions.subtitle || "",
           left: "center",
           textStyle: {
             fontSize: titleOptions.titleFontSize || 16,
@@ -2271,10 +2236,17 @@ export function createEChartsClustered3DBarChart(
     tooltip: {
       show: true,
       formatter: (params: any) => {
+        const [xVal, yVal, zVal] = params.value;
+        const xLabel = isXNumeric
+          ? xVal.toFixed(2)
+          : xCategories[Math.floor(xVal)];
+        const yLabel = isYNumeric
+          ? yVal.toFixed(2)
+          : yCategories[Math.floor(yVal)];
         return `Group: ${params.seriesName}<br/>
-                X: ${params.data[0]}<br/>
-                Y: ${params.data[1]}<br/>
-                Z: ${params.data[2]}`;
+                X: ${xLabel}<br/>
+                Y: ${yLabel}<br/>
+                Z: ${zVal}`;
       },
     },
     legend: {
@@ -2283,113 +2255,53 @@ export function createEChartsClustered3DBarChart(
       orient: "vertical",
       data: groups,
     },
-
     grid3D: {
       boxWidth: 100,
       boxHeight: 100,
       boxDepth: 100,
       viewControl: {
         projection: "perspective",
-        autoRotate: false,
         distance: 200,
         alpha: 20,
         beta: 40,
       },
       light: {
-        main: {
-          intensity: 1.2,
-          shadow: true,
-        },
-        ambient: {
-          intensity: 0.3,
-        },
+        main: { intensity: 1.2, shadow: true },
+        ambient: { intensity: 0.3 },
       },
     },
-
-    xAxis3D: useAxis
-      ? {
-          name: axisLabels?.x || "X Axis",
-          type: "value",
-          min: xRange.min,
-          max: xRange.max,
-          nameTextStyle: {
-            fontSize: 12,
-            color: "#333",
-          },
-        }
-      : undefined,
-
-    yAxis3D: useAxis
-      ? {
-          name: axisLabels?.y || "Y Axis",
-          type: "value",
-          min: yRange.min,
-          max: yRange.max,
-          nameTextStyle: {
-            fontSize: 12,
-            color: "#333",
-          },
-        }
-      : undefined,
-
-    zAxis3D: useAxis
-      ? {
-          name: axisLabels?.z || "Z Axis",
-          type: "value",
-          min: zRange.min,
-          max: zRange.max,
-          nameTextStyle: {
-            fontSize: 12,
-            color: "#333",
-          },
-        }
-      : undefined,
-
-    series: series,
+    xAxis3D: {
+      type: isXNumeric ? "value" : "category",
+      name: axisLabels?.x || "X Axis",
+      data: isXNumeric ? undefined : xCategories,
+      show: useAxis,
+    },
+    yAxis3D: {
+      type: isYNumeric ? "value" : "category",
+      name: axisLabels?.y || "Y Axis",
+      data: isYNumeric ? undefined : yCategories,
+      show: useAxis,
+    },
+    zAxis3D: {
+      type: "value",
+      name: axisLabels?.z || "Z Axis",
+      show: useAxis,
+    },
+    series,
   };
 
-  console.log("🎨 Chart option created:", option);
+  const chart = echarts.init(container);
+  chart.setOption(option);
 
-  try {
-    // Initialize chart
-    const chart = echarts.init(container);
-    chart.setOption(option);
+  // Resize observer
+  const resizeObserver = new ResizeObserver(() => chart.resize());
+  resizeObserver.observe(container);
+  (container as any).cleanup = () => {
+    resizeObserver.disconnect();
+    chart.dispose();
+  };
 
-    // Handle resize
-    const resizeObserver = new ResizeObserver((entries) => {
-      chart.resize();
-    });
-    resizeObserver.observe(container);
-
-    // Store cleanup function
-    (container as any).cleanup = () => {
-      resizeObserver.disconnect();
-      chart.dispose();
-    };
-
-    console.log("✅ ECharts Clustered 3D Bar Chart created successfully");
-    return container;
-  } catch (error: any) {
-    console.error("❌ Error creating ECharts Clustered 3D Bar Chart:", error);
-
-    // Create fallback element
-    const fallback = document.createElement("div");
-    fallback.style.width = `${width}px`;
-    fallback.style.height = `${height}px`;
-    fallback.style.display = "flex";
-    fallback.style.alignItems = "center";
-    fallback.style.justifyContent = "center";
-    fallback.style.backgroundColor = "#f0f0f0";
-    fallback.style.border = "1px solid #ccc";
-    fallback.innerHTML = `
-      <div style="text-align: center; color: #666;">
-        <div>Error creating 3D chart</div>
-        <div style="font-size: 12px; margin-top: 5px;">${error.message}</div>
-      </div>
-    `;
-
-    return fallback;
-  }
+  return container;
 }
 
 /**

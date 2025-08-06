@@ -14,6 +14,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { CheckedState } from "@radix-ui/react-checkbox";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { saveTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateSave = ({
     isSaveOpen,
@@ -23,6 +34,17 @@ export const UnivariateSave = ({
 }: UnivariateSaveProps) => {
     const [saveState, setSaveState] = useState<UnivariateSaveType>({ ...data });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(saveTourSteps);
 
     useEffect(() => {
         if (isSaveOpen) {
@@ -66,7 +88,22 @@ export const UnivariateSave = ({
     if (!isSaveOpen) return null;
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full flex-grow">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="flex flex-col gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
@@ -74,10 +111,13 @@ export const UnivariateSave = ({
                 >
                     <ResizablePanel defaultSize={40}>
                         <ResizablePanelGroup direction="horizontal">
-                            <ResizablePanel defaultSize={50}>
+                            <ResizablePanel>
                                 <ResizablePanelGroup direction="vertical">
                                     <ResizablePanel defaultSize={60}>
-                                        <div className="flex flex-col gap-2 p-2">
+                                        <div
+                                            id="univariate-save-variables"
+                                            className="flex flex-col gap-2 p-2"
+                                        >
                                             <Label className="font-bold">
                                                 Predicted Values
                                             </Label>
@@ -303,7 +343,10 @@ export const UnivariateSave = ({
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={60}>
-                        <div className="flex flex-col gap-4 p-2">
+                        <div
+                            id="univariate-save-coeff-stats"
+                            className="flex flex-col gap-4 p-2"
+                        >
                             <Label className="font-bold">
                                 Coefficient Statistics
                             </Label>
@@ -318,12 +361,12 @@ export const UnivariateSave = ({
                                 />
                                 <label
                                     htmlFor="CoeffStats"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                 >
                                     Create Coefficient Statistics
                                 </label>
                             </div>
-                            <Label className="font-bold">Type</Label>
+                            <Label className="font-bold cursor-not-allowed opacity-50">Type</Label>
                             <RadioGroup
                                 value={
                                     saveState.StandardStats
@@ -341,7 +384,7 @@ export const UnivariateSave = ({
                                             value="StandardStats"
                                             id="StandardStats"
                                         />
-                                        <Label htmlFor="StandardStats">
+                                        <Label htmlFor="StandardStats" className="cursor-not-allowed opacity-50">
                                             Standard Statistics
                                         </Label>
                                     </div>
@@ -350,14 +393,14 @@ export const UnivariateSave = ({
                                             value="Heteroscedasticity"
                                             id="Heteroscedasticity"
                                         />
-                                        <Label htmlFor="Heteroscedasticity">
+                                        <Label htmlFor="Heteroscedasticity" className="cursor-not-allowed opacity-50">
                                             Heteroscedasticity-consistent
                                             Statistics
                                         </Label>
                                     </div>
                                 </div>
                             </RadioGroup>
-                            <Label className="font-bold">Destination</Label>
+                            <Label className="font-bold cursor-not-allowed opacity-50">Destination</Label>
                             <RadioGroup
                                 value={
                                     saveState.NewDataSet
@@ -375,12 +418,12 @@ export const UnivariateSave = ({
                                             value="NewDataSet"
                                             id="NewDataSet"
                                         />
-                                        <Label htmlFor="NewDataSet">
+                                        <Label htmlFor="NewDataSet" className="cursor-not-allowed opacity-50">
                                             Create a New Dataset
                                         </Label>
                                     </div>
                                     <div className="flex items-center space-x-2 pl-6">
-                                        <Label className="w-[150px]">
+                                        <Label className="w-[150px] cursor-not-allowed opacity-50">
                                             Dataset Name:
                                         </Label>
                                         <div className="w-[150px]">
@@ -409,7 +452,7 @@ export const UnivariateSave = ({
                                             value="WriteNewDataSet"
                                             id="WriteNewDataSet"
                                         />
-                                        <Label htmlFor="WriteNewDataSet">
+                                        <Label htmlFor="WriteNewDataSet" className="cursor-not-allowed opacity-50">
                                             Write New Dataset File
                                         </Label>
                                     </div>
@@ -437,18 +480,23 @@ export const UnivariateSave = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -460,6 +508,7 @@ export const UnivariateSave = ({
                         Cancel
                     </Button>
                     <Button
+                        id="univariate-save-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

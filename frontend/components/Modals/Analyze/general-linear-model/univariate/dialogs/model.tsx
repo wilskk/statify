@@ -36,18 +36,41 @@ import { CheckedState } from "@radix-ui/react-checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { modelTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateModel = ({
     isModelOpen,
     setIsModelOpen,
     updateFormData,
     data,
+    covariates,
 }: UnivariateModelProps) => {
     const [modelState, setModelState] = useState<UnivariateModelType>({
         ...data,
     });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
     const [availableVariables, setAvailableVariables] = useState<string[]>([]);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(modelTourSteps);
 
     // Add state for selected variable
     const [selectedVariable, setSelectedVariable] = useState<string | null>(
@@ -177,8 +200,8 @@ export const UnivariateModel = ({
                     /([^()\s]+)\((?:[^()\s]+\()*\{variable\}/
                 );
                 if (matches && matches[1] === selectedVariable) {
-                    // Mencegah nested variable yang sama (misalnya Age(Age) atau Age(Year(Age)))
-                    return; // Tidak melakukan apa-apa jika mencoba nested variable yang sama
+                    toast.warning("Each factor must be unique.");
+                    return; // Mencegah nested variable yang sama (misalnya Age(Age) atau Age(Year(Age)))
                 }
 
                 // Jika tidak sama, ganti placeholder dengan variabel yang dipilih
@@ -195,8 +218,46 @@ export const UnivariateModel = ({
             // Jika term berakhir dengan "(" atau " * ", tambahkan variabel tanpa spasi tambahan
             else if (
                 currentBuildTerm.endsWith("(") ||
-                currentBuildTerm.endsWith(" * ")
+                currentBuildTerm.endsWith("*")
             ) {
+                const isCovariate =
+                    covariates && covariates.includes(selectedVariable);
+
+                // Helper function to recursively find all unique factors
+                const getUniqueFactors = (term: string): Set<string> => {
+                    const factors = new Set<string>();
+                    const parts = term.split(/\s*\*\s*/); // Split by " * "
+                    parts.forEach((part) => {
+                        const match = part.match(/(\w+)\((.*)\)/); // Check for nesting like factor(nested)
+                        if (match) {
+                            const mainFactor = match[1];
+                            const nestedTerm = match[2];
+                            if (
+                                !covariates ||
+                                !covariates.includes(mainFactor)
+                            ) {
+                                factors.add(mainFactor);
+                            }
+                            // Recurse on the nested part
+                            getUniqueFactors(nestedTerm).forEach((f) =>
+                                factors.add(f)
+                            );
+                        } else {
+                            // It's a simple term
+                            if (!covariates || !covariates.includes(part)) {
+                                factors.add(part.trim());
+                            }
+                        }
+                    });
+                    return factors;
+                };
+
+                const existingFactors = getUniqueFactors(currentBuildTerm);
+
+                if (!isCovariate && existingFactors.has(selectedVariable)) {
+                    toast.warning("Each factor must be unique within a term.");
+                    return;
+                }
                 setCurrentBuildTerm((prev) => prev + selectedVariable);
             }
             // Jika tidak, tambahkan spasi dan variabel
@@ -220,10 +281,10 @@ export const UnivariateModel = ({
 
         // Hanya tambahkan "*" jika term tidak berakhir dengan * atau (
         if (
-            !currentBuildTerm.endsWith(" * ") &&
+            !currentBuildTerm.endsWith("*") &&
             !currentBuildTerm.endsWith("(")
         ) {
-            setCurrentBuildTerm((prev) => prev + " * ");
+            setCurrentBuildTerm((prev) => prev + "*");
         }
     };
 
@@ -239,7 +300,7 @@ export const UnivariateModel = ({
 
         // Jika term tidak berakhir dengan * atau (
         if (
-            !currentBuildTerm.endsWith(" * ") &&
+            !currentBuildTerm.endsWith("*") &&
             !currentBuildTerm.endsWith("(")
         ) {
             let newTerm = currentBuildTerm;
@@ -286,7 +347,7 @@ export const UnivariateModel = ({
                 return;
             }
             if (
-                currentBuildTerm.endsWith(" * ") ||
+                currentBuildTerm.endsWith("*") ||
                 currentBuildTerm.endsWith("(")
             ) {
                 toast.warning(
@@ -381,6 +442,16 @@ export const UnivariateModel = ({
     };
 
     const handleContinue = () => {
+        if (
+            (modelState.Custom || modelState.BuildCustomTerm) &&
+            (!modelState.FactorsModel || modelState.FactorsModel.length === 0)
+        ) {
+            toast.warning(
+                "When specifying a custom model, you must include at least one model term."
+            );
+            return;
+        }
+
         Object.entries(modelState).forEach(([key, value]) => {
             updateFormData(key as keyof UnivariateModelType, value);
         });
@@ -391,13 +462,31 @@ export const UnivariateModel = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="flex flex-col items-start gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
                     className="w-full min-h-[550px] rounded-lg border md:min-w-[300px]"
                 >
                     <ResizablePanel defaultSize={15}>
-                        <div className="flex flex-col gap-2 p-2">
+                        <div
+                            id="univariate-model-specify-model"
+                            className="flex flex-col gap-2 p-2"
+                        >
                             <Label className="font-bold">Specify Model</Label>
                             <RadioGroup
                                 value={
@@ -423,7 +512,6 @@ export const UnivariateModel = ({
                                         <RadioGroupItem
                                             value="Custom"
                                             id="Custom"
-                                            disabled={true}
                                         />
                                         <Label htmlFor="Custom">
                                             Build Terms
@@ -433,7 +521,6 @@ export const UnivariateModel = ({
                                         <RadioGroupItem
                                             value="BuildCustomTerm"
                                             id="BuildCustomTerm"
-                                            disabled={true}
                                         />
                                         <Label htmlFor="BuildCustomTerm">
                                             Build Custom Terms
@@ -447,7 +534,10 @@ export const UnivariateModel = ({
                     <ResizablePanel defaultSize={55}>
                         <ResizablePanelGroup direction="horizontal">
                             <ResizablePanel defaultSize={30}>
-                                <div className="w-full p-2">
+                                <div
+                                    id="univariate-model-factors-covariates"
+                                    className="w-full p-2"
+                                >
                                     <Label>Factor & Covariates: </Label>
                                     <ScrollArea className="h-[200px] p-2 border rounded overflow-hidden">
                                         <div className="flex flex-col gap-1 justify-start items-start">
@@ -499,7 +589,10 @@ export const UnivariateModel = ({
                             </ResizablePanel>
                             <ResizableHandle />
                             <ResizablePanel defaultSize={30}>
-                                <div className="flex flex-col gap-2 p-2">
+                                <div
+                                    id="univariate-model-build-terms"
+                                    className="flex flex-col gap-2 p-2"
+                                >
                                     <Label className="font-bold">
                                         Build Term(s):
                                     </Label>
@@ -547,6 +640,7 @@ export const UnivariateModel = ({
                                     {modelState.Custom && (
                                         <div className="mt-2 flex justify-end">
                                             <Button
+                                                id="univariate-model-add-build-terms-btn"
                                                 size="sm"
                                                 variant="default"
                                                 disabled={
@@ -566,7 +660,10 @@ export const UnivariateModel = ({
                             </ResizablePanel>
                             <ResizableHandle />
                             <ResizablePanel defaultSize={40}>
-                                <div className="w-full p-2">
+                                <div
+                                    id="univariate-model-terms"
+                                    className="w-full p-2"
+                                >
                                     <div
                                         className="flex flex-col w-full gap-2"
                                         onDragOver={(e) =>
@@ -650,13 +747,17 @@ export const UnivariateModel = ({
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={30}>
-                        <div className="flex flex-col gap-2 p-2">
+                        <div
+                            id="univariate-model-build-custom-term"
+                            className="flex flex-col gap-2 p-2"
+                        >
                             <Label>Build Term:</Label>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-[150px]">
                                             <Button
+                                                id="univariate-model-insert-variable-btn"
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={
@@ -668,11 +769,18 @@ export const UnivariateModel = ({
                                                             "{variable}"
                                                         ) && // Aktif jika ada placeholder
                                                         !currentBuildTerm.endsWith(
-                                                            " * "
+                                                            "*"
                                                         ) &&
                                                         !currentBuildTerm.endsWith(
                                                             "("
-                                                        ))
+                                                        )) ||
+                                                    !!(
+                                                        withinParentheses &&
+                                                        selectedVariable &&
+                                                        covariates?.includes(
+                                                            selectedVariable
+                                                        )
+                                                    )
                                                 }
                                                 onClick={handleArrowClick}
                                                 title="Insert Variable"
@@ -682,17 +790,18 @@ export const UnivariateModel = ({
                                         </TableHead>
                                         <TableHead>
                                             <Button
+                                                id="univariate-model-by-btn"
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={
                                                     !modelState.BuildCustomTerm ||
                                                     currentBuildTerm.trim() ===
-                                                        "" ||
+                                                        "" || // Periksa apakah term kosong
                                                     currentBuildTerm.includes(
                                                         "{variable}"
                                                     ) || // Tidak aktif jika ada placeholder
                                                     currentBuildTerm.endsWith(
-                                                        " * "
+                                                        "*"
                                                     ) ||
                                                     currentBuildTerm.endsWith(
                                                         "("
@@ -706,9 +815,11 @@ export const UnivariateModel = ({
                                         </TableHead>
                                         <TableHead>
                                             <Button
+                                                id="univariate-model-within-btn"
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={
+                                                    true ||
                                                     !modelState.BuildCustomTerm ||
                                                     currentBuildTerm.trim() ===
                                                         "" || // Periksa apakah term kosong
@@ -716,7 +827,7 @@ export const UnivariateModel = ({
                                                         "{variable}"
                                                     ) || // Tidak aktif jika ada placeholder
                                                     currentBuildTerm.endsWith(
-                                                        " * "
+                                                        "*"
                                                     ) ||
                                                     currentBuildTerm.endsWith(
                                                         "("
@@ -730,6 +841,7 @@ export const UnivariateModel = ({
                                         </TableHead>
                                         <TableHead>
                                             <Button
+                                                id="univariate-model-clear-term-btn"
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={
@@ -745,6 +857,7 @@ export const UnivariateModel = ({
                                         </TableHead>
                                         <TableHead>
                                             <Button
+                                                id="univariate-model-add-btn"
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={
@@ -755,7 +868,7 @@ export const UnivariateModel = ({
                                                         "{variable}"
                                                     ) || // Tidak aktif jika ada placeholder
                                                     currentBuildTerm.endsWith(
-                                                        " * "
+                                                        "*"
                                                     ) ||
                                                     currentBuildTerm.endsWith(
                                                         "("
@@ -769,6 +882,7 @@ export const UnivariateModel = ({
                                         </TableHead>
                                         <TableHead>
                                             <Button
+                                                id="univariate-model-remove-btn"
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={
@@ -802,7 +916,10 @@ export const UnivariateModel = ({
                         </div>
                     </ResizablePanel>
                 </ResizablePanelGroup>
-                <div className="grid grid-cols-2 gap-2">
+                <div
+                    id="univariate-model-sum-of-squares"
+                    className="grid grid-cols-2 gap-2"
+                >
                     <div className="flex items-center space-x-2">
                         <Label className="w-[200px]">Sum of Squares:</Label>
                         <Select
@@ -810,7 +927,6 @@ export const UnivariateModel = ({
                             onValueChange={(value) =>
                                 handleChange("SumOfSquareMethod", value)
                             }
-                            disabled={true}
                         >
                             <SelectTrigger>
                                 <SelectValue />
@@ -849,9 +965,23 @@ export const UnivariateModel = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button type="button" variant="ghost">
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -863,6 +993,7 @@ export const UnivariateModel = ({
                         Cancel
                     </Button>
                     <Button
+                        id="univariate-model-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

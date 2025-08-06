@@ -328,53 +328,75 @@ export const RecodeSameVariablesModal: React.FC<
   // Helper function to evaluate rules
   const evaluateValueWithRules = (
     value: string | number | null,
-    rules: RecodeRule[]
+    rules: RecodeRule[],
+    sourceVariableType: "NUMERIC" | "STRING",
+    variable?: Variable
   ): string | number | null => {
-    // Handle null values
+    // Tangani null atau undefined di awal
     if (value === null || value === undefined) {
-      // Check for systemMissing or systemOrUserMissing rules first
       const missingRule = rules.find(
         (r) =>
           r.oldValueType === "systemMissing" ||
           r.oldValueType === "systemOrUserMissing"
       );
-      if (missingRule) {
-        return missingRule.newValue;
-      }
+      if (missingRule) return missingRule.newValue ?? "";
 
-      // If no specific rule for missing values, check for else rule
       const elseRule = rules.find((r) => r.oldValueType === "else");
-      if (elseRule) {
-        return elseRule.newValue;
+      if (elseRule) return elseRule.newValue ?? "";
+
+      return value; // Kembalikan null jika tidak ada aturan yang cocok
+    }
+
+    // Konversi nilai ke numeric jika perlu
+    const numericValue = typeof value === "string" ? parseFloat(value) : value;
+    const isNumericType = sourceVariableType === "NUMERIC";
+    const isValidNumber = !isNaN(numericValue as number);
+
+    // Cek System Missing
+    const isSystemMissing =
+      value === null ||
+      value === undefined ||
+      (typeof value === "number" && isNaN(value)) ||
+      (isNumericType && typeof value === "string" && value.trim() === "");
+
+    // Cek User Missing
+    const isUserMissing = (() => {
+      if (!variable?.missing) return false;
+
+      // Diskrit
+      if (
+        Array.isArray(variable.missing.discrete) &&
+        variable.missing.discrete.includes(value)
+      ) {
+        return true;
       }
 
-      return value;
-    }
+      // Range
+      const range = variable.missing?.range;
+      if (
+        isNumericType &&
+        range?.min !== undefined &&
+        range?.max !== undefined
+      ) {
+        return (
+          isValidNumber &&
+          (numericValue as number) >= range.min &&
+          (numericValue as number) <= range.max
+        );
+      }
 
-    // Jika nilai adalah string kosong, kembalikan apa adanya
-    if (value === "") {
-      return value;
-    }
+      return false;
+    })();
 
-    const numericValue = typeof value === "string" ? parseFloat(value) : value;
-    const isNumericType = recodeListType === "NUMERIC";
-    const isValidNumber = !isNaN(numericValue);
+    const isSystemOrUserMissing = isSystemMissing || isUserMissing;
 
+    // Evaluasi berdasarkan aturan recode
     for (const rule of rules) {
       switch (rule.oldValueType) {
         case "value":
-          // Untuk tipe STRING, bandingkan nilai secara langsung
-          if (!isNumericType && value === rule.oldValue) {
-            return rule.newValue;
-          }
-          // Untuk tipe NUMERIC, pastikan nilai valid dan cocok
-          if (
-            isNumericType &&
-            isValidNumber &&
-            numericValue === rule.oldValue
-          ) {
-            return rule.newValue;
-          }
+          if (value == rule.oldValue) return rule.newValue ?? "";
+          if (isNumericType && isValidNumber && numericValue == rule.oldValue)
+            return rule.newValue ?? "";
           break;
 
         case "range":
@@ -383,10 +405,10 @@ export const RecodeSameVariablesModal: React.FC<
             if (
               min !== null &&
               max !== null &&
-              numericValue >= min &&
-              numericValue <= max
+              (numericValue as number) >= min &&
+              (numericValue as number) <= max
             ) {
-              return rule.newValue;
+              return rule.newValue ?? "";
             }
           }
           break;
@@ -394,8 +416,8 @@ export const RecodeSameVariablesModal: React.FC<
         case "rangeLowest":
           if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
             const [, max] = rule.oldValue;
-            if (max !== null && numericValue <= max) {
-              return rule.newValue;
+            if (max !== null && (numericValue as number) <= max) {
+              return rule.newValue ?? "";
             }
           }
           break;
@@ -403,22 +425,18 @@ export const RecodeSameVariablesModal: React.FC<
         case "rangeHighest":
           if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
             const [min] = rule.oldValue;
-            if (min !== null && numericValue >= min) {
-              return rule.newValue;
+            if (min !== null && (numericValue as number) >= min) {
+              return rule.newValue ?? "";
             }
           }
           break;
 
         case "systemMissing":
-          if (value === null || value === undefined) {
-            return rule.newValue;
-          }
+          if (isSystemMissing) return rule.newValue ?? "";
           break;
 
         case "systemOrUserMissing":
-          if (value === null || value === undefined) {
-            return rule.newValue;
-          }
+          if (isSystemOrUserMissing) return rule.newValue ?? "";
           break;
 
         case "else":
@@ -426,13 +444,11 @@ export const RecodeSameVariablesModal: React.FC<
       }
     }
 
-    // Check for 'else' rule
+    // Aturan ELSE di akhir
     const elseRule = rules.find((r) => r.oldValueType === "else");
-    if (elseRule) {
-      return elseRule.newValue;
-    }
+    if (elseRule) return elseRule.newValue ?? "";
 
-    // Return original value if no matching rule
+    // Kembalikan nilai asli jika tidak ada aturan cocok
     return value;
   };
 
@@ -468,10 +484,15 @@ export const RecodeSameVariablesModal: React.FC<
           continue;
         }
 
-        // Untuk setiap nilai dalam kolom, terapkan aturan recode
         const updates = data
           .map((value, rowIndex) => {
-            const newValue = evaluateValueWithRules(value, recodeRules);
+            const safeValue = value === null ? "" : value;
+            const newValue = evaluateValueWithRules(
+              safeValue,
+              recodeRules,
+              variable.type === "NUMERIC" ? "NUMERIC" : "STRING",
+              variable
+            );
 
             // Jika nilai berubah, tambahkan ke daftar perubahan
             if (newValue !== value) {
