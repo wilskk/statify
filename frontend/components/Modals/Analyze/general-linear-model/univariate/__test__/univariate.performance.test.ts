@@ -3,19 +3,16 @@
 import { Variable } from "@/types/Variable";
 import * as fs from "fs";
 import * as path from "path";
-import { performance } from "perf_hooks"; // Gunakan performance hooks dari Node.js untuk waktu yang lebih akurat
+import { performance } from "perf_hooks";
 
-// Import fungsi dan kelas yang diperlukan untuk pengujian
-// Asumsikan path ini benar di lingkungan Jest Anda.
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import init, {
     UnivariateAnalysis,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/rust/pkg";
 
-// Path untuk menyimpan file JSON hasil kinerja.
 const performanceResultsPath = path.join(
     __dirname,
-    "performance-results-univariate-all-runs.json" // Nama file diubah untuk mencerminkan konten baru
+    "performance-results-univariate-all-runs.json"
 );
 
 /**
@@ -34,11 +31,10 @@ const generateDummyData = (
     const variables: Variable[] = [];
     for (let i = 0; i < varCount; i++) {
         const varName = `VAR${i + 1}`;
-        let varType: "STRING" | "NUMERIC" = "NUMERIC"; // Default to NUMERIC
+        let varType: "STRING" | "NUMERIC" = "NUMERIC";
         let varMeasure: "nominal" | "scale" = "scale";
 
         if (varName !== "VAR1" && varCount > 2) {
-            // Let's create one less factor to avoid the suspected "second covariate" bug
             const isCategorical = i > 0 && i < Math.floor(varCount / 2);
             if (isCategorical) {
                 varType = "STRING";
@@ -85,21 +81,18 @@ const generateDummyData = (
     return { dataVariables, variables };
 };
 
-// Suite pengujian utama untuk kinerja konstruktor UnivariateAnalysis
 describe("UnivariateAnalysis Constructor Performance Test", () => {
     const ROW_COUNTS = [1000];
     const VAR_COUNTS = [5, 10];
-    const NUM_RUNS = 100; // Jumlah eksekusi untuk setiap pengujian
+    const NUM_RUNS = 100;
     const performanceResults: Record<number, Record<number, number[]>> = {};
 
-    // Inisialisasi modul WebAssembly sekali sebelum semua pengujian berjalan.
     beforeAll(async () => {
         const wasmPath = path.resolve(__dirname, "../rust/pkg/wasm_bg.wasm");
         const wasmBuffer = fs.readFileSync(wasmPath);
         await init(wasmBuffer);
-    }, 60000); // Timeout 1 menit untuk inisialisasi Wasm
+    }, 60000);
 
-    // Setelah semua pengujian selesai, tulis hasilnya ke file.
     afterAll(() => {
         console.log(
             "\nSemua uji kinerja konstruktor selesai. Menulis hasil..."
@@ -275,7 +268,6 @@ describe("UnivariateAnalysis Constructor Performance Test", () => {
                         updatedAt: new Date().toISOString(),
                     };
 
-                    // --- PERSIAPAN DATA (di luar bagian yang diukur waktunya) ---
                     const DependentVariables = configData.main.DepVar
                         ? [configData.main.DepVar]
                         : [];
@@ -336,11 +328,8 @@ describe("UnivariateAnalysis Constructor Performance Test", () => {
 
                     const executionTimes: number[] = [];
                     for (let i = 0; i < NUM_RUNS; i++) {
-                        // --- PENGUKURAN KINERJA (fokus pada konstruktor) ---
                         const startTime = performance.now();
 
-                        // FIX: Buat klon mendalam dari configData untuk setiap iterasi
-                        // untuk mencegah mutasi antar eksekusi oleh konstruktor Wasm.
                         const configForRun = JSON.parse(
                             JSON.stringify(configData)
                         );
@@ -356,7 +345,7 @@ describe("UnivariateAnalysis Constructor Performance Test", () => {
                             varDefsForRandomFactor,
                             varDefsForCovariate,
                             varDefsForWlsWeight,
-                            configForRun // Gunakan klon
+                            configForRun
                         );
 
                         const endTime = performance.now();
@@ -366,14 +355,13 @@ describe("UnivariateAnalysis Constructor Performance Test", () => {
                     if (!performanceResults[rowCount]) {
                         performanceResults[rowCount] = {};
                     }
-                    // Simpan array lengkap dari waktu eksekusi
+
                     performanceResults[rowCount][varCount] = executionTimes;
 
-                    // Hapus perhitungan rata-rata dan perbarui pesan log
                     console.log(
                         `Waktu Konstruktor -> Baris: ${rowCount}, Var: ${varCount}. Selesai ${NUM_RUNS} eksekusi. Semua waktu telah dicatat.`
                     );
-                }, 30000); // Timeout 5 menit per pengujian
+                }, 30000);
             });
         });
     });
