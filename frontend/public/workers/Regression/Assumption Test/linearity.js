@@ -38,6 +38,9 @@ self.onmessage = function (e) {
     const restrictedSSE = restricted.sse;
     const yHat = restricted.yHat;
 
+    // Define maxPower for Ramsey RESET test (typically 2 or 3)
+    const maxPower = 3;
+
     const augmentedX = X.map((row, i) => {
       const extras = [];
       for (let pw = 2; pw <= maxPower; pw++) {
