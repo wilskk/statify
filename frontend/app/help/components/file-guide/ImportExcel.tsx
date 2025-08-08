@@ -106,7 +106,7 @@ export const ImportExcel = () => {
     <HelpGuideTemplate
       title="Import Excel Files"
       description="Complete guide for bringing Excel data into Statify"
-      category="File Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

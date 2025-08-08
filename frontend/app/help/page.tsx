@@ -238,15 +238,6 @@ export default function HelpPage() {
 
     const sectionsToDisplayInSidebar = search ? filteredSectionsResult : sectionsData;
 
-    // Correctly pass the active child content to the main component
-    const selectedSection = sectionsData.find((s) => s.key === selected);
-    const contentToRender =
-        selectedSection && selectedSection.content
-            ? cloneElement(selectedSection.content, {
-                  section: activeChild || undefined,
-              })
-            : null;
-
     return (
         <div
             className={`bg-background h-screen overflow-hidden transition-opacity duration-300 ${
@@ -263,7 +254,6 @@ export default function HelpPage() {
                 displaySections={sectionsToDisplayInSidebar}
                 expandedKeys={expandedKeys}
             />
-            <div className="flex-1 overflow-y-auto p-6 md:p-8">{contentToRender}</div>
         </div>
     );
 }

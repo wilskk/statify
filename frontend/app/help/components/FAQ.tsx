@@ -177,7 +177,6 @@ export const FAQ = () => {
     <HelpGuideTemplate
       title="Frequently Asked Questions"
       description="Find answers to common questions about using Statify"
-      category="FAQ"
       lastUpdated="2024-01-15"
       sections={sections}
 

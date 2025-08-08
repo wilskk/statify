@@ -1,262 +1,193 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HelpCard, HelpAlert, HelpStep } from '@/app/help/ui/HelpLayout';
-import { Calculator, FileText, BarChart3, HelpCircle, Settings, TrendingUp } from 'lucide-react';
+import { Calculator, FileText, BarChart3, HelpCircle, Settings, TrendingUp, Table } from 'lucide-react';
 
 // Tab content components for data exploration
-const OverviewTab = () => (
+const VariablesTab = () => (
   <div className="space-y-6">
-    <HelpAlert variant="info" title="What is Data Exploration?">
+    <HelpAlert variant="info" title="Apa itu Analisis Explore?">
       <p className="text-sm mt-2">
-        Data exploration provides comprehensive insights into your data using robust statistical methods. 
-        It identifies patterns, outliers, and distribution characteristics while providing reliable estimates 
-        that aren't affected by extreme values.
+        Analisis Explore memberikan wawasan komprehensif tentang data Anda menggunakan metode statistik yang robust. 
+        Ini mengidentifikasi pola, outlier, dan karakteristik distribusi sambil memberikan estimasi yang dapat diandalkan 
+        yang tidak terpengaruh oleh nilai ekstrem.
       </p>
     </HelpAlert>
 
-    <HelpCard title="When to Use Data Exploration" icon={HelpCircle} variant="feature">
+    <HelpCard title="Kapan Menggunakan Analisis Explore" icon={HelpCircle} variant="feature">
       <ul className="text-sm space-y-2 mt-2">
-        <li>• Initial data analysis and understanding</li>
-        <li>• Outlier detection and data quality assessment</li>
-        <li>• Distribution analysis and normality checking</li>
-        <li>• Robust statistical estimation</li>
-        <li>• Data pattern identification</li>
+        <li>• Analisis data awal dan pemahaman</li>
+        <li>• Deteksi outlier dan penilaian kualitas data</li>
+        <li>• Analisis distribusi dan pemeriksaan normalitas</li>
+        <li>• Estimasi statistik yang robust</li>
+        <li>• Identifikasi pola data</li>
       </ul>
     </HelpCard>
 
-    <HelpCard title="What You'll Get" icon={FileText} variant="feature">
-      <ul className="text-sm space-y-2 mt-2">
-        <li>• Descriptive statistics with robust estimates</li>
-        <li>• 5% trimmed mean for outlier-resistant central tendency</li>
-        <li>• Percentiles from 5th to 95th</li>
-        <li>• Outlier detection and extreme value identification</li>
-        <li>• Distribution shape analysis</li>
-        <li>• Clear visual presentation of results</li>
-      </ul>
-    </HelpCard>
-  </div>
-);
-
-const VariablesTab = () => (
-  <div className="space-y-6">
-    <HelpCard title="Selecting Variables for Analysis" icon={TrendingUp} variant="feature">
+    <HelpCard title="Memilih Variabel untuk Analisis" icon={Calculator} variant="feature">
       <div className="space-y-4 mt-2">
         <HelpStep
           number={1}
-          title="Choose Numerical Variables"
-          description="Select one or more numerical variables to analyze. These should be continuous or interval variables."
+          title="Variabel Numerik"
+          description="Pilih variabel kontinu atau diskrit yang ingin Anda analisis secara mendalam."
         />
         <HelpStep
           number={2}
-          title="Check Data Quality"
-          description="Review your variables for missing values, outliers, or data entry errors before analysis."
+          title="Variabel Faktor (Opsional)"
+          description="Tambahkan variabel kategorikal untuk membandingkan statistik antar kelompok."
         />
         <HelpStep
           number={3}
-          title="Consider Variable Types"
-          description="Ensure variables are appropriate for robust statistical analysis (scale/interval level)."
+          title="Pertimbangan Ukuran Sampel"
+          description="Pastikan setiap kelompok memiliki ukuran sampel yang memadai untuk analisis yang bermakna."
         />
       </div>
     </HelpCard>
-
-    <HelpAlert variant="tip" title="Variable Selection Tips">
-      <p className="text-sm mt-2">
-        Choose variables that represent meaningful measurements in your dataset. 
-        Data exploration works best with numerical variables that have sufficient variation.
-      </p>
-    </HelpAlert>
   </div>
 );
 
 const StatisticsTab = () => (
   <div className="space-y-6">
-    <HelpCard title="Robust Descriptive Statistics" icon={Calculator} variant="feature">
-      <div className="space-y-3 mt-2">
-        <p className="text-sm font-medium">Central tendency measures:</p>
-        <ul className="text-sm space-y-1 ml-4">
-          <li>• <strong>Mean</strong> - Arithmetic average of all values</li>
-          <li>• <strong>5% Trimmed Mean</strong> - Mean excluding top/bottom 5% of values</li>
-          <li>• <strong>Median</strong> - Middle value when sorted</li>
-          <li>• <strong>Mode</strong> - Most frequently occurring value</li>
-        </ul>
+    <HelpCard title="Opsi Statistik Deskriptif" icon={Calculator} variant="feature">
+      <div className="space-y-4 mt-2">
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm">Descriptives</h4>
+          <p className="text-sm text-muted-foreground">
+            Statistik deskriptif dasar termasuk mean, median, standar deviasi, dan 5% trimmed mean.
+          </p>
+          <div className="bg-muted p-3 rounded text-sm">
+            <p><strong>Mean:</strong> x̄ = Σx / n</p>
+            <p><strong>Standard Deviation:</strong> s = √(Σ(x - x̄)² / (n-1))</p>
+            <p><strong>5% Trimmed Mean:</strong> Mean setelah menghilangkan 5% nilai tertinggi dan terendah</p>
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm">Confidence Interval for Mean</h4>
+          <p className="text-sm text-muted-foreground">
+            Atur tingkat kepercayaan untuk estimasi mean (biasanya 95% atau 99%).
+          </p>
+          <div className="bg-muted p-3 rounded text-sm">
+            <p><strong>Rumus CI:</strong> mean ± (t × SE)</p>
+            <p>dimana SE = std / sqrt(n) dan t adalah nilai t-tabel</p>
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm">Outliers</h4>
+          <p className="text-sm text-muted-foreground">
+            Identifikasi nilai ekstrem yang mungkin memerlukan perhatian khusus dalam analisis.
+          </p>
+          <div className="bg-muted p-3 rounded text-sm">
+            <p><strong>Kriteria Outlier:</strong></p>
+            <p>• Nilai kurang dari Q1 - 1.5 × IQR</p>
+            <p>• Nilai lebih dari Q3 + 1.5 × IQR</p>
+            <p>dimana IQR = Q3 - Q1</p>
+          </div>
+        </div>
       </div>
     </HelpCard>
 
-    <HelpCard title="Distribution Measures" icon={Calculator} variant="feature">
-      <div className="space-y-3 mt-2">
-        <p className="text-sm font-medium">Spread and shape statistics:</p>
-        <ul className="text-sm space-y-1 ml-4">
-          <li>• <strong>Standard deviation</strong> - Measure of data spread</li>
-          <li>• <strong>Range</strong> - Difference between max and min values</li>
-          <li>• <strong>Interquartile range (IQR)</strong> - Range of middle 50%</li>
-          <li>• <strong>Skewness</strong> - Measure of distribution asymmetry</li>
-          <li>• <strong>Kurtosis</strong> - Measure of distribution tail heaviness</li>
-        </ul>
-      </div>
-    </HelpCard>
-
-    <HelpCard title="Percentiles" icon={Calculator} variant="feature">
-      <div className="space-y-3 mt-2">
-        <p className="text-sm font-medium">Distribution position measures:</p>
-        <ul className="text-sm space-y-1 ml-4">
-          <li>• <strong>5th to 95th percentiles</strong> - Full distribution coverage</li>
-          <li>• <strong>Quartiles</strong> - 25th, 50th (median), and 75th percentiles</li>
-          <li>• <strong>Deciles</strong> - 10 equal divisions of the distribution</li>
-        </ul>
-      </div>
-    </HelpCard>
+    <HelpAlert variant="info" title="Memahami Statistik Robust">
+      <p className="text-sm mt-2">
+        Statistik robust memberikan estimasi yang dapat diandalkan bahkan ketika data Anda mengandung outlier. 
+        5% trimmed mean, misalnya, mengecualikan 5% nilai tertinggi dan terendah sebelum menghitung rata-rata, 
+        sehingga lebih tahan terhadap pengaruh nilai ekstrem.
+      </p>
+    </HelpAlert>
   </div>
 );
 
 const PlotsTab = () => (
   <div className="space-y-6">
-    <HelpCard title="Outlier Detection Methods" icon={BarChart3} variant="feature">
+    <HelpCard title="Opsi Visualisasi" icon={BarChart3} variant="feature">
       <div className="space-y-4 mt-2">
-        <HelpStep
-          number={1}
-          title="Box Plot Analysis"
-          description="Identify outliers using the IQR method: values beyond Q1-1.5×IQR or Q3+1.5×IQR."
-        />
-        <HelpStep
-          number={2}
-          title="Z-Score Method"
-          description="Flag values with z-scores beyond ±3 standard deviations from the mean."
-        />
-        <HelpStep
-          number={3}
-          title="Percentile Method"
-          description="Identify values beyond the 5th and 95th percentiles as potential outliers."
-        />
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm">Boxplots</h4>
+          <p className="text-sm text-muted-foreground">
+            Pilih jenis boxplot untuk memvisualisasikan distribusi dan mengidentifikasi outlier.
+          </p>
+          <div className="text-sm space-y-1 ml-4">
+            <p>• <strong>None:</strong> Tidak menampilkan boxplot</p>
+            <p>• <strong>Factor levels together:</strong> Boxplot terpisah untuk setiap level faktor</p>
+            <p>• <strong>Dependents together:</strong> Semua variabel dependen dalam satu plot</p>
+            <p>• <strong>Dependents separately:</strong> Boxplot terpisah untuk setiap variabel dependen</p>
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm">Descriptives Plots</h4>
+          <div className="space-y-2">
+            <p className="text-sm"><strong>Stem-and-leaf:</strong> Menampilkan distribusi detail sambil mempertahankan nilai data aktual</p>
+            <p className="text-sm"><strong>Histogram:</strong> Menampilkan distribusi frekuensi untuk memahami bentuk dan pola data</p>
+          </div>
+        </div>
       </div>
     </HelpCard>
 
-    <HelpCard title="Distribution Visualization" icon={BarChart3} variant="feature">
-      <div className="space-y-4 mt-2">
-        <HelpStep
-          number={1}
-          title="Histogram Analysis"
-          description="Visualize the shape of your data distribution and identify unusual patterns."
-        />
-        <HelpStep
-          number={2}
-          title="Box Plot Interpretation"
-          description="Understand the spread, central tendency, and outliers in your data."
-        />
-        <HelpStep
-          number={3}
-          title="Q-Q Plot Analysis"
-          description="Assess whether your data follows a normal distribution pattern."
-        />
+    <HelpAlert variant="tip" title="Panduan Pemilihan Plot">
+      <div className="text-sm space-y-2 mt-2">
+        <p>• <strong>Boxplots:</strong> Terbaik untuk membandingkan distribusi antar kelompok</p>
+        <p>• <strong>Histograms:</strong> Ideal untuk memahami bentuk distribusi secara keseluruhan</p>
+        <p>• <strong>Stem-and-leaf:</strong> Berguna untuk dataset kecil untuk melihat nilai eksak</p>
+        <p>• <strong>Kombinasi plot:</strong> Gunakan beberapa jenis plot untuk analisis yang komprehensif</p>
       </div>
-    </HelpCard>
-
-    <HelpAlert variant="info" title="Outlier Interpretation">
-      <p className="text-sm mt-2">
-        Outliers aren't necessarily errors - they may represent important phenomena in your data. 
-        Always investigate the context before deciding to remove or transform them.
-      </p>
-    </HelpAlert>
-  </div>
-);
-
-const OptionsTab = () => (
-  <div className="space-y-6">
-    <HelpCard title="Analysis Options" icon={Settings} variant="feature">
-      <div className="space-y-4 mt-2">
-        <HelpStep
-          number={1}
-          title="Missing Value Handling"
-          description="Choose how to handle missing data - listwise deletion or pairwise analysis."
-        />
-        <HelpStep
-          number={2}
-          title="Outlier Treatment"
-          description="Decide whether to identify, flag, or exclude outliers from analysis."
-        />
-        <HelpStep
-          number={3}
-          title="Rounding Precision"
-          description="Set decimal places for displaying statistics and results."
-        />
-        <HelpStep
-          number={4}
-          title="Display Format"
-          description="Choose how to present results - compact vs detailed format."
-        />
-      </div>
-    </HelpCard>
-
-    <HelpAlert variant="tip" title="Analysis Best Practices">
-      <p className="text-sm mt-2">
-        Always document your analysis choices and consider the impact of outlier treatment 
-        on your final results. Robust methods provide more reliable estimates.
-      </p>
     </HelpAlert>
   </div>
 );
 
 const QuickStartGuide = () => (
-  <div className="mt-8 grid gap-4">
-    <HelpCard title="Quick Start" icon={FileText} variant="feature">
-      <div className="space-y-3">
-        <p className="text-sm">Ready to explore your data?</p>
-        <ol className="text-sm space-y-1 list-decimal list-inside">
-          <li>Select variables in the Variables tab</li>
-          <li>Review statistics in the Statistics tab</li>
-          <li>Configure plots in the Plots tab</li>
-          <li>Set options in the Options tab</li>
-          <li>Click OK to generate your exploration</li>
-        </ol>
-      </div>
-    </HelpCard>
-
-    <HelpCard title="Interpreting Results" icon={FileText} variant="feature">
-      <div className="space-y-2">
-        <p className="text-sm">Key insights to look for:</p>
-        <ul className="text-sm space-y-1 list-disc list-inside">
-          <li>Distribution shape and normality</li>
-          <li>Presence of outliers or extreme values</li>
-          <li>Robust central tendency estimates</li>
-          <li>Data quality indicators and patterns</li>
-        </ul>
-      </div>
-    </HelpCard>
+  <div className="space-y-4">
+    <HelpStep
+      number={1}
+      title="Pilih Variabel"
+      description="Pada tab Variables, pilih variabel numerik yang ingin dianalisis dan variabel faktor opsional untuk perbandingan kelompok."
+    />
+    <HelpStep
+      number={2}
+      title="Konfigurasi Statistik"
+      description="Pada tab Statistics, aktifkan opsi statistik yang diinginkan seperti descriptives, confidence interval, dan outlier detection."
+    />
+    <HelpStep
+      number={3}
+      title="Pilih Visualisasi"
+      description="Pada tab Plots, pilih jenis plot yang sesuai untuk memvisualisasikan distribusi data Anda."
+    />
+    <HelpStep
+      number={4}
+      title="Jalankan Analisis"
+      description="Klik tombol Analyze untuk mendapatkan hasil statistik deskriptif dan visualisasi yang komprehensif."
+    />
   </div>
 );
 
-export const Explore: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-
-  const tabConfig = [
-    { value: 'overview', label: 'Overview', icon: HelpCircle },
-    { value: 'variables', label: 'Variables', icon: TrendingUp },
-    { value: 'statistics', label: 'Statistics', icon: Calculator },
-    { value: 'plots', label: 'Plots', icon: BarChart3 },
-    { value: 'options', label: 'Options', icon: Settings }
-  ];
+const Explore = () => {
+  const [activeTab, setActiveTab] = useState('variables');
 
   return (
     <div className="w-full space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold">Data Exploration Guide</h1>
+        <h1 className="text-2xl font-bold">Panduan Eksplorasi Data</h1>
         <p className="text-muted-foreground">
-          Learn how to perform comprehensive data exploration with robust statistics and outlier detection
+          Analisis statistik komprehensif dengan metode robust dan deteksi outlier
         </p>
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          {tabConfig.map(({ value, label, icon: Icon }) => (
-            <TabsTrigger key={value} value={value} className="flex items-center gap-2">
-              <Icon className="w-4 h-4" />
-              {label}
-            </TabsTrigger>
-          ))}
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="variables" className="flex items-center gap-2">
+            <Table className="w-4 h-4" />
+            Variabel
+          </TabsTrigger>
+          <TabsTrigger value="statistics" className="flex items-center gap-2">
+            <Calculator className="w-4 h-4" />
+            Statistik
+          </TabsTrigger>
+          <TabsTrigger value="plots" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Grafik
+          </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview" className="mt-6">
-          <OverviewTab />
-        </TabsContent>
 
         <TabsContent value="variables" className="mt-6">
           <VariablesTab />
@@ -269,13 +200,13 @@ export const Explore: React.FC = () => {
         <TabsContent value="plots" className="mt-6">
           <PlotsTab />
         </TabsContent>
-
-        <TabsContent value="options" className="mt-6">
-          <OptionsTab />
-        </TabsContent>
       </Tabs>
 
-      <QuickStartGuide />
+      <HelpCard title="Quick Start Guide" icon={TrendingUp} variant="feature">
+        <QuickStartGuide />
+      </HelpCard>
     </div>
   );
 };
+
+export default Explore;

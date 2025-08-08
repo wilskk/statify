@@ -150,7 +150,7 @@ export default function SetMeasurementLevelGuide() {
     <HelpGuideTemplate
       title="Set Measurement Level Feature"
       description="This guide provides an overview of the 'Set Measurement Level' feature that allows you to efficiently define measurement levels (Nominal, Ordinal, or Scale) for variables that currently have 'Unknown' measurement levels."
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

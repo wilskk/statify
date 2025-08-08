@@ -179,7 +179,6 @@ const AggregateGuide = () => {
     <HelpGuideTemplate
       title="Data Aggregation Feature"
       description="This document explains the functionality of the Data Aggregation feature, which allows users to combine data into summary statistics across groups."
-      category="Data Management"
       lastUpdated="2024-01-15"
       sections={sections}
       prerequisites={prerequisites}

@@ -156,7 +156,6 @@ const SelectCasesGuide = () => {
     <HelpGuideTemplate
       title="Select Cases Feature"
       description="This guide explains the Select Cases feature, which allows you to filter or delete rows (cases) based on various criteria."
-      category="Data Management"
       lastUpdated="2024-01-15"
       sections={sections}
 

@@ -74,7 +74,7 @@ export const StatisticsGuide: React.FC<StatisticsGuideProps> = ({ section }) => 
           <HelpGuideTemplate
             title="Statistics Guide"
             description="Panduan lengkap untuk analisis statistik dalam Statify"
-            category="Statistics"
+      
             lastUpdated="2024-01-15"
             sections={[
               {

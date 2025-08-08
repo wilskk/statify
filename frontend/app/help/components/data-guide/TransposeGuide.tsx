@@ -166,7 +166,7 @@ const TransposeGuide = () => {
     <HelpGuideTemplate
       title="Transpose Data Feature"
       description="This guide explains the 'Transpose' functionality, a powerful tool for restructuring your dataset by swapping rows and columns."
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

@@ -144,7 +144,7 @@ const DefineVarPropsGuide = () => {
     <HelpGuideTemplate
       title="Define Variable Properties"
       description="Complete guide to reviewing and setting up your data variables"
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

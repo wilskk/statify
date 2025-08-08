@@ -4,202 +4,162 @@ import { HelpCard, HelpAlert, HelpStep } from '@/app/help/ui/HelpLayout';
 import { Calculator, FileText, BarChart3, HelpCircle, Table, Settings } from 'lucide-react';
 
 // Tab content components for cross tabulation analysis
-const OverviewTab = () => (
-  <div className="space-y-6">
-    <HelpAlert variant="info" title="What is Cross Tabulation?">
-      <p className="text-sm mt-2">
-        Cross tabulation examines relationships between two categorical variables by creating a contingency table. 
-        It shows how frequencies are distributed across categories and tests for statistical significance.
-      </p>
-    </HelpAlert>
-
-    <HelpCard title="When to Use Cross Tabulation" icon={HelpCircle} variant="feature">
-      <ul className="text-sm space-y-2 mt-2">
-        <li>• Testing relationships between categorical variables</li>
-        <li>• Analyzing survey responses by demographic groups</li>
-        <li>• Comparing proportions across different categories</li>
-        <li>• Identifying patterns in categorical data</li>
-      </ul>
-    </HelpCard>
-
-    <HelpCard title="What You'll Get" icon={FileText} variant="feature">
-      <ul className="text-sm space-y-2 mt-2">
-        <li>• Contingency table with observed and expected counts</li>
-        <li>• Chi-Square test for independence</li>
-        <li>• Row and column percentages</li>
-        <li>• Measures of association (Cramer's V, Gamma, etc.)</li>
-        <li>• Residual analysis for cell significance</li>
-      </ul>
-    </HelpCard>
-  </div>
-);
 
 const VariablesTab = () => (
   <div className="space-y-6">
-    <HelpCard title="Selecting Row and Column Variables" icon={Table} variant="feature">
+    <HelpAlert variant="info" title="Tentang Analisis Crosstabs">
+      <p className="text-sm mt-2">
+        Analisis Crosstabs (tabulasi silang) digunakan untuk menguji hubungan antara dua variabel kategorikal 
+        dengan membuat tabel kontingensi. Analisis ini menunjukkan bagaimana frekuensi terdistribusi di antara 
+        kategori-kategori dan menguji signifikansi statistik hubungan tersebut.
+      </p>
+    </HelpAlert>
+
+    <HelpCard title="Kapan Menggunakan Crosstabs" icon={HelpCircle} variant="feature">
+      <ul className="text-sm space-y-2 mt-2">
+        <li>• Menguji hubungan antara dua variabel kategorikal</li>
+        <li>• Menganalisis respons survei berdasarkan kelompok demografis</li>
+        <li>• Membandingkan proporsi di antara kategori yang berbeda</li>
+        <li>• Mengidentifikasi pola dalam data kategorikal</li>
+      </ul>
+    </HelpCard>
+
+    <HelpCard title="Memilih Variabel Baris dan Kolom" icon={Table} variant="feature">
       <div className="space-y-4 mt-2">
         <HelpStep
           number={1}
-          title="Choose Row Variable"
-          description="Select your first categorical variable to appear as rows in the contingency table."
+          title="Pilih Variabel Baris"
+          description="Pilih variabel kategorikal pertama yang akan muncul sebagai baris dalam tabel kontingensi."
         />
         <HelpStep
           number={2}
-          title="Choose Column Variable"
-          description="Select your second categorical variable to appear as columns in the contingency table."
+          title="Pilih Variabel Kolom"
+          description="Pilih variabel kategorikal kedua yang akan muncul sebagai kolom dalam tabel kontingensi."
         />
         <HelpStep
           number={3}
-          title="Check Variable Types"
-          description="Ensure both variables are categorical (nominal or ordinal) for valid cross-tabulation."
+          title="Periksa Tipe Variabel"
+          description="Pastikan kedua variabel bersifat kategorikal (nominal atau ordinal) untuk tabulasi silang yang valid."
         />
       </div>
     </HelpCard>
 
-    <HelpAlert variant="tip" title="Variable Selection Tips">
+    <HelpAlert variant="tip" title="Tips Pemilihan Variabel">
       <p className="text-sm mt-2">
-        Choose variables that make logical sense to compare. The row variable is often your outcome 
-        or dependent variable, while the column variable is typically your predictor or independent variable.
+        Pilih variabel yang masuk akal untuk dibandingkan. Variabel baris sering kali merupakan variabel 
+        hasil atau dependen, sedangkan variabel kolom biasanya merupakan variabel prediktor atau independen.
       </p>
     </HelpAlert>
+
+    <HelpCard title="Hasil yang Akan Diperoleh" icon={FileText} variant="feature">
+      <ul className="text-sm space-y-2 mt-2">
+        <li>• Tabel kontingensi dengan jumlah teramati dan diharapkan</li>
+        <li>• Uji Chi-Square untuk independensi</li>
+        <li>• Persentase baris, kolom, dan total</li>
+        <li>• Ukuran asosiasi (Cramer's V, Gamma, dll.)</li>
+        <li>• Analisis residual untuk signifikansi sel</li>
+      </ul>
+    </HelpCard>
   </div>
 );
 
-const StatisticsTab = () => (
-  <div className="space-y-6">
-    <HelpCard title="Chi-Square Test" icon={Calculator} variant="feature">
-      <div className="space-y-3 mt-2">
-        <p className="text-sm font-medium">Tests the null hypothesis that variables are independent:</p>
-        <ul className="text-sm space-y-1 ml-4">
-          <li>• <strong>Chi-Square statistic</strong> - Overall test of independence</li>
-          <li>• <strong>Degrees of freedom</strong> - (rows-1) × (columns-1)</li>
-          <li>• <strong>P-value</strong> - Probability of observing these results by chance</li>
-          <li>• <strong>Expected frequencies</strong> - Counts expected under independence</li>
-        </ul>
-      </div>
-    </HelpCard>
 
-    <HelpCard title="Measures of Association" icon={Calculator} variant="feature">
-      <div className="space-y-3 mt-2">
-        <p className="text-sm font-medium">Strength of relationship between variables:</p>
-        <ul className="text-sm space-y-1 ml-4">
-          <li>• <strong>Cramer's V</strong> - Overall strength (0 to 1)</li>
-          <li>• <strong>Phi coefficient</strong> - For 2×2 tables only</li>
-          <li>• <strong>Contingency coefficient</strong> - Adjusted for table size</li>
-          <li>• <strong>Lambda</strong> - Proportional reduction in error</li>
-        </ul>
-      </div>
-    </HelpCard>
-
-    <HelpAlert variant="info" title="Interpreting Results">
-      <p className="text-sm mt-2">
-        A significant Chi-Square result (p &lt; 0.05) suggests the variables are related. 
-        Association measures indicate the strength of this relationship.
-      </p>
-    </HelpAlert>
-  </div>
-);
 
 const CellsTab = () => (
   <div className="space-y-6">
-    <HelpCard title="Cell Display Options" icon={Table} variant="feature">
+    <HelpCard title="Opsi Tampilan Sel" icon={Table} variant="feature">
       <div className="space-y-4 mt-2">
+        <div className="text-sm font-medium mb-3">Counts (Jumlah)</div>
         <HelpStep
           number={1}
-          title="Observed Counts"
-          description="Show actual frequencies in each cell of the contingency table."
+          title="Observed (Teramati)"
+          description="Menampilkan frekuensi aktual dalam setiap sel tabel kontingensi."
         />
         <HelpStep
           number={2}
-          title="Expected Counts"
-          description="Display expected frequencies assuming variables are independent."
+          title="Expected (Diharapkan)"
+          description="Menampilkan frekuensi yang diharapkan dengan asumsi variabel independen."
         />
         <HelpStep
           number={3}
-          title="Row Percentages"
-          description="Show what percentage each cell represents of its row total."
-        />
-        <HelpStep
-          number={4}
-          title="Column Percentages"
-          description="Show what percentage each cell represents of its column total."
-        />
-        <HelpStep
-          number={5}
-          title="Total Percentages"
-          description="Display what percentage each cell represents of the grand total."
+          title="Hide Small Counts (Sembunyikan Jumlah Kecil)"
+          description="Menyembunyikan sel dengan jumlah di bawah ambang batas tertentu untuk privasi data."
         />
       </div>
     </HelpCard>
 
-    <HelpAlert variant="tip" title="Percentage Interpretation">
+    <HelpCard title="Opsi Persentase" icon={Calculator} variant="feature">
+      <div className="space-y-4 mt-2">
+        <HelpStep
+          number={1}
+          title="% within Row Variable (% dalam Variabel Baris)"
+          description="Menampilkan persentase setiap sel terhadap total barisnya."
+        />
+        <HelpStep
+          number={2}
+          title="% within Column Variable (% dalam Variabel Kolom)"
+          description="Menampilkan persentase setiap sel terhadap total kolomnya."
+        />
+        <HelpStep
+          number={3}
+          title="% of Total (% dari Total)"
+          description="Menampilkan persentase setiap sel terhadap total keseluruhan."
+        />
+      </div>
+    </HelpCard>
+
+    <HelpCard title="Residual" icon={BarChart3} variant="feature">
+      <div className="space-y-4 mt-2">
+        <HelpStep
+          number={1}
+          title="Unstandardized (Tidak Terstandarisasi)"
+          description="Selisih antara frekuensi teramati dan diharapkan: Observed - Expected"
+        />
+        <HelpStep
+          number={2}
+          title="Standardized Residual (Residual Terstandarisasi)"
+          description="Residual dibagi dengan akar kuadrat dari frekuensi yang diharapkan."
+        />
+        <HelpStep
+          number={3}
+          title="Adjusted Residual (Residual Disesuaikan)"
+          description="Residual terstandarisasi yang disesuaikan dengan varians sel."
+        />
+      </div>
+    </HelpCard>
+
+    <HelpAlert variant="tip" title="Interpretasi Persentase">
       <p className="text-sm mt-2">
-        Use row percentages to compare across columns, column percentages to compare across rows, 
-        and total percentages for overall distribution patterns.
+        Gunakan persentase baris untuk membandingkan antar kolom, persentase kolom untuk membandingkan 
+        antar baris, dan persentase total untuk pola distribusi keseluruhan.
       </p>
     </HelpAlert>
   </div>
 );
 
-const FormatTab = () => (
-  <div className="space-y-6">
-    <HelpCard title="Table Format Options" icon={Settings} variant="feature">
-      <div className="space-y-4 mt-2">
-        <HelpStep
-          number={1}
-          title="Sort Order"
-          description="Choose how to sort row and column categories in the table."
-        />
-        <HelpStep
-          number={2}
-          title="Missing Values"
-          description="Decide how to handle missing data in the analysis."
-        />
-        <HelpStep
-          number={3}
-          title="Rounding"
-          description="Set decimal places for percentages and statistics display."
-        />
-        <HelpStep
-          number={4}
-          title="Suppression Rules"
-          description="Hide cells with small sample sizes to protect privacy."
-        />
-      </div>
-    </HelpCard>
 
-    <HelpAlert variant="info" title="Display Best Practices">
-      <p className="text-sm mt-2">
-        Clear formatting makes your results easier to interpret. Consider your audience 
-        when choosing display options and rounding levels.
-      </p>
-    </HelpAlert>
-  </div>
-);
 
 const QuickStartGuide = () => (
   <div className="mt-8 grid gap-4">
-    <HelpCard title="Quick Start" icon={FileText} variant="feature">
+    <HelpCard title="Panduan Cepat" icon={FileText} variant="feature">
       <div className="space-y-3">
-        <p className="text-sm">Ready to create your cross-tabulation analysis?</p>
+        <p className="text-sm">Siap membuat analisis tabulasi silang Anda?</p>
         <ol className="text-sm space-y-1 list-decimal list-inside">
-          <li>Select row and column variables in the Variables tab</li>
-          <li>Choose statistics in the Statistics tab</li>
-          <li>Configure cell display in the Cells tab</li>
-          <li>Set formatting options in the Format tab</li>
-          <li>Click OK to generate your cross-tabulation</li>
+          <li>Pilih variabel baris dan kolom di tab Variables</li>
+          <li>Konfigurasi tampilan sel di tab Cells</li>
+          <li>Klik OK untuk menghasilkan tabulasi silang Anda</li>
         </ol>
       </div>
     </HelpCard>
 
-    <HelpCard title="Interpreting Results" icon={FileText} variant="feature">
+    <HelpCard title="Interpretasi Hasil" icon={BarChart3} variant="feature">
       <div className="space-y-2">
-        <p className="text-sm">Key insights to look for:</p>
+        <p className="text-sm">Wawasan utama yang perlu dicari:</p>
         <ul className="text-sm space-y-1 list-disc list-inside">
-          <li>Significant Chi-Square results indicate relationships</li>
-          <li>Association measures show relationship strength</li>
-          <li>Residuals highlight significant cell differences</li>
-          <li>Percentages reveal distribution patterns</li>
+          <li>Hasil Chi-Square yang signifikan menunjukkan adanya hubungan</li>
+          <li>Ukuran asosiasi menunjukkan kekuatan hubungan</li>
+          <li>Residual menyoroti perbedaan sel yang signifikan</li>
+          <li>Persentase mengungkap pola distribusi</li>
         </ul>
       </div>
     </HelpCard>
@@ -207,27 +167,24 @@ const QuickStartGuide = () => (
 );
 
 export const Crosstabs: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('variables');
 
   const tabConfig = [
-    { value: 'overview', label: 'Overview', icon: HelpCircle },
     { value: 'variables', label: 'Variables', icon: Table },
-    { value: 'statistics', label: 'Statistics', icon: Calculator },
-    { value: 'cells', label: 'Cells', icon: Table },
-    { value: 'format', label: 'Format', icon: Settings }
+    { value: 'cells', label: 'Cells', icon: Table }
   ];
 
   return (
     <div className="w-full space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold">Cross Tabulation Guide</h1>
+        <h1 className="text-2xl font-bold">Panduan Analisis Crosstabs</h1>
         <p className="text-muted-foreground">
-          Learn how to analyze relationships between categorical variables using cross-tabulation
+          Pelajari cara menganalisis hubungan antara variabel kategorikal menggunakan tabulasi silang
         </p>
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2">
           {tabConfig.map(({ value, label, icon: Icon }) => (
             <TabsTrigger key={value} value={value} className="flex items-center gap-2">
               <Icon className="w-4 h-4" />
@@ -236,24 +193,12 @@ export const Crosstabs: React.FC = () => {
           ))}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6">
-          <OverviewTab />
-        </TabsContent>
-
         <TabsContent value="variables" className="mt-6">
           <VariablesTab />
         </TabsContent>
 
-        <TabsContent value="statistics" className="mt-6">
-          <StatisticsTab />
-        </TabsContent>
-
         <TabsContent value="cells" className="mt-6">
           <CellsTab />
-        </TabsContent>
-
-        <TabsContent value="format" className="mt-6">
-          <FormatTab />
         </TabsContent>
       </Tabs>
 

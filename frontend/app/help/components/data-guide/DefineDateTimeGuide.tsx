@@ -169,7 +169,7 @@ const DefineDateTimeGuide = () => {
     <HelpGuideTemplate
       title="Define Date Feature"
       description="Complete guide to setting up time-based structure for your dataset"
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

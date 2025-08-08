@@ -83,7 +83,7 @@ export const ImportSav = () => {
     <HelpGuideTemplate
       title="Import SPSS Files"
       description="Complete guide for bringing SPSS data (.sav) into Statify"
-      category="File Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

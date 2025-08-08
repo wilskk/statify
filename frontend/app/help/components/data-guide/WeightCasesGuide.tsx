@@ -141,7 +141,7 @@ const WeightCasesGuide = () => {
     <HelpGuideTemplate
       title="Case Weighting Feature"
       description="This guide explains the Case Weighting functionality, which allows you to apply case weights to your dataset based on values from a numeric variable"
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

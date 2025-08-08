@@ -82,7 +82,7 @@ export const ExampleDataset = () => {
     <HelpGuideTemplate
       title="Using Sample Datasets"
       description="Statify provides various sample datasets to help you explore its features"
-      category="File Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

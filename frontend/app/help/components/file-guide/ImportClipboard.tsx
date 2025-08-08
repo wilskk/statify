@@ -83,7 +83,7 @@ export const ImportClipboard = () => {
     <HelpGuideTemplate
       title="Import from Clipboard"
       description="Complete guide for bringing data directly from your clipboard into Statify"
-      category="File Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

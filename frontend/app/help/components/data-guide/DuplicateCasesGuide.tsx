@@ -147,7 +147,7 @@ const DuplicateCasesGuide = () => {
     <HelpGuideTemplate
       title="Identify Duplicate Cases"
       description="Complete guide to finding and marking duplicate cases in your dataset based on matching variables"
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

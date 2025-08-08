@@ -92,7 +92,7 @@ export const ExportCsv = () => {
     <HelpGuideTemplate
       title="Export to CSV"
       description="Complete guide for saving your data as Comma-Separated Values (.csv)"
-      category="File Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

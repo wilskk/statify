@@ -94,7 +94,7 @@ export const Print = () => {
     <HelpGuideTemplate
       title="Print Your Data"
       description="Complete guide for printing data and analysis results from Statify"
-      category="File Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

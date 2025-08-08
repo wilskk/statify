@@ -178,7 +178,6 @@ export const GettingStarted = () => {
     <HelpGuideTemplate
       title="Getting Started with Statify"
       description="Complete guide to start using Statify - a SPSS-compatible statistical analysis tool"
-      category="Getting Started"
       lastUpdated="2024-01-15"
       sections={sections}
 

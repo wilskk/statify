@@ -198,7 +198,7 @@ const RestructureGuide = () => {
     <HelpGuideTemplate
       title="Data Restructuring Guide"
       description="Step-by-step wizard to easily restructure your dataset"
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

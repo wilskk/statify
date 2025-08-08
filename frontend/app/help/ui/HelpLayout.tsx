@@ -30,37 +30,36 @@ export const HelpLayout: React.FC<HelpLayoutProps> = ({
   className
 }) => {
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Header Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            {category && (
-              <Badge variant="secondary" className="mb-2">
-                {category}
-              </Badge>
-            )}
-            <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-            {description && (
-              <p className="text-lg text-muted-foreground max-w-3xl">
-                {description}
-              </p>
+    <div className={cn("space-y-4", className)}>
+      {/* Header Section - compact design - only show if title exists */}
+      {(title || description || lastUpdated) && (
+        <>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                {title && <h1 className="text-xl font-semibold tracking-tight">{title}</h1>}
+                {description && (
+                  <p className="text-sm text-muted-foreground max-w-3xl">
+                    {description}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {lastUpdated && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Terakhir diperbarui:</span>
+                <time>{lastUpdated}</time>
+              </div>
             )}
           </div>
-        </div>
-        
-        {lastUpdated && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Terakhir diperbarui:</span>
-            <time>{lastUpdated}</time>
-          </div>
-        )}
-      </div>
-      
-      <Separator />
+          
+          <Separator className="opacity-50" />
+        </>
+      )}
       
       {/* Content */}
-      <div className="space-y-6">
+      <div className="space-y-3">
         {children}
       </div>
     </div>
@@ -86,17 +85,17 @@ export const HelpSection: React.FC<HelpSectionProps> = ({
   className
 }) => {
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-3", className)}>
       {(title || description) && (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {title && (
             <div className="flex items-center gap-2">
-              {Icon && <Icon className="h-5 w-5 text-primary" />}
-              <h2 className="text-xl font-semibold">{title}</h2>
+              {Icon && <Icon className="h-4 w-4 text-primary" />}
+              <h2 className="text-lg font-medium">{title}</h2>
             </div>
           )}
           {description && (
-            <p className="text-muted-foreground">{description}</p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           )}
         </div>
       )}
@@ -128,27 +127,27 @@ export const HelpCard: React.FC<HelpCardProps> = ({
   className
 }) => {
   const cardVariants = {
-    default: "border-border",
-    feature: "border-primary/20 bg-primary/5",
-    step: "border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/50"
+    default: "border-border/50 shadow-sm",
+    feature: "border-primary/20 bg-primary/5 shadow-sm",
+    step: "border-blue-200/50 bg-blue-50/30 shadow-sm dark:border-blue-800/50 dark:bg-blue-950/30"
   };
 
   return (
     <Card className={cn(cardVariants[variant], className)}>
       {(title || description || Icon) && (
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2 pt-3 px-3">
           {title && (
-            <CardTitle className="flex items-center gap-2 text-base">
-              {Icon && <Icon className="h-4 w-4" />}
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              {Icon && <Icon className="h-3.5 w-3.5" />}
               {title}
             </CardTitle>
           )}
           {description && (
-            <CardDescription>{description}</CardDescription>
+            <CardDescription className="text-xs">{description}</CardDescription>
           )}
         </CardHeader>
       )}
-      <CardContent className={cn(title || description || Icon ? "pt-0" : "")}>
+      <CardContent className={cn("px-3 pb-3", title || description || Icon ? "pt-0" : "pt-3")}>
         {children}
       </CardContent>
     </Card>

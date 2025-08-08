@@ -129,7 +129,7 @@ const SortCasesGuide = () => {
     <HelpGuideTemplate
       title="Sort Cases Feature"
       description="This guide explains the Sort Cases functionality, which allows you to rearrange rows (cases) in your dataset based on values from one or more variables."
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 

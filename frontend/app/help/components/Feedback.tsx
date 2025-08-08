@@ -157,7 +157,6 @@ export const Feedback = () => {
     <HelpGuideTemplate
       title="Feedback & Support"
       description="Help us improve Statify by sharing your thoughts, suggestions, or reporting issues"
-      category="Support"
       lastUpdated="2024-01-15"
       sections={sections}
 

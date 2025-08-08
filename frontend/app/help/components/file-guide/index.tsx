@@ -39,7 +39,7 @@ export const FileGuide: React.FC<FileGuideProps> = ({ section }) => {
           <HelpGuideTemplate
             title="File Management Guide"
             description="Panduan lengkap untuk mengelola file dan data dalam Statify"
-            category="File Management"
+      
             lastUpdated="2024-01-15"
             sections={[
               {

@@ -140,7 +140,7 @@ const SortVarsGuide = () => {
     <HelpGuideTemplate
       title="Sort Variables Feature"
       description="Complete guide for rearranging variables in Variable View based on column properties"
-      category="Data Management"
+
       lastUpdated="2024-01-15"
       sections={sections}
 
