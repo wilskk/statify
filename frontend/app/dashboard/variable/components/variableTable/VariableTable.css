@@ -12,6 +12,23 @@
     white-space: nowrap; /* Prevent text wrapping */
     overflow: hidden; /* Hide overflowing text */
     text-overflow: ellipsis; /* Show ellipsis (...) for overflow */
+    word-break: keep-all; /* Prevent breaking words at arbitrary points */
+    word-wrap: normal; /* Disable word wrapping */
+    hyphens: none; /* Disable automatic hyphenation */
+    line-height: 1.2; /* Consistent line height */
+    max-width: 100%; /* Ensure proper width calculation */
+}
+
+/* Apply same fixes to column headers */
+.handsontable th {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: keep-all;
+    word-wrap: normal;
+    hyphens: none;
+    line-height: 1.2;
+    max-width: 100%;
 }
 
 /* Optional: Apply specifically to certain columns if needed */
@@ -32,4 +49,16 @@
 .handsontable td.htUnknown {
     background-color: #ffdddd; /* light red bg */
     color: #cc0000;           /* dark red text */
+}
+
+/* Global rules to prevent word breaking in all Handsontable elements */
+.handsontable td,
+.handsontable th,
+.handsontable input,
+.handsontable .htAutocompleteArrow,
+.handsontable .htDropdownMenu {
+    word-break: keep-all !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    overflow-wrap: normal !important;
 }

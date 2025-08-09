@@ -204,4 +204,15 @@ describe('useTourGuide hook', () => {
     expect(result.current.tourActive).toBe(false);
     expect(result.current.currentStep).toBe(0);
   });
+  
+  it('should adjust position based on container type', () => {
+    const { result } = renderHook(() => useTourGuide(
+      mockTourSteps,
+      'sidebar',
+      mockTabControl
+    ));
+    
+    expect(result.current.tourSteps[0].horizontalPosition).toBe('left');
+    expect(result.current.tourSteps[0].position).toBeUndefined();
+  });
 });

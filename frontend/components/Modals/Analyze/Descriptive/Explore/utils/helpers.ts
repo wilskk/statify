@@ -76,8 +76,8 @@ export const regroupByDepVar = (results: ExploreAggregatedResults): Record<strin
 // Konstanta untuk precision yang konsisten
 const STATS_DECIMAL_PLACES = 2;
 
-// Fungsi bantu untuk format angka sesuai jumlah desimal variabel
+// Helper function to format numbers according to variable decimal places
 export const formatNumber = (value: number | undefined | null, decimals: number = STATS_DECIMAL_PLACES, fallback: string = ''): string => {
   if (value === undefined || value === null || isNaN(value as number)) return fallback;
   return (value as number).toFixed(decimals);
-}; 
+};

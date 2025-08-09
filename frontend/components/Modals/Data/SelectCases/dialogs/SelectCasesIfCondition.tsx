@@ -416,7 +416,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                             <div className="border rounded-md p-2 bg-muted/50 flex-grow">
                                 <Label className="mb-1 block text-sm">Examples:</Label>
                                 <div>
-                                    <ScrollArea className="h-[60px] w-full">
+                                    <ScrollArea className="h-[120px] w-full">
                                         <div className="space-y-1">
                                             <Button 
                                                 variant="ghost" 

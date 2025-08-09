@@ -19,6 +19,11 @@ export function formatDisplayNumber(
     }
     if (!isFinite(num)) return num > 0 ? "Infinity" : "-Infinity";
 
+    // exact zero
+    if (num === 0) {
+        return "0";
+    }
+
     // Treat values very close to zero as 0
     if (Math.abs(num) < 1e-20) {
         return "0.000";

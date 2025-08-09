@@ -8,6 +8,7 @@ import {
     KolmogorovSmirnovZTestStatistics,
     DescriptiveStatistics,
     DisplayStatisticsOptions,
+    TwoIndependentSamplesTestResult,
 } from '../types';
 
 /**
@@ -16,13 +17,13 @@ import {
  * @returns Formatted table
  */
 export function formatFrequenciesRanksTable(
-    results: TwoIndependentSamplesTestResults,
+    results: TwoIndependentSamplesTestResult[],
     groupingVariable: string,
     testType: string
 ): TwoIndependentSamplesTestTable {
     let title = "Frequencies";
     
-    if (!results || !results.frequenciesRanks || results.frequenciesRanks.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: title,
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -44,9 +45,9 @@ export function formatFrequenciesRanksTable(
     }
 
     const rows: TableRow[] = [];
-    results.frequenciesRanks.forEach((result) => {
-        const { variable, frequenciesRanks } = result;
-        if (!variable || !frequenciesRanks) return;
+    results.forEach((result) => {
+        const { variable1, variable2, frequenciesRanks, metadata } = result;
+        if (!variable1 || !variable2 || !frequenciesRanks || metadata?.insufficentType.includes("empty")) return;
 
         const { group1, group2 } = frequenciesRanks as FrequenciesRanks;
         if (!group1 || !group2) return;
@@ -54,14 +55,14 @@ export function formatFrequenciesRanksTable(
         // For M-W, show Mean Rank and Sum of Ranks; for K-S, just N
         if (testType === "M-W") {
             rows.push({
-                rowHeader: [variable.label || variable.name, group1.label],
+                rowHeader: [variable1.label || variable1.name, group1.label],
                 groupingVariable: group1.label,
                 N: group1.N,
                 MeanRank: group1.MeanRank !== undefined ? +group1.MeanRank?.toFixed(2) : undefined,
                 SumRanks: group1.SumRanks !== undefined ? +group1.SumRanks?.toFixed(2) : undefined
             });
             rows.push({
-                rowHeader: [variable.label || variable.name, group2.label],
+                rowHeader: [variable1.label || variable1.name, group2.label],
                 groupingVariable: group2.label,
                 N: group2.N,
                 MeanRank: group2.MeanRank !== undefined ? +group2.MeanRank?.toFixed(2) : undefined,
@@ -70,12 +71,12 @@ export function formatFrequenciesRanksTable(
         } else {
             // For K-S, just show N per group
             rows.push({
-                rowHeader: [variable.label || variable.name, group1.label],
+                rowHeader: [variable1.label || variable1.name, group1.label],
                 groupingVariable: group1.label,
                 N: group1.N
             });
             rows.push({
-                rowHeader: [variable.label || variable.name, group2.label],
+                rowHeader: [variable1.label || variable1.name, group2.label],
                 groupingVariable: group2.label,
                 N: group2.N
             });
@@ -95,9 +96,9 @@ export function formatFrequenciesRanksTable(
  * @returns Formatted table
  */
 export function formatMannWhitneyUTestStatisticsTable(
-    results: TwoIndependentSamplesTestResults
+    results: TwoIndependentSamplesTestResult[]
 ): TwoIndependentSamplesTestTable {
-    if (!results || !results.testStatisticsMannWhitneyU || results.testStatisticsMannWhitneyU.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Test Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -112,12 +113,12 @@ export function formatMannWhitneyUTestStatisticsTable(
     };
 
     // Add column headers for each variable (only once for the rowHeader)
-    if (results.testStatisticsMannWhitneyU && results.testStatisticsMannWhitneyU.length > 0) {
+    if (results.length > 0) {
         // Add a column for each variable
-        results.testStatisticsMannWhitneyU.forEach((result, index) => {
-            if (result && result.variable) {
+        results.forEach((result, index) => {
+            if (result && result.variable1) {
                 table.columnHeaders.push({
-                    header: result.variable.label || result.variable.name || `Variable ${index + 1}`,
+                    header: result.variable1.label || result.variable1.name || `Variable ${index + 1}`,
                     key: `var_${index}`
                 });
             }
@@ -128,7 +129,7 @@ export function formatMannWhitneyUTestStatisticsTable(
         const ZRow: TableRow = { rowHeader: ["Z"] };
         const pValueRow: TableRow = { rowHeader: ["Asymp. Sig. (2-tailed)"] };
         let hasExact = false;
-        results.testStatisticsMannWhitneyU.forEach((result) => {
+        results.forEach((result) => {
             const stats = result.testStatisticsMannWhitneyU as MannWhitneyUTestStatistics;
             if (stats && stats.showExact) {
                 hasExact = true;
@@ -141,7 +142,7 @@ export function formatMannWhitneyUTestStatisticsTable(
             pExactRow = { rowHeader: ["Exact Sig. [2*(1-tailed Sig.)]"] };
         }
 
-        results.testStatisticsMannWhitneyU.forEach((result, varIndex) => {
+        results.forEach((result, varIndex) => {
             const stats = result.testStatisticsMannWhitneyU as MannWhitneyUTestStatistics;
             const key = `var_${varIndex}`;
             URow[key] = formatNumber(stats.U, 3);
@@ -169,9 +170,9 @@ export function formatMannWhitneyUTestStatisticsTable(
  * @returns Formatted table
  */
 export function formatKolmogorovSmirnovZTestStatisticsTable (
-    results: TwoIndependentSamplesTestResults
+    results: TwoIndependentSamplesTestResult[]
 ): TwoIndependentSamplesTestTable {
-    if (!results || !results.testStatisticsKolmogorovSmirnovZ || results.testStatisticsKolmogorovSmirnovZ.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "Test Statistics",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -191,12 +192,12 @@ export function formatKolmogorovSmirnovZTestStatisticsTable (
     // Benahi: Format the Mann-Whitney U test statistics table properly
 
     // Add column headers for each variable (only once for the rowHeader)
-    if (results.testStatisticsKolmogorovSmirnovZ && results.testStatisticsKolmogorovSmirnovZ.length > 0) {
+    if (results.length > 0) {
         // Add a column for each variable
-        results.testStatisticsKolmogorovSmirnovZ.forEach((result, index) => {
-            if (result && result.variable) {
+        results.forEach((result, index) => {
+            if (result && result.variable1) {
                 table.columnHeaders.push({
-                    header: result.variable.label || result.variable.name || `Variable ${index + 1}`,
+                    header: result.variable1.label || result.variable1.name || `Variable ${index + 1}`,
                     key: `var_${index}`
                 });
             }
@@ -208,7 +209,7 @@ export function formatKolmogorovSmirnovZTestStatisticsTable (
         const d_statRow: TableRow = { rowHeader: ["Kolmogorov-Smirnov Z"], Difference: "" };
         const pValueRow: TableRow = { rowHeader: ["Asymp. Sig. (2-tailed)"], Difference: "" };
         
-        results.testStatisticsKolmogorovSmirnovZ.forEach((result, varIndex) => {
+        results.forEach((result, varIndex) => {
             const stats = result.testStatisticsKolmogorovSmirnovZ as KolmogorovSmirnovZTestStatistics;
             const key = `var_${varIndex}`;
             D_absoluteRow[key] = formatNumber(stats.D_absolute, 3);
@@ -227,14 +228,14 @@ export function formatKolmogorovSmirnovZTestStatisticsTable (
 
 /**
  * Formats descriptive statistics table
- * @param results Chi Square results
+ * @param results Descriptive statistics results
  * @returns Formatted table
  */
 export function formatDescriptiveStatisticsTable (
-    results: TwoIndependentSamplesTestResults,
+    results: any[],
     displayStatistics?: DisplayStatisticsOptions
 ): TwoIndependentSamplesTestTable {
-    if (!results || !results.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
+    if (!results || results.length === 0) {
         return {
             title: "No Data",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -247,7 +248,6 @@ export function formatDescriptiveStatisticsTable (
         columnHeaders: [
             { header: '', key: 'rowHeader' },
             { header: 'N', key: 'N' }
-
         ],
         rows: []
     };
@@ -274,20 +274,29 @@ export function formatDescriptiveStatisticsTable (
     }
 
     // Process each result
-    results.descriptiveStatistics.forEach((result) => {
-        const stats = result.descriptiveStatistics as DescriptiveStatistics;
-        const decimals = result.variable.decimals || 2;
+    results.forEach((result) => {
+        const decimals = result.variable1.decimals;
+        
+        // Handle both old format (N, Mean, StdDev) and new format (N1, Mean1, StdDev1)
+        const N = result.N || result.N1;
+        const Mean = result.Mean || result.Mean1;
+        const StdDev = result.StdDev || result.StdDev1;
+        const Min = result.Min || result.Min1;
+        const Max = result.Max || result.Max1;
+        const Percentile25 = result.Percentile25 || result.Percentile25_1;
+        const Percentile50 = result.Percentile50 || result.Percentile50_1;
+        const Percentile75 = result.Percentile75 || result.Percentile75_1;
         
         table.rows.push({
-            rowHeader: [result.variable.name],
-            N: stats.N,
-            Mean: formatNumber(stats.Mean, decimals + 2),
-            StdDev: formatNumber(stats.StdDev, decimals + 3),
-            Min: formatNumber(stats.Min, decimals),
-            Max: formatNumber(stats.Max, decimals),
-            Percentile25: formatNumber(stats.Percentile25, decimals),
-            Percentile50: formatNumber(stats.Percentile50, decimals),
-            Percentile75: formatNumber(stats.Percentile75, decimals)
+            rowHeader: [result.variable1.name],
+            N: N,
+            Mean: formatNumber(Mean, decimals + 2),
+            StdDev: formatNumber(StdDev, decimals + 3),
+            Min: Min,
+            Max: Max,
+            Percentile25: formatNumber(Percentile25, decimals + 2),
+            Percentile50: formatNumber(Percentile50, decimals + 2),
+            Percentile75: formatNumber(Percentile75, decimals + 2)
         });
     });
 

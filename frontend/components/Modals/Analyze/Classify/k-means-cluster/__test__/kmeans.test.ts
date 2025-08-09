@@ -1,458 +1,358 @@
-/** @jest-environment node */
+/** @jest-environment jsdom */
 
-import { KMeansClusterType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import * as useVariable from "@/hooks/useVariable";
+import "@testing-library/jest-dom";
 import init, {
     KMeansClusterAnalysis,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/rust/pkg/wasm";
-import fs from "fs";
 import path from "path";
-import { Variable } from "@/types/Variable";
+import fs from "fs";
 
-// Manually initialize the WASM module before all tests
-beforeAll(async () => {
-    const wasmPath = path.join(__dirname, "../rust/pkg/wasm_bg.wasm");
-    const wasmBuffer = fs.readFileSync(wasmPath);
-    await init(wasmBuffer);
-});
-
-// Mock utility functions from useVariable
-jest.mock("@/hooks/useVariable", () => ({
-    getSlicedData: jest.fn(),
-    getVarDefs: jest.fn().mockReturnValue([]),
-}));
-
-describe("KMeansCluster Analysis Error Handling", () => {
-    // Helper function to create a minimal valid config
-    const createValidConfig = (): KMeansClusterType => ({
-        main: {
-            TargetVar: ["var1", "var2"],
-            CaseTarget: "var3",
-            IterateClassify: true,
-            ClassifyOnly: false,
-            Cluster: 3,
-            OpenDataset: false,
-            ExternalDatafile: false,
-            NewDataset: false,
-            DataFile: false,
-            ReadInitial: false,
-            WriteFinal: false,
-            OpenDatasetMethod: null,
-            NewData: null,
-            InitialData: null,
-            FinalData: null,
-        },
-        iterate: {
-            MaximumIterations: 100,
-            ConvergenceCriterion: 0.001,
-            UseRunningMeans: true,
-        },
-        save: {
-            ClusterMembership: true,
-            DistanceClusterCenter: true,
-        },
-        options: {
-            InitialCluster: true,
-            ANOVA: true,
-            ClusterInfo: true,
-            ClusterPlot: false,
-            ExcludeListWise: true,
-            ExcludePairWise: false,
-        },
-    });
-
-    // --- 🖋️ FIX: Updated with real test data ---
-
-    const mockVariables: Variable[] = [
+const nullData = [
+    [
         {
-            id: 782,
-            columnIndex: 0,
-            name: "eruption",
-            type: "NUMERIC",
-            width: 8,
-            decimals: 3,
-            label: "",
-            values: [],
-            missing: null,
-            columns: 72,
-            align: "right",
-            measure: "scale",
-            role: "input",
+            happiness: null,
+        },
+    ],
+];
+
+const emptyData = [[]];
+
+const invalidTargetData = [
+    {
+        happiness: null,
+    },
+];
+
+const invalidCaseData = [
+    {
+        puppy_names: null,
+    },
+];
+
+const validTargetData = [
+    [
+        {
+            happiness: 1,
         },
         {
-            id: 783,
-            columnIndex: 1,
-            name: "waiting",
+            happiness: 2,
+        },
+        {
+            happiness: 3,
+        },
+        {
+            happiness: 4,
+        },
+        {
+            happiness: 5,
+        },
+    ],
+    [
+        {
+            puppy_love: 1,
+        },
+        {
+            puppy_love: 2,
+        },
+        {
+            puppy_love: 3,
+        },
+        {
+            puppy_love: 4,
+        },
+        {
+            puppy_love: 5,
+        },
+    ],
+];
+
+const validCaseData = [
+    [
+        {
+            puppy_names: 1,
+        },
+        {
+            puppy_names: 2,
+        },
+        {
+            puppy_names: 3,
+        },
+        {
+            puppy_names: 4,
+        },
+        {
+            puppy_names: 5,
+        },
+    ],
+];
+
+const invalidTargetDefs = [
+    [
+        {
+            id: 1014,
+            columnIndex: 2,
+        },
+    ],
+];
+
+const invalidCaseDefs = [
+    [
+        {
+            id: 1014,
+            columnIndex: 2,
+        },
+    ],
+];
+
+const validTargetDefs = [
+    [
+        {
+            id: 1014,
+            columnIndex: 2,
+            name: "happiness",
             type: "NUMERIC",
             width: 8,
             decimals: 0,
             label: "",
             values: [],
-            missing: null,
-            columns: 72,
+            missing: [],
+            columns: 112,
             align: "right",
             measure: "scale",
             role: "input",
         },
+    ],
+    [
         {
-            id: 784,
-            columnIndex: 2,
-            name: "Zeruption",
-            type: "NUMERIC",
-            width: 8,
-            decimals: 16,
-            label: "",
-            values: [],
-            missing: null,
-            columns: 72,
-            align: "right",
-            measure: "scale",
-            role: "input",
-        },
-        {
-            id: 785,
+            id: 1015,
             columnIndex: 3,
-            name: "Zwaiting",
+            name: "puppy_love",
             type: "NUMERIC",
             width: 8,
-            decimals: 16,
+            decimals: 0,
             label: "",
             values: [],
-            missing: null,
-            columns: 72,
+            missing: [],
+            columns: 120,
             align: "right",
             measure: "scale",
             role: "input",
         },
+    ],
+];
+
+const validCaseDefs = [
+    [
         {
-            id: 786,
+            id: 1016,
             columnIndex: 4,
-            name: "VAR1",
+            name: "puppy_names",
             type: "STRING",
             width: 8,
             decimals: 0,
             label: "",
             values: [],
-            missing: null,
-            columns: 64,
-            align: "left",
-            measure: "nominal",
+            missing: [],
+            columns: 120,
+            align: "right",
+            measure: "scale",
             role: "input",
         },
-    ];
+    ],
+];
 
-    const slicedTargetData = [
-        [
-            { eruption: 3.6 },
-            { eruption: 1.8 },
-            { eruption: 3.333 },
-            { eruption: 2.283 },
-            { eruption: 4.533 },
-        ],
-        [
-            { waiting: 79 },
-            { waiting: 54 },
-            { waiting: 74 },
-            { waiting: 62 },
-            { waiting: 85 },
-        ],
-        [
-            { Zeruption: 0.09849885677570003 },
-            { Zeruption: -1.481458561478812 },
-            { Zeruption: -0.13586149359871916 },
-            { Zeruption: -1.0575033209138514 },
-            { Zeruption: 0.917443451904289 },
-        ],
-        [
-            { Zwaiting: 0.5971234377971165 },
-            { Zwaiting: -1.2451811797257462 },
-            { Zwaiting: 0.22866251429254397 },
-            { Zwaiting: -0.6556437021184301 },
-            { Zwaiting: 1.0392765460026037 },
-        ],
-    ];
+const invalidConfig = {};
+const validConfig = {
+    analysisType: "KMeansCluster",
+    main: {
+        TargetVar: ["happiness", "puppy_love"],
+        CaseTarget: "puppy_names",
+        IterateClassify: true,
+        ClassifyOnly: false,
+        Cluster: 2,
+        ReadInitial: false,
+        OpenDataset: true,
+        ExternalDatafile: false,
+        WriteFinal: false,
+        NewDataset: true,
+        DataFile: false,
+        OpenDatasetMethod: null,
+        NewData: null,
+        InitialData: null,
+        FinalData: null,
+    },
+    iterate: {
+        MaximumIterations: 10,
+        ConvergenceCriterion: 0,
+        UseRunningMeans: false,
+    },
+    save: {
+        ClusterMembership: true,
+        DistanceClusterCenter: true,
+    },
+    options: {
+        InitialCluster: true,
+        ANOVA: true,
+        ClusterInfo: true,
+        ClusterPlot: true,
+        ExcludeListWise: true,
+        ExcludePairWise: false,
+    },
+    updatedAt: "2025-07-27T18:14:22.663Z",
+};
 
-    const slicedCaseData = [
-        [
-            { VAR1: "Case 1" },
-            { VAR1: "Case 2" },
-            { VAR1: "Case 3" },
-            { VAR1: "Case 4" },
-            { VAR1: "Case 5" },
-        ],
-    ];
-
-    const varDefsForTarget = [
-        [
-            {
-                id: 782,
-                columnIndex: 0,
-                name: "eruption",
-                type: "NUMERIC",
-                width: 8,
-                decimals: 3,
-                label: "",
-                values: [],
-                missing: null,
-                columns: 72,
-                align: "right",
-                measure: "scale",
-                role: "input",
-            },
-        ],
-        [
-            {
-                id: 783,
-                columnIndex: 1,
-                name: "waiting",
-                type: "NUMERIC",
-                width: 8,
-                decimals: 0,
-                label: "",
-                values: [],
-                missing: null,
-                columns: 72,
-                align: "right",
-                measure: "scale",
-                role: "input",
-            },
-        ],
-        [
-            {
-                id: 784,
-                columnIndex: 2,
-                name: "Zeruption",
-                type: "NUMERIC",
-                width: 8,
-                decimals: 16,
-                label: "",
-                values: [],
-                missing: null,
-                columns: 72,
-                align: "right",
-                measure: "scale",
-                role: "input",
-            },
-        ],
-        [
-            {
-                id: 785,
-                columnIndex: 3,
-                name: "Zwaiting",
-                type: "NUMERIC",
-                width: 8,
-                decimals: 16,
-                label: "",
-                values: [],
-                missing: null,
-                columns: 72,
-                align: "right",
-                measure: "scale",
-                role: "input",
-            },
-        ],
-    ];
-
-    const varDefsForCaseTarget = [
-        [
-            {
-                id: 786,
-                columnIndex: 4,
-                name: "VAR1",
-                type: "STRING",
-                width: 8,
-                decimals: 0,
-                label: "",
-                values: [],
-                missing: null,
-                columns: 64,
-                align: "left",
-                measure: "nominal",
-                role: "input",
-            },
-        ],
-    ];
-
-    // --- End of Fix ---
-
-    beforeEach(() => {
-        jest.clearAllMocks();
-        // Mock the useVariable functions to return our real data
-        (useVariable.getSlicedData as jest.Mock).mockImplementation(
-            ({ selectedVariables }) => {
-                if (selectedVariables.includes("eruption")) {
-                    return slicedTargetData[0];
-                }
-                if (selectedVariables.includes("waiting")) {
-                    return slicedTargetData[1];
-                }
-                if (selectedVariables.includes("Zeruption")) {
-                    return slicedTargetData[2];
-                }
-                if (selectedVariables.includes("Zwaiting")) {
-                    return slicedTargetData[3];
-                }
-                if (selectedVariables.includes("VAR1")) {
-                    return slicedCaseData[0];
-                }
-                return [];
-            }
-        );
-        (useVariable.getVarDefs as jest.Mock).mockImplementation(
-            (vars, selectedVars) => {
-                if (selectedVars.includes("eruption")) {
-                    return varDefsForTarget[0];
-                }
-                if (selectedVars.includes("waiting")) {
-                    return varDefsForTarget[1];
-                }
-                if (selectedVars.includes("Zeruption")) {
-                    return varDefsForTarget[2];
-                }
-                if (selectedVars.includes("Zwaiting")) {
-                    return varDefsForTarget[3];
-                }
-                if (selectedVars.includes("VAR1")) {
-                    return varDefsForCaseTarget[0];
-                }
-                return [];
-            }
-        );
-    });
-
-    // Helper function to prepare data and instantiate the WASM class
-    const _runWasmAnalysis = (config: KMeansClusterType) => {
-        const TargetVariables = config.main.TargetVar || [];
-        const CaseTargetVariable = config.main.CaseTarget
-            ? [config.main.CaseTarget]
-            : [];
-
-        const slicedDataForTarget = useVariable.getSlicedData({
-            dataVariables: [],
-            variables: mockVariables,
-            selectedVariables: TargetVariables,
-        });
-
-        const slicedDataForCaseTarget = useVariable.getSlicedData({
-            dataVariables: [],
-            variables: mockVariables,
-            selectedVariables: CaseTargetVariable,
-        });
-
-        const varDefsForTarget = useVariable.getVarDefs(
-            mockVariables,
-            TargetVariables
-        );
-        const varDefsForCaseTarget = useVariable.getVarDefs(
-            mockVariables,
-            CaseTargetVariable
-        );
-
-        return new KMeansClusterAnalysis(
-            slicedDataForTarget,
-            slicedDataForCaseTarget,
-            varDefsForTarget,
-            varDefsForCaseTarget,
+const runAnalysisTest = async ({
+    config,
+    targetData,
+    caseData,
+    targetDefs,
+    caseDefs,
+}: {
+    config: any;
+    targetData: any;
+    caseData: any;
+    targetDefs: any;
+    caseDefs: any;
+}) => {
+    let error: any | null = null;
+    try {
+        const kmeans = new KMeansClusterAnalysis(
+            targetData,
+            caseData,
+            targetDefs,
+            caseDefs,
             config
         );
-    };
-    const runWasmAnalysis = jest.fn(_runWasmAnalysis);
+    } catch (e: any) {
+        error = e;
+    }
+    return error;
+};
 
-    test("should capture error when Cluster value is not positive", () => {
-        const invalidConfig = createValidConfig();
-        invalidConfig.main.Cluster = 0;
-        invalidConfig.main.TargetVar = ["eruption", "waiting"];
-
-        try {
-            runWasmAnalysis(invalidConfig);
-        } catch (e: any) {
-            // Expected to throw
-        }
-        expect(runWasmAnalysis).toHaveBeenCalled();
+describe("K-Means Constructor Test", () => {
+    beforeAll(async () => {
+        const wasmPath = path.join(__dirname, "../rust/pkg/wasm_bg.wasm");
+        const wasmBuffer = fs.readFileSync(wasmPath);
+        await init(wasmBuffer);
     });
 
-    test("should capture error when TargetVar is missing", () => {
-        const invalidConfig = createValidConfig();
-        invalidConfig.main.TargetVar = [];
-
-        try {
-            runWasmAnalysis(invalidConfig);
-        } catch (e: any) {
-            // Expected to throw
-        }
-        expect(runWasmAnalysis).toHaveBeenCalled();
+    it("T01: Harus berhasil saat seluruh data input dan konfigurasi valid", async () => {
+        const error = await runAnalysisTest({
+            targetData: validTargetData,
+            caseData: validCaseData,
+            targetDefs: validTargetDefs,
+            caseDefs: validCaseDefs,
+            config: validConfig,
+        });
+        expect(error).toBeNull();
     });
 
-    test("should process valid configuration correctly without errors", () => {
-        const validConfig = createValidConfig();
-        validConfig.main.TargetVar = ["eruption", "waiting"];
-        validConfig.main.CaseTarget = "VAR1";
-
-        const kmeans = runWasmAnalysis(validConfig);
-        const errors = kmeans.get_all_errors();
-
-        expect(errors).toBe("");
+    it("T02: Harus error saat target_data hanya berisi nilai null", async () => {
+        const error = await runAnalysisTest({
+            targetData: nullData,
+            caseData: validCaseData,
+            targetDefs: validTargetDefs,
+            caseDefs: validCaseDefs,
+            config: validConfig,
+        });
+        expect(error).toBe("Target data contains all null values");
     });
 
-    test("should capture error when target_data is empty", () => {
-        const validConfig = createValidConfig();
-        validConfig.main.TargetVar = ["eruption", "waiting"];
-        (useVariable.getSlicedData as jest.Mock).mockReturnValueOnce([]);
-
-        try {
-            runWasmAnalysis(validConfig);
-        } catch (e: any) {
-            // Expected to throw
-        }
-        expect(runWasmAnalysis).toHaveBeenCalled();
+    it("T03: Harus error saat case_data hanya berisi nilai null", async () => {
+        const error = await runAnalysisTest({
+            caseData: nullData,
+            targetData: validTargetData,
+            targetDefs: validTargetDefs,
+            caseDefs: validCaseDefs,
+            config: validConfig,
+        });
+        expect(error).toBe("Case data contains all null values");
     });
 
-    test("should capture error when target_data contains all null values", () => {
-        const validConfig = createValidConfig();
-        validConfig.main.TargetVar = ["eruption", "waiting"];
-        (useVariable.getSlicedData as jest.Mock).mockReturnValueOnce([
-            { eruption: null },
-            { waiting: null },
-        ]);
-
-        try {
-            runWasmAnalysis(validConfig);
-        } catch (e: any) {
-            // Expected to throw
-        }
-        expect(runWasmAnalysis).toHaveBeenCalled();
+    it("T04: Harus error saat target_data kosong", async () => {
+        const error = await runAnalysisTest({
+            targetData: emptyData,
+            caseData: validCaseData,
+            targetDefs: validTargetDefs,
+            caseDefs: validCaseDefs,
+            config: validConfig,
+        });
+        expect(error).toBe("No cases found in data");
     });
 
-    test("should capture error when case_data contains all null values", () => {
-        const validConfig = createValidConfig();
-        validConfig.main.TargetVar = ["eruption", "waiting"];
-        validConfig.main.CaseTarget = "VAR1";
-        (useVariable.getSlicedData as jest.Mock)
-            .mockReturnValueOnce(slicedTargetData[0])
-            .mockReturnValueOnce(slicedTargetData[1])
-            .mockReturnValueOnce([{ VAR1: null }]);
-
-        try {
-            runWasmAnalysis(validConfig);
-        } catch (e: any) {
-            // Expected to throw
-        }
-        expect(runWasmAnalysis).toHaveBeenCalled();
+    it("T05: Harus error parsing saat target_data tidak sesuai format", async () => {
+        const error = await runAnalysisTest({
+            targetData: invalidTargetData,
+            caseData: validCaseData,
+            targetDefs: validTargetDefs,
+            caseDefs: validCaseDefs,
+            config: validConfig,
+        });
+        expect(error).toContain("Failed to parse target data");
     });
 
-    // This test is less relevant now as type errors would be caught by TypeScript,
-    // but we can check if the WASM constructor handles malformed objects gracefully.
-    test("should capture error for malformed configuration object", () => {
-        const malformedConfig = {
-            main: {},
-        } as unknown as KMeansClusterType;
+    it("T06: Harus error parsing saat case_data tidak sesuai format", async () => {
+        const error = await runAnalysisTest({
+            caseData: invalidCaseData,
+            targetData: validTargetData,
+            targetDefs: validTargetDefs,
+            caseDefs: validCaseDefs,
+            config: validConfig,
+        });
+        expect(error).toContain("Failed to parse case data");
+    });
 
-        try {
-            runWasmAnalysis(malformedConfig);
-        } catch (e: any) {
-            // Expected to throw
-        }
-        
-        expect(runWasmAnalysis).toHaveBeenCalled();
+    it("T07: Harus error parsing saat target_data_defs tidak sesuai format", async () => {
+        const error = await runAnalysisTest({
+            targetDefs: invalidTargetDefs,
+            caseData: validCaseData,
+            targetData: validTargetData,
+            caseDefs: validCaseDefs,
+            config: validConfig,
+        });
+        expect(error).toContain("Failed to parse target data definitions");
+    });
+
+    it("T08: Harus error parsing saat case_data_defs tidak sesuai format", async () => {
+        const error = await runAnalysisTest({
+            caseDefs: invalidCaseDefs,
+            caseData: validCaseData,
+            targetData: validTargetData,
+            targetDefs: validTargetDefs,
+            config: validConfig,
+        });
+        expect(error).toContain("Failed to parse case data definitions");
+    });
+
+    it("T09: Harus error parsing saat field wajib pada config_data hilang", async () => {
+        const invalidConfig = {
+            ...validConfig,
+            iterate: {},
+        };
+
+        const error = await runAnalysisTest({
+            config: invalidConfig,
+            targetData: validTargetData,
+            caseData: validCaseData,
+            targetDefs: validTargetDefs,
+            caseDefs: validCaseDefs,
+        });
+        expect(error).not.toBeNull();
+        expect(error).toContain("Failed to parse configuration");
+    });
+
+    it("T10: Harus error validasi saat jumlah cluster kurang dari atau sama dengan nol", async () => {
+        const invalidConfig = {
+            ...validConfig,
+            main: { ...validConfig.main, Cluster: 0 },
+        };
+        const error = await runAnalysisTest({
+            config: invalidConfig,
+            targetData: validTargetData,
+            caseData: validCaseData,
+            targetDefs: validTargetDefs,
+            caseDefs: validCaseDefs,
+        });
+        expect(error).toBe("Number of clusters must be positive");
     });
 });

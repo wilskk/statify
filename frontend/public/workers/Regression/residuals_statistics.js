@@ -1,83 +1,141 @@
 // residuals_statistics.js
 
 self.onmessage = function(e) {
-    const { dependent, independent } = e.data;
-    
-    // Validasi input
-    if (!dependent || !independent) {
-      self.postMessage({ error: "Data dependent dan independent harus disediakan." });
-      return;
-    }
-    if (!Array.isArray(dependent) || !Array.isArray(independent)) {
-      self.postMessage({ error: "Data dependent dan independent harus berupa array." });
-      return;
-    }
-    if (dependent.length !== independent.length) {
-      self.postMessage({ error: "Panjang data dependent dan independent harus sama." });
-      return;
-    }
-    
-    const n = dependent.length; // Jumlah observasi
-    
-    // Fungsi bantu: menghitung rata-rata
-    const mean = (arr) => arr.reduce((sum, v) => sum + v, 0) / arr.length;
-    
-    // Hitung rata-rata x dan y
-    const meanX = mean(independent);
-    const meanY = mean(dependent);
-    
-    // Hitung kovarians dan variansi x (menggunakan pembagi n-1)
-    let cov = 0, varX = 0;
+  const { dependent, independent } = e.data;
+
+  /* -------------------------------------------------------------------------
+     1. Input validation & normalization
+     ----------------------------------------------------------------------*/
+  if (!Array.isArray(dependent) || !Array.isArray(independent)) {
+    self.postMessage({ error: "Data dependent dan independent harus berupa array." });
+    return;
+  }
+
+  // Ensure independent is an array of arrays => shape: [p][n]
+  const independents = Array.isArray(independent[0]) ? independent : [independent];
+
+  const n = dependent.length;
+  const p = independents.length; // jumlah prediktor
+
+  // Pastikan semua independent memiliki panjang yang sama dengan dependent
+  if (independents.some(arr => !Array.isArray(arr) || arr.length !== n)) {
+    self.postMessage({ error: "Setiap variabel independent harus memiliki panjang yang sama dengan dependent." });
+    return;
+  }
+
+  /* -------------------------------------------------------------------------
+     2. Hitung koefisien regresi dengan Ordinary Least Squares
+     ----------------------------------------------------------------------*/
+  try {
+    // Bangun matriks X (dengan kolom intercept)
+    const X = [];
     for (let i = 0; i < n; i++) {
-      const dx = independent[i] - meanX;
-      const dy = dependent[i] - meanY;
-      cov += dx * dy;
-      varX += dx * dx;
+      const row = [1]; // intercept
+      for (let j = 0; j < p; j++) {
+        row.push(independents[j][i]);
+      }
+      X.push(row);
     }
-    cov /= (n - 1);
-    varX /= (n - 1);
-    
-    // Koefisien regresi: slope dan intercept
-    const slope = cov / varX;
-    const intercept = meanY - slope * meanX;
-    
-    // Hitung nilai prediksi dan residual
-    const yPred = independent.map(xi => intercept + slope * xi);
-    const residuals = dependent.map((yi, i) => yi - yPred[i]);
-    
-    // Fungsi untuk menghitung statistik dasar dari array (menggunakan pembagi n-1 untuk std dev)
-    function getStats(arr) {
-      const count = arr.length;
+
+    // Helper functions ----------------------------------------------------
+    const transpose = (m) => m[0].map((_, colIdx) => m.map(row => row[colIdx]));
+
+    const multiplyMatrices = (A, B) => {
+      const rowsA = A.length, colsA = A[0].length, colsB = B[0].length;
+      const result = Array.from({ length: rowsA }, () => Array(colsB).fill(0));
+      for (let i = 0; i < rowsA; i++) {
+        for (let j = 0; j < colsB; j++) {
+          for (let k = 0; k < colsA; k++) {
+            result[i][j] += A[i][k] * B[k][j];
+          }
+        }
+      }
+      return result;
+    };
+
+    const multiplyMatrixVector = (M, v) => M.map(row => row.reduce((sum, val, idx) => sum + val * v[idx], 0));
+
+    const invertMatrix = (matrix) => {
+      const n = matrix.length;
+      // Augment with identity matrix
+      const augmented = matrix.map((row, i) => row.concat(row.map((_, j) => (i === j ? 1 : 0))));
+
+      for (let i = 0; i < n; i++) {
+        // Pivot selection (max abs value in column i)
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) {
+          if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) maxRow = k;
+        }
+        // Swap if needed
+        if (maxRow !== i) {
+          const tmp = augmented[i];
+          augmented[i] = augmented[maxRow];
+          augmented[maxRow] = tmp;
+        }
+        // Check singularity
+        const pivot = augmented[i][i];
+        if (Math.abs(pivot) < 1e-12) throw new Error("Matrix is singular");
+
+        // Normalize pivot row
+        for (let j = 0; j < 2 * n; j++) augmented[i][j] /= pivot;
+
+        // Eliminate other rows
+        for (let r = 0; r < n; r++) {
+          if (r !== i) {
+            const factor = augmented[r][i];
+            for (let c = 0; c < 2 * n; c++) {
+              augmented[r][c] -= factor * augmented[i][c];
+            }
+          }
+        }
+      }
+      // Extract inverse (right half)
+      return augmented.map(row => row.slice(n));
+    };
+
+    // Perhitungan β = (X'X)^-1 X'y ---------------------------------------
+    const Xt = transpose(X);
+    const XtX = multiplyMatrices(Xt, X);
+    const XtX_inv = invertMatrix(XtX);
+    const Xty = multiplyMatrixVector(Xt, dependent);
+    const beta = multiplyMatrixVector(XtX_inv, Xty); // [β0, β1, ..., βp]
+
+    // Hitung nilai prediksi ----------------------------------------------
+    const yPred = X.map(row => row.reduce((sum, val, idx) => sum + val * beta[idx], 0));
+
+    // Residu -------------------------------------------------------------
+    const residuals = dependent.map((y, idx) => y - yPred[idx]);
+
+    /* ---------------------------------------------------------------------
+       3. Statistik dasar
+       ------------------------------------------------------------------*/
+    const mean = (arr) => arr.reduce((sum, v) => sum + v, 0) / arr.length;
+
+    const getStats = (arr) => {
       const m = mean(arr);
       const min = Math.min(...arr);
       const max = Math.max(...arr);
-      const variance = arr.reduce((sum, v) => sum + Math.pow(v - m, 2), 0) / (count - 1);
+      const variance = arr.reduce((sum, v) => sum + (v - m) ** 2, 0) / (arr.length - 1);
       const stdDev = Math.sqrt(variance);
-      return { min, max, mean: m, stdDev, n: count };
-    }
-    
-    // Statistik untuk Predicted Value dan Residual
+      return { min, max, mean: m, stdDev, n: arr.length };
+    };
+
     const statsPred = getStats(yPred);
     const statsRes = getStats(residuals);
-    
-    // Hitung nilai standar (z-score) untuk Predicted Value
-    const stdPred = yPred.map(v => (v - statsPred.mean) / statsPred.stdDev);
-    const statsStdPred = getStats(stdPred);
-    
-    // Hitung Std. Error of the Estimate (s); untuk regresi linear sederhana, df = n - 2
+
+    // Standar deviasi dari Predicted (z-score)
+    const stdPredVals = yPred.map(v => (v - statsPred.mean) / statsPred.stdDev);
+    const statsStdPred = getStats(stdPredVals);
+
+    // Standard error of estimate: s = sqrt(SSE / (n - p - 1))
     const SSE = residuals.reduce((sum, r) => sum + r * r, 0);
-    const s = Math.sqrt(SSE / (n - 2));
-    
-    // Hitung standar residual: tiap residual dibagi s
-    const stdRes = residuals.map(r => r / s);
-    const statsStdRes = getStats(stdRes);
-    
-    // Fungsi pembulatan
-    function round(val, decimals) {
-      return Number(val.toFixed(decimals));
-    }
-    
-    // Bangun objek JSON hasil sesuai struktur yang diinginkan
+    const s = Math.sqrt(SSE / (n - p - 1));
+
+    const stdResVals = residuals.map(r => r / s);
+    const statsStdRes = getStats(stdResVals);
+
+    const round = (val, dec) => Number(val.toFixed(dec));
+
     const result = {
       tables: [
         {
@@ -127,7 +185,11 @@ self.onmessage = function(e) {
         }
       ]
     };
-    
+
     self.postMessage(result);
-  };
+  } catch (err) {
+    console.error("Residuals Statistics Worker error:", err);
+    self.postMessage({ error: err.message || "Unknown error in residuals_statistics.js" });
+  }
+};
   

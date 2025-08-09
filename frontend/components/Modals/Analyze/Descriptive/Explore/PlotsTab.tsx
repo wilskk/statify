@@ -37,7 +37,10 @@ const PlotsTab: FC<PlotsTabProps> = ({
                 <RadioGroup 
                     data-testid="explore-boxplot-radio-group"
                     value={boxplotType} 
-                    onValueChange={setBoxplotType}
+                    onValueChange={(value) => {
+                    
+                        setBoxplotType(value as 'none' | 'dependents-together' | 'factor-levels-together' | 'dependents-separately');
+                    }}
                     className="mt-2 space-y-1"
                 >
                     <div className="flex items-center space-x-2">
@@ -52,6 +55,10 @@ const PlotsTab: FC<PlotsTabProps> = ({
                         <RadioGroupItem data-testid="explore-boxplot-dependents" value="dependents-together" id="dependents" />
                         <Label htmlFor="dependents" className="font-normal">Dependents together</Label>
                     </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem data-testid="explore-boxplot-dependents-separately" value="dependents-separately" id="dependents-separately" />
+                        <Label htmlFor="dependents-separately" className="font-normal">Dependents separately</Label>
+                    </div>
                 </RadioGroup>
                 {/* Info text removed so user can preconfigure before variable selection */}
             </div>
@@ -63,7 +70,10 @@ const PlotsTab: FC<PlotsTabProps> = ({
                         id="stem-and-leaf"
                         data-testid="explore-stem-and-leaf-checkbox"
                         checked={showStemAndLeaf}
-                        onCheckedChange={(checked) => setShowStemAndLeaf(checked as boolean)}
+                        onCheckedChange={(checked) => {
+                        
+                            setShowStemAndLeaf(checked as boolean);
+                        }}
                     />
                     <Label htmlFor="stem-and-leaf" className="font-normal">Stem-and-leaf</Label>
                 </div>
@@ -72,7 +82,10 @@ const PlotsTab: FC<PlotsTabProps> = ({
                         id="histogram"
                         data-testid="explore-histogram-checkbox"
                         checked={showHistogram}
-                        onCheckedChange={(checked) => setShowHistogram(checked as boolean)}
+                        onCheckedChange={(checked) => {
+                        
+                            setShowHistogram(checked as boolean);
+                        }}
                     />
                     <Label htmlFor="histogram" className="font-normal">Histogram</Label>
                 </div>

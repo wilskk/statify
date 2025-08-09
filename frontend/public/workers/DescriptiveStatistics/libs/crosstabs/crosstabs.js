@@ -24,6 +24,17 @@ class CrosstabsCalculator {
         this.missingWeight = 0; 
         this.R = 0; 
         this.C = 0;
+
+        // Periksa apakah data baris atau kolom mengandung tanggal dd-mm-yyyy
+        const rowData = this.data.map(d => d[this.rowVar.name]);
+        const colData = this.data.map(d => d[this.colVar.name]);
+        
+        this.isRowDateData = rowData.some(value => 
+            typeof value === 'string' && isDateString(value)
+        );
+        this.isColDateData = colData.some(value => 
+            typeof value === 'string' && isDateString(value)
+        );
     }
 
     #initialize() {
@@ -39,12 +50,23 @@ class CrosstabsCalculator {
             const weight = this.weights ? (this.weights[i] ?? 1) : 1;
             if (typeof weight !== 'number' || weight <= 0) continue;
 
-            const isRowMissing = checkIsMissing(rowData[i], this.rowVar.missing, isNumeric(rowData[i]));
-            const isColMissing = checkIsMissing(colData[i], this.colVar.missing, isNumeric(colData[i]));
+            // Konversi data tanggal ke SPSS seconds jika diperlukan
+            let processedRowValue = rowData[i];
+            let processedColValue = colData[i];
+            
+            if (this.isRowDateData && typeof rowData[i] === 'string' && isDateString(rowData[i])) {
+                processedRowValue = dateStringToSpssSeconds(rowData[i]);
+            }
+            if (this.isColDateData && typeof colData[i] === 'string' && isDateString(colData[i])) {
+                processedColValue = dateStringToSpssSeconds(colData[i]);
+            }
+
+            const isRowMissing = checkIsMissing(processedRowValue, this.rowVar.missing, isNumeric(processedRowValue));
+            const isColMissing = checkIsMissing(processedColValue, this.colVar.missing, isNumeric(processedColValue));
 
             if (!isRowMissing && !isColMissing) {
-                rowCatSet.add(rowData[i]);
-                colCatSet.add(colData[i]);
+                rowCatSet.add(processedRowValue);
+                colCatSet.add(processedColValue);
                 this.validWeight += weight;
             } else {
                 this.missingWeight += weight;
@@ -62,13 +84,25 @@ class CrosstabsCalculator {
 
         for (let i = 0; i < this.data.length; i++) {
             const weight = this.weights ? (this.weights[i] ?? 1) : 1;
-            const isRowMissing = checkIsMissing(rowData[i], this.rowVar.missing, isNumeric(rowData[i]));
-            const isColMissing = checkIsMissing(colData[i], this.colVar.missing, isNumeric(colData[i]));
+            
+            // Konversi data tanggal ke SPSS seconds jika diperlukan
+            let processedRowValue = rowData[i];
+            let processedColValue = colData[i];
+            
+            if (this.isRowDateData && typeof rowData[i] === 'string' && isDateString(rowData[i])) {
+                processedRowValue = dateStringToSpssSeconds(rowData[i]);
+            }
+            if (this.isColDateData && typeof colData[i] === 'string' && isDateString(colData[i])) {
+                processedColValue = dateStringToSpssSeconds(colData[i]);
+            }
+            
+            const isRowMissing = checkIsMissing(processedRowValue, this.rowVar.missing, isNumeric(processedRowValue));
+            const isColMissing = checkIsMissing(processedColValue, this.colVar.missing, isNumeric(processedColValue));
 
             if (isRowMissing || isColMissing || typeof weight !== 'number' || weight <= 0) continue;
 
-            const rowIndex = this.rowCategories.indexOf(rowData[i]);
-            const colIndex = this.colCategories.indexOf(colData[i]);
+            const rowIndex = this.rowCategories.indexOf(processedRowValue);
+            const colIndex = this.colCategories.indexOf(processedColValue);
 
             if (rowIndex > -1 && colIndex > -1) {
                 this.table[rowIndex][colIndex] += weight;
@@ -436,6 +470,27 @@ class CrosstabsCalculator {
             }
         }
 
+        // Konversi kembali kategori ke format tanggal jika diperlukan
+        const displayRowCategories = this.isRowDateData 
+            ? this.rowCategories.map(value => {
+                if (typeof value === 'number') {
+                    const dateString = spssSecondsToDateString(value);
+                    return dateString || value;
+                }
+                return value;
+            })
+            : this.rowCategories;
+            
+        const displayColCategories = this.isColDateData 
+            ? this.colCategories.map(value => {
+                if (typeof value === 'number') {
+                    const dateString = spssSecondsToDateString(value);
+                    return dateString || value;
+                }
+                return value;
+            })
+            : this.colCategories;
+
         return {
             summary: {
                 rows: this.R,
@@ -443,8 +498,8 @@ class CrosstabsCalculator {
                 totalCases: this.W, // Tetap disediakan untuk kompatibilitas existing UI
                 valid: this.validWeight,
                 missing: this.missingWeight,
-                rowCategories: this.rowCategories,
-                colCategories: this.colCategories,
+                rowCategories: displayRowCategories,
+                colCategories: displayColCategories,
                 rowTotals: this.rowTotals,
                 colTotals: this.colTotals,
             },

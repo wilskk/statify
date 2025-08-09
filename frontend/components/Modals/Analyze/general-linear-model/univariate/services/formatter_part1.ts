@@ -149,7 +149,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
                         /\s+/g,
                         "_"
                     )}`,
-                    title: "Levene's Test of Equality of Error Variancesᵃ",
+                    title: "Levene's Test of Equality of Error Variances",
                     subtitle: `Dependent Variable: ${test.dependent_variable}`,
                     columnHeaders: [
                         { header: "", key: "dependent_variable" },
@@ -197,7 +197,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
         } else {
             const table: Table = {
                 key: "levene_test",
-                title: "Levene's Test of Equality of Error Variancesᵃᵇ",
+                title: "Levene's Test of Equality of Error Variances",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "", key: "based_on" },
@@ -285,7 +285,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
 
             const table: Table = {
                 key: "hetero_breusch_pagan",
-                title: "Breusch-Pagan Test for Heteroskedasticityᵃᵇᶜ",
+                title: "Breusch-Pagan Test for Heteroskedasticity",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "Chi-Square", key: "statistic" },
@@ -340,7 +340,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
 
             const table: Table = {
                 key: "hetero_modified_breusch_pagan",
-                title: "Modified Breusch-Pagan Test for Heteroskedasticityᵃᵇᶜ",
+                title: "Modified Breusch-Pagan Test for Heteroskedasticity",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "Chi-Square", key: "statistic" },
@@ -395,7 +395,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
 
             const table: Table = {
                 key: "hetero_white",
-                title: "White Test for Heteroskedasticityᵃᵇᶜ",
+                title: "White Test for Heteroskedasticity",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "Chi-Square", key: "statistic" },
@@ -450,7 +450,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
 
             const table: Table = {
                 key: "hetero_f_test",
-                title: "F Test for Heteroskedasticityᵃᵇᶜ",
+                title: "F Test for Heteroskedasticity",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "F", key: "statistic" },
@@ -571,7 +571,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
             }
             if (hasPower) {
                 columnHeaders.push({
-                    header: "Observed Powerᵇ",
+                    header: "Observed Power",
                     key: "observed_power",
                 });
             }
@@ -598,7 +598,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
                     rowHeader: [
                         sourceName === "Corrected Model" &&
                         sumOfSquares !== null
-                            ? `${sourceName}ᵃ`
+                            ? `${sourceName}`
                             : sourceName,
                     ],
                     sum_of_squares: sumOfSquares,
@@ -705,7 +705,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
         }
         if (hasPower) {
             columnHeaders.push({
-                header: `Observed Power${alphaNoteLetter ? `ᵃ` : ""}`,
+                header: `Observed Power`,
                 key: "observed_power",
             });
         }
@@ -734,7 +734,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
             if (estimate.is_redundant) {
                 table.rows.push({
                     rowHeader: [estimate.parameter],
-                    b: `0${redundantNoteLetter || "a"}`,
+                    b: `0ᵃ`,
                     ...redundantRowValues,
                 });
             } else {

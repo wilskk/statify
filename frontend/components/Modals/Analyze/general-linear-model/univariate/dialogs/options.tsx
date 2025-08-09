@@ -15,6 +15,17 @@ import { Input } from "@/components/ui/input";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { optionsTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateOptions = ({
     isOptionsOpen,
@@ -26,6 +37,17 @@ export const UnivariateOptions = ({
         ...data,
     });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(optionsTourSteps);
 
     useEffect(() => {
         if (isOptionsOpen) {
@@ -73,13 +95,31 @@ export const UnivariateOptions = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="flex flex-col gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
                     className="w-full min-h-[450px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={40}>
-                        <div className="flex flex-col gap-2 p-2">
+                        <div
+                            id="univariate-options-display"
+                            className="flex flex-col gap-2 p-2"
+                        >
                             <Label className="font-bold">Display</Label>
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="flex flex-col gap-2">
@@ -272,7 +312,10 @@ export const UnivariateOptions = ({
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={22}>
-                        <div className="flex flex-col gap-2 p-2">
+                        <div
+                            id="univariate-options-heteroscedasticity"
+                            className="flex flex-col gap-2 p-2"
+                        >
                             <Label className="font-bold">
                                 Heteroscedasticity Tests
                             </Label>
@@ -357,11 +400,15 @@ export const UnivariateOptions = ({
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={38}>
-                        <div className="flex flex-col gap-2 p-2">
+                        <div
+                            id="univariate-options-robust-std-err"
+                            className="flex flex-col gap-2 p-2"
+                        >
                             <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="ParamEstRobStdErr"
                                     checked={optionsState.ParamEstRobStdErr}
+                                    disabled={true}
                                     onCheckedChange={(checked) =>
                                         handleChange(
                                             "ParamEstRobStdErr",
@@ -371,7 +418,7 @@ export const UnivariateOptions = ({
                                 />
                                 <label
                                     htmlFor="ParamEstRobStdErr"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm font-medium leading-none cursor-not-allowed opacity-50"
                                 >
                                     Parameter Estimates with Robust Standard
                                     Errors
@@ -396,29 +443,57 @@ export const UnivariateOptions = ({
                             >
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC0" id="HC0" />
-                                    <Label htmlFor="HC0">HC0</Label>
+                                    <Label
+                                        htmlFor="HC0"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC0
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC1" id="HC1" />
-                                    <Label htmlFor="HC1">HC1</Label>
+                                    <Label
+                                        htmlFor="HC1"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC1
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC2" id="HC2" />
-                                    <Label htmlFor="HC2">HC2</Label>
+                                    <Label
+                                        htmlFor="HC2"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC2
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC3" id="HC3" />
-                                    <Label htmlFor="HC3">HC3</Label>
+                                    <Label
+                                        htmlFor="HC3"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC3
+                                    </Label>
                                 </div>
                                 <div className="flex items-center space-x-2 pl-6">
                                     <RadioGroupItem value="HC4" id="HC4" />
-                                    <Label htmlFor="HC4">HC4</Label>
+                                    <Label
+                                        htmlFor="HC4"
+                                        className="cursor-not-allowed opacity-50"
+                                    >
+                                        HC4
+                                    </Label>
                                 </div>
                             </RadioGroup>
                         </div>
                     </ResizablePanel>
                 </ResizablePanelGroup>
-                <div className="flex items-center space-x-2">
+                <div
+                    id="univariate-options-sig-level"
+                    className="flex items-center space-x-2"
+                >
                     <Label className="w-[150px]">Significance Level:</Label>
                     <div className="w-[75px]">
                         <Input
@@ -427,7 +502,7 @@ export const UnivariateOptions = ({
                             placeholder=""
                             min={0}
                             max={1}
-                            value={optionsState.SigLevel ?? ""}
+                            value={optionsState.SigLevel || "0"}
                             onChange={(e) =>
                                 handleChange("SigLevel", Number(e.target.value))
                             }
@@ -437,18 +512,23 @@ export const UnivariateOptions = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -460,6 +540,7 @@ export const UnivariateOptions = ({
                         Cancel
                     </Button>
                     <Button
+                        id="univariate-options-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

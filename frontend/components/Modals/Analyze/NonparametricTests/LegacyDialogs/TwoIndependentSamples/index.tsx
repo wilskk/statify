@@ -262,8 +262,8 @@ const TwoIndependentSamplesContent: FC<BaseModalProps> = ({ onClose, containerTy
                             isCalculating ||
                             testVariables.length < 1 ||
                             !groupingVariable ||
-                            !group1 ||
-                            !group2 ||
+                            (group1 === null || group1 === undefined) ||
+                            (group2 === null || group2 === undefined) ||
                             testType.mannWhitneyU === false && testType.kolmogorovSmirnovZ === false
                         }
                     >

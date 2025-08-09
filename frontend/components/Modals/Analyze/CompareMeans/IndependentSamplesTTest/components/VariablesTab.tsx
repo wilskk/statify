@@ -41,14 +41,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const isVariableDisabled = useCallback((variable: Variable): boolean => {   
-        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
-                                (variable.measure === 'scale' || variable.measure === 'ordinal');
-        
-        if (isNormallyValid) return false;
-        if (variable.measure === 'unknown') return !allowUnknown;
-        
-        return true;
-    }, [allowUnknown]);
+        return variable.type !== 'NUMERIC';
+    }, []);
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         if (sourceListId === 'available' && isVariableDisabled(variable)) {
@@ -119,22 +113,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return tourSteps[currentStep]?.targetId === elementId;
     }, [tourActive, currentStep, tourSteps]);
 
-    const renderAllowUnknown = () => (
-        <>
-            <div className="flex items-center mt-2 p-1.5">
-                <Checkbox
-                    id="allowUnknown"
-                    checked={allowUnknown}
-                    onCheckedChange={(checked: boolean) => setAllowUnknown(checked)}
-                    className="mr-2 h-4 w-4"
-                />
-                <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                    Treat &apos;unknown&apos; as Scale and allow selection
-                </Label>
-            </div>
-        </>
-    );
-
     const groupingFooter = useCallback((listId: string) => {
         if (listId === 'grouping') {
             return (
@@ -154,7 +132,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                         });
                                     }}
                                 >
-                                    <div className="space-y-2">
+                                    <div id="use-specified-values-section" className="space-y-2">
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem
                                                 value="specified"
@@ -174,7 +152,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                                     id="group1"
                                                     type="number"
                                                     disabled={!defineGroups.useSpecifiedValues}
-                                                    value={group1 || ""}
+                                                    value={group1 !== null ? group1 : ""}
                                                     onChange={(e) => setGroup1(e.target.value ? Number(e.target.value) : null)}
                                                     className="w-20 h-8 text-sm"
                                                 />
@@ -187,15 +165,27 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                                     id="group2"
                                                     type="number"
                                                     disabled={!defineGroups.useSpecifiedValues}
-                                                    value={group2 || ""}
+                                                    value={group2 !== null ? group2 : ""}
                                                     onChange={(e) => setGroup2(e.target.value ? Number(e.target.value) : null)}
                                                     className="w-20 h-8 text-sm"
                                                 />
                                             </div>
                                         </div>
+                                        {tourActive && isTourElementActive("use-specified-values-section") && (
+                                            // className explanation:
+                                            // "absolute" - posisi elemen menjadi absolut terhadap parent terdekat yang posisinya relatif
+                                            // "inset-0" - mengatur top, right, bottom, left = 0, sehingga elemen menutupi seluruh parent
+                                            // "pointer-events-none" - elemen ini tidak akan menerima interaksi mouse (klik, hover, dsb)
+                                            // "border-2" - ketebalan border 2px
+                                            // "border-primary" - warna border menggunakan warna utama (primary) dari theme/tailwind config
+                                            // "animate-pulse" - menambahkan animasi pulse (berkedip perlahan)
+                                            // "rounded-md" - sudut border membulat medium
+                                            // "z-10" - z-index 10, agar elemen ini berada di atas konten lain
+                                            <div className="absolute top-[16%] left-0 w-full h-[50%] pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                                        )}
                                     </div>
                                     
-                                    <div className="flex items-center space-x-3">
+                                    <div id="cut-point-section" className="flex items-center space-x-3">
                                         <RadioGroupItem
                                             value="cutpoint"
                                             id="cutpoint"
@@ -208,13 +198,19 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                             id="cutPointValue"
                                             type="number"
                                             disabled={defineGroups.useSpecifiedValues}
-                                            value={cutPointValue || ""}
+                                            value={cutPointValue !== null ? cutPointValue : ""}
                                             onChange={(e) => setCutPointValue(e.target.value ? Number(e.target.value) : null)}
                                             className="w-20 h-8 text-sm"
                                         />
+                                        {tourActive && isTourElementActive("cut-point-section") && (
+                                            <div className="absolute top-[70%] left-0 w-full h-[27%] pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                                        )}
                                     </div>
                                 </RadioGroup>
                             </div>
+                            {tourActive && isTourElementActive("define-groups-section") && (
+                                <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                            )}
                         </div>
                     </div>
                     <div className="mt-2">
@@ -230,7 +226,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                 Estimate effect size
                             </Label>
                             {tourActive && isTourElementActive("estimate-effect-size-section") && (
-                                <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                                <div className="absolute top-[96%] left-0 w-full h-[5%] pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
                             )}
                         </div>
                     </div>
@@ -242,29 +238,33 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     // --- Render the manager component and error message ---
     return (
-        <div className="space-y-2">
-            <VariableListManager
-                availableVariables={availableVariables}
-                targetLists={targetLists}
-                variableIdKey={variableIdKeyToUse}
-                highlightedVariable={managerHighlightedVariable}
-                setHighlightedVariable={setManagerHighlightedVariable}
-                onMoveVariable={handleMoveVariable}
-                onReorderVariable={handleReorderVariables}
-                onVariableDoubleClick={handleDoubleClick}
-                availableListHeight={'273.5px'}
-                getDisplayName={getDisplayName}
-                isVariableDisabled={isVariableDisabled}
-                renderListFooter={groupingFooter}
-                showArrowButtons={true}
-                renderExtraInfoContent={renderAllowUnknown}
-            />
+        <div className="space-y-4">
+            <div className="relative">
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    onVariableDoubleClick={handleDoubleClick}
+                    availableListHeight={'273.5px'}
+                    getDisplayName={getDisplayName}
+                    isVariableDisabled={isVariableDisabled}
+                    renderListFooter={groupingFooter}
+                    showArrowButtons={true}
+                />
 
-            <div id="independent-samples-t-test-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'independent-samples-t-test-available-variables')} />
-            </div>
-            <div id="independent-samples-t-test-test-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'ttest-test-variables')} />
+                <div id="independent-samples-t-test-available-variables" className="absolute top-0 left-0 w-[48%] h-[70%] pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'independent-samples-t-test-available-variables')} />
+                </div>
+                <div id="independent-samples-t-test-test-variables" className="absolute top-0 right-0 w-[48%] h-[36%] pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'independent-samples-t-test-test-variables')} />
+                </div>
+                <div id="independent-samples-t-test-grouping-variable" className="absolute top-[38%] right-0 w-[48%] h-[14%] pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'independent-samples-t-test-grouping-variable')} />
+                </div>
             </div>
         </div>
     );

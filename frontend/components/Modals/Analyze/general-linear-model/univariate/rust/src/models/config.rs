@@ -3,7 +3,7 @@ use serde::{ Deserialize, Serialize };
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnivariateConfig {
     pub main: MainConfig,
-    pub model: ModelDetails,
+    pub model: ModelConfig,
     pub contrast: ContrastConfig,
     pub plots: PlotsConfig,
     pub posthoc: PosthocConfig,
@@ -92,7 +92,7 @@ pub struct MainConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ModelDetails {
+pub struct ModelConfig {
     #[serde(rename = "NonCust")]
     pub non_cust: bool,
     #[serde(rename = "Custom")]

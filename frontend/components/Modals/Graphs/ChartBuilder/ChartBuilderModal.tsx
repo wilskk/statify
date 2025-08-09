@@ -112,6 +112,14 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     origin: "",
   });
 
+  const [zAxisOptions, setZAxisOptions] = useState({
+    label: "",
+    min: "",
+    max: "",
+    majorIncrement: "",
+    origin: "",
+  });
+
   // Add state for chart colors
   const [chartColors, setChartColors] = useState<string[]>([
     "#1f77b4",
@@ -246,6 +254,13 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       icon: <BarChartIcon className="w-4 h-4 mr-2" />,
       show: !isAxisConfigAllFalse(config.axis.x),
     },
+    {
+      key: "z-axis",
+      label: "Z-Axis",
+      icon: <BarChartIcon className="w-4 h-4 mr-2" />,
+      show: "z" in config.axis && !isAxisConfigAllFalse((config.axis as any).z),
+    },
+
     // Conditional Y axis settings based on whether chart has dual Y axis
     ...(hasDualYAxis(config.axis)
       ? [
@@ -985,6 +1000,8 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
               setYAxisOptions={setYAxisOptions}
               y2AxisOptions={y2AxisOptions}
               setY2AxisOptions={setY2AxisOptions}
+              zAxisOptions={zAxisOptions}
+              setZAxisOptions={setZAxisOptions}
               selectedStatistic={selectedStatistic}
               setSelectedStatistic={setSelectedStatistic}
               errorBarType={errorBarType}

@@ -2,163 +2,6 @@ import { formatDisplayNumber, formatSig } from "@/hooks/useFormatter";
 import { ResultJson, Row, Table } from "@/types/Table";
 
 export function formatPart2(data: any, resultJson: ResultJson) {
-    // Robust Parameter Estimates table
-    if (
-        data.robust_parameter_estimates &&
-        data.robust_parameter_estimates.estimates
-    ) {
-        const estimates = data.robust_parameter_estimates;
-        const notes: string[] = [];
-        let redundantNoteLetter: string | null = null;
-        let alphaNoteLetter: string | null = null;
-
-        if (estimates.note && typeof estimates.note === "string") {
-            const notesArray = estimates.note.split("\n");
-            notesArray.forEach((note: string) => {
-                notes.push(note);
-                if (note.includes("redundant")) {
-                    redundantNoteLetter = note.charAt(0);
-                }
-                if (note.includes("alpha =")) {
-                    alphaNoteLetter = note.charAt(0);
-                }
-            });
-        }
-
-        const hasPartialEta = estimates.estimates.some(
-            (e: any) =>
-                e.partial_eta_squared != null && !isNaN(e.partial_eta_squared)
-        );
-        const hasNoncent = estimates.estimates.some(
-            (e: any) =>
-                e.noncent_parameter != null && !isNaN(e.noncent_parameter)
-        );
-        const hasPower = estimates.estimates.some(
-            (e: any) => e.observed_power != null && !isNaN(e.observed_power)
-        );
-
-        const columnHeaders: any[] = [
-            { header: "Parameter" },
-            { header: "B", key: "b" },
-            { header: "Robust Std. Error", key: "robust_std_error" },
-            { header: "t", key: "t" },
-            { header: "Sig.", key: "sig" },
-            {
-                header: "95% Confidence Interval",
-                key: "confidence_interval",
-                children: [
-                    { header: "Lower Bound", key: "lower_bound" },
-                    { header: "Upper Bound", key: "upper_bound" },
-                ],
-            },
-        ];
-
-        if (hasPartialEta) {
-            columnHeaders.push({
-                header: "Partial Eta Squared",
-                key: "partial_eta_squared",
-            });
-        }
-        if (hasNoncent) {
-            columnHeaders.push({
-                header: "Noncent. Parameter",
-                key: "noncent_parameter",
-            });
-        }
-        if (hasPower) {
-            columnHeaders.push({
-                header: `Observed Power${alphaNoteLetter ? `ᵃ` : ""}`,
-                key: "observed_power",
-            });
-        }
-
-        const table: Table = {
-            key: "robust_parameter_estimates",
-            title: `Robust Parameter Estimates`,
-            columnHeaders: columnHeaders,
-            rows: [],
-            note: estimates.note,
-            interpretation: estimates.interpretation,
-        };
-
-        const redundantRowValues: any = {
-            robust_std_error: ".",
-            t: ".",
-            sig: ".",
-            lower_bound: ".",
-            upper_bound: ".",
-        };
-
-        if (hasPartialEta) redundantRowValues.partial_eta_squared = ".";
-        if (hasNoncent) redundantRowValues.noncent_parameter = ".";
-        if (hasPower) redundantRowValues.observed_power = ".";
-
-        estimates.estimates.forEach((estimate: any) => {
-            if (estimate.is_redundant) {
-                table.rows.push({
-                    rowHeader: [estimate.parameter],
-                    b: `0${redundantNoteLetter || "a"}`,
-                    ...redundantRowValues,
-                });
-            } else {
-                const row: Row = {
-                    rowHeader: [estimate.parameter],
-                    b: formatDisplayNumber(estimate.b),
-                    robust_std_error: formatDisplayNumber(
-                        estimate.robust_std_error
-                    ),
-                    t: formatDisplayNumber(estimate.t_value),
-                    sig: formatSig(estimate.significance),
-                    lower_bound: formatDisplayNumber(
-                        estimate.confidence_interval?.lower_bound
-                    ),
-                    upper_bound: formatDisplayNumber(
-                        estimate.confidence_interval?.upper_bound
-                    ),
-                };
-
-                if (hasPartialEta) {
-                    row.partial_eta_squared = formatDisplayNumber(
-                        estimate.partial_eta_squared
-                    );
-                }
-                if (hasNoncent) {
-                    row.noncent_parameter = formatDisplayNumber(
-                        estimate.noncent_parameter
-                    );
-                }
-                if (hasPower) {
-                    row.observed_power = formatDisplayNumber(
-                        estimate.observed_power
-                    );
-                }
-                table.rows.push(row);
-            }
-        });
-
-        const nullColumnsForNotes: any = {
-            b: null,
-            robust_std_error: null,
-            t: null,
-            sig: null,
-            lower_bound: null,
-            upper_bound: null,
-        };
-
-        if (hasPartialEta) nullColumnsForNotes.partial_eta_squared = null;
-        if (hasNoncent) nullColumnsForNotes.noncent_parameter = null;
-        if (hasPower) nullColumnsForNotes.observed_power = null;
-
-        notes.forEach((note) => {
-            table.rows.push({
-                rowHeader: [note],
-                ...nullColumnsForNotes,
-            });
-        });
-
-        resultJson.tables.push(table);
-    }
-
     // 6. General Estimable Function table
     if (
         data.general_estimable_function &&
@@ -175,14 +18,6 @@ export function formatPart2(data: any, resultJson: ResultJson) {
             estimable.l_matrix.length > 0 &&
             estimable.parameter.length > 0
         ) {
-            // Find the design note for title superscript
-            let designNoteLetter = "";
-            const designNote =
-                gef.notes?.find((n: string) => n.match(/^a\./)) || "";
-            if (designNote) {
-                designNoteLetter = "a";
-            }
-
             // Create column headers from l_label
             const lLabelKeys = estimable.l_label.map((l: string) =>
                 l.toLowerCase()
@@ -197,9 +32,7 @@ export function formatPart2(data: any, resultJson: ResultJson) {
 
             const table: Table = {
                 key: "general_estimable_function",
-                title: `General Estimable Function${
-                    designNoteLetter ? `ᵃ` : ""
-                }`,
+                title: `General Estimable Function`,
                 columnHeaders,
                 rows: [],
                 note: gef.note,

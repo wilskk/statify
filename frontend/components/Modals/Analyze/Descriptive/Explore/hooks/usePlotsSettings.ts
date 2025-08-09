@@ -1,14 +1,14 @@
 import { useState, useCallback } from 'react';
 
 export interface PlotsSettings {
-    boxplotType: 'none' | 'dependents-together' | 'factor-levels-together';
+    boxplotType: 'none' | 'dependents-together' | 'factor-levels-together' | 'dependents-separately';
     showStemAndLeaf: boolean;
     showHistogram: boolean;
     showNormalityPlots: boolean;
 }
 
 export interface PlotsSettingsHandlers {
-    setBoxplotType: (value: 'none' | 'dependents-together' | 'factor-levels-together') => void;
+    setBoxplotType: (value: 'none' | 'dependents-together' | 'factor-levels-together' | 'dependents-separately') => void;
     setShowStemAndLeaf: (value: boolean) => void;
     setShowHistogram: (value: boolean) => void;
     setShowNormalityPlots: (value: boolean) => void;
@@ -48,4 +48,4 @@ export const usePlotsSettings = (): UsePlotsSettingsResult => {
         setShowNormalityPlots,
         resetPlotsSettings
     };
-}; 
+};

@@ -4,90 +4,99 @@ use crate::models::{ config::KMeansConfig, result::{ InitialClusterCenters, Proc
 
 use super::core::*;
 
-/// Menginisialisasi pusat cluster awal untuk algoritma K-Means.
-///
-/// Fungsi ini memilih titik-titik data awal yang akan berfungsi sebagai pusat (centroid)
-/// untuk setiap cluster. Terdapat dua strategi inisialisasi:
-/// 1. Menggunakan 'k' titik data pertama sebagai pusat awal secara langsung.
-/// 2. Menggunakan metode heuristik yang terinspirasi dari K-Means++ untuk mendapatkan
-///    pusat-pusat yang lebih tersebar dan representatif.
 pub fn initialize_clusters(
     data: &ProcessedData,
     config: &KMeansConfig
 ) -> Result<InitialClusterCenters, String> {
     let num_clusters = config.main.cluster as usize;
 
-    // Memastikan jumlah titik data cukup untuk jumlah cluster yang diminta.
-    if data.data_matrix.len() < num_clusters {
+    let mut initial_centers: Vec<Vec<f64>>;
+
+    let valid_cases: Vec<&Vec<f64>> = data.data_matrix
+        .iter()
+        .filter(|case| case.iter().any(|&val| !val.is_nan()))
+        .collect();
+
+    if valid_cases.len() < num_clusters {
         return Err(
             format!(
-                "Not enough data points ({}) for requested clusters ({})",
-                data.data_matrix.len(),
+                "Not enough valid data points ({}) for requested clusters ({})",
+                valid_cases.len(),
                 num_clusters
             )
         );
     }
 
-    let mut initial_centers: Vec<Vec<f64>>;
-
-    // --- Inisialisasi Pusat Cluster ---
     if !config.options.initial_cluster {
-        // Strategi 1: Menggunakan 'k' titik data pertama sebagai pusat awal (NOINITIAL).
-        // Pendekatan ini sederhana dan cepat, cocok jika urutan data tidak memiliki bias.
-        initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
+        initial_centers = valid_cases
+            .iter()
+            .take(num_clusters)
+            .map(|&case| case.clone())
+            .collect();
     } else {
-        // Strategi 2: Heuristik untuk pemilihan pusat yang lebih baik (default).
-        // Dimulai dengan 'k' titik pertama, kemudian diperbaiki secara iteratif.
-        initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
+        initial_centers = valid_cases
+            .iter()
+            .take(num_clusters)
+            .map(|&case| case.clone())
+            .collect();
+        for k in num_clusters..valid_cases.len() {
+            let x_k = valid_cases[k];
 
-        // Iterasi melalui sisa titik data untuk memperbaiki pusat awal.
-        for k in num_clusters..data.data_matrix.len() {
-            let x_k = &data.data_matrix[k];
-
-            // Menghitung jarak Euclidean: metrik umum untuk mengukur jarak
-            // garis lurus antara dua titik dalam ruang multidimensi.
+            // Cari pusat cluster terdekat dan jarak minimum
             let (closest, min_dist) = find_nearest_cluster(x_k, &initial_centers);
+            // Cari pusat cluster kedua terdekat
             let second_closest = find_second_closest_cluster(x_k, &initial_centers, closest);
 
-            // Cari jarak minimum antara dua pusat cluster yang sudah ada.
             let (min_center_dist, m, n) = min_distance_between_centers(&initial_centers);
 
-            // Logika untuk mengganti pusat yang ada dengan titik baru (x_k).
-            // Tujuannya adalah untuk memaksimalkan jarak antar pusat cluster,
-            // sehingga menghasilkan pusat awal yang lebih tersebar.
+            // Kondisi untuk menentukan apakah x_k harus menjadi pusat cluster baru
             if min_dist > min_center_dist {
-                // Jika jarak titik x_k ke pusat terdekatnya lebih besar dari jarak
+                // Kondisi 1: Jika jarak titik x_k ke pusat terdekatnya lebih besar dari jarak
                 // minimum antar pusat, ganti salah satu dari dua pusat terdekat
                 // satu sama lain (m atau n) dengan x_k.
                 if
                     euclidean_distance(x_k, &initial_centers[m]) >
                     euclidean_distance(x_k, &initial_centers[n])
                 {
-                    initial_centers[m] = x_k.clone();
+                    initial_centers[m] = x_k.clone(); // Ganti pusat m dengan x_k
                 } else {
-                    initial_centers[n] = x_k.clone();
+                    initial_centers[n] = x_k.clone(); // Ganti pusat n dengan x_k
                 }
             } else {
-                // Jika tidak, pertimbangkan untuk mengganti pusat terdekat dengan x_k
-                // jika x_k cukup jauh dari pusat-pusat lainnya.
+                // Kondisi 2: Jika tidak memenuhi kondisi pertama, pertimbangkan untuk mengganti
+                // pusat terdekat dengan x_k jika x_k cukup jauh dari pusat-pusat lainnya.
                 let dist_to_second = euclidean_distance(x_k, &initial_centers[second_closest]);
                 let min_dist_from_closest = min_distance_from_cluster(&initial_centers, closest);
 
                 if dist_to_second > min_dist_from_closest {
-                    initial_centers[closest] = x_k.clone();
+                    initial_centers[closest] = x_k.clone(); // Ganti pusat terdekat dengan x_k
                 }
             }
         }
     }
 
-    // Mengubah format pusat cluster dari `Vec<Vec<f64>>` menjadi `HashMap<String, Vec<f64>>`.
-    // HashMap ini memetakan setiap nama variabel ke daftar nilai pusatnya di semua cluster,
-    // yang merupakan format yang dibutuhkan untuk output.
     let mut centers_map = HashMap::new();
     for (i, var) in data.variables.iter().enumerate() {
-        let var_values = initial_centers
+        let var_values: Vec<f64> = initial_centers
             .iter()
-            .map(|center| center[i])
+            .map(|center| {
+                let val = center[i];
+
+                if val.is_nan() {
+                    let valid_values: Vec<f64> = data.data_matrix
+                        .iter()
+                        .map(|row| row[i])
+                        .filter(|x| !x.is_nan())
+                        .collect();
+                    if valid_values.is_empty() {
+                        0.0
+                    } else {
+                        mean(&valid_values)
+                    }
+                } else {
+                    val
+                }
+            })
             .collect();
         centers_map.insert(var.clone(), var_values);
     }

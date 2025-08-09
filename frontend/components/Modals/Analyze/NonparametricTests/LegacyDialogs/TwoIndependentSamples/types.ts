@@ -169,6 +169,7 @@ export interface TestStatistics {
   
 // Descriptive Statistics
 export interface DescriptiveStatistics {
+    variable1: Variable;
     N: number;
     Mean?: number;
     StdDev?: number;
@@ -181,11 +182,18 @@ export interface DescriptiveStatistics {
   
 // Two Independent Samples Test Result
 export interface TwoIndependentSamplesTestResult {
-    variable: Variable;
+    variable1: Variable;
+    variable2: Variable;
     descriptiveStatistics?: DescriptiveStatistics;
     frequenciesRanks?: FrequenciesRanks;
     testStatisticsMannWhitneyU?: MannWhitneyUTestStatistics;
     testStatisticsKolmogorovSmirnovZ?: KolmogorovSmirnovZTestStatistics;
+    metadata?: {
+        hasInsufficientData: boolean;
+        insufficentType: string[];
+        variableName: string;
+        variableLabel: string;
+    };
 }
   
   // Two Independent Samples Test Results Collection

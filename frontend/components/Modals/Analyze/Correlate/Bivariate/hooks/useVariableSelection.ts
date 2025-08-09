@@ -12,6 +12,7 @@ export const useVariableSelection = ({
     const { variables } = useVariableStore();
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [testVariables, setTestVariables] = useState<Variable[]>(initialVariables);
+    const [controlVariables, setControlVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariable | null>(null);
 
     useEffect(() => {
@@ -33,14 +34,26 @@ export const useVariableSelection = ({
             !stillExistingTestVars.every((val, index) => val.tempId === testVariables[index]?.tempId)) {
             setTestVariables(stillExistingTestVars);
         }
+
+        const stillExistingControlVars = controlVariables.filter(sv => 
+            sv.tempId && globalVarTempIds.has(sv.tempId)
+        );
+    
+        if (stillExistingControlVars.length !== controlVariables.length || 
+            !stillExistingControlVars.every((val, index) => val.tempId === controlVariables[index]?.tempId)) {
+            setControlVariables(stillExistingControlVars);
+        }
         
         const currentTestTempIds = new Set(stillExistingTestVars.filter(v => v.tempId).map(v => v.tempId!));
+        const currentControlTempIds = new Set(stillExistingControlVars.filter(v => v.tempId).map(v => v.tempId!));
+        const allUsedTempIds = new Set([...Array.from(currentTestTempIds), ...Array.from(currentControlTempIds)]);
+        
         const newAvailableVariables = globalVarsWithTempId.filter(
-          v => v.name !== "" && v.tempId && !currentTestTempIds.has(v.tempId)
+          v => v.name !== "" && v.tempId && !allUsedTempIds.has(v.tempId)
         );
         setAvailableVariables(newAvailableVariables);
     
-      }, [variables, testVariables]);
+      }, [variables, testVariables, controlVariables]);
 
     const moveToTestVariables = (variable: Variable, targetIndex?: number) => {
         const variableWithTempId = {
@@ -77,6 +90,10 @@ export const useVariableSelection = ({
             setTestVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
         }
 
+        if (controlVariables.some(v => v.tempId === variableWithTempId.tempId)) {
+            setControlVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
+        }
+
         setAvailableVariables(prev => {
             if (prev.some(v => v.tempId === variableWithTempId.tempId)) {
                 return prev;
@@ -89,11 +106,54 @@ export const useVariableSelection = ({
         setHighlightedVariable(null);
     };
 
-    const reorderVariables = (source: 'available' | 'test', reorderedVariables: Variable[]) => {
+    const moveToKendallsTauBControlVariables = (variable: Variable) => {
+        const variableWithTempId = {
+            ...variable,
+            tempId: variable.tempId || `temp_id_${variable.columnIndex}`
+        };
+
+        if (availableVariables.some(v => v.tempId === variableWithTempId.tempId)) {
+            setAvailableVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
+        } 
+        
+        setControlVariables(prev => {
+            if (prev.some(v => v.tempId === variableWithTempId.tempId)) {
+                return prev;
+            }
+            return [...prev, variableWithTempId];
+        });
+        setHighlightedVariable(null);
+    };
+
+    const moveToKendallsTauBAvailableVariables = (variable: Variable) => {
+        const variableWithTempId = {
+            ...variable,
+            tempId: variable.tempId || `temp_id_${variable.columnIndex}`
+        };
+
+        if (controlVariables.some(v => v.tempId === variableWithTempId.tempId)) {
+            setControlVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
+        }
+
+        setAvailableVariables(prev => {
+            if (prev.some(v => v.tempId === variableWithTempId.tempId)) {
+                return prev;
+            }
+            const newList = [...prev, variableWithTempId];
+            newList.sort((a, b) => (a.columnIndex || 0) - (b.columnIndex || 0));
+            return newList;
+        });
+
+        setHighlightedVariable(null);
+    };
+
+    const reorderVariables = (source: 'available' | 'test' | 'control', reorderedVariables: Variable[]) => {
         if (source === 'available') {
             setAvailableVariables([...reorderedVariables]);
         } else if (source === 'test') {
             setTestVariables([...reorderedVariables]);
+        } else if (source === 'control') {
+            setControlVariables([...reorderedVariables]);
         }
     };
 
@@ -104,16 +164,20 @@ export const useVariableSelection = ({
         }));
         setAvailableVariables(allVarsWithTempId.filter(v => v.name !== ""));
         setTestVariables([]);
+        setControlVariables([]);
         setHighlightedVariable(null);
     };
     
     return {
         availableVariables,
         testVariables,
+        controlVariables,
         highlightedVariable,
         setHighlightedVariable,
         moveToTestVariables,
         moveToAvailableVariables,
+        moveToKendallsTauBControlVariables,
+        moveToKendallsTauBAvailableVariables,
         reorderVariables,
         resetVariableSelection
     };

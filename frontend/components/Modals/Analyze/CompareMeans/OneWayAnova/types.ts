@@ -180,29 +180,30 @@ export interface MultipleComparisons {
 export interface HomogeneousSubsets {
     subsetCount: number;
     method: string;
-    factor: string;
-    N: number;
+    factor?: string;
+    N?: number;
     subset?: number[];
+    output?: any[];
 }
 
 // OneWayAnova Analysis Result
 export interface OneWayAnovaResult {
-    variable: Variable;
+    variable1: Variable;
+    variable2: Variable;
     subsetCount?: number;
     oneWayAnova?: OneWayAnova;
     descriptives?: Descriptives | Descriptives[];
-    homogeneityOfVariance?: HomogeneityOfVariance | HomogeneityOfVariance[];
+    homogeneityOfVariances?: HomogeneityOfVariance | HomogeneityOfVariance[];
     multipleComparisons?: MultipleComparisons | MultipleComparisons[];
     homogeneousSubsets?: HomogeneousSubsets | HomogeneousSubsets[];
-}
-  
-// OneWayAnova Results Collection
-export interface OneWayAnovaResults {
-    oneWayAnova?: OneWayAnovaResult[];
-    descriptives?: OneWayAnovaResult[];
-    homogeneityOfVariance?: OneWayAnovaResult[];
-    multipleComparisons?: OneWayAnovaResult[];
-    homogeneousSubsets?: OneWayAnovaResult[];
+    metadata?: {
+        hasInsufficientData: boolean;
+        insufficientType: string[];
+        variable1Label: string;
+        variable2Label: string;
+        variable1Name: string;
+        variable2Name: string;
+    };
 }
   
 // ---------------------------------

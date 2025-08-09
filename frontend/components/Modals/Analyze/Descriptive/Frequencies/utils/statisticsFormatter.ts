@@ -1,7 +1,13 @@
 import type { DescriptiveStatistics, FrequenciesResult } from '../types';
+import { spssDateTypes } from '@/types/Variable';
 
 // Konstanta untuk precision yang konsisten
 const STATS_DECIMAL_PLACES = 2;
+
+// Helper function to check if a variable is a date type
+const isDateVariable = (variable: any): boolean => {
+    return variable?.type && spssDateTypes.has(variable.type);
+};
 
 /**
  * Formats the raw statistics data into a table structure for display.
@@ -57,8 +63,14 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     statRowsConfig.forEach(config => {
         const row: any = { rowHeader: [config.name] };
         variableNames.forEach(name => {
-            const value = (statsMap.get(name) as any)?.[config.key];
-            row[name] = typeof value === 'number' ? value.toFixed(config.precision) : value ?? '';
+            const variable = statsResults.find(r => r.variable.name === name)?.variable;
+            if (isDateVariable(variable)) {
+                // For date variables, don't show numerical statistics like Mean, Median, SE Mean
+                row[name] = '';
+            } else {
+                const value = (statsMap.get(name) as any)?.[config.key];
+                row[name] = typeof value === 'number' ? value.toFixed(config.precision) : value ?? '';
+            }
         });
         rows.push(row);
     });
@@ -66,9 +78,16 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     // Mode Row
     const modeRow: any = { rowHeader: ['Mode'] };
     variableNames.forEach(name => {
+        const variable = statsResults.find(r => r.variable.name === name)?.variable;
         const modes = statsMap.get(name)?.Mode;
         if (modes && Array.isArray(modes) && modes.length > 0) {
-            modeRow[name] = modes[0].toFixed(STATS_DECIMAL_PLACES) + (modes.length > 1 ? '<sup>a</sup>' : '');
+            if (isDateVariable(variable)) {
+                // For date variables, show mode without decimal formatting
+                modeRow[name] = modes[0] + (modes.length > 1 ? '<sup>a</sup>' : '');
+            } else {
+                // For numeric variables, format with decimals
+                modeRow[name] = modes[0].toFixed(STATS_DECIMAL_PLACES) + (modes.length > 1 ? '<sup>a</sup>' : '');
+            }
         } else {
             modeRow[name] = '';
         }
@@ -92,8 +111,14 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     remainingStatRowsConfig.forEach(config => {
         const row: any = { rowHeader: [config.name] };
         variableNames.forEach(name => {
-            const value = (statsMap.get(name) as any)?.[config.key];
-            row[name] = typeof value === 'number' ? value.toFixed(config.precision) : value ?? '';
+            const variable = statsResults.find(r => r.variable.name === name)?.variable;
+            if (isDateVariable(variable)) {
+                // For date variables, don't show numerical statistics
+                row[name] = '';
+            } else {
+                const value = (statsMap.get(name) as any)?.[config.key];
+                row[name] = typeof value === 'number' ? value.toFixed(config.precision) : value ?? '';
+            }
         });
         rows.push(row);
     });
@@ -111,8 +136,14 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         const percentileChildren = sortedLevels.map(level => {
             const childRow: any = { rowHeader: [null, level.toString()] };
             variableNames.forEach(name => {
-                const value = statsMap.get(name)?.Percentiles?.[level];
-                childRow[name] = typeof value === 'number' ? value.toFixed(STATS_DECIMAL_PLACES) : '.';
+                const variable = statsResults.find(r => r.variable.name === name)?.variable;
+                if (isDateVariable(variable)) {
+                    // For date variables, don't show percentiles as they are not meaningful
+                    childRow[name] = '.';
+                } else {
+                    const value = statsMap.get(name)?.Percentiles?.[level];
+                    childRow[name] = typeof value === 'number' ? value.toFixed(STATS_DECIMAL_PLACES) : '.';
+                }
             });
             return childRow;
         });
@@ -134,4 +165,4 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
             },
         ],
     };
-}; 
+};

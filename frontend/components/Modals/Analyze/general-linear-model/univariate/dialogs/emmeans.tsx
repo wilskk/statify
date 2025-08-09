@@ -20,6 +20,17 @@ import VariableListManager, {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { emmeansTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateEMMeans = ({
     isEMMeansOpen,
@@ -30,6 +41,18 @@ export const UnivariateEMMeans = ({
     const [EMMeansState, setEMMeansState] = useState<UnivariateEMMeansType>({
         ...data,
     });
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(emmeansTourSteps);
+
     const [availableVars, setAvailableVars] = useState<Variable[]>([]);
     const [displayMeansVars, setDisplayMeansVars] = useState<Variable[]>([]);
     const [compareMainEffectsDisabled, setCompareMainEffectsDisabled] =
@@ -168,11 +191,29 @@ export const UnivariateEMMeans = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="p-4 flex-grow">
                 <Label className="font-bold text-lg">
                     Estimated Marginal Means
                 </Label>
-                <div className="mt-4">
+                <div
+                    id="univariate-emmeans-factors-interactions"
+                    className="mt-4"
+                >
                     <VariableListManager
                         availableVariables={availableVars}
                         targetLists={targetListsConfig}
@@ -185,7 +226,10 @@ export const UnivariateEMMeans = ({
                         showArrowButtons
                     />
                 </div>
-                <div className="flex items-center space-x-2 mt-4">
+                <div
+                    id="univariate-emmeans-compare-main-effects"
+                    className="flex items-center space-x-2 mt-4"
+                >
                     <Checkbox
                         id="CompMainEffect"
                         checked={EMMeansState.CompMainEffect}
@@ -233,18 +277,23 @@ export const UnivariateEMMeans = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -255,7 +304,11 @@ export const UnivariateEMMeans = ({
                     >
                         Cancel
                     </Button>
-                    <Button type="button" onClick={handleContinue}>
+                    <Button
+                        id="univariate-emmeans-continue-button"
+                        type="button"
+                        onClick={handleContinue}
+                    >
                         Continue
                     </Button>
                 </div>

@@ -18,32 +18,27 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
   const [selectedGroup, setSelectedGroup] = useState("All");
 
   const functionGroups = {
-    Arithmetic: ["abs", "exp", "ln", "log10", "mod", "sqrt", "trunc"],
+    "Basic Math": ["abs", "round", "mod", "sqrt", "cbrt", "square", "cube"],
+    Logarithmic: ["exp", "log10", "ln", "log", "log2", "log1p"],
     Statistical: [
+      "sum",
       "mean",
       "median",
-      "mode",
-      "sd",
-      "variance",
-      "sum",
+      "stdp",
+      "stds",
+      "varp",
+      "vars",
       "min",
       "max",
     ],
-    String: ["concat", "length", "lower", "upper", "substr", "trim"],
-    "Date & Time": [
-      "date",
-      "time",
-      "year",
-      "month",
-      "day",
-      "hour",
-      "minute",
-      "second",
+    "Column Statistics": [
+      "colmean",
+      "colmedian",
+      "colmode",
+      "colmin",
+      "colmax",
     ],
-    Logical: ["and", "or", "not", "if", "then", "else"],
-    Conversion: ["toNumber", "toString", "toDate"],
-    "CDF & Noncentral CDF": ["cdf.normal", "cdf.t", "cdf.chisq", "cdf.f"],
-    "Random Variables": ["rv.uniform", "rv.normal", "rv.bernoulli"],
+    Trigonometric: ["arcos", "arsin", "artan", "sin", "tan", "cos"],
   };
 
   const renderFunctions = () => {

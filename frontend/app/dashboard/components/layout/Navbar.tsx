@@ -42,20 +42,21 @@ const Navbar: React.FC = () => {
             <MenubarTrigger data-testid="analyze-menu-trigger">Analyze</MenubarTrigger>
             <MenubarContent>
               <MenubarSub>
-                <MenubarSubTrigger>Descriptive Statistics</MenubarSubTrigger>
+                <MenubarSubTrigger data-testid="descriptive-statistics-trigger">Descriptive Statistics</MenubarSubTrigger>
                 <MenubarSubContent>
-                  <MenubarItem onClick={() => openModal(ModalType.Frequencies)}>
+                  <MenubarItem onClick={() => openModal(ModalType.Frequencies)} data-testid="descriptive-statistics-frequencies">
                     Frequencies
                   </MenubarItem>
                   <MenubarItem
                     onClick={() => openModal(ModalType.Descriptives)}
+                    data-testid="descriptive-statistics-descriptives"
                   >
                     Descriptives
                   </MenubarItem>
-                  <MenubarItem onClick={() => openModal(ModalType.Explore)}>
+                  <MenubarItem onClick={() => openModal(ModalType.Explore)} data-testid="descriptive-statistics-explore">
                     Explore
                   </MenubarItem>
-                  <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>
+                  <MenubarItem onClick={() => openModal(ModalType.Crosstabs)} data-testid="descriptive-statistics-crosstabs">
                     Crosstabs
                   </MenubarItem>
                 </MenubarSubContent>
@@ -103,9 +104,9 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Nonparametric Tests</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem >One Sample...</MenubarItem>
-                        <MenubarItem >Independent Samples...</MenubarItem>
-                        <MenubarItem >Related Samples...</MenubarItem>
+                        <MenubarItem disabled>One Sample...</MenubarItem>
+                        <MenubarItem disabled>Independent Samples...</MenubarItem>
+                        <MenubarItem disabled>Related Samples...</MenubarItem>
                         <MenubarSub>
                             <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
                             <MenubarSubContent>

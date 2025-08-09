@@ -11,7 +11,7 @@ export const formatDescriptivesTable = (
   results: ExploreAggregatedResults,
   params: ExploreAnalysisParams,
 ): FormattedTable | null => {
-  console.log('--- [Formatter] formatDescriptivesTable ---');
+
   console.log('Received results:', JSON.parse(JSON.stringify(results)));
   console.log('Received params:', JSON.parse(JSON.stringify(params)));
 
@@ -147,4 +147,4 @@ export const formatDescriptivesTable = (
   }
 
   return { title: 'Descriptives', columnHeaders, rows };
-}; 
+};

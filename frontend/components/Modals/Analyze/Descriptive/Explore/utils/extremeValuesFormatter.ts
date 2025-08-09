@@ -8,7 +8,7 @@ export const formatExtremeValuesTable = (
   results: ExploreAggregatedResults,
   params: ExploreAnalysisParams,
 ): FormattedTable | null => {
-  console.log('--- [Formatter] formatExtremeValuesTable ---');
+
   console.log('Received results:', JSON.parse(JSON.stringify(results)));
   console.log('Received params:', JSON.parse(JSON.stringify(params)));
 
@@ -131,6 +131,6 @@ export const formatExtremeValuesTable = (
     title: 'Extreme Values',
     columnHeaders,
     rows,
-    footnotes: footnotes.length > 0 ? footnotes : undefined,
+    footer: footnotes.length > 0 ? footnotes : undefined,
   };
-}; 
+};

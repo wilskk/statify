@@ -5,7 +5,7 @@ import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util';
 import './public/workers/DescriptiveStatistics/libs/utils/utils';
 
-global.TextEncoder = TextEncoder;
+global.TextEncoder = TextEncoder as any;
 global.TextDecoder = TextDecoder as any;
 
 // Polyfill for PointerEvent which is not implemented in JSDOM

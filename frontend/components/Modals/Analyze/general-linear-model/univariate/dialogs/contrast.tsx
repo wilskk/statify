@@ -18,6 +18,17 @@ import { CONTRASTMETHOD } from "@/components/Modals/Analyze/general-linear-model
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { contrastTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateContrast = ({
     isContrastOpen,
@@ -29,6 +40,17 @@ export const UnivariateContrast = ({
         ...data,
     });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(contrastTourSteps);
 
     // Add state for variables management
     const [availableVariables, setAvailableVariables] = useState<string[]>([]);
@@ -151,9 +173,24 @@ export const UnivariateContrast = ({
 
     return (
         <div className="flex flex-col w-full h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="w-full flex flex-col items-start gap-2 p-4 flex-grow">
                 <div className="w-full flex flex-col gap-2">
-                    <div className="w-full">
+                    <div id="univariate-contrast-factors" className="w-full">
                         <Label className="font-bold">Factors: </Label>
                         <ScrollArea className="h-[150px] w-full p-2 border rounded">
                             <div className="flex flex-col gap-1 justify-start items-start">
@@ -184,7 +221,10 @@ export const UnivariateContrast = ({
                         className="w-full min-h-[150px] rounded-lg border md:min-w-[200px]"
                     >
                         <ResizablePanel defaultSize={100}>
-                            <div className="flex flex-col gap-2 p-2">
+                            <div
+                                id="univariate-contrast-change-contrast"
+                                className="flex flex-col gap-2 p-2"
+                            >
                                 <Label className="font-bold">
                                     Change Contrast
                                 </Label>
@@ -275,18 +315,23 @@ export const UnivariateContrast = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -298,6 +343,7 @@ export const UnivariateContrast = ({
                         Cancel
                     </Button>
                     <Button
+                        id="univariate-contrast-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

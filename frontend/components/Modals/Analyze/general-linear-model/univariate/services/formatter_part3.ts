@@ -6,180 +6,6 @@ export function formatPart3(
     resultJson: ResultJson,
     errors: string[]
 ) {
-    // 10. Post Hoc Tests
-    if (data.posthoc_tests) {
-        const posthoc = data.posthoc_tests;
-        const factorName =
-            posthoc.factor_names && posthoc.factor_names.length > 0
-                ? posthoc.factor_names[0]
-                : "Factor";
-
-        // Multiple Comparisons Table
-        if (posthoc.comparison && posthoc.comparison.length > 0) {
-            const comparisonData = posthoc.comparison[0];
-            const table: any = {
-                key: "multiple_comparisons",
-                title: "Multiple Comparisons",
-                subtitle: `Dependent Variable: ${
-                    data.descriptive_statistics &&
-                    Object.values(data.descriptive_statistics).length > 0
-                        ? (Object.values(data.descriptive_statistics)[0] as any)
-                              .dependent_variable
-                        : ""
-                }`,
-                columnHeaders: [
-                    { header: "", key: "method", colSpan: 2 },
-                    { header: "Mean Difference (I-J)", key: "mean_diff" },
-                    { header: "Std. Error", key: "std_err" },
-                    { header: "Sig.", key: "sig" },
-                    {
-                        header: "95% Confidence Interval",
-                        key: "ci",
-                        colSpan: 2,
-                    },
-                ],
-                rows: [],
-                note: comparisonData.note,
-                interpretation: comparisonData.interpretation,
-            };
-
-            // Sub-headers for CI
-            const subHeaders: Row = {
-                rowHeader: [],
-                method: null,
-                mean_diff: null,
-                std_err: null,
-                sig: null,
-                ci: "Lower Bound",
-                upper_bound: "Upper Bound",
-            };
-            table.rows.push(subHeaders);
-
-            comparisonData.entries.forEach((entry: any) => {
-                table.rows.push({
-                    rowHeader: [],
-                    method: entry.method,
-                    i_factor: null,
-                    j_factor: null,
-                    mean_diff: null,
-                    std_err: null,
-                    sig: null,
-                    ci: null,
-                    upper_bound: null,
-                    isHeader: true,
-                });
-
-                entry.parameter.forEach((param: string, index: number) => {
-                    const [i, j] = param.split(" vs ");
-                    const row: Row = {
-                        rowHeader: [],
-                        method: "",
-                        i_factor: i,
-                        j_factor: j,
-                        mean_diff: formatDisplayNumber(
-                            entry.mean_difference[index]
-                        ),
-                        std_err: formatDisplayNumber(
-                            entry.standard_error[index]
-                        ),
-                        sig: formatDisplayNumber(entry.significance[index]),
-                        ci: formatDisplayNumber(
-                            entry.confidence_interval[index].lower_bound
-                        ),
-                        upper_bound: formatDisplayNumber(
-                            entry.confidence_interval[index].upper_bound
-                        ),
-                    };
-                    table.rows.push(row);
-                });
-            });
-
-            if (comparisonData.notes && comparisonData.notes.length > 0) {
-                comparisonData.notes.forEach((note: string) => {
-                    table.rows.push({ rowHeader: [note] });
-                });
-            }
-
-            resultJson.tables.push(table);
-        }
-
-        // Homogeneous Subsets Table
-        if (posthoc.homogoneous && posthoc.homogoneous.length > 0) {
-            const homogeneousData = posthoc.homogoneous[0];
-            const maxSubsets = Math.max(
-                ...homogeneousData.entries.map((e: any) => e.subsets.length)
-            );
-
-            const columnHeaders = [
-                { header: "", key: "method" },
-                { header: factorName, key: "factor_level" },
-                { header: "N", key: "n" },
-            ];
-            for (let i = 1; i <= maxSubsets; i++) {
-                columnHeaders.push({
-                    header: `Subset ${i}`,
-                    key: `subset_${i}`,
-                });
-            }
-
-            const table: any = {
-                key: "homogeneous_subsets",
-                title: "Homogeneous Subsets",
-                columnHeaders: columnHeaders,
-                rows: [],
-                note: homogeneousData.note,
-                interpretation: homogeneousData.interpretation,
-            };
-
-            homogeneousData.entries.forEach((entry: any) => {
-                const numLevels = entry.parameter.length;
-                const numSubsets = entry.subsets.length;
-
-                // Add rows for each level
-                entry.parameter.forEach((level: string, levelIndex: number) => {
-                    const row: Row = {
-                        rowHeader: [],
-                        method: levelIndex === 0 ? entry.method : "",
-                        factor_level: level,
-                        n: entry.n[levelIndex],
-                    };
-                    for (let i = 1; i <= maxSubsets; i++) {
-                        row[`subset_${i}`] =
-                            i <= numSubsets
-                                ? formatDisplayNumber(
-                                      entry.subsets[i - 1].subset[levelIndex]
-                                  )
-                                : null;
-                    }
-                    table.rows.push(row);
-                });
-
-                // Add significance row
-                const sigRow: Row = {
-                    rowHeader: [],
-                    method: "",
-                    factor_level: "Sig.",
-                    n: null,
-                };
-                for (let i = 1; i <= maxSubsets; i++) {
-                    sigRow[`subset_${i}`] =
-                        i <= numSubsets && entry.significances
-                            ? formatDisplayNumber(entry.significances[i - 1])
-                            : null;
-                }
-                table.rows.push(sigRow);
-            });
-
-            if (homogeneousData.notes && homogeneousData.notes.length > 0) {
-                homogeneousData.notes.forEach((note: string) => {
-                    table.rows.push({ rowHeader: [note] });
-                });
-            }
-
-            resultJson.tables.push(table);
-        }
-    }
-
     // 11. EM Means
     if (data.emmeans) {
         const emmeans = data.emmeans;
@@ -358,9 +184,9 @@ export function formatPart3(
                                     key: "mean_diff",
                                 },
                                 { header: "Std. Error", key: "std_error" },
-                                { header: "Sig.ᵃ", key: "sig" },
+                                { header: "Sig.", key: "sig" },
                                 {
-                                    header: `95% Confidence Interval for Differenceᵃ`,
+                                    header: `95% Confidence Interval for Difference`,
                                     key: "ci",
                                     children: [
                                         {
@@ -430,7 +256,7 @@ export function formatPart3(
                         });
                         table.rows.push({
                             rowHeader: [
-                                `a. Adjustment for multiple comparisons: ${adjMethod}.`,
+                                `Adjustment for multiple comparisons: ${adjMethod}.`,
                             ],
                             ...nullNoteCols,
                         });
@@ -488,7 +314,7 @@ export function formatPart3(
                         }
                         if (hasPower) {
                             columnHeaders.push({
-                                header: "Observed Powerᵃ",
+                                header: "Observed Power",
                                 key: "observed_power",
                             });
                         }
@@ -522,8 +348,7 @@ export function formatPart3(
 
                         test.entries.forEach((entry: any) => {
                             const row: Row = {
-                                rowHeader: [],
-                                source: entry.source,
+                                rowHeader: [entry.source],
                                 sum_of_squares: formatDisplayNumber(
                                     entry.sum_of_squares
                                 ),
@@ -581,9 +406,7 @@ export function formatPart3(
                             });
                         }
                         table.rows.push({
-                            rowHeader: [
-                                `a. Computed using alpha = ${sigLevel}`,
-                            ],
+                            rowHeader: [`Computed using alpha = ${sigLevel}`],
                             ...nullNoteCols,
                         });
 
@@ -903,7 +726,7 @@ export function formatPart3(
 
                     table.rows.push({
                         rowHeader: [
-                            "a. The default display of this matrix is the transpose of the corresponding L matrix.",
+                            "The default display of this matrix is the transpose of the corresponding L matrix.",
                         ],
                         ...nullColumnsForNotes,
                     });

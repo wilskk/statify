@@ -52,6 +52,7 @@ export type UnivariateModelProps = {
         value: string[] | string | boolean | null
     ) => void;
     data: UnivariateModelType;
+    covariates: string[] | null;
 };
 
 export type UnivariateContrastType = {

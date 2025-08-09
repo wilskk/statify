@@ -31,17 +31,14 @@ export const useTwoRelatedSamplesAnalysis = ({
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
     const workerRef = useRef<Worker | null>(null);
+    const workerPostRef = useRef<number>(0);
     
     const resultsRef = useRef<TwoRelatedSamplesResult[]>([]);
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
+    const insufficientDataVarsRef = useRef<{variable1Name: string, variable1Label: string, variable2Name: string, variable2Label: string, insufficientType: string[]}[]>([]);
 
     const runAnalysis = useCallback(async (): Promise<void> => {
-        if (testVariables1.length === 0 || testVariables2.length === 0) {
-            setErrorMsg('Please select at least one variable to analyze.');
-            return;
-        }
-
         setIsCalculating(true);
         setErrorMsg(null);
 
@@ -57,155 +54,75 @@ export const useTwoRelatedSamplesAnalysis = ({
         resultsRef.current = [];
         errorCountRef.current = 0;
         processedCountRef.current = 0;
+        insufficientDataVarsRef.current = [];
 
         const worker = new Worker('/workers/NonparametricTests/manager.js', { type: 'module' });
         workerRef.current = worker;
 
-        let analysisTypes;
-        if (displayStatistics.descriptive || displayStatistics.quartiles) {
-            analysisTypes = ['descriptiveStatistics', 'twoRelatedSamples'];
-        } else {
-            analysisTypes = ['twoRelatedSamples'];
+        const uniqueVariables: typeof testVariables1 = [];
+        const seen = new Set<string>();
+        for (const v of [...testVariables1, ...testVariables2]) {
+            const key = v.tempId || v.name || v.columnIndex.toString();
+            if (!seen.has(key)) {
+                uniqueVariables.push(v);
+                seen.add(key);
+            }
         }
-
+        if (displayStatistics.descriptive || displayStatistics.quartiles) {
+            for (const v of uniqueVariables) {
+                const dataForVar1 = analysisData.map(row => row[v.columnIndex]);
+                const payload = {
+                    analysisType: ['descriptiveStatistics'],
+                    variable1: v,
+                    data1: dataForVar1,
+                    options: { displayStatistics }
+                };
+                worker.postMessage(payload);
+                workerPostRef.current += 1;
+            }
+        }
+        
         for (let i = 0; i < testVariables1.length; i++) {
             const dataForVar1 = analysisData.map(row => row[testVariables1[i].columnIndex]);
             const dataForVar2 = analysisData.map(row => row[testVariables2[i].columnIndex]);
             const payload = {
-                analysisType: analysisTypes,
+                analysisType: ['twoRelatedSamples'],
                 variable1: testVariables1[i],
-                variable2: testVariables2[i],
                 data1: dataForVar1,
+                variable2: testVariables2[i],
                 data2: dataForVar2,
                 options: { testType, displayStatistics }
             };
             worker.postMessage(payload);
+            workerPostRef.current += 1;
         }
 
         worker.onmessage = async (event) => {
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
-                if (results.descriptiveStatistics) {
-                    const { variable1, variable2, N1, Mean1, StdDev1, Min1, Max1, Percentile25_1, Percentile50_1, Percentile75_1, N2, Mean2, StdDev2, Min2, Max2, Percentile25_2, Percentile50_2, Percentile75_2 } = results.descriptiveStatistics;
-
-                    if (variable1 && variable2 && N1 && Mean1 !== undefined && StdDev1 !== undefined && Min1 !== undefined && Max1 !== undefined && Percentile25_1 !== undefined && Percentile50_1 !== undefined && Percentile75_1 !== undefined && N2 && Mean2 !== undefined && StdDev2 !== undefined && Min2 !== undefined && Max2 !== undefined && Percentile25_2 !== undefined && Percentile50_2 !== undefined && Percentile75_2 !== undefined) {
-                        resultsRef.current.push({
-                            variable1,
-                            variable2,
-                            descriptiveStatistics: {
-                                N1,
-                                Mean1,
-                                StdDev1,
-                                Min1,
-                                Max1,
-                                Percentile25_1,
-                                Percentile50_1,
-                                Percentile75_1,
-                                N2,
-                                Mean2,
-                                StdDev2,
-                                Min2,
-                                Max2,
-                                Percentile25_2,
-                                Percentile50_2,
-                                Percentile75_2
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
+                // Check for insufficient data
+                if (results.metadata && results.metadata.hasInsufficientData) {
+                    insufficientDataVarsRef.current.push({variable1Name: results.metadata.variable1Name, variable1Label: results.metadata.variable1Label, variable2Name: results.metadata.variable2Name, variable2Label: results.metadata.variable2Label, insufficientType: results.metadata.insufficientType});
+                    // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                 }
-                if (results.ranksFrequencies) {
-                    const { variable1, variable2, negative, positive, ties, total } = results.ranksFrequencies;
-
-                    if (variable1 && variable2 && negative !== undefined && positive !== undefined && ties !== undefined && total !== undefined) {
-                        resultsRef.current.push({
-                            variable1,
-                            variable2,
-                            ranksFrequencies: {
-                                negative,
-                                positive,
-                                ties,
-                                total
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing ranks frequencies for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
-                }
-
-                if (results.testStatisticsWilcoxon) {
-                    const { variable1, variable2, zValue, pValue } = results.testStatisticsWilcoxon;
-
-                    if (variable1 && variable2 && zValue !== undefined && pValue !== undefined) {
-                        resultsRef.current.push({
-                            variable1,
-                            variable2,
-                            testStatisticsWilcoxon: {
-                                Z: zValue,
-                                PValue: pValue
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing two related samples test statistics wilcoxon for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
-                }
-
-                if (results.testStatisticsSign) {
-                    const { variable1, variable2, zValue, pValue } = results.testStatisticsSign;
-
-                    if (variable1 && variable2 && zValue !== undefined && pValue !== undefined) {
-                        resultsRef.current.push({
-                            variable1,
-                            variable2,
-                            testStatisticsSign: {
-                                Z: zValue,
-                                PValue: pValue
-                            }
-                        });
-                    } else {
-                        console.error(`Error processing two related samples test statistics sign for ${variableName}:`, workerError);
-                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                        errorCountRef.current += 1;
-                    }
-                }
+                resultsRef.current.push(results);
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
-                const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                const errorMsg = results === null 
+                    ? `No results for ${variableName}`
+                    : `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
                 setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
                 errorCountRef.current += 1;
             }
-            console.log('[Results before] processedCountRef.current:', processedCountRef.current);
+            // console.log('[Results before] processedCountRef.current:', processedCountRef.current);
             processedCountRef.current += 1;
-            console.log('[Results after] processedCountRef.current:', processedCountRef.current);
+            // console.log('[Results after] processedCountRef.current:', processedCountRef.current);
 
-            if (processedCountRef.current === testVariables1.length) {
+            if (processedCountRef.current === workerPostRef.current) {
                 if (resultsRef.current.length > 0) {
                     try {
-                        const descriptiveStatistics = resultsRef.current.filter(r => 'descriptiveStatistics' in (r as any));
-                        const ranksFrequencies = resultsRef.current.filter(r => 'ranksFrequencies' in (r as any));
-                        const testStatisticsWilcoxon = resultsRef.current.filter(r => 'testStatisticsWilcoxon' in (r as any));
-                        const testStatisticsSign = resultsRef.current.filter(r => 'testStatisticsSign' in (r as any));
-                      
-                        const results: TwoRelatedSamplesResults = {
-                            descriptiveStatistics,
-                            ranksFrequencies,
-                            testStatisticsWilcoxon,
-                            testStatisticsSign
-                        };
-
-                        console.log('Results to format:', JSON.stringify(results));
+                        // console.log('Results to format:', JSON.stringify(resultsRef.current));
 
                         // Prepare log message
                         const variableNames1 = testVariables1.map(v => v.name).join(" ");
@@ -239,14 +156,39 @@ export const useTwoRelatedSamplesAnalysis = ({
 
                         // Save to database
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "Two Related Samples Test" });
+
+                        let twoRelatedSamplesNote = "";
+                        let note = "";
+                        let typeToVars: Record<string, string[]> = {};
+                        if (insufficientDataVarsRef.current.length > 0) {
+                            twoRelatedSamplesNote += "Note: "; 
+                            for (const { variable1Name, variable1Label, variable2Name, variable2Label, insufficientType } of insufficientDataVarsRef.current) {
+                                for (const type of insufficientType) {
+                                    if (!typeToVars[type]) typeToVars[type] = [];
+                                    const key = `${variable1Label || variable1Name} and ${variable2Label || variable2Name}`;
+                                    typeToVars[type].push(key);
+                                }
+                            }
+                            if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
+                                let testNames = [];
+                                if (testType.wilcoxon) testNames.push("Wilcoxon Signed Ranks Test");
+                                if (testType.sign) testNames.push("Sign Test");
+                                if (testNames.length > 0) {
+                                    note += `Note: There are not enough valid cases to perform the ${testNames.join(" and ")} for ${typeToVars["empty"].join(", ")}. No statistics are computed.`;
+                                }
+                            }
+                            if (typeToVars["no_difference"] && typeToVars["no_difference"].length > 0) {
+                                twoRelatedSamplesNote += `The sum of negative ranks equals the sum of positive ranks for the pairs of ${typeToVars["no_difference"].join(", ")}.`;
+                            }
+                        }
+                        const analyticId = await addAnalytic(logId, { title: "Two Related Samples Test", note: note || "" });
 
 
 
                         // Add descriptive statistics table
                         if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
-                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results, displayStatistics);
-                            console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
+                            const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(resultsRef.current, displayStatistics);
+                            // console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
                        
                             await addStatistic(analyticId, {
                                 title: "Descriptive Statistics",
@@ -256,9 +198,9 @@ export const useTwoRelatedSamplesAnalysis = ({
                             });
                         }
 
-                        if (testType.wilcoxon) {
-                            const formattedRanksFrequenciesTable = formatRanksFrequenciesTable(results, "WILCOXON");
-                            console.log('Formatted frequencies ranks table:', JSON.stringify(formattedRanksFrequenciesTable));
+                        if (testType.wilcoxon && errorCountRef.current < testVariables1.length) {
+                            const formattedRanksFrequenciesTable = formatRanksFrequenciesTable(resultsRef.current, "WILCOXON");
+                            // console.log('Formatted frequencies ranks table:', JSON.stringify(formattedRanksFrequenciesTable));
 
                             await addStatistic(analyticId, {
                                 title: "Ranks",
@@ -267,20 +209,20 @@ export const useTwoRelatedSamplesAnalysis = ({
                                 description: ""
                             });
 
-                            const formattedTestStatisticsTable = formatTestStatisticsTable(results, "WILCOXON");
-                            console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
+                            const formattedTestStatisticsTable = formatTestStatisticsTable(resultsRef.current, "WILCOXON");
+                            // console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
 
                             await addStatistic(analyticId, {
                                 title: "Test Statistics",
                                 output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
                                 components: "Wilcoxon Test",
-                                description: ""
+                                description: twoRelatedSamplesNote
                             });
                         }
 
-                        if (testType.sign) {
-                            const formattedRanksFrequenciesTable = formatRanksFrequenciesTable(results, "SIGN");
-                            console.log('Formatted frequencies ranks table:', JSON.stringify(formattedRanksFrequenciesTable));
+                        if (testType.sign && errorCountRef.current < testVariables1.length) {
+                            const formattedRanksFrequenciesTable = formatRanksFrequenciesTable(resultsRef.current, "SIGN");
+                            // console.log('Formatted frequencies ranks table:', JSON.stringify(formattedRanksFrequenciesTable));
 
                             await addStatistic(analyticId, {
                                 title: "Frequencies",
@@ -289,14 +231,14 @@ export const useTwoRelatedSamplesAnalysis = ({
                                 description: ""
                             });
 
-                            const formattedTestStatisticsTable = formatTestStatisticsTable(results, "SIGN");
-                            console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
+                            const formattedTestStatisticsTable = formatTestStatisticsTable(resultsRef.current, "SIGN");
+                            // console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
 
                             await addStatistic(analyticId, {
                                 title: "Test Statistics",
                                 output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
                                 components: "Sign Test",
-                                description: ""
+                                description: twoRelatedSamplesNote
                             });
                         }
 

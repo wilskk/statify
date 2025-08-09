@@ -19,6 +19,17 @@ import VariableListManager, {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
+import { HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide } from "../hooks/useTourGuide";
+import { bootstrapTourSteps } from "../hooks/tourConfig";
 
 export const UnivariateBootstrap = ({
     isBootstrapOpen,
@@ -29,6 +40,17 @@ export const UnivariateBootstrap = ({
     const [bootstrapState, setBootstrapState] =
         useState<UnivariateBootstrapType>({ ...data });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour,
+    } = useTourGuide(bootstrapTourSteps);
 
     const [availableVars, setAvailableVars] = useState<Variable[]>([]);
     const [strataVars, setStrataVars] = useState<Variable[]>([]);
@@ -196,8 +218,26 @@ export const UnivariateBootstrap = ({
 
     return (
         <div className="flex flex-col h-full">
+            <AnimatePresence>
+                {tourActive &&
+                    tourSteps.length > 0 &&
+                    currentStep < tourSteps.length && (
+                        <TourPopup
+                            step={tourSteps[currentStep]}
+                            currentStep={currentStep}
+                            totalSteps={tourSteps.length}
+                            onNext={nextStep}
+                            onPrev={prevStep}
+                            onClose={endTour}
+                            targetElement={currentTargetElement}
+                        />
+                    )}
+            </AnimatePresence>
             <div className="flex flex-col items-start gap-2 p-4 flex-grow">
-                <div className="flex flex-col gap-2">
+                <div
+                    id="univariate-bootstrap-perform"
+                    className="flex flex-col gap-2"
+                >
                     <div className="flex items-center space-x-2">
                         <Checkbox
                             id="PerformBootStrapping"
@@ -279,7 +319,10 @@ export const UnivariateBootstrap = ({
                     className="w-full min-h-[500px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={25}>
-                        <div className="flex flex-col h-full gap-2 p-2">
+                        <div
+                            id="univariate-bootstrap-confidence-intervals"
+                            className="flex flex-col h-full gap-2 p-2"
+                        >
                             <Label className="font-bold">
                                 Confidence Intervals
                             </Label>
@@ -341,7 +384,10 @@ export const UnivariateBootstrap = ({
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={75}>
-                        <div className="flex flex-col h-full gap-2 p-2">
+                        <div
+                            id="univariate-bootstrap-sampling"
+                            className="flex flex-col h-full gap-2 p-2"
+                        >
                             <Label className="font-bold">Sampling</Label>
                             <RadioGroup
                                 defaultValue="Simple"
@@ -395,18 +441,23 @@ export const UnivariateBootstrap = ({
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                            window.open(
-                                "https://drive.google.com/file/d/1dTXqJQmCNCnrxAWpY8hECd540Gc2s_Z-/view?usp=drive_link",
-                                "_blank"
-                            );
-                        }}
-                    >
-                        Help
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div>
                     <Button
@@ -418,6 +469,7 @@ export const UnivariateBootstrap = ({
                         Cancel
                     </Button>
                     <Button
+                        id="univariate-bootstrap-continue-button"
                         disabled={isContinueDisabled}
                         type="button"
                         onClick={handleContinue}

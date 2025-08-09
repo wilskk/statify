@@ -4,65 +4,93 @@ This directory contains load tests for the Statify backend APIs.
 
 ## Test Scripts
 
-### Comprehensive Tests
-1. **sav-apis-test.js** - Test lengkap untuk SAV APIs dengan multiple scenarios (read dan write operations)
-2. **sav-production-test.js** - Test untuk production environment
-3. **sav-write-small-test.js** - Test khusus untuk write operations dengan data kecil
+### Core SAV Tests
+1. **sav-small-files-test.js** - 📖 **Test untuk file SAV berukuran kecil**
+   - 3 skenario: Read Small, Download Small, Mixed Small Operations
+   - Fokus pada file kecil (0.96KB - 5.76KB) untuk testing cepat
+   - Interval tidur pendek untuk throughput tinggi
+   - **Tujuan**: Testing performa operasi pada file kecil
 
-### Quick & Focused Tests (Baru)
-4. **sav-rate-limit-test.js** - 🎯 **Test untuk mengetahui batas rate limit dengan 5 phase bertahap**
-   - Phase 1: 1 req/s (Baseline)
-   - Phase 2: 2 req/s (Light Load) 
-   - Phase 3: 5 req/s (Medium Load)
-   - Phase 4: 10 req/s (High Load)
-   - Phase 5: 20 req/s (Stress Test)
-   - **Tujuan**: Mengetahui kapan mulai terkena rate limit (429)
+2. **sav-large-files-only-test.js** - 🎯 **Test untuk file SAV berukuran besar**
+   - 3 skenario: Read Large, Download Large, Mixed Large Operations
+   - Fokus pada file besar (156KB - 1.55MB) dengan anti rate limit
+   - Sleep interval panjang (12-25 detik) antar request
+   - VU count konservatif (maksimal 5 VUs)
+   - **Tujuan**: Testing performa file besar tanpa rate limiting
 
-5. **sav-quick-rate-test.js** - ⚡ **Test cepat untuk mengetahui berapa request sebelum rate limit**
-   - 1 VU dengan delay minimal
-   - Durasi: 2 menit
-   - **Tujuan**: Cepat mengetahui batas rate limit dan pola recovery
 
-6. **sav-speed-test.js** - 🚀 **Test kecepatan response time minimal**
-   - Payload super minimal
-   - Delay 10 detik antar request
-   - **Tujuan**: Baseline performa dan waktu response tercepat
-
-7. **sav-minimal-test.js** - Test minimal untuk production dengan toleransi tinggi
-8. **sav-single-test.js** - Test single request untuk debugging
 
 ## Running Tests
 
-From the project root directory:
+From the project root directory (`d:\Data\statify`):
 
 ```bash
-# Test lengkap SAV APIs
-npm run test:load:sav
+# Test file SAV kecil - operasi read
+k6 run --env OPERATION_TYPE=read --env FILE_SIZE=small testing/performance/load-tests/backend/sav-small-files-test.js
 
-# Test rate limit (recommended untuk mengetahui batas)
-k6 run load-tests/backend/sav-rate-limit-test.js
+# Test file SAV kecil - operasi download
+k6 run --env OPERATION_TYPE=download --env FILE_SIZE=small testing/performance/load-tests/backend/sav-small-files-test.js
 
-# Test cepat rate limit
-k6 run load-tests/backend/sav-quick-rate-test.js
+# Test file SAV besar - operasi read
+k6 run --env OPERATION_TYPE=read --env FILE_SIZE=large testing/performance/load-tests/backend/sav-large-files-only-test.js
 
-# Test kecepatan response
-k6 run load-tests/backend/sav-speed-test.js
+# Test file SAV besar - operasi download
+k6 run --env OPERATION_TYPE=download --env FILE_SIZE=large testing/performance/load-tests/backend/sav-large-files-only-test.js
 
-# Test minimal production
-k6 run load-tests/backend/sav-minimal-test.js
+# Jalankan semua skenario (read, download, mixed):
+k6 run testing/performance/load-tests/backend/sav-small-files-test.js
+k6 run testing/performance/load-tests/backend/sav-large-files-only-test.js
+```
 
-# Test single request
-k6 run load-tests/backend/sav-single-test.js
+## Troubleshooting
+
+### Error: "moduleSpecifier couldn't be found on local disk"
+
+**Penyebab umum:**
+1. **Path file salah atau terpotong** - Pastikan ekstensi `.js` lengkap
+2. **Working directory salah** - Pastikan Anda berada di direktori root project (`d:\Data\statify`)
+3. **File tidak ada** - Periksa keberadaan file dengan `ls testing/performance/load-tests/backend/`
+
+**Solusi:**
+```bash
+# Pastikan Anda di direktori yang benar
+cd d:\Data\statify
+
+# Periksa file yang ada
+ls testing/performance/load-tests/backend/
+
+# Jalankan dengan path lengkap dan benar
+k6 run testing/performance/load-tests/backend/sav-small-files-test.js
 ```
 
 ## Rekomendasi Penggunaan
 
-### Untuk Mengetahui Rate Limit:
-1. **Mulai dengan**: `sav-speed-test.js` - untuk baseline performa
-2. **Lanjut dengan**: `sav-quick-rate-test.js` - untuk cepat tahu batas rate limit
-3. **Detail analysis**: `sav-rate-limit-test.js` - untuk analisis mendalam
+### Untuk Testing File Kecil (Cepat & Efisien):
+```bash
+# Test read file kecil (0.96KB - 5.76KB)
+k6 run --env OPERATION_TYPE=read --env FILE_SIZE=small testing/performance/load-tests/backend/sav-small-files-test.js
 
-### Untuk Testing Rutin:
-- **Development**: `sav-single-test.js` atau `sav-minimal-test.js`
-- **Production**: `sav-minimal-test.js` dengan delay panjang
-- **Load Testing**: `sav-apis-test.js` (setelah tahu batas rate limit)
+# Test download file kecil
+k6 run --env OPERATION_TYPE=download --env FILE_SIZE=small testing/performance/load-tests/backend/sav-small-files-test.js
+
+# Test semua skenario (read, download, mixed)
+k6 run testing/performance/load-tests/backend/sav-small-files-test.js
+```
+
+### Untuk Testing File Besar (Anti Rate Limit):
+```bash
+# Test read file besar (156KB - 1.55MB)
+k6 run --env OPERATION_TYPE=read --env FILE_SIZE=large testing/performance/load-tests/backend/sav-large-files-only-test.js
+
+# Test download file besar
+k6 run --env OPERATION_TYPE=download --env FILE_SIZE=large testing/performance/load-tests/backend/sav-large-files-only-test.js
+
+# Test semua skenario (read, download, mixed)
+k6 run testing/performance/load-tests/backend/sav-large-files-only-test.js
+```
+
+### Strategi Testing:
+1. **Development**: Mulai dengan file kecil untuk feedback cepat
+2. **Pre-Production**: Test file besar untuk memastikan performa
+3. **Load Testing**: Kombinasi keduanya sesuai kebutuhan
+4. **Rate Limit Avoidance**: Gunakan file besar dengan interval panjang

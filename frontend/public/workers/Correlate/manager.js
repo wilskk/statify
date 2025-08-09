@@ -53,10 +53,11 @@ onmessage = (event) => {
                 options 
             });
 
-            console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
             console.log('[Worker] Descriptive Statistics Results:', JSON.stringify(calculator.getOutput().descriptiveStatistics));
             console.log('[Worker] Correlation Results:', JSON.stringify(calculator.getOutput().correlation));
             console.log('[Worker] Partial Correlation Results:', JSON.stringify(calculator.getOutput().partialCorrelation));
+            console.log('[Worker] Matrix Validation Results:', JSON.stringify(calculator.getOutput().matrixValidation));
+            console.log('[Worker] Metadata:', JSON.stringify(calculator.getOutput().metadata));
             results = calculator.getOutput();
         } else {
             calculator = new CalculatorClass({ 
