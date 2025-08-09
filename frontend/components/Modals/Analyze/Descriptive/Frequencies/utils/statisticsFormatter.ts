@@ -85,8 +85,11 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
                 // For date variables, show mode without decimal formatting
                 modeRow[name] = modes[0] + (modes.length > 1 ? '<sup>a</sup>' : '');
             } else {
-                // For numeric variables, format with decimals
-                modeRow[name] = modes[0].toFixed(STATS_DECIMAL_PLACES) + (modes.length > 1 ? '<sup>a</sup>' : '');
+                // For numeric variables, format with decimals; otherwise, show as-is (string/value-label)
+                const first = modes[0] as unknown;
+                modeRow[name] = (typeof first === 'number'
+                    ? first.toFixed(STATS_DECIMAL_PLACES)
+                    : String(first)) + (modes.length > 1 ? '<sup>a</sup>' : '');
             }
         } else {
             modeRow[name] = '';

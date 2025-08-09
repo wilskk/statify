@@ -30,37 +30,36 @@ export const HelpLayout: React.FC<HelpLayoutProps> = ({
   className
 }) => {
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Header Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            {category && (
-              <Badge variant="secondary" className="mb-2">
-                {category}
-              </Badge>
-            )}
-            <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-            {description && (
-              <p className="text-lg text-muted-foreground max-w-3xl">
-                {description}
-              </p>
+    <div className={cn("space-y-4", className)}>
+      {/* Header Section - compact design - only show if title exists */}
+      {(title || description || lastUpdated) && (
+        <>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                {title && <h1 className="text-xl font-semibold tracking-tight">{title}</h1>}
+                {description && (
+                  <p className="text-sm text-muted-foreground max-w-3xl">
+                    {description}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {lastUpdated && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Terakhir diperbarui:</span>
+                <time>{lastUpdated}</time>
+              </div>
             )}
           </div>
-        </div>
-        
-        {lastUpdated && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Terakhir diperbarui:</span>
-            <time>{lastUpdated}</time>
-          </div>
-        )}
-      </div>
-      
-      <Separator />
+          
+          <Separator className="opacity-50" />
+        </>
+      )}
       
       {/* Content */}
-      <div className="space-y-6">
+      <div className="space-y-3">
         {children}
       </div>
     </div>
@@ -86,17 +85,17 @@ export const HelpSection: React.FC<HelpSectionProps> = ({
   className
 }) => {
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-3", className)}>
       {(title || description) && (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {title && (
             <div className="flex items-center gap-2">
-              {Icon && <Icon className="h-5 w-5 text-primary" />}
-              <h2 className="text-xl font-semibold">{title}</h2>
+              {Icon && <Icon className="h-4 w-4 text-primary" />}
+              <h2 className="text-lg font-medium">{title}</h2>
             </div>
           )}
           {description && (
-            <p className="text-muted-foreground">{description}</p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           )}
         </div>
       )}
@@ -128,27 +127,27 @@ export const HelpCard: React.FC<HelpCardProps> = ({
   className
 }) => {
   const cardVariants = {
-    default: "border-border",
-    feature: "border-primary/20 bg-primary/5",
-    step: "border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/50"
+    default: "border-border/50 shadow-sm bg-white dark:bg-slate-900",
+    feature: "border-primary/50 bg-white dark:bg-slate-900 shadow-sm",
+    step: "border-blue-500/50 bg-white dark:bg-slate-900 shadow-sm"
   };
 
   return (
     <Card className={cn(cardVariants[variant], className)}>
       {(title || description || Icon) && (
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2 pt-3 px-3">
           {title && (
-            <CardTitle className="flex items-center gap-2 text-base">
-              {Icon && <Icon className="h-4 w-4" />}
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              {Icon && <Icon className="h-3.5 w-3.5" />}
               {title}
             </CardTitle>
           )}
           {description && (
-            <CardDescription>{description}</CardDescription>
+            <CardDescription className="text-xs">{description}</CardDescription>
           )}
         </CardHeader>
       )}
-      <CardContent className={cn(title || description || Icon ? "pt-0" : "")}>
+      <CardContent className={cn("px-3 pb-3", title || description || Icon ? "pt-0" : "pt-3")}>
         {children}
       </CardContent>
     </Card>
@@ -172,11 +171,11 @@ export const HelpAlert: React.FC<HelpAlertProps> = ({
   className
 }) => {
   const alertConfig = {
-    info: { icon: Info, className: "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100" },
-    warning: { icon: AlertTriangle, className: "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-100" },
-    success: { icon: CheckCircle, className: "border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-100" },
-    error: { icon: XCircle, className: "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100" },
-    tip: { icon: Lightbulb, className: "border-purple-200 bg-purple-50 text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-100" }
+    info: { icon: Info, className: "border-blue-500 bg-white text-slate-900 dark:border-blue-400 dark:bg-slate-900 dark:text-slate-100" },
+    warning: { icon: AlertTriangle, className: "border-yellow-500 bg-white text-slate-900 dark:border-yellow-400 dark:bg-slate-900 dark:text-slate-100" },
+    success: { icon: CheckCircle, className: "border-green-500 bg-white text-slate-900 dark:border-green-400 dark:bg-slate-900 dark:text-slate-100" },
+    error: { icon: XCircle, className: "border-red-500 bg-white text-slate-900 dark:border-red-400 dark:bg-slate-900 dark:text-slate-100" },
+    tip: { icon: Lightbulb, className: "border-purple-500 bg-white text-slate-900 dark:border-purple-400 dark:bg-slate-900 dark:text-slate-100" }
   };
 
   const config = alertConfig[variant];
@@ -203,6 +202,7 @@ interface HelpStepProps {
   description?: string;
   children?: React.ReactNode;
   className?: string;
+  colorClass?: string;
 }
 
 export const HelpStep: React.FC<HelpStepProps> = ({
@@ -210,12 +210,16 @@ export const HelpStep: React.FC<HelpStepProps> = ({
   title,
   description,
   children,
-  className
+  className,
+  colorClass
 }) => {
   return (
     <div className={cn("flex gap-4", className)}>
       <div className="flex-shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+        <div className={cn(
+          "flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-medium transition-colors duration-200",
+          colorClass || "bg-primary text-primary-foreground"
+        )}>
           {number}
         </div>
       </div>

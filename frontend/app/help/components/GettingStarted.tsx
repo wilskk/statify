@@ -18,23 +18,23 @@ export const GettingStarted = () => {
   const sections = [
     {
       id: 'overview',
-      title: 'Welcome to Statify',
-      description: 'A brief introduction to Statify',
+      title: 'Selamat Datang di Statify',
+      description: 'Pengantar singkat tentang Statify',
       icon: BookOpen,
       content: (
         <div className="space-y-4">
           <p>
-            Statify is a standalone statistical analysis tool that's fully compatible with SPSS. 
-            No account creation or online registration required. Follow these steps to start using 
-            Statify's advanced analytics.
+            Statify adalah alat analisis statistik mandiri yang sepenuhnya kompatibel dengan SPSS. 
+            Tidak diperlukan pembuatan akun atau registrasi online. Ikuti langkah-langkah berikut untuk mulai menggunakan 
+            analitik lanjutan Statify.
           </p>
           
-          <HelpAlert variant="success" title="Statify Advantages">
+          <HelpAlert variant="success" title="Keunggulan Statify">
             <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Fully compatible with SPSS (.sav) format</li>
-              <li>No internet connection required</li>
-              <li>Intuitive and easy-to-use interface</li>
-              <li>Comprehensive statistical analysis</li>
+              <li>Sepenuhnya kompatibel dengan format SPSS (.sav)</li>
+              <li>Tidak memerlukan koneksi internet</li>
+              <li>Antarmuka yang intuitif dan mudah digunakan</li>
+              <li>Analisis statistik yang komprehensif</li>
             </ul>
           </HelpAlert>
         </div>
@@ -42,76 +42,76 @@ export const GettingStarted = () => {
     },
     {
       id: 'quick-start',
-      title: 'Quick Start Steps',
-      description: 'Step-by-step guide to get started',
+      title: 'Langkah Memulai Cepat',
+      description: 'Panduan langkah demi langkah untuk memulai',
       icon: Play,
       steps: [
         {
-          title: 'Import Your Data',
-          description: 'Start by importing your data file to Statify',
+          title: 'Impor Data Anda',
+          description: 'Mulai dengan mengimpor file data Anda ke Statify',
           content: (
             <div className="space-y-3">
               <p>
-                Start by importing your SPSS (.sav) file or other supported data formats directly to Statify.
+                Mulai dengan mengimpor file SPSS (.sav) atau format data lain yang didukung langsung ke Statify.
               </p>
               
-              <HelpCard title="Supported Formats" variant="step">
+              <HelpCard title="Format Yang Didukung" variant="step">
                 <ul className="text-sm space-y-1">
-                  <li>• SPSS (.sav) - Primary format</li>
+                  <li>• SPSS (.sav) - Format utama</li>
                   <li>• Excel (.xlsx, .xls)</li>
                   <li>• CSV (.csv)</li>
-                  <li>• Clipboard data</li>
+                  <li>• Data clipboard</li>
                 </ul>
               </HelpCard>
             </div>
           )
         },
         {
-          title: 'Explore the Dashboard',
-          description: 'Get familiar with the interface and main features',
+          title: 'Jelajahi Dashboard',
+          description: 'Familiarisasi dengan antarmuka dan fitur utama',
           content: (
             <div className="space-y-3">
               <p>
-                After importing your data, explore the dashboard to understand the data structure and available features.
+                Setelah mengimpor data, jelajahi dashboard untuk memahami struktur data dan fitur yang tersedia.
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <HelpCard title="Variable Panel" icon={Database}>
-                  <p className="text-sm">View and manage all variables in your dataset</p>
+                <HelpCard title="Panel Variabel" icon={Database}>
+                  <p className="text-sm">Lihat dan kelola semua variabel dalam dataset Anda</p>
                 </HelpCard>
                 
-                <HelpCard title="Data View" icon={LayoutDashboard}>
-                  <p className="text-sm">Display and edit data in table format</p>
+                <HelpCard title="Tampilan Data" icon={LayoutDashboard}>
+                  <p className="text-sm">Tampilkan dan edit data dalam format tabel</p>
                 </HelpCard>
               </div>
             </div>
           )
         },
         {
-          title: 'Start Analysis',
-          description: 'Perform your first statistical analysis',
+          title: 'Mulai Analisis',
+          description: 'Lakukan analisis statistik pertama Anda',
           content: (
             <div className="space-y-3">
               <p>
-                Choose the type of analysis that suits your research needs.
+                Pilih jenis analisis yang sesuai dengan kebutuhan penelitian Anda.
               </p>
               
-              <HelpCard title="Available Analysis" variant="feature">
+              <HelpCard title="Analisis Yang Tersedia" variant="feature">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
-                    <h5 className="font-semibold mb-1">Descriptive</h5>
+                    <h5 className="font-semibold mb-1">Deskriptif</h5>
                     <ul className="space-y-1 text-muted-foreground">
-                      <li>• Frequencies</li>
-                      <li>• Descriptives</li>
-                      <li>• Explore</li>
+                      <li>• Frekuensi</li>
+                      <li>• Deskriptif</li>
+                      <li>• Eksplorasi</li>
                     </ul>
                   </div>
                   <div>
-                    <h5 className="font-semibold mb-1">Inferential</h5>
+                    <h5 className="font-semibold mb-1">Inferensial</h5>
                     <ul className="space-y-1 text-muted-foreground">
-                      <li>• T-Tests</li>
+                      <li>• T-Test</li>
                       <li>• ANOVA</li>
-                      <li>• Regression</li>
+                      <li>• Regresi</li>
                     </ul>
                   </div>
                 </div>
@@ -123,32 +123,32 @@ export const GettingStarted = () => {
     },
     {
       id: 'key-features',
-      title: 'Key Features',
-      description: 'Learn about important features in Statify',
+      title: 'Fitur Utama',
+      description: 'Pelajari tentang fitur-fitur penting di Statify',
       icon: TrendingUp,
       content: (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <HelpCard title="Import Data" icon={FileVideo} variant="feature">
+          <HelpCard title="Impor Data" icon={FileVideo} variant="feature">
             <p className="text-sm">
-              Import various data formats easily and quickly.
+              Impor berbagai format data dengan mudah dan cepat.
             </p>
           </HelpCard>
 
-          <HelpCard title="Data Management" icon={Database} variant="feature">
+          <HelpCard title="Manajemen Data" icon={Database} variant="feature">
             <p className="text-sm">
-              Manage and transform data with comprehensive tools.
+              Kelola dan transformasi data dengan alat yang komprehensif.
             </p>
           </HelpCard>
 
-          <HelpCard title="Statistical Analysis" icon={BarChart} variant="feature">
+          <HelpCard title="Analisis Statistik" icon={BarChart} variant="feature">
             <p className="text-sm">
-              Perform various types of statistical analysis easily.
+              Lakukan berbagai jenis analisis statistik dengan mudah.
             </p>
           </HelpCard>
 
-          <HelpCard title="Visualization" icon={TrendingUp} variant="feature">
+          <HelpCard title="Visualisasi" icon={TrendingUp} variant="feature">
             <p className="text-sm">
-              Create informative and attractive charts and graphs.
+              Buat grafik dan chart yang informatif dan menarik.
             </p>
           </HelpCard>
         </div>
@@ -162,23 +162,22 @@ export const GettingStarted = () => {
     {
       type: 'tip' as const,
       title: 'Pro Tip',
-      content: 'Start with a small dataset to understand Statify\'s workflow before using larger datasets.'
+      content: 'Mulai dengan dataset kecil untuk memahami alur kerja Statify sebelum menggunakan dataset yang lebih besar.'
     },
 
   ];
 
   const relatedTopics = [
-    { title: 'Import SPSS Files', href: '/help/file-guide/import-sav' },
-    { title: 'Import Excel Files', href: '/help/file-guide/import-excel' },
-    { title: 'Descriptive Statistics', href: '/help/statistics-guide/descriptive' },
-    { title: 'Data Management', href: '/help/data-guide' }
+    { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
+    { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
+    { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' },
+    { title: 'Manajemen Data', href: '/help/data-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Getting Started with Statify"
-      description="Complete guide to start using Statify - a SPSS-compatible statistical analysis tool"
-      category="Getting Started"
+      title="Memulai dengan Statify"
+      description="Panduan lengkap untuk mulai menggunakan Statify - alat analisis statistik yang kompatibel dengan SPSS"
       lastUpdated="2024-01-15"
       sections={sections}
 

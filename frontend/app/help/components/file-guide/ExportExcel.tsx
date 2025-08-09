@@ -8,54 +8,54 @@ export const ExportExcel = () => {
   const sections = [
     {
       id: 'export-steps',
-      title: 'How to Export to Excel',
-      description: 'Step-by-step guide to save your data as an Excel file',
+      title: 'Cara Ekspor ke Excel',
+      description: 'Panduan langkah demi langkah untuk menyimpan data Anda sebagai file Excel',
       icon: Download,
       content: (
         <div className="space-y-4">
           <HelpStep
             number={1}
-            title="Check Your Data"
-            description="Make sure the data you want to export is loaded in the data editor."
+            title="Periksa Data Anda"
+            description="Pastikan data yang ingin diekspor sudah dimuat di editor data."
           />
           <HelpStep
             number={2}
-            title="Open File Menu"
-            description="Go to 'File' menu and select 'Export to Excel'."
+            title="Buka Menu File"
+            description="Pergi ke menu 'File' dan pilih 'Ekspor ke Excel'."
           />
           <HelpStep
             number={3}
-            title="Set Up Export"
-            description="An export dialog will appear. Give your file a name."
+            title="Atur Ekspor"
+            description="Dialog ekspor akan muncul. Beri nama file Anda."
           />
           <HelpStep
             number={4}
-            title="Choose Value Labels"
-            description="You can choose to include variable value labels if you want."
+            title="Pilih Label Nilai"
+            description="Anda dapat memilih untuk menyertakan label nilai variabel jika diinginkan."
           />
           <HelpStep
             number={5}
-            title="Create Your File"
-            description="Click 'Export' to create and download your .xlsx file."
+            title="Buat File Anda"
+            description="Klik 'Ekspor' untuk membuat dan mengunduh file .xlsx Anda."
           />
         </div>
       )
     },
     {
       id: 'features',
-      title: 'Features & Benefits',
-      description: 'Advantages of exporting to Excel format',
+      title: 'Fitur & Manfaat',
+      description: 'Keuntungan mengekspor ke format Excel',
       icon: Tags,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="success" title="Value Labels">
+          <HelpAlert variant="success" title="Label Nilai">
             <p className="text-sm mt-2">
-              Unlike CSV, Excel export lets you keep value labels. This means if you have a variable with 1="Male" and 2="Female", your exported file can show "Male" and "Female" instead of 1 and 2.
+              Tidak seperti CSV, ekspor Excel memungkinkan Anda menyimpan label nilai. Ini berarti jika Anda memiliki variabel dengan 1="Laki-laki" dan 2="Perempuan", file yang diekspor dapat menampilkan "Laki-laki" dan "Perempuan" alih-alih 1 dan 2.
             </p>
           </HelpAlert>
-          <HelpAlert variant="info" title="Format Preservation">
+          <HelpAlert variant="info" title="Preservasi Format">
             <p className="text-sm mt-2">
-              Excel format keeps more metadata information compared to CSV, including data types and formatting.
+              Format Excel menyimpan lebih banyak informasi metadata dibandingkan CSV, termasuk jenis data dan format.
             </p>
           </HelpAlert>
         </div>
@@ -63,19 +63,19 @@ export const ExportExcel = () => {
     },
     {
       id: 'options',
-      title: 'Export Options',
-      description: 'Settings you can customize',
+      title: 'Opsi Ekspor',
+      description: 'Pengaturan yang dapat Anda sesuaikan',
       icon: Settings,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="tip" title="Multiple Worksheets">
+          <HelpAlert variant="tip" title="Multiple Worksheet">
             <p className="text-sm mt-2">
-              Excel files can contain multiple worksheets, allowing better organization for complex datasets.
+              File Excel dapat berisi beberapa worksheet, memungkinkan organisasi yang lebih baik untuk dataset yang kompleks.
             </p>
           </HelpAlert>
-          <HelpAlert variant="info" title="Compatibility">
+          <HelpAlert variant="info" title="Kompatibilitas">
             <p className="text-sm mt-2">
-              .xlsx files work with Microsoft Excel, LibreOffice Calc, Google Sheets, and other spreadsheet applications.
+              File .xlsx bekerja dengan Microsoft Excel, LibreOffice Calc, Google Sheets, dan aplikasi spreadsheet lainnya.
             </p>
           </HelpAlert>
         </div>
@@ -86,33 +86,32 @@ export const ExportExcel = () => {
   const tips = [
     {
       type: 'success' as const,
-      title: 'Metadata Preservation',
-      content: 'Excel export keeps more metadata information than other formats, including value labels and formatting.'
+      title: 'Preservasi Metadata',
+      content: 'Ekspor Excel menyimpan lebih banyak informasi metadata daripada format lain, termasuk label nilai dan format.'
     },
     {
       type: 'tip' as const,
-      title: 'File Size',
-      content: 'Excel files are generally larger than CSV, but they store more structural information and metadata.'
+      title: 'Ukuran File',
+      content: 'File Excel umumnya lebih besar daripada CSV, tetapi menyimpan lebih banyak informasi struktural dan metadata.'
     },
     {
       type: 'info' as const,
-      title: 'Cross-Platform',
-      content: '.xlsx format works across different platforms and modern spreadsheet applications.'
+      title: 'Lintas Platform',
+      content: 'Format .xlsx bekerja di berbagai platform dan aplikasi spreadsheet modern.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Export to CSV', href: '/help/file-guide/export-csv' },
-    { title: 'Import Excel Files', href: '/help/file-guide/import-excel' },
-    { title: 'Print Your Data', href: '/help/file-guide/print' },
-    { title: 'Data Management Guide', href: '/help/data-guide' }
+    { title: 'Ekspor ke CSV', href: '/help/file-guide/export-csv' },
+    { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
+    { title: 'Cetak Data Anda', href: '/help/file-guide/print' },
+    { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Export to Excel"
-      description="Complete guide for saving your data as Microsoft Excel (.xlsx)"
-      category="File Management"
+      title="Ekspor ke Excel"
+      description="Panduan lengkap untuk menyimpan data Anda sebagai Microsoft Excel (.xlsx)"
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

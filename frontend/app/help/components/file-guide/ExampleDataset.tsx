@@ -8,49 +8,49 @@ export const ExampleDataset = () => {
   const sections = [
     {
       id: 'load-steps',
-      title: 'Steps to Load Sample Dataset',
-      description: 'Step-by-step guide to load sample datasets',
+      title: 'Langkah Memuat Dataset Contoh',
+      description: 'Panduan langkah demi langkah untuk memuat dataset contoh',
       icon: Database,
       content: (
         <div className="space-y-4">
           <HelpStep
             number={1}
-            title="Open File Menu"
-            description="Navigate to the 'File' menu in the main application toolbar."
+            title="Buka Menu File"
+            description="Navigasi ke menu 'File' di toolbar utama aplikasi."
           />
           <HelpStep
             number={2}
-            title="Select Example Datasets"
-            description="Click 'Example Datasets' to see the list of available datasets."
+            title="Pilih Dataset Contoh"
+            description="Klik 'Dataset Contoh' untuk melihat daftar dataset yang tersedia."
           />
           <HelpStep
             number={3}
-            title="Select Dataset"
-            description="Choose the dataset you want to use from the available list. Each dataset has a brief description of its contents."
+            title="Pilih Dataset"
+            description="Pilih dataset yang ingin Anda gunakan dari daftar yang tersedia. Setiap dataset memiliki deskripsi singkat tentang isinya."
           />
           <HelpStep
             number={4}
-            title="Load Dataset"
-            description="Click 'Load' to load the dataset into Statify's data editor."
+            title="Muat Dataset"
+            description="Klik 'Muat' untuk memuat dataset ke dalam editor data Statify."
           />
         </div>
       )
     },
     {
       id: 'features',
-      title: 'Features & Benefits',
-      description: 'Important information about sample datasets',
+      title: 'Fitur & Manfaat',
+      description: 'Informasi penting tentang dataset contoh',
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="info" title="No Internet Required">
+          <HelpAlert variant="info" title="Tidak Perlu Internet">
             <p className="text-sm mt-2">
-              All sample datasets are bundled with the application, so you can access them even when offline.
+              Semua dataset contoh disertakan dengan aplikasi, sehingga Anda dapat mengaksesnya bahkan ketika offline.
             </p>
           </HelpAlert>
-          <HelpAlert variant="tip" title="Feature Exploration">
+          <HelpAlert variant="tip" title="Eksplorasi Fitur">
             <p className="text-sm mt-2">
-              Sample datasets are specifically designed to help you explore various statistical analysis features in Statify.
+              Dataset contoh dirancang khusus untuk membantu Anda menjelajahi berbagai fitur analisis statistik di Statify.
             </p>
           </HelpAlert>
         </div>
@@ -61,28 +61,27 @@ export const ExampleDataset = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Quick Learning',
-      content: 'Use sample datasets to learn new features without needing to prepare your own data.'
+      title: 'Pembelajaran Cepat',
+      content: 'Gunakan dataset contoh untuk mempelajari fitur baru tanpa perlu menyiapkan data Anda sendiri.'
     },
     {
       type: 'info' as const,
-      title: 'Data Variety',
-      content: 'Each sample dataset has different characteristics to demonstrate various types of analysis.'
+      title: 'Variasi Data',
+      content: 'Setiap dataset contoh memiliki karakteristik yang berbeda untuk mendemonstrasikan berbagai jenis analisis.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Import SPSS Files', href: '/help/file-guide/import-sav' },
-    { title: 'Import CSV Files', href: '/help/file-guide/import-csv' },
-    { title: 'Data Management', href: '/help/data-guide' },
-    { title: 'Getting Started', href: '/help/getting-started' }
+    { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
+    { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
+    { title: 'Manajemen Data', href: '/help/data-guide' },
+    { title: 'Memulai', href: '/help/getting-started' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Using Sample Datasets"
-      description="Statify provides various sample datasets to help you explore its features"
-      category="File Management"
+      title="Menggunakan Dataset Contoh"
+      description="Statify menyediakan berbagai dataset contoh untuk membantu Anda menjelajahi fitur-fiturnya"
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

@@ -1,4 +1,4 @@
-var STATS_DECIMAL_PLACES = 3;
+
 
 function checkIsMissing(value, missingValuesDef, isNumeric) {
     if (value === null || value === undefined || (isNumeric && isNaN(value))) {
@@ -177,15 +177,73 @@ function mapValueLabel(variable, value) {
 
 function applyValueLabels(frequencyTable, variable) {
     if (!frequencyTable || !variable) return frequencyTable;
-    const rows = (frequencyTable.rows || []).map(row => ({
-        ...row,
-        label: mapValueLabel(variable, row.label)
-    }));
+    // Support both array of rows and { rows, ... } object shapes
+    const inputRows = Array.isArray(frequencyTable)
+        ? frequencyTable
+        : Array.isArray(frequencyTable.rows)
+            ? frequencyTable.rows
+            : [];
+
+    const rows = inputRows.map(row => {
+        // Prefer existing label; fall back to row.value when label is absent
+        const raw = (row && row.label != null && row.label !== '')
+            ? row.label
+            : (row && row.value != null ? row.value : '');
+        return {
+            ...row,
+            label: mapValueLabel(variable, raw)
+        };
+    });
+
+    // If the input was an array, return an array to preserve shape
+    if (Array.isArray(frequencyTable)) return rows;
+
+    // Otherwise, return an object with updated rows
     return { ...frequencyTable, rows };
 }
 
+function roundDeep(value, decimals) {
+  if (typeof value === 'number') {
+    return roundToDecimals(value, decimals);
+  }
+  if (Array.isArray(value)) {
+    return value.map(v => roundDeep(v, decimals));
+  }
+  if (value && typeof value === 'object') {
+    const result = {};
+    for (const key in value) {
+      result[key] = roundDeep(value[key], decimals);
+    }
+    return result;
+  }
+  return value;
+}
+
+function roundStatsObject(obj, decimals) {
+  const rounded = {};
+  for (const key in obj) {
+    const val = obj[key];
+    if (['N', 'Valid', 'Missing'].includes(key)) {
+      rounded[key] = val;
+    } else if (typeof val === 'number') {
+      rounded[key] = roundToDecimals(val, decimals);
+    } else if (Array.isArray(val)) {
+      rounded[key] = val.map(v => (typeof v === 'number' ? roundToDecimals(v, decimals) : v));
+    } else if (val && typeof val === 'object') {
+      const inner = {};
+      for (const k in val) {
+        inner[k] = typeof val[k] === 'number' ? roundToDecimals(val[k], decimals) : val[k];
+      }
+      rounded[key] = inner;
+    } else {
+      rounded[key] = val;
+    }
+  }
+  return rounded;
+}
+
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-  module.exports = { isNumeric, checkIsMissing, roundToDecimals, mapValueLabel, applyValueLabels, toSPSSFixed, STATS_DECIMAL_PLACES, dateStringToSpssSeconds, spssSecondsToDateString, isDateString };
+  module.exports = { isNumeric, checkIsMissing, mapValueLabel, applyValueLabels, toSPSSFixed, dateStringToSpssSeconds, spssSecondsToDateString, isDateString };
 }
 if (typeof globalThis !== 'undefined') {
   globalThis.isNumeric = isNumeric;
@@ -194,8 +252,10 @@ if (typeof globalThis !== 'undefined') {
   globalThis.mapValueLabel = mapValueLabel;
   globalThis.applyValueLabels = applyValueLabels;
   globalThis.toSPSSFixed = toSPSSFixed;
-  globalThis.STATS_DECIMAL_PLACES = STATS_DECIMAL_PLACES;
+  
   globalThis.dateStringToSpssSeconds = dateStringToSpssSeconds;
   globalThis.spssSecondsToDateString = spssSecondsToDateString;
   globalThis.isDateString = isDateString;
+  globalThis.roundStatsObject = roundStatsObject;
+  globalThis.roundDeep = roundDeep;
 }

@@ -119,6 +119,12 @@ export function formatDescriptiveTableOld(
   // Always include N and Missing
   addSingleStatHeader("N", "N");
   addSingleStatHeader("Missing", "Missing");
+  addSingleStatHeader("Valid", "Valid");
+
+  // Detect stats that depend on measurement (Mode, Percentiles)
+  const includeMode = data.some(({ stats }) => stats && (stats as any).Mode !== undefined);
+  const includePercentiles = data.some(({ stats }) => stats && (((stats as any)["25th Percentile"]) !== undefined || ((stats as any)["75th Percentile"]) !== undefined));
+  if (includeMode) addSingleStatHeader("Mode", "Mode");
 
   if (displayStatistics.range) addSingleStatHeader("Range", "Range");
   if (displayStatistics.minimum) addSingleStatHeader("Minimum", "Minimum");
@@ -152,6 +158,11 @@ export function formatDescriptiveTableOld(
       kurtChildren.push({ header: "Std. Error", key: "SEKurtosis" });
     }
     columnHeaders.push({ header: "Kurtosis", children: kurtChildren });
+  }
+
+  if (includePercentiles) {
+    addSingleStatHeader("25th Percentile", "25th Percentile");
+    addSingleStatHeader("75th Percentile", "75th Percentile");
   }
 
   // ------------------------------------------------------------------
@@ -195,6 +206,15 @@ export function formatDescriptiveTableOld(
 
     row.N = stats.N;
     row.Missing = stats.Missing;
+    if ((stats as any).Valid !== undefined) row.Valid = (stats as any).Valid;
+    if (includeMode) {
+      const modeVal: any = (stats as any).Mode;
+      if (Array.isArray(modeVal)) {
+        row.Mode = modeVal.length === 0 ? null : modeVal.map(v => String(v)).join(', ');
+      } else {
+        row.Mode = modeVal;
+      }
+    }
     
     // Tetapkan setiap stat secara eksplisit untuk keamanan tipe
     if (displayStatistics.range) row.Range = format(stats.Range, 'number');
@@ -213,6 +233,10 @@ export function formatDescriptiveTableOld(
     if (displayStatistics.kurtosis) {
       row.Kurtosis = format(stats.Kurtosis, 'number');
       row.SEKurtosis = format(stats.SEKurtosis, 'number');
+    }
+    if (includePercentiles) {
+      row["25th Percentile"] = format((stats as any)["25th Percentile"], 'date');
+      row["75th Percentile"] = format((stats as any)["75th Percentile"], 'date');
     }
     
     return row;

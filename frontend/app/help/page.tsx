@@ -11,6 +11,7 @@ import {
     type SectionItem,
 } from "@/app/help/components";
 import {
+    DataGuide,
     AggregateGuide,
     DefineDateTimeGuide,
     DefineVarPropsGuide,
@@ -24,34 +25,7 @@ import {
     WeightCasesGuide,
 } from "@/app/help/components/data-guide";
 
-const DataGuide = ({ section }: { section?: string }) => {
-    switch (section) {
-        case "aggregate":
-            return <AggregateGuide />;
-        case "define-datetime":
-            return <DefineDateTimeGuide />;
-        case "define-var-props":
-            return <DefineVarPropsGuide />;
-        case "duplicate-cases":
-            return <DuplicateCasesGuide />;
-        case "restructure":
-            return <RestructureGuide />;
-        case "select-cases":
-            return <SelectCasesGuide />;
-        case "set-measurement-level":
-            return <SetMeasurementLevelGuide />;
-        case "sort-cases":
-            return <SortCasesGuide />;
-        case "sort-vars":
-            return <SortVarsGuide />;
-        case "transpose":
-            return <TransposeGuide />;
-        case "weight-cases":
-            return <WeightCasesGuide />;
-        default:
-            return <AggregateGuide />; // Show a default guide
-    }
-};
+// DataGuide is now imported from data-guide components
 
 export default function HelpPage() {
     const [selected, setSelected] = useState("getting-started");
@@ -102,7 +76,6 @@ export default function HelpPage() {
                 { key: "sort-cases", label: "Sort Cases", parentKey: "data-guide", childContent: "sort-cases" },
                 { key: "sort-vars", label: "Sort Variables", parentKey: "data-guide", childContent: "sort-vars" },
                 { key: "transpose", label: "Transpose", parentKey: "data-guide", childContent: "transpose" },
-                { key: "unusual-cases", label: "Identify Unusual Cases", parentKey: "data-guide", childContent: "unusual-cases" },
                 { key: "weight-cases", label: "Weight Cases", parentKey: "data-guide", childContent: "weight-cases" },
             ],
         },
@@ -121,14 +94,14 @@ export default function HelpPage() {
                 { key: "autocorrelation", label: "Autocorrelation", parentKey: "statistics-guide", childContent: "autocorrelation" },
                 { key: "unit-root-test", label: "Unit Root Test", parentKey: "statistics-guide", childContent: "unit-root-test" },
                 { key: "box-jenkins-model", label: "Box-Jenkins Model", parentKey: "statistics-guide", childContent: "box-jenkins-model" },
-                { key: "k-means-clustering", label: "K-Means Clustering", parentKey: "statistics-guide", childContent: "k-means-clustering" },
+                { key: "k-means", label: "K-Means Clustering", parentKey: "statistics-guide", childContent: "k-means" },
                 { key: "univariate", label: "GLM Univariate", parentKey: "statistics-guide", childContent: "univariate" },
                 { key: "univariate-design-matrix", label: "GLM Univariate: Design Matrix", parentKey: "statistics-guide", childContent: "univariate-design-matrix" },
                 { key: "univariate-contrast-factors", label: "GLM Univariate: Contrast Factors", parentKey: "statistics-guide", childContent: "univariate-contrast-factors" },
                 { key: "univariate-heteroscedasticity-tests", label: "GLM Univariate: Heteroscedasticity Tests", parentKey: "statistics-guide", childContent: "univariate-heteroscedasticity-tests" },
                 { key: "univariate-lack-of-fit-tests", label: "GLM Univariate: Lack of Fit Tests", parentKey: "statistics-guide", childContent: "univariate-lack-of-fit-tests" },
                 { key: "univariate-sum-of-squares", label: "GLM Univariate: Sum of Squares", parentKey: "statistics-guide", childContent: "univariate-sum-of-squares" },
-                { key: "univariate-em-means", label: "GLM Univariate: EM Means", parentKey: "statistics-guide", childContent: "univariate-em-means" },
+                { key: "univariate-emmeans", label: "GLM Univariate: EM Means", parentKey: "statistics-guide", childContent: "univariate-emmeans" },
                 { key: "univariate-parameter-estimates", label: "GLM Univariate: Parameter Estimates", parentKey: "statistics-guide", childContent: "univariate-parameter-estimates" },
                 { key: "univariate-levenes-test", label: "GLM Univariate: Levene's Test", parentKey: "statistics-guide", childContent: "univariate-levenes-test" },
             ],
@@ -243,15 +216,6 @@ export default function HelpPage() {
 
     const sectionsToDisplayInSidebar = search ? filteredSectionsResult : sectionsData;
 
-    // Correctly pass the active child content to the main component
-    const selectedSection = sectionsData.find((s) => s.key === selected);
-    const contentToRender =
-        selectedSection && selectedSection.content
-            ? cloneElement(selectedSection.content, {
-                  section: activeChild || undefined,
-              })
-            : null;
-
     return (
         <div
             className={`bg-background h-screen overflow-hidden transition-opacity duration-300 ${
@@ -268,7 +232,6 @@ export default function HelpPage() {
                 displaySections={sectionsToDisplayInSidebar}
                 expandedKeys={expandedKeys}
             />
-            <div className="flex-1 overflow-y-auto p-6 md:p-8">{contentToRender}</div>
         </div>
     );
 }

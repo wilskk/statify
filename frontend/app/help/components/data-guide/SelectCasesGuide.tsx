@@ -7,47 +7,47 @@ const SelectCasesGuide = () => {
   const sections = [
     {
       id: 'selection-methods',
-      title: 'Selection Methods',
-      description: 'Different ways to select cases in your dataset',
+      title: 'Metode Seleksi',
+      description: 'Berbagai cara untuk memilih kasus dalam dataset Anda',
       icon: Filter,
       content: (
         <div className="space-y-4">
-          <HelpCard title="All Cases" variant="feature">
+          <HelpCard title="Semua Kasus" variant="feature">
             <p className="text-sm">
-              Select this option to include all cases in your dataset. This effectively
-              removes any previously applied filters.
+              Pilih opsi ini untuk menyertakan semua kasus dalam dataset Anda. Ini secara efektif
+              menghapus filter yang diterapkan sebelumnya.
             </p>
           </HelpCard>
           
-          <HelpCard title="Based on Condition" variant="feature">
+          <HelpCard title="Berdasarkan Kondisi" variant="feature">
             <p className="text-sm mb-3">
-              Create logical expressions to filter cases. Only cases that meet your
-              condition will be selected.
+              Buat ekspresi logis untuk memfilter kasus. Hanya kasus yang memenuhi
+              kondisi Anda yang akan dipilih.
             </p>
             <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="font-semibold text-sm mb-1">Available operators:</p>
-              <p className="text-xs font-mono">&gt;, &lt;, ==, != (comparison)</p>
-              <p className="text-xs font-mono">& (AND), | (OR), ~ (NOT)</p>
+              <p className="font-semibold text-sm mb-1">Operator yang tersedia:</p>
+              <p className="text-xs font-mono">&gt;, &lt;, ==, != (perbandingan)</p>
+              <p className="text-xs font-mono">& (DAN), | (ATAU), ~ (TIDAK)</p>
             </div>
           </HelpCard>
           
-          <HelpCard title="Random Sample" variant="feature">
-            <p className="text-sm mb-3">Select a random subset of cases:</p>
+          <HelpCard title="Sampel Acak" variant="feature">
+            <p className="text-sm mb-3">Pilih subset acak dari kasus:</p>
             <div className="space-y-2 text-sm">
-              <div><strong>Approximately</strong>: Selects about a certain percentage of total cases.</div>
-              <div><strong>Exactly</strong>: Selects an exact number of cases from the first N cases.</div>
+              <div><strong>Kurang Lebih</strong>: Memilih sekitar persentase tertentu dari total kasus.</div>
+              <div><strong>Tepat</strong>: Memilih jumlah kasus yang tepat dari N kasus pertama.</div>
             </div>
           </HelpCard>
           
-          <HelpCard title="Based on Range" variant="feature">
+          <HelpCard title="Berdasarkan Rentang" variant="feature">
             <p className="text-sm">
-              Select cases based on their position in your dataset (1-based index).
+              Pilih kasus berdasarkan posisi mereka dalam dataset Anda (indeks berbasis 1).
             </p>
           </HelpCard>
           
-          <HelpCard title="Use Filter Variable" variant="feature">
+          <HelpCard title="Gunakan Variabel Filter" variant="feature">
             <p className="text-sm">
-              Use an existing variable as a filter. Non-zero/non-empty values will be selected.
+              Gunakan variabel yang ada sebagai filter. Nilai non-nol/non-kosong akan dipilih.
             </p>
           </HelpCard>
         </div>
@@ -55,30 +55,30 @@ const SelectCasesGuide = () => {
     },
     {
       id: 'output-options',
-      title: 'Output Options',
-      description: 'Options for handling unselected cases',
+      title: 'Opsi Output',
+      description: 'Opsi untuk menangani kasus yang tidak dipilih',
       icon: Settings,
       content: (
         <div className="space-y-4">
-          <HelpCard title="Filter Unselected Cases" variant="step">
+          <HelpCard title="Filter Kasus yang Tidak Dipilih" variant="step">
             <p className="text-sm">
-              A filter is applied to temporarily hide unselected cases. A filter variable 
-              (<code className="text-xs bg-gray-100 px-1 rounded">filter_$</code>) will be created or updated. 
-              Your original dataset remains intact.
+              Filter diterapkan untuk menyembunyikan kasus yang tidak dipilih sementara. Variabel filter 
+              (<code className="text-xs bg-gray-100 px-1 rounded">filter_$</code>) akan dibuat atau diperbarui. 
+              Dataset asli Anda tetap utuh.
             </p>
           </HelpCard>
           
-          <HelpCard title="Delete Unselected Cases" variant="step">
+          <HelpCard title="Hapus Kasus yang Tidak Dipilih" variant="step">
             <p className="text-sm">
-              Unselected cases will be{' '}
-              <strong>permanently deleted</strong> from your dataset. This operation
-              cannot be undone.
+              Kasus yang tidak dipilih akan{' '}
+              <strong>dihapus secara permanen</strong> dari dataset Anda. Operasi ini
+              tidak dapat dibatalkan.
             </p>
           </HelpCard>
           
-          <HelpAlert variant="warning" title="Important">
+          <HelpAlert variant="warning" title="Penting">
             <p className="text-sm mt-2">
-              Always backup your data before using the permanent delete option.
+              Selalu backup data Anda sebelum menggunakan opsi hapus permanen.
             </p>
           </HelpAlert>
         </div>
@@ -86,39 +86,39 @@ const SelectCasesGuide = () => {
     },
     {
       id: 'usage-examples',
-      title: 'Usage Examples',
-      description: 'Practical examples of using the Select Cases feature',
+      title: 'Contoh Penggunaan',
+      description: 'Contoh praktis menggunakan fitur Pilih Kasus',
       icon: FileText,
       content: (
         <div className="space-y-4">
-          <HelpSection title="Filter by Condition">
+          <HelpSection title="Filter berdasarkan Kondisi">
             <p className="text-sm mb-2">
-              To select cases where age &gt; 30 AND income &gt;= 50000:
+              Untuk memilih kasus di mana umur &gt; 30 DAN pendapatan &gt;= 50000:
             </p>
             <div className="bg-gray-50 p-3 rounded-lg">
               <code className="text-sm font-mono">age &gt; 30 & income &gt;= 50000</code>
             </div>
           </HelpSection>
           
-          <HelpSection title="Create Random Sample">
+          <HelpSection title="Buat Sampel Acak">
             <p className="text-sm mb-2">
-              To create a 10% random sample:
+              Untuk membuat sampel acak 10%:
             </p>
             <div className="bg-gray-50 p-3 rounded-lg text-sm">
-              1. Select "Random sample"<br/>
-              2. Choose "Approximately"<br/>
-              3. Enter "10"
+              1. Pilih "Sampel acak"<br/>
+              2. Pilih "Kurang lebih"<br/>
+              3. Masukkan "10"
             </div>
           </HelpSection>
           
-          <HelpSection title="Select Range">
+          <HelpSection title="Pilih Rentang">
             <p className="text-sm mb-2">
-              To select cases 100 to 500:
+              Untuk memilih kasus 100 sampai 500:
             </p>
             <div className="bg-gray-50 p-3 rounded-lg text-sm">
-              1. Select "Based on... range"<br/>
-              2. Enter "100" in "First Case"<br/>
-              3. Enter "500" in "Last Case"
+              1. Pilih "Berdasarkan... rentang"<br/>
+              2. Masukkan "100" di "Kasus Pertama"<br/>
+              3. Masukkan "500" di "Kasus Terakhir"
             </div>
           </HelpSection>
         </div>
@@ -130,36 +130,34 @@ const SelectCasesGuide = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Condition Syntax',
-      content: 'Use quotes for string values and ensure variable names are spelled correctly.'
+      title: 'Sintaks Kondisi',
+      content: 'Gunakan tanda kutip untuk nilai string dan pastikan nama variabel dieja dengan benar.'
     },
     {
       type: 'warning' as const,
-      title: 'Permanent Operations',
-      content: 'Be careful with permanent delete options - this operation cannot be undone.'
+      title: 'Operasi Permanen',
+      content: 'Hati-hati dengan opsi hapus permanen - operasi ini tidak dapat dibatalkan.'
     },
     {
       type: 'info' as const,
-      title: 'Filter Variable',
-      content: 'A filter_$ variable will be automatically created to track selected cases.'
+      title: 'Variabel Filter',
+      content: 'Variabel filter_$ akan dibuat secara otomatis untuk melacak kasus yang dipilih.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Data Management', href: '/help/data-guide' },
-    { title: 'Sort Cases', href: '/help/data-guide/sort-cases' },
-    { title: 'Weight Cases', href: '/help/data-guide/weight-cases' },
-    { title: 'Split File', href: '/help/data-guide/split-file' }
+    { title: 'Manajemen Data', href: '/help/data-guide' },
+    { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
+    { title: 'Bobot Kasus', href: '/help/data-guide/weight-cases' },
+    { title: 'Pisah File', href: '/help/data-guide/split-file' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Select Cases Feature"
-      description="This guide explains the Select Cases feature, which allows you to filter or delete rows (cases) based on various criteria."
-      category="Data Management"
+      title="Fitur Pilih Kasus"
+      description="Panduan ini menjelaskan fitur Pilih Kasus, yang memungkinkan Anda memfilter atau menghapus baris (kasus) berdasarkan berbagai kriteria."
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

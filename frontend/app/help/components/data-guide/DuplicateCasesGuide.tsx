@@ -7,21 +7,21 @@ const DuplicateCasesGuide = () => {
   const sections = [
     {
       id: 'overview',
-      title: 'Overview',
-      description: 'Introduction to the Identify Duplicate Cases feature',
+      title: 'Ringkasan',
+      description: 'Pengantar fitur Identifikasi Kasus Duplikat',
       icon: Copy,
       content: (
         <div className="space-y-4">
           <p>
-            This feature helps you find and manage duplicate cases in your dataset based on matching variables you choose.
+            Fitur ini membantu Anda menemukan dan mengelola kasus duplikat dalam dataset Anda berdasarkan variabel pencocokan yang Anda pilih.
           </p>
           
-          <HelpAlert variant="info" title="What It Does">
+          <HelpAlert variant="info" title="Apa yang Dilakukannya">
             <ul className="list-disc list-inside text-sm space-y-1 mt-2">
-              <li>Identifies duplicate cases based on identical values in one or more variables</li>
-              <li>Creates new indicator variables to mark which cases are "primary" and which are "duplicates"</li>
-              <li>Sorts cases within duplicate groups to determine the primary case</li>
-              <li>Helps you manage results by reorganizing data or filtering duplicate cases</li>
+              <li>Mengidentifikasi kasus duplikat berdasarkan nilai identik dalam satu atau lebih variabel</li>
+              <li>Membuat variabel indikator baru untuk menandai kasus mana yang "primer" dan mana yang "duplikat"</li>
+              <li>Mengurutkan kasus dalam kelompok duplikat untuk menentukan kasus primer</li>
+              <li>Membantu Anda mengelola hasil dengan mengatur ulang data atau memfilter kasus duplikat</li>
             </ul>
           </HelpAlert>
         </div>
@@ -29,14 +29,14 @@ const DuplicateCasesGuide = () => {
     },
     {
       id: 'specifications',
-      title: 'Features & Options',
-      description: 'Available features and options',
+      title: 'Fitur & Opsi',
+      description: 'Fitur dan opsi yang tersedia',
       icon: Search,
       content: (
         <div className="space-y-4">
-          <HelpCard title="New Indicator Variables" variant="feature">
+          <HelpCard title="Variabel Indikator Baru" variant="feature">
             <p className="text-sm mb-3">
-              This feature can create two new variables to help with duplicate analysis:
+              Fitur ini dapat membuat dua variabel baru untuk membantu analisis duplikat:
             </p>
             
             <HelpSection title="1. Primary Case Indicator">
@@ -47,32 +47,32 @@ const DuplicateCasesGuide = () => {
               </ul>
             </HelpSection>
             
-            <HelpSection title="2. Sequence Counter">
+            <HelpSection title="2. Penghitung Urutan">
               <ul className="list-disc list-inside text-sm space-y-1">
-                <li><strong>Function</strong>: Creates a variable (default: <code>MatchSequence</code>) that gives a sequence number for each case within duplicate groups (1, 2, 3, ...)</li>
-                <li><strong>Use</strong>: Helps you see how many duplicates exist in each group</li>
-                <li><strong>Custom Name</strong>: You can change the variable name to suit your needs</li>
+                <li><strong>Fungsi</strong>: Membuat variabel (default: <code>MatchSequence</code>) yang memberikan nomor urutan untuk setiap kasus dalam kelompok duplikat (1, 2, 3, ...)</li>
+                <li><strong>Penggunaan</strong>: Membantu Anda melihat berapa banyak duplikat yang ada dalam setiap kelompok</li>
+                <li><strong>Nama Kustom</strong>: Anda dapat mengubah nama variabel sesuai kebutuhan</li>
               </ul>
             </HelpSection>
           </HelpCard>
           
-          <HelpCard title="Management & Display Options" variant="feature">
+          <HelpCard title="Opsi Manajemen & Tampilan" variant="feature">
             <div className="space-y-3">
-              <HelpSection title="1. Move Duplicate Cases to Top">
+              <HelpSection title="1. Pindahkan Kasus Duplikat ke Atas">
                 <p className="text-sm">
-                  When enabled, all cases with duplicates are moved to the top of your data file for easy inspection.
+                  Saat diaktifkan, semua kasus dengan duplikat dipindahkan ke bagian atas file data Anda untuk inspeksi yang mudah.
                 </p>
               </HelpSection>
               
-              <HelpSection title="2. Filter Duplicate Cases">
+              <HelpSection title="2. Filter Kasus Duplikat">
                 <p className="text-sm">
-                  When enabled, after processing your dataset automatically shows only primary cases (where the indicator value is 1).
+                  Saat diaktifkan, setelah pemrosesan dataset Anda secara otomatis menampilkan hanya kasus primer (dimana nilai indikator adalah 1).
                 </p>
               </HelpSection>
               
-              <HelpSection title="3. Display Frequencies">
+              <HelpSection title="3. Tampilkan Frekuensi">
                 <p className="text-sm">
-                  When enabled, frequency tables for the new variables are displayed in the Output window.
+                  Saat diaktifkan, tabel frekuensi untuk variabel baru ditampilkan di jendela Output.
                 </p>
               </HelpSection>
             </div>
@@ -82,33 +82,33 @@ const DuplicateCasesGuide = () => {
     },
     {
       id: 'examples',
-      title: 'Usage Examples',
-      description: 'Practical scenarios for using the feature',
+      title: 'Contoh Penggunaan',
+      description: 'Skenario praktis untuk menggunakan fitur ini',
       icon: Filter,
       content: (
         <div className="space-y-4">
-          <HelpCard title="Example 1: Find Exact Duplicates" variant="step">
+          <HelpCard title="Contoh 1: Temukan Duplikat Persis" variant="step">
             <ol className="list-decimal list-inside text-sm space-y-1">
-              <li>Move <strong>all</strong> variables into the "Define matching cases by" list</li>
-              <li>Choose whether the first or last case should be primary</li>
-              <li>Click OK</li>
+              <li>Pindahkan <strong>semua</strong> variabel ke dalam daftar "Definisikan kasus yang cocok berdasarkan"</li>
+              <li>Pilih apakah kasus pertama atau terakhir yang harus menjadi primer</li>
+              <li>Klik OK</li>
             </ol>
-            <HelpAlert variant="success" title="Results">
+            <HelpAlert variant="success" title="Hasil">
               <p className="text-sm mt-2">
-                The <code>PrimaryLast</code> variable will have value 0 for each row that is an exact duplicate of another.
+                Variabel <code>PrimaryLast</code> akan memiliki nilai 0 untuk setiap baris yang merupakan duplikat persis dari baris lain.
               </p>
             </HelpAlert>
           </HelpCard>
           
-          <HelpCard title="Example 2: Create Duplicate-Free Dataset" variant="step">
+          <HelpCard title="Contoh 2: Buat Dataset Bebas Duplikat" variant="step">
             <ol className="list-decimal list-inside text-sm space-y-1">
-              <li>Move key variables (like Customer ID, Email) to the "Define matching cases by" list</li>
-              <li>In the <strong>Options</strong> tab, check "Filter out duplicate cases after processing"</li>
-              <li>Click OK</li>
+              <li>Pindahkan variabel kunci (seperti ID Pelanggan, Email) ke daftar "Definisikan kasus yang cocok berdasarkan"</li>
+              <li>Di tab <strong>Opsi</strong>, centang "Filter kasus duplikat setelah pemrosesan"</li>
+              <li>Klik OK</li>
             </ol>
-            <HelpAlert variant="success" title="Results">
+            <HelpAlert variant="success" title="Hasil">
               <p className="text-sm mt-2">
-                Your data view will immediately update to show only unique/primary rows.
+                Tampilan data Anda akan segera diperbarui untuk menampilkan hanya baris unik/primer.
               </p>
             </HelpAlert>
           </HelpCard>
@@ -121,36 +121,34 @@ const DuplicateCasesGuide = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Backup Your Data',
-      content: 'Always backup your dataset before processing duplicates to prevent data loss.'
+      title: 'Cadangkan Data Anda',
+      content: 'Selalu cadangkan dataset Anda sebelum memproses duplikat untuk mencegah kehilangan data.'
     },
     {
       type: 'info' as const,
-      title: 'Choose Key Variables',
-      content: 'Select the right key variables to define duplication criteria that match your analysis needs.'
+      title: 'Pilih Variabel Kunci',
+      content: 'Pilih variabel kunci yang tepat untuk mendefinisikan kriteria duplikasi yang sesuai dengan kebutuhan analisis Anda.'
     },
     {
       type: 'warning' as const,
-      title: 'Review Results',
-      content: 'Always review duplicate detection results before permanently removing or filtering data.'
+      title: 'Tinjau Hasil',
+      content: 'Selalu tinjau hasil deteksi duplikat sebelum menghapus atau memfilter data secara permanen.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Data Management', href: '/help/data-guide' },
-    { title: 'Select Cases', href: '/help/data-guide/select-cases' },
-    { title: 'Sort Cases', href: '/help/data-guide/sort-cases' },
-    { title: 'Variable Properties', href: '/help/data-guide/define-var-props' }
+    { title: 'Manajemen Data', href: '/help/data-guide' },
+    { title: 'Pilih Kasus', href: '/help/data-guide/select-cases' },
+    { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
+    { title: 'Properti Variabel', href: '/help/data-guide/define-var-props' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Identify Duplicate Cases"
-      description="Complete guide to finding and marking duplicate cases in your dataset based on matching variables"
-      category="Data Management"
+      title="Identifikasi Kasus Duplikat"
+      description="Panduan lengkap untuk menemukan dan menandai kasus duplikat dalam dataset Anda berdasarkan variabel yang cocok"
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

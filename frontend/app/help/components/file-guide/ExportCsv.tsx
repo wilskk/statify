@@ -8,54 +8,54 @@ export const ExportCsv = () => {
   const sections = [
     {
       id: 'export-steps',
-      title: 'How to Export to CSV',
-      description: 'Step-by-step guide to save your data as a CSV file',
+      title: 'Cara Ekspor ke CSV',
+      description: 'Panduan langkah demi langkah untuk menyimpan data Anda sebagai file CSV',
       icon: Download,
       content: (
         <div className="space-y-4">
           <HelpStep
             number={1}
-            title="Check Your Data"
-            description="Make sure the data you want to export is loaded in the data editor."
+            title="Periksa Data Anda"
+            description="Pastikan data yang ingin diekspor sudah dimuat di editor data."
           />
           <HelpStep
             number={2}
-            title="Open File Menu"
-            description="Go to 'File' menu and select 'Export to CSV'."
+            title="Buka Menu File"
+            description="Pergi ke menu 'File' dan pilih 'Ekspor ke CSV'."
           />
           <HelpStep
             number={3}
-            title="Choose Your Settings"
-            description="A dialog will appear where you can set options like separators and decimal symbols."
+            title="Pilih Pengaturan Anda"
+            description="Dialog akan muncul dimana Anda dapat mengatur opsi seperti pemisah dan simbol desimal."
           />
           <HelpStep
             number={4}
-            title="Name Your File"
-            description="Enter a file name and choose where to save it on your computer."
+            title="Beri Nama File Anda"
+            description="Masukkan nama file dan pilih lokasi penyimpanan di komputer Anda."
           />
           <HelpStep
             number={5}
-            title="Save Your Data"
-            description="Click 'Export' to save the file to your computer."
+            title="Simpan Data Anda"
+            description="Klik 'Ekspor' untuk menyimpan file ke komputer Anda."
           />
         </div>
       )
     },
     {
       id: 'options',
-      title: 'Export Options',
-      description: 'Settings you can adjust when saving your file',
+      title: 'Opsi Ekspor',
+      description: 'Pengaturan yang dapat Anda sesuaikan saat menyimpan file',
       icon: Settings,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="info" title="Data Separators">
+          <HelpAlert variant="info" title="Pemisah Data">
             <p className="text-sm mt-2">
-              Choose how to separate your data columns (comma, semicolon, or tab) based on what works best for your needs.
+              Pilih cara memisahkan kolom data Anda (koma, titik koma, atau tab) berdasarkan apa yang terbaik untuk kebutuhan Anda.
             </p>
           </HelpAlert>
-          <HelpAlert variant="tip" title="Decimal Symbols">
+          <HelpAlert variant="tip" title="Simbol Desimal">
             <p className="text-sm mt-2">
-              Set decimal symbols (period or comma) to match your regional standards or the requirements of other software.
+              Atur simbol desimal (titik atau koma) untuk menyesuaikan standar regional Anda atau persyaratan perangkat lunak lain.
             </p>
           </HelpAlert>
         </div>
@@ -66,33 +66,32 @@ export const ExportCsv = () => {
   const tips = [
     {
       type: 'warning' as const,
-      title: 'Data Notes',
-      content: 'CSV export saves your raw data only. Variable properties like labels or measurement levels won\'t be included in the .csv file.'
+      title: 'Catatan Data',
+      content: 'Ekspor CSV hanya menyimpan data mentah Anda. Properti variabel seperti label atau tingkat pengukuran tidak akan disertakan dalam file .csv.'
     },
     {
       type: 'tip' as const,
-      title: 'Compatibility',
-      content: 'CSV files work with almost all spreadsheet programs and other statistical software.'
+      title: 'Kompatibilitas',
+      content: 'File CSV bekerja dengan hampir semua program spreadsheet dan perangkat lunak statistik lainnya.'
     },
     {
       type: 'info' as const,
-      title: 'Character Support',
-      content: 'CSV files are saved with UTF-8 encoding to ensure special characters display correctly.'
+      title: 'Dukungan Karakter',
+      content: 'File CSV disimpan dengan encoding UTF-8 untuk memastikan karakter khusus ditampilkan dengan benar.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Export to Excel', href: '/help/file-guide/export-excel' },
-    { title: 'Import CSV Files', href: '/help/file-guide/import-csv' },
-    { title: 'Print Your Data', href: '/help/file-guide/print' },
-    { title: 'Data Management Guide', href: '/help/data-guide' }
+    { title: 'Ekspor ke Excel', href: '/help/file-guide/export-excel' },
+    { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
+    { title: 'Cetak Data Anda', href: '/help/file-guide/print' },
+    { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Export to CSV"
-      description="Complete guide for saving your data as Comma-Separated Values (.csv)"
-      category="File Management"
+      title="Ekspor ke CSV"
+      description="Panduan lengkap untuk menyimpan data Anda sebagai Comma-Separated Values (.csv)"
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}
