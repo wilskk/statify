@@ -7,37 +7,37 @@ const SortCasesGuide = () => {
   const sections = [
     {
       id: 'interface',
-      title: 'Interface & Component Functionality',
-      description: 'Components within the Sort Cases dialog',
+      title: 'Antarmuka & Fungsionalitas Komponen',
+      description: 'Komponen dalam dialog Urutkan Kasus',
       icon: Settings,
       content: (
         <div className="space-y-4">
-          <HelpSection title="Available Variables List">
+          <HelpSection title="Daftar Variabel Tersedia">
             <p className="text-sm">
-              Displays all variables available to use as sorting keys.
+              Menampilkan semua variabel yang tersedia untuk digunakan sebagai kunci pengurutan.
             </p>
           </HelpSection>
           
-          <HelpSection title="Sort By List">
+          <HelpSection title="Daftar Urutkan Berdasarkan">
             <p className="text-sm">
-              This list holds variables selected as sorting keys.
-              The order here determines sorting priority.
+              Daftar ini menyimpan variabel yang dipilih sebagai kunci pengurutan.
+              Urutan di sini menentukan prioritas pengurutan.
             </p>
           </HelpSection>
           
-          <HelpSection title="Sorting Controls">
+          <HelpSection title="Kontrol Pengurutan">
             <p className="text-sm mb-3">
-              When a variable in the "Sort By" list is highlighted:
+              Ketika variabel dalam daftar "Urutkan Berdasarkan" disorot:
             </p>
             <div className="ml-4 space-y-2">
-              <HelpCard title="Sort Direction" variant="step">
+              <HelpCard title="Arah Pengurutan" variant="step">
                 <p className="text-sm">
-                  Choose to sort in ascending or descending order.
+                  Pilih untuk mengurutkan dalam urutan naik atau turun.
                 </p>
               </HelpCard>
-              <HelpCard title="Sort Priority" variant="step">
+              <HelpCard title="Prioritas Pengurutan" variant="step">
                 <p className="text-sm">
-                  Buttons to change the sorting priority of variables.
+                  Tombol untuk mengubah prioritas pengurutan variabel.
                 </p>
               </HelpCard>
             </div>
@@ -47,51 +47,51 @@ const SortCasesGuide = () => {
     },
     {
       id: 'workflow',
-      title: 'Workflow & Usage Examples',
-      description: 'Practical examples of using Sort Cases',
+      title: 'Alur Kerja & Contoh Penggunaan',
+      description: 'Contoh praktis menggunakan Urutkan Kasus',
       icon: ArrowUpDown,
       content: (
         <div className="space-y-4">
-          <HelpCard title="Example 1: Single-Level Sorting" variant="feature">
+          <HelpCard title="Contoh 1: Pengurutan Tingkat Tunggal" variant="feature">
             <div className="space-y-3">
               <p className="text-sm">
-                <strong>Goal</strong>: Sort your entire dataset by Income 
-                from highest to lowest.
+                <strong>Tujuan</strong>: Urutkan seluruh dataset Anda berdasarkan Pendapatan 
+                dari tertinggi ke terendah.
               </p>
               <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="font-semibold text-sm mb-2">Steps:</p>
+                <p className="font-semibold text-sm mb-2">Langkah:</p>
                 <ol className="list-decimal list-inside text-sm space-y-1">
-                  <li>Open the "Sort Cases" dialog</li>
-                  <li>Move the Income variable to the "Sort By" list</li>
-                  <li>Select Descending for the "Sort Order"</li>
-                  <li>Click OK</li>
+                  <li>Buka dialog "Urutkan Kasus"</li>
+                  <li>Pindahkan variabel Pendapatan ke daftar "Urutkan Berdasarkan"</li>
+                  <li>Pilih Menurun untuk "Urutan Pengurutan"</li>
+                  <li>Klik OK</li>
                 </ol>
               </div>
             </div>
           </HelpCard>
           
-          <HelpCard title="Example 2: Multi-Level Sorting" variant="feature">
+          <HelpCard title="Contoh 2: Pengurutan Multi-Tingkat" variant="feature">
             <div className="space-y-3">
               <p className="text-sm">
-                <strong>Goal</strong>: Group cases by Department, then within 
-                each department, sort by Income from highest to lowest.
+                <strong>Tujuan</strong>: Kelompokkan kasus berdasarkan Departemen, kemudian dalam 
+                setiap departemen, urutkan berdasarkan Pendapatan dari tertinggi ke terendah.
               </p>
               <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="font-semibold text-sm mb-2">Steps:</p>
+                <p className="font-semibold text-sm mb-2">Langkah:</p>
                 <ol className="list-decimal list-inside text-sm space-y-1">
-                  <li>Move Department variable to "Sort By" (Ascending)</li>
-                  <li>Move Income variable to "Sort By" below Department</li>
-                  <li>Change Income direction to Descending</li>
-                  <li>Click OK</li>
+                  <li>Pindahkan variabel Departemen ke "Urutkan Berdasarkan" (Menaik)</li>
+                  <li>Pindahkan variabel Pendapatan ke "Urutkan Berdasarkan" di bawah Departemen</li>
+                  <li>Ubah arah Pendapatan menjadi Menurun</li>
+                  <li>Klik OK</li>
                 </ol>
               </div>
             </div>
           </HelpCard>
           
-          <HelpAlert variant="info" title="Multi-Level Sorting Tips">
+          <HelpAlert variant="info" title="Tips Pengurutan Multi-Tingkat">
             <p className="text-sm mt-2">
-              The order of variables in the "Sort By" list determines sorting priority. 
-              The first variable has the highest priority.
+              Urutan variabel dalam daftar "Urutkan Berdasarkan" menentukan prioritas pengurutan. 
+              Variabel pertama memiliki prioritas tertinggi.
             </p>
           </HelpAlert>
         </div>
@@ -103,36 +103,34 @@ const SortCasesGuide = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Priority Order',
-      content: 'The first selected variable has the highest priority in multi-level sorting.'
+      title: 'Urutan Prioritas',
+      content: 'Variabel yang dipilih pertama memiliki prioritas tertinggi dalam pengurutan multi-tingkat.'
     },
     {
       type: 'info' as const,
-      title: 'Sort Direction',
-      content: 'Ascending: from smallest to largest. Descending: from largest to smallest.'
+      title: 'Arah Pengurutan',
+      content: 'Menaik: dari terkecil ke terbesar. Menurun: dari terbesar ke terkecil.'
     },
     {
       type: 'warning' as const,
-      title: 'Order Changes',
-      content: 'Sorting will permanently change the row order in your dataset.'
+      title: 'Perubahan Urutan',
+      content: 'Pengurutan akan mengubah urutan baris dalam dataset Anda secara permanen.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Data Management', href: '/help/data-guide' },
-    { title: 'Select Cases', href: '/help/data-guide/select-cases' },
-    { title: 'Sort Variables', href: '/help/data-guide/sort-vars' },
-    { title: 'Data Preparation', href: '/help/data-guide/restructure' }
+    { title: 'Manajemen Data', href: '/help/data-guide' },
+    { title: 'Pilih Kasus', href: '/help/data-guide/select-cases' },
+    { title: 'Urutkan Variabel', href: '/help/data-guide/sort-vars' },
+    { title: 'Persiapan Data', href: '/help/data-guide/restructure' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Sort Cases Feature"
-      description="This guide explains the Sort Cases functionality, which allows you to rearrange rows (cases) in your dataset based on values from one or more variables."
-
+      title="Fitur Urutkan Kasus"
+      description="Panduan ini menjelaskan fungsionalitas Urutkan Kasus, yang memungkinkan Anda mengatur ulang baris (kasus) dalam dataset Anda berdasarkan nilai dari satu atau lebih variabel."
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

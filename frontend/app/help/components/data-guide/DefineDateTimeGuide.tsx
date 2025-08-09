@@ -7,27 +7,27 @@ const DefineDateTimeGuide = () => {
   const sections = [
     {
       id: 'overview',
-      title: 'Overview',
-      description: 'Complete guide to setting up date and time structure for your data',
+      title: 'Ringkasan',
+      description: 'Panduan lengkap untuk mengatur struktur tanggal dan waktu untuk data Anda',
       icon: Calendar,
       content: (
         <div className="space-y-4">
           <p>
-            The Define Date feature helps you create a time-based structure for your data. 
-            When you choose a date format (like "Year, quarter, month"), the system automatically:
+            Fitur Definisi Tanggal membantu Anda membuat struktur berbasis waktu untuk data Anda. 
+            Ketika Anda memilih format tanggal (seperti "Tahun, kuartal, bulan"), sistem secara otomatis:
           </p>
           <ol className="list-decimal list-inside ml-4 mt-2 space-y-1">
             <li>
-              <strong>Creates new variables</strong> for each time component you need
-              (like YEAR_, QUARTER_, MONTH_).
+              <strong>Membuat variabel baru</strong> untuk setiap komponen waktu yang Anda butuhkan
+              (seperti YEAR_, QUARTER_, MONTH_).
             </li>
             <li>
-              <strong>Builds a formatted date variable</strong> called DATE_ that shows
-              complete dates in a readable format.
+              <strong>Membangun variabel tanggal yang diformat</strong> yang disebut DATE_ yang menampilkan
+              tanggal lengkap dalam format yang mudah dibaca.
             </li>
             <li>
-              <strong>Shows you a preview</strong> with sample data so you can see
-              exactly how your date structure will look.
+              <strong>Menampilkan pratinjau</strong> dengan contoh data sehingga Anda dapat melihat
+              persis bagaimana struktur tanggal Anda akan terlihat.
             </li>
           </ol>
         </div>
@@ -35,44 +35,44 @@ const DefineDateTimeGuide = () => {
     },
     {
       id: 'functionality',
-      title: 'How It Works',
-      description: 'Understanding the process step by step',
+      title: 'Cara Kerjanya',
+      description: 'Memahami proses langkah demi langkah',
       icon: Settings,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="info" title="Automatic Setup">
+          <HelpAlert variant="info" title="Pengaturan Otomatis">
             <p className="text-sm mt-2">
-              Once you choose your date format, the system automatically sets up your variables 
-              so time series analysis will work correctly with your data.
+              Setelah Anda memilih format tanggal, sistem secara otomatis mengatur variabel Anda 
+              sehingga analisis deret waktu akan bekerja dengan benar dengan data Anda.
             </p>
           </HelpAlert>
           
           <div className="space-y-4">
-            <h4 className="font-semibold">Example: Year and Month</h4>
-            <HelpCard title="What You'll Get" variant="feature">
+            <h4 className="font-semibold">Contoh: Tahun dan Bulan</h4>
+            <HelpCard title="Yang Akan Anda Dapatkan" variant="feature">
               <ul className="list-disc list-inside space-y-1">
-                <li><strong>Your choice</strong>: Year, month</li>
-                <li><strong>Starting values</strong>: Year: 2022, Month: 11</li>
-                <li><strong>New variables created</strong>:
+                <li><strong>Pilihan Anda</strong>: Tahun, bulan</li>
+                <li><strong>Nilai awal</strong>: Tahun: 2022, Bulan: 11</li>
+                <li><strong>Variabel baru yang dibuat</strong>:
                   <ul className="list-disc list-inside ml-4 mt-1">
-                    <li><code>YEAR_</code> - shows the year (2022)</li>
-                    <li><code>MONTH_</code> - shows the month (11)</li>
-                    <li><code>DATE_</code> - shows formatted date (2022-11)</li>
+                    <li><code>YEAR_</code> - menampilkan tahun (2022)</li>
+                    <li><code>MONTH_</code> - menampilkan bulan (11)</li>
+                    <li><code>DATE_</code> - menampilkan tanggal terformat (2022-11)</li>
                   </ul>
                 </li>
               </ul>
             </HelpCard>
             
-            <h4 className="font-semibold">Example: Week and Workday</h4>
-            <HelpCard title="What You'll Get" variant="feature">
+            <h4 className="font-semibold">Contoh: Minggu dan Hari Kerja</h4>
+            <HelpCard title="Yang Akan Anda Dapatkan" variant="feature">
               <ul className="list-disc list-inside space-y-1">
-                <li><strong>Your choice</strong>: Week, workday (5-day week)</li>
-                <li><strong>Starting values</strong>: Week: 51, Workday: 4</li>
-                <li><strong>New variables created</strong>:
+                <li><strong>Pilihan Anda</strong>: Minggu, hari kerja (minggu 5 hari)</li>
+                <li><strong>Nilai awal</strong>: Minggu: 51, Hari kerja: 4</li>
+                <li><strong>Variabel baru yang dibuat</strong>:
                   <ul className="list-disc list-inside ml-4 mt-1">
-                    <li><code>WEEK_</code> - shows the week number (51)</li>
-                    <li><code>WDAY_</code> - shows the workday (4)</li>
-                    <li><code>DATE_</code> - shows formatted date (51-4)</li>
+                    <li><code>WEEK_</code> - menampilkan nomor minggu (51)</li>
+                    <li><code>WDAY_</code> - menampilkan hari kerja (4)</li>
+                    <li><code>DATE_</code> - menampilkan tanggal terformat (51-4)</li>
                   </ul>
                 </li>
               </ul>
@@ -83,21 +83,21 @@ const DefineDateTimeGuide = () => {
     },
     {
       id: 'supported-formats',
-      title: 'Available Formats',
-      description: 'Choose the right date format for your data',
+      title: 'Format yang Tersedia',
+      description: 'Pilih format tanggal yang tepat untuk data Anda',
       icon: Clock,
       content: (
         <div className="space-y-4">
           <p>
-            Here are all the date formats you can choose from. Each option creates
-            the right variables and a formatted DATE_ variable for your needs.
+            Berikut adalah semua format tanggal yang dapat Anda pilih. Setiap opsi membuat
+            variabel yang tepat dan variabel DATE_ terformat untuk kebutuhan Anda.
           </p>
           <div className="grid grid-cols-2 gap-4">
-            <HelpCard title="Basic Formats" variant="step">
+            <HelpCard title="Format Dasar" variant="step">
               <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>Year only</li>
-                <li>Year, quarter</li>
-                <li>Year, month</li>
+                <li>Tahun saja</li>
+                <li>Tahun, kuartal</li>
+                <li>Tahun, bulan</li>
                 <li>Year, quarter, month</li>
                 <li>Day only</li>
                 <li>Week, day</li>
@@ -143,36 +143,34 @@ const DefineDateTimeGuide = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Plan Your Format',
-      content: 'Think about your date structure before starting time series analysis for best results.'
+      title: 'Rencanakan Format Anda',
+      content: 'Pikirkan struktur tanggal Anda sebelum memulai analisis deret waktu untuk hasil terbaik.'
     },
     {
       type: 'info' as const,
-      title: 'Preview Your Data',
-      content: 'The system shows sample data so you can see exactly how your dates will look.'
+      title: 'Pratinjau Data Anda',
+      content: 'Sistem menampilkan contoh data sehingga Anda dapat melihat persis bagaimana tanggal Anda akan terlihat.'
     },
     {
       type: 'warning' as const,
-      title: 'Save Your Work',
-      content: 'Your date setup affects all time series analysis, so save your dataset after setting up dates.'
+      title: 'Simpan Pekerjaan Anda',
+      content: 'Pengaturan tanggal Anda mempengaruhi semua analisis deret waktu, jadi simpan dataset Anda setelah mengatur tanggal.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Data Management', href: '/help/data-guide' },
-    { title: 'Time Series Analysis', href: '/help/statistics-guide' },
-    { title: 'Variable Properties', href: '/help/data-guide/define-var-props' },
-    { title: 'Restructure Data', href: '/help/data-guide/restructure' }
+    { title: 'Manajemen Data', href: '/help/data-guide' },
+    { title: 'Analisis Deret Waktu', href: '/help/statistics-guide' },
+    { title: 'Properti Variabel', href: '/help/data-guide/define-var-props' },
+    { title: 'Restrukturisasi Data', href: '/help/data-guide/restructure' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Define Date Feature"
-      description="Complete guide to setting up time-based structure for your dataset"
-
+      title="Fitur Definisi Tanggal"
+      description="Panduan lengkap untuk mengatur struktur berbasis waktu untuk dataset Anda"
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

@@ -8,50 +8,50 @@ export const ImportCsv = () => {
   const sections = [
     {
       id: 'import-steps',
-      title: 'How to Import CSV Files',
-      description: 'Step-by-step guide to bring your CSV data into Statify',
+      title: 'Cara Impor File CSV',
+      description: 'Panduan langkah demi langkah untuk mengimpor data CSV Anda ke Statify',
       icon: Upload,
       content: (
         <div className="space-y-4">
           <HelpStep
             number={1}
-            title="Open File Menu"
-            description="Click 'File' in the top menu bar of the application."
+            title="Buka Menu File"
+            description="Klik 'File' di bilah menu atas aplikasi."
           />
           <HelpStep
             number={2}
-            title="Choose CSV Import"
-            description="Select 'Open CSV File' from the dropdown options."
+            title="Pilih Impor CSV"
+            description="Pilih 'Buka File CSV' dari opsi dropdown."
           />
           <HelpStep
             number={3}
-            title="Select Your File"
-            description="Browse your computer and choose the CSV file you want to work with."
+            title="Pilih File Anda"
+            description="Telusuri komputer Anda dan pilih file CSV yang ingin Anda gunakan."
           />
           <HelpStep
             number={4}
-            title="Load Your Data"
-            description="Click 'Open' to bring your data into Statify's data editor."
+            title="Muat Data Anda"
+            description="Klik 'Buka' untuk mengimpor data Anda ke editor data Statify."
           />
         </div>
       )
     },
     {
       id: 'tips',
-      title: 'Helpful Information',
-      description: 'What you need to know about CSV files',
+      title: 'Informasi Berguna',
+      description: 'Apa yang perlu Anda ketahui tentang file CSV',
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="info" title="Did you know?">
+          <HelpAlert variant="info" title="Tahukah Anda?">
             <p className="text-sm mt-2">
-              CSV files are simple text files that work with almost all spreadsheet programs and statistical software.
+              File CSV adalah file teks sederhana yang bekerja dengan hampir semua program spreadsheet dan perangkat lunak statistik.
             </p>
           </HelpAlert>
           
-          <HelpCard title="About CSV Format" icon={FileSpreadsheet} variant="feature">
+          <HelpCard title="Tentang Format CSV" icon={FileSpreadsheet} variant="feature">
             <p className="text-sm text-muted-foreground">
-              CSV stands for Comma-Separated Values. It uses commas to separate your data columns and new lines for each row of data.
+              CSV singkatan dari Comma-Separated Values. Menggunakan koma untuk memisahkan kolom data Anda dan baris baru untuk setiap baris data.
             </p>
           </HelpCard>
         </div>
@@ -64,31 +64,29 @@ export const ImportCsv = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'File Encoding',
-      content: 'Use UTF-8 encoding for files with special characters or symbols.'
+      title: 'Encoding File',
+      content: 'Gunakan encoding UTF-8 untuk file dengan karakter khusus atau simbol.'
     },
     {
       type: 'info' as const,
-      title: 'Data Separators',
-      content: 'Statify automatically detects whether your file uses commas, semicolons, or tabs to separate data.'
+      title: 'Pemisah Data',
+      content: 'Statify secara otomatis mendeteksi apakah file Anda menggunakan koma, titik koma, atau tab untuk memisahkan data.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Import SPSS Files', href: '/help/file-guide/import-sav' },
-    { title: 'Import Excel Files', href: '/help/file-guide/import-excel' },
-    { title: 'Export to CSV', href: '/help/file-guide/export-csv' },
-    { title: 'Data Management Guide', href: '/help/data-guide' }
+    { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
+    { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
+    { title: 'Ekspor ke CSV', href: '/help/file-guide/export-csv' },
+    { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Import CSV Files"
-      description="Complete guide for bringing CSV data into Statify"
-
+      title="Impor File CSV"
+      description="Panduan lengkap untuk mengimpor data CSV ke Statify"
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

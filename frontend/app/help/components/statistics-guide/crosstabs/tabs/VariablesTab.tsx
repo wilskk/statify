@@ -24,7 +24,7 @@ export const VariablesTab = () => (
       </div>
     </HelpCard>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
           <Database className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -32,12 +32,12 @@ export const VariablesTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Jenis Variabel yang Sesuai</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Variabel Nominal</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
+          <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
             Kategori tanpa urutan tertentu
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
@@ -49,12 +49,12 @@ export const VariablesTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Variabel Ordinal</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
+          <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
             Kategori dengan urutan bermakna
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
@@ -68,7 +68,7 @@ export const VariablesTab = () => (
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
           <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -76,7 +76,7 @@ export const VariablesTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Persyaratan Data</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800">
           <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Frekuensi Minimum</h4>
           <div className="text-sm space-y-2 text-amber-700 dark:text-amber-300">
             <p>• <strong>Frekuensi yang diharapkan:</strong> Minimal 5 di setiap sel untuk validitas Chi-Square</p>
@@ -85,7 +85,7 @@ export const VariablesTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-blue-200 dark:border-blue-800">
           <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Independensi Observasi</h4>
           <div className="text-sm space-y-2 text-blue-700 dark:text-blue-300">
             <p>• Setiap observasi harus independen (tidak ada duplikasi data)</p>
@@ -94,7 +94,7 @@ export const VariablesTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-emerald-200 dark:border-emerald-800">
           <h4 className="font-medium text-emerald-800 dark:text-emerald-200 mb-2">Kategori yang Lengkap</h4>
           <div className="text-sm space-y-2 text-emerald-700 dark:text-emerald-300">
             <p>• Kategori harus saling eksklusif (tidak overlapping)</p>
@@ -146,7 +146,7 @@ export const VariablesTab = () => (
       </div>
     </HelpAlert>
 
-    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
       <h3 className="font-medium text-slate-800 dark:text-slate-200 mb-3">Checklist Persiapan Data</h3>
       <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2">

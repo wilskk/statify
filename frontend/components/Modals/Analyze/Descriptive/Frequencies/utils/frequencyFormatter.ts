@@ -17,22 +17,31 @@ export const formatFrequencyTable = (table: FrequencyTable): any => {
 
     const rows: any[] = [];
 
+    // Defensive checks and fallbacks
+    const rowArray = Array.isArray(table?.rows) ? table.rows : [];
+    const computedValid = rowArray.reduce((acc, r: any) => acc + (typeof r.frequency === 'number' ? r.frequency : 0), 0);
+    const summary = table && table.summary ? table.summary : {
+        valid: computedValid,
+        missing: 0,
+        total: computedValid,
+    };
+
     // Valid rows processing
-    const validChildren = table.rows.map(row => ({
+    const validChildren = rowArray.map(row => ({
         rowHeader: [null, row.label],
         frequency: row.frequency,
-        percent: row.percent?.toFixed(1),
-        validPercent: row.validPercent?.toFixed(1),
-        cumulativePercent: row.cumulativePercent?.toFixed(1),
+        percent: typeof row.percent === 'number' ? row.percent.toFixed(1) : (row.percent !== undefined ? String(row.percent) : undefined),
+        validPercent: typeof row.validPercent === 'number' ? row.validPercent.toFixed(1) : (row.validPercent !== undefined ? String(row.validPercent) : undefined),
+        cumulativePercent: typeof row.cumulativePercent === 'number' ? row.cumulativePercent.toFixed(1) : (row.cumulativePercent !== undefined ? String(row.cumulativePercent) : undefined),
     }));
 
-    const validTotalPercent = table.summary.total > 0 ? (table.summary.valid / table.summary.total * 100) : 0;
+    const validTotalPercent = summary.total > 0 ? (summary.valid / summary.total * 100) : 0;
 
     validChildren.push({
         rowHeader: [null, 'Total'],
-        frequency: table.summary.valid,
+        frequency: summary.valid,
         percent: validTotalPercent.toFixed(1),
-        validPercent: table.summary.valid > 0 ? '100.0' : undefined,
+        validPercent: summary.valid > 0 ? '100.0' : undefined,
         cumulativePercent: undefined,
     });
 
@@ -42,14 +51,14 @@ export const formatFrequencyTable = (table: FrequencyTable): any => {
     });
 
     // Missing rows
-    if (table.summary.missing > 0) {
-        const missingPercent = table.summary.total > 0 ? (table.summary.missing / table.summary.total * 100) : 0;
+    if (summary.missing > 0) {
+        const missingPercent = summary.total > 0 ? (summary.missing / summary.total * 100) : 0;
         rows.push({
             rowHeader: ['Missing', null],
             children: [
                 {
                     rowHeader: [null, 'System'],
-                    frequency: table.summary.missing,
+                    frequency: summary.missing,
                     percent: missingPercent.toFixed(1),
                     validPercent: null,
                     cumulativePercent: null,
@@ -61,8 +70,8 @@ export const formatFrequencyTable = (table: FrequencyTable): any => {
     // Grand total row
     rows.push({
         rowHeader: ['Total', null],
-        frequency: table.summary.total,
-        percent: table.summary.total > 0 ? '100.0' : undefined,
+        frequency: summary.total,
+        percent: summary.total > 0 ? '100.0' : undefined,
         validPercent: undefined,
         cumulativePercent: undefined,
     });
@@ -70,10 +79,10 @@ export const formatFrequencyTable = (table: FrequencyTable): any => {
     return {
         tables: [
             {
-                title: table.title,
+                title: table?.title || 'Frequency Table',
                 columnHeaders: headers,
                 rows,
             },
         ],
     };
-}; 
+};

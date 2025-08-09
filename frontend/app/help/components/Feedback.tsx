@@ -13,26 +13,26 @@ export const Feedback = () => {
   const sections = [
     {
       id: 'overview',
-      title: 'Feedback Types',
-      description: 'Choose the type of feedback that suits your needs',
+      title: 'Jenis Umpan Balik',
+      description: 'Pilih jenis umpan balik yang sesuai dengan kebutuhan Anda',
       icon: BookOpen,
       content: (
         <div className="grid gap-4 md:grid-cols-3">
-          <HelpCard title="Feature Requests" icon={ThumbsUp} variant="feature">
+          <HelpCard title="Permintaan Fitur" icon={ThumbsUp} variant="feature">
             <p className="text-sm text-muted-foreground">
-              Suggestions for new features or improvements that can enhance your workflow.
+              Saran untuk fitur baru atau perbaikan yang dapat meningkatkan alur kerja Anda.
             </p>
           </HelpCard>
           
-          <HelpCard title="Bug Reports" icon={MessageSquare} variant="feature">
+          <HelpCard title="Laporan Bug" icon={MessageSquare} variant="feature">
             <p className="text-sm text-muted-foreground">
-              Report issues or unexpected behavior in the application.
+              Laporkan masalah atau perilaku yang tidak terduga dalam aplikasi.
             </p>
           </HelpCard>
           
-          <HelpCard title="General Feedback" icon={Star} variant="feature">
+          <HelpCard title="Umpan Balik Umum" icon={Star} variant="feature">
             <p className="text-sm text-muted-foreground">
-              Share your overall experience and opinions about Statify.
+              Bagikan pengalaman dan pendapat Anda secara keseluruhan tentang Statify.
             </p>
           </HelpCard>
         </div>
@@ -40,72 +40,72 @@ export const Feedback = () => {
     },
     {
       id: 'feedback-form',
-      title: 'Send Your Feedback',
-      description: 'We continuously improve Statify based on user input',
+      title: 'Kirim Umpan Balik Anda',
+      description: 'Kami terus meningkatkan Statify berdasarkan masukan pengguna',
       icon: Mail,
       content: (
         <div className="space-y-6">
-          <HelpAlert variant="info" title="Your Feedback Matters">
+          <HelpAlert variant="info" title="Umpan Balik Anda Penting">
             <p className="text-sm mt-2">
-              Every feedback you provide helps us make Statify better. 
-              Our team will carefully review each submission.
+              Setiap umpan balik yang Anda berikan membantu kami membuat Statify menjadi lebih baik. 
+              Tim kami akan meninjau setiap pengajuan dengan cermat.
             </p>
           </HelpAlert>
           
-          <HelpCard title="Feedback Form" variant="step">
+          <HelpCard title="Formulir Umpan Balik" variant="step">
             <form className="space-y-4 max-w-full">
               <div className="grid gap-4 md:grid-cols-2 w-full">
                 <div className="space-y-1">
-                  <Label htmlFor="name" className="text-sm">Name</Label>
+                  <Label htmlFor="name" className="text-sm">Nama</Label>
                   <Input
                     id="name"
-                    placeholder="Your name"
+                    placeholder="Nama Anda"
                     className="w-full"
                   />
                 </div>
                 
                 <div className="space-y-1">
-                  <Label htmlFor="email" className="text-sm">Email (optional)</Label>
+                  <Label htmlFor="email" className="text-sm">Email (opsional)</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="anda@contoh.com"
                     className="w-full"
                   />
                 </div>
               </div>
               
               <div className="space-y-1">
-                <Label htmlFor="feedbackType" className="text-sm">Feedback Type</Label>
+                <Label htmlFor="feedbackType" className="text-sm">Jenis Umpan Balik</Label>
                 <Select>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select feedback type" />
+                    <SelectValue placeholder="Pilih jenis umpan balik" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="feature">Feature Request</SelectItem>
-                      <SelectItem value="bug">Bug Report</SelectItem>
-                      <SelectItem value="general">General Feedback</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="feature">Permintaan Fitur</SelectItem>
+                      <SelectItem value="bug">Laporan Bug</SelectItem>
+                      <SelectItem value="general">Umpan Balik Umum</SelectItem>
+                      <SelectItem value="other">Lainnya</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-1">
-                <Label htmlFor="subject" className="text-sm">Subject</Label>
+                <Label htmlFor="subject" className="text-sm">Subjek</Label>
                 <Input
                   id="subject"
-                  placeholder="Brief summary of your feedback"
+                  placeholder="Ringkasan singkat umpan balik Anda"
                   className="w-full"
                 />
               </div>
               
               <div className="space-y-1">
-                <Label htmlFor="message" className="text-sm">Message</Label>
+                <Label htmlFor="message" className="text-sm">Pesan</Label>
                 <Textarea
                   id="message"
-                  placeholder="Describe your issue or suggestion in detail..."
+                  placeholder="Jelaskan masalah atau saran Anda secara detail..."
                   className="min-h-[120px] resize-y w-full"
                   required
                 />
@@ -114,14 +114,14 @@ export const Feedback = () => {
               <div className="flex items-start space-x-2 pt-2">
                 <Checkbox id="contactConsent" className="mt-1" />
                 <Label htmlFor="contactConsent" className="text-sm text-muted-foreground">
-                  I agree to be contacted regarding this feedback if needed
+                  Saya setuju untuk dihubungi terkait umpan balik ini jika diperlukan
                 </Label>
               </div>
               
               <div className="pt-2">
                 <Button type="submit" className="w-full sm:w-auto">
                   <SendHorizontal className="mr-2 h-4 w-4" />
-                  Send Feedback
+                  Kirim Umpan Balik
                 </Button>
               </div>
             </form>
@@ -136,30 +136,29 @@ export const Feedback = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Effective Feedback',
-      content: 'Provide specific details and steps to reproduce issues when reporting bugs.'
+      title: 'Umpan Balik Efektif',
+      content: 'Berikan detail spesifik dan langkah-langkah untuk mereproduksi masalah saat melaporkan bug.'
     },
     {
       type: 'info' as const,
-      title: 'Response Time',
-      content: 'Our team typically responds to feedback within 1-2 business days.'
+      title: 'Waktu Respons',
+      content: 'Tim kami biasanya merespons umpan balik dalam 1-2 hari kerja.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Getting Started', href: '/help/getting-started' },
+    { title: 'Memulai', href: '/help/getting-started' },
     { title: 'FAQ', href: '/help/faq' },
-    { title: 'Contact Support', href: '/help/contact' },
-    { title: 'User Guide', href: '/help/user-guide' }
+    { title: 'Hubungi Dukungan', href: '/help/contact' },
+    { title: 'Panduan Pengguna', href: '/help/user-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Feedback & Support"
-      description="Help us improve Statify by sharing your thoughts, suggestions, or reporting issues"
+      title="Umpan Balik & Dukungan"
+      description="Bantu kami meningkatkan Statify dengan membagikan pemikiran, saran, atau melaporkan masalah Anda"
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

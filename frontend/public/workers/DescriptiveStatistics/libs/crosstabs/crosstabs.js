@@ -1,4 +1,8 @@
-// importScripts('../utils/utils.js'); // Commented out for tests - utils.js loaded separately
+if (typeof self !== 'undefined' && typeof self.importScripts === 'function') {
+    if (typeof isNumeric === 'undefined') { 
+        importScripts('../utils/utils.js');
+    }
+}
 
 class CrosstabsCalculator {
     constructor({ variable, data, weights, options }) {
@@ -47,7 +51,8 @@ class CrosstabsCalculator {
         const colCatSet = new Set();
         
         for (let i = 0; i < this.data.length; i++) {
-            const weight = this.weights ? (this.weights[i] ?? 1) : 1;
+            const rawWeight = this.weights ? (this.weights[i] ?? 1) : 1;
+            const weight = this.#adjustCaseWeight(rawWeight);
             if (typeof weight !== 'number' || weight <= 0) continue;
 
             // Konversi data tanggal ke SPSS seconds jika diperlukan
@@ -73,8 +78,16 @@ class CrosstabsCalculator {
             }
         }
         
-        this.rowCategories = Array.from(rowCatSet).sort((a, b) => a - b);
-        this.colCategories = Array.from(colCatSet).sort((a, b) => a - b);
+        const sortValues = (arr) => {
+            return Array.from(arr).sort((a, b) => {
+                const aNum = (typeof a === 'number') ? a : (isNumeric(a) ? Number(a) : NaN);
+                const bNum = (typeof b === 'number') ? b : (isNumeric(b) ? Number(b) : NaN);
+                if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+                return String(a).localeCompare(String(b), undefined, { numeric: true });
+            });
+        };
+        this.rowCategories = sortValues(rowCatSet);
+        this.colCategories = sortValues(colCatSet);
         this.R = this.rowCategories.length;
         this.C = this.colCategories.length;
         
@@ -83,7 +96,8 @@ class CrosstabsCalculator {
         this.colTotals = Array(this.C).fill(0);
 
         for (let i = 0; i < this.data.length; i++) {
-            const weight = this.weights ? (this.weights[i] ?? 1) : 1;
+            const rawWeight = this.weights ? (this.weights[i] ?? 1) : 1;
+            const weight = this.#adjustCaseWeight(rawWeight);
             
             // Konversi data tanggal ke SPSS seconds jika diperlukan
             let processedRowValue = rowData[i];
@@ -112,7 +126,36 @@ class CrosstabsCalculator {
             }
         }
 
+        // Terapkan penyesuaian bobot non-integer pada level sel jika dipilih
+        const nonInt = (this.options && this.options.nonintegerWeights) || 'noAdjustment';
+        if (nonInt === 'roundCell' || nonInt === 'truncateCell') {
+            const adjustFn = nonInt === 'roundCell' ? Math.round : (x) => (x < 0 ? Math.ceil(x) : Math.trunc(x));
+            const newTable = this.table.map(row => row.map(v => adjustFn(v)));
+            // Hitung ulang total baris, kolom, dan grand total dari tabel yang telah disesuaikan
+            const newRowTotals = newTable.map(row => row.reduce((a, b) => a + b, 0));
+            const newColTotals = Array(this.C).fill(0);
+            for (let j = 0; j < this.C; j++) {
+                let s = 0;
+                for (let iR = 0; iR < this.R; iR++) s += newTable[iR][j];
+                newColTotals[j] = s;
+            }
+            const newW = newRowTotals.reduce((a, b) => a + b, 0);
+
+            this.table = newTable;
+            this.rowTotals = newRowTotals;
+            this.colTotals = newColTotals;
+            this.W = newW;
+            this.validWeight = newW;
+        }
+
         this.initialized = true;
+    }
+
+    #adjustCaseWeight(weight) {
+        const nonInt = (this.options && this.options.nonintegerWeights) || 'noAdjustment';
+        if (nonInt === 'roundCase') return Math.round(weight);
+        if (nonInt === 'truncateCase') return (weight < 0 ? Math.ceil(weight) : Math.trunc(weight));
+        return weight;
     }
     
     _getExpectedCount(i, j) {
@@ -122,308 +165,7 @@ class CrosstabsCalculator {
         return toSPSSFixed(expected, 1);
     }
     
-    _calculateConcordantDiscordant() {
-        if (this.memo.concordantDiscordant) return this.memo.concordantDiscordant;
-        this.#initialize();
 
-        const S = Array(this.R + 1).fill(0).map(() => Array(this.C + 1).fill(0));
-        for (let i = this.R - 1; i >= 0; i--) {
-            for (let j = this.C - 1; j >= 0; j--) {
-                S[i][j] = this.table[i][j] + S[i+1][j] + S[i][j+1] - S[i+1][j+1];
-            }
-        }
-        
-        let P = 0;
-        for (let i = 0; i < this.R; i++) {
-            for (let j = 0; j < this.C; j++) {
-                if (this.table[i][j] > 0) {
-                    P += this.table[i][j] * S[i+1][j+1];
-                }
-            }
-        }
-
-        const T = Array(this.R + 1).fill(0).map(() => Array(this.C + 1).fill(0));
-        for (let i = this.R - 1; i >= 0; i--) {
-            for (let j = 0; j < this.C; j++) {
-                 T[i][j] = this.table[i][j] + T[i+1][j] + (j > 0 ? T[i][j-1] : 0) - (j > 0 ? T[i+1][j-1] : 0);
-            }
-        }
-
-        let Q = 0;
-        for (let i = 0; i < this.R; i++) {
-            for (let j = 0; j < this.C; j++) {
-                if (this.table[i][j] > 0) {
-                    Q += this.table[i][j] * (j > 0 ? T[i+1][j-1] : 0);
-                }
-            }
-        }
-
-        const sumRowTotalsSq = this.rowTotals.reduce((sum, r_i) => sum + r_i * r_i, 0);
-        const D_r = this.W * this.W - sumRowTotalsSq;
-        
-        const sumColTotalsSq = this.colTotals.reduce((sum, c_j) => sum + c_j * c_j, 0);
-        const D_c = this.W * this.W - sumColTotalsSq;
-        
-        this.memo.concordantDiscordant = { P, Q, D_r, D_c };
-        return this.memo.concordantDiscordant;
-    }
-
-    getPearsonChiSquare() {
-        if (this.memo.pearsonChi2) return this.memo.pearsonChi2;
-        this.#initialize();
-        if (this.W === 0 || this.R < 2 || this.C < 2) return null;
-
-        let chiSquare = 0;
-        for (let i = 0; i < this.R; i++) {
-            for (let j = 0; j < this.C; j++) {
-                const observed = this.table[i][j];
-                const expected = this._getExpectedCount(i, j);
-                if (expected > 0) {
-                    chiSquare += Math.pow(observed - expected, 2) / expected;
-                }
-            }
-        }
-        
-        const df = (this.R - 1) * (this.C - 1);
-        if (df <= 0) return null;
-        
-        this.memo.pearsonChi2 = { value: chiSquare, df };
-        return this.memo.pearsonChi2;
-    }
-
-    getLikelihoodRatioChiSquare() {
-        if (this.memo.lrChi2) return this.memo.lrChi2;
-        this.#initialize();
-        if (this.W === 0 || this.R < 2 || this.C < 2) return null;
-
-        let chiSquareLR = 0;
-        for (let i = 0; i < this.R; i++) {
-            for (let j = 0; j < this.C; j++) {
-                const observed = this.table[i][j];
-                const expected = this._getExpectedCount(i, j);
-                if (observed > 0 && expected > 0) {
-                    chiSquareLR += observed * Math.log(observed / expected);
-                }
-            }
-        }
-        
-        const df = (this.R - 1) * (this.C - 1);
-        if (df <= 0) return null;
-
-        this.memo.lrChi2 = { value: 2 * chiSquareLR, df };
-        return this.memo.lrChi2;
-    }
-    
-    getPhi() {
-        const chi2 = this.getPearsonChiSquare();
-        if (!chi2 || this.W === 0) return null;
-        return Math.sqrt(chi2.value / this.W);
-    }
-    
-    getContingencyCoefficient() {
-        const chi2 = this.getPearsonChiSquare();
-        if (!chi2 || this.W === 0) return null;
-        return Math.sqrt(chi2.value / (chi2.value + this.W));
-    }
-
-    getCramersV() {
-        const chi2 = this.getPearsonChiSquare();
-        if (!chi2 || this.W === 0) return null;
-        
-        const q = Math.min(this.R, this.C);
-        if (q <= 1) return null;
-
-        return Math.sqrt(chi2.value / (this.W * (q - 1)));
-    }
-    
-    getGamma() {
-        const { P, Q } = this._calculateConcordantDiscordant();
-        const denominator = P + Q;
-        return denominator === 0 ? null : (P - Q) / denominator;
-    }
-    
-    getKendallsTauB() {
-        const { P, Q, D_r, D_c } = this._calculateConcordantDiscordant();
-        const denominator = Math.sqrt(D_r * D_c);
-        return denominator === 0 ? null : (P - Q) / denominator;
-    }
-
-    getKendallsTauC() {
-        const { P, Q } = this._calculateConcordantDiscordant();
-        const q = Math.min(this.R, this.C);
-        if (q <= 1 || this.W === 0) return null;
-        
-        const numerator = 2 * q * (P - Q);
-        const denominator = this.W * this.W * (q - 1);
-        return denominator === 0 ? null : numerator / denominator;
-    }
-    
-    getSomersD() {
-        const { P, Q, D_r, D_c } = this._calculateConcordantDiscordant();
-        return {
-            rowDependent: D_c === 0 ? null : (P - Q) / D_c,
-            colDependent: D_r === 0 ? null : (P - Q) / D_r,
-            symmetric: (D_r + D_c) === 0 ? null : (P - Q) / (0.5 * (D_r + D_c))
-        };
-    }
-    
-    getLambda() {
-        if (this.memo.lambda) return this.memo.lambda;
-        this.#initialize();
-        if(this.W === 0) return { colDependent: null, rowDependent: null, symmetric: null };
-
-        let sum_f_im = 0;
-        for (let i = 0; i < this.R; i++) {
-             if(this.table[i].length > 0) sum_f_im += Math.max(...this.table[i]);
-        }
-        const c_m = this.colTotals.length > 0 ? Math.max(...this.colTotals) : 0;
-        const lambda_Y_given_X = (this.W - c_m) === 0 ? 0 : (sum_f_im - c_m) / (this.W - c_m);
-
-        let sum_f_mj = 0;
-        for (let j = 0; j < this.C; j++) {
-            let maxInCol = 0;
-            for (let i = 0; i < this.R; i++) {
-                if(this.table[i][j] > maxInCol) maxInCol = this.table[i][j];
-            }
-            sum_f_mj += maxInCol;
-        }
-        const r_m = this.rowTotals.length > 0 ? Math.max(...this.rowTotals) : 0;
-        const lambda_X_given_Y = (this.W - r_m) === 0 ? 0 : (sum_f_mj - r_m) / (this.W - r_m);
-
-        const sym_num = sum_f_im + sum_f_mj - c_m - r_m;
-        const sym_den = 2 * this.W - c_m - r_m;
-        const lambda_symmetric = sym_den === 0 ? 0 : sym_num / sym_den;
-        
-        this.memo.lambda = {
-            colDependent: lambda_Y_given_X,
-            rowDependent: lambda_X_given_Y,
-            symmetric: lambda_symmetric,
-        };
-        return this.memo.lambda;
-    }
-
-    getGoodmanKruskalTau() {
-        if (this.memo.gkTau) return this.memo.gkTau;
-        this.#initialize();
-        if(this.W === 0) return { colDependent: null, rowDependent: null };
-
-        let term1_Y = 0;
-        for (let i = 0; i < this.R; i++) {
-            if (this.rowTotals[i] > 0) {
-                for (let j = 0; j < this.C; j++) {
-                    term1_Y += (this.table[i][j] * this.table[i][j]) / this.rowTotals[i];
-                }
-            }
-        }
-        const sum_cj_sq = this.colTotals.reduce((sum, cj) => sum + cj*cj, 0);
-        const tau_Y_den = this.W * this.W - sum_cj_sq;
-        const tau_Y_given_X = tau_Y_den === 0 ? 0 : (this.W * term1_Y - sum_cj_sq) / tau_Y_den;
-        
-        let term1_X = 0;
-        for (let j = 0; j < this.C; j++) {
-            if (this.colTotals[j] > 0) {
-                for (let i = 0; i < this.R; i++) {
-                    term1_X += (this.table[i][j] * this.table[i][j]) / this.colTotals[j];
-                }
-            }
-        }
-        const sum_ri_sq = this.rowTotals.reduce((sum, ri) => sum + ri*ri, 0);
-        const tau_X_den = this.W * this.W - sum_ri_sq;
-        const tau_X_given_Y = tau_X_den === 0 ? 0 : (this.W * term1_X - sum_ri_sq) / tau_X_den;
-
-        this.memo.gkTau = {
-            colDependent: tau_Y_given_X,
-            rowDependent: tau_X_given_Y,
-        };
-        return this.memo.gkTau;
-    }
-
-    getCorrelations() {
-        if (this.memo.correlations) return this.memo.correlations;
-        this.#initialize();
-
-        const rowScores = this.rowCategories.map((cat, idx) => isNumeric(cat) ? parseFloat(cat) : idx);
-        const colScores = this.colCategories.map((cat, idx) => isNumeric(cat) ? parseFloat(cat) : idx);
-
-        let sum_XYf = 0, sum_Xr = 0, sum_Yc = 0, sum_X2r = 0, sum_Y2c = 0;
-        for (let i = 0; i < this.R; i++) {
-            sum_Xr += rowScores[i] * this.rowTotals[i];
-            sum_X2r += rowScores[i] * rowScores[i] * this.rowTotals[i];
-        }
-        for (let j = 0; j < this.C; j++) {
-            sum_Yc += colScores[j] * this.colTotals[j];
-            sum_Y2c += colScores[j] * colScores[j] * this.colTotals[j];
-        }
-        for (let i = 0; i < this.R; i++) {
-            for (let j = 0; j < this.C; j++) {
-                sum_XYf += rowScores[i] * colScores[j] * this.table[i][j];
-            }
-        }
-        const cov_XY = sum_XYf - (sum_Xr * sum_Yc) / this.W;
-        const S_X = sum_X2r - (sum_Xr * sum_Xr) / this.W;
-        const S_Y = sum_Y2c - (sum_Yc * sum_Yc) / this.W;
-        const pearson_r = (S_X <= 0 || S_Y <= 0) ? null : cov_XY / Math.sqrt(S_X * S_Y);
-
-        let cum_row_total = 0;
-        const rowRankScores = this.rowTotals.map(r_i => {
-            const score = cum_row_total + (r_i + 1) / 2;
-            cum_row_total += r_i;
-            return score;
-        });
-        
-        let cum_col_total = 0;
-        const colRankScores = this.colTotals.map(c_j => {
-            const score = cum_col_total + (c_j + 1) / 2;
-            cum_col_total += c_j;
-            return score;
-        });
-
-        let spearman_sum_XYf = 0, spearman_sum_Xr = 0, spearman_sum_Yc = 0, spearman_sum_X2r = 0, spearman_sum_Y2c = 0;
-        for (let i = 0; i < this.R; i++) {
-            spearman_sum_Xr += rowRankScores[i] * this.rowTotals[i];
-            spearman_sum_X2r += rowRankScores[i] * rowRankScores[i] * this.rowTotals[i];
-        }
-        for (let j = 0; j < this.C; j++) {
-            spearman_sum_Yc += colRankScores[j] * this.colTotals[j];
-            spearman_sum_Y2c += colRankScores[j] * colRankScores[j] * this.colTotals[j];
-        }
-        for (let i = 0; i < this.R; i++) {
-            for (let j = 0; j < this.C; j++) {
-                spearman_sum_XYf += rowRankScores[i] * colRankScores[j] * this.table[i][j];
-            }
-        }
-        
-        const spearman_cov_XY = spearman_sum_XYf - (spearman_sum_Xr * spearman_sum_Yc) / this.W;
-        const spearman_S_X = spearman_sum_X2r - (spearman_sum_Xr * spearman_sum_Xr) / this.W;
-        const spearman_S_Y = spearman_sum_Y2c - (spearman_sum_Yc * spearman_sum_Yc) / this.W;
-        const spearman_rho = (spearman_S_X <= 0 || spearman_S_Y <= 0) ? null : spearman_cov_XY / Math.sqrt(spearman_S_X * spearman_S_Y);
-
-        this.memo.correlations = { pearson: pearson_r, spearman: spearman_rho };
-        return this.memo.correlations;
-    }
-    
-    getKappa() {
-        if (this.memo.kappa) return this.memo.kappa;
-        this.#initialize();
-        
-        if (this.R !== this.C || this.W === 0) return null;
-
-        let sum_diagonal_f_ii = 0;
-        for (let i = 0; i < this.R; i++) {
-            sum_diagonal_f_ii += this.table[i][i];
-        }
-
-        let sum_ri_ci = 0;
-        for (let i = 0; i < this.R; i++) {
-            sum_ri_ci += this.rowTotals[i] * this.colTotals[i];
-        }
-
-        const numerator = this.W * sum_diagonal_f_ii - sum_ri_ci;
-        const denominator = this.W * this.W - sum_ri_ci;
-
-        this.memo.kappa = denominator === 0 ? null : numerator / denominator;
-        return this.memo.kappa;
-    }
     
     getStatistics() {
         this.#initialize();
@@ -495,7 +237,7 @@ class CrosstabsCalculator {
             summary: {
                 rows: this.R,
                 cols: this.C,
-                totalCases: this.W, // Tetap disediakan untuk kompatibilitas existing UI
+                totalCases: this.W, 
                 valid: this.validWeight,
                 missing: this.missingWeight,
                 rowCategories: displayRowCategories,
@@ -505,30 +247,26 @@ class CrosstabsCalculator {
             },
             contingencyTable: this.table,
             cellStatistics: cellStats,
-            chiSquare: {
-                pearson: this.getPearsonChiSquare(),
-                likelihoodRatio: this.getLikelihoodRatioChiSquare(),
-            },
-            nominalMeasures: {
-                phi: this.getPhi(),
-                contingencyCoefficient: this.getContingencyCoefficient(),
-                cramersV: this.getCramersV(),
-            },
-            ordinalMeasures: {
-                gamma: this.getGamma(),
-                kendallsTauB: this.getKendallsTauB(),
-                kendallsTauC: this.getKendallsTauC(),
-                somersD: this.getSomersD(),
-            },
-            preMeasures: {
-                lambda: this.getLambda(),
-                goodmanKruskalTau: this.getGoodmanKruskalTau(),
-            },
-            correlations: this.getCorrelations(),
-            agreement: {
-                kappa: this.getKappa(),
-            }
         };
+    }
+
+    getPearsonChiSquare() {
+        this.#initialize();
+        const df = (this.R > 1 && this.C > 1) ? (this.R - 1) * (this.C - 1) : 0;
+        if (this.W === 0 || df === 0) {
+            return { value: 0, df };
+        }
+        let chi = 0;
+        for (let i = 0; i < this.R; i++) {
+            for (let j = 0; j < this.C; j++) {
+                const expected = (this.rowTotals[i] * this.colTotals[j]) / this.W;
+                if (expected > 0) {
+                    const diff = this.table[i][j] - expected;
+                    chi += (diff * diff) / expected;
+                }
+            }
+        }
+        return { value: chi, df };
     }
 }
 

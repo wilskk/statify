@@ -18,6 +18,7 @@ function createMockStore(variables: Variable[]) {
 
 const mockVariables: Variable[] = [
   {
+    id: 1,
     name: 'age',
     label: 'Age',
     tempId: 'temp_0',
@@ -33,6 +34,7 @@ const mockVariables: Variable[] = [
     columns: 8,
   },
   {
+    id: 2,
     name: 'height',
     label: 'Height',
     tempId: 'temp_1',

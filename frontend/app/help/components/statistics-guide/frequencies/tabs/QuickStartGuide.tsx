@@ -16,13 +16,13 @@ export const QuickStartGuide = () => (
       </div>
     </HelpCard>
 
-    <HelpCard title="Related Topics" icon={FileText} variant="feature">
+    <HelpCard title="Topik Terkait" icon={FileText} variant="feature">
       <div className="space-y-2">
-        <p className="text-sm">Learn more about:</p>
+        <p className="text-sm">Pelajari lebih lanjut tentang:</p>
         <ul className="text-sm space-y-1 list-disc list-inside">
-          <li>Descriptive Statistics for more advanced analysis</li>
-          <li>Cross Tabulation for relationship analysis</li>
-          <li>Data Exploration for comprehensive data understanding</li>
+          <li>Statistik Deskriptif untuk analisis yang lebih mendalam</li>
+          <li>Tabulasi Silang untuk analisis hubungan</li>
+          <li>Eksplorasi Data untuk pemahaman data yang komprehensif</li>
         </ul>
       </div>
     </HelpCard>

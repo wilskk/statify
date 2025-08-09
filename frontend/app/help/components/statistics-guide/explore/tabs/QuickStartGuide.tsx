@@ -4,7 +4,7 @@ import { Zap } from 'lucide-react';
 
 export const QuickStartGuide = () => (
   <div className="space-y-6">
-    <HelpCard title="Quick Start Guide" icon={Zap} variant="feature">
+    <HelpCard title="Panduan Cepat" icon={Zap} variant="feature">
       <div className="space-y-4 mt-4">
         <HelpStep 
           number={1} 
@@ -45,27 +45,27 @@ export const QuickStartGuide = () => (
     </HelpCard>
 
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+      <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
         <h3 className="font-medium text-slate-800 dark:text-slate-200 mb-3">Skenario Umum</h3>
         <div className="space-y-3 text-sm">
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+          <div className="p-3 bg-white dark:bg-slate-900 rounded border border-blue-200 dark:border-blue-800">
             <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">Exploratory Data Analysis</p>
             <p className="text-blue-700 dark:text-blue-300">Gunakan semua opsi statistik dan plot untuk memahami data secara komprehensif</p>
           </div>
           
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded border border-emerald-200 dark:border-emerald-800">
+          <div className="p-3 bg-white dark:bg-slate-900 rounded border border-emerald-200 dark:border-emerald-800">
             <p className="font-medium text-emerald-800 dark:text-emerald-200 mb-1">Outlier Detection</p>
             <p className="text-emerald-700 dark:text-emerald-300">Aktifkan boxplots dan robust statistics untuk mengidentifikasi outlier</p>
           </div>
           
-          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
+          <div className="p-3 bg-white dark:bg-slate-900 rounded border border-purple-200 dark:border-purple-800">
             <p className="font-medium text-purple-800 dark:text-purple-200 mb-1">Normality Testing</p>
             <p className="text-purple-700 dark:text-purple-300">Gunakan Q-Q plots dan normality tests untuk menguji distribusi normal</p>
           </div>
         </div>
       </div>
 
-      <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+      <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
         <h3 className="font-medium text-slate-800 dark:text-slate-200 mb-3">Tips Praktis</h3>
         <div className="space-y-2 text-sm">
           <div className="flex items-start gap-2">
@@ -121,7 +121,7 @@ export const QuickStartGuide = () => (
       </div>
     </HelpAlert>
 
-    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
       <h3 className="font-medium text-slate-800 dark:text-slate-200 mb-3">Troubleshooting Umum</h3>
       <div className="space-y-3 text-sm">
         <div className="flex gap-3">

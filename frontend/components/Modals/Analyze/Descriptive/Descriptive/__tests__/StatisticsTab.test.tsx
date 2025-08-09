@@ -6,12 +6,12 @@ import { DescriptiveStatisticsOptions } from '../types';
 // Mock Checkbox, RadioGroup, etc to simple HTML inputs
 jest.mock('@/components/ui/checkbox', () => ({
   __esModule: true,
-  Checkbox: ({ id, checked, onCheckedChange }: any) => (
+  Checkbox: (props: any) => (
     <input
       type="checkbox"
-      data-testid={id}
-      checked={checked}
-      onClick={() => onCheckedChange?.(!checked)}
+      data-testid={props['data-testid'] ?? props.id}
+      checked={props.checked}
+      onClick={() => props.onCheckedChange?.(!props.checked)}
       readOnly
     />
   ),
@@ -19,13 +19,20 @@ jest.mock('@/components/ui/checkbox', () => ({
 
 jest.mock('@/components/ui/radio-group', () => {
   /* eslint-disable react/prop-types */
+  let handler: ((val: string) => void) | undefined;
   return {
     __esModule: true,
-    RadioGroup: ({ children, onValueChange }: any) => (
-      <div>{React.Children.map(children, (child: any) => React.cloneElement(child, { onValueChange }))}</div>
-    ),
-    RadioGroupItem: ({ id, value, onValueChange }: any) => (
-      <input type="radio" data-testid={id} value={value} onClick={() => onValueChange?.(value)} />
+    RadioGroup: ({ children, onValueChange }: any) => {
+      handler = onValueChange;
+      return <div>{children}</div>;
+    },
+    RadioGroupItem: (props: any) => (
+      <input
+        type="radio"
+        data-testid={props['data-testid'] ?? props.id}
+        value={props.value}
+        onClick={() => handler?.(props.value)}
+      />
     ),
   };
 });
@@ -59,12 +66,12 @@ describe('StatisticsTab component', () => {
     );
 
     // Toggle mean checkbox
-    const meanCheckbox = screen.getByTestId('mean');
+    const meanCheckbox = screen.getByTestId('statistics-mean');
     fireEvent.click(meanCheckbox);
     expect(updateStatistic).toHaveBeenCalledWith('mean', true);
 
     // Change display order through radio item
-    const alphabeticRadio = screen.getByTestId('alphabetic');
+    const alphabeticRadio = screen.getByTestId('display-order-alphabetic');
     fireEvent.click(alphabeticRadio);
     expect(setDisplayOrder).toHaveBeenCalledWith('alphabetic');
   });

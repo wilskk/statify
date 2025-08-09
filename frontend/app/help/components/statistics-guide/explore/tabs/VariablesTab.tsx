@@ -42,7 +42,7 @@ export const VariablesTab = () => (
       </div>
     </HelpCard>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
           <Calculator className="w-4 h-4 text-slate-600 dark:text-slate-400" />
@@ -51,7 +51,7 @@ export const VariablesTab = () => (
       </div>
       <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+          <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
             <div className="flex items-center gap-2 mb-3">
               <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
               <h4 className="font-medium text-slate-800 dark:text-slate-200">✓ Variabel Dependent (Numerik)</h4>
@@ -63,7 +63,7 @@ export const VariablesTab = () => (
               <li>• Discrete numeric (jumlah anak, skor)</li>
             </ul>
           </div>
-          <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+          <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
             <div className="flex items-center gap-2 mb-3">
               <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
               <h4 className="font-medium text-slate-800 dark:text-slate-200">✓ Variabel Factor (Kategorikal)</h4>
@@ -79,7 +79,7 @@ export const VariablesTab = () => (
       </div>
     </div>
 
-    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-blue-200 dark:border-blue-800">
       <div className="flex items-start gap-3">
         <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
           <span className="text-white text-xs font-bold">💡</span>
@@ -96,7 +96,7 @@ export const VariablesTab = () => (
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
           <HelpCircle className="w-4 h-4 text-slate-600 dark:text-slate-400" />
@@ -104,7 +104,7 @@ export const VariablesTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Penanganan Data Khusus</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-600">
           <h4 className="font-medium text-sm text-slate-800 dark:text-slate-200 mb-2">Missing Values</h4>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Sistem akan otomatis:</p>
           <ul className="text-sm space-y-1 ml-4 text-slate-600 dark:text-slate-400">
@@ -114,7 +114,7 @@ export const VariablesTab = () => (
             <li>• Memberikan peringatan jika missing &gt; 20%</li>
           </ul>
         </div>
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-600">
           <h4 className="font-medium text-sm text-slate-800 dark:text-slate-200 mb-2">Outliers dan Extreme Values</h4>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Analisis Explore akan:</p>
           <ul className="text-sm space-y-1 ml-4 text-slate-600 dark:text-slate-400">

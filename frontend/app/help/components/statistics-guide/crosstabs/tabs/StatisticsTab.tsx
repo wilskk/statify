@@ -1,10 +1,12 @@
 import React from 'react';
 import { HelpCard, HelpAlert } from '@/app/help/ui/HelpLayout';
 import { Calculator, TrendingUp, Target, BarChart3 } from 'lucide-react';
+import 'katex/dist/katex.min.css';
+import { BlockMath, InlineMath } from 'react-katex';
 
 export const StatisticsTab = () => (
   <div className="space-y-6">
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
           <Calculator className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -12,22 +14,25 @@ export const StatisticsTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Uji Chi-Square</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Chi-Square Test of Independence</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
-            χ² = Σ((Oᵢⱼ - Eᵢⱼ)² / Eᵢⱼ)
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <BlockMath math={'\\chi^2 = \\sum \\frac{(O_{ij} - E_{ij})^2}{E_{ij}}'} />
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
             <p><strong>H₀:</strong> Kedua variabel independen (tidak ada hubungan)</p>
             <p><strong>H₁:</strong> Ada hubungan antara kedua variabel</p>
-            <p><strong>df:</strong> (jumlah baris - 1) × (jumlah kolom - 1)</p>
+            <p>
+              <strong>df:</strong>{' '}
+              <InlineMath math={'(r-1)(c-1)'} />
+            </p>
           </div>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Interpretasi Hasil</h4>
@@ -39,7 +44,7 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
             <h4 className="font-medium text-amber-800 dark:text-amber-200">Asumsi Chi-Square</h4>
@@ -54,7 +59,7 @@ export const StatisticsTab = () => (
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
           <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -62,13 +67,13 @@ export const StatisticsTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Ukuran Asosiasi</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Cramer&apos;s V</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
-            V = √(χ² / (n × min(r-1, c-1)))
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <BlockMath math={'V = \\sqrt{ \\dfrac{ \\chi^2 }{ n \\cdot \\min(r-1, \\; c-1) } }'} />
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
             <p><strong>Rentang:</strong> 0 - 1 (0 = tidak ada asosiasi, 1 = asosiasi sempurna)</p>
@@ -77,13 +82,13 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Phi Coefficient (φ)</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
-            φ = √(χ² / n)
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <BlockMath math={'\\varphi = \\sqrt{ \\dfrac{ \\chi^2 }{ n } }'} />
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
             <p><strong>Rentang:</strong> 0 - 1 untuk tabel 2×2</p>
@@ -92,13 +97,13 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Contingency Coefficient (C)</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
-            C = √(χ² / (χ² + n))
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <BlockMath math={'C = \\sqrt{ \\dfrac{ \\chi^2 }{ \\chi^2 + n } }'} />
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
             <p><strong>Rentang:</strong> 0 - tidak mencapai 1 (maksimum tergantung ukuran tabel)</p>
@@ -107,13 +112,13 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-red-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Lambda (λ)</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
-            λ = (E₁ + E₂ - E₀) / (2n - E₀)
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <BlockMath math={'\\lambda = \\dfrac{E_1 + E_2 - E_0}{2n - E_0}'} />
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
             <p><strong>Interpretasi:</strong> Proportional reduction in error (PRE)</p>
@@ -124,7 +129,7 @@ export const StatisticsTab = () => (
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900 rounded-lg flex items-center justify-center">
           <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -132,7 +137,7 @@ export const StatisticsTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Uji Alternatif</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Fisher&apos;s Exact Test</h4>
@@ -145,13 +150,13 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Likelihood Ratio Chi-Square</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border text-sm mb-2 text-slate-700 dark:text-slate-300">
-            G² = 2 × Σ(Oᵢⱼ × ln(Oᵢⱼ / Eᵢⱼ))
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <BlockMath math={'G^2 = 2 \\sum O_{ij} \\ln \\left( \\dfrac{O_{ij}}{E_{ij}} \\right)'} />
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
             <p><strong>Kegunaan:</strong> Alternatif untuk Chi-Square klasik</p>
@@ -160,7 +165,7 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Linear-by-Linear Association</h4>

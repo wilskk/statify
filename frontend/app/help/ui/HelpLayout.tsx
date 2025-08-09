@@ -127,9 +127,9 @@ export const HelpCard: React.FC<HelpCardProps> = ({
   className
 }) => {
   const cardVariants = {
-    default: "border-border/50 shadow-sm",
-    feature: "border-primary/20 bg-primary/5 shadow-sm",
-    step: "border-blue-200/50 bg-blue-50/30 shadow-sm dark:border-blue-800/50 dark:bg-blue-950/30"
+    default: "border-border/50 shadow-sm bg-white dark:bg-slate-900",
+    feature: "border-primary/50 bg-white dark:bg-slate-900 shadow-sm",
+    step: "border-blue-500/50 bg-white dark:bg-slate-900 shadow-sm"
   };
 
   return (
@@ -171,11 +171,11 @@ export const HelpAlert: React.FC<HelpAlertProps> = ({
   className
 }) => {
   const alertConfig = {
-    info: { icon: Info, className: "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100" },
-    warning: { icon: AlertTriangle, className: "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-100" },
-    success: { icon: CheckCircle, className: "border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-100" },
-    error: { icon: XCircle, className: "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100" },
-    tip: { icon: Lightbulb, className: "border-purple-200 bg-purple-50 text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-100" }
+    info: { icon: Info, className: "border-blue-500 bg-white text-slate-900 dark:border-blue-400 dark:bg-slate-900 dark:text-slate-100" },
+    warning: { icon: AlertTriangle, className: "border-yellow-500 bg-white text-slate-900 dark:border-yellow-400 dark:bg-slate-900 dark:text-slate-100" },
+    success: { icon: CheckCircle, className: "border-green-500 bg-white text-slate-900 dark:border-green-400 dark:bg-slate-900 dark:text-slate-100" },
+    error: { icon: XCircle, className: "border-red-500 bg-white text-slate-900 dark:border-red-400 dark:bg-slate-900 dark:text-slate-100" },
+    tip: { icon: Lightbulb, className: "border-purple-500 bg-white text-slate-900 dark:border-purple-400 dark:bg-slate-900 dark:text-slate-100" }
   };
 
   const config = alertConfig[variant];
@@ -202,6 +202,7 @@ interface HelpStepProps {
   description?: string;
   children?: React.ReactNode;
   className?: string;
+  colorClass?: string;
 }
 
 export const HelpStep: React.FC<HelpStepProps> = ({
@@ -209,12 +210,16 @@ export const HelpStep: React.FC<HelpStepProps> = ({
   title,
   description,
   children,
-  className
+  className,
+  colorClass
 }) => {
   return (
     <div className={cn("flex gap-4", className)}>
       <div className="flex-shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+        <div className={cn(
+          "flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-medium transition-colors duration-200",
+          colorClass || "bg-primary text-primary-foreground"
+        )}>
           {number}
         </div>
       </div>
