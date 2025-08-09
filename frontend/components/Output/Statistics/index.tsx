@@ -31,8 +31,8 @@ export const StatisticsComponents: StatisticsComponentsRegistry = {
   // Add NonautocorrelationTest component
   'NonautocorrelationTest': NonautocorrelationTest,
   
-  // Add MulticollinearityTest component
-  'MulticollinearityTest': MulticollinearityTest,
+  // Add MulticollinearityChecking component
+  'MulticollinearityChecking': MulticollinearityTest,
   
   // Add more components as they are created
   // 'MulticollinearityTest': MulticollinearityTest,

@@ -41,12 +41,12 @@ const MulticollinearityTest: React.FC<MulticollinearityTestProps> = ({ data }) =
     const result: TestResult = parsedData.results || parsedData;
     
     if (!result || typeof result !== 'object' || !('correlationMatrix' in result) || !('vif' in result)) {
-      console.error('Invalid multicollinearity test data:', result);
+      console.error('Invalid multicollinearity checking data:', result);
       return (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            Invalid multicollinearity test data. Please try running the test again.
+            Invalid multicollinearity checking data. Please try running the checking again.
           </AlertDescription>
         </Alert>
       );
@@ -177,12 +177,12 @@ const MulticollinearityTest: React.FC<MulticollinearityTestProps> = ({ data }) =
       </div>
     );
   } catch (error) {
-    console.error('Error rendering multicollinearity test:', error);
+    console.error('Error rendering multicollinearity checking:', error);
     return (
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          Failed to parse multicollinearity test results.
+          Failed to parse multicollinearity checking results.
           {error instanceof Error ? ` ${error.message}` : ''}
         </AlertDescription>
       </Alert>

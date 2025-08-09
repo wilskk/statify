@@ -53,7 +53,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
     const [homoscedasticityTestSuccess, setHomoscedasticityTestSuccess] =
         useState(false);
 
-    // Add states for multicollinearity test
+    // Add states for multicollinearity checking
     const [isTestingMulticollinearity, setIsTestingMulticollinearity] =
         useState(false);
     const [multicollinearityTestError, setMulticollinearityTestError] =
@@ -624,7 +624,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
                 );
             }
 
-            console.log("Starting multicollinearity test with data:", {
+            console.log("Starting multicollinearity checking with data:", {
                 dataLength: data.length,
                 independentVars: selectedIndependentVariables.map(
                     (v) => v.name
@@ -696,7 +696,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
 
             const analytic = {
                 title: "Linear Regression Assumption Tests",
-                note: "Multicollinearity Test",
+                note: "Multicollinearity Checking",
             };
             const analyticId = await addAnalytic(logId, analytic);
 
@@ -723,19 +723,19 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
 
                 if (response.error) {
                     console.error(
-                        "Multicollinearity test worker error:",
+                        "Multicollinearity checking worker error:",
                         response.error
                     );
                     setMulticollinearityTestError(response.error);
                 } else {
-                    console.log("Multicollinearity test results:", response);
+                    console.log("Multicollinearity checking results:", response);
 
                     // Save the results to statistics store
                     const multicollinearityStat = {
-                        title: "Multicollinearity Test Results",
+                        title: "Multicollinearity Checking Results",
                         output_data:
                             response.output_data || JSON.stringify(response),
-                        components: "MulticollinearityTest",
+                        components: "MulticollinearityChecking",
                         description:
                             response.interpretation ||
                             "Tests for correlation among independent variables",
@@ -750,13 +750,13 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
             };
 
             multicollinearityWorker.onerror = (error: ErrorEvent) => {
-                console.error("Multicollinearity test worker error:", error);
+                console.error("Multicollinearity checking worker error:", error);
                 setMulticollinearityTestError(error.message);
                 setIsTestingMulticollinearity(false);
                 multicollinearityWorker.terminate();
             };
         } catch (error) {
-            console.error("Error in multicollinearity test:", error);
+            console.error("Error in multicollinearity checking:", error);
             setMulticollinearityTestError(
                 error instanceof Error ? error.message : "Unknown error"
             );
@@ -1206,7 +1206,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
 
             {multicollinearityTestError && (
                 <Alert variant="destructive">
-                    <AlertTitle>Multicollinearity Test Error</AlertTitle>
+                    <AlertTitle>Multicollinearity Checking Error</AlertTitle>
                     <AlertDescription>
                         {multicollinearityTestError}
                     </AlertDescription>

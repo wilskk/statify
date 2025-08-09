@@ -1,9 +1,9 @@
-// Worker for multicollinearity test in linear regression
+// Worker for multicollinearity checking in linear regression
 self.onmessage = function(e) {
   try {
     const { independentData, independentVariableInfos } = e.data;
     
-    console.log("Multicollinearity test worker received data:", {
+    console.log("Multicollinearity checking worker received data:", {
       hasIndependent: !!independentData,
       hasVariableInfo: !!independentVariableInfos,
       independentLength: independentData?.length || 0,
@@ -17,16 +17,16 @@ self.onmessage = function(e) {
     }
     
     if (independentData.length === 0) {
-      self.postMessage({ error: "Empty data array provided for multicollinearity test" });
+      self.postMessage({ error: "Empty data array provided for multicollinearity checking" });
       return;
     }
 
     if (independentData.length < 2) {
-      self.postMessage({ error: "Multicollinearity test requires at least two independent variables" });
+      self.postMessage({ error: "Multicollinearity checking requires at least two independent variables" });
       return;
     }
     
-    // For multicollinearity test, we need to:
+    // For multicollinearity checking, we need to:
     // 1. Compute correlation matrix between independent variables
     // 2. Compute Variance Inflation Factors (VIF)
     // 3. Check for high correlations or high VIF values
@@ -127,7 +127,7 @@ self.onmessage = function(e) {
     
     // Prepare final result
     const result = {
-      title: "Multicollinearity Test Results",
+      title: "Multicollinearity Checking Results",
       description: interpretationText,
       hasMulticollinearity: hasMulticollinearity,
       correlationMatrix: formattedResults.correlationMatrix,
@@ -136,7 +136,7 @@ self.onmessage = function(e) {
       output_data: JSON.stringify(outputData)
     };
     
-    console.log("Multicollinearity test completed:", {
+    console.log("Multicollinearity checking completed:", {
       hasMulticollinearity,
       correlationMatrix: formattedResults.correlationMatrix,
       vif: formattedResults.vif
@@ -144,9 +144,9 @@ self.onmessage = function(e) {
     
     self.postMessage(result);
   } catch (error) {
-    console.error("Error in multicollinearity test:", error);
+    console.error("Error in multicollinearity checking:", error);
     self.postMessage({
-      error: "Error in multicollinearity test: " + (error.message || "Unknown error"),
+      error: "Error in multicollinearity checking: " + (error.message || "Unknown error"),
       stack: error.stack
     });
   }
