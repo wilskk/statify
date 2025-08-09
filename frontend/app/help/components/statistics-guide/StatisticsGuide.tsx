@@ -27,6 +27,14 @@ import {
 } from "./univariate";
 import { KMeansClustering } from "./k-means/KMeansClustering";
 
+import {
+  Autocorrelation,
+  BoxJenkinsModel,
+  Decomposition,
+  Smoothing,
+  UnitRootTest,
+} from "./time-series";
+
 export type StatisticsGuideProps = {
   section?: string;
 };
