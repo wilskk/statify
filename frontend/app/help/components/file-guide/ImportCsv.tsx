@@ -2,7 +2,7 @@
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { FileSpreadsheet, Upload, Lightbulb, BookOpen, Database } from 'lucide-react';
+import { FileSpreadsheet, Upload, Lightbulb } from 'lucide-react';
 
 export const ImportCsv = () => {
   const sections = [
@@ -20,18 +20,33 @@ export const ImportCsv = () => {
           />
           <HelpStep
             number={2}
-            title="Pilih Impor CSV"
-            description="Pilih 'Buka File CSV' dari opsi dropdown."
+            title="Pilih Import Data → CSV Data"
+            description="Klik File → Import Data → CSV Data."
           />
           <HelpStep
             number={3}
             title="Pilih File Anda"
-            description="Telusuri komputer Anda dan pilih file CSV yang ingin Anda gunakan."
+            description="Telusuri komputer Anda dan pilih file CSV (.csv) yang ingin Anda gunakan."
           />
           <HelpStep
             number={4}
-            title="Muat Data Anda"
-            description="Klik 'Buka' untuk mengimpor data Anda ke editor data Statify."
+            title="Lanjut ke Konfigurasi"
+            description="Klik 'Continue' untuk membuka layar konfigurasi impor."
+          />
+          <HelpStep
+            number={5}
+            title="Atur Opsi Impor"
+            description="Sesuaikan opsi: First line contains variable names, Remove leading/trailing spaces, Delimiter, Decimal Symbol for Numerics, dan Text Qualifier."
+          />
+          <HelpStep
+            number={6}
+            title="Tinjau Data Preview"
+            description="Periksa pratinjau data (max 100 rows) untuk memastikan pengaturan sudah benar."
+          />
+          <HelpStep
+            number={7}
+            title="Impor"
+            description="Klik tombol 'Import' untuk menyelesaikan proses impor."
           />
         </div>
       )

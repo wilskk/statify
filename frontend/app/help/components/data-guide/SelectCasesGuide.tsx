@@ -1,13 +1,13 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { Filter, Search, Settings, FileText } from 'lucide-react';
+import { Filter, Settings, FileText } from 'lucide-react';
 
 const SelectCasesGuide = () => {
   const sections = [
     {
       id: 'selection-methods',
-      title: 'Metode Seleksi',
+  title: 'Metode Seleksi (Select) ',
       description: 'Berbagai cara untuk memilih kasus dalam dataset Anda',
       icon: Filter,
       content: (
@@ -19,7 +19,7 @@ const SelectCasesGuide = () => {
             </p>
           </HelpCard>
           
-          <HelpCard title="Berdasarkan Kondisi" variant="feature">
+          <HelpCard title="Jika kondisi terpenuhi (If condition is satisfied)" variant="feature">
             <p className="text-sm mb-3">
               Buat ekspresi logis untuk memfilter kasus. Hanya kasus yang memenuhi
               kondisi Anda yang akan dipilih.
@@ -31,7 +31,7 @@ const SelectCasesGuide = () => {
             </div>
           </HelpCard>
           
-          <HelpCard title="Sampel Acak" variant="feature">
+          <HelpCard title="Sampel acak kasus (Random sample of cases)" variant="feature">
             <p className="text-sm mb-3">Pilih subset acak dari kasus:</p>
             <div className="space-y-2 text-sm">
               <div><strong>Kurang Lebih</strong>: Memilih sekitar persentase tertentu dari total kasus.</div>
@@ -39,13 +39,13 @@ const SelectCasesGuide = () => {
             </div>
           </HelpCard>
           
-          <HelpCard title="Berdasarkan Rentang" variant="feature">
+          <HelpCard title="Berdasarkan waktu atau rentang kasus (Based on time or case range)" variant="feature">
             <p className="text-sm">
               Pilih kasus berdasarkan posisi mereka dalam dataset Anda (indeks berbasis 1).
             </p>
           </HelpCard>
           
-          <HelpCard title="Gunakan Variabel Filter" variant="feature">
+          <HelpCard title="Gunakan variabel filter (Use filter variable)" variant="feature">
             <p className="text-sm">
               Gunakan variabel yang ada sebagai filter. Nilai non-nol/non-kosong akan dipilih.
             </p>
@@ -55,12 +55,12 @@ const SelectCasesGuide = () => {
     },
     {
       id: 'output-options',
-      title: 'Opsi Output',
+  title: 'Output',
       description: 'Opsi untuk menangani kasus yang tidak dipilih',
       icon: Settings,
       content: (
         <div className="space-y-4">
-          <HelpCard title="Filter Kasus yang Tidak Dipilih" variant="step">
+          <HelpCard title="Saring kasus yang tidak dipilih (Filter out unselected cases)" variant="step">
             <p className="text-sm">
               Filter diterapkan untuk menyembunyikan kasus yang tidak dipilih sementara. Variabel filter 
               (<code className="text-xs bg-gray-100 px-1 rounded">filter_$</code>) akan dibuat atau diperbarui. 
@@ -68,7 +68,7 @@ const SelectCasesGuide = () => {
             </p>
           </HelpCard>
           
-          <HelpCard title="Hapus Kasus yang Tidak Dipilih" variant="step">
+          <HelpCard title="Hapus kasus yang tidak dipilih (Delete unselected cases)" variant="step">
             <p className="text-sm">
               Kasus yang tidak dipilih akan{' '}
               <strong>dihapus secara permanen</strong> dari dataset Anda. Operasi ini
@@ -100,7 +100,7 @@ const SelectCasesGuide = () => {
             </div>
           </HelpSection>
           
-          <HelpSection title="Buat Sampel Acak">
+          <HelpSection title="Random sample">
             <p className="text-sm mb-2">
               Untuk membuat sampel acak 10%:
             </p>
@@ -111,12 +111,12 @@ const SelectCasesGuide = () => {
             </div>
           </HelpSection>
           
-          <HelpSection title="Pilih Rentang">
+      <HelpSection title="Case range">
             <p className="text-sm mb-2">
               Untuk memilih kasus 100 sampai 500:
             </p>
             <div className="bg-gray-50 p-3 rounded-lg text-sm">
-              1. Pilih "Berdasarkan... rentang"<br/>
+        1. Pilih "Based on time or case range"<br/>
               2. Masukkan "100" di "Kasus Pertama"<br/>
               3. Masukkan "500" di "Kasus Terakhir"
             </div>

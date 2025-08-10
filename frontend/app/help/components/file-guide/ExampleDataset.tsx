@@ -1,8 +1,8 @@
 /* eslint-disable react/no-unescaped-entities */
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { Database, BookOpen, Lightbulb, FileText } from 'lucide-react';
+import { HelpAlert, HelpStep } from '../../ui/HelpLayout';
+import { Database, Lightbulb } from 'lucide-react';
 
 export const ExampleDataset = () => {
   const sections = [
@@ -20,13 +20,13 @@ export const ExampleDataset = () => {
           />
           <HelpStep
             number={2}
-            title="Pilih Dataset Contoh"
-            description="Klik 'Dataset Contoh' untuk melihat daftar dataset yang tersedia."
+            title="Pilih Example Data"
+            description="Klik 'Example Data' untuk melihat daftar dataset yang tersedia (.sav)."
           />
           <HelpStep
             number={3}
             title="Pilih Dataset"
-            description="Pilih dataset yang ingin Anda gunakan dari daftar yang tersedia. Setiap dataset memiliki deskripsi singkat tentang isinya."
+            description="Pilih dataset (.sav) yang ingin Anda gunakan dari daftar yang tersedia. Setiap dataset memiliki deskripsi singkat tentang isinya."
           />
           <HelpStep
             number={4}

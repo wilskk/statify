@@ -1,11 +1,11 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { LucideIcon, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from "lucide-react";
+import { type LucideIcon, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from "lucide-react";
 
 /**
  * Base layout component untuk standardisasi desain help pages
@@ -25,7 +25,7 @@ export const HelpLayout: React.FC<HelpLayoutProps> = ({
   children,
   title,
   description,
-  category,
+  category: _,
   lastUpdated,
   className
 }) => {

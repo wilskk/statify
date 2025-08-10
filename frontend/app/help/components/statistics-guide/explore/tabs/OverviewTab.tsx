@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelpCircle, FileText, TrendingUp } from 'lucide-react';
+import { HelpCircle, FileText } from 'lucide-react';
 import { 
   IntroSection, 
   FeatureGrid, 

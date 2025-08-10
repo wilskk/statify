@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, Upload, Download, Database } from 'lucide-react';
+import { Zap, Upload, Database } from 'lucide-react';
 import { HelpCard, HelpAlert } from '../../../ui/HelpLayout';
 
 export const QuickStartGuide = () => (
@@ -17,8 +17,7 @@ export const QuickStartGuide = () => (
             Mulai dengan mengimpor data Anda:
           </p>
           <ul className="space-y-2 text-slate-600 dark:text-slate-400">
-            <li>• Klik <strong>File → Import CSV/Excel</strong></li>
-            <li>• Atau gunakan <strong>Ctrl+O</strong></li>
+            <li>• Klik <strong>File → Import Data → CSV Data/Excel</strong></li>
             <li>• Pilih file dan atur pengaturan</li>
             <li>• Klik <strong>Import</strong></li>
           </ul>

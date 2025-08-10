@@ -1,8 +1,8 @@
 /* eslint-disable react/no-unescaped-entities */
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { Download, FileSpreadsheet, Lightbulb, Settings } from 'lucide-react';
+import { HelpAlert, HelpStep } from '../../ui/HelpLayout';
+import { Download, Settings } from 'lucide-react';
 
 export const ExportCsv = () => {
   const sections = [
@@ -21,7 +21,7 @@ export const ExportCsv = () => {
           <HelpStep
             number={2}
             title="Buka Menu File"
-            description="Pergi ke menu 'File' dan pilih 'Ekspor ke CSV'."
+            description="Klik File → Export → CSV Data."
           />
           <HelpStep
             number={3}
@@ -36,7 +36,7 @@ export const ExportCsv = () => {
           <HelpStep
             number={5}
             title="Simpan Data Anda"
-            description="Klik 'Ekspor' untuk menyimpan file ke komputer Anda."
+            description="Klik 'Export' untuk menyimpan file ke komputer Anda."
           />
         </div>
       )

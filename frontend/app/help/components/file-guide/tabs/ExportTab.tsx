@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, FileSpreadsheet, Settings, Share } from 'lucide-react';
+import { Download, FileSpreadsheet, Settings } from 'lucide-react';
 import { 
   IntroSection, 
   FeatureGrid, 
@@ -47,7 +47,7 @@ export const ExportTab = () => (
       concepts={[
         {
           title: "Export ke CSV",
-          description: "Format terbaik untuk kompatibilitas maksimum. Pilih File > Export to CSV, atur separator dan format angka sesuai kebutuhan."
+          description: "Format terbaik untuk kompatibilitas maksimum. Klik File → Export → CSV Data, atur separator dan format angka sesuai kebutuhan."
         },
         {
           title: "Export ke Excel",

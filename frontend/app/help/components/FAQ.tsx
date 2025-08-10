@@ -1,8 +1,8 @@
 import React from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
-import { HelpCard, HelpAlert, HelpSection } from "../ui/HelpLayout";
-import { HelpCircle, Search, FileQuestion, FileCode, BarChart4, Clock, Save, MessageCircle, BookOpen } from "lucide-react";
+import { HelpCard, HelpAlert } from "../ui/HelpLayout";
+import { Search, FileQuestion, FileCode, BarChart4, Clock, Save, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Data FAQ khusus Statify

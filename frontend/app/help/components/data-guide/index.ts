@@ -13,6 +13,7 @@ export { default as SortCasesGuide } from './SortCasesGuide';
 export { default as SortVarsGuide } from './SortVarsGuide';
 export { default as TransposeGuide } from './TransposeGuide';
 export { default as WeightCasesGuide } from './WeightCasesGuide';
+export { default as UnusualCasesGuide } from './UnusualCasesGuide';
 
 // Export DataGuide as default for backward compatibility
 export { default } from './DataGuide';

@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { Calendar, Clock, Database, Settings } from 'lucide-react';
+import { HelpCard, HelpAlert } from '../../ui/HelpLayout';
+import { Calendar, Clock, Settings } from 'lucide-react';
 
 const DefineDateTimeGuide = () => {
   const sections = [

@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { ArrowUpDown, Database, Settings, List } from 'lucide-react';
+import { ArrowUpDown, Settings } from 'lucide-react';
 
 const SortVarsGuide = () => {
   const sections = [

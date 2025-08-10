@@ -1,45 +1,54 @@
 import React from 'react';
 import StandardizedContentLayout from '../../statistics-guide/shared/StandardizedContentLayout';
 const { IntroSection, FeatureGrid, ConceptSection } = StandardizedContentLayout;
-import { Shuffle, RotateCcw, Combine, Calculator, Filter, Database } from 'lucide-react';
+import { Shuffle, RotateCcw, Calculator, Filter } from 'lucide-react';
 
 const DataTransformationTab: React.FC = () => {
   const features = [
     {
       icon: Calculator,
       title: 'Agregasi Data',
-      description: 'Buat statistik ringkasan untuk kelompok data tertentu (rata-rata, jumlah, maksimum, dll.)',
-      link: '/help/data-guide/aggregate'
+      items: [
+        'Lokasi: Data → Aggregate',
+        'Buat statistik ringkasan per kelompok (mean, sum, max, dll.)',
+        'Gunakan variabel break untuk pengelompokan'
+      ]
     },
     {
       icon: Shuffle,
       title: 'Restrukturisasi Data',
-      description: 'Ubah format data dari wide ke long atau sebaliknya untuk kebutuhan analisis berbeda',
-      link: '/help/data-guide/restructure'
+      items: [
+        'Lokasi: Data → Restructure',
+        'Ubah format wide ↔ long sesuai kebutuhan analisis',
+        'Pastikan ID tetap konsisten'
+      ]
     },
     {
       icon: RotateCcw,
       title: 'Transpose Data',
-      description: 'Tukar baris dan kolom untuk mengubah orientasi dataset',
-      link: '/help/data-guide/transpose'
+      items: [
+        'Lokasi: Data → Transpose',
+        'Tukar baris dan kolom untuk ubah orientasi dataset',
+        'Gunakan pada tabel ringkas tertentu'
+      ]
     },
     {
       icon: Filter,
       title: 'Pilih Kasus',
-      description: 'Filter dan pilih subset data berdasarkan kriteria tertentu',
-      link: '/help/data-guide/select-cases'
+      items: [
+        'Lokasi: Data → Select Cases',
+        'Filter subset data berdasarkan kriteria',
+        'Simpan filter yang sering dipakai'
+      ]
     },
     {
-      icon: Combine,
+      icon: Filter,
       title: 'Identifikasi Duplikat',
-      description: 'Temukan dan tangani kasus duplikat dalam dataset',
-      link: '/help/data-guide/duplicate-cases'
-    },
-    {
-      icon: Database,
-      title: 'Gabung Dataset',
-      description: 'Kombinasikan multiple dataset berdasarkan kunci yang sama',
-      link: '/help/data-guide/merge'
+      items: [
+        'Lokasi: Data → Identify Duplicate Cases',
+        'Temukan dan tangani duplikat',
+        'Dokumentasikan keputusan penanganan'
+      ]
     }
   ];
 
@@ -91,23 +100,16 @@ const DataTransformationTab: React.FC = () => {
       <IntroSection
         title="Transformasi Data"
         description="Tools transformasi data memungkinkan Anda mengubah, memanipulasi, dan merestrukturisasi dataset untuk memenuhi kebutuhan analisis yang berbeda. Dari agregasi sederhana hingga restrukturisasi kompleks, semua tersedia di sini."
-        highlights={[
-          'Agregasi data untuk statistik ringkasan',
-          'Restrukturisasi format data (wide ↔ long)',
-          'Filter dan seleksi data berdasarkan kriteria',
-          'Identifikasi dan tangani duplikat'
-        ]}
       />
 
-      <FeatureGrid
-        title="Tools Transformasi"
-        description="Jelajahi berbagai tools untuk mentransformasi dan memanipulasi data Anda"
-        features={features}
-      />
+      <div>
+        <h3 className="text-lg font-semibold mb-1">Tools Transformasi</h3>
+        <p className="text-sm text-muted-foreground mb-4">Jelajahi berbagai tools untuk mentransformasi dan memanipulasi data Anda</p>
+        <FeatureGrid features={features} />
+      </div>
 
       <ConceptSection
         title="Konsep Transformasi Data"
-        description="Pahami berbagai teknik dan strategi transformasi data"
         concepts={concepts}
       />
     </div>

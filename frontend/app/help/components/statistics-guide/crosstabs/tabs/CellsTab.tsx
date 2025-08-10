@@ -1,6 +1,6 @@
 import React from 'react';
 import { HelpCard, HelpAlert, HelpStep } from '@/app/help/ui/HelpLayout';
-import { Table, Calculator, BarChart3, Eye, EyeOff } from 'lucide-react';
+import { Table, Calculator, BarChart3, EyeOff } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
 

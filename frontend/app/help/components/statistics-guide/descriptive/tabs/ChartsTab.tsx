@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelpCard, HelpAlert } from '@/app/help/ui/HelpLayout';
+import { HelpAlert } from '@/app/help/ui/HelpLayout';
 import { BarChart3, Info } from 'lucide-react';
 
 export const ChartsTab = () => (

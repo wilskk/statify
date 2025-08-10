@@ -2,7 +2,7 @@
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { Clipboard, Copy, Upload, Zap, Database } from 'lucide-react';
+import { Clipboard, Copy, Zap } from 'lucide-react';
 
 export const ImportClipboard = () => {
   const sections = [
@@ -16,7 +16,7 @@ export const ImportClipboard = () => {
           <HelpStep
             number={1}
             title="Salin Data Anda"
-            description="Salin data dari sumber mana pun (Excel, Google Sheets, dll.) menggunakan Ctrl+C."
+            description="Salin data dari sumber mana pun (Excel, Google Sheets, dll.) menggunakan fitur Salin pada aplikasi tersebut."
           />
           <HelpStep
             number={2}
@@ -25,8 +25,8 @@ export const ImportClipboard = () => {
           />
           <HelpStep
             number={3}
-            title="Pilih Impor Clipboard"
-            description="Pilih 'Impor dari Clipboard' dari dropdown."
+            title="Pilih Import Data → From Clipboard"
+            description="Klik File → Import Data → From Clipboard."
           />
           <HelpStep
             number={4}

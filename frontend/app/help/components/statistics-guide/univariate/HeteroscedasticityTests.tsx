@@ -6,7 +6,6 @@ import {
     Calculator,
     BarChart3,
     TrendingUp,
-    AlertTriangle,
     TestTube,
 } from "lucide-react";
 

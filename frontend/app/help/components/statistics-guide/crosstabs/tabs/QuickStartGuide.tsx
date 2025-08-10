@@ -1,6 +1,6 @@
 import React from 'react';
 import { HelpCard, HelpAlert, HelpStep } from '@/app/help/ui/HelpLayout';
-import { Zap, Target, TrendingUp } from 'lucide-react';
+import { Zap, Target } from 'lucide-react';
 
 export const QuickStartGuide = () => (
   <div className="space-y-6">

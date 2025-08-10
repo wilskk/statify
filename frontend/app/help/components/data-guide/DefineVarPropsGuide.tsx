@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { Settings, Database, FileText } from 'lucide-react';
+import { Settings, FileText } from 'lucide-react';
 
 const DefineVarPropsGuide = () => {
   const sections = [

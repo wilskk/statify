@@ -17,7 +17,7 @@ import {
   ArrowLeft 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SectionItem } from "./HelpContent";
+import { type SectionItem } from "./HelpContent";
 
 interface HelpSidebarProps {
   sections: SectionItem[];
@@ -53,7 +53,7 @@ const getSectionIcon = (key: string) => {
 };
 
 export const HelpSidebar: React.FC<HelpSidebarProps> = ({
-  sections,
+  sections: _sections,
   selectedSectionKey,
   activeChildKey,
   onSectionSelect,
@@ -67,9 +67,11 @@ export const HelpSidebar: React.FC<HelpSidebarProps> = ({
   const renderSidebarItems = (items: SectionItem[], level = 0): React.JSX.Element[] => {
     return items.map(item => {
       const isSelected = item.key === selectedSectionKey;
-      const isActiveChild = item.key === activeChildKey;
-      const isExpanded = expandedKeys.has(item.key);
-      const hasChildren = item.children && item.children.length > 0;
+  // Consider leaf items (no children) active when either explicitly selected as a child
+  // or when they are the selected section (e.g., top-level leaf like "Getting Started").
+  const hasChildren = item.children && item.children.length > 0;
+  const isActiveChild = item.key === activeChildKey || (!hasChildren && isSelected);
+  const isExpanded = expandedKeys.has(item.key);
 
       if (hasChildren && level === 0) {
         // Top-level items with children - compact modern design
@@ -124,9 +126,9 @@ export const HelpSidebar: React.FC<HelpSidebarProps> = ({
               </CardContent>
             </Card>
             
-            {isExpanded && (
+            {isExpanded && item.children && (
               <div className="ml-3 space-y-1 animate-fadeIn">
-                {renderSidebarItems(item.children!, level + 1)}
+                {renderSidebarItems(item.children, level + 1)}
               </div>
             )}
           </div>

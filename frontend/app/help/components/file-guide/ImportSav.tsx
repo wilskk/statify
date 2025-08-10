@@ -2,7 +2,7 @@
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { FileText, Upload, Lightbulb, BookOpen, Database } from 'lucide-react';
+import { Upload, Lightbulb, Database } from 'lucide-react';
 
 export const ImportSav = () => {
   const sections = [
@@ -20,8 +20,8 @@ export const ImportSav = () => {
           />
           <HelpStep
             number={2}
-            title="Pilih Impor SPSS"
-            description="Pilih 'Buka File .sav' dari opsi dropdown."
+            title="Pilih Open SAV"
+            description="Klik File → Open SAV."
           />
           <HelpStep
             number={3}

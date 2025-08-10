@@ -1,8 +1,8 @@
 /* eslint-disable react/no-unescaped-entities */
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { Download, FileSpreadsheet, Lightbulb, Settings, Tags } from 'lucide-react';
+import { HelpAlert, HelpStep } from '../../ui/HelpLayout';
+import { Download, Settings, Tags } from 'lucide-react';
 
 export const ExportExcel = () => {
   const sections = [
@@ -21,7 +21,7 @@ export const ExportExcel = () => {
           <HelpStep
             number={2}
             title="Buka Menu File"
-            description="Pergi ke menu 'File' dan pilih 'Ekspor ke Excel'."
+            description="Klik File → Export → Excel."
           />
           <HelpStep
             number={3}
@@ -36,7 +36,7 @@ export const ExportExcel = () => {
           <HelpStep
             number={5}
             title="Buat File Anda"
-            description="Klik 'Ekspor' untuk membuat dan mengunduh file .xlsx Anda."
+            description="Klik 'Export' untuk membuat dan mengunduh file .xlsx Anda."
           />
         </div>
       )

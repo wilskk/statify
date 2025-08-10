@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { RotateCcw, ArrowUpDown, Database, Settings, Grid } from 'lucide-react';
+import { ArrowUpDown, Database, Settings } from 'lucide-react';
 
 const TransposeGuide = () => {
   const sections = [

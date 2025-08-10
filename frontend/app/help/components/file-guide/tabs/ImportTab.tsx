@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, FileSpreadsheet, Database, Clipboard } from 'lucide-react';
+import { Upload, FileSpreadsheet, Database } from 'lucide-react';
 import { 
   IntroSection, 
   FeatureGrid, 
@@ -47,19 +47,19 @@ export const ImportTab = () => (
       concepts={[
         {
           title: "CSV Files",
-          description: "Format paling umum dan kompatibel. Pilih File > Import CSV, lalu pilih file dan atur pengaturan separator."
+          description: "Format paling umum dan kompatibel. Klik File → Import Data → CSV Data, lalu pilih file dan atur pengaturan."
         },
         {
           title: "Excel Files",
-          description: "Import langsung dari spreadsheet Excel. Pilih File > Import Excel, pilih worksheet yang diinginkan."
+          description: "Import langsung dari spreadsheet Excel. Klik File → Import Data → Excel, lalu pilih worksheet yang diinginkan."
         },
         {
           title: "SPSS Files",
-          description: "Import data dari SPSS dengan metadata lengkap. Pilih File > Import SPSS untuk mempertahankan label dan format."
+          description: "Import data dari SPSS dengan metadata lengkap. Klik File → Open SAV untuk mempertahankan label dan format."
         },
         {
           title: "Clipboard Data",
-          description: "Copy data dari aplikasi lain dan paste langsung ke Statify. Gunakan Ctrl+V atau File > Import from Clipboard."
+          description: "Copy data dari aplikasi lain dan paste langsung ke Statify melalui menu: File → Import Data → From Clipboard."
         }
       ]}
     />

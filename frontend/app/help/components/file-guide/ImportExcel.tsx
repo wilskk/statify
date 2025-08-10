@@ -2,7 +2,7 @@
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { FileSpreadsheet, Upload, Lightbulb, BookOpen, Database, Layers } from 'lucide-react';
+import { FileSpreadsheet, Upload, Lightbulb, Layers } from 'lucide-react';
 
 export const ImportExcel = () => {
   const sections = [
@@ -20,8 +20,8 @@ export const ImportExcel = () => {
           />
           <HelpStep
             number={2}
-            title="Pilih Impor Excel"
-            description="Pilih 'Buka File Excel' dari opsi dropdown."
+            title="Pilih Import Data → Excel"
+            description="Klik File → Import Data → Excel."
           />
           <HelpStep
             number={3}
@@ -30,13 +30,28 @@ export const ImportExcel = () => {
           />
           <HelpStep
             number={4}
-            title="Pilih Sheet Anda"
-            description="Jika file Excel Anda memiliki beberapa sheet, pilih yang mana yang akan diimpor."
+            title="Lanjut ke Konfigurasi"
+            description="Klik 'Continue' untuk membuka konfigurasi impor."
           />
           <HelpStep
             number={5}
-            title="Muat Data Anda"
-            description="Klik 'Buka' untuk mengimpor data Anda ke editor data Statify."
+            title="Pilih Worksheet"
+            description="Pilih worksheet yang akan diimpor."
+          />
+          <HelpStep
+            number={6}
+            title="Atur Opsi Impor"
+            description="Sesuaikan opsi: First line contains variable names, Read hidden rows/columns, Range, dan perlakuan sel kosong."
+          />
+          <HelpStep
+            number={7}
+            title="Tinjau Data Preview"
+            description="Periksa pratinjau data untuk memastikan pengaturan sudah benar."
+          />
+          <HelpStep
+            number={8}
+            title="Impor"
+            description="Klik tombol 'Import' untuk menyelesaikan proses impor."
           />
         </div>
       )

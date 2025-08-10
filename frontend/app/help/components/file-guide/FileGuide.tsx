@@ -1,10 +1,20 @@
 import React from 'react';
-import { Upload, Download, Database, FileText } from 'lucide-react';
+import { Upload, Download, Database } from 'lucide-react';
 import StandardizedGuideLayout from '../statistics-guide/shared/StandardizedGuideLayout';
 import { ImportTab } from './tabs/ImportTab';
 import { ExportTab } from './tabs/ExportTab';
 import { DataTab } from './tabs/DataTab';
 import { QuickStartGuide } from './tabs/QuickStartGuide';
+import {
+  ImportSav,
+  ImportCsv,
+  ImportExcel,
+  ImportClipboard,
+  ExportCsv,
+  ExportExcel,
+  ExampleDataset,
+  Print,
+} from './index';
 
 interface FileGuideProps {
   section?: string;
@@ -13,16 +23,6 @@ interface FileGuideProps {
 export const FileGuide: React.FC<FileGuideProps> = ({ section }) => {
   // If section is provided, render the specific component for backward compatibility
   if (section) {
-    const {
-      ImportSav,
-      ImportCsv,
-      ImportExcel,
-      ImportClipboard,
-      ExportCsv,
-      ExportExcel,
-      ExampleDataset,
-      Print,
-    } = require('./index');
 
     switch (section) {
       case "import-sav":

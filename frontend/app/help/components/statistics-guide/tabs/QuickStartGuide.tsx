@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, BarChart3, TrendingUp, Target, Play, Settings, FileText } from 'lucide-react';
+import { BarChart3, Target, Play, Settings, FileText } from 'lucide-react';
 import { 
   IntroSection, 
   FeatureGrid, 

@@ -29,11 +29,17 @@ const DuplicateCasesGuide = () => {
     },
     {
       id: 'specifications',
-      title: 'Fitur & Opsi',
+  title: 'Fitur & Opsi',
       description: 'Fitur dan opsi yang tersedia',
       icon: Search,
       content: (
         <div className="space-y-4">
+          <HelpCard title="Tab Variabel (Variables)" variant="feature">
+            <ul className="list-disc list-inside text-sm space-y-1">
+              <li><strong>Define matching cases by</strong>: daftar variabel kunci untuk mendeteksi grup duplikat.</li>
+              <li><strong>Sort within matching groups by</strong>: variabel pengurutan dalam grup; pilih Ascending/Descending.</li>
+            </ul>
+          </HelpCard>
           <HelpCard title="Variabel Indikator Baru" variant="feature">
             <p className="text-sm mb-3">
               Fitur ini dapat membuat dua variabel baru untuk membantu analisis duplikat:
@@ -56,23 +62,23 @@ const DuplicateCasesGuide = () => {
             </HelpSection>
           </HelpCard>
           
-          <HelpCard title="Opsi Manajemen & Tampilan" variant="feature">
+          <HelpCard title="Tab Opsi (Options) — File Management & Output" variant="feature">
             <div className="space-y-3">
               <HelpSection title="1. Pindahkan Kasus Duplikat ke Atas">
                 <p className="text-sm">
-                  Saat diaktifkan, semua kasus dengan duplikat dipindahkan ke bagian atas file data Anda untuk inspeksi yang mudah.
+      Label UI: <em>Move matching cases to the top of the file</em>. Memindahkan grup duplikat ke bagian atas dataset.
                 </p>
               </HelpSection>
               
               <HelpSection title="2. Filter Kasus Duplikat">
                 <p className="text-sm">
-                  Saat diaktifkan, setelah pemrosesan dataset Anda secara otomatis menampilkan hanya kasus primer (dimana nilai indikator adalah 1).
+      Label UI: <em>Filter out duplicate cases after processing</em>. Menyaring non-primer (indikator = 0) dari tampilan.
                 </p>
               </HelpSection>
               
               <HelpSection title="3. Tampilkan Frekuensi">
                 <p className="text-sm">
-                  Saat diaktifkan, tabel frekuensi untuk variabel baru ditampilkan di jendela Output.
+      Label UI: <em>Display frequencies for created variables</em>.
                 </p>
               </HelpSection>
             </div>

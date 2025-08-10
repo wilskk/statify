@@ -1,6 +1,7 @@
 import React from 'react';
+import Link from 'next/link';
 import { HelpCard, HelpAlert, HelpStep } from '@/app/help/ui/HelpLayout';
-import { LucideIcon } from 'lucide-react';
+import { type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -48,7 +49,9 @@ interface FeatureGridProps {
   features: Array<{
     title: string;
     icon: LucideIcon;
-    items: string[];
+  items?: string[];
+  description?: string;
+  link?: string;
     variant?: 'default' | 'feature' | 'step';
   }>;
   columns?: 1 | 2 | 3;
@@ -79,32 +82,81 @@ export const FeatureGrid: React.FC<FeatureGridProps> = ({
         )}
         style={{ animationDelay: `${index * 100}ms` }}
       >
-        <HelpCard 
-          title={feature.title} 
-          icon={feature.icon} 
-          variant={feature.variant || 'feature'}
-          className={cn(
-            "h-full border-border bg-card",
-            "transition-all duration-200 ease-out",
-            "group-hover:border-primary/20"
-          )}
-        >
-          <ul className={cn(
-            "text-sm space-y-3 mt-4",
-            "text-muted-foreground"
-          )}>
-            {feature.items.map((item, itemIndex) => (
-              <li key={itemIndex} className="flex items-start gap-3">
-                <span className={cn(
-                  "w-2 h-2 bg-primary/80 rounded-full mt-1.5 flex-shrink-0",
-                  "transition-colors duration-200",
-                  "group-hover:bg-primary"
-                )} />
-                <span className="leading-relaxed">{item}</span>
-              </li>
-            ))}
-          </ul>
-        </HelpCard>
+        {feature.link ? (
+          <Link
+            href={(function normalize(link: string) {
+              // Convert "/help/<parent>/<child>" into "/help#<parent>:<child>" for in-page routing
+              if (!link.startsWith('/help')) return link;
+              const withoutBase = link.replace(/^\/help\/?/, '');
+              const parts = withoutBase.split('?')[0].split('#')[0].split('/').filter(Boolean);
+              const parent = parts[0] || '';
+              const child = parts[1] || '';
+              const hash = parent + (child ? `:${child}` : '');
+              return `/help#${hash}`;
+            })(feature.link)}
+            className="block focus:outline-none"
+          >
+            <HelpCard 
+              title={feature.title} 
+              icon={feature.icon} 
+              variant={feature.variant || 'feature'}
+              className={cn(
+                "h-full border-border bg-card",
+                "transition-all duration-200 ease-out",
+                "group-hover:border-primary/20"
+              )}
+            >
+              <ul className={cn(
+                "text-sm space-y-3 mt-4",
+                "text-muted-foreground"
+              )}>
+                {(Array.isArray(feature.items) && feature.items.length > 0
+                  ? feature.items
+                  : (feature.description ? [feature.description] : [])
+                ).map((item, itemIndex) => (
+                  <li key={itemIndex} className="flex items-start gap-3">
+                    <span className={cn(
+                      "w-2 h-2 bg-primary/80 rounded-full mt-1.5 flex-shrink-0",
+                      "transition-colors duration-200",
+                      "group-hover:bg-primary"
+                    )} />
+                    <span className="leading-relaxed">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </HelpCard>
+          </Link>
+        ) : (
+          <HelpCard 
+            title={feature.title} 
+            icon={feature.icon} 
+            variant={feature.variant || 'feature'}
+            className={cn(
+              "h-full border-border bg-card",
+              "transition-all duration-200 ease-out",
+              "group-hover:border-primary/20"
+            )}
+          >
+            <ul className={cn(
+              "text-sm space-y-3 mt-4",
+              "text-muted-foreground"
+            )}>
+              {(Array.isArray(feature.items) && feature.items.length > 0
+                ? feature.items
+                : (feature.description ? [feature.description] : [])
+              ).map((item, itemIndex) => (
+                <li key={itemIndex} className="flex items-start gap-3">
+                  <span className={cn(
+                    "w-2 h-2 bg-primary/80 rounded-full mt-1.5 flex-shrink-0",
+                    "transition-colors duration-200",
+                    "group-hover:bg-primary"
+                  )} />
+                  <span className="leading-relaxed">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </HelpCard>
+        )}
       </div>
     ))}
   </div>
@@ -113,7 +165,7 @@ export const FeatureGrid: React.FC<FeatureGridProps> = ({
 // Enhanced concept section with modern design and CSS variables
 interface ConceptSectionProps {
   title: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   concepts: Array<{
     title: string;
     formula?: string;
@@ -147,13 +199,15 @@ export const ConceptSection: React.FC<ConceptSectionProps> = ({
       className
     )}>
       <div className="flex items-center gap-3 mb-6">
-        <div className={cn(
-          "w-10 h-10 bg-muted rounded-lg flex items-center justify-center",
-          "transition-colors duration-200",
-          "group-hover:bg-primary/10"
-        )}>
-          <Icon className="w-5 h-5 text-muted-foreground" />
-        </div>
+        {Icon ? (
+          <div className={cn(
+            "w-10 h-10 bg-muted rounded-lg flex items-center justify-center",
+            "transition-colors duration-200",
+            "group-hover:bg-primary/10"
+          )}>
+            <Icon className="w-5 h-5 text-muted-foreground" />
+          </div>
+        ) : null}
         <h3 className="text-lg font-semibold text-foreground">
           {title}
         </h3>
@@ -357,10 +411,12 @@ export const StepList: React.FC<StepListProps> = ({
   );
 };
 
-export default {
+const StandardizedContentLayout = {
   IntroSection,
   FeatureGrid,
   ConceptSection,
   ExampleGrid,
   StepList
 };
+
+export default StandardizedContentLayout;

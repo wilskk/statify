@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { Scale, Settings, Eye } from 'lucide-react';
+import { Scale, Settings } from 'lucide-react';
 
 const WeightCasesGuide = () => {
   const sections = [

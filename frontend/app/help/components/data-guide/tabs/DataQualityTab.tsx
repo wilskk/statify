@@ -1,45 +1,18 @@
 import React from 'react';
 import StandardizedContentLayout from '../../statistics-guide/shared/StandardizedContentLayout';
 const { IntroSection, FeatureGrid, ConceptSection } = StandardizedContentLayout;
-import { Shield, Search, AlertTriangle, CheckCircle, Target, TrendingUp } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 const DataQualityTab: React.FC = () => {
   const features = [
     {
-      icon: Search,
-      title: 'Deteksi Missing Values',
-      description: 'Identifikasi dan analisis pola data yang hilang dalam dataset',
-      link: '/help/data-guide/missing-values'
-    },
-    {
-      icon: AlertTriangle,
-      title: 'Identifikasi Outliers',
-      description: 'Temukan nilai ekstrem yang mungkin mempengaruhi analisis',
-      link: '/help/data-guide/outliers'
-    },
-    {
       icon: Shield,
-      title: 'Validasi Data',
-      description: 'Periksa konsistensi dan validitas data berdasarkan aturan bisnis',
-      link: '/help/data-guide/data-validation'
-    },
-    {
-      icon: Target,
-      title: 'Profiling Data',
-      description: 'Analisis distribusi, frekuensi, dan karakteristik setiap variabel',
-      link: '/help/data-guide/data-profiling'
-    },
-    {
-      icon: CheckCircle,
-      title: 'Audit Trail',
-      description: 'Lacak perubahan dan transformasi yang dilakukan pada data',
-      link: '/help/data-guide/audit-trail'
-    },
-    {
-      icon: TrendingUp,
-      title: 'Quality Metrics',
-      description: 'Ukur dan monitor kualitas data dengan berbagai metrik',
-      link: '/help/data-guide/quality-metrics'
+      title: 'Validasi Data (Praktik)',
+      items: [
+        'Tidak ada menu khusus — lakukan pemeriksaan manual pada dataset',
+        'Periksa konsistensi nilai dan aturan bisnis',
+        'Gunakan output analisis untuk menemukan anomali'
+      ]
     }
   ];
 
@@ -95,24 +68,17 @@ const DataQualityTab: React.FC = () => {
     <div className="space-y-8">
       <IntroSection
         title="Kualitas Data"
-        description="Pastikan kualitas data Anda dengan tools komprehensif untuk deteksi, validasi, dan monitoring. Data berkualitas tinggi adalah fondasi untuk analisis yang akurat dan insight yang dapat dipercaya."
-        highlights={[
-          'Deteksi dan analisis missing values',
-          'Identifikasi outliers dan anomali',
-          'Validasi berdasarkan aturan bisnis',
-          'Profiling dan monitoring kualitas'
-        ]}
+        description="Praktik pemeriksaan kualitas data yang direkomendasikan. Saat ini tidak ada menu khusus di Data untuk Missing Values/Outliers/Validation/Profiling/Audit Trail/Quality Metrics."
       />
 
-      <FeatureGrid
-        title="Tools Kualitas Data"
-        description="Jelajahi berbagai tools untuk memastikan dan meningkatkan kualitas data Anda"
-        features={features}
-      />
+      <div>
+        <h3 className="text-lg font-semibold mb-1">Tools Kualitas Data</h3>
+        <p className="text-sm text-muted-foreground mb-4">Jelajahi berbagai tools untuk memastikan dan meningkatkan kualitas data Anda</p>
+        <FeatureGrid features={features} />
+      </div>
 
       <ConceptSection
         title="Konsep Kualitas Data"
-        description="Pahami prinsip-prinsip dan metodologi untuk mengelola kualitas data"
         concepts={concepts}
       />
     </div>

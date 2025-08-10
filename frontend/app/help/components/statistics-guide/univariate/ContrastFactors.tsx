@@ -6,7 +6,6 @@ import {
     Calculator,
     BarChart3,
     TrendingUp,
-    Layers,
     Target,
 } from "lucide-react";
 

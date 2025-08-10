@@ -1,16 +1,13 @@
 import React from "react";
 import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
-import { HelpCard, HelpAlert, HelpSection } from "../ui/HelpLayout";
+import { HelpCard, HelpAlert } from "../ui/HelpLayout";
 import { 
   FileVideo, 
   Database, 
   BarChart, 
   LayoutDashboard, 
-  Lightbulb, 
-  CheckCircle2, 
   Play,
   BookOpen,
-  Settings,
   TrendingUp
 } from "lucide-react";
 
@@ -31,7 +28,7 @@ export const GettingStarted = () => {
           
           <HelpAlert variant="success" title="Keunggulan Statify">
             <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Sepenuhnya kompatibel dengan format SPSS (.sav)</li>
+              <li>Mendukung format SPSS (.sav), namun beberapa fitur lanjutan masih memiliki keterbatasan</li>
               <li>Tidak memerlukan koneksi internet</li>
               <li>Antarmuka yang intuitif dan mudah digunakan</li>
               <li>Analisis statistik yang komprehensif</li>
@@ -97,23 +94,61 @@ export const GettingStarted = () => {
               </p>
               
               <HelpCard title="Analisis Yang Tersedia" variant="feature">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <h5 className="font-semibold mb-1">Deskriptif</h5>
-                    <ul className="space-y-1 text-muted-foreground">
-                      <li>• Frekuensi</li>
-                      <li>• Deskriptif</li>
-                      <li>• Eksplorasi</li>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <HelpCard title="Descriptive Statistics" icon={BarChart} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• Frequencies</li>
+                      <li>• Descriptives</li>
+                      <li>• Explore</li>
+                      <li>• Crosstabs</li>
                     </ul>
-                  </div>
-                  <div>
-                    <h5 className="font-semibold mb-1">Inferensial</h5>
-                    <ul className="space-y-1 text-muted-foreground">
-                      <li>• T-Test</li>
-                      <li>• ANOVA</li>
-                      <li>• Regresi</li>
+                  </HelpCard>
+                  <HelpCard title="Compare Means" icon={LayoutDashboard} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• One-Sample T Test</li>
+                      <li>• Independent-Samples T Test</li>
+                      <li>• Paired-Samples T Test</li>
+                      <li>• One-Way ANOVA</li>
                     </ul>
-                  </div>
+                  </HelpCard>
+                  <HelpCard title="Regression & Correlate" icon={TrendingUp} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• Linear Regression</li>
+                      <li>• Curve Estimation</li>
+                      <li>• Correlate (Bivariate)</li>
+                    </ul>
+                  </HelpCard>
+
+                  <HelpCard title="General Linear Model" icon={BookOpen} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• General Linear Model</li>
+                    </ul>
+                  </HelpCard>
+                  <HelpCard title="Classify" icon={Database} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• Classify</li>
+                    </ul>
+                  </HelpCard>
+                  <HelpCard title="Dimension Reduction" icon={LayoutDashboard} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• Dimension Reduction</li>
+                    </ul>
+                  </HelpCard>
+                  <HelpCard title="Nonparametric Tests" icon={FileVideo} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• Legacy Dialogs: Chi-square, Runs, 2 Independent, K Independent, 2 Related, K Related</li>
+                    </ul>
+                  </HelpCard>
+                  <HelpCard title="Time Series" icon={TrendingUp} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• Smoothing, Decomposition, Autocorrelation, Unit Root Test, Box-Jenkins</li>
+                    </ul>
+                  </HelpCard>
+                  <HelpCard title="Graphs" icon={BarChart} variant="feature">
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• Chart Builder</li>
+                    </ul>
+                  </HelpCard>
                 </div>
               </HelpCard>
             </div>
@@ -160,8 +195,8 @@ export const GettingStarted = () => {
 
   const tips = [
     {
-      type: 'tip' as const,
-      title: 'Pro Tip',
+  type: 'tip' as const,
+  title: 'Tip',
       content: 'Mulai dengan dataset kecil untuk memahami alur kerja Statify sebelum menggunakan dataset yang lebih besar.'
     },
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, Target, TrendingUp } from 'lucide-react';
+import { Calculator, Target } from 'lucide-react';
 import { 
   IntroSection, 
   FeatureGrid, 

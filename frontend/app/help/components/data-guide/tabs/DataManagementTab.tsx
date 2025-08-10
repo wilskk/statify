@@ -8,38 +8,56 @@ const DataManagementTab: React.FC = () => {
     {
       icon: Database,
       title: 'Properti Variabel',
-      description: 'Atur nama, label, dan tipe data variabel untuk analisis yang optimal',
-      link: '/help/data-guide/define-var-props'
+      items: [
+        'Lokasi: Data → Define Variable Properties',
+        'Atur nama variabel, label, dan tipe data',
+        'Gunakan label yang informatif untuk keterbacaan'
+      ]
     },
     {
       icon: Calendar,
       title: 'Definisi Tanggal & Waktu',
-      description: 'Buat struktur waktu untuk analisis deret waktu dan pelaporan berkala',
-      link: '/help/data-guide/define-datetime'
+      items: [
+        'Lokasi: Data → Define Date and Time',
+        'Set format dan komponen tanggal/waktu',
+        'Siapkan time series dan pelaporan periodik'
+      ]
     },
     {
       icon: BarChart,
       title: 'Tingkat Pengukuran',
-      description: 'Tentukan skala pengukuran (nominal, ordinal, interval, rasio) untuk setiap variabel',
-      link: '/help/data-guide/set-measurement-level'
+      items: [
+        'Lokasi: Data → Set Measurement Level',
+        'Tentukan skala: nominal, ordinal, interval, rasio',
+        'Meningkatkan akurasi pemilihan uji statistik'
+      ]
     },
     {
       icon: Users,
       title: 'Bobot Kasus',
-      description: 'Terapkan pembobotan pada kasus untuk analisis yang lebih representatif',
-      link: '/help/data-guide/weight-cases'
+      items: [
+        'Lokasi: Data → Weight Cases',
+        'Terapkan bobot untuk representativitas',
+        'Pastikan sumber bobot terdokumentasi'
+      ]
     },
     {
       icon: FileText,
       title: 'Urutkan Variabel',
-      description: 'Atur urutan variabel dalam dataset untuk kemudahan navigasi',
-      link: '/help/data-guide/sort-vars'
+      items: [
+        'Lokasi: Data → Sort Variables',
+        'Atur urutan variabel untuk navigasi yang mudah',
+        'Kelompokkan variabel terkait berdekatan'
+      ]
     },
     {
       icon: Settings,
       title: 'Urutkan Kasus',
-      description: 'Susun ulang urutan baris data berdasarkan nilai variabel tertentu',
-      link: '/help/data-guide/sort-cases'
+      items: [
+        'Lokasi: Data → Sort Cases',
+        'Susun ulang baris berdasarkan variabel kunci',
+        'Gunakan pengurutan kronologis/alfabetis sesuai kebutuhan'
+      ]
     }
   ];
 
@@ -81,23 +99,16 @@ const DataManagementTab: React.FC = () => {
       <IntroSection
         title="Kelola Data Anda"
         description="Fitur manajemen data membantu Anda mengatur, mengelola, dan mengoptimalkan struktur dataset untuk analisis yang lebih efektif. Dari pengaturan properti variabel hingga organisasi data, semua tools yang Anda butuhkan tersedia di sini."
-        highlights={[
-          'Atur properti dan metadata variabel',
-          'Kelola struktur tanggal dan waktu',
-          'Organisasi dan urutkan data',
-          'Terapkan pembobotan kasus'
-        ]}
       />
 
-      <FeatureGrid
-        title="Fitur Manajemen Data"
-        description="Jelajahi berbagai tools untuk mengelola dan mengoptimalkan dataset Anda"
-        features={features}
-      />
+      <div>
+        <h3 className="text-lg font-semibold mb-1">Fitur Manajemen Data</h3>
+        <p className="text-sm text-muted-foreground mb-4">Jelajahi berbagai tools untuk mengelola dan mengoptimalkan dataset Anda</p>
+        <FeatureGrid features={features} />
+      </div>
 
       <ConceptSection
         title="Konsep Penting"
-        description="Pahami prinsip-prinsip dasar manajemen data yang efektif"
         concepts={concepts}
       />
     </div>

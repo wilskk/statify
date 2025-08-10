@@ -9,7 +9,7 @@ const QuickStartGuide: React.FC = () => {
       title: '1. Atur Properti Data',
       description: 'Mulai dengan mengatur nama variabel, label, dan tipe data yang sesuai',
       actions: [
-        'Buka Data → Define Variable Properties',
+  'Buka Data → Define Variable Properties',
         'Atur nama variabel yang deskriptif',
         'Tambahkan label yang informatif',
         'Pilih tipe data yang tepat (numeric, string, date)'
@@ -20,10 +20,10 @@ const QuickStartGuide: React.FC = () => {
       title: '2. Organisasi Dataset',
       description: 'Susun data Anda agar mudah dianalisis dan dipahami',
       actions: [
-        'Urutkan variabel secara logis (Sort Variables)',
-        'Urutkan kasus jika diperlukan (Sort Cases)',
-        'Atur tingkat pengukuran (nominal, ordinal, scale)',
-        'Terapkan pembobotan jika ada (Weight Cases)'
+  'Buka Data → Sort Variables (urutkan variabel secara logis)',
+  'Buka Data → Sort Cases (urutkan kasus jika diperlukan)',
+  'Buka Data → Set Measurement Level (atur tingkat pengukuran)',
+  'Buka Data → Weight Cases (terapkan pembobotan jika ada)'
       ]
     },
     {
@@ -32,7 +32,7 @@ const QuickStartGuide: React.FC = () => {
       description: 'Pastikan data Anda berkualitas tinggi sebelum analisis',
       actions: [
         'Identifikasi missing values dan outliers',
-        'Cek duplikat dengan Identify Duplicate Cases',
+  'Buka Data → Identify Duplicate Cases (cek duplikat)',
         'Validasi konsistensi data',
         'Dokumentasikan temuan dan tindakan'
       ]
@@ -42,27 +42,23 @@ const QuickStartGuide: React.FC = () => {
   const commonTasks = [
     {
       title: 'Agregasi Data',
-      description: 'Buat statistik ringkasan per kelompok',
-      icon: BarChart3,
-      link: '/help/data-guide/aggregate'
+      description: 'Lokasi: Data → Aggregate — buat statistik ringkasan per kelompok',
+      icon: BarChart3
     },
     {
       title: 'Filter Data',
-      description: 'Pilih subset data untuk analisis',
-      icon: Database,
-      link: '/help/data-guide/select-cases'
+      description: 'Lokasi: Data → Select Cases — pilih subset data untuk analisis',
+      icon: Database
     },
     {
       title: 'Restrukturisasi',
-      description: 'Ubah format data (wide ↔ long)',
-      icon: Settings,
-      link: '/help/data-guide/restructure'
+      description: 'Lokasi: Data → Restructure — ubah format data (wide ↔ long)',
+      icon: Settings
     },
     {
       title: 'Definisi Tanggal',
-      description: 'Atur struktur waktu untuk time series',
-      icon: CheckCircle,
-      link: '/help/data-guide/define-datetime'
+      description: 'Lokasi: Data → Define Date and Time — atur struktur waktu untuk time series',
+      icon: CheckCircle
     }
   ];
 
@@ -141,7 +137,7 @@ const QuickStartGuide: React.FC = () => {
         
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {commonTasks.map((task, index) => (
-            <HelpCard key={index} className="hover:shadow-md transition-shadow cursor-pointer">
+            <HelpCard key={index} className="hover:shadow-md transition-shadow">
               <div className="text-center">
                 <div className="w-12 h-12 bg-muted/50 rounded-lg flex items-center justify-center mx-auto mb-3">
                   <task.icon className="w-6 h-6 text-foreground" />
@@ -170,15 +166,7 @@ const QuickStartGuide: React.FC = () => {
         </div>
       </div>
 
-      {/* Additional Resources */}
-      <HelpAlert variant="info" title="Sumber Daya Tambahan">
-        <div className="mt-2 space-y-2 text-sm">
-          <p><strong>Video Tutorial:</strong> Tonton video panduan manajemen data di channel YouTube Statify</p>
-          <p><strong>Template Dataset:</strong> Download template dataset untuk latihan</p>
-          <p><strong>Community Forum:</strong> Bergabung dengan komunitas pengguna untuk tips dan trik</p>
-          <p><strong>Documentation:</strong> Baca dokumentasi lengkap untuk fitur advanced</p>
-        </div>
-      </HelpAlert>
+  {/* Additional Resources removed per guidelines */}
     </div>
   );
 };

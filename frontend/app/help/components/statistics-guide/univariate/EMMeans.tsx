@@ -5,7 +5,6 @@ import {
     HelpCircle,
     Calculator,
     BarChart3,
-    TrendingUp,
     Layers,
 } from "lucide-react";
 

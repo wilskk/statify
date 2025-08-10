@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { RefreshCw, ArrowRightLeft, Database, Settings, FileText } from 'lucide-react';
+import { RefreshCw, ArrowRightLeft, Settings, FileText } from 'lucide-react';
 
 const RestructureGuide = () => {
   const sections = [
@@ -51,7 +51,7 @@ const RestructureGuide = () => {
           
           <HelpCard title="Transpose All Data" variant="feature">
             <p className="text-sm">
-              Simply swap all rows and columns in your dataset. This transposes the entire dataset.
+              Menukar semua baris dan kolom pada seluruh dataset. Tidak memerlukan pemilihan variabel.
             </p>
           </HelpCard>
         </div>
@@ -65,39 +65,38 @@ const RestructureGuide = () => {
       content: (
         <div className="space-y-4">
           <p>
-            Wizard memandu Anda melalui proses 3 langkah sederhana. Setiap langkah harus diselesaikan 
-            sebelum beralih ke langkah berikutnya.
+            Wizard memandu Anda melalui 3 langkah: Method → Variables → Options. Selesaikan tiap langkah
+            sebelum melanjutkan.
           </p>
           
-          <HelpSection title="Langkah 1: Pilih Metode Restrukturisasi">
+          <HelpSection title="Langkah 1: Pilih Metode Restrukturisasi (Method)">
             <p className="text-sm">
               Pilih salah satu dari tiga metode restrukturisasi yang dijelaskan di atas berdasarkan kebutuhan Anda.
             </p>
           </HelpSection>
           
-          <HelpSection title="Langkah 2: Konfigurasi Variabel">
+          <HelpSection title="Langkah 2: Variabel (Variables)">
             <p className="text-sm mb-3">
               Berdasarkan metode yang dipilih, konfigurasikan variabel menggunakan antarmuka drag-and-drop:
             </p>
             
             <div className="space-y-3">
-              <HelpCard title='Untuk "Variabel ke Kasus"' variant="step">
+              <HelpCard title='Variables ke Kasus (Variables to Cases) — Target lists' variant="step">
                 <ul className="text-sm space-y-1 mt-2">
-                  <li>• Pilih variabel untuk ditransformasi menjadi kasus baru</li>
-                  <li>• Beri nama variabel baru yang akan dibuat</li>
-                  <li>• Beri nama variabel yang akan berisi nilai asli</li>
+          <li>• Variables to Restructure: variabel yang akan dikonversi jadi baris.</li>
+          <li>• Index Variables: variabel pengelompokan (mis. Subject ID).</li>
                 </ul>
               </HelpCard>
               
-              <HelpCard title='Untuk "Kasus ke Variabel"' variant="step">
+              <HelpCard title='Kasus ke Variabel (Cases to Variables) — Target lists' variant="step">
                 <ul className="text-sm space-y-1 mt-2">
-                  <li>• Pilih variabel identifikasi yang mengelompokkan kasus</li>
-                  <li>• Pilih variabel yang berisi nilai untuk variabel baru</li>
-                  <li>• Beri nama variabel baru yang akan dibuat</li>
+          <li>• Variables to Restructure: variabel sumber nilai yang akan dipecah ke kolom.</li>
+          <li>• Index Variables: variabel pengelompokan (mis. Subject ID).</li>
+          <li>• Identifier Variables: variabel pembeda (mis. Time) — maksimal 1.</li>
                 </ul>
               </HelpCard>
               
-              <HelpCard title='Untuk "Transpose Semua Data"' variant="step">
+              <HelpCard title='Transpose Semua Data (Transpose All Data)' variant="step">
                 <ul className="text-sm space-y-1 mt-2">
                   <li>• Tidak diperlukan konfigurasi tambahan</li>
                   <li>• Sistem akan menukar semua baris dan kolom secara otomatis</li>
@@ -105,12 +104,17 @@ const RestructureGuide = () => {
               </HelpCard>
             </div>
           </HelpSection>
-          
-          <HelpSection title="Langkah 3: Tinjau dan Konfirmasi">
-            <p className="text-sm">
-              Sebelum menerapkan perubahan, sistem menampilkan pratinjau hasil. 
-              Tinjau dan konfirmasi restrukturisasi sebelum diterapkan secara permanen.
-            </p>
+          <HelpSection title="Langkah 3: Opsi (Options)">
+            <div className="space-y-3 text-sm">
+              <p>
+                Opsi yang tersedia mengikuti metode yang dipilih:
+              </p>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>Variables to Cases</strong>: Create count variable; Create index variable.</li>
+                <li><strong>Cases to Variables</strong>: Drop empty variables.</li>
+                <li>Transpose All Data: Tidak ada opsi tambahan.</li>
+              </ul>
+            </div>
           </HelpSection>
           
           <HelpAlert variant="warning" title="Penting">
@@ -159,8 +163,7 @@ const RestructureGuide = () => {
           
           <HelpAlert variant="success" title="Tips Pro">
             <p className="text-sm mt-2">
-              Gunakan fitur pratinjau untuk melihat hasil restrukturisasi sebelum menerapkannya. 
-              Ini membantu memastikan hasilnya sesuai ekspektasi Anda.
+              Tinjau ringkasan di langkah Options (Method dan jumlah variabel terpilih) sebelum mengeksekusi.
             </p>
           </HelpAlert>
         </div>

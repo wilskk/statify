@@ -2,14 +2,13 @@
 
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HelpCircle, BookOpen, FileText, Database, BarChart3, MessageSquare } from "lucide-react";
+import { HelpCircle, BookOpen } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 // Import all guide components
 import { GettingStarted } from "./GettingStarted";
-import { FAQ } from "./FAQ";
-import { Feedback } from "./Feedback";
+
 import { 
 	FileGuide,
 	ImportSav,

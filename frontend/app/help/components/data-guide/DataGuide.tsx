@@ -2,6 +2,20 @@ import React from 'react';
 import StandardizedGuideLayout from '../statistics-guide/shared/StandardizedGuideLayout';
 import { Database, Settings, Filter, BarChart3 } from 'lucide-react';
 import { DataManagementTab, DataTransformationTab, DataQualityTab, QuickStartGuide } from './tabs';
+import {
+  AggregateGuide,
+  DefineDateTimeGuide,
+  DefineVarPropsGuide,
+  DuplicateCasesGuide,
+  RestructureGuide,
+  SelectCasesGuide,
+  SetMeasurementLevelGuide,
+  SortCasesGuide,
+  SortVarsGuide,
+  TransposeGuide,
+  WeightCasesGuide,
+  UnusualCasesGuide,
+} from './index';
 
 interface DataGuideProps {
   section?: string;
@@ -10,19 +24,6 @@ interface DataGuideProps {
 const DataGuide: React.FC<DataGuideProps> = ({ section }) => {
   // If section is provided, render the specific component for backward compatibility
   if (section) {
-    const {
-      AggregateGuide,
-      DefineDateTimeGuide,
-      DefineVarPropsGuide,
-      DuplicateCasesGuide,
-      RestructureGuide,
-      SelectCasesGuide,
-      SetMeasurementLevelGuide,
-      SortCasesGuide,
-      SortVarsGuide,
-      TransposeGuide,
-      WeightCasesGuide,
-    } = require('./index');
 
     switch (section) {
       case "aggregate":
@@ -47,6 +48,8 @@ const DataGuide: React.FC<DataGuideProps> = ({ section }) => {
         return <TransposeGuide />;
       case "weight-cases":
         return <WeightCasesGuide />;
+      case "unusual-cases":
+        return <UnusualCasesGuide />;
       default:
         return <AggregateGuide />;
     }

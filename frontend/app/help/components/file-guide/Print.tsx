@@ -1,8 +1,8 @@
 /* eslint-disable react/no-unescaped-entities */
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { Printer, FileText, Settings, Download, Image } from 'lucide-react';
+import { HelpCard, HelpStep } from '../../ui/HelpLayout';
+import { Printer, FileText, Settings, Image } from 'lucide-react';
 
 export const Print = () => {
   const sections = [
@@ -21,7 +21,7 @@ export const Print = () => {
           <HelpStep
             number={2}
             title="Pilih Cetak"
-            description="Pilih 'Cetak' dari menu dropdown."
+            description="Klik File → Print..."
           />
           <HelpStep
             number={3}

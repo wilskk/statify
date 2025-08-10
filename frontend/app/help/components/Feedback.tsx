@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
-import { HelpCard, HelpAlert, HelpSection } from "../ui/HelpLayout";
-import { SendHorizontal, Star, ThumbsUp, MessageSquare, Mail, Users, BookOpen } from "lucide-react";
+import { HelpCard, HelpAlert } from "../ui/HelpLayout";
+import { SendHorizontal, Star, ThumbsUp, MessageSquare, Mail, BookOpen } from "lucide-react";
 
 export const Feedback = () => {
   const sections = [

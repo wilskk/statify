@@ -1,7 +1,5 @@
 import React, { cloneElement } from "react";
-import { BookOpen, Book, Home } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { BookOpen, Book } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { HelpLayout } from "../ui/HelpLayout";

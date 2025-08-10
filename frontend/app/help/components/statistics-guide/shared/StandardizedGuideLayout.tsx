@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LucideIcon } from 'lucide-react';
+import { type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -33,7 +33,7 @@ export const StandardizedGuideLayout: React.FC<StandardizedGuideLayoutProps> = (
   className,
   children
 }) => {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || 'overview');
+  const [activeTab, setActiveTab] = useState(defaultTab ?? tabs[0]?.id ?? 'overview');
 
   return (
     <div className={cn(

@@ -4,8 +4,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
     HelpCircle,
     Calculator,
-    BarChart3,
-    TrendingUp,
     Layers,
 } from "lucide-react";
 

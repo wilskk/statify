@@ -109,7 +109,7 @@ export default function SetMeasurementLevelGuide() {
           
           <HelpAlert variant="success" title="Tips Penggunaan">
             <div className="text-sm mt-2 space-y-1">
-              <p>• Anda dapat memilih beberapa variabel sekaligus menggunakan Ctrl+Klik</p>
+              <p>• Anda dapat memilih beberapa variabel sekaligus melalui antarmuka pemilihan yang tersedia</p>
               <p>• Variabel dapat dipindahkan kembali jika Anda berubah pikiran tentang kategorinya</p>
               <p>• Perubahan hanya disimpan setelah mengklik OK</p>
             </div>
@@ -130,7 +130,7 @@ export default function SetMeasurementLevelGuide() {
     {
       type: 'info' as const,
       title: 'Seleksi Berganda',
-      content: 'Gunakan Ctrl+Klik untuk memilih beberapa variabel sekaligus dan memindahkannya bersamaan.'
+  content: 'Gunakan fitur seleksi berganda pada dialog untuk memilih beberapa variabel sekaligus dan memindahkannya bersamaan.'
     },
     {
       type: 'warning' as const,

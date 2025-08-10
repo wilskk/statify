@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Folder, Shield, Zap } from 'lucide-react';
+import { Database, Folder, Shield } from 'lucide-react';
 import { 
   IntroSection, 
   FeatureGrid, 

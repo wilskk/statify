@@ -5,8 +5,6 @@ import {
     HelpCircle,
     Calculator,
     BarChart3,
-    TrendingUp,
-    AlertTriangle,
 } from "lucide-react";
 
 export const LevenesTest: React.FC = () => {

@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { Database, Settings, Calculator, Play } from 'lucide-react';
+import { HelpCard, HelpAlert } from '../../ui/HelpLayout';
+import { Database, Settings, Calculator } from 'lucide-react';
 
 const AggregateGuide = () => {
   const sections = [
@@ -19,7 +19,6 @@ const AggregateGuide = () => {
             rata-rata kelompok, mencari nilai maksimum per kelompok, menghitung kejadian,
             dan banyak lagi.
           </p>
-          
           <HelpAlert variant="tip" title="Kapan Menggunakan Agregasi">
             Gunakan agregasi data ketika Anda ingin:
             <ul className="list-disc list-inside mt-2 space-y-1">
@@ -68,6 +67,48 @@ const AggregateGuide = () => {
                 variabel yang dipilih, Anda dapat menerapkan fungsi agregasi
                 untuk menghitung statistik untuk setiap kelompok yang didefinisikan oleh variabel break.
               </p>
+            </div>
+          )
+        }
+      ]
+    },
+    {
+      id: 'ui-variables',
+      title: 'Tab: Variabel (Variables)',
+      description: 'Kontrol utama di tab Variables',
+      icon: Settings,
+      steps: [
+        {
+          title: 'Variabel Pemisah (Break Variable(s))',
+          description: 'Daftar variabel pengelompokan',
+          content: (
+            <div className="text-sm space-y-2">
+              <p>Seret variabel dari daftar Available ke daftar <strong>Break Variable(s)</strong> untuk mendefinisikan kelompok.</p>
+              <p>Gunakan urutan variabel break sesuai prioritas pengelompokan.</p>
+            </div>
+          )
+        },
+        {
+          title: 'Variabel yang Diagregasi (Aggregated Variables)',
+          description: 'Daftar variabel yang akan diringkas',
+          content: (
+            <div className="text-sm space-y-2">
+              <p>Seret variabel dari Available ke <strong>Aggregated Variables</strong>.</p>
+              <p>Pilih satu item di daftar ini untuk mengaktifkan tombol:</p>
+              <ul className="list-disc list-inside ml-4">
+                <li><strong>Function...</strong> — memilih fungsi agregasi (Mean, Sum, Max, dsb.).</li>
+                <li><strong>Name & Label...</strong> — mengatur nama/label variabel hasil.</li>
+              </ul>
+            </div>
+          )
+        },
+        {
+          title: 'Jumlah Kasus (Number of cases)',
+          description: 'Opsi pembuatan variabel jumlah kasus per kelompok',
+          content: (
+            <div className="text-sm space-y-1">
+              <p>Centang <strong>Number of cases</strong> untuk membuat variabel hitung kasus per kelompok.</p>
+              <p>Isikan <strong>Name:</strong> untuk nama variabel output.</p>
             </div>
           )
         }
@@ -138,6 +179,23 @@ const AggregateGuide = () => {
               </div>
             </div>
           </HelpCard>
+        </div>
+      )
+    },
+    {
+      id: 'ui-options',
+      title: 'Tab: Opsi (Options)',
+      description: 'Opsi performa untuk dataset besar',
+      icon: Settings,
+      content: (
+        <div className="space-y-3 text-sm">
+          <ul className="list-disc list-inside space-y-1">
+            <li><strong>File is already sorted on break variable(s)</strong></li>
+            <li><strong>Sort file before aggregating</strong></li>
+          </ul>
+          <HelpAlert variant="info" title="Catatan">
+            Opsi ini tersedia di UI untuk dokumentasi workflow. Saat ini tidak mengubah proses agregasi di belakang layar.
+          </HelpAlert>
         </div>
       )
     },
