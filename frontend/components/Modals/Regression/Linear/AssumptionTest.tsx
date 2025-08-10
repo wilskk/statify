@@ -685,6 +685,50 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
                     };
 
                     await addStatistic(analyticId, homoscedasticityStat);
+
+                    // Build and save Scatter Plot (ZPRED vs SRESID) using DataProcessingService + ChartService
+                    try {
+                        const scatter = response?.visualizations?.homoscedasticityScatter;
+                        if (Array.isArray(scatter) && scatter.length > 0) {
+                            const rawData = scatter.map((d: { x: number; y: number }) => [d.x, d.y]);
+                            const variables = [
+                                { name: 'ZPRED', type: 'NUMERIC' as const },
+                                { name: 'SRESID', type: 'NUMERIC' as const },
+                            ];
+                            const processed = DataProcessingService.processDataForChart({
+                                chartType: 'Scatter Plot',
+                                rawData,
+                                variables,
+                                chartVariables: { x: ['ZPRED'], y: ['SRESID'] },
+                                processingOptions: { filterEmpty: true },
+                            });
+
+                            const chartJSON = ChartService.createChartJSON({
+                                chartType: 'Scatter Plot',
+                                chartData: processed.data,
+                                chartVariables: { x: ['ZPRED'], y: ['SRESID'] },
+                                chartMetadata: {
+                                    title: 'Homoscedasticity Scatter Plot',
+                                    subtitle: 'ZPRED (X) vs SRESID (Y)',
+                                    description: 'Standardized predicted values vs studentized residuals',
+                                },
+                                chartConfig: {
+                                    width: 800,
+                                    height: 500,
+                                    axisLabels: { x: 'Standardized Predicted Values (ZPRED)', y: 'Studentized Residuals' },
+                                },
+                            });
+
+                            await addStatistic(analyticId, {
+                                title: 'Homoscedasticity Scatter Plot',
+                                output_data: JSON.stringify(chartJSON),
+                                components: 'Chart',
+                                description: 'Standardized predicted values vs studentized residuals',
+                            });
+                        }
+                    } catch (plotErr) {
+                        console.error('Failed to create/save homoscedasticity scatter plot:', plotErr);
+                    }
                     setHomoscedasticityTestSuccess(true);
                 }
 

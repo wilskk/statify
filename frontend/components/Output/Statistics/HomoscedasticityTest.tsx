@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import GeneralChartContainer from '@/components/Output/Chart/GeneralChartContainer';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X, AlertCircle } from 'lucide-react';
 
@@ -138,6 +139,43 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
                   </TableRow>
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {visualizations?.homoscedasticityScatter && Array.isArray(visualizations.homoscedasticityScatter) && visualizations.homoscedasticityScatter.length > 0 && (
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="font-semibold mb-2">Homoscedasticity Scatter Plot (ZPRED vs Studentized Residual)</h3>
+              {(() => {
+                // Build chart JSON for scatter plot using ChartService-compatible structure
+                const chartJSON = {
+                  charts: [
+                    {
+                      chartType: 'Scatter Plot',
+                      chartMetadata: {
+                        axisInfo: { x: 'ZPRED', y: 'SRESID' },
+                        description: 'Standardized predicted values vs studentized residuals',
+                        title: 'Homoscedasticity Scatter Plot',
+                        subtitle: 'ZPRED (X) vs SRESID (Y)'
+                      },
+                      chartData: visualizations.homoscedasticityScatter.map((d: any) => ({ x: d.x, y: d.y })),
+                      chartConfig: {
+                        width: 800,
+                        height: 500,
+                        useAxis: true,
+                        axisLabels: { x: 'Standardized Predicted Values (ZPRED)', y: 'Studentized Residuals' },
+                      }
+                    }
+                  ]
+                };
+
+                return (
+                  <div className="mt-4">
+                    <GeneralChartContainer data={JSON.stringify(chartJSON)} />
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         )}
