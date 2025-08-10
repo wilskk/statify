@@ -221,7 +221,7 @@ self.onmessage = function (e) {
             { header: "df" },
             { header: "Mean Square" },
             { header: "F" },
-            { header: "Sig." }
+            { header: "p-value" }
           ],
           rows: [
             {
@@ -230,7 +230,7 @@ self.onmessage = function (e) {
               "df": regressionDF,
               "Mean Square": regressionMS.toFixed(3),
               "F": F.toFixed(3),
-              "Sig.": pValue.toFixed(3),
+              "p-value": pValue.toFixed(3),
             },
             {
               rowHeader: ["Residual"],
@@ -238,7 +238,7 @@ self.onmessage = function (e) {
               "df": residualDF,
               "Mean Square": residualMS.toFixed(3),
               "F": "",
-              "Sig.": "",
+              "p-value": "",
             },
             {
               rowHeader: ["Total"],
@@ -246,7 +246,7 @@ self.onmessage = function (e) {
               "df": totalDF,
               "Mean Square": "",
               "F": "",
-              "Sig.": "",
+              "p-value": "",
             }
           ]
         }

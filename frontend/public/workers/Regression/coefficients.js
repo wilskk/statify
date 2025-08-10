@@ -37,7 +37,7 @@ self.onmessage = function(e) {
         "stdError": parseFloat(coef.stdError.toFixed(3)),
         "Beta": coef.standardizedCoefficient !== null ? parseFloat(coef.standardizedCoefficient.toFixed(3)) : "",
         "t": parseFloat(coef.tValue.toFixed(3)),
-        "Sig.": parseFloat(coef.pValue.toFixed(3))
+        "p-value": parseFloat(coef.pValue.toFixed(3))
       });
     });
 
@@ -68,7 +68,7 @@ self.onmessage = function(e) {
               ]
             },
             { header: "t" },
-            { header: "Sig." }
+            { header: "p-value" }
           ],
           rows: coefficientsData
         }
