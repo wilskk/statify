@@ -11,9 +11,7 @@ if (typeof self !== 'undefined' && typeof self.importScripts === 'function') {
     if (typeof FrequencyCalculator === 'undefined') {
         importScripts('../frequency/frequency.js');
     }
-    if (typeof jStat === 'undefined') {
-        importScripts('https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js');
-    }
+    // No external CDN dependencies are imported here to keep workers and tests self-contained.
 }
 
 // ExamineCalculator provides Explore (Examine) statistics.
@@ -66,12 +64,25 @@ class ExamineCalculator {
                 results.trimmedMean = tmean;
             }
 
-            // Percentiles (Weighted Average definition) if requested or for completeness
-            results.percentiles = this.getPercentiles();
+            // Percentiles: default to HAVERAGE (SPSS EXAMINE style), configurable via options.percentileMethod
+            results.percentiles = this.getPercentiles(this.options.percentileMethod || 'haverage');
+
+            // Tukey's Hinges for IQR and optional outliers/boxplot fences
+            const hinges = this.getTukeyHinges();
+            if (hinges) {
+                results.hinges = hinges;
+                // EXAMINE standard: use Tukey's Hinges for IQR
+                results.descriptives.IQR = hinges.IQR;
+            }
 
             // Extreme values only when requested
             if (this.options.showOutliers) {
-                results.extremeValues = this.freqCalc.getExtremeValues(this.options.extremeCount || 5);
+                const useHinges = (this.options.useHingesForOutliers !== false); // default true
+                if (useHinges && hinges) {
+                    results.extremeValues = this.getExtremeValuesUsingHinges(hinges, this.options.extremeCount || 5);
+                } else {
+                    results.extremeValues = this.freqCalc.getExtremeValues(this.options.extremeCount || 5);
+                }
             }
 
             // Confidence interval around the mean
@@ -89,22 +100,22 @@ class ExamineCalculator {
                 };
             }
 
-            // M-Estimators (simple robust summaries) – always compute for numeric data.
-            // UI decides whether to display them based on params.showMEstimators.
+            // M-Estimators (simple robust summaries) – compute by default for numeric variables
+            // to align with library tests and expected EXAMINE output
             results.mEstimators = this.getMEstimators();
         }
 
         return results;
     }
 
-    getPercentiles() {
+    getPercentiles(method = 'haverage') {
         if (!this.isNumeric) return null;
         const percentilePoints = [5, 10, 25, 50, 75, 90, 95];
         const percentiles = {};
         for (const p of percentilePoints) {
-            percentiles[p] = this.freqCalc.getPercentile(p, 'waverage');
+            percentiles[p] = this.freqCalc.getPercentile(p, method);
         }
-        return { waverage: percentiles };
+        return { method, values: percentiles };
     }
 
     // Public: 5% trimmed mean by default
@@ -165,6 +176,101 @@ class ExamineCalculator {
         }
         if (!(remainW > 0)) return null;
         return sum / remainW;
+    }
+
+    // Tukey's Hinges (unweighted or approximately with integer-like weights)
+    getTukeyHinges() {
+        if (!this.isNumeric) return null;
+        const entries = this.#getNumericWeightedEntries();
+        if (!entries || entries.length === 0) return null;
+
+        // Build expanded order positions based on weights (approximation for non-integer weights)
+        // For large weights, this is efficient enough since values are unique-sorted already.
+        let W = 0;
+        const positions = [];
+        for (const e of entries) {
+            const count = Math.max(1, Math.round(e.weight));
+            for (let k = 0; k < count; k++) {
+                positions.push(e.value);
+            }
+            W += count;
+        }
+        if (W === 0) return null;
+
+        // Median depth and hinge depth per Tukey's definition
+        const depthMedian = (W + 1) / 2;
+        const depthHinge = (Math.floor(depthMedian) + 1) / 2;
+
+        const lowerIndex = Math.max(1, Math.round(depthHinge));
+        const upperIndex = W - lowerIndex + 1;
+
+        const q1 = positions[lowerIndex - 1];
+        const q3 = positions[upperIndex - 1];
+        const iqr = (isFinite(q1) && isFinite(q3)) ? (q3 - q1) : null;
+
+        return {
+            Q1: q1,
+            Q3: q3,
+            IQR: iqr,
+            method: 'tukey_hinges',
+            W
+        };
+    }
+
+    getExtremeValuesUsingHinges(hinges, extremeCount = 5) {
+        if (!hinges || hinges.IQR === null || hinges.IQR === 0) return null;
+        const entries = this.#getNumericWeightedEntries();
+        if (!entries || entries.length === 0) return null;
+
+        const q1 = hinges.Q1;
+        const q3 = hinges.Q3;
+        const iqr = hinges.IQR;
+        const step = 1.5 * iqr;
+        const lowerInner = q1 - step;
+        const upperInner = q3 + step;
+        const lowerOuter = q1 - (2 * step);
+        const upperOuter = q3 + (2 * step);
+
+        const sortedAsc = entries.map(e => ({ caseNumber: null, value: e.value }))
+            .sort((a, b) => a.value - b.value);
+        const sortedDesc = [...sortedAsc].reverse();
+
+        const isHighExtreme = (v) => v > upperOuter;
+        const isLowExtreme = (v) => v < lowerOuter;
+        const isHighOutlier = (v) => v > upperInner && v <= upperOuter;
+        const isLowOutlier = (v) => v < lowerInner && v >= lowerOuter;
+
+        function pickCandidates(source, predicate) {
+            const arr = [];
+            for (const item of source) {
+                if (predicate(item.value)) {
+                    arr.push(item);
+                    if (arr.length === extremeCount) break;
+                }
+            }
+            return arr;
+        }
+
+        let highest = pickCandidates(sortedDesc, isHighExtreme);
+        if (highest.length < extremeCount) {
+            const additional = pickCandidates(sortedDesc, isHighOutlier);
+            highest.push(...additional.slice(0, extremeCount - highest.length));
+        }
+
+        let lowest = pickCandidates(sortedAsc, isLowExtreme);
+        if (lowest.length < extremeCount) {
+            const additional = pickCandidates(sortedAsc, isLowOutlier);
+            lowest.push(...additional.slice(0, extremeCount - lowest.length));
+        }
+
+        const tagType = (arr) => arr.map(item => ({ ...item, type: (isHighExtreme(item.value) || isLowExtreme(item.value)) ? 'extreme' : 'outlier' }));
+
+        return {
+            highest: tagType(highest),
+            lowest: tagType(lowest),
+            fences: { lowerInner, upperInner, lowerOuter, upperOuter },
+            method: 'tukey_hinges'
+        };
     }
 
     getMEstimators() {

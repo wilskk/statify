@@ -21,14 +21,18 @@ Kalkulator ini menyediakan statistik deskriptif dasar untuk variabel skala. Simb
 
 Kalkulator ini menghitung frekuensi, persentase, dan statistik terkait.
 
-- **Frequency Percent (Persentase Frekuensi)**: `(frequency / W) * 100`
-- **Interquartile Range (IQR)**: `Q3 - Q1`
+- **Percent**: `percent = (frequency / T) * 100` dengan `T` = total bobot semua kasus berbobot valid (termasuk missing) sebagai penyebut; fallback ke `W` bila `T` tidak valid.
+- **Valid Percent**: `validPercent = (frequency / W) * 100` dengan `W` = total bobot kasus valid.
+- **Cumulative Percent**: `cumulativePercent = (cc[i] / W) * 100`.
+- **Mode**: multimodal; semua nilai dengan frekuensi maksimum dikembalikan.
+- **Interquartile Range (IQR)**: `Q3 - Q1` (secara default memakai persentil dari metode yang dipilih saat pemanggilan fungsi persentil).
 - **Outlier Fences (Batas Outlier)**:
   - **Inner Fences**: `Q1 - 1.5 * IQR` dan `Q3 + 1.5 * IQR`
   - **Outer Fences**: `Q1 - 3 * IQR` dan `Q3 + 3 * IQR`
-- **Percentiles (Waverage Method)**: Menggunakan metode rata-rata tertimbang (Definisi 1 SPSS). Formula untuk persentil ke-p adalah:
-  $$ x = (1-g_1^*)y_{k_1} + g_1^*y_{k_1+1} $$
-  di mana `y` adalah nilai, `k` adalah indeks, dan `g` adalah fraksi interpolasi yang dihitung berdasarkan bobot kumulatif.
+- **Percentiles**: Mendukung dua metode:
+  - `waverage` (SPSS Definition 5 / Excel PERCENTILE.INC): target bobot `t_p = W * p` dan interpolasi dalam sel berbobot.
+  - `haverage` (SPSS Definition 1 / AFREQUENCIES): target orde `r = (W + 1) * p` dan interpolasi antar posisi orde bawah/atas.
+  Default untuk modul Frequency adalah `waverage` kecuali ditentukan lain saat pemanggilan `getPercentile(p, method)`.
 
 ## 3. Crosstabs (`crosstabs.js`)
 
@@ -46,7 +50,10 @@ Kalkulator ini digunakan untuk membuat tabel kontingensi dan statistik terkait.
 
 Kalkulator ini menggabungkan fungsionalitas dari kalkulator lain dan menambahkan statistik inferensial.
 
-- **Confidence Interval for Mean**: $$ \bar{y} \pm t_{\alpha/2, W-1} \cdot SE_{mean} $$
-  Di mana `t` adalah nilai t-kritis dengan derajat kebebasan `W-1`.
+- **Percentiles**: default `HAVERAGE` (SPSS Definition 1, target `(W+1)p`), dapat dikonfigurasi via `options.percentileMethod` menjadi `waverage`.
+- **Tukey's Hinges (Q1, Q3) dan IQR**: digunakan untuk konstruksi boxplot dan (secara default di sini) untuk pelaporan IQR serta deteksi outlier bila `useHingesForOutliers` tidak diset `false`.
+- **5% Trimmed Mean**: memangkas masing-masing 5% bobot dari bawah dan atas (mendukung pemangkasan fraksional) lalu menghitung mean pada data tersisa.
+- **Confidence Interval for Mean**: $$ \bar{y} \pm t_{\alpha/2, W-1} \cdot SE_{mean} $$ dengan `df = W - 1`.
+- **M-Estimators**: opsional; saat aktif dikembalikan sebagai placeholder yang menyamai trimmed mean (atau mean bila tidak tersedia).
 
 

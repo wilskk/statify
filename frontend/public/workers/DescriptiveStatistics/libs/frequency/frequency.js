@@ -326,7 +326,48 @@ class FrequencyCalculator {
 
         const { y, c, cc, W } = sortedData;
 
-        switch (method.toLowerCase()) {
+        const methodKey = (method || 'waverage').toLowerCase();
+
+        switch (methodKey) {
+            case 'tukeyhinges': { // Tukey's Hinges for quartiles only (25, 50, 75)
+                if (W === 0) return null;
+                const target = Math.round(p);
+                if (target !== 25 && target !== 50 && target !== 75) {
+                    // Fallback for non-quartiles
+                    return this.getPercentile(p, 'waverage');
+                }
+
+                // Build expanded positions using rounded weights approximation
+                // to derive Tukey hinges positions.
+                const positions = [];
+                let Wapprox = 0;
+                for (let i = 0; i < y.length; i++) {
+                    const count = Math.max(1, Math.round(c[i]));
+                    for (let k = 0; k < count; k++) positions.push(y[i]);
+                    Wapprox += count;
+                }
+                if (Wapprox === 0) return null;
+
+                const depthMedian = (Wapprox + 1) / 2;
+                const depthHinge = (Math.floor(depthMedian) + 1) / 2;
+                const lowerIndex = Math.max(1, Math.round(depthHinge));
+                const upperIndex = Wapprox - lowerIndex + 1;
+
+                const Q1 = positions[lowerIndex - 1];
+                const Q3 = positions[upperIndex - 1];
+                let Q2;
+                if (Wapprox % 2 === 1) {
+                    Q2 = positions[(Wapprox + 1) / 2 - 1];
+                } else {
+                    const a = positions[Wapprox / 2 - 1];
+                    const b = positions[Wapprox / 2];
+                    Q2 = (isFinite(a) && isFinite(b)) ? (a + b) / 2 : b;
+                }
+
+                if (target === 25) return Q1;
+                if (target === 50) return Q2;
+                return Q3; // 75
+            }
             case 'waverage': { // Weighted Average (SPSS Definition 1)
                 if (W === 0) return null;
 
@@ -354,6 +395,40 @@ class FrequencyCalculator {
 
                 const g = (tc1 - cc_prev) / w_k;
                 return (1 - g) * y_prev + g * y_k;
+            }
+            case 'haverage': { // HAVERAGE / AFREQUENCIES (SPSS classic)
+                if (W === 0) return null;
+
+                const r = (W + 1) * p / 100; // target order position in expanded data
+
+                if (r <= 1) return y[0];
+                if (r >= W) return y[y.length - 1];
+
+                const lowerPos = Math.floor(r);
+                const upperPos = Math.ceil(r);
+
+                let cumulative = 0;
+                let lowerValue;
+                let upperValue;
+
+                for (let i = 0; i < y.length; i++) {
+                    cumulative += c[i];
+                    if (lowerValue === undefined && cumulative >= lowerPos) {
+                        lowerValue = y[i];
+                    }
+                    if (cumulative >= upperPos) {
+                        upperValue = y[i];
+                        break;
+                    }
+                }
+
+                // Safety fallbacks
+                if (lowerValue === undefined) lowerValue = y[0];
+                if (upperValue === undefined) upperValue = y[y.length - 1];
+
+                const frac = r - lowerPos; // fractional part in [0,1)
+                if (!isFinite(lowerValue) || !isFinite(upperValue)) return upperValue;
+                return (1 - frac) * lowerValue + frac * upperValue;
             }
             default:
                 return null;

@@ -204,7 +204,9 @@ class DescriptiveCalculator {
         const M4 = this.M4;
         const S = this.getStdDev();
 
-        const term1 = (W + 1) * W * W * M4;
+        // Adjusted to align with SPSS-style bias-corrected excess kurtosis
+        // g2 numerator uses W * (W + 1) * M4 (previously had an extra W factor)
+        const term1 = (W + 1) * W * M4;
         const term2 = 3 * M2 * M2 * (W - 1);
         const numerator = term1 - term2;
 
