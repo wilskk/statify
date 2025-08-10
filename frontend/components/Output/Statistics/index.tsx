@@ -34,8 +34,6 @@ export const StatisticsComponents: StatisticsComponentsRegistry = {
   // Add MulticollinearityChecking component
   'MulticollinearityChecking': MulticollinearityTest,
   
-  // Add more components as they are created
-  // 'MulticollinearityTest': MulticollinearityTest,
 };
 
 // Function to get a component by name

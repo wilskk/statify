@@ -235,8 +235,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
         { name: "*SDRESID" },
     ];
     const selectedVarsForPlot = [
-        ...(selectedDependentVariable ? [{ name: selectedDependentVariable.name }] : []),
-        ...selectedIndependentVariables.map(v => ({ name: v.name }))
+        ...(selectedDependentVariable ? [{ name: selectedDependentVariable.name, label: selectedDependentVariable.label || selectedDependentVariable.name }] : []),
+        ...selectedIndependentVariables.map(v => ({ name: v.name, label: v.label || v.name }))
     ];
     const combined = [...selectedVarsForPlot, ...standardPlotVars];
     return combined.filter((v, index, self) =>
@@ -1042,7 +1042,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           console.log("[Analyze] Mengirim data ke Worker untuk perhitungan regresi (squared changes)...");
           worker.postMessage({
             dependent: filteredDependentData,
-            independent: filteredIndependentData
+            independent: filteredIndependentData,
+            independentVariableInfos: independentVariableInfos
           });
     
           worker.onmessage = async (e: MessageEvent) => {

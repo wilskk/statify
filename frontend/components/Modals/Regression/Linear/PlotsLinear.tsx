@@ -19,6 +19,7 @@ export interface PlotsLinearParams {
 
 interface PlotVariable {
   name: string;
+  label?: string; // optional human-readable label
 }
 
 interface PlotsLinearProps {
@@ -45,6 +46,12 @@ const PlotsLinear: React.FC<PlotsLinearProps> = ({ params, onChange, availablePl
 
   const handleChange = (field: keyof PlotsLinearParams, value: any) => {
     onChange({ [field]: value });
+  };
+
+  const getDisplayLabelByName = (name: string | null): string => {
+    if (!name) return "";
+    const found = availablePlotVariables.find(v => v.name === name);
+    return (found?.label && found.label.trim().length > 0) ? found.label : name;
   };
 
   const handleMoveToY = () => {
@@ -102,7 +109,7 @@ const PlotsLinear: React.FC<PlotsLinearProps> = ({ params, onChange, availablePl
                     : "border-gray-300"
                 }`}
               >
-                {variable.name}
+                {variable.label && variable.label.trim().length > 0 ? variable.label : variable.name}
               </div>
             ))}
             {currentAvailableVariables.length === 0 && (
@@ -123,7 +130,7 @@ const PlotsLinear: React.FC<PlotsLinearProps> = ({ params, onChange, availablePl
                 type="text"
                 className="flex-1 cursor-pointer"
                 placeholder="Select Y variable"
-                value={params.selectedY ?? ""}
+                value={getDisplayLabelByName(params.selectedY)}
                 readOnly
                 onClick={handleRemoveY}
               />
@@ -143,7 +150,7 @@ const PlotsLinear: React.FC<PlotsLinearProps> = ({ params, onChange, availablePl
                 type="text"
                 className="flex-1 cursor-pointer"
                 placeholder="Select X variable"
-                value={params.selectedX ?? ""}
+                value={getDisplayLabelByName(params.selectedX)}
                 readOnly
                 onClick={handleRemoveX}
               />

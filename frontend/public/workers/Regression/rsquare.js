@@ -2,7 +2,7 @@
 
 self.onmessage = function (event) {
   console.log("[Worker] Data diterima:", event.data);
-  const { dependent, independent } = event.data;
+  const { dependent, independent, independentVariableInfos } = event.data;
 
   // Validasi input
   if (!Array.isArray(dependent)) {
@@ -278,12 +278,17 @@ self.onmessage = function (event) {
   const fChangeRounded = parseFloat(fChange.toFixed(3));
   const sigFChangeRounded = parseFloat(sigFChange.toFixed(3));
 
-  // Buat catatan kaki untuk prediktor
-  const predictorVariables = [];
-  for (let i = k; i > 0; i--) {
-    predictorVariables.push(`VAR0000${i+1}`);
+  // Buat catatan kaki untuk prediktor dengan label jika tersedia
+  let predictorsDisplay = [];
+  if (Array.isArray(independentVariableInfos) && independentVariableInfos.length === k) {
+    predictorsDisplay = independentVariableInfos.map(v => (v.label && v.label.trim() !== '') ? v.label : v.name);
+  } else {
+    // Fallback ke penamaan generik jika info tidak tersedia
+    for (let i = 0; i < k; i++) {
+      predictorsDisplay.push(`VAR${String(i + 1).padStart(5, '0')}`);
+    }
   }
-  const footnoteText = `a. Predictors: (Constant), ${predictorVariables.join(', ')}`;
+  const footnoteText = `a. Predictors: (Constant), ${predictorsDisplay.join(', ')}`;
 
   // Susun output JSON sesuai format yang diinginkan
   const result = {
