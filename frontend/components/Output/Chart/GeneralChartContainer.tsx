@@ -1503,14 +1503,14 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.chartColor
               );
               break;
-            case "Normal QQ Plot":
+            case "Q-Q Plot":
               chartNode = chartUtils.createNormalQQPlot(
                 chartDataPoints,
                 width,
                 height,
                 useAxis,
                 {
-                  title: chartMetadata?.title || "Normal QQ Plot",
+                  title: chartMetadata?.title || "Q-Q Plot",
                   subtitle: chartMetadata?.subtitle,
                   titleFontSize: chartMetadata?.titleFontSize || 16,
                   subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
