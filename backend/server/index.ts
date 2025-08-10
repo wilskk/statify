@@ -1,7 +1,6 @@
-import app from './app';
-
-const PORT = process.env.PORT || 5000;
+import { app } from './app';
+import { PORT } from './config/constants';
 
 app.listen(PORT, () => {
-    console.log(`Server berjalan pada http://localhost:${PORT}`);
+    console.warn(`Server berjalan pada http://localhost:${PORT}`);
 });

@@ -1,3 +1,70 @@
+# Statify Backend (Express)
+
+Backend Express untuk membaca file SPSS `.sav` dan membuat `.sav` dari JSON.
+
+- Endpoint berada di router `/api/sav`
+- Validasi payload menggunakan Zod
+- Upload multipart menggunakan Formidable
+- Rate limiting global pada prefix `/api`; CORS dibatasi
+
+Dokumentasi API lengkap: lihat `docs/API.md`.
+
+## Prasyarat
+- Node.js 18+
+- npm 9+
+
+## Instalasi
+```bash
+npm install
+```
+
+## Skrip
+- Dev: `npm run dev` (hot-reload TS via tsx)
+- Build: `npm run build` (TypeScript -> dist)
+- Start: `npm start` (jalan dari dist)
+- Test: `npm test` (Jest)
+- Lint: `npm run lint`
+- Lint fix: `npm run lint:fix`
+
+## ENV
+- `PORT`: default 5000
+- `MAX_UPLOAD_SIZE_MB`: default 10
+- `TEMP_DIR`:
+  - Dev (tsx): `server/temp`
+  - Prod/Docker: `dist/temp`
+- `DEBUG_SAV` (opsional): aktifkan log debug saat proses `/api/sav/create` di `server/controllers/savController.ts`. Nilai truthy yang diterima: `1`, `true`, `yes`, `on` (tidak peka huruf besar/kecil). Default non-aktif.
+
+## Quickstart
+- Dev: `npm run dev`
+- Health: `curl http://localhost:5000/` ⇒ `Backend is running!`
+- Router: `curl http://localhost:5000/api/sav/` ⇒ `OK`
+
+## Docker
+- Build:
+  ```bash
+  docker build -f Dockerfile.backend -t statify-backend:latest \
+    --build-arg NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000 .
+  ```
+- Run:
+  ```bash
+  docker run -p 5000:5000 \
+    -e PORT=5000 -e MAX_UPLOAD_SIZE_MB=10 -e TEMP_DIR=/app/backend/temp \
+    --name statify-backend statify-backend:latest
+  ```
+- Catatan: `NEXT_PUBLIC_FRONTEND_URL` ditulis ke `.env` oleh Dockerfile, tetapi backend saat ini hanya memakai `PORT`, `MAX_UPLOAD_SIZE_MB`, `TEMP_DIR`.
+
+## CORS & Rate Limiting
+- Origins di `server/config/constants.ts` (hard-coded)
+- Rate limit: 100/15 menit; kunci dari header `X-User-Id` (jika ada) atau IP
+
+## Troubleshooting
+- 429 Too Many Requests: gunakan `X-User-Id` yang konsisten; lihat header `RateLimit-*`
+- 400 Payload tidak valid: cek `issues` dari Zod pada respons
+
+---
+
+# Legacy: SAV writer library docs
+
 Tentu, berikut adalah dokumentasi lengkap untuk library ini, dengan fokus pada tipe data yang dapat disimpan dan parameter-parameternya, berdasarkan file kode yang Anda berikan.
 
 ### **Ringkasan Umum**

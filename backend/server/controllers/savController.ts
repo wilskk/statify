@@ -1,24 +1,47 @@
-// savController.ts - Versi dengan perbaikan
-import { Request, Response } from 'express';
+// Controller for SAV upload/create
+import type { Request, Response } from 'express';
 import formidable from 'formidable';
+import type { Part, File, Fields } from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import { saveToFile, VariableType, VariableAlignment, VariableMeasure } from 'sav-writer';
+import { z } from 'zod';
+
+import { MAX_UPLOAD_SIZE_MB, getTempDir } from '../config/constants';
 import * as savService from '../services/savService'; // Import the service
+import type { VariableInput, TransformedVariable } from '../types/sav.types';
 
-interface FormidableFile {
-    filepath?: string;
-    path?: string;
-    [key: string]: any;
-}
+ 
+// Zod schemas for input validation
+const ValueLabelSchema = z.object({
+    value: z.union([z.string(), z.number()]).nullable().optional(),
+    label: z.string().nullable().optional(),
+});
 
-/**
- * Transforms a single variable object from the client-side request
- * into the format required by the 'sav-writer' library.
- * @param variable The variable object from the request body.
- * @returns A transformed variable object.
- */
-export const transformVariable = (variable: any) => {
+const VariableInputSchema = z.object({
+    name: z.string(),
+    label: z.string().optional().default(''),
+    type: z.enum([
+        'NUMERIC', 'STRING',
+        'DATE', 'ADATE', 'EDATE', 'SDATE', 'JDATE', 'QYR', 'MOYR', 'WKYR', 'WKDAY', 'MONTH',
+        'DATETIME', 'TIME', 'DTIME',
+        'DOLLAR', 'DOT', 'COMMA', 'SCIENTIFIC', 'CUSTOM_CURRENCY', 'CCA', 'CCB', 'CCC', 'CCD', 'CCE'
+    ]),
+    width: z.coerce.number(),
+    decimal: z.coerce.number().optional().default(0),
+    alignment: z.enum(['left', 'centre', 'center', 'right']).optional(),
+    measure: z.enum(['nominal', 'ordinal', 'continuous']).optional(),
+    columns: z.coerce.number().optional(),
+    valueLabels: z.array(ValueLabelSchema).optional(),
+});
+
+const CreateSavBodySchema = z.object({
+    variables: z.array(VariableInputSchema).min(1),
+    data: z.array(z.record(z.string(), z.unknown())).default([]),
+});
+
+// Normalize VariableInput to sav-writer format.
+export const transformVariable = (variable: VariableInput): TransformedVariable => {
     let type: number;
     if (variable.type === "STRING") {
         type = VariableType.String;
@@ -56,45 +79,46 @@ export const transformVariable = (variable: any) => {
     }
 
     const valueLabels = Array.isArray(variable.valueLabels) ?
-        variable.valueLabels.map((vl: any) => {
+        variable.valueLabels.map((vl) => {
             let value: string | number;
             const label = vl.label === null || vl.label === undefined ? "" : String(vl.label);
 
             if (type === VariableType.String) {
-                value = vl.value === null || vl.value === undefined ? "" : String(vl.value);
+                const v = vl.value;
+                value = v === null || v === undefined ? "" : String(v);
             } else {
-                const numValue = Number(vl.value);
+                const v = vl.value;
+                const numValue = Number(v);
                 value = isNaN(numValue) ? 0 : numValue;
             }
             return { value, label };
         }) : [];
 
     return {
-        name: String(variable.name),
-        label: String(variable.label || ""),
+        name: variable.name,
+        label: variable.label ?? "",
         type,
-        width: Number(variable.width),
-        decimal: Number(variable.decimal || 0),
+        width: variable.width,
+        decimal: variable.decimal ?? 0,
         alignment,
         measure,
-        columns: Math.max(1, Math.floor(Number(variable.columns || 8) / 20)),
+        columns: Math.max(1, Math.floor(((variable.columns ?? 8) / 20))),
         valueLabels
     };
 };
 
-/**
- * Transforms a single data record (row) based on the definitions
- * of the transformed variables. It handles type coercion for dates and numbers.
- * @param record A single row of data.
- * @param transformedVariables The array of fully transformed variable definitions.
- * @returns A processed data record.
- */
-export const transformRecord = (record: any, transformedVariables: any[]) => {
-    const result: Record<string, any> = {};
+// Coerce record values by transformed variable types (strings, dates, numbers).
+export const transformRecord = (
+    record: Record<string, unknown>,
+    transformedVariables: TransformedVariable[]
+): Record<string, string | number | Date | null> => {
+    const result: Record<string, string | number | Date | null> = {};
 
     for (const varName of Object.keys(record)) {
-        const variable = transformedVariables.find((v: any) => v.name === varName);
-        if (!variable) continue;
+        const variable = transformedVariables.find((v) => v.name === varName);
+        if (!variable) {
+            continue;
+        }
 
         const rawValue = record[varName];
 
@@ -104,7 +128,8 @@ export const transformRecord = (record: any, transformedVariables: any[]) => {
         }
 
         if (variable.type === VariableType.String) {
-            result[varName] = String(rawValue || '');
+            const s = String(rawValue ?? '');
+            result[varName] = s.length === 0 ? null : s;
         } else if (variable.type === VariableType.Date) {
             if (typeof rawValue === 'string' && /^\d{2}-\d{2}-\d{4}$/.test(rawValue)) {
                 const [day, month, year] = rawValue.split('-').map(Number);
@@ -121,17 +146,17 @@ export const transformRecord = (record: any, transformedVariables: any[]) => {
     return result;
 };
 
-export const uploadSavFile = (req: Request, res: Response) => {
+export const uploadSavFile = (req: Request, res: Response): void => {
     const form = formidable({
         multiples: false,
         // Limit file size (default 10 MB, configurable via env)
-        maxFileSize: Number(process.env.MAX_UPLOAD_SIZE_MB || '10') * 1024 * 1024,
-        /**
-         * Only accept files that (a) have `.sav` extension and (b) match the expected mimetype.
-         * Formidable v3 passes each part to this filter before writing to disk.
-         */
-        filter: ({ originalFilename, mimetype }: any) => {
-            if (!originalFilename) return false;
+        maxFileSize: MAX_UPLOAD_SIZE_MB * 1024 * 1024,
+        // Only accept .sav with allowed mimetypes (checked before writing to disk)
+        filter: (part: Part) => {
+            const { originalFilename, mimetype } = part;
+            if (!originalFilename) {
+                return false;
+            }
             const ext = path.extname(originalFilename).toLowerCase();
             const allowedMimes = ['application/octet-stream', 'application/x-spss-sav'];
             const mimeOk = !mimetype || allowedMimes.includes(mimetype);
@@ -139,18 +164,20 @@ export const uploadSavFile = (req: Request, res: Response) => {
         }
     });
 
-    form.parse(req, async (err, fields, files) => {
+    form.parse(req, (err: Error | null, fields: Fields, files: Record<string, File | File[] | undefined>) => {
         if (err) {
             console.error('Error parsing form:', err);
             // Ensure temporary file is cleaned up if parsing fails and file exists
-            const uploadedFileOnError = files.file as FormidableFile | FormidableFile[];
+            const uploadedFileOnError = files['file'];
             if (uploadedFileOnError) {
                 const filePathOnError = Array.isArray(uploadedFileOnError)
-                    ? uploadedFileOnError[0]?.filepath || uploadedFileOnError[0]?.path
-                    : uploadedFileOnError?.filepath || uploadedFileOnError?.path;
+                    ? uploadedFileOnError[0]?.filepath
+                    : uploadedFileOnError?.filepath;
                 if (filePathOnError && fs.existsSync(filePathOnError)) {
                     fs.unlink(filePathOnError, unlinkErr => {
-                        if (unlinkErr) console.error("Error deleting temp file after parse error:", unlinkErr);
+                        if (unlinkErr) {
+                            console.error("Error deleting temp file after parse error:", unlinkErr);
+                        }
                     });
                 }
             }
@@ -158,53 +185,59 @@ export const uploadSavFile = (req: Request, res: Response) => {
             return;
         }
 
-        const uploadedFile = files.file as FormidableFile | FormidableFile[];
+        const uploadedFile = files['file'];
         if (!uploadedFile) {
             res.status(400).send('No file uploaded');
             return;
         }
 
         const filePath = Array.isArray(uploadedFile)
-            ? uploadedFile[0]?.filepath || uploadedFile[0]?.path
-            : uploadedFile?.filepath || uploadedFile?.path;
+            ? uploadedFile[0]?.filepath
+            : uploadedFile?.filepath;
 
         if (!filePath) {
             res.status(400).send('Invalid file path');
             return;
         }
 
-        try {
-            // Call the service function
-            const { meta, rows } = await savService.processUploadedSav(filePath);
-            res.json({ meta, rows });
-        } catch (error) {
-            // Error logging is now primarily handled in the service
-            // The service already attempts cleanup, no need to repeat here
-            res.status(500).send('Error processing SAV file');
-        }
+        void (async () => {
+            try {
+                // Delegate to service
+                const { meta, rows } = await savService.processUploadedSav(filePath);
+                res.json({ meta, rows });
+            } catch {
+                // Logged and cleaned up in service
+                res.status(500).send('Error processing SAV file');
+            }
+        })();
     });
 };
 
-export const createSavFile = (req: Request, res: Response) => {
-    const { data, variables } = req.body;
-    console.log('Received SAV writer request:', { data, variables });
-
-    if (!data || !variables) {
-        res.status(400).json({ error: "Parameter data dan variables wajib disediakan." });
+export const createSavFile = (req: Request, res: Response): void => {
+    const parsed = CreateSavBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: 'Payload tidak valid', issues: parsed.error.issues });
         return;
+    }
+    const { data, variables } = parsed.data;
+    const DEBUG_SAV = ['1','true','yes','on'].includes(String(process.env.DEBUG_SAV).toLowerCase());
+    if (DEBUG_SAV) {
+        console.warn('Received SAV writer request:', { data, variables });
     }
 
     try {
-        const filteredVariables = variables.filter((variable: any) => {
+        const filteredVariables = variables.filter((variable) => {
             if (variable.type === "DATE") {
-                return variable.width === 10;
+                return Number(variable.width) === 10;
             }
             if (variable.type === "DATETIME") {
-                return variable.width === 20;
+                return Number(variable.width) === 20;
             }
             // Filter out unsupported date/time formats
             if (["ADATE", "EDATE", "SDATE", "JDATE", "QYR", "MOYR", "WKYR", "WKDAY", "MONTH", "TIME", "DTIME"].includes(variable.type)) {
-                console.warn(`Variabel ${variable.name} dengan tipe ${variable.type} diabaikan: format tidak didukung.`);
+                if (DEBUG_SAV) {
+                    console.warn(`Variabel ${String(variable.name)} dengan tipe ${String(variable.type)} diabaikan: format tidak didukung.`);
+                }
                 return false;
             }
             return true;
@@ -217,34 +250,40 @@ export const createSavFile = (req: Request, res: Response) => {
             return;
         }
 
-        // Use the new helper functions
-        const transformedVariables = filteredVariables.map(transformVariable);
-        const transformedData = data.map((record: any) => transformRecord(record, transformedVariables));
+        // Transform inputs
+        const transformedVariables: TransformedVariable[] = filteredVariables.map(transformVariable);
+        const transformedData = data?.map((record) => transformRecord(record, transformedVariables)) ?? [];
 
-        const outputDir = process.env.TEMP_DIR ? path.resolve(process.env.TEMP_DIR) : path.join(__dirname, '../../temp');
+        const outputDir = getTempDir();
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
         }
 
         const filePath = path.join(outputDir, `output-${Date.now()}.sav`);
 
-        console.log('Transformed variables:', JSON.stringify(transformedVariables, null, 2));
+        if (DEBUG_SAV) {
+            console.warn('Transformed variables:', JSON.stringify(transformedVariables, null, 2));
+        }
 
         if (transformedVariables.length > 0) {
             const firstVar = transformedVariables[0];
-            console.log('First variable:', {
-                name: firstVar.name,
-                type: firstVar.type,
-                valueLabels: firstVar.valueLabels
-            });
+            if (DEBUG_SAV) {
+                console.warn('First variable:', {
+                    name: firstVar.name,
+                    type: firstVar.type,
+                    valueLabels: firstVar.valueLabels
+                });
+            }
 
             if (firstVar.valueLabels && firstVar.valueLabels.length > 0) {
-                console.log('First value label:', {
-                    value: firstVar.valueLabels[0].value,
-                    valueType: typeof firstVar.valueLabels[0].value,
-                    label: firstVar.valueLabels[0].label,
-                    labelType: typeof firstVar.valueLabels[0].label
-                });
+                if (DEBUG_SAV) {
+                    console.warn('First value label:', {
+                        value: firstVar.valueLabels[0].value,
+                        valueType: typeof firstVar.valueLabels[0].value,
+                        label: firstVar.valueLabels[0].label,
+                        labelType: typeof firstVar.valueLabels[0].label
+                    });
+                }
             }
         }
 
@@ -263,27 +302,27 @@ export const createSavFile = (req: Request, res: Response) => {
                 }
             });
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating SAV file:", error);
 
-        if (error.message && error.message.includes("invalid variable name")) {
+        if (error instanceof Error && error.message.includes("invalid variable name")) {
             res.status(400).json({
                 error: "Nama variabel tidak valid. Nama variabel harus dimulai dengan huruf dan hanya berisi huruf, angka, atau garis bawah."
             });
             return;
         }
 
-        const errorMessage = error.stack || error.message || String(error);
+        const errorMessage = error instanceof Error ? (error.stack || error.message) : String(error);
         res.status(500).json({
             error: "Gagal membuat file .sav",
             details: errorMessage,
-            message: error.message
+            message: error instanceof Error ? error.message : undefined
         });
     }
 };
 
-export const cleanupTempFiles = () => {
-    const outputDir = process.env.TEMP_DIR ? path.resolve(process.env.TEMP_DIR) : path.join(__dirname, '../../temp');
+export const cleanupTempFiles = (): void => {
+    const outputDir = getTempDir();
     if (fs.existsSync(outputDir)) {
         const files = fs.readdirSync(outputDir);
         const now = Date.now();

@@ -1,5 +1,6 @@
 import request from 'supertest';
-import app from '../app';
+
+import { app } from '../app';
 
 describe('Test the root path', () => {
     it('should response the GET method', async () => {

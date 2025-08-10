@@ -9,13 +9,15 @@ jest.mock('sav-writer', () => ({
   saveToFile: jest.fn()
 }));
 
-import { transformVariable, transformRecord } from '../savController';
 import { VariableType, VariableAlignment, VariableMeasure } from 'sav-writer';
+
+import type { VariableInput } from '../../types/sav.types';
+import { transformVariable, transformRecord } from '../savController';
 
 describe('savController helper functions', () => {
   describe('transformVariable', () => {
     it('should correctly transform STRING variable with value labels', () => {
-      const input = {
+      const input: VariableInput = {
         name: 'var1',
         label: 'Variable 1',
         type: 'STRING',
@@ -49,7 +51,7 @@ describe('savController helper functions', () => {
     });
 
     it('should default to Numeric type and right alignment/continuous measure when unspecified', () => {
-      const input = {
+      const input: VariableInput = {
         name: 'numVar',
         label: '',
         type: 'NUMERIC',
@@ -70,20 +72,20 @@ describe('savController helper functions', () => {
       label: 'Str',
       type: 'STRING',
       width: 10
-    });
+    } as VariableInput);
     const dateVar = transformVariable({
       name: 'dt',
       label: 'Date',
       type: 'DATE',
       width: 10
-    });
+    } as VariableInput);
     const numVar = transformVariable({
       name: 'num',
       label: 'Number',
       type: 'NUMERIC',
       width: 8,
       decimal: 0
-    });
+    } as VariableInput);
     const transformedVars = [stringVar, dateVar, numVar];
 
     it('should convert values according to variable definitions', () => {
@@ -99,7 +101,8 @@ describe('savController helper functions', () => {
       expect(result.num).toBe(42);
       // Date: 12 Oct 2023 UTC
       expect(result.dt).toBeInstanceOf(Date);
-      expect(result.dt?.toISOString()).toBe('2023-10-12T00:00:00.000Z');
+      const dtIso = result.dt instanceof Date ? result.dt.toISOString() : null;
+      expect(dtIso).toBe('2023-10-12T00:00:00.000Z');
     });
 
     it('should set invalid or empty values to null', () => {

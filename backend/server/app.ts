@@ -1,41 +1,42 @@
-import express from 'express';
 import cors from 'cors';
-import savRoutes from './routes/savRoutes';
-import helmet from 'helmet';
+import express from 'express';
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+
+import { ALLOWED_ORIGINS, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS } from './config/constants';
+import { savRouter } from './routes/savRoutes';
+
 
 const app = express();
 
-// Hard-coded daftar origin yang diizinkan karena tidak menggunakan .env
-const allowedOrigins = ['https://statify-dev.student.stis.ac.id', 'http://statify-dev.student.stis.ac.id', 'http://localhost:3001', 'http://localhost:3000'];
-
 app.use(helmet());
 app.use(cors({
-    origin: allowedOrigins,
+    origin: ALLOWED_ORIGINS,
     methods: ['GET', 'POST'],
 }));
 app.use(express.json());
 
-// Rate limiting: max 100 requests per 15 menit per IP (atau per user jika header X-User-Id ada)
+// Global rate limiting: 100 req/15m keyed by X-User-Id or IP
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 menit
-    max: 100,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    max: RATE_LIMIT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req: import('express').Request) => {
-        // Gunakan header 'X-User-Id' jika ada; bila tidak, pakai IP. String interpolation memastikan hasil selalu string.
+    keyGenerator: (req: express.Request) => {
+        // Prefer header X-User-Id; fallback to IP. Always return string.
         const userIdHeader = req.headers['x-user-id'];
-        return `${Array.isArray(userIdHeader) ? userIdHeader[0] : userIdHeader ?? req.ip}`;
+        const id = Array.isArray(userIdHeader) ? userIdHeader[0] : userIdHeader;
+        return String(id ?? req.ip);
     }
 });
 
 app.use('/api', apiLimiter);
 
-// Health check endpoint
-app.get('/', (req, res) => {
+// Health check
+app.get('/', (req: express.Request, res) => {
     res.status(200).send('Backend is running!');
 });
 
-app.use('/api/sav', savRoutes);
+app.use('/api/sav', savRouter);
 
-export default app; 
+export { app };
