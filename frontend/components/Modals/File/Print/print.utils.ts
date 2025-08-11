@@ -15,7 +15,7 @@ export interface ColumnHeader {
 
 export interface TableRowData {
     rowHeader: (string | null)[];
-    [key: string]: any;
+    [key: string]: unknown;
     children?: TableRowData[];
 }
 
@@ -75,7 +75,7 @@ export const getLeafColumnKeys = (cols: ColumnHeader[]): string[] => {
     const keys: string[] = [];
     const traverse = (col: ColumnHeader): void => {
         if (!col.children?.length) {
-            keys.push(col.key || col.header);
+            keys.push(col.key ?? col.header);
         } else {
             col.children.forEach(traverse);
         }
@@ -149,8 +149,8 @@ export const generateMergedRowHeaders = (flatRows: TableRowData[], rowHeaderCoun
         const mergedRow: (MergedCell | null)[] = [];
         if (rowHeaderCount === 2 && row.rowHeader.filter(h => h !== "").length === 1) {
             const colIdx = 0;
-            const current = row.rowHeader[colIdx] || "";
-            const prev = rowIndex > 0 ? flatRows[rowIndex - 1].rowHeader[colIdx] || "" : null;
+            const current = row.rowHeader[colIdx] ?? "";
+            const prev = rowIndex > 0 ? (flatRows[rowIndex - 1].rowHeader[colIdx] ?? "") : null;
             if (rowIndex === 0 || current !== prev) {
                 let rowSpan = 1;
                 for (let next = rowIndex + 1; next < flatRows.length; next++) {
@@ -162,8 +162,8 @@ export const generateMergedRowHeaders = (flatRows: TableRowData[], rowHeaderCoun
             }
         } else {
             for (let colIdx = 0; colIdx < rowHeaderCount; colIdx++) {
-                const current = row.rowHeader[colIdx] || "";
-                const prev = rowIndex > 0 ? flatRows[rowIndex - 1].rowHeader[colIdx] || "" : null;
+                const current = row.rowHeader[colIdx] ?? "";
+                const prev = rowIndex > 0 ? (flatRows[rowIndex - 1].rowHeader[colIdx] ?? "") : null;
                 if (rowIndex === 0 || current !== prev) {
                     let rowSpan = 1;
                     for (let next = rowIndex + 1; next < flatRows.length; next++) {
@@ -194,7 +194,7 @@ export const generateAutoTableDataFromString = (jsonData: string): AutoTableResu
         const maxLevel = levels.length;
         let headerRows = levels.map((cols, level) =>
             cols.map((col) => ({
-                content: col.header || "",
+                content: col.header ?? "",
                 colSpan: getLeafColumnCount(col),
                 rowSpan: col.children?.length ? 1 : maxLevel - level,
                 styles: { halign: "center", valign: "middle" }
@@ -211,7 +211,7 @@ export const generateAutoTableDataFromString = (jsonData: string): AutoTableResu
         const body: CellDef[][] = [];
         for (let i = 0; i < flatRows_internal.length; i++) {
             const row = flatRows_internal[i];
-            const allDataNull = dataColKeys.every(k => row[k] == null || String(row[k]).trim() === "");
+            const allDataNull = dataColKeys.every(k => row[k] === null || row[k] === undefined || String(row[k]).trim() === "");
             if (allDataNull && row.rowHeader.every(h => h === null || h.trim() === "")) continue;
 
             const rowCells: CellDef[] = [];
@@ -241,7 +241,7 @@ export const getLeafPaths = (columns: ColumnHeader[], currentPath: string[] = []
     return paths;
 };
 
-export type PDFTableCell = CellDef | 'skip' | null | {};
+export type PDFTableCell = CellDef | 'skip' | null | Record<string, never>;
 export type PDFTableRow = PDFTableCell[];
 export type PDFTableContent = PDFTableRow[];
 

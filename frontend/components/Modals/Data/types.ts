@@ -1,4 +1,4 @@
-import { BaseModalProps } from '@/types/modalTypes';
+import type { BaseModalProps } from '@/types/modalTypes';
 import type { Variable } from '@/types/Variable';
 
 /**

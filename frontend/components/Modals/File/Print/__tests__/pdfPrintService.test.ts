@@ -2,9 +2,9 @@ import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 import { addDataGridView, addVariableView, addResultsView } from '../services/pdfPrintService';
 import { generateAutoTableDataFromString } from '../print.utils';
-import { DataRow } from '@/types/Data';
-import { Variable } from '@/types/Variable';
-import { Log } from '@/types/Result';
+import type { DataRow } from '@/types/Data';
+import type { Variable } from '@/types/Variable';
+import type { Log } from '@/types/Result';
 
 // Mock the external libraries
 jest.mock('jspdf');

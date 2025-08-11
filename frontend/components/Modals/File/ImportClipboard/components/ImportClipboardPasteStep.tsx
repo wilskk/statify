@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useRef, useState, FC, useEffect, useMemo, useCallback } from "react";
+import type { FC} from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Clipboard, Loader2, HelpCircle, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
-import { ImportClipboardPasteStepProps } from "../types"; // Updated path
+import type { ImportClipboardPasteStepProps } from "../types"; // Updated path
 import { Textarea } from "@/components/ui/textarea";
 import { readTextFromClipboard } from "../services/services"; // Import the new service function
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";

@@ -81,10 +81,18 @@ describe('useFrequenciesAnalysis', () => {
         expect(result.current.isLoading).toBe(true);
         expect(mockPostMessage).toHaveBeenCalledTimes(1);
         expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
-            variableData: [{
-                variable: mockVariables[0],
-                data: mockAnalysisData.map(row => row[0])
-            }],
+            variableData: [
+                expect.objectContaining({
+                    variable: expect.objectContaining({
+                        name: 'var1',
+                        label: 'Variable 1',
+                        columnIndex: 0,
+                        tempId: '1',
+                        type: 'STRING',
+                    }),
+                    data: mockAnalysisData.map(row => row[0])
+                })
+            ],
             weightVariableData: mockWeights,
         }));
 

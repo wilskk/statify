@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
-import { Variable } from "@/types/Variable";
-import { ParseSheetOptions, ParsedSheetData, ProcessedImportData } from "./types";
+import type { Variable } from "@/types/Variable";
+import type { ParseSheetOptions, ParsedSheetData, ProcessedImportData } from "./types";
 
 /**
  * Parses the binary string content of an Excel file into a workbook object.
@@ -19,11 +19,11 @@ export const parseExcelWorkbook = (binaryFileContent: string): XLSX.WorkBook | n
  * Extracts sheet names from a given workbook.
  */
 export const getSheetNamesFromWorkbook = (workbook: XLSX.WorkBook): string[] => {
-    return workbook.SheetNames || [];
+    return workbook.SheetNames ?? [];
 };
 
 const getEffectiveRange = (sheet: XLSX.WorkSheet, userRange?: string): string => {
-    let currentRange = userRange?.trim() || "";
+    let currentRange = userRange?.trim() ?? "";
     const sheetRef = sheet["!ref"];
     if (!currentRange && sheetRef) {
         currentRange = sheetRef;
@@ -57,20 +57,20 @@ export const parseSheetForPreview = (
             skipHidden: !options.readHiddenRowsCols,
         };
 
-        let dataToDisplay: any[][];
+        let dataToDisplay: unknown[][];
         let headersArray: string[] = [];
 
         if (options.firstLineContains) {
-            const rawDataWithHeader = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as any[][];
+            const rawDataWithHeader = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as unknown[][];
             if (rawDataWithHeader.length > 0) {
-                headersArray = (rawDataWithHeader.shift() as any[]).map(val => String(val ?? ""));
+                headersArray = (rawDataWithHeader.shift() as unknown[]).map(val => String(val ?? ""));
                 dataToDisplay = rawDataWithHeader;
             } else {
                 dataToDisplay = [];
             }
         } else {
             // No header row: parse as array of arrays and generate default column letters
-            dataToDisplay = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as any[][];
+            dataToDisplay = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as unknown[][];
             const numColsPreview = dataToDisplay.length > 0 ? dataToDisplay[0].length : 0;
             headersArray = Array.from({ length: numColsPreview }, (_, i) => XLSX.utils.encode_col(i));
         }
@@ -79,11 +79,11 @@ export const parseSheetForPreview = (
         const finalHeaders = headersArray.length > 0 ? headersArray : false;
         const numFinalCols = headersArray.length > 0 
             ? headersArray.length 
-            : (dataToDisplay.length > 0 ? dataToDisplay[0]?.length || 0 : 0);
+            : (dataToDisplay.length > 0 ? (dataToDisplay[0]?.length ?? 0) : 0);
 
         const normalizedData = dataToDisplay.map(row => {
             const newRow = Array(numFinalCols).fill(options.readEmptyCellsAs === 'empty' ? "" : null);
-            for (let i = 0; i < Math.min(row?.length || 0, numFinalCols); i++) {
+            for (let i = 0; i < Math.min(row?.length ?? 0, numFinalCols); i++) {
                 const cellValue = row[i];
                 newRow[i] = (cellValue === undefined || cellValue === null) && options.readEmptyCellsAs === 'missing' ? null : (cellValue ?? "");
             }
@@ -91,9 +91,10 @@ export const parseSheetForPreview = (
         });
 
         return { data: normalizedData.slice(0, 100), headers: finalHeaders };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error parsing sheet for preview: ", e);
-        return { data: [], headers: false, error: `Error parsing sheet. Check range or file. (${e.message})` };
+        const msg = e instanceof Error ? e.message : String(e);
+        return { data: [], headers: false, error: `Error parsing sheet. Check range or file. (${msg})` };
     }
 };
 
@@ -122,12 +123,12 @@ export const processSheetForImport = (
         };
 
         let actualHeadersArray: string[];
-        let fullDataForStore: any[][];
+        let fullDataForStore: unknown[][];
 
         if (options.firstLineContains) {
-            const rawFullData = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as any[][];
+            const rawFullData = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as unknown[][];
             if (rawFullData.length > 0) {
-                actualHeadersArray = (rawFullData.shift() as any[]).map(val => String(val ?? ""));
+                actualHeadersArray = (rawFullData.shift() as unknown[]).map(val => String(val ?? ""));
                 fullDataForStore = rawFullData;
             } else {
                 actualHeadersArray = [];
@@ -135,7 +136,7 @@ export const processSheetForImport = (
             }
         } else {
             // No header row: parse as arrays and generate default header letters
-            fullDataForStore = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as any[][];
+            fullDataForStore = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as unknown[][];
             const numCols = fullDataForStore.length > 0 ? fullDataForStore[0].length : 0;
             actualHeadersArray = Array.from({ length: numCols }, (_, i) => XLSX.utils.encode_col(i));
         }
@@ -147,7 +148,7 @@ export const processSheetForImport = (
 
         const processedData = fullDataForStore.map(row => {
             const newRow = Array(numFinalCols).fill(emptyValue);
-            for (let i = 0; i < Math.min(row?.length || 0, numFinalCols); i++) {
+            for (let i = 0; i < Math.min(row?.length ?? 0, numFinalCols); i++) {
                 const cellValue = row[i];
                 newRow[i] = (cellValue === undefined || cellValue === null) && options.readEmptyCellsAs === 'missing' ? missingValue : (cellValue ?? emptyValue);
             }
@@ -156,9 +157,10 @@ export const processSheetForImport = (
 
         return { processedFullData: processedData, actualHeaders: actualHeadersArray };
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error processing sheet for import: ", e);
-        return { processedFullData: [], actualHeaders: [], error: `Import failed during data processing: ${e.message}` };
+        const msg = e instanceof Error ? e.message : String(e);
+        return { processedFullData: [], actualHeaders: [], error: `Import failed during data processing: ${msg}` };
     }
 };
 
@@ -166,17 +168,18 @@ export const processSheetForImport = (
  * Generates variable metadata based on processed data and headers.
  */
 export const generateVariablesFromData = (
-    processedFullData: any[][],
+    processedFullData: unknown[][],
     actualHeaders: string[],
-    readEmptyCellsAs: "empty" | "missing" // Needed to correctly interpret data for type detection
+    _readEmptyCellsAs: "empty" | "missing" // Needed to correctly interpret data for type detection
 ): Variable[] => {
+
     const variables: Variable[] = [];
     if (!actualHeaders || actualHeaders.length === 0) return variables;
 
     for (let colIndex = 0; colIndex < actualHeaders.length; colIndex++) {
         const colData = processedFullData.map(row => row[colIndex]);
         const headerName = String(actualHeaders[colIndex] ?? "").trim();
-        const variableName = headerName || `VAR${String(colIndex + 1).padStart(3, '0')}`;
+        const variableName = headerName !== '' ? headerName : `VAR${String(colIndex + 1).padStart(3, '0')}`;
 
         let isNumeric = true;
         let maxDecimalPlaces = 0;

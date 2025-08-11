@@ -3,7 +3,7 @@
  * @returns A Promise that resolves with the clipboard text if successful, or rejects with an error.
  */
 export const readTextFromClipboard = async (): Promise<string> => {
-    if (!navigator.clipboard || !navigator.clipboard.readText) {
+    if (!navigator.clipboard?.readText) {
         return Promise.reject(new Error("Clipboard API not available."));
     }
     try {

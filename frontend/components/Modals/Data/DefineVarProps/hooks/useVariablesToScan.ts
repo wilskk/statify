@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Variable } from '@/types/Variable';
-import { TargetListConfig } from '@/components/Common/VariableListManager'; // Assuming TargetListConfig is exported
+import type { Variable } from '@/types/Variable';
+import type { TargetListConfig } from '@/components/Common/VariableListManager'; // Assuming TargetListConfig is exported
 
 interface UseVariablesToScanProps {
     initialAvailableVariables: Variable[];

@@ -1,15 +1,15 @@
 import { useState, useTransition } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useMetaStore } from "@/stores/useMetaStore";
 import * as XLSX from 'xlsx';
 import { generateExcelWorkbook } from "../utils/excelExporter";
-import { ExcelUtilOptions, ExportExcelLogicState, UseExportExcelLogicProps } from "../types";
+import type { ExcelUtilOptions, ExportExcelLogicState, UseExportExcelLogicProps } from "../types";
 import { DEFAULT_FILENAME } from "../utils/constants";
 
 export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
-    const { toast } = useToast();
+
     const initialMetaName = useMetaStore.getState().meta?.name;
     const [isExporting, startExportTransition] = useTransition();
 
@@ -44,11 +44,7 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
                 const freshMeta = useMetaStore.getState().meta;
 
                 if (!freshData.length || !freshVariables.length) {
-                    toast({
-                        title: "No data to export",
-                        description: "There is no data available to export to Excel.",
-                        variant: "destructive"
-                    });
+                    toast.error("No data to export: There is no data available to export to Excel.");
                     return;
                 }
 
@@ -64,19 +60,12 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
                 const filename = `${exportOptions.filename || DEFAULT_FILENAME}.${exportOptions.format}`;
                 XLSX.writeFile(workbook, filename);
 
-                toast({
-                    title: "Export Successful",
-                    description: `Data successfully exported to ${filename}`,
-                });
+                toast.success(`Export Successful: Data successfully exported to ${filename}`);
 
                 onClose();
             } catch (error) {
                 console.error("Export error:", error);
-                toast({
-                    title: "Export Failed",
-                    description: error instanceof Error ? error.message : "An unexpected error occurred during export.",
-                    variant: "destructive"
-                });
+                toast.error(error instanceof Error ? error.message : "Export Failed: An unexpected error occurred during export.");
             }
         });
     };
@@ -88,4 +77,4 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
         handleFilenameChange,
         handleExport
     };
-}; 
+};

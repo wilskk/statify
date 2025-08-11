@@ -3,7 +3,7 @@ import { useTranspose } from '../hooks/useTranspose';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
 import * as TransposeService from '../services/transposeService';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 // Mock dependencies
 jest.mock('@/stores/useVariableStore');

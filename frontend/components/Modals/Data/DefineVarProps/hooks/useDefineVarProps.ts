@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 export const useDefineVarProps = (initialVariables?: Variable[], initialCaseLimit?: string, initialValueLimit?: string) => {
     const [currentStep, setCurrentStep] = useState<"scan" | "editor">(

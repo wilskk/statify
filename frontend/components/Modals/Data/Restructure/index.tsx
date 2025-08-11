@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BaseModalProps } from "@/types/modalTypes";
+import type { BaseModalProps } from "@/types/modalTypes";
 import { useRestructure } from "./hooks/useRestructure";
 import { RestructureUI } from "./RestructureUI";
 

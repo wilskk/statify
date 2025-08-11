@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useMobile } from "@/hooks/useMobile";
-import { 
+import type { 
     ImportClipboardStage, 
     UseImportClipboardLogicProps, 
     UseImportClipboardLogicOutput 

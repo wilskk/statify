@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ExportExcelProps } from "./types";
+import type { ExportExcelProps } from "./types";
 import { EXCEL_FORMATS, EXCEL_OPTIONS_CONFIG } from "./utils/constants";
 import { useExportExcelLogic } from "./hooks/useExportExcelLogic";
 import { cn } from "@/lib/utils";

@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
-import { ModalType, BaseModalProps } from '@/types/modalTypes';
+import type { BaseModalProps } from '@/types/modalTypes';
+import { ModalType } from '@/types/modalTypes';
 
 // Import file modals directly - prioritize commonly used modals
 import { ImportCsv } from '@/components/Modals/File/ImportCsv';

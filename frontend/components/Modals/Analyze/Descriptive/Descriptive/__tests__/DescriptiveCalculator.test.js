@@ -165,3 +165,111 @@ describe('DescriptiveCalculator - branching by type and measurement', () => {
     closeTo(zScores[3], expectedZ(4));
   });
 });
+
+describe('DescriptiveCalculator - type × measurement matrix coverage', () => {
+  test('numeric with nominal measurement returns mode only (no numeric stats)', () => {
+    const variable = numVar({ measure: 'nominal' });
+    const data = [1, 1, 2, '', null];
+    const calc = getCalculator(variable, data, {});
+    const { stats, zScores } = calc.getStatistics();
+
+    expect(stats.N).toBe(5);
+    expect(stats.Valid).toBe(3);
+    expect(stats.Missing).toBe(2);
+
+    expect(Array.isArray(stats.Mode)).toBe(true);
+    expect(stats.Mode).toEqual(['1']);
+
+    expect(stats.Mean).toBeUndefined();
+    expect(stats.Range).toBeUndefined();
+    expect(zScores).toBeNull();
+  });
+
+  test('string with nominal measurement returns mode and counts only', () => {
+    const variable = strVar({ measure: 'nominal' });
+    const data = ['a', 'b', 'a', '', null];
+    const calc = getCalculator(variable, data, {});
+    const { stats } = calc.getStatistics();
+
+    expect(stats.N).toBe(5);
+    expect(stats.Valid).toBe(3);
+    expect(stats.Missing).toBe(2);
+    expect(stats.Mode).toEqual(['a']);
+    expect(stats.Mean).toBeUndefined();
+  });
+
+  test('string with ordinal measurement computes percentiles over numeric-coded strings', () => {
+    const variable = strVar({ measure: 'ordinal' });
+    const data = ['1', '2', '3', '4'];
+    const calc = getCalculator(variable, data, {});
+    const { stats } = calc.getStatistics();
+
+    closeTo(stats['25th Percentile'], 1.25);
+    closeTo(stats.Median, 2.5);
+    closeTo(stats['75th Percentile'], 3.75);
+    expect(Array.isArray(stats.Mode)).toBe(true);
+  });
+
+  test('string with scale measurement computes numeric stats over numeric-coded strings', () => {
+    const variable = strVar({ measure: 'scale' });
+    const data = ['1', '2', '3', ''];
+    const calc = getCalculator(variable, data, { saveStandardized: false });
+    const { stats } = calc.getStatistics();
+
+    expect(stats.N).toBe(4);
+    expect(stats.Valid).toBe(3);
+    expect(stats.Missing).toBe(1);
+    closeTo(stats.Mean, 2);
+    closeTo(stats.Sum, 6);
+    closeTo(stats.Range, 2);
+    closeTo(stats.Variance, 1);
+    closeTo(stats.StdDev, 1);
+  });
+
+  test('date with nominal measurement treats values as categories and returns string mode', () => {
+    const variable = dateVar({ measure: 'nominal' });
+    const d1 = '01-01-2020';
+    const d2 = '02-01-2020';
+    const data = [d1, d1, d2, '', null];
+    const calc = getCalculator(variable, data, {});
+    const { stats } = calc.getStatistics();
+
+    expect(stats.N).toBe(5);
+    expect(stats.Valid).toBe(3);
+    expect(stats.Missing).toBe(2);
+    expect(stats.Mode).toEqual([d1]);
+    expect(stats.Mean).toBeUndefined();
+  });
+
+  test('date with ordinal measurement computes percentiles on SPSS seconds', () => {
+    const variable = dateVar({ measure: 'ordinal' });
+    const d1 = '01-01-2020';
+    const d2 = '03-01-2020';
+    const d3 = '05-01-2020';
+    const data = [d1, d2, d3];
+    const calc = getCalculator(variable, data, {});
+    const { stats } = calc.getStatistics();
+
+    const s1 = utils.dateStringToSpssSeconds(d1);
+    const s2 = utils.dateStringToSpssSeconds(d2);
+    const s3 = utils.dateStringToSpssSeconds(d3);
+
+    closeTo(stats['25th Percentile'], s1);
+    closeTo(stats.Median, s2);
+    closeTo(stats['75th Percentile'], s3);
+  });
+
+  test('date with scale measurement computes mean and range on SPSS seconds', () => {
+    const variable = dateVar({ measure: 'scale' });
+    const d1 = '01-01-2020';
+    const d2 = '02-01-2020';
+    const data = [d1, d2];
+    const calc = getCalculator(variable, data, { saveStandardized: false });
+    const { stats } = calc.getStatistics();
+
+    const s1 = utils.dateStringToSpssSeconds(d1);
+    const s2 = utils.dateStringToSpssSeconds(d2);
+    closeTo(stats.Mean, (s1 + s2) / 2);
+    closeTo(stats.Range, Math.abs(s2 - s1));
+  });
+});

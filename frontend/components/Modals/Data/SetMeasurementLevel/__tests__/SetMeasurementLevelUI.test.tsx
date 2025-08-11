@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SetMeasurementLevelUI } from '../SetMeasurementLevelUI';
-import { SetMeasurementLevelUIProps } from '../types';
+import type { SetMeasurementLevelUIProps } from '../types';
 import VariableListManager from '@/components/Common/VariableListManager';
 
 // Mock the child component to control its behavior and props

@@ -20,7 +20,7 @@ describe('VariablesToScan', () => {
 
     beforeEach(() => {
         onClose.mockClear();
-        let state = {
+        const state = {
             availableVariables: [],
             targetListsConfig: [{ id: 'toScan', title: 'Variables to Scan:', variables: [], height: '300px', draggableItems: true, droppable: true }],
             managerHighlightedVariable: null,

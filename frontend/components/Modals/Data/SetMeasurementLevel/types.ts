@@ -1,5 +1,5 @@
 import { Variable } from "@/types/Variable";
-import { useSetMeasurementLevel } from "./hooks/useSetMeasurementLevel";
+import type { useSetMeasurementLevel } from "./hooks/useSetMeasurementLevel";
 
 export interface SetMeasurementLevelProps {
     onClose: () => void;

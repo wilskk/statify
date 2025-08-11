@@ -1,14 +1,14 @@
 "use client";
 
 import React from "react";
-import { ImportExcelProps } from "./types";
+import type { ImportExcelProps } from "./types";
 import { useImportExcelLogic } from "./hooks/useImportExcelLogic";
 import { ImportExcelSelectionStep } from "./components/ImportExcelSelectionStep";
 import { ImportExcelConfigurationStep } from "./components/ImportExcelConfigurationStep";
 
 export const ImportExcelModal: React.FC<ImportExcelProps> = ({
     onClose,
-    containerType,
+    containerType: _containerType,
 }) => {
     const {
         file,
@@ -46,7 +46,7 @@ export const ImportExcelModal: React.FC<ImportExcelProps> = ({
                     onClose={handleModalClose}
                     onBack={handleBackToSelect}
                     fileName={fileName}
-                    parsedSheets={parsedSheets!}
+                    parsedSheets={parsedSheets}
                 />
             );
         }

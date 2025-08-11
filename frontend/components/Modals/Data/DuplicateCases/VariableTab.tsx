@@ -1,10 +1,12 @@
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
+import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { Variable } from "@/types/Variable";
-import { VariableTabProps, DuplicateCasesSource } from "./types";
+import type { VariableTabProps, DuplicateCasesSource } from "./types";
 
 const VariableTab: FC<VariableTabProps> = ({
     sourceVariables,

@@ -1,9 +1,10 @@
 // /components/Common/DataTableErrorBoundary.tsx
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
+import React, { Component } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 
 interface Props {
   children: ReactNode;
@@ -58,11 +59,7 @@ export class DataTableErrorBoundary extends Component<Props, State> {
     this.props.onError?.(error, errorInfo);
 
     // Show user-friendly toast
-    toast({
-      variant: "destructive",
-      title: "Data Table Error",
-      description: "An error occurred while processing table data. Please try refreshing.",
-    });
+    toast.error("Data Table Error: An error occurred while processing table data. Please try refreshing.");
 
     // Auto-retry for recoverable errors
     if (this.isRecoverableError(error) && this.state.retryCount < this.maxRetries) {

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ImportClipboardProps } from "./types";
+import type { ImportClipboardProps } from "./types";
 import { useImportClipboardLogic } from "./hooks/useImportClipboardLogic";
 import { ImportClipboardPasteStep } from "./components/ImportClipboardPasteStep";
 import { ImportClipboardConfigurationStep } from "./components/ImportClipboardConfigurationStep";

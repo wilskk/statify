@@ -60,7 +60,7 @@ describe('useExcelWorker hook', () => {
 
     await act(async () => {
         // We need to catch the rejection to prevent Jest from failing the test
-        await promise.catch(e => {});
+        await promise.catch(() => null);
     });
     
     // Final state after rejection

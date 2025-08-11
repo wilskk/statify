@@ -1,10 +1,13 @@
-import { jsPDF } from "jspdf";
+import type { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
-import { DataRow } from "@/types/Data";
-import { Variable } from "@/types/Variable";
-import { Log } from "@/types/Result";
+import type { HookData } from "jspdf-autotable";
+import type { DataRow } from "@/types/Data";
+import type { Variable } from "@/types/Variable";
+import type { Log } from "@/types/Result";
 // Path to utils is one level up from services directory
-import { CellDef, HAlignType, VAlignType, generateAutoTableDataFromString } from "../print.utils"; 
+import type { CellDef, HAlignType, VAlignType, generateAutoTableDataFromString } from "../print.utils"; 
+
+type JsPDFWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
 const PAGE_MARGIN = 14;
 const PAGE_TOP_MARGIN = 10;
@@ -15,7 +18,6 @@ const TEXT_FONT_SIZE = 8;
 const LOG_ID_FONT_SIZE = 10;
 const ANALYTIC_TITLE_FONT_SIZE = 12;
 const SPACE_AFTER_TITLE = 7;
-const SPACE_AFTER_SECTION = 10;
 const SPACE_AFTER_TABLE = 10;
 const SPACE_AFTER_LOG_TEXT = 3;
 
@@ -59,7 +61,7 @@ function htmlToPlainText(html: string): string {
     el.insertAdjacentText("afterend", "\n");
   });
 
-  const text = div.textContent || div.innerText || "";
+  const text = div.textContent ?? div.innerText ?? "";
   // Collapse multiple newlines to max 2
   return text.replace(/\n{3,}/g, "\n\n").trim();
 }
@@ -88,7 +90,7 @@ export function addDataGridView(
 
     const dataTableColumns = activeColumns.map((colIdx) => {
         const variable = variables.find((v) => v.columnIndex === colIdx);
-        return variable?.name || `Column ${colIdx + 1}`;
+        return variable?.name ?? `Column ${colIdx + 1}`;
     });
 
     const dataTableBody = data.map((row) =>
@@ -111,9 +113,9 @@ export function addDataGridView(
         },
         margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
         tableWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2),
-        didDrawPage: (data) => { newY = data.cursor?.y || PAGE_TOP_MARGIN; } 
+        didDrawPage: (data: HookData) => { newY = data.cursor?.y ?? PAGE_TOP_MARGIN; } 
     });
-    newY = (doc as any).lastAutoTable.finalY + SPACE_AFTER_TABLE;
+    newY = ((doc as JsPDFWithAutoTable).lastAutoTable?.finalY ?? newY) + SPACE_AFTER_TABLE;
     return newY;
 }
 
@@ -141,10 +143,10 @@ export function addVariableView(
     doc.setFontSize(TEXT_FONT_SIZE);
 
     const variableData = variablesToPrint.map((variable) => [
-        variable.name || "-",
-        variable.type || "-",
-        variable.label || "-",
-        variable.measure || "unknown",
+        variable.name ?? "-",
+        variable.type ?? "-",
+        variable.label ?? "-",
+        variable.measure ?? "unknown",
     ]);
 
     autoTable(doc, {
@@ -163,9 +165,9 @@ export function addVariableView(
         },
         margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
         tableWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2),
-        didDrawPage: (data) => { newY = data.cursor?.y || PAGE_TOP_MARGIN; }
+        didDrawPage: (data: HookData) => { newY = data.cursor?.y ?? PAGE_TOP_MARGIN; }
     });
-    newY = (doc as any).lastAutoTable.finalY + SPACE_AFTER_TABLE;
+    newY = ((doc as JsPDFWithAutoTable).lastAutoTable?.finalY ?? newY) + SPACE_AFTER_TABLE;
     return newY;
 }
 
@@ -266,9 +268,9 @@ export function addResultsView(
                                 },
                                 margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
                                 tableWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2),
-                                didDrawPage: (data) => { newY = data.cursor?.y || PAGE_TOP_MARGIN; }
+                                didDrawPage: (data: HookData) => { newY = data.cursor?.y ?? PAGE_TOP_MARGIN; }
                             });
-                            newY = (doc as any).lastAutoTable.finalY + 4; // Small space after table
+                            newY = ((doc as JsPDFWithAutoTable).lastAutoTable?.finalY ?? newY) + 4; // Small space after table
 
                             // Add statistic description if available, now placed AFTER the table
                             if (stat.description) {

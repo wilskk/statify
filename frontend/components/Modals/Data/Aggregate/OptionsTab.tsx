@@ -1,7 +1,8 @@
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TourStep } from "./types";
+import type { TourStep } from "./types";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 

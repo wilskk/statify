@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC, useMemo, useState } from "react";
+import type { FC} from "react";
+import React, { useMemo, useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -15,7 +16,7 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import {
     Shapes,
     Ruler,
@@ -27,9 +28,10 @@ import { AnimatePresence } from "framer-motion";
 import { TourPopup } from "@/components/Common/TourComponents";
 import VariableTab from "./VariableTab";
 import OptionsTab from "./OptionsTab";
-import { DuplicateCasesProps, TabType, VariableTabProps, OptionsTabProps, DuplicateCasesSource } from "./types";
+import type { DuplicateCasesProps, TabType, VariableTabProps, OptionsTabProps, DuplicateCasesSource } from "./types";
 import { useDuplicateCases } from "./hooks/useDuplicateCases";
-import { useTourGuide, TabControlProps } from "./hooks/useTourGuide";
+import type { TabControlProps } from "./hooks/useTourGuide";
+import { useTourGuide } from "./hooks/useTourGuide";
 
 // Main content component separated from container logic
 const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType = "dialog" }) => {
@@ -120,24 +122,24 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
     };
 
     const optionsTabProps: OptionsTabProps = {
-        primaryCaseIndicator: primaryCaseIndicator,
-        setPrimaryCaseIndicator: setPrimaryCaseIndicator,
-        primaryName: primaryName,
-        setPrimaryName: setPrimaryName,
-        sequentialCount: sequentialCount,
-        setSequentialCount: setSequentialCount,
-        sequentialName: sequentialName,
-        setSequentialName: setSequentialName,
-        moveMatchingToTop: moveMatchingToTop,
-        setMoveMatchingToTop: setMoveMatchingToTop,
-        displayFrequencies: displayFrequencies,
-        setDisplayFrequencies: setDisplayFrequencies,
-        filterByIndicator: filterByIndicator,
-        setFilterByIndicator: setFilterByIndicator,
-        containerType: containerType,
-        tourActive: tourActive,
-        currentStep: currentStep,
-        tourSteps: tourSteps
+        primaryCaseIndicator,
+        setPrimaryCaseIndicator,
+        primaryName,
+        setPrimaryName,
+        sequentialCount,
+        setSequentialCount,
+        sequentialName,
+        setSequentialName,
+        moveMatchingToTop,
+        setMoveMatchingToTop,
+        displayFrequencies,
+        setDisplayFrequencies,
+        filterByIndicator,
+        setFilterByIndicator,
+        containerType,
+        tourActive,
+        currentStep,
+        tourSteps
     };
 
     return (

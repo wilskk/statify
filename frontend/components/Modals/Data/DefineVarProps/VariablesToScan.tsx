@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import {
     Dialog,
     DialogContent,
@@ -14,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, HelpCircle, InfoIcon } from "lucide-react";
 import VariableListManager from '@/components/Common/VariableListManager';
-import { VariablesToScanProps } from "./types";
+import type { VariablesToScanProps } from "./types";
 import { useVariablesToScan } from "./hooks/useVariablesToScan";
 import { useVariableStore } from "@/stores/useVariableStore";
 

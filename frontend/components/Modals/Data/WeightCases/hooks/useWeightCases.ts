@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 interface UseWeightCasesProps {
     onClose: () => void;

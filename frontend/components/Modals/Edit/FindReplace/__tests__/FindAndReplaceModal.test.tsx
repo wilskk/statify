@@ -14,6 +14,8 @@ jest.mock('../components/FindReplaceContent', () => ({
 }));
 
 const mockOnClose = jest.fn();
+// Import after jest.mock so the mocked module is used
+import { FindReplaceContent } from '../components/FindReplaceContent';
 
 describe('FindAndReplaceModal', () => {
   beforeEach(() => {
@@ -54,7 +56,6 @@ describe('FindAndReplaceModal', () => {
   });
 
   it('should pass correct props to FindReplaceContent', () => {
-    const { FindReplaceContent } = require('../components/FindReplaceContent');
     render(
       <FindAndReplaceModal
         isOpen={true}

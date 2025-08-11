@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
-import { ModalType, BaseModalProps } from '@/types/modalTypes';
+import type { BaseModalProps } from '@/types/modalTypes';
+import { ModalType } from '@/types/modalTypes';
 
 // Import data modals directly - prioritize commonly used modals
 import DefineVariableProperties from '@/components/Modals/Data/DefineVarProps';

@@ -1,4 +1,4 @@
-import { Variable, MissingValuesSpec } from "@/types/Variable";
+import type { Variable, MissingValuesSpec } from "@/types/Variable";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 
@@ -13,7 +13,7 @@ const isMissingValueForSuggestion = (
         return false;
     }
     const strValue = String(value);
-    if (missingSpec.discrete && missingSpec.discrete.some(mv => String(mv) === strValue)) {
+    if (missingSpec.discrete?.some(mv => String(mv) === strValue)) {
         return true;
     }
     if (missingSpec.range && typeof value === 'number') {

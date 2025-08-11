@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC, useState, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
     Dialog,
     DialogContent,
@@ -18,7 +19,8 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { useModal } from "@/hooks/useModal";
-import { AggregateDataProps, TourStep, PopupPosition, HorizontalPosition } from "./types"; // AggregatedVariable is used by the hook
+import type { AggregateDataProps, TourStep, HorizontalPosition } from "./types";
+import { PopupPosition } from "./types"; // AggregatedVariable is used by the hook
 import { ErrorDialog } from "./dialogs/ErrorDialog";
 import { FunctionDialog } from "./dialogs/FunctionDialog";
 import { NameLabelDialog } from "./dialogs/NameLabelDialog";

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useDataStore } from '@/stores/useDataStore';
-import Handsontable from 'handsontable';
+import type Handsontable from 'handsontable';
 
 type ValidAlterAction =
     | 'insert_row_above'

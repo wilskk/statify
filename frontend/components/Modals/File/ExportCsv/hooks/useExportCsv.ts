@@ -1,9 +1,9 @@
 import { useState, useTransition } from "react";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { generateCsvContent } from "../utils/exportCsvUtils"; // Adjusted path
-import { CsvExportOptions, UseExportCsvOptions } from "../types"; // Import from new types.ts
+import type { CsvExportOptions, UseExportCsvOptions } from "../types"; // Import from new types.ts
 import { useModal } from "@/hooks/useModal";
 
 const initialState = {
@@ -17,7 +17,7 @@ const initialState = {
 
 export const useExportCsv = (options?: UseExportCsvOptions) => {
     const { closeModal } = useModal();
-    const { toast } = useToast();
+
     const data = useDataStore((state) => state.data);
     const [isExporting, startExportTransition] = useTransition();
 
@@ -41,19 +41,11 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
 
   const handleExport = async () => {
     if (!data || data.length === 0) {
-      toast({
-        title: "Export Failed",
-        description: "No data available to export.",
-        variant: "destructive",
-      });
+      toast.error("Export Failed: No data available to export.");
       return;
     }
     if (!exportOptions.filename.trim()) {
-      toast({
-        title: "Export Failed",
-        description: "Please enter a valid file name.",
-        variant: "destructive",
-      });
+      toast.error("Export Failed: Please enter a valid file name.");
       return;
     }
 
@@ -66,11 +58,7 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
         const freshVariables = useVariableStore.getState().variables;
 
         if (!freshData || freshData.length === 0) {
-          toast({
-            title: "Export Failed",
-            description: "No data to export after syncing with server.",
-            variant: "destructive",
-          });
+          toast.error("Export Failed: No data to export after syncing with server.");
           return;
         }
 
@@ -97,20 +85,13 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        toast({
-          title: "Export Successful",
-          description: `Data successfully exported to ${finalFilename}`,
-        });
+        toast.success(`Export Successful: Data successfully exported to ${finalFilename}`);
 
         closeModal();
 
       } catch (error) {
         console.error("Export error:", error);
-        toast({
-          title: "Export Failed",
-          description: "An error occurred during export. Please check console for details.",
-          variant: "destructive",
-        });
+        toast.error("Export Failed: An error occurred during export. Please check console for details.");
       }
     });
   };

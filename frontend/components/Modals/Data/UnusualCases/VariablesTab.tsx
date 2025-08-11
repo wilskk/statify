@@ -1,6 +1,8 @@
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import { InfoIcon } from "lucide-react";
-import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import type { TargetListConfig } from '@/components/Common/VariableListManager';
+import VariableListManager from '@/components/Common/VariableListManager';
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import type { Variable } from "@/types/Variable";
 import type { VariablesTabProps, UnusualCasesSource } from "./types";

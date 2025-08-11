@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useCsvWorker } from '../useCsvWorker';
 import { parseCsvWithWorker } from '../../services/services';
-import { CSVProcessingOptions } from '../../types';
+import type { CSVProcessingOptions } from '../../types';
 import type { ProcessedCsvData } from '../../services/services';
 
 // Mock the service dependency

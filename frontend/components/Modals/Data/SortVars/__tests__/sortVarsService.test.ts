@@ -1,6 +1,6 @@
 import { sortDataColumns } from '../services/sortVarsService';
-import { Variable } from '@/types/Variable';
-import { DataRow } from '@/types/Data';
+import type { Variable } from '@/types/Variable';
+import type { DataRow } from '@/types/Data';
 
 describe('sortVarsService', () => {
   describe('sortDataColumns', () => {

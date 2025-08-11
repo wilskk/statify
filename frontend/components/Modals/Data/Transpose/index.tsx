@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { TransposeModalProps } from "./types";
+import type { TransposeModalProps } from "./types";
 import { useTranspose } from "./hooks/useTranspose";
 import { TransposeUI } from "./TransposeUI";
 

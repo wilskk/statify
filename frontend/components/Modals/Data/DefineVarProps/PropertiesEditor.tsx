@@ -1,6 +1,7 @@
 "use client"
 
-import React, { FC, useEffect, useRef, useCallback } from "react";
+import type { FC} from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
     DialogContent,
     DialogHeader,
@@ -30,9 +31,9 @@ import {
     TooltipTrigger
 } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PropertiesEditorProps } from "./types";
+import type { PropertiesEditorProps } from "./types";
 import { usePropertiesEditor } from "./hooks/usePropertiesEditor";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { DATE_FORMAT_SPECS, isDateType } from "./constants/dateSpecs";
 import { getFormattedTypeName, formatDropdownText } from "./utils/typeFormatters";
 

@@ -1,4 +1,4 @@
-import { ExampleFiles } from './types';
+import type { ExampleFiles } from './types';
 
 const exampleSavFiles = [
     { 

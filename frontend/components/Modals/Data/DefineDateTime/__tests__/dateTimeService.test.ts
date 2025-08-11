@@ -1,6 +1,6 @@
 import { prepareDateVariables } from '../services/dateTimeService';
-import { TimeComponent } from '../types';
-import { Variable } from '@/types/Variable';
+import type { TimeComponent } from '../types';
+import type { Variable } from '@/types/Variable';
 
 describe('dateTimeService', () => {
     describe('prepareDateVariables', () => {

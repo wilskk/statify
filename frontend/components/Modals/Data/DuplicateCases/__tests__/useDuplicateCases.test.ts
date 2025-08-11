@@ -4,7 +4,7 @@ import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
 import { useResultStore } from '@/stores/useResultStore';
 import * as duplicateCasesService from '../services/duplicateCasesService';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 // Mock stores and services
 jest.mock('@/stores/useVariableStore');

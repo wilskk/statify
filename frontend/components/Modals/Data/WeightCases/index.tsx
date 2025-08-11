@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, InfoIcon, HelpCircle } from "lucide-react";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
-import { WeightCasesModalProps, WeightCasesUIProps } from "./types";
+import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
+import type { WeightCasesModalProps, WeightCasesUIProps } from "./types";
 import { useWeightCases } from "./hooks/useWeightCases";
 import { WeightCasesUI } from "./WeightCasesUI";
 import { useVariableStore } from "@/stores/useVariableStore";

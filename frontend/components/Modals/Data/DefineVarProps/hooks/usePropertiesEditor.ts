@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Variable, ValueLabel, MissingValuesSpec } from '@/types/Variable';
-import Handsontable from 'handsontable';
+import type { Variable, ValueLabel, MissingValuesSpec } from '@/types/Variable';
+import type Handsontable from 'handsontable';
 import { isDateType, DATE_FORMAT_SPECS } from '../constants/dateSpecs';
 import { 
     getUniqueValuesWithCounts, 
@@ -70,7 +70,7 @@ export const usePropertiesEditor = ({
 
     // Effect to update gridData when currentVariable changes
     useEffect(() => {
-        if (!currentVariable || !currentVariable.tempId || !currentVariable.type) {
+        if (!currentVariable?.tempId || !currentVariable.type) {
             setGridData([]);
             setUnlabeledValuesCount(0);
             return;
@@ -127,7 +127,7 @@ export const usePropertiesEditor = ({
             .map(row => isNaN(Number(row[4])) ? String(row[4]) : Number(row[4]));
 
         const newMissingSpec: MissingValuesSpec | null = 
-            (currentVariable.missing && currentVariable.missing.range !== undefined) ? 
+            (currentVariable.missing?.range !== undefined) ? 
             { ...currentVariable.missing, discrete: missingDiscreteValues.length > 0 ? missingDiscreteValues : undefined } :
             (missingDiscreteValues.length > 0 ? { discrete: missingDiscreteValues } : null);
 
@@ -152,7 +152,7 @@ export const usePropertiesEditor = ({
     const handleVariableFieldChange = useCallback((field: keyof Variable, value: any) => {
         if (!currentVariable) return;
 
-        let updatedVar = { ...currentVariable, [field]: value };
+        const updatedVar = { ...currentVariable, [field]: value };
 
         if (field === 'type') {
             if (isDateType(value as string)) {
@@ -171,7 +171,7 @@ export const usePropertiesEditor = ({
     }, [currentVariable]);
 
     const handleGridDataChange = useCallback((changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource) => {
-        if (source === 'loadData' || !changes || !currentVariable || !currentVariable.tempId || !currentVariable.type) {
+        if (source === 'loadData' || !changes || !currentVariable?.tempId || !currentVariable.type) {
             return;
         }
 
@@ -179,7 +179,7 @@ export const usePropertiesEditor = ({
 
         changes.forEach((changeItem) => {
             const [row, prop, oldValue, newValue] = changeItem;
-            let colIndex: number | undefined = typeof prop === 'number' ? prop : parseInt(String(prop), 10);
+            const colIndex: number | undefined = typeof prop === 'number' ? prop : parseInt(String(prop), 10);
             
             if (colIndex !== undefined && !isNaN(colIndex) && updatedGridData[row]) {
                 updatedGridData[row][colIndex] = newValue;
@@ -204,7 +204,7 @@ export const usePropertiesEditor = ({
     }, [currentVariable, gridData, caseLimit, valueLimit, calculateUnlabeledValues, storeData]);
     
     const handleAutoLabel = useCallback(() => {
-        if (!currentVariable || !currentVariable.tempId || !currentVariable.type) return;
+        if (!currentVariable?.tempId || !currentVariable.type) return;
         const newGridData = gridData.map(row => {
             if (row[4] && !row[5]) { 
                 return [ row[0], true, row[2], row[3], row[4], row[4] ];

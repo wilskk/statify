@@ -1,4 +1,4 @@
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 interface TransposeResult {
     transposedData: (string | number)[][];
@@ -8,7 +8,7 @@ interface TransposeResult {
 const processVariableName = (name: string, existingVars: Variable[]): string => {
     let processedName = name || "Var1";
     if (!/^[a-zA-Z@#$]/.test(processedName)) {
-        processedName = 'var_' + processedName;
+        processedName = `var_${  processedName}`;
     }
     processedName = processedName
         .replace(/[^a-zA-Z0-9@#$_.]/g, '_')
@@ -62,7 +62,7 @@ export const transposeDataService = (
     const newColVariables: Variable[] = [];
     for (let i = 0; i < caseCount; i++) {
         let varName: string;
-        if (nameVariable && data[i] && data[i][nameVariable.columnIndex] !== undefined) {
+        if (nameVariable && data[i]?.[nameVariable.columnIndex] !== undefined) {
             const nameValue = data[i][nameVariable.columnIndex];
             varName = (typeof nameValue === 'number') ? `V${nameValue}` : String(nameValue);
         } else {

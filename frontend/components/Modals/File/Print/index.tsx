@@ -3,14 +3,14 @@
 import React from "react";
 // Dialog komponen tidak lagi diimpor di sini
 // import { Printer } from "lucide-react"; // Tidak digunakan secara langsung di sini lagi
-import { PrintProps, SelectedOptions } from "./types"; // sebelumnya "./types/types"
+import type { PrintProps, SelectedOptions } from "./types"; // sebelumnya "./types/types"
 import { usePrintLogic } from "./hooks/usePrintLogic"; // Mengimpor hook
 import { PrintOptions } from "./components/PrintOptions"; // Path should be correct now
 
 // Renamed to PrintModal for consistency with other modals
 export const PrintModal: React.FC<PrintProps> = ({
     onClose,
-    containerType,
+    containerType: _containerType,
 }) => {
     // Using hook to get state and handlers
     const {

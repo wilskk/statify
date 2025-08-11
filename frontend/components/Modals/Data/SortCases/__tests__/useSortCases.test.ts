@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useSortCases } from '../hooks/useSortCases';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable, VariableType, VariableMeasure, VariableAlign, VariableRole } from '@/types/Variable';
+import type { Variable, VariableType, VariableMeasure, VariableAlign, VariableRole } from '@/types/Variable';
 
 // Mock stores
 jest.mock('@/stores/useDataStore');

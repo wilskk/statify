@@ -3,7 +3,7 @@ import { useModalStore } from "@/stores/useModalStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { TabType } from "../types";
 import { processDuplicates, generateStatistics } from "../services/duplicateCasesService";
 

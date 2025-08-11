@@ -3,7 +3,7 @@ import { useSortVariables } from '../hooks/useSortVariables';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
 import { sortDataColumns } from '../services/sortVarsService';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 // Mock dependencies
 jest.mock('@/stores/useVariableStore');

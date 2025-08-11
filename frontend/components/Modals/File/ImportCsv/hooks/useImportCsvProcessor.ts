@@ -5,10 +5,11 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { 
     CSVProcessingError 
 } from "../importCsvUtils"; 
-import { CSVProcessingOptions } from "../types";
+import type { CSVProcessingOptions } from "../types";
 // import { DataRow } from "@/types/Data"; // No longer needed here
 import { importCsvDataService } from "../services/services"; // Import the new service
-import { parseCsvWithWorker, ProcessedCsvData } from "../services/services";
+import type { ProcessedCsvData } from "../services/services";
+import { parseCsvWithWorker } from "../services/services";
 
 interface ProcessCSVParams {
     fileContent: string;

@@ -2,7 +2,7 @@ import React from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { useSetMeasurementLevel } from '../hooks/useSetMeasurementLevel';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 jest.mock('@/stores/useVariableStore');
 jest.mock('@/components/Common/VariableListManager', () => ({

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PropertiesEditor from '../PropertiesEditor';
 import { usePropertiesEditor } from '../hooks/usePropertiesEditor';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 jest.mock('../hooks/usePropertiesEditor');
 jest.mock('@handsontable/react-wrapper', () => {
@@ -32,7 +32,7 @@ describe('PropertiesEditor', () => {
 
     const setupMockHook = (
         currentVar: Variable | null = mockVariables[0],
-        activeTab: string = 'properties'
+        activeTab = 'properties'
     ) => {
         const state: any = {
             modifiedVariables: [...mockVariables.map(v => ({...v}))], // Deep copy to prevent mutation across tests
@@ -56,7 +56,7 @@ describe('PropertiesEditor', () => {
             suggestedMeasure: '',
             measurementExplanation: '',
             unlabeledValuesCount: 0,
-            activeTab: activeTab,
+            activeTab,
             setActiveTab: jest.fn(tab => state.activeTab = tab),
             handleVariableChange: jest.fn(index => {
                 state.currentVariable = state.modifiedVariables[index];

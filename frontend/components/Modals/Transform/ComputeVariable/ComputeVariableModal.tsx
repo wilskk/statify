@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,7 +44,7 @@ const ComputeVariableContent: React.FC<ComputeVariableProps> = ({
   onClose,
   containerType = "dialog",
 }) => {
-  const { toast } = useToast();
+
   const [targetName, setTargetName] = useState("");
   const [targetType, setTargetType] = useState<"NUMERIC" | "STRING">("NUMERIC");
   const [targetLabel, setTargetLabel] = useState("");

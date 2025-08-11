@@ -5,7 +5,7 @@ import { useVariableStore } from '@/stores/useVariableStore';
 import { useResultStore } from '@/stores/useResultStore';
 import * as pdfPrintService from '../services/pdfPrintService';
 import { jsPDF } from 'jspdf';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 // Mock dependencies
 jest.mock('@/stores/useDataStore');

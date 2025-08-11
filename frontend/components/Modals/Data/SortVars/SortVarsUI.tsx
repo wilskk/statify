@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { SortVarsUIProps } from "./types";
+import type { SortVarsUIProps } from "./types";
 import { HelpCircle } from "lucide-react";
 
 const SortVarsUIContent: React.FC<SortVarsUIProps> = ({ 

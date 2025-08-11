@@ -1,5 +1,5 @@
-import { Variable } from '@/types/Variable';
-import { UnusualCasesHook } from '../types';
+import type { Variable } from '@/types/Variable';
+import type { UnusualCasesHook } from '../types';
 
 interface UnusualCasesResult {
     variablesToCreate: Partial<Variable>[];

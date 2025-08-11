@@ -84,7 +84,7 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
     // Helper to compute a robust identity key for variables across different contexts
     const getVarKey = (v: Variable) => {
         // Prefer stable unique identifiers when available
-        // @ts-expect-error optional id may exist at runtime
+        // Access optional id when present at runtime
         if ((v as any).id !== undefined && (v as any).id !== null) return (v as any).id;
         if (v.tempId !== undefined && v.tempId !== null) return v.tempId;
         if (v.columnIndex !== undefined && v.columnIndex !== null) return v.columnIndex;

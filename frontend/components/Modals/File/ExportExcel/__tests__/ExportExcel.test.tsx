@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { ExportExcel } from '../index';
 import { useExportExcelLogic } from '../hooks/useExportExcelLogic';
 import { useTourGuide } from '../hooks/useTourGuide';
-import { ExportExcelLogicState } from '../types';
+import type { ExportExcelLogicState } from '../types';
 
 // Mock the logic hook
 jest.mock('../hooks/useExportExcelLogic');

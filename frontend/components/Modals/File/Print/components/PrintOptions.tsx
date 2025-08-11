@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, FC, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Printer, HelpCircle, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
-import { PrintOptionsProps, PaperSize, SelectedOptions } from "../types";
+import type { PrintOptionsProps, PaperSize, SelectedOptions } from "../types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -83,7 +84,7 @@ const TourPopup: FC<{
     onClose: () => void;
     targetElement: HTMLElement | null;
 }> = ({ step, currentStep, totalSteps, onNext, onPrev, onClose, targetElement }) => {
-    const position = step.position || step.defaultPosition;
+    const position = step.position ?? step.defaultPosition;
     const horizontalPosition = step.horizontalPosition;
     const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
     const popupRef = useRef<HTMLDivElement>(null);
@@ -92,7 +93,7 @@ const TourPopup: FC<{
         if (!targetElement) return;
         const updatePosition = () => {
             const rect = targetElement.getBoundingClientRect();
-            const popupHeight = popupRef.current?.offsetHeight || 170;
+            const popupHeight = popupRef.current?.offsetHeight ?? 170;
             const popupWidth = 280;
             const popupBuffer = 20;
             let top: number, left: number;
@@ -200,8 +201,8 @@ export const PrintOptions: React.FC<PrintOptionsProps> = ({
     onPrint,
     onCancel,
     isGenerating,
-    isMobile,
-    isPortrait,
+    isMobile: _isMobile,
+    isPortrait: _isPortrait,
     onReset
 }) => {
     const isPrintDisabled = !Object.values(selectedOptions).some(Boolean) || isGenerating;
@@ -227,7 +228,7 @@ export const PrintOptions: React.FC<PrintOptionsProps> = ({
 
     const currentTargetElement = useMemo(() => {
         if (!tourActive) return null;
-        return targetElements[baseTourSteps[currentStep].targetId] || null;
+        return targetElements[baseTourSteps[currentStep].targetId] ?? null;
     }, [tourActive, currentStep, targetElements]);
 
     return (

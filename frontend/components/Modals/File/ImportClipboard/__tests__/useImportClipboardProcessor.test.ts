@@ -3,7 +3,7 @@ import { useImportClipboardProcessor } from '../hooks/useImportClipboardProcesso
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import * as utils from '../importClipboard.utils';
-import { ClipboardProcessingOptions } from '../types';
+import type { ClipboardProcessingOptions } from '../types';
 
 // Mock dependencies
 jest.mock('@/stores/useDataStore');

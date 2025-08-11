@@ -1,5 +1,5 @@
-import { Variable } from "@/types/Variable";
-import { useSortCases } from "./hooks/useSortCases";
+import type { Variable } from "@/types/Variable";
+import type { useSortCases } from "./hooks/useSortCases";
 
 export interface SortVariableConfig {
     variable: Variable;

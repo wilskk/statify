@@ -80,7 +80,7 @@ export const useFileMenuActions = () => {
                         let sanitized = name.trim();
 
                         if (!/^[a-zA-Z]/.test(sanitized)) {
-                            sanitized = "V" + sanitized;
+                            sanitized = `V${  sanitized}`;
                         }
 
                         sanitized = sanitized.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -90,6 +90,18 @@ export const useFileMenuActions = () => {
                         }
 
                         return sanitized;
+                    };
+
+                    // Map frontend measure to backend create payload
+                    // Frontend uses: 'scale' | 'ordinal' | 'nominal' | 'unknown'
+                    // Backend expects: 'continuous' | 'ordinal' | 'nominal'
+                    const toCreateMeasure = (m: string | undefined): 'continuous' | 'ordinal' | 'nominal' => {
+                        const lower = (m || '').toLowerCase();
+                        if (lower === 'scale') return 'continuous';
+                        if (lower === 'ordinal') return 'ordinal';
+                        if (lower === 'nominal') return 'nominal';
+                        // Fallback for 'unknown' or empty
+                        return 'nominal';
                     };
 
                     const transformedVariables = filteredVariables.map(variable => {
@@ -108,7 +120,7 @@ export const useFileMenuActions = () => {
                             width: variable.width,
                             decimal: variable.decimals,
                             alignment: variable.align.toLowerCase(),
-                            measure: variable.measure.toLowerCase(),
+                            measure: toCreateMeasure(variable.measure as unknown as string),
                             columns: variable.columns,
                             valueLabels
                         };

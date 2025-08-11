@@ -1,6 +1,6 @@
-import { TimeComponent } from "../types";
+import type { TimeComponent } from "../types";
 import { formatDateString, getDateFormatString } from "../utils/dateTimeFormatters";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 // This interface is internal to the service
 interface DateTimeGenerationResult {

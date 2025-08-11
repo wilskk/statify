@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { SetMeasurementLevelProps } from "./types";
+import type { SetMeasurementLevelProps } from "./types";
 import { useSetMeasurementLevel } from "./hooks/useSetMeasurementLevel";
 import { SetMeasurementLevelUI } from "./SetMeasurementLevelUI";
 

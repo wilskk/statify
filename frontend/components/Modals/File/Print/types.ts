@@ -1,4 +1,4 @@
-import { ContainerType } from "@/types/ui";
+import type { ContainerType } from "@/types/ui";
 
 export type PaperSize = "a4" | "a3" | "letter" | "legal";
 

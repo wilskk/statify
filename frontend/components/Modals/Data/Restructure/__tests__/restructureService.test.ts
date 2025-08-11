@@ -1,7 +1,8 @@
 import { restructureData } from '../services/restructureService';
-import { RestructureConfig, RestructureMethod } from '../types';
-import { Variable, VariableType, VariableMeasure, VariableAlign, VariableRole } from '@/types/Variable';
-import { DataRow } from '@/types/Data';
+import type { RestructureConfig} from '../types';
+import { RestructureMethod } from '../types';
+import type { Variable, VariableType, VariableMeasure, VariableAlign, VariableRole } from '@/types/Variable';
+import type { DataRow } from '@/types/Data';
 
 // Helper to create a mock variable with all required fields
 const createMockVariable = (

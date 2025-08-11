@@ -1,19 +1,21 @@
 "use client";
 
-import React, { FC, useState, useMemo } from "react";
+import type { FC} from "react";
+import React, { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { Shapes, Ruler, BarChartHorizontal, HelpCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TourPopup } from "@/components/Common/TourComponents";
 
-import { useTourGuide, TabControlProps } from './hooks/useTourGuide';
+import type { TabControlProps } from './hooks/useTourGuide';
+import { useTourGuide } from './hooks/useTourGuide';
 import { useUnusualCases } from "./hooks/useUnusualCases";
 import { baseTourSteps } from './tourConfig';
-import { IdentifyUnusualCasesProps, TabType, VariablesTabProps, OptionsTabProps } from "./types";
+import type { IdentifyUnusualCasesProps, TabType, VariablesTabProps, OptionsTabProps } from "./types";
 
 import VariablesTab from "./VariablesTab";
 import OptionsTab from "./OptionsTab";

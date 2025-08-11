@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import SelectCasesIfCondition from '../dialogs/SelectCasesIfCondition';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 import { Dialog } from '@/components/ui/dialog';
 
 const mockVariables: Variable[] = [

@@ -6,7 +6,7 @@ import {
 import * as XLSX from 'xlsx';
 
 // Helper to create a mock workbook for testing
-const createMockWorkbook = (data: { [sheetName: string]: any[][] }) => {
+const createMockWorkbook = (data: Record<string, unknown[][]>) => {
   const wb = XLSX.utils.book_new();
   Object.keys(data).forEach(sheetName => {
     const ws = XLSX.utils.aoa_to_sheet(data[sheetName]);

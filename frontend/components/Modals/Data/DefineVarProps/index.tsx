@@ -1,11 +1,12 @@
 "use client";
 
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import VariablesToScan from "./VariablesToScan";
 import PropertiesEditor from "./PropertiesEditor";
 import { Variable } from "@/types/Variable";
-import { DefineVariablePropsProps } from "./types";
+import type { DefineVariablePropsProps } from "./types";
 import { useDefineVarProps } from "./hooks/useDefineVarProps";
 
 // Main content component that's agnostic of container type

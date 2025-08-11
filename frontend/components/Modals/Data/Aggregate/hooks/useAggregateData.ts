@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useModalStore } from "@/stores/useModalStore";
-import { Variable, VariableType, VariableMeasure } from "@/types/Variable";
-import { AggregatedVariable } from "../types";
+import type { Variable, VariableType} from "@/types/Variable";
+import { VariableMeasure } from "@/types/Variable";
+import type { AggregatedVariable } from "../types";
 import {
     createVariableName,
     mapUIFunctionToCalculationFunction,

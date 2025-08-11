@@ -5,9 +5,9 @@ import type { Variable } from '@/types/Variable';
 
 // Mock variable store
 const mockVars: Variable[] = [
-  { name: 'age', label: 'Age', tempId: 't0', columnIndex: 0, type: 'NUMERIC', measure: 'scale', decimals: 0, width: 8, values: [], missing: {}, align: 'right', role: 'input', columns: 8 } as Variable,
-  { name: 'gender', label: 'Gender', tempId: 't1', columnIndex: 1, type: 'NUMERIC', measure: 'scale', decimals: 0, width: 8, values: [], missing: {}, align: 'left', role: 'input', columns: 8 } as Variable,
-  { name: 'dept', label: 'Department', tempId: 't2', columnIndex: 2, type: 'STRING', measure: 'nominal', decimals: 0, width: 8, values: [], missing: {}, align: 'left', role: 'input', columns: 8 } as Variable,
+  { id: 0, name: 'age', label: 'Age', tempId: 't0', columnIndex: 0, type: 'NUMERIC', measure: 'scale', decimals: 0, width: 8, values: [], missing: {} as any, align: 'right', role: 'input', columns: 8 } as Variable,
+  { id: 1, name: 'gender', label: 'Gender', tempId: 't1', columnIndex: 1, type: 'NUMERIC', measure: 'scale', decimals: 0, width: 8, values: [], missing: {} as any, align: 'left', role: 'input', columns: 8 } as Variable,
+  { id: 2, name: 'dept', label: 'Department', tempId: 't2', columnIndex: 2, type: 'STRING', measure: 'nominal', decimals: 0, width: 8, values: [], missing: {} as any, align: 'left', role: 'input', columns: 8 } as Variable,
 ];
 
 jest.mock('@/stores/useVariableStore', () => {

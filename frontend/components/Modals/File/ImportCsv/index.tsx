@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, FC, useEffect } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect } from "react";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ImportCsvSelection } from "./components/ImportCsvSelection"; 
 import { ImportCsvConfiguration } from "./components/ImportCsvConfiguration";
-import { ContainerType } from "@/types/ui";
+import type { ContainerType } from "@/types/ui";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useImportCsvFileReader } from "./hooks/useImportCsvFileReader";

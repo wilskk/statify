@@ -1,10 +1,11 @@
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { OptionsTabProps } from "./types";
+import type { OptionsTabProps } from "./types";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const OptionsTab: FC<OptionsTabProps> = ({

@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, FC, useEffect, useCallback, useRef, useMemo } from "react";
+import type { FC } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import * as XLSX from "xlsx"; 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { InfoIcon, RefreshCw, ArrowLeft, FileSpreadsheet, HelpCircle, Loader2, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { InfoIcon, RefreshCw, ArrowLeft, FileSpreadsheet, Loader2, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ImportExcelConfigurationStepProps, ParseSheetOptions, SheetData } from "../types";
 import {
-    getSheetNamesFromWorkbook,
     parseSheetForPreview,
     processSheetForImport,
     generateVariablesFromData
@@ -90,7 +88,6 @@ const excelPreviewStyles = `
 }
 `;
 
-
 // Tipe data untuk tour
 type PopupPosition = 'top' | 'bottom';
 type HorizontalPosition = 'left' | 'right';
@@ -114,7 +111,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-config-worksheet-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "📄",
+        icon: "",
     },
     {
         title: "Import Options",
@@ -122,7 +119,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-config-options-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "⚙️",
+        icon: "",
     },
     {
         title: "Data Preview",
@@ -130,7 +127,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-config-preview-wrapper",
         defaultPosition: 'top',
         defaultHorizontalPosition: 'left',
-        icon: "📊",
+        icon: "",
     },
     {
         title: "Import Data",
@@ -138,16 +135,15 @@ const baseTourSteps: TourStep[] = [
         targetId: "excel-config-import-button-wrapper",
         defaultPosition: 'top',
         defaultHorizontalPosition: 'right',
-        icon: "✅",
+        icon: "",
     }
 ];
-
 
 // Portal wrapper
 const TourPopupPortal: FC<{ children: React.ReactNode }> = ({ children }) => {
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); return () => setMounted(false); }, []);
-    if (!mounted || typeof window === "undefined") return null;
+    if (typeof window === "undefined" || !mounted) return null;
     return createPortal(children, document.body);
 };
 
@@ -161,7 +157,8 @@ const TourPopup: FC<{
     onClose: () => void;
     targetElement: HTMLElement | null;
 }> = ({ step, currentStep, totalSteps, onNext, onPrev, onClose, targetElement }) => {
-    const position = step.position || step.defaultPosition;
+    const position = step.position ?? step.defaultPosition;
+
     const horizontalPosition = step.horizontalPosition;
     const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
     const popupRef = useRef<HTMLDivElement>(null);
@@ -170,7 +167,8 @@ const TourPopup: FC<{
         if (!targetElement) return;
         const updatePosition = () => {
             const rect = targetElement.getBoundingClientRect();
-            const popupHeight = popupRef.current?.offsetHeight || 170;
+            const popupHeight = popupRef.current?.offsetHeight ?? 170;
+
             const popupWidth = 280;
             const popupBuffer = 20;
             let top: number, left: number;
@@ -281,15 +279,15 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
     fileName,
     parsedSheets,
 }) => {
-    const { setData, resetData } = useDataStore();
     const { overwriteAll } = useVariableStore();
 
     const [sheetNames, setSheetNames] = useState<string[]>([]);
-    const [parsedSheetsState, setParsedSheetsState] = useState<SheetData[]>(parsedSheets);
-    const [selectedSheet, setSelectedSheet] = useState<string>(parsedSheets[0]?.sheetName || "");
-    
+    const [parsedSheetsState] = useState<SheetData[]>(parsedSheets);
+    const [selectedSheet, setSelectedSheet] = useState<string>(parsedSheets[0]?.sheetName ?? "");
+
     const [range, setRange] = useState<string>("");
-    const [parsedPreviewData, setParsedPreviewData] = useState<any[][]>([]);
+    const [parsedPreviewData, setParsedPreviewData] = useState<unknown[][]>([]);
+
     const [previewColumnHeaders, setPreviewColumnHeaders] = useState<string[] | false>(false);
     
     const [firstLineContains, setFirstLineContains] = useState<boolean>(true);
@@ -300,14 +298,12 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
     const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Ref untuk tabel preview (tidak diperlukan untuk tabel dasar)
-
     // Tour state and logic
     const [tourActive, setTourActive] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
+    const _startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
     const nextStep = useCallback(() => { if (currentStep < baseTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);
@@ -323,9 +319,8 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
 
     const currentTargetElement = useMemo(() => {
         if (!tourActive) return null;
-        return targetElements[baseTourSteps[currentStep].targetId] || null;
+        return targetElements[baseTourSteps[currentStep].targetId] ?? null;
     }, [tourActive, currentStep, targetElements]);
-
 
     useEffect(() => {
         if (!parsedSheetsState || parsedSheetsState.length === 0) {
@@ -338,7 +333,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             setError("No worksheets found in the Excel file.");
         }
         setSheetNames(names);
-        setSelectedSheet(names[0] || "");
+        setSelectedSheet(names[0] ?? "");
         setIsLoadingPreview(false);
     }, [parsedSheetsState]);
 
@@ -430,9 +425,10 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             await overwriteAll(variables, processedFullData);
 
             onClose();
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("Error processing Excel import: ", e);
-            setError(`Import failed: ${e.message}`);
+            const message = e instanceof Error ? e.message : String(e);
+            setError(`Import failed: ${message}`);
         } finally {
             setIsProcessing(false);
         }
@@ -444,7 +440,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
         setReadHiddenRowsCols(false);
         setReadEmptyCellsAs("empty");
         if (sheetNames.length > 0) {
-             setSelectedSheet(sheetNames[0]);
+             setSelectedSheet(sheetNames[0] ?? "");
         } else {
             setSelectedSheet("");
         }
@@ -687,12 +683,12 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                                                                 {rowIndex + 1}
                                                             </td>
                                                             {Array.isArray(row) ? row.map((cell, cellIndex) => (
-                                                                <td key={cellIndex} title={String(cell || '')}>
-                                                                    {String(cell || '')}
+                                                                <td key={cellIndex} title={String(cell ?? '')}>
+                                                                    {String(cell ?? '')}
                                                                 </td>
                                                             )) : (
                                                                 <td colSpan={getTableHeaders().length}>
-                                                                    {String(row || '')}
+                                                                    {String(row ?? '')}
                                                                 </td>
                                                             )}
                                                         </tr>

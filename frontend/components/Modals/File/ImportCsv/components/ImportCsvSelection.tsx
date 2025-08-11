@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC, useState, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, FileText, Loader2, X, HelpCircle, ChevronLeft, ChevronRight, Info, UploadCloud } from "lucide-react";

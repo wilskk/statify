@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, HelpCircle } from "lucide-react";
 import { useExportCsv } from "./hooks/useExportCsv";
-import { ExportCsvProps } from "./types";
+import type { ExportCsvProps } from "./types";
 import { useTourGuide } from "./hooks/useTourGuide";
 import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { AnimatePresence } from "framer-motion";

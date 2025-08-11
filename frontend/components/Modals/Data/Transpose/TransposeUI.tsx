@@ -14,9 +14,10 @@ import {
     BarChartHorizontal,
     InfoIcon,
 } from "lucide-react";
-import { Variable } from "@/types/Variable";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
-import { TransposeUIProps } from "./types";
+import type { Variable } from "@/types/Variable";
+import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
+import type { TransposeUIProps } from "./types";
 
 const getVariableIcon = (variable: Variable) => {
     switch (variable.measure) {

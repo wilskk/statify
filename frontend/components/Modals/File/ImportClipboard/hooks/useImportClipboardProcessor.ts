@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { Variable } from "@/types/Variable";
-import { ClipboardProcessingOptions } from "../types";
+import type { Variable } from "@/types/Variable";
+import type { ClipboardProcessingOptions } from "../types";
 import {
     excelStyleTextToColumns,
     getDelimiterCharacter,

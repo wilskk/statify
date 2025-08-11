@@ -2,14 +2,16 @@
  * New simplified VariablesTab (2025-07) – leverages VariableListManager for all drag-and-drop & selection.
  */
 
-import React, { FC, useCallback } from "react";
-import { Variable } from "@/types/Variable";
-import { AggregatedVariable, TourStep } from "./types";
+import type { FC} from "react";
+import React, { useCallback } from "react";
+import type { Variable } from "@/types/Variable";
+import type { AggregatedVariable, TourStep } from "./types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
+import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import { Shapes, Ruler, BarChartHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -107,10 +109,14 @@ const VariablesTab: FC<VariablesTabProps> = ({
         (variable: Variable | AggregatedVariable, sourceListId: string) => {
             if (sourceListId === 'available' || sourceListId === 'break') {
                 const id = (variable as any).columnIndex ?? (variable as any).tempId;
-                _hvd && id !== undefined && _hvd(id as any, sourceListId as any);
+                if (_hvd && id !== undefined) {
+                    _hvd(id as any, sourceListId as any);
+                }
             } else if (sourceListId === 'aggregated') {
                 const id = (variable as any).tempId ?? (variable as any).aggregateId;
-                _had && id && _had(id as any);
+                if (_had && id) {
+                    _had(id as any);
+                }
             }
         },
         [_hvd, _had]
@@ -121,14 +127,14 @@ const VariablesTab: FC<VariablesTabProps> = ({
         (info: { id: string; source: string } | null) => {
             if (!info) {
                 handleAggregatedVariableSelect("");
-                            return;
+                return;
             }
             if (info.source === "aggregated") {
                 handleAggregatedVariableSelect(info.id);
             } else if (info.source === "available" || info.source === "break") {
                 const searchList = info.source === "available" ? availableVariables : breakVariables;
                 const variable = searchList.find(v => v.tempId === info.id);
-                if (variable && variable.tempId) handleVariableSelect(variable.tempId, info.source);
+                if (variable?.tempId) handleVariableSelect(variable.tempId, info.source);
             }
         },
         [availableVariables, breakVariables, handleVariableSelect, handleAggregatedVariableSelect]

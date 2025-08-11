@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { transposeDataService } from "../services/transposeService";
 
 interface UseTransposeProps {

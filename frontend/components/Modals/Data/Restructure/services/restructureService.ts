@@ -1,6 +1,7 @@
-import { DataRow } from "@/types/Data";
-import { Variable } from "@/types/Variable";
-import { RestructureConfig, RestructureMethod } from "../types";
+import type { DataRow } from "@/types/Data";
+import type { Variable } from "@/types/Variable";
+import type { RestructureConfig} from "../types";
+import { RestructureMethod } from "../types";
 
 /**
  * Entry point for restructuring data and variables.
@@ -128,11 +129,11 @@ function longToWide(
   );
   const groupCols = groupVars.map(v => v.columnIndex);
 
-  const map = new Map<string, { keyValues: DataRow; values: Map<any, DataRow> }>();
+  const map = new Map<string, { keyValues: DataRow; values: Map<string | number | null, DataRow> }>();
   data.forEach(row => {
     const keyValues = groupCols.map(ci => row[ci]);
     const key = JSON.stringify(keyValues);
-    if (!map.has(key)) map.set(key, { keyValues, values: new Map<any, DataRow>() });
+    if (!map.has(key)) map.set(key, { keyValues, values: new Map<string | number | null, DataRow>() });
 
     const idValue = row[origIdVar.columnIndex];
     const stubValues = origStubVars.reduce((acc, v) => {
@@ -140,7 +141,10 @@ function longToWide(
         return acc;
     }, {} as DataRow);
     
-    map.get(key)!.values.set(idValue, stubValues);
+    const mapEntry = map.get(key);
+    if (mapEntry) {
+      mapEntry.values.set(idValue, stubValues);
+    }
   });
 
   const uniqueIds = Array.from(new Set(data.map(r => r[origIdVar.columnIndex])))
@@ -158,7 +162,7 @@ function longToWide(
     origStubVars.forEach(stubVar => {
       const { id, ...restOfStubVar } = stubVar; // Exclude the original id
       const safeUid = String(uid).replace(/[^a-zA-Z0-9_]/g, '_');
-      let baseName = `${restOfStubVar.name}_${safeUid}`;
+      const baseName = `${restOfStubVar.name}_${safeUid}`;
       let finalName = baseName;
       let counter = 1;
       while (existingNames.has(finalName)) {

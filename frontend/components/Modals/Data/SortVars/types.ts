@@ -1,4 +1,4 @@
-import { useSortVariables } from "./hooks/useSortVariables";
+import type { useSortVariables } from "./hooks/useSortVariables";
 
 export interface SortVariablesModalProps {
     onClose: () => void;

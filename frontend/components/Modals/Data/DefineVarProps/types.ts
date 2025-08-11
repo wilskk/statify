@@ -1,4 +1,5 @@
-import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
+import type { Variable} from "@/types/Variable";
+import { ValueLabel, MissingValuesSpec } from "@/types/Variable";
 
 export interface DefineVariablePropsProps {
     onClose: () => void;

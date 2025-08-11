@@ -2,7 +2,7 @@ import React, { FC, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Variable } from "@/types/Variable";
+import { Variable, spssDateTypes, VariableType } from "@/types/Variable";
 import { HighlightedVariableInfo } from "../types";
 import { Dispatch, SetStateAction } from "react";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
@@ -39,9 +39,26 @@ const VariablesTab: FC<VariablesTabProps> = ({
     tourSteps = [],
 }) => {
     const variableIdKeyToUse: keyof Variable = 'id';
-    
-    // Filter to show only NUMERIC variables in available list
-    const filteredAvailableVariables = availableVariables.filter(variable => variable.type === 'NUMERIC');
+
+    // Normalize to three core types: numeric, string, date
+    const allowedNumericTypes = new Set<VariableType>([
+        'NUMERIC',
+        'COMMA',
+        'DOT',
+        'SCIENTIFIC',
+        'DOLLAR',
+        'RESTRICTED_NUMERIC',
+    ]);
+
+    const isNumericType = (t?: VariableType): boolean => !!t && allowedNumericTypes.has(t);
+    // const isStringType = (t?: VariableType): boolean => t === 'STRING'; // reserved if needed later
+    const isDateType = (t?: VariableType): boolean => !!t && spssDateTypes.has(t);
+
+    // For Descriptives, only show numeric variables with scale measurement level
+    const filteredAvailableVariables = availableVariables.filter(variable => 
+        isNumericType(variable.type) && 
+        (variable.measure === 'scale' || variable.measure === 'unknown' || !variable.measure)
+    );
 
     const getDisplayName = (variable: Variable) => {
         if (!variable.label) return variable.name;
@@ -49,9 +66,13 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
-        // Prevent moving from available to selected if it's disabled
-        if (sourceListId === 'available' && variable.type !== 'NUMERIC') {
-            return;
+        // Prevent moving from available to selected if it's disabled (numeric scale only)
+        if (sourceListId === 'available') {
+            const isValidForDescriptives = isNumericType(variable.type) && 
+                (variable.measure === 'scale' || variable.measure === 'unknown' || !variable.measure);
+            if (!isValidForDescriptives) {
+                return;
+            }
         }
 
         if (sourceListId === 'available') {
@@ -97,7 +118,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
         }
     }, [reorderVariables]);
 
-    // Check for variables with non-scale measurement levels
+    // Check for variables with non-scale measurement levels (should be rare now due to filtering)
     const nonScaleVariables = selectedVariables.filter(variable => 
         variable.measure && variable.measure !== 'scale' && variable.measure !== 'unknown'
     );

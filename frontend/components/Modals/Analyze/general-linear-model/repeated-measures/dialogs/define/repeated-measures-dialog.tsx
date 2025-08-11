@@ -15,7 +15,7 @@ import {
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {useModal} from "@/hooks/useModal";
 import {Badge} from "@/components/ui/badge";
-import {toast} from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export const RepeatedMeasureDefineDialog = ({
     isDefineOpen,
@@ -51,23 +51,14 @@ export const RepeatedMeasureDefineDialog = ({
     const isFactorNameValid = (name: string): boolean => {
         // Check if name is empty
         if (!name.trim()) {
-            toast({
-                title: "Validation Error",
-                description: "Factor name cannot be empty.",
-                variant: "destructive",
-            });
+            toast.error("Factor name cannot be empty.");
             return false;
         }
 
         // Check for illegal characters
         const illegalCharsRegex = /[^a-zA-Z0-9_]/;
         if (illegalCharsRegex.test(name)) {
-            toast({
-                title: "Validation Error",
-                description:
-                    "Factor name cannot contain spaces or special characters. Use only letters, numbers, and underscores.",
-                variant: "destructive",
-            });
+            toast.error("Factor name cannot contain spaces or special characters. Use only letters, numbers, and underscores.");
             return false;
         }
 
@@ -88,11 +79,7 @@ export const RepeatedMeasureDefineDialog = ({
         );
 
         if (isDuplicate) {
-            toast({
-                title: "Validation Error",
-                description: "A factor with this name already exists.",
-                variant: "destructive",
-            });
+            toast.error("A factor with this name already exists.");
             return false;
         }
 
@@ -102,19 +89,11 @@ export const RepeatedMeasureDefineDialog = ({
     // Validation for factor levels
     const isFactorLevelsValid = (levels: number | null): boolean => {
         if (levels === null) {
-            toast({
-                title: "Validation Error",
-                description: "Number of levels must be a valid number.",
-                variant: "destructive",
-            });
+            toast.error("Number of levels must be a valid number.");
             return false;
         }
         if (levels < 2 || levels > 99) {
-            toast({
-                title: "Validation Error",
-                description: "Number of levels must be between 2 and 99.",
-                variant: "destructive",
-            });
+            toast.error("Number of levels must be between 2 and 99.");
             return false;
         }
         return true;
@@ -124,23 +103,14 @@ export const RepeatedMeasureDefineDialog = ({
     const isMeasureNameValid = (name: string): boolean => {
         // Check if name is empty
         if (!name.trim()) {
-            toast({
-                title: "Validation Error",
-                description: "Measure name cannot be empty.",
-                variant: "destructive",
-            });
+            toast.error("Measure name cannot be empty.");
             return false;
         }
 
         // Check for illegal characters
         const illegalCharsRegex = /[^a-zA-Z0-9_]/;
         if (illegalCharsRegex.test(name)) {
-            toast({
-                title: "Validation Error",
-                description:
-                    "Measure name cannot contain spaces or special characters. Use only letters, numbers, and underscores.",
-                variant: "destructive",
-            });
+            toast.error("Measure name cannot contain spaces or special characters. Use only letters, numbers, and underscores.");
             return false;
         }
 
@@ -163,11 +133,7 @@ export const RepeatedMeasureDefineDialog = ({
         );
 
         if (isDuplicate) {
-            toast({
-                title: "Validation Error",
-                description: "A measure with this name already exists.",
-                variant: "destructive",
-            });
+            toast.error("A measure with this name already exists.");
             return false;
         }
         return true;

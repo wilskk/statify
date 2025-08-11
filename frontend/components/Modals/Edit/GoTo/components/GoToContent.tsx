@@ -14,13 +14,15 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BaseModalProps } from "@/types/modalTypes";
 import { X, HelpCircle, CheckCircle, AlertCircle, Info, ChevronLeft, ChevronRight } from "lucide-react";
-import { GoToMode, GoToModalProps } from "../types";
+import type { GoToModalProps } from "../types";
+import { GoToMode } from "../types";
 import { useGoToForm } from "../hooks/useGoToForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AnimatePresence } from "framer-motion";
-import { TourPopup, ActiveElementHighlight, TourStep, PopupPosition, HorizontalPosition } from "./Tour";
+import type { TourStep, PopupPosition, HorizontalPosition } from "./Tour";
+import { TourPopup, ActiveElementHighlight } from "./Tour";
 
 export const GoToContent: React.FC<GoToModalProps & { onClose: () => void }> = ({
     onClose,

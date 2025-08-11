@@ -10,13 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { X, ChevronLeft, ChevronRight, HelpCircle, Info, Replace, ReplaceAll } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FindReplaceMode, TabType, FindAndReplaceModalProps } from "../types";
+import type { FindAndReplaceModalProps } from "../types";
+import { FindReplaceMode, TabType } from "../types";
 import { useFindReplaceForm } from "../hooks/useFindReplaceForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AnimatePresence } from "framer-motion";
-import { TourPopup, ActiveElementHighlight, TourStep, PopupPosition, HorizontalPosition } from "./Tour";
+import type { TourStep, PopupPosition, HorizontalPosition } from "./Tour";
+import { TourPopup, ActiveElementHighlight } from "./Tour";
 import { BaseModalProps } from "@/types/modalTypes";
 
 interface FindAndReplaceContentProps extends Omit<FindAndReplaceModalProps, 'containerType' | 'columns'> {

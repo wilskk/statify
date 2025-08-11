@@ -1,4 +1,4 @@
-import { Variable, VariableType, VariableMeasure } from "@/types/Variable";
+import type { Variable, VariableType, VariableMeasure } from "@/types/Variable";
 
 export interface AggregatedVariable extends Omit<Variable, 'id' | 'tempId' | 'values' | 'missing' | 'align' | 'role' | 'width' | 'decimals' | 'columns' | 'columnIndex'> {
     aggregateId: string;

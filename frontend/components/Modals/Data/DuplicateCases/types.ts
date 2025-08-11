@@ -1,4 +1,4 @@
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 export type TabType = 'variables' | 'options';
 

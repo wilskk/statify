@@ -1,8 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RestructureDataWizard from '../index';
-import { useRestructure, UseRestructureReturn, RestructureMethod } from '../hooks/useRestructure';
-import { Variable } from '@/types/Variable';
+import type { UseRestructureReturn} from '../hooks/useRestructure';
+import { useRestructure, RestructureMethod } from '../hooks/useRestructure';
+import type { Variable } from '@/types/Variable';
 
 jest.mock('../hooks/useRestructure');
 

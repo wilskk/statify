@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import {
     Dialog,
     DialogContent,
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Calendar, Clock, Info } from "lucide-react";
-import { DefineDateTimeProps } from "./types";
+import type { DefineDateTimeProps } from "./types";
 import { useDefineDateTime } from "./hooks/useDefineDateTime";
 
 // Main content component that's agnostic of container type

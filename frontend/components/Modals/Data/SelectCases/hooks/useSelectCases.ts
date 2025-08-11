@@ -3,7 +3,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useModalStore } from "@/stores/useModalStore";
 import { useMetaStore } from "@/stores/useMetaStore";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { v4 as uuidv4 } from "uuid";
 import { 
   selectByCondition, 

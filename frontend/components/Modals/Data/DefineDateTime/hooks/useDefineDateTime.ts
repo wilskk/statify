@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useMetaStore } from "@/stores/useMetaStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { TimeComponent } from "../types";
+import type { TimeComponent } from "../types";
 import {
     getTimeComponentsFromCase,
     formatDateForMetaStore,

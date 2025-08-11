@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { useMobile } from "@/hooks/useMobile";
 import { useDataStore } from "@/stores/useDataStore";
-import { DataRow } from "@/types/Data";
+import type { DataRow } from "@/types/Data";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { jsPDF } from "jspdf";
 // autoTable is not directly used here anymore, but jsPDF instance is extended by it.
 // import { autoTable } from "jspdf-autotable"; 
-import { Variable } from "@/types/Variable";
-import { Log } from "@/types/Result";
-import {
+import type { Variable } from "@/types/Variable";
+import type {
     UsePrintLogicProps,
     UsePrintLogicOutput,
     PaperSize,
@@ -60,12 +59,13 @@ export const usePrintLogic = ({
             const availableVariables = useVariableStore.getState().variables;
             const logs = useResultStore.getState().logs;
             
-            const doc = new jsPDF({ format: paperSize }) as any; 
+            const doc = new jsPDF({ format: paperSize }); 
+
             let currentY = 10;
 
             // Determine active columns and filtered data once
             const namedVariables = availableVariables.filter(
-                (v: Variable) => String(v.name || "").trim() !== ""
+                (v: Variable) => String(v.name ?? "").trim() !== ""
             );
             const activeColumns = namedVariables
                 .filter((v: Variable) =>
@@ -91,12 +91,13 @@ export const usePrintLogic = ({
             }
 
             if (selectedOptions.result) {
-                currentY = addResultsView(doc, currentY, logs, generateAutoTableDataFromString);
+                void addResultsView(doc, currentY, logs, generateAutoTableDataFromString);
             }
 
             // Ensure at least one section was added before saving, or save a blank PDF if that's desired.
             // For now, it saves even if empty.
-            doc.save(`${fileName.trim() || "statify_print_output"}.pdf`);
+            const trimmed = fileName.trim();
+            doc.save(`${trimmed === "" ? "statify_print_output" : trimmed}.pdf`);
             onClose(); 
         } catch (error) {
             console.error("Error generating PDF:", error);

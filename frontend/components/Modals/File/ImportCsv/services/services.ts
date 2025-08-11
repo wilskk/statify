@@ -1,7 +1,7 @@
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { Variable } from "@/types/Variable";
-import { CSVProcessingOptions } from "../types";
+import type { Variable } from "@/types/Variable";
+import type { CSVProcessingOptions } from "../types";
 
 export interface ProcessedCsvData {
     variables: Variable[];

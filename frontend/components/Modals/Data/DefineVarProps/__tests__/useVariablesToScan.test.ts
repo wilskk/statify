@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useVariablesToScan } from '../hooks/useVariablesToScan';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 jest.mock('@/stores/useVariableStore');
 

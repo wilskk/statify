@@ -1,5 +1,5 @@
 import { evaluateCondition } from '../services/evaluator';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 const mockVariables: Variable[] = [
     { name: 'age', columnIndex: 0, type: 'NUMERIC', measure: 'scale', role: 'input', label: 'Age', values: [], missing: null, decimals: 0, width: 8, columns: 12, align: 'left' },

@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from "react";
-import { ModalType, BaseModalProps, ModalCategory } from "@/types/modalTypes";
+import type { BaseModalProps} from "@/types/modalTypes";
+import { ModalType } from "@/types/modalTypes";
 
 // Import modal registries
 import {
@@ -28,58 +29,86 @@ import {
 } from "@/components/Modals/Transform";
 
 // Lazy load regression modals - komponen yang jarang digunakan dan mungkin besar
-const ModalLinear = lazy(
-  () => import("@/components/Modals/Regression/Linear/ModalLinear")
+const ModalLinear = lazy(() =>
+  import("@/components/Modals/Regression/Linear/ModalLinear").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
-const Statistics = lazy(
-  () => import("@/components/Modals/Regression/Linear/Statistics")
+const Statistics = lazy(() =>
+  import("@/components/Modals/Regression/Linear/Statistics").then((mod) => ({
+    // Note: Statistics requires additional props (e.g., showAlert). We cast via unknown to
+    // satisfy the registry typing; if used directly as a modal, ensure required props are provided
+    // or wrap with an adapter component.
+    default: mod.default as unknown as React.ComponentType<BaseModalProps>,
+  }))
 );
-const SaveLinear = lazy(
-  () => import("@/components/Modals/Regression/Linear/SaveLinear")
+const SaveLinear = lazy(() =>
+  import("@/components/Modals/Regression/Linear/SaveLinear").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
-const OptionsLinear = lazy(
-  () => import("@/components/Modals/Regression/Linear/OptionsLinear")
+const OptionsLinear = lazy(() =>
+  import("@/components/Modals/Regression/Linear/OptionsLinear").then((mod) => ({
+    // OptionsLinear props include additional fields (e.g., showAlert). Cast via unknown
+    // to satisfy the registry typing; ensure required props are provided by the caller.
+    default: mod.default as unknown as React.ComponentType<BaseModalProps>,
+  }))
 );
-const PlotsLinear = lazy(
-  () => import("@/components/Modals/Regression/Linear/PlotsLinear")
+const PlotsLinear = lazy(() =>
+  import("@/components/Modals/Regression/Linear/PlotsLinear").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
-const ModalCurveEstimation = lazy(
-  () =>
-    import(
-      "@/components/Modals/Regression/CurveEstimation/ModalCurveEstimation"
-    )
+
+const ModalCurveEstimation = lazy(() =>
+  import(
+    "@/components/Modals/Regression/CurveEstimation/ModalCurveEstimation"
+  ).then((mod) => ({ default: mod.default as React.ComponentType<BaseModalProps> }))
 );
 
 // Lazy load chart modals
-const SimpleBarModal = lazy(
-  () =>
-    import("@/components/Modals/Graphs/LegacyDialogs/BarModal/SimpleBarModal")
+const SimpleBarModal = lazy(() =>
+  import("@/components/Modals/Graphs/LegacyDialogs/BarModal/SimpleBarModal").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
-const ChartBuilderModal = lazy(
-  () => import("@/components/Modals/Graphs/ChartBuilder/ChartBuilderModal")
+const ChartBuilderModal = lazy(() =>
+  import("@/components/Modals/Graphs/ChartBuilder/ChartBuilderModal").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
 
 // Lazy load time series modals
-const SmoothingModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/Smoothing")
+const SmoothingModal = lazy(() =>
+  import("@/components/Modals/Analyze/TimeSeries/Smoothing").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
-const DecompositionModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/Decomposition")
+const DecompositionModal = lazy(() =>
+  import("@/components/Modals/Analyze/TimeSeries/Decomposition").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
-const AutocorrelationModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/Autocorrelation")
+const AutocorrelationModal = lazy(() =>
+  import("@/components/Modals/Analyze/TimeSeries/Autocorrelation").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
-const UnitRootTestModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/UnitRootTest")
+const UnitRootTestModal = lazy(() =>
+  import("@/components/Modals/Analyze/TimeSeries/UnitRootTest").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
-const BoxJenkinsModelModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel")
+const BoxJenkinsModelModal = lazy(() =>
+  import("@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel").then((mod) => ({
+    default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
 );
 
 /**
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
  */
-const LoadingModal: React.FC<BaseModalProps> = ({ onClose }) => (
+const LoadingModal: React.FC<BaseModalProps> = ({ onClose: _onClose }) => (
   <div className="p-6 text-center">
     <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" />
     <p className="text-sm text-muted-foreground">Loading...</p>
@@ -111,7 +140,7 @@ function withSuspense(
   );
 
   WrappedComponent.displayName = `withSuspense(${
-    Component.displayName || Component.name || "Component"
+    Component.displayName ?? Component.name ?? "Component"
   })`;
   return WrappedComponent;
 }
@@ -121,9 +150,6 @@ function withSuspense(
  *
  * Ini adalah registry terpusat yang memetakan setiap ModalType ke komponen React spesifik.
  * Ketika menambahkan modal baru, cukup mendaftarkannya disini.
- *
- * Note: Menggunakan 'as' type assertion untuk mengatasi perbedaan props
- * karena BaseModalProps sudah memiliki semua props yang diperlukan sebagai optional.
  */
 export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // File modals - from dedicated registry
@@ -145,49 +171,23 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   ...TRANSFORM_MODAL_COMPONENTS,
 
   // Regression modals - lazy loaded
-  [ModalType.ModalLinear]: withSuspense(
-    ModalLinear as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.Statistics]: withSuspense(
-    Statistics as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.SaveLinear]: withSuspense(
-    SaveLinear as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.OptionsLinear]: withSuspense(
-    OptionsLinear as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.PlotsLinear]: withSuspense(
-    PlotsLinear as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalCurveEstimation]: withSuspense(
-    ModalCurveEstimation as any
-  ) as React.ComponentType<BaseModalProps>,
+  [ModalType.ModalLinear]: withSuspense(ModalLinear),
+  [ModalType.Statistics]: withSuspense(Statistics),
+  [ModalType.SaveLinear]: withSuspense(SaveLinear),
+  [ModalType.OptionsLinear]: withSuspense(OptionsLinear),
+  [ModalType.PlotsLinear]: withSuspense(PlotsLinear),
+  [ModalType.ModalCurveEstimation]: withSuspense(ModalCurveEstimation),
 
   // Chart modals - lazy loaded
-  [ModalType.ChartBuilderModal]: withSuspense(
-    ChartBuilderModal as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.SimpleBarModal]: withSuspense(
-    SimpleBarModal as any
-  ) as React.ComponentType<BaseModalProps>,
+  [ModalType.ChartBuilderModal]: withSuspense(ChartBuilderModal),
+  [ModalType.SimpleBarModal]: withSuspense(SimpleBarModal),
 
   // Time series modals - lazy loaded
-  [ModalType.Smoothing]: withSuspense(
-    SmoothingModal as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.Decomposition]: withSuspense(
-    DecompositionModal as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.Autocorrelation]: withSuspense(
-    AutocorrelationModal as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.UnitRootTest]: withSuspense(
-    UnitRootTestModal as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.BoxJenkinsModel]: withSuspense(
-    BoxJenkinsModelModal as any
-  ) as React.ComponentType<BaseModalProps>,
+  [ModalType.Smoothing]: withSuspense(SmoothingModal),
+  [ModalType.Decomposition]: withSuspense(DecompositionModal),
+  [ModalType.Autocorrelation]: withSuspense(AutocorrelationModal),
+  [ModalType.UnitRootTest]: withSuspense(UnitRootTestModal),
+  [ModalType.BoxJenkinsModel]: withSuspense(BoxJenkinsModelModal),
 };
 
 /**
@@ -258,7 +258,7 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<
 export function getModalContainerType(
   type: ModalType,
   fallback: "dialog" | "sidebar" = "dialog",
-  isMobile: boolean = false
+  isMobile = false
 ): "dialog" | "sidebar" {
   // Mobile devices always use dialog
   if (isMobile) {

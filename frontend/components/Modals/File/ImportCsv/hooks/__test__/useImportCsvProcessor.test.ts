@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useImportCsvProcessor } from '../useImportCsvProcessor';
 import { importCsvDataService, parseCsvWithWorker } from '../../services/services';
-import { CSVProcessingOptions } from '../../types';
+import type { CSVProcessingOptions } from '../../types';
 
 // Mock the entire services module
 jest.mock('../../services/services', () => ({

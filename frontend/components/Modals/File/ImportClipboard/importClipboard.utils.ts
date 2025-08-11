@@ -1,4 +1,4 @@
-import { ClipboardProcessingOptions } from "./types"; // Corrected path
+import type { ClipboardProcessingOptions } from "./types"; // Corrected path
 
 // Utility functions originally from useImportClipboardProcessor.ts
 

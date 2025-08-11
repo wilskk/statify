@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, FC, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ArrowLeft, RefreshCw, HelpCircle, Clipboard, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { ImportClipboardConfigurationStepProps, ClipboardProcessingOptions } from "../types";
+import type { ImportClipboardConfigurationStepProps, ClipboardProcessingOptions } from "../types";
 import { useImportClipboardProcessor } from "../hooks/useImportClipboardProcessor";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

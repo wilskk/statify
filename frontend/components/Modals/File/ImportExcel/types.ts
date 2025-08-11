@@ -1,5 +1,5 @@
-import { ContainerType } from "@/types/ui";
-import { SheetData } from "./services/services";
+import type { ContainerType } from "@/types/ui";
+import type { SheetData } from "./services/services";
 
 export type ImportExcelStage = "select" | "configure";
 
@@ -72,12 +72,12 @@ export interface ParseSheetOptions {
 }
 
 export interface ParsedSheetData {
-    data: any[][];
+    data: unknown[][];
     headers: string[] | false; // string[] if firstLineContains is true, false otherwise or if no headers
 }
 
 export interface ProcessedImportData {
-    processedFullData: any[][];
+    processedFullData: unknown[][];
     actualHeaders: string[];
 }
 

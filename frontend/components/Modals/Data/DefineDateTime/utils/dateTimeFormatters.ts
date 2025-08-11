@@ -1,4 +1,4 @@
-import { TimeComponent } from "../types";
+import type { TimeComponent } from "../types";
 
 export const getTimeComponentsFromCase = (selectedCase: string): TimeComponent[] => {
     const components: TimeComponent[] = [];

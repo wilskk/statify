@@ -1,5 +1,6 @@
 import React from 'react';
-import { ModalType, BaseModalProps } from '@/types/modalTypes';
+import type { BaseModalProps } from '@/types/modalTypes';
+import { ModalType } from '@/types/modalTypes';
 
 // Import edit modal components
 import { FindAndReplaceModal } from './FindReplace';

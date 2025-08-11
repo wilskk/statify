@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 interface UseSetMeasurementLevelProps {
     onClose: () => void;

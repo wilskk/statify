@@ -1,7 +1,7 @@
 // @ts-nocheck
 // /* eslint-disable @typescript-eslint/ban-ts-comment */
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import VariablesTab from '../VariablesTab';
 import { Variable } from '@/types/Variable';
 
@@ -57,7 +57,7 @@ describe('VariablesTab Component', () => {
   it('passes the correct highlightedVariable shape to VariableListManager', () => {
     const props = {
       ...defaultProps,
-      highlightedVariable: { tempId: 'temp-123', source: 'available' },
+      highlightedVariable: { id: 'temp-123', source: 'available' },
     };
 
     render(<VariablesTab {...props} />);
@@ -109,7 +109,7 @@ describe('VariablesTab Component', () => {
 
   it('shows highlight element when tourActive and step matches', () => {
     const tourSteps = [{ targetId: 'explore-variable-lists', content: 'step' }];
-    const { queryByTestId } = render(
+    render(
       <VariablesTab
         {...defaultProps}
         tourActive={true}
@@ -118,6 +118,6 @@ describe('VariablesTab Component', () => {
       />
     );
 
-    expect(getByTestId('highlight')).toBeInTheDocument();
+    expect(screen.getByTestId('highlight')).toBeInTheDocument();
   });
 }); 

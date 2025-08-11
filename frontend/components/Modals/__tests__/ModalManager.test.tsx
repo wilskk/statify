@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ModalManager from '../ModalManager';
 import { useModalStore } from '@/stores/useModalStore';
-// @ts-ignore - ModalRegistry is dynamically mocked in tests and may not be exported in source code
+// @ts-expect-error - ModalRegistry is dynamically mocked in tests and may not be exported in source code
 import { ModalRegistry } from '../ModalRegistry';
 import { ModalType } from '@/types/modalTypes';
 
@@ -28,7 +28,7 @@ jest.mock('onborda', () => ({
 const SampleModal = (props: any) => <div data-testid="sample-modal">Sample Modal: {props.text}</div>;
 
 describe('ModalManager', () => {
-    // @ts-ignore - casting store hook to jest.Mock for test mocking purposes
+    // @ts-expect-error - casting store hook to jest.Mock for test mocking purposes
     const mockUseModalStore = useModalStore as jest.Mock;
     
     beforeEach(() => {
@@ -72,8 +72,8 @@ describe('ModalManager', () => {
         mockUseModalStore.mockReturnValue({
             getTopModal: () => modalData,
         });
-        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        
         render(<ModalManager />);
         
         expect(screen.queryByTestId('modal-renderer')).not.toBeInTheDocument();
