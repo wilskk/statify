@@ -33,6 +33,9 @@ npm install
   - Dev (tsx): `server/temp`
   - Prod/Docker: `dist/temp`
 - `DEBUG_SAV` (opsional): aktifkan log debug saat proses `/api/sav/create` di `server/controllers/savController.ts`. Nilai truthy yang diterima: `1`, `true`, `yes`, `on` (tidak peka huruf besar/kecil). Default non-aktif.
+- `RATE_LIMIT_ENABLED` (opsional): toggle rate limiting global pada prefix `/api`.
+  - Nilai truthy yang diterima: `1`, `true`, `yes`, `on` (tidak peka huruf besar/kecil)
+  - Default: aktif. Untuk mematikan saat load testing, set ke `0` atau `false`.
 
 ## Quickstart
 - Dev: `npm run dev`

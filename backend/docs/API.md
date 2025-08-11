@@ -53,6 +53,7 @@ Dokumentasi ini menjelaskan seluruh endpoint backend, format request/response, e
   - Dev (npm run dev/tsx): `server/temp`
   - Production build (npm run build/start atau Docker): `dist/temp`
  - `DEBUG_SAV` (opsional): jika diset ke nilai truthy (`1`, `true`, `yes`, `on`, tidak peka huruf besar/kecil), backend akan menampilkan log debug selama proses `/api/sav/create` (lihat `server/controllers/savController.ts`). Default non-aktif.
+ - `RATE_LIMIT_ENABLED` (opsional): toggle rate limiting global pada prefix `/api`. Truthy: `1`, `true`, `yes`, `on` (case-insensitive). Default aktif. Untuk menonaktifkan saat load testing, set ke `0` atau `false`.
 
 ## Daftar Endpoint
 
@@ -252,16 +253,17 @@ const blob = await createRes.blob();
  - **Content-Disposition**: respons dari `/api/sav/create` berisi `attachment; filename="data.sav"`.
  - **CORS**: metode diizinkan `GET, POST`; origin dibatasi sesuai daftar konfigurasi.
 
-## Rate Limiting (Detail)
+ ## Rate Limiting (Detail)
+ 
+  - **Cakupan**: semua endpoint di bawah prefix `/api` (mis. `/api/sav/*`). Endpoint root `/` tidak dibatasi.
+  - **Window**: 15 menit (`RATE_LIMIT_WINDOW_MS`).
+  - **Maksimum**: 100 request per window (`RATE_LIMIT_MAX`).
+  - **Kunci**: header `X-User-Id` (jika ada), jika tidak IP request (lihat `keyGenerator` di `server/app.ts`).
+  - **Header respons**: `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`.
+  - **Saat terlampaui**: status `429 Too Many Requests` dengan header di atas.
+  - **Nonaktifkan sementara (load testing)**: set env `RATE_LIMIT_ENABLED=0` atau `false` sebelum menjalankan server.
 
- - **Cakupan**: semua endpoint di bawah prefix `/api` (mis. `/api/sav/*`). Endpoint root `/` tidak dibatasi.
- - **Window**: 15 menit (`RATE_LIMIT_WINDOW_MS`).
- - **Maksimum**: 100 request per window (`RATE_LIMIT_MAX`).
- - **Kunci**: header `X-User-Id` (jika ada), jika tidak IP request (lihat `keyGenerator` di `server/app.ts`).
- - **Header respons**: `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`.
- - **Saat terlampaui**: status `429 Too Many Requests` dengan header di atas.
-
-## Skema Data (Ringkas)
+ ## Skema Data (Ringkas)
 
  Tipe-tipe ringkas sesuai `server/types/sav.types.ts`:
 
