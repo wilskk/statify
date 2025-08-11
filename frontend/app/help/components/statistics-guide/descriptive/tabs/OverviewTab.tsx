@@ -17,43 +17,67 @@ export const OverviewTab = () => (
     <FeatureGrid
       features={[
         {
-          title: "Kapan Menggunakan Statistik Deskriptif",
+          title: "Kapan Menggunakan Analisis Deskriptif",
           icon: Target,
           items: [
-            "Memahami tendensi sentral data Anda",
-            "Mengukur seberapa tersebar data Anda",
-            "Memeriksa kualitas data dan outlier",
-            "Membandingkan variabel atau kelompok yang berbeda",
-            "Eksplorasi awal sebelum analisis lanjutan",
-            "Validasi asumsi untuk uji statistik"
+            "Eksplorasi awal dataset numerik",
+            "Memahami distribusi dan karakteristik variabel",
+            "Mendeteksi outlier dan pola data", 
+            "Mengecek normalitas distribusi",
+            "Membandingkan statistik antar variabel",
+            "Persiapan sebelum analisis inferensial",
+            "Validasi kualitas data"
           ]
         }
       ]}
     />
 
     <ConceptSection
-      title="Statistik Utama yang Akan Anda Dapatkan"
+      title="Statistik yang Dihasilkan"
       icon={Calculator}
       concepts={[
         {
-          title: "Tendensi Sentral",
-          formula: "Mean (Rata-rata): Jumlah semua nilai dibagi jumlah data | Sum: Jumlah total dari semua nilai",
-          description: "Ukuran yang menunjukkan nilai pusat atau representatif dari distribusi data.",
+          title: "Central Tendency", 
+          formula: "Mean, Median, Sum - menggunakan weighted calculation dengan bobot W",
+          description: "Ukuran nilai pusat distribusi. Mean sensitif outlier, Median robust terhadap outlier.",
           color: "blue"
         },
         {
-          title: "Ukuran Sebaran",
-          formula: "Standard Deviation, Variance, Range, Min/Max, S.E. Mean",
-          description: "Mengukur seberapa tersebar atau bervariasi data dari nilai pusatnya.",
+          title: "Dispersion",
+          formula: "Std. deviation, Variance, Range, Min/Max, S.E. Mean", 
+          description: "Mengukur variabilitas dan penyebaran data. Standard Error mengukur presisi estimasi mean.",
           color: "purple"
         },
         {
-          title: "Bentuk Distribusi",
-          formula: "Skewness: Ukuran asimetri | Kurtosis: Ukuran ketajaman puncak",
-          description: "Menggambarkan karakteristik bentuk distribusi data.",
+          title: "Distribution",
+          formula: "Skewness (kemencengan), Kurtosis (ketajaman puncak)",
+          description: "Menggambarkan bentuk distribusi: simetri, ekor panjang, dan ketajaman puncak.",
           color: "orange"
+        },
+        {
+          title: "Percentiles", 
+          formula: "25th Percentile (Q1), 75th Percentile (Q3), IQR",
+          description: "Membagi data menjadi kuartil. IQR = Q3-Q1 robust measure of spread.",
+          color: "emerald"
         }
       ]}
     />
+
+    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800">
+      <div className="flex items-start gap-3">
+        <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center mt-0.5">
+          <span className="text-white text-xs font-bold">💡</span>
+        </div>
+        <div>
+          <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Tips Praktis</h3>
+          <div className="text-sm space-y-2 text-amber-700 dark:text-amber-300">
+            <p>• <strong>Level Measurement:</strong> Scale variables mendapat semua statistik, Ordinal hanya median & persentil, Nominal hanya mode</p>
+            <p>• <strong>Missing Values:</strong> Sistem otomatis mengecualikan missing values berdasarkan definisi variabel</p>
+            <p>• <strong>Weights:</strong> Jika ada weight variable, semua perhitungan menggunakan weighted formula</p>
+            <p>• <strong>Display Order:</strong> Atur urutan output: Variable list, Alphabetic, atau berdasarkan Mean</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 );

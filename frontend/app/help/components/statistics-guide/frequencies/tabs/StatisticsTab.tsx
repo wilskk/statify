@@ -1,277 +1,259 @@
 import React from 'react';
-import { HelpAlert } from '@/app/help/ui/HelpLayout';
-import { Calculator } from 'lucide-react';
+import { Calculator, TrendingUp } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
 
 export const StatisticsTab = () => (
   <div className="space-y-6">
-    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-blue-500 dark:border-blue-400">
+    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-blue-200 dark:border-blue-800">
       <div className="flex items-start gap-3">
         <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
           <span className="text-white text-xs font-bold">i</span>
         </div>
         <div>
-          <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-1">Formula Matematika</h3>
-          <p className="text-sm text-slate-700 dark:text-slate-300">Berikut adalah formula matematika untuk setiap statistik yang dapat dihitung dalam analisis frekuensi.</p>
+          <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">Aktivasi Statistik</h3>
+          <p className="text-sm text-blue-700 dark:text-blue-300">Centang "Display statistics" untuk mengaktifkan perhitungan statistik. Sistem menggunakan weighted calculation dengan bobot W untuk semua formula.</p>
         </div>
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
           <Calculator className="w-4 h-4 text-blue-600 dark:text-blue-400" />
         </div>
-        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Tendensi Sentral</h3>
+        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Central Tendency</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Mean (Rata-rata)</h4>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Mean</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'\\bar{x} = \\dfrac{\\sum x_i f_i}{\\sum f_i}'} />
+            <BlockMath math={'\\bar{x} = \\dfrac{S}{W} = \\dfrac{\\sum w_i x_i}{\\sum w_i}'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Rata-rata tertimbang berdasarkan frekuensi setiap nilai.</p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">xi = nilai, fi = frekuensi nilai tersebut</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Rata-rata berbobot. Hanya tersedia untuk variabel scale (numeric/date).</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Menggunakan implementasi DescriptiveCalculator yang sama dengan Descriptives</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Median</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'\\tilde{x} = \\text{nilai tengah dari data terurut}'} />
+            <InlineMath math={'\\text{Median}'} />
+            <span className="text-sm text-slate-600 dark:text-slate-400 ml-2">= persentil ke-50 dengan metode weighted</span>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Nilai yang membagi data menjadi dua bagian sama besar.</p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">Tidak terpengaruh outlier, cocok untuk data skewed</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Menggunakan interpolasi linear untuk menangani weighted data. Tersedia untuk scale dan ordinal.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Metode: 'waverage' (SPSS Definition 1) atau 'tukey' atau 'haverage'</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Mode (Modus)</h4>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Mode</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
             <BlockMath math={'\\text{Mode} = \\text{nilai dengan frekuensi tertinggi}'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Nilai yang paling sering muncul dalam dataset.</p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">Sangat berguna untuk data kategorikal</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Nilai yang paling sering muncul. Tersedia untuk semua level measurement (nominal, ordinal, scale).</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Untuk date variables, nilai ditampilkan dalam format dd-mm-yyyy</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Sum (Jumlah)</h4>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Sum</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'\\text{Sum} = \\sum x_i f_i'} />
+            <BlockMath math={'\\text{Sum} = S = \\sum w_i x_i'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Total tertimbang dari semua nilai berdasarkan frekuensinya.</p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">xi = nilai, fi = frekuensi nilai tersebut</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Total berbobot. Hanya tersedia untuk variabel scale (numeric/date).</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Menggunakan implementasi DescriptiveCalculator yang sama dengan Descriptives</p>
         </div>
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
           <Calculator className="w-4 h-4 text-purple-600 dark:text-purple-400" />
         </div>
-        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Ukuran Sebaran (Dispersion)</h3>
+        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Dispersion</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Standard Deviation (Simpangan Baku)</h4>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Std. deviation</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'\\sigma = \\sqrt{ \\dfrac{ \\sum (x_i - \\bar{x})^2 f_i }{ \\sum f_i } }'} />
+            <BlockMath math={'s = \\sqrt{\\dfrac{M_2}{W-1}}'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Mengukur rata-rata jarak data dari mean dalam analisis frekuensi.</p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">Dihitung dengan mempertimbangkan frekuensi setiap nilai</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Menggunakan implementasi DescriptiveCalculator. Hanya tersedia untuk variabel scale.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Sample-corrected formula dengan pembagi (W-1)</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Variance (Varians)</h4>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Variance</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'\\sigma^2 = \\dfrac{ \\sum (x_i - \\bar{x})^2 f_i }{ \\sum f_i }'} />
+            <BlockMath math={'s^2 = \\dfrac{M_2}{W-1}'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Kuadrat dari standard deviation. Mengukur variabilitas dalam tabel frekuensi.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Kuadrat dari standard deviation. Hanya tersedia untuk variabel scale.</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Range & Min/Max</h4>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Range</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'R = x_{\\max} - x_{\\min}'} />
+            <BlockMath math={'\\text{Range} = \\max(x) - \\min(x)'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Rentang dari nilai terkecil hingga terbesar dalam distribusi frekuensi.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Selisih nilai maksimum dan minimum. Hanya tersedia untuk variabel scale.</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">S.E. Mean (Standard Error)</h4>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Minimum & Maximum</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'SE = \\dfrac{ \\sigma }{ \\sqrt{ \\sum f_i } }'} />
+            <InlineMath math={'\\min(x), \\max(x)'} />
+            <span className="text-sm text-slate-600 dark:text-slate-400 ml-2">= nilai ekstrem dalam dataset</span>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Standard error dari rata-rata dalam konteks tabel frekuensi.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Nilai terkecil dan terbesar. Hanya tersedia untuk variabel scale.</p>
+        </div>
+
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">S.E. mean</h4>
+          </div>
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <BlockMath math={'\\text{SE}_{\\bar{x}} = \\dfrac{s}{\\sqrt{W}}'} />
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Standard error of the mean. Hanya tersedia untuk variabel scale.</p>
         </div>
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
           <Calculator className="w-4 h-4 text-orange-600 dark:text-orange-400" />
         </div>
-        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Bentuk Distribusi</h3>
+        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Distribution</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Skewness (Kemencengan)</h4>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Skewness</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'\\text{Skew} = \\dfrac{ \\sum \\left( \\dfrac{x_i - \\bar{x}}{\\sigma} \\right)^3 f_i }{ \\sum f_i }'} />
+            <BlockMath math={'g_1 = \\dfrac{W \\cdot M_3}{(W-1)(W-2) \\; s^3}'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Mengukur asimetri distribusi frekuensi:</p>
-          <ul className="text-xs space-y-1 ml-4 text-slate-500 dark:text-slate-500">
-            <li>• Skewness = 0: distribusi simetris</li>
-            <li>• Skewness &gt; 0: ekor kanan lebih panjang</li>
-            <li>• Skewness &lt; 0: ekor kiri lebih panjang</li>
-          </ul>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Mengukur asimetri distribusi. Hanya tersedia untuk variabel scale.</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Kurtosis</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'\\text{Kurt} = \\dfrac{ \\sum \\left( \\dfrac{x_i - \\bar{x}}{\\sigma} \\right)^4 f_i }{ \\sum f_i } - 3'} />
+            <BlockMath math={'g_2 = \\dfrac{W(W+1) M_4 - 3 M_2^2 (W-1)}{(W-1)(W-2)(W-3) \\; s^4}'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Mengukur ketajaman puncak distribusi frekuensi:</p>
-          <ul className="text-xs space-y-1 ml-4 text-slate-500 dark:text-slate-500">
-            <li>• Kurtosis = 0: distribusi normal (mesokurtic)</li>
-            <li>• Kurtosis &gt; 0: puncak lebih tajam (leptokurtic)</li>
-            <li>• Kurtosis &lt; 0: puncak lebih datar (platykurtic)</li>
-          </ul>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Mengukur ketajaman puncak distribusi. Hanya tersedia untuk variabel scale.</p>
         </div>
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900 rounded-lg flex items-center justify-center">
-          <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+          <TrendingUp className="w-4 h-4 text-slate-600 dark:text-slate-400" />
         </div>
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Percentiles & Quartiles</h3>
       </div>
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+            <span className="w-2 h-2 bg-slate-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Quartiles</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2 text-slate-700 dark:text-slate-300">
-            <div className="text-sm">
-              <InlineMath math={'Q_1'} />
-              <span className="ml-2">= 25th percentile, </span>
-              <InlineMath math={'Q_2'} />
-              <span className="ml-2">= 50th percentile (median), </span>
-              <InlineMath math={'Q_3'} />
-              <span className="ml-2">= 75th percentile</span>
-            </div>
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <InlineMath math={'Q1 = P_{25}, \\quad Q2 = P_{50}, \\quad Q3 = P_{75}'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Membagi distribusi frekuensi menjadi empat bagian sama besar.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Membagi data menjadi 4 bagian sama besar. Tersedia untuk scale dan ordinal.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Menggunakan metode yang sama dengan implementasi persentil</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Custom Percentiles</h4>
+            <span className="w-2 h-2 bg-slate-500 rounded-full"></span>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Cut points for equal groups</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2 text-slate-700 dark:text-slate-300">
-            <InlineMath math={'P_p'} />
-            <span className="text-sm ml-2">= nilai dimana </span>
-            <InlineMath math={'p\\%'} />
-            <span className="text-sm ml-1">data berada di bawahnya</span>
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <InlineMath math={'P_i = \\text{persentil ke-} \\frac{100i}{n} \\text{ untuk } i = 1, 2, ..., n-1'} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Anda dapat menambahkan percentile khusus (0-100) sesuai kebutuhan analisis.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Membagi data menjadi n grup dengan ukuran sama. Input: jumlah grup yang diinginkan.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Tersedia untuk scale dan ordinal variables</p>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Cut Points</h4>
+            <span className="w-2 h-2 bg-slate-500 rounded-full"></span>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200">Percentiles</h4>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2 text-slate-700 dark:text-slate-300">
-            <span className="text-sm">Membagi data menjadi </span>
-            <InlineMath math={'n'} />
-            <span className="text-sm ml-1">grup dengan ukuran yang sama</span>
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
+            <InlineMath math={'P_k'} />
+            <span className="text-sm text-slate-600 dark:text-slate-400 ml-2">= nilai di mana k% data berada di bawahnya</span>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Berguna untuk membuat kategori atau grup data berdasarkan distribusi yang merata.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Nilai spesifik yang dapat ditambahkan secara manual (0-100).</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Mendukung multiple percentiles. Metode: waverage, tukey, atau haverage</p>
         </div>
       </div>
     </div>
 
-    <div className="p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-          <Calculator className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800">
+      <div className="flex items-start gap-3">
+        <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center mt-0.5">
+          <span className="text-white text-xs font-bold">⚠</span>
         </div>
-        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Tabel Frekuensi</h3>
-      </div>
-      <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Frekuensi Relatif (%)</h4>
+        <div>
+          <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Pembatasan berdasarkan Level Measurement</h3>
+          <div className="text-sm space-y-2 text-amber-700 dark:text-amber-300">
+            <p>• <strong>Nominal:</strong> Hanya mode yang tersedia</p>
+            <p>• <strong>Ordinal:</strong> Mode, median, quartiles, percentiles</p>
+            <p>• <strong>Scale:</strong> Semua statistik tersedia (menggunakan DescriptiveCalculator)</p>
+            <p>• <strong>Extreme Values:</strong> Hanya untuk scale variables, menampilkan 5 nilai tertinggi dan terendah</p>
           </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'\\text{Persentase} = \\dfrac{f_i}{n} \\times 100\\%'} />
-          </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Persentase kemunculan setiap nilai terhadap total data.</p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">fi = frekuensi nilai, n = total data valid</p>
-        </div>
-
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-            <h4 className="font-medium text-slate-800 dark:text-slate-200">Frekuensi Kumulatif</h4>
-          </div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
-            <BlockMath math={'F_k = \\sum_{i \\le k} f_i'} />
-            <div className="text-xs text-slate-700 dark:text-slate-300 mt-1">(dari nilai terkecil hingga nilai saat ini)</div>
-          </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Jumlah akumulatif frekuensi dari nilai terkecil hingga nilai tertentu.</p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">Berguna untuk menentukan posisi relatif suatu nilai</p>
         </div>
       </div>
     </div>
 
-    <HelpAlert variant="tip" title="Tips Pemilihan Statistik">
-      <div className="text-sm space-y-2 mt-2">
-        <p>• <strong>Untuk data kategorikal:</strong> Fokus pada frekuensi, persentase, mode, dan quartiles</p>
-        <p>• <strong>Untuk data numerik:</strong> Tambahkan mean, median, standard deviation, variance, dan skewness/kurtosis</p>
-        <p>• <strong>Untuk data ordinal:</strong> Gunakan median, percentiles, dan quartiles</p>
-        <p>• <strong>Outlier detection:</strong> Periksa range, min/max, dan gunakan percentiles untuk identifikasi</p>
-        <p>• <strong>Missing values:</strong> Selalu periksa jumlah dan persentase data yang hilang</p>
-        <p>• <strong>Custom percentiles:</strong> Tambahkan percentile khusus untuk analisis yang lebih spesifik</p>
+    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-emerald-200 dark:border-emerald-800">
+      <div className="flex items-start gap-3">
+        <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center mt-0.5">
+          <span className="text-white text-xs font-bold">💡</span>
+        </div>
+        <div>
+          <h3 className="font-medium text-emerald-800 dark:text-emerald-200 mb-2">Tips Praktis</h3>
+          <div className="text-sm space-y-2 text-emerald-700 dark:text-emerald-300">
+            <p>• <strong>Metode Persentil:</strong> Default 'waverage' untuk konsistensi dengan SPSS</p>
+            <p>• <strong>Weighted Calculation:</strong> Semua statistik menggunakan weights jika tersedia</p>
+            <p>• <strong>Date Variables:</strong> Otomatis ditangani sebagai scale measurement</p>
+            <p>• <strong>Missing Values:</strong> Dipisahkan dalam perhitungan valid percent dan cumulative percent</p>
+          </div>
+        </div>
       </div>
-    </HelpAlert>
+    </div>
   </div>
 );

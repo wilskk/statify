@@ -10,7 +10,7 @@ export const OverviewTab = () => (
   <div className="space-y-6">
     <IntroSection
       title="Apa itu Analisis Explore?"
-      description="Analisis Explore memberikan wawasan komprehensif tentang data Anda menggunakan metode statistik yang robust. Ini mengidentifikasi pola, outlier, dan karakteristik distribusi sambil memberikan estimasi yang dapat diandalkan yang tidak terpengaruh oleh nilai ekstrem."
+      description="Analisis Explore menggunakan ExamineCalculator untuk menghasilkan statistik robust berbasis SPSS EXAMINE logic. Menggabungkan DescriptiveCalculator, FrequencyCalculator, dan tambahan algoritma robust: 5% trimmed mean, Tukey's Hinges untuk IQR, M-estimators, dan confidence intervals dengan t-distribution approximation."
       variant="info"
     />
 
@@ -20,45 +20,51 @@ export const OverviewTab = () => (
           title: "Kapan Menggunakan Analisis Explore",
           icon: HelpCircle,
           items: [
-            "Analisis data awal dan pemahaman mendalam",
-            "Deteksi outlier dan penilaian kualitas data",
-            "Analisis distribusi dan pemeriksaan normalitas",
-            "Estimasi statistik yang robust terhadap outlier",
-            "Identifikasi pola dan karakteristik data",
-            "Perbandingan kelompok menggunakan variabel faktor"
+            "Eksplorasi data dengan statistik robust yang tidak terpengaruh outlier",
+            "Deteksi extreme values menggunakan Tukey's Hinges dan IQR criteria",
+            "Analisis distribusi dengan 5% trimmed mean dan M-estimators", 
+            "Confidence interval untuk mean menggunakan t-distribution",
+            "Perbandingan kelompok dengan factor variables (by-group analysis)",
+            "Comprehensive outlier analysis dengan mild/extreme classification"
           ]
         }
       ]}
     />
 
     <ConceptSection
-      title="Apa yang Akan Anda Pelajari"
+      title="Komponen ExamineCalculator yang Akan Dipelajari"
       icon={FileText}
       concepts={[
         {
-          title: "Statistik Robust",
-          formula: "Trimmed Mean, M-Estimators, Confidence Intervals",
-          description: "Estimasi yang tidak terpengaruh outlier dan memberikan hasil yang dapat diandalkan.",
+          title: "5% Trimmed Mean",
+          formula: "Mean after removing 5% highest and lowest values by weight",
+          description: "Robust central tendency estimator yang lebih tahan terhadap outlier dibanding arithmetic mean.",
           color: "purple"
         },
         {
-          title: "Deteksi Outlier",
-          formula: "IQR Method, Box Plot Analysis",
-          description: "Identifikasi nilai ekstrem dengan metode quartile dan visualisasi yang jelas.",
+          title: "Tukey's Hinges IQR",
+          formula: "Q3 - Q1 using Tukey method, not percentile-based",
+          description: "Robust measure of spread menggunakan definition Tukey untuk quartiles, bukan percentile 25th/75th.",
           color: "orange"
         },
         {
-          title: "Visualisasi Lanjutan",
-          formula: "Stem-and-Leaf, Normality Tests",
-          description: "Distribusi dengan nilai eksak dan uji normalitas dengan Q-Q plot.",
+          title: "Outlier Detection",
+          formula: "1.5×IQR (mild) and 3×IQR (extreme) with Tukey fences",
+          description: "SPSS EXAMINE compatible outlier detection dengan classification mild/extreme outliers.",
           color: "blue"
+        },
+        {
+          title: "M-Estimators",
+          formula: "Huber, Tukey, Hampel, Andrews estimators",
+          description: "Robust location estimators yang menolak influence dari outliers (current: 5% trimmed approximation).",
+          color: "emerald"
         }
       ]}
     />
 
     <IntroSection
-      title="Mengapa Explore Berbeda?"
-      description="Lebih Robust: Tidak mudah terpengaruh oleh outlier dan nilai ekstrem. Lebih Komprehensif: Memberikan lebih banyak informasi tentang distribusi data. Lebih Informatif: Deteksi outlier otomatis dengan visualisasi yang jelas. Lebih Reliable: Estimasi yang dapat diandalkan untuk data dengan noise."
+      title="Mengapa ExamineCalculator Unggul?"
+      description="Robust Statistics: Menggunakan 5% trimmed mean dan M-estimators yang tidak terpengaruh outlier. SPSS Compatible: Logic dan algoritma mengikuti standard SPSS EXAMINE procedure. Comprehensive Analysis: Menggabungkan frequency + descriptive + robust statistics dalam satu analisis. Accurate Outlier Detection: Tukey's Hinges memberikan IQR yang lebih robust untuk outlier detection. Weighted Support: Semua computation mendukung case weights untuk survey data atau complex sampling."
       variant="tip"
     />
   </div>
