@@ -20,7 +20,7 @@ import {
 import { calculateResponsiveMargin } from "../responsiveMarginUtils";
 import { defaultChartColors } from "../defaultStyles/defaultColors";
 
-interface ChartData {
+export interface ChartData {
   category: string;
   subcategory: string;
   value: number;
@@ -32,12 +32,12 @@ interface FormattedData {
   [key: string]: number | string;
 }
 
-interface AxisLabels {
+export interface AxisLabels {
   x?: string;
   y?: string;
 }
 
-interface AxisScaleOptions {
+export interface AxisScaleOptions {
   x?: {
     min?: string;
     max?: string;

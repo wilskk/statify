@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { ResourceItem } from './types';
+import type { ResourceItem } from './types';
 
 interface ResourceCardProps {
     resource: ResourceItem;

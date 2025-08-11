@@ -4,9 +4,8 @@ import { ChevronRight, ChevronDown, Trash2, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useResultStore } from "@/stores/useResultStore";
-import { Log } from "@/types/Result";
-import { Analytic } from "@/types/Result";
-import { Statistic } from "@/types/Result";
+import type { Log } from "@/types/Result";
+import type { Statistic } from "@/types/Result";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,7 +17,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface SidebarItem {
     id?: number;
@@ -37,7 +36,7 @@ const SidebarMenuItem: React.FC<{
     deleteAnalytic: (analyticId: number) => Promise<void>;
     deleteStatistic: (statisticId: number) => Promise<void>;
 }> = ({ item, depth = 0, isOpen, deleteLog, deleteAnalytic, deleteStatistic }) => {
-    const { toast } = useToast();
+
     const [open, setOpen] = useState(false);
     const hasChildren = item.items && item.items.length > 0;
     const isDeletable = item.type !== undefined && item.id !== undefined;
@@ -70,17 +69,15 @@ const SidebarMenuItem: React.FC<{
             } else if (item.type === 'statistic' && item.id) {
                 await deleteStatistic(item.id);
             }
-            toast({
-                title: "Item deleted",
-                description: `${item.type?.charAt(0).toUpperCase() + item.type!.slice(1)} "${item.title}" has been deleted.`,
-            });
-        } catch (error: any) {
-            console.error(`Failed to delete ${item.type}:`, error);
-            toast({
-                variant: "destructive",
-                title: "Error deleting item",
-                description: `Failed to delete ${item.type} "${item.title}". ${error.message || ''}`,
-            });
+            const itemTypeLabel = item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Item';
+            toast.success(`Item deleted: ${itemTypeLabel} "${item.title}" has been deleted.`);
+        } catch (error: unknown) {
+            if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.error(`Failed to delete ${item.type}:`, error);
+            }
+            const message = error instanceof Error ? error.message : '';
+            toast.error(`Error deleting item: Failed to delete ${item.type} "${item.title}". ${message}`);
         }
     };
 
@@ -125,7 +122,7 @@ const SidebarMenuItem: React.FC<{
         if (item.type === 'analytic') {
             return (
                 <div className="flex justify-center py-2 hover:bg-accent rounded-md cursor-pointer" data-testid={`sidebar-collapsed-analytic-${item.id}`}>
-                    <a href={item.url || `#output-${item.id}`} title={item.title}>
+                    <a href={item.url ?? `#output-${item.id}`} title={item.title}>
                         <BarChart2 size={20} />
                     </a>
                 </div>
@@ -183,9 +180,9 @@ const SidebarMenuItem: React.FC<{
                 </div>
             )}
             {/* Nested items rendered outside the clickable area */}
-            {open && (
+            {open && item.items && (
                 <div className="ml-2" data-testid={`sidebar-nested-items-${item.type}-${item.id}`}>
-                    {item.items!.map((child, idx) => (
+                    {item.items.map((child, idx) => (
                         <SidebarMenuItem
                             key={generateKey(child, idx)}
                             item={child}
@@ -227,11 +224,13 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
             };
 
             const componentsMap = analytic.statistics.reduce((acc: Record<string, Statistic[]>, stat) => {
-                const component = stat.components || "General";
+                const component = stat.components ?? "General";
                 if (!acc[component]) acc[component] = [];
                 acc[component].push(stat);
                 return acc;
             }, {});
+
+            const childItems: SidebarItem[] = [];
 
             Object.keys(componentsMap).forEach((component) => {
                 const stats = componentsMap[component];
@@ -246,10 +245,10 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
                             url: `#output-${analytic.id}-${stat.id}`
                         }))
                     };
-                    analyticItem.items!.push(componentItem);
+                    childItems.push(componentItem);
                 } else if (stats.length === 1) {
                     const stat = stats[0];
-                    analyticItem.items!.push({
+                    childItems.push({
                         id: stat.id,
                         analyticId: analytic.id,
                         type: 'statistic',
@@ -259,7 +258,8 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
                 }
             });
 
-            if (analyticItem.items!.length > 0) {
+            if (childItems.length > 0) {
+                analyticItem.items = childItems;
                 sidebarItems.push(analyticItem);
             }
         });
@@ -271,7 +271,6 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
 const Sidebar: React.FC = () => {
     const [isOpen, setIsOpen] = useState(true);
     const { logs, deleteLog, deleteAnalytic, deleteStatistic, clearAll } = useResultStore();
-    const { toast } = useToast();
     const [sidebarData, setSidebarData] = useState<SidebarItem[]>([]);
 
     useEffect(() => {
@@ -318,16 +317,10 @@ const Sidebar: React.FC = () => {
                                     onClick={async () => {
                                         try {
                                             await clearAll();
-                                            toast({
-                                                title: "All results deleted",
-                                                description: "All result logs, analytics, and statistics have been removed.",
-                                            });
-                                        } catch (error: any) {
-                                            toast({
-                                                variant: "destructive",
-                                                title: "Error deleting results",
-                                                description: error?.message || "Failed to delete results.",
-                                            });
+                                            toast.success("All results deleted: All result logs, analytics, and statistics have been removed.");
+                                        } catch (error: unknown) {
+                                            const message = error instanceof Error ? error.message : "Failed to delete results.";
+                                            toast.error(`Error deleting results: ${message}`);
                                         }
                                     }}
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-8 px-3 text-sm"

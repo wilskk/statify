@@ -1,11 +1,11 @@
-import Dexie, { Table } from "dexie";
-import { DataRow } from "@/types/Data";
-import { Variable } from "@/types/Variable";
-import { ValueLabel } from "@/types/Variable";
-import { Log } from "@/types/Result";
-import { Analytic } from "@/types/Result";
-import { Statistic } from "@/types/Result";
-import { Meta } from "@/types/Meta";
+import Dexie, { type Table } from "dexie";
+import type { DataRow } from "@/types/Data";
+import type { Variable } from "@/types/Variable";
+import type { ValueLabel } from "@/types/Variable";
+import type { Log } from "@/types/Result";
+import type { Analytic } from "@/types/Result";
+import type { Statistic } from "@/types/Result";
+import type { Meta } from "@/types/Meta";
 
 class MyDatabase extends Dexie {
   dataRows!: Table<{ id: number; data: DataRow }, number>;
@@ -66,12 +66,15 @@ class MyDatabase extends Dexie {
         if (!statisticMap.has(statistic.analyticId)) {
           statisticMap.set(statistic.analyticId, []);
         }
-        statisticMap.get(statistic.analyticId)!.push(statistic);
+        const statistics = statisticMap.get(statistic.analyticId);
+        if (statistics) {
+          statistics.push(statistic);
+        }
       }
 
       for (const analytic of analytics) {
         if (analytic.id) {
-          analytic.statistics = statisticMap.get(analytic.id) || [];
+          analytic.statistics = statisticMap.get(analytic.id) ?? [];
         }
       }
     }
@@ -94,23 +97,29 @@ class MyDatabase extends Dexie {
       if (!statisticMap.has(statistic.analyticId)) {
         statisticMap.set(statistic.analyticId, []);
       }
-      statisticMap.get(statistic.analyticId)!.push(statistic);
+      const statistics = statisticMap.get(statistic.analyticId);
+      if (statistics) {
+        statistics.push(statistic);
+      }
     }
 
     for (const analytic of analytics) {
       if (!analytic.id) continue;
-      analytic.statistics = statisticMap.get(analytic.id) || [];
+      analytic.statistics = statisticMap.get(analytic.id) ?? [];
 
       if (!analytic.logId) continue;
       if (!analyticMap.has(analytic.logId)) {
         analyticMap.set(analytic.logId, []);
       }
-      analyticMap.get(analytic.logId)!.push(analytic);
+      const analytics = analyticMap.get(analytic.logId);
+      if (analytics) {
+        analytics.push(analytic);
+      }
     }
 
     for (const log of logs) {
       if (!log.id) continue;
-      log.analytics = analyticMap.get(log.id) || [];
+      log.analytics = analyticMap.get(log.id) ?? [];
     }
 
     return logs;

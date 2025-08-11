@@ -17,7 +17,6 @@ import {
     Columns,
 } from 'lucide-react';
 
-import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { useFileMenuActions } from '@/components/Modals/File/Actions/useFileMenuActions';
@@ -28,7 +27,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
-import { toast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 
 export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
@@ -45,12 +44,8 @@ export default function Toolbar() {
 
     // Auto-width column function
     const handleAutoWidth = useCallback(async () => {
-        if (!dataTableRef?.current?.hotInstance || !data || data.length === 0) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Tidak ada data untuk mengatur lebar kolom otomatis.",
-            });
+        if (!dataTableRef?.current || !data || data.length === 0) {
+            toast.error("Error: Tidak ada data untuk mengatur lebar kolom otomatis.");
             return;
         }
 
@@ -59,7 +54,6 @@ export default function Toolbar() {
             if (resetColumnSizingCache) {
                 resetColumnSizingCache();
             }
-            const hotInstance = dataTableRef.current.hotInstance;
             const updates = [];
 
             // Calculate optimal width for ALL variables (termasuk yang sudah diubah manual)
@@ -100,18 +94,11 @@ export default function Toolbar() {
             if (updates.length > 0) {
                  await updateMultipleVariables(updates);
                  
-                 toast({
-                     title: "Berhasil",
-                     description: `Lebar ${updates.length} kolom telah disesuaikan otomatis.`,
-                 });
+                 toast.success(`Berhasil: Lebar ${updates.length} kolom telah disesuaikan otomatis.`);
              }
         } catch (error) {
             console.error('Error auto-sizing columns:', error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Gagal mengatur lebar kolom otomatis.",
-            });
+            toast.error("Error: Gagal mengatur lebar kolom otomatis.");
         }
      }, [dataTableRef, data, variables, updateMultipleVariables, resetColumnSizingCache]);
 

@@ -1,14 +1,15 @@
 import { create } from "zustand";
 import React from "react";
+import type { HotTableRef } from '@handsontable/react-wrapper';
 
 export interface TableRefState {
     viewMode: 'numeric' | 'label';
     setViewMode: (mode: 'numeric' | 'label') => void;
     toggleViewMode: () => void;
-    dataTableRef: React.RefObject<any> | null;
-    variableTableRef: React.RefObject<any> | null;
-    setDataTableRef: (ref: React.RefObject<any>) => void;
-    setVariableTableRef: (ref: React.RefObject<any>) => void;
+    dataTableRef: React.RefObject<HotTableRef> | null;
+    variableTableRef: React.RefObject<HotTableRef> | null;
+    setDataTableRef: (ref: React.RefObject<HotTableRef> | null) => void;
+    setVariableTableRef: (ref: React.RefObject<HotTableRef> | null) => void;
     resetColumnSizingCache: (() => void) | null;
     setResetColumnSizingCache: (fn: () => void) => void;
 }

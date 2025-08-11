@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "lint:strict": "eslint . --ext .ts,.tsx --max-warnings=0",
     "test": "jest --logHeapUsage",
     "test:watch": "jest --watch --logHeapUsage",
     "test:failed": "jest --onlyFailures",

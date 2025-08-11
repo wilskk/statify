@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AnimatedSection } from './AnimatedSection';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Variants } from 'framer-motion';
+import type { Variants } from 'framer-motion';
 
 export const ComparisonSection = () => {
     const statifyFeatures = [

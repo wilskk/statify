@@ -44,7 +44,7 @@ jest.mock('@/stores/useVariableStore', () => ({
 
 // Mock HandsontableWrapper to prevent it from rendering the actual table
 jest.mock('../HandsontableWrapper', () => {
-    const MockedHandsontableWrapper = React.forwardRef((props: any, ref: any) => {
+    const MockedHandsontableWrapper = React.forwardRef((_props: any, _ref: any) => {
         return <div data-testid="handsontable-wrapper"></div>;
     });
     MockedHandsontableWrapper.displayName = 'HandsontableWrapper';

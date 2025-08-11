@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
-import { DataAction } from './types';
+import type { DataAction } from './types';
 
 interface DataActionCardProps {
     action: DataAction;

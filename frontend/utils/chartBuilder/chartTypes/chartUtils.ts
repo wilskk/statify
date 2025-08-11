@@ -11,7 +11,7 @@ import * as threeDChartUtils from "./ThreeDChart";
 import * as d3 from "d3";
 import { addAxisLabels } from "../chartUtils";
 
-export const chartUtils = {
+export const chartUtils: Record<string, any> = {
   ...barChartUtils,
   ...lineChartUtils,
   ...pieChartUtils,

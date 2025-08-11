@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { MissingValuesSpec, VariableType } from '@/types/Variable';
+import type { MissingValuesSpec, VariableType } from '@/types/Variable';
 import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 // Help icon and tooltip imports removed
 
@@ -104,8 +104,8 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
     };
 
     const validateRangeOption = (): { valid: boolean; range?: { min?: number; max?: number }; discrete?: (number | string)[] } => {
-        let rangeSpec: { min?: number; max?: number } = {};
-        let discreteSpec: (number | string)[] = [];
+        const rangeSpec: { min?: number; max?: number } = {};
+        const discreteSpec: (number | string)[] = [];
         let isValid = true;
         let errorMsg: string | null = null;
 
@@ -314,7 +314,6 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
             setValidationError(null);
         } else {
             // Handle unexpected value if necessary, though UI should prevent this
-            console.error("Invalid missing value option received:", value);
             setError("An unexpected error occurred selecting an option.");
         }
     };
@@ -420,10 +419,10 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                             </Label>
                         </div>
                     </RadioGroup>
-                    {(error || validationError) && (
+                    {(error ?? validationError) && (
                         <Alert variant="destructive" className="mt-3 py-2 border-l-2 border-destructive">
                             <AlertDescription className="text-sm">
-                                {error || validationError}
+                                {error ?? validationError}
                             </AlertDescription>
                         </Alert>
                     )}

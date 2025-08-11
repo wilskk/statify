@@ -1,11 +1,12 @@
-import React, { FC, useRef, useEffect, useState } from "react";
+import type { FC} from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TourStep } from "@/types/tourTypes";
+import type { TourStep } from "@/types/tourTypes";
 
 // Portal wrapper for the tour popup
 export const TourPopupPortal: FC<{ children: React.ReactNode }> = ({ children }) => {

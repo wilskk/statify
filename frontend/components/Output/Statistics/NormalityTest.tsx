@@ -27,7 +27,7 @@ const NormalityTest: React.FC<NormalityTestProps> = ({ data }) => {
   try {
     // Parse the JSON data
     const parsedData = JSON.parse(data);
-    const { title, description, isNormal, tests, residualStats, visualizations } = parsedData;
+    const { title, description, isNormal, tests, residualStats, visualizations: _visualizations } = parsedData;
 
     if (!tests) {
       return (
@@ -69,7 +69,7 @@ const NormalityTest: React.FC<NormalityTestProps> = ({ data }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.values(tests).map((test: any) => (
+                {Object.values(tests as Record<string, NormalityTest>).map((test) => (
                   <TableRow key={test.testName}>
                     <TableCell>{test.testName}</TableCell>
                     <TableCell>{test.statistic.toFixed(4)}</TableCell>

@@ -1,4 +1,5 @@
 import { handleApiResponse, getApiUrl, getUserId as _getUserId } from './config';
+import type { SavUploadResponse } from '@/types/SavUploadResponse';
 
 interface SaveVariableDTO {
   name: string;
@@ -30,7 +31,7 @@ const safeGetUserId = (): string | undefined => {
  * Upload an SAV file to the backend
  * Accepts either a File object or FormData with a file field
  */
-export async function uploadSavFile(fileOrFormData: File | FormData) {
+export async function uploadSavFile(fileOrFormData: File | FormData): Promise<SavUploadResponse> {
   let formData: FormData;
   
   if (fileOrFormData instanceof FormData) {
@@ -57,7 +58,8 @@ export async function uploadSavFile(fileOrFormData: File | FormData) {
     body: formData,
   });
 
-  return handleApiResponse(response);
+  const parsed = await handleApiResponse(response);
+  return parsed as SavUploadResponse;
 }
 
 /**

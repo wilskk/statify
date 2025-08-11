@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import VariableListManager, { TargetListConfig } from '../VariableListManager';
+import type { TargetListConfig } from '../VariableListManager';
+import VariableListManager from '../VariableListManager';
 import type { Variable } from '@/types/Variable';
 
 // Helper to create a mock variable

@@ -2,9 +2,10 @@
 "use client";
 
 import React, { useRef, useMemo, useCallback } from 'react';
-import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
-import Handsontable from 'handsontable';
+import { HotTable, type HotTableRef } from '@handsontable/react-wrapper';
+
+import type Handsontable from 'handsontable';
 import 'handsontable/dist/handsontable.full.min.css';
 
 import './VariableTable.css';
@@ -15,13 +16,13 @@ import { transformVariablesToTableData } from './utils';
 import { VariableTypeDialog } from './dialog/VariableTypeDialog';
 import { ValueLabelsDialog } from './dialog/ValueLabelsDialog';
 import { MissingValuesDialog } from './dialog/MissingValuesDialog';
-import { Variable, VariableType } from '@/types/Variable';
+import type { VariableType } from '@/types/Variable';
 import { withDataTableErrorBoundary } from '@/components/Common/DataTableErrorBoundary';
 
 registerAllModules();
 
 function VariableTableComponent() {
-    const hotTableRef = useRef(null);
+    const hotTableRef = useRef<HotTableRef>(null);
 
     const {
         variables,
@@ -95,7 +96,7 @@ function VariableTableComponent() {
                             'delete_variable': { name: 'Delete Variable' },
                             'copy_variable': { name: 'Copy Variable Definition (JSON)' }
                         },
-                        callback: (key, selection) => handleContextMenu(key),
+                        callback: (_key, _selection) => handleContextMenu(_key),
                     }}
                     beforeChange={handleBeforeChange}
                     afterSelectionEnd={handleAfterSelectionEnd}
@@ -118,7 +119,7 @@ function VariableTableComponent() {
                     open={showValuesDialog}
                     onOpenChange={setShowValuesDialog}
                     onSave={handleValuesChange}
-                    initialValues={selectedVariable?.values || []}
+                    initialValues={selectedVariable?.values ?? []}
                     variableId={selectedVariable?.id}
                     variableType={selectedVariableType}
                 />
@@ -128,7 +129,7 @@ function VariableTableComponent() {
                     open={showMissingDialog}
                     onOpenChange={setShowMissingDialog}
                     onSave={handleMissingChange}
-                    initialMissingValues={selectedVariable?.missing || null}
+                    initialMissingValues={selectedVariable?.missing ?? null}
                     variableType={selectedVariableType}
                 />
             )}

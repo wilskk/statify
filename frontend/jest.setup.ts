@@ -4,6 +4,7 @@ import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util';
 import './public/workers/DescriptiveStatistics/libs/utils/utils';
+import React from 'react';
 
 global.TextEncoder = TextEncoder as any;
 global.TextDecoder = TextDecoder as any;
@@ -41,37 +42,42 @@ if (global.Element && !global.Element.prototype.scrollIntoView) {
 
 // Mock lucide-react: return every requested icon as a simple <svg /> placeholder.
 jest.mock('lucide-react', () => {
-  const React = require('react');
-  return new Proxy(
-    {},
-    {
-      get: (_, iconName) =>
-        React.forwardRef((props: any, ref: any) =>
-          React.createElement('svg', { ref, 'data-icon': iconName, ...props })
-        ),
-    }
-  );
+  const makeIcon = (iconName: string) => {
+    // eslint-disable-next-line react/display-name
+    const Icon = React.forwardRef<SVGSVGElement, any>((props, ref) =>
+      React.createElement('svg', { ref, 'data-icon': iconName, ...props })
+    );
+    (Icon as any).displayName = `LucideIconMock(${iconName})`;
+    return Icon as any;
+  };
+  return new Proxy({}, {
+    get: (_target, prop: string | symbol) => makeIcon(String(prop)),
+  });
 });
 
 // Mock framer-motion: map all motion components to plain <div>s and make AnimatePresence a passthrough.
 jest.mock('framer-motion', () => {
-  const React = require('react');
-  const handler = {
-    get: () =>
-      React.forwardRef((props: any, ref: any) =>
-        React.createElement('div', { ref, ...props }, props.children)
-      ),
+  const makeDiv = (name: string) => {
+    // eslint-disable-next-line react/display-name
+    const Comp = React.forwardRef<HTMLDivElement, any>((props, ref) =>
+      React.createElement('div', { ref, ...props }, props.children)
+    );
+    (Comp as any).displayName = `FramerMotionMock(${name})`;
+    return Comp as any;
   };
+  const motionProxy = new Proxy({}, {
+    get: (_t, prop: string | symbol) => makeDiv(String(prop)),
+  });
 
-  const motionProxy = new Proxy({}, handler);
+  const AnimatePresence: React.FC<{ children: React.ReactNode }> = ({ children }) =>
+    React.createElement(React.Fragment, null, children);
+  (AnimatePresence as any).displayName = 'AnimatePresenceMock';
 
   return {
     __esModule: true,
-    ...React,
     motion: motionProxy,
-    AnimatePresence: ({ children }: { children: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
-  };
+    AnimatePresence,
+  } as any;
 });
 
 // Polyfill for ResizeObserver which is not implemented in JSDOM
@@ -87,10 +93,11 @@ if (!(global as any).ResizeObserver) {
 // to a lightweight <div>. This prevents undefined property errors when the wrapper `ui/dialog`
 // references internal Radix fields like `Overlay` or `Content`.
 jest.mock('@radix-ui/react-dialog', () => {
-  const React = require('react');
-  const Primitive = React.forwardRef((props: any, ref: any) =>
+  // eslint-disable-next-line react/display-name
+  const Primitive = React.forwardRef<HTMLDivElement, any>((props, ref) =>
     React.createElement('div', { ref, ...props }, props.children)
   );
+  (Primitive as any).displayName = 'RadixDialogPrimitiveMock';
 
   // base object with explicit members typically used
   const base: Record<string, any> = {

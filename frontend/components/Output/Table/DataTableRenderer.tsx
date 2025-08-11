@@ -10,7 +10,7 @@ interface ColumnHeader {
 
 interface TableRowData {
     rowHeader: (string | null)[];
-    [key: string]: any;
+    [key: string]: unknown;
     children?: TableRowData[];
 }
 
@@ -101,7 +101,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
         const keys: string[] = [];
         const traverse = (col: ColumnHeader) => {
             if (!col.children || col.children.length === 0) {
-                keys.push(col.key ? col.key : col.header);
+                keys.push(col.key ?? col.header);
             } else {
                 col.children.forEach(ch => traverse(ch));
             }
@@ -128,8 +128,8 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
             combined[i] = row.rowHeader[i] ?? accumulated[i] ?? null;
         }
         if (row.children && row.children.length > 0) {
-            let results: TableRowData[] = [];
-            for (let child of row.children) {
+            const results: TableRowData[] = [];
+            for (const child of row.children) {
                 results.push(...propagateHeaders(child, combined));
             }
             return results;
@@ -140,8 +140,8 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
     };
 
     const flattenRows = (rows: TableRowData[]): TableRowData[] => {
-        let result: TableRowData[] = [];
-        for (let row of rows) {
+        const result: TableRowData[] = [];
+        for (const row of rows) {
             result.push(...propagateHeaders(row, []));
         }
         return result;
@@ -165,7 +165,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
             }
             let rowSpan = 1;
             for (let next = rowIndex + 1; next < flatRows.length; next++) {
-                let nextVal = flatRows[next].rowHeader[colIdx] ?? "";
+                const nextVal = flatRows[next].rowHeader[colIdx] ?? "";
                 if (nextVal === current) rowSpan++;
                 else break;
             }
@@ -190,7 +190,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
             }
             let rowSpan = 1;
             for (let next = rowIndex + 1; next < flatRows.length; next++) {
-                let nextVal = flatRows[next].rowHeader[colIdx] ?? "";
+                const nextVal = flatRows[next].rowHeader[colIdx] ?? "";
                 if (nextVal === current) rowSpan++;
                 else break;
             }
@@ -206,8 +206,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
         });
     };
 
-    // Helper to optionally render content that may include <sup>/<sub> tags
-    const renderContent = (value: any): React.ReactNode => {
+    const renderContent = (value: unknown): React.ReactNode => {
         if (value === null || value === undefined) return "";
         if (typeof value === "string" && /<\/?(sup|sub)>/i.test(value)) {
             return <span dangerouslySetInnerHTML={{ __html: value }} />;
@@ -215,7 +214,6 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
         return value as React.ReactNode;
     };
 
-    // Clone a node and inline all computed styles so it can render standalone
     const cloneNodeWithInlineStyles = (source: HTMLElement): HTMLElement => {
         const clone = source.cloneNode(true) as HTMLElement;
 
@@ -229,10 +227,9 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 } catch {}
             }
 
-            // Ensure table-specific properties survive outside Tailwind context
+            // Ensure tables render with proper borders/background when copied/exported
             if ((src as HTMLElement).tagName === "TABLE") {
                 dstStyle.borderCollapse = "collapse";
-                // Provide a white background for better PNG/Word rendering
                 if (!dstStyle.backgroundColor || dstStyle.backgroundColor === "transparent") {
                     dstStyle.backgroundColor = "#ffffff";
                 }
@@ -249,89 +246,12 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
         return clone;
     };
 
-    // Convert an HTML element to PNG blob (no external deps)
-    const convertHtmlToPng = async (el: HTMLElement): Promise<Blob> => {
-        const rect = el.getBoundingClientRect();
-        const padding = 16; // add white padding
-        const width = Math.ceil(rect.width);
-        const height = Math.ceil(rect.height);
-
-        const cloned = cloneNodeWithInlineStyles(el);
-        // Constrain cloned node to measured size to avoid overflow clipping
-        cloned.style.width = `${width}px`;
-        cloned.style.height = `${height}px`;
-        const wrapper = document.createElement("div");
-        wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-        wrapper.style.display = "inline-block";
-        wrapper.style.background = "#ffffff";
-        wrapper.style.boxSizing = "border-box";
-        wrapper.style.padding = `${padding}px`;
-        wrapper.style.width = `${width}px`;
-        wrapper.style.height = `${height}px`;
-        wrapper.appendChild(cloned);
-
-        const svgWidth = width + padding * 2;
-        const svgHeight = height + padding * 2;
-        const svg = `<?xml version="1.0" encoding="UTF-8"?>\n` +
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">` +
-            `<foreignObject width="100%" height="100%">${wrapper.outerHTML}</foreignObject>` +
-            `</svg>`;
-
-        const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-        const url = URL.createObjectURL(svgBlob);
-        try {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            await new Promise<void>((resolve, reject) => {
-                img.onload = () => resolve();
-                img.onerror = () => reject(new Error("Image load failed"));
-                img.src = url;
-            });
-
-            const maxCanvasDim = 8192;
-            let scale = 2; // HiDPI
-            const maxDim = Math.max(svgWidth, svgHeight);
-            if (maxDim * scale > maxCanvasDim) {
-                scale = maxCanvasDim / maxDim;
-            }
-            const canvas = document.createElement("canvas");
-            canvas.width = svgWidth * scale;
-            canvas.height = svgHeight * scale;
-            const ctx = canvas.getContext("2d");
-            if (!ctx) throw new Error("Canvas not available");
-            ctx.scale(scale, scale);
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, svgWidth, svgHeight);
-            ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
-
-            const blob: Blob = await new Promise((resolve, reject) => {
-                canvas.toBlob(async (b) => {
-                    if (b) return resolve(b);
-                    // Fallback: use dataURL then convert to Blob
-                    try {
-                        const dataUrl = canvas.toDataURL("image/png");
-                        const resp = await fetch(dataUrl);
-                        const fbBlob = await resp.blob();
-                        resolve(fbBlob);
-                    } catch (e) {
-                        reject(new Error("toBlob failed and toDataURL fallback failed"));
-                    }
-                }, "image/png", 1.0);
-            });
-            return blob;
-        } finally {
-            URL.revokeObjectURL(url);
-        }
-    };
-
     const handleCopyTable = async (tableId: string) => {
         try {
             const table = document.getElementById(tableId) as HTMLTableElement | null;
             if (!table) return;
 
-            // Inline styles so Word preserves borders and formatting
             const styledClone = cloneNodeWithInlineStyles(table);
-            // Ensure consistent layout when pasted into Word
             styledClone.style.borderCollapse = "collapse";
             styledClone.style.backgroundColor = styledClone.style.backgroundColor || "#ffffff";
             const html = styledClone.outerHTML;
@@ -339,15 +259,22 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 .map((tr) => Array.from(tr.cells).map((c) => (c.textContent || "").trim()).join("\t"))
                 .join("\n");
 
-            if (typeof (window as any).ClipboardItem !== "undefined" && navigator.clipboard && (navigator.clipboard as any).write) {
-                await navigator.clipboard.write([
-                    new (window as any).ClipboardItem({
+            const nav = navigator as Navigator & {
+                clipboard?: { write?: (data: unknown[]) => Promise<void>; writeText?: (text: string) => Promise<void> };
+            };
+            const ClipboardItemCtor = (window as unknown as {
+                ClipboardItem?: new (data: Record<string, Blob>) => unknown;
+            }).ClipboardItem;
+
+            if (ClipboardItemCtor && nav.clipboard?.write) {
+                await nav.clipboard.write([
+                    new ClipboardItemCtor({
                         "text/html": new Blob([html], { type: "text/html" }),
                         "text/plain": new Blob([plain], { type: "text/plain" }),
                     }),
                 ]);
-            } else {
-                await navigator.clipboard.writeText(plain);
+            } else if (nav.clipboard?.writeText) {
+                await nav.clipboard.writeText(plain);
             }
 
             setCopied((prev) => ({ ...prev, [tableId]: true }));
@@ -418,11 +345,27 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                                 {copied[tableDomId] ? (
                                     <Check className="w-4 h-4 inline-block mr-1" />
                                 ) : (
+                                    <Copy className="w-4 h-4 inline-block mr-1" />
+                                )}
+                                <span className="text-xs">{copied[tableDomId] ? "Copied" : "Copy"}</span>
+                            </button>
+                            {/* PNG download removed */}
+                            <button
+                                className="p-2 bg-white rounded-md shadow-sm hover:bg-gray-100"
+                                onClick={() => handleDownloadTableSvg(tableDomId, `table-${tableIndex + 1}.svg`)}
+                                title="Download as SVG"
+                                type="button"
+                            >
+                                <Download className="w-4 h-4 inline-block mr-1" />
+                                <span className="text-xs">SVG</span>
+                            </button>
+                            {/* HTML download removed */}
+                        </div>
+                        <table
+                            id={tableDomId}
+                            className="border-collapse border border-border text-sm rounded-md"
                         >
-                            {copied[tableDomId] ? (
-                                <Check className="w-4 h-4 inline-block mr-1" />
-                            ) : (
-                                <Copy className="w-4 h-4 inline-block mr-1" />
+                            <thead>
                             <tr>
                                 <th
                                     colSpan={rowHeaderCount + leafCols.length}
@@ -437,7 +380,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                             </thead>
                             <tbody>
                             {flatRows.map((row, rowIndex) => {
-                                const allDataNull = leafCols.every(k => row[k] == null);
+                                const allDataNull = leafCols.every(k => row[k] === null || row[k] === undefined);
                                 if (allDataNull && row.rowHeader.every(h => h !== "")) return null;
                                 return (
                                     <tr key={rowIndex}>

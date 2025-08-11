@@ -9,8 +9,7 @@ import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useMobile } from "@/hooks/useMobile";
 import { useModal } from "@/hooks/useModal";
 import dynamic from 'next/dynamic';
-import { OnbordaProvider, Onborda } from "onborda";
-import { TourCard } from "@/components/ui/TourCard";
+import { OnbordaProvider } from "onborda";
 
 import ResultNavigationObserver from "@/components/Common/ResultNavigationObserver";
 const SyncStatusClient = dynamic(() => import('@/components/ui/SyncStatus'), { ssr: false });

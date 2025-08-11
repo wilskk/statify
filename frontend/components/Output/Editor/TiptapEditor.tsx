@@ -9,9 +9,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
-// @ts-ignore - optional extension may have no types
 import TextStyle from "@tiptap/extension-text-style";
-// @ts-ignore - optional extension may have no types
 import Color from "@tiptap/extension-color";
 import ListItem from "@tiptap/extension-list-item";
 import debounce from "lodash/debounce";
@@ -34,7 +32,27 @@ interface SimpleRichTextEditorProps {
 }
 
 // Memisahkan MenuBar ke komponen terpisah dan menggunakan memo
-const MenuBar = memo(({ editor, editorState }: { editor: Editor | null; editorState: any }) => {
+type MenuState = {
+  isBold: boolean;
+  isItalic: boolean;
+  isStrike: boolean;
+  isCode: boolean;
+  isH1: boolean;
+  isH2: boolean;
+  isH3: boolean;
+  isBulletList: boolean;
+  isOrderedList: boolean;
+  isBlockquote: boolean;
+  isParagraph: boolean;
+  canToggleBold: boolean;
+  canToggleItalic: boolean;
+  canToggleStrike: boolean;
+  canToggleCode: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+};
+
+const MenuBar = memo(({ editor, editorState }: { editor: Editor | null; editorState: MenuState }) => {
   if (!editor || !editorState) return null;
 
   const buttonClass = (active: boolean) =>

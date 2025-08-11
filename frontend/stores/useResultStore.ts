@@ -78,6 +78,7 @@ export const useResultStore = create<ResultState>()(
             draft.isLoading = false;
           });
         } catch (error: any) {
+          // eslint-disable-next-line no-console
           console.error("Failed to fetch logs:", error);
           set((draft) => {
             draft.error = {
@@ -94,6 +95,7 @@ export const useResultStore = create<ResultState>()(
         try {
           return await resultService.getLog(id);
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to fetch log by id:", error);
           return undefined;
         }
@@ -113,6 +115,7 @@ export const useResultStore = create<ResultState>()(
 
           return id;
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to add log:", error);
           throw error;
         }
@@ -130,6 +133,7 @@ export const useResultStore = create<ResultState>()(
             }
           });
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to update log:", error);
           throw error;
         }
@@ -143,6 +147,7 @@ export const useResultStore = create<ResultState>()(
             state.logs = state.logs.filter((log) => log && log.id !== logId);
           });
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to delete log:", error);
           throw error;
         }
@@ -169,12 +174,13 @@ export const useResultStore = create<ResultState>()(
               if (!state.logs[logIndex].analytics) {
                 state.logs[logIndex].analytics = [];
               }
-              state.logs[logIndex].analytics!.push(analyticWithId);
+              state.logs[logIndex].analytics.push(analyticWithId);
             }
           });
 
           return analyticId;
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to add analytic:", error);
           throw error;
         }
@@ -199,6 +205,7 @@ export const useResultStore = create<ResultState>()(
             }
           });
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to update analytic:", error);
           throw error;
         }
@@ -223,19 +230,18 @@ export const useResultStore = create<ResultState>()(
             }
           });
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to delete analytic:", error);
           throw error;
         }
       },
 
       addStatistic: async (analyticId, statisticData) => {
-        console.log('[useResultStore] Adding statistic to analyticId:', analyticId, 'with data:', {
-          title: statisticData.title,
-          components: statisticData.components,
-          description: statisticData.description,
-          outputDataLength: statisticData.output_data?.length || 0
-        });
-        
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.log('[useResultStore] Adding statistic', { analyticId, title: statisticData.title });
+        }
+
         try {
           const statistic: Statistic = {
             ...statisticData,
@@ -248,7 +254,10 @@ export const useResultStore = create<ResultState>()(
           );
           const statisticWithId = { ...statistic, id: statisticId };
 
-          console.log('[useResultStore] Statistic saved to database with ID:', statisticId);
+          if (process.env.NODE_ENV !== 'production') {
+            // eslint-disable-next-line no-console
+            console.log('[useResultStore] Statistic saved to database with ID:', statisticId);
+          }
 
           // Update state after successful API call
           set((state) => {
@@ -261,16 +270,23 @@ export const useResultStore = create<ResultState>()(
                     analytic.statistics = [];
                   }
                   analytic.statistics.push(statisticWithId);
-                  console.log('[useResultStore] Statistic added to state. Total statistics for analytic:', analytic.statistics.length);
+                  if (process.env.NODE_ENV !== 'production') {
+                    // eslint-disable-next-line no-console
+                    console.log('[useResultStore] Statistic added. Count:', analytic.statistics.length);
+                  }
                   break outerLoop;
                 }
               }
             }
           });
 
-          console.log('[useResultStore] addStatistic completed successfully with ID:', statisticId);
+          if (process.env.NODE_ENV !== 'production') {
+            // eslint-disable-next-line no-console
+            console.log('[useResultStore] addStatistic completed:', statisticId);
+          }
           return statisticId;
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error('[useResultStore] Failed to add statistic:', error);
           throw error;
         }
@@ -302,6 +318,7 @@ export const useResultStore = create<ResultState>()(
             }
           });
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to update statistic:", error);
           throw error;
         }
@@ -330,6 +347,7 @@ export const useResultStore = create<ResultState>()(
             }
           });
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to delete statistic:", error);
           throw error;
         }
@@ -345,6 +363,7 @@ export const useResultStore = create<ResultState>()(
             state.latestLogId = null;
           });
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to clear all data:", error);
           throw error;
         }

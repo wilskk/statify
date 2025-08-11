@@ -251,13 +251,14 @@ export default function HelpPage() {
             className={`bg-background h-screen overflow-hidden transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}
         >
             <HelpContent
-                sections={sectionsToDisplayInSidebar}
-                selected={selected}
+                sections={sectionsData}
+                selectedSectionKey={selected}
+                activeChildKey={activeChild}
                 onSectionSelect={handleSectionSelect}
-                expandedKeys={expandedKeys}
-                search={search}
+                searchValue={search}
                 onSearchChange={handleSearchChange}
-                activeChild={activeChild ?? undefined}
+                displaySections={sectionsToDisplayInSidebar}
+                expandedKeys={expandedKeys}
             />
         </div>
     );

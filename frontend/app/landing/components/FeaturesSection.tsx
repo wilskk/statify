@@ -1,8 +1,8 @@
 'use client';
 
-import { BarChart2, Database, BookOpen, FileText, Edit, DatabaseZap, Wand2, BarChart, HelpCircle, Brain } from 'lucide-react';
+import { FileText, Edit, DatabaseZap, Wand2, BarChart, HelpCircle, Brain } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 import { Badge } from '@/components/ui/badge';
 import { AnimatedSection } from './AnimatedSection';
 import { motion } from 'framer-motion';

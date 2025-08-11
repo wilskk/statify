@@ -88,8 +88,7 @@ export function dateStringToSpssSeconds(dateString: string): number | null {
     // Pastikan epoch SPSS valid (seharusnya selalu valid)
     if (isNaN(SPSS_EPOCH_MILLIS)) {
         // Seharusnya tidak pernah terjadi di lingkungan JS modern
-        console.error("Perhitungan Epoch SPSS menghasilkan NaN.");
-        return null;
+        throw new Error("Perhitungan Epoch SPSS menghasilkan NaN.");
     }
 
     // Hitung selisih dalam milidetik
@@ -102,4 +101,4 @@ export function dateStringToSpssSeconds(dateString: string): number | null {
     // if (spssSeconds < 0) return null;
 
     return spssSeconds;
-} 
+}

@@ -1,17 +1,12 @@
 "use client";
 
 import React, { forwardRef } from 'react';
-import { HotTable, HotTableProps } from '@handsontable/react-wrapper';
+import type { HotTableProps, HotTableRef } from '@handsontable/react-wrapper';
+import { HotTable } from '@handsontable/react-wrapper';
 import 'handsontable/dist/handsontable.full.min.css';
 
 export type HandsontableWrapperProps = Omit<HotTableProps, 'licenseKey'> & {
   licenseKey?: string;
-};
-
-// Threshold untuk dataset besar - disable autoColumnSize jika melebihi
-const AUTO_COLUMN_SIZE_THRESHOLD = {
-  rows: 1000,
-  cols: 50
 };
 
 const defaultProps: Partial<HandsontableWrapperProps> = {
@@ -36,7 +31,7 @@ const defaultProps: Partial<HandsontableWrapperProps> = {
   preventOverflow: 'horizontal'
 };
 
-export const HandsontableWrapper = React.memo(forwardRef<any, HandsontableWrapperProps>(
+export const HandsontableWrapper = React.memo(forwardRef<HotTableRef, HandsontableWrapperProps>(
   (props, ref) => <HotTable ref={ref} {...defaultProps} {...props} />
 ));
 

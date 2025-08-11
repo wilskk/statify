@@ -888,7 +888,7 @@ interface ChartInput {
 }
 
 // Interface untuk chart JSON output (sesuai format sistem yang ada)
-interface ChartJSON {
+export interface ChartJSON {
   charts: Array<{
     chartType: string;
     chartMetadata: {

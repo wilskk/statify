@@ -17,7 +17,7 @@ import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
 import { Separator } from "@/components/ui/separator";
 // Help icon and tooltip imports removed
-import { VariableType } from '@/types/Variable';
+import type { VariableType } from '@/types/Variable';
 
 interface DateFormatOption {
     value: string;
@@ -56,7 +56,6 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
     const [decimals, setDecimals] = useState<number>(initialDecimals);
     const [dateFormat, setDateFormat] = useState<string>("dd-mm-yyyy");
     const [dollarFormat, setDollarFormat] = useState<string>("$### ###,###.##");
-    const [selectedCurrencyFormat, setSelectedCurrencyFormat] = useState<string>("CCA");
 
     const dateFormats = React.useMemo<DateFormatOption[]>(() => [
         { value: "dd-mm-yyyy", label: "dd-mm-yyyy", type: "DATE", width: 10 },
@@ -136,25 +135,13 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
     };
 
     // Handle dollar format selection
-    const handleDollarFormatSelect = (value: string) => {
-        setDollarFormat(value);
-        const format = dollarFormats.find(f => f.value === value);
-        if (format) {
-            setWidth(format.width);
-            setDecimals(format.decimals);
-        }
-    };
-
-    // Handle currency format selection
-    const handleCurrencyFormatSelect = (currencyType: string) => {
-        setSelectedType(currencyType as VariableType);
-    };
+    // (removed) dollar/currency selection handlers not used
 
     // Handle save
     const handleSave = () => {
         let finalType = selectedType;
-        let finalWidth = width;
-        let finalDecimals = decimals;
+        const finalWidth = width;
+        const finalDecimals = decimals;
 
         // For date types, get the correct type based on format
         if (selectedType === "DATE") {
@@ -164,26 +151,15 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
             }
         }
 
-        // For custom currency, use the selected format as type
-        if (selectedType === "CUSTOM_CURRENCY" && selectedCurrencyFormat) {
-            finalType = selectedCurrencyFormat as VariableType;
-        }
-
         onSave(finalType as VariableType, finalWidth, finalDecimals);
         onOpenChange(false);
     };
 
     const isNumericType = ["NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "RESTRICTED_NUMERIC"].includes(selectedType);
-    const isCurrencyType = ["CCA", "CCB", "CCC", "CCD", "CCE"].includes(selectedType) || selectedType === "DOLLAR";
     const isDateType = ["DATE", "ADATE", "EDATE", "SDATE", "JDATE", "QYR", "MOYR", "WKYR", "DATETIME", "TIME", "DTIME", "WKDAY", "MONTH"].includes(selectedType);
 
     // Group date formats by type for SelectContent
-    const groupedDateFormats: { [key: string]: DateFormatOption[] } = dateFormats.reduce((acc, format) => {
-        const type = format.type as string;
-        if (!acc[type]) acc[type] = [];
-        acc[type].push(format);
-        return acc;
-    }, {} as { [key: string]: DateFormatOption[] });
+    // (removed) groupedDateFormats not used
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Button, ButtonProps } from "@/components/ui/button";
+import type { ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { HelpCircle } from "lucide-react";
 import { useTour } from "@/hooks/useTour";
 import { cn } from "@/lib/utils";

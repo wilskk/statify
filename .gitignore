@@ -98,3 +98,4 @@ frontend/.trae/rules/project_rules.md
 /testing/test-results
 /testing/reports/e2e
 /frontend/.next-dev
+/backend/coverage

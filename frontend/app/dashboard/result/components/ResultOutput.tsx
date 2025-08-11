@@ -148,9 +148,9 @@ const ResultOutput: React.FC = () => {
                         if (isFirstAppearance) {
                           renderedComponents.add(stat.components);
                         }
-                        const statId = stat.id || 0;
+                        const statId = stat.id ?? 0;
                         const isEditing = editingDescriptionId === statId;
-                        const status = saveStatus[statId] || "";
+                        const status = saveStatus[statId] ?? "";
                         return (
                           <div key={stat.id} className="space-y-4">
                             {isFirstAppearance && (
@@ -186,11 +186,11 @@ const ResultOutput: React.FC = () => {
                                 }
 
                                 if (parsedData.tables) {
-                                  const isExpandedTable = expandedTables[statId] || false;
+                                  const isExpandedTable = expandedTables[statId] ?? false;
 
                                   // Determine if the rendered table is "long" enough to warrant a toggle (simple heuristic)
                                   const isLongTable = parsedData.tables.some(
-                                    (tbl: any) => (tbl.rows?.length || 0) > 15
+                                    (tbl: { rows?: unknown[] }) => (tbl.rows?.length ?? 0) > 15
                                   );
 
                                   return (
@@ -312,7 +312,7 @@ const ResultOutput: React.FC = () => {
                             </div>
                           </div>
                         );
-                      }) || null
+                      }) ?? null
                     );
                   })()}
                 </Card>

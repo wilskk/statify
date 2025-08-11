@@ -1,22 +1,22 @@
-import Handsontable from 'handsontable';
+import type Handsontable from 'handsontable';
 import {
     textRenderer,
     numericRenderer,
 } from 'handsontable/renderers';
 import { DEFAULT_COLUMN_WIDTH } from '../constants';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 /**
  * Enhanced renderer that prevents word breaking and ensures proper text overflow handling
  */
 const enhancedTextRenderer = (
-    instance: any,
+    instance: Handsontable,
     td: HTMLTableCellElement,
     row: number,
     col: number,
     prop: string | number,
-    value: any,
-    cellProperties: any
+    value: unknown,
+    cellProperties: Handsontable.CellProperties
 ) => {
     // Apply the base text renderer first
     textRenderer(instance, td, row, col, prop, value, cellProperties);
@@ -39,15 +39,23 @@ const enhancedTextRenderer = (
 };
 
 const nullSafeRenderer = (
-    renderer: (...args: any[]) => void
+    renderer: (
+        instance: Handsontable,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string | number,
+        value: unknown,
+        cellProperties: Handsontable.CellProperties
+    ) => void
 ) => (
-    instance: any,
+    instance: Handsontable,
     td: HTMLTableCellElement,
     row: number,
     col: number,
     prop: string | number,
-    value: any,
-    cellProperties: any
+    value: unknown,
+    cellProperties: Handsontable.CellProperties
 ) => {
     if (value === null || value === undefined) {
         enhancedTextRenderer(instance, td, row, col, prop, '', cellProperties);
@@ -90,7 +98,7 @@ export const getDefaultSpareColumnConfig = (): Handsontable.ColumnSettings => ({
  * @returns A Handsontable validator function.
  */
 const createHybridAutocompleteValidator = (variable: Variable) => {
-    return function(value: any, callback: (isValid: boolean) => void) {
+    return function(value: unknown, callback: (isValid: boolean) => void) {
         // Allow empty values.
         if (value === null || value === undefined || value === '') {
             return callback(true);
@@ -114,7 +122,7 @@ const createHybridAutocompleteValidator = (variable: Variable) => {
 };
 
 export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numeric' | 'label' = 'numeric'): Handsontable.ColumnSettings => {
-    if (!variable || !variable.type) {
+    if (!variable?.type) {
         return { 
             type: 'text',
             width: variable?.columns ?? DEFAULT_COLUMN_WIDTH,
@@ -122,31 +130,44 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
     }
 
     const type = variable.type;
-    let config: Handsontable.ColumnSettings = {};
+    const config: Handsontable.ColumnSettings = {};
 
     // Create value map for O(1) lookup instead of find()
     const valueMap = variable.values ? new Map(variable.values.map(v => [v.value, v])) : null;
 
     // Prevent matching empty string to numeric zero when searching for labels
-    const mapValueToLabel = (rawValue: any) => {
+    const mapValueToLabel = (rawValue: unknown) => {
         // Do not attempt to find a label for truly empty cells
         if (rawValue === '' || rawValue === null || rawValue === undefined) {
             return undefined;
         }
-        // Use Map for O(1) lookup instead of find()
-        return valueMap?.get(rawValue);
+        // Use Map for O(1) lookup instead of find(), after narrowing type
+        if (typeof rawValue === 'number' || typeof rawValue === 'string') {
+            return valueMap?.get(rawValue);
+        }
+        return undefined;
     };
 
-    const valueLabelRenderer = (baseRenderer: Function) => nullSafeRenderer((
-        hotInstance: any,
+    const valueLabelRenderer = (
+        baseRenderer: (
+            instance: Handsontable,
+            td: HTMLTableCellElement,
+            row: number,
+            col: number,
+            prop: number | string,
+            value: unknown,
+            cellProperties: Handsontable.CellProperties
+        ) => void
+    ) => nullSafeRenderer((
+        hotInstance: Handsontable,
         td: HTMLTableCellElement,
         row: number,
         col: number,
         prop: number | string,
-        value: any,
-        cellProperties: any
+        value: unknown,
+        cellProperties: Handsontable.CellProperties
     ) => {
-        let displayValue: any = value;
+        let displayValue: unknown = value;
         if (viewMode === 'label' && variable.values && variable.values.length > 0) {
             const foundLabel = mapValueToLabel(value);
             if (foundLabel) {
@@ -173,7 +194,7 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
                     culture: 'en-US',
                 };
                 config.allowInvalid = false;
-                config.validator = (value: any, callback: (valid: boolean) => void) => {
+                config.validator = (value: unknown, callback: (valid: boolean) => void) => {
                     const valid = value === '' || value === null ||
                         (typeof value === 'number' && !isNaN(value)) ||
                         (typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value)));
@@ -196,7 +217,6 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
         }
     }
 
-
     if (variable.align) {
         config.className = `ht${variable.align.charAt(0).toUpperCase() + variable.align.slice(1)}`;
     }
@@ -207,7 +227,7 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
     return config;
 };
 
-export const areValuesEqual = (val1: any, val2: any): boolean => {
+export const areValuesEqual = (val1: unknown, val2: unknown): boolean => {
     if (val1 === '' || val1 === null || val1 === undefined) {
         return val2 === '' || val2 === null || val2 === undefined;
     }

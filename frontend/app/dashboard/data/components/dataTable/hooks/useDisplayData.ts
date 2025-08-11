@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect } from 'react';
 import { useDataStore } from '@/stores/useDataStore';
-import { DataRow } from '@/types/Data';
+import type { DataRow } from '@/types/Data';
 
 /**
  * Hook untuk mengelola display data matrix dengan caching dan cleanup
