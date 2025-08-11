@@ -247,6 +247,196 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
                     };
 
                     await addStatistic(analyticId, linearityStat);
+
+                    // Build and save Scatter Plot for Linearity (ZPRED vs SRESID) using Save workers
+                    try {
+                        // 1) Prepare X as observations x predictors (transpose of filteredIndependentData)
+                        const Xrows: number[][] =
+                          filteredIndependentData[0].map((_, idx) =>
+                            filteredIndependentData.map((ind) => ind[idx])
+                          );
+
+                        // 2) Compute coefficients via OLS (Gaussian elimination on normal equations)
+                        const buildXtX = (X: number[][]): number[][] => {
+                          const p = X[0].length + 1; // include intercept
+                          const XtX: number[][] = Array.from({ length: p }, () => Array(p).fill(0));
+                          for (let i = 0; i < p; i++) {
+                            for (let j = 0; j < p; j++) {
+                              let sum = 0;
+                              for (let k = 0; k < X.length; k++) {
+                                const xi = i === 0 ? 1 : X[k][i - 1];
+                                const xj = j === 0 ? 1 : X[k][j - 1];
+                                sum += xi * xj;
+                              }
+                              XtX[i][j] = sum;
+                            }
+                          }
+                          return XtX;
+                        };
+
+                        const buildXty = (X: number[][], y: number[]): number[] => {
+                          const p = X[0].length + 1; // include intercept
+                          const Xty: number[] = Array(p).fill(0);
+                          for (let i = 0; i < p; i++) {
+                            let sum = 0;
+                            for (let k = 0; k < X.length; k++) {
+                              const xi = i === 0 ? 1 : X[k][i - 1];
+                              sum += xi * y[k];
+                            }
+                            Xty[i] = sum;
+                          }
+                          return Xty;
+                        };
+
+                        const solveGaussian = (A: number[][], b: number[]): number[] => {
+                          const n = A.length;
+                          const M = A.map((row, i) => [...row, b[i]]);
+                          // Forward elimination
+                          for (let i = 0; i < n; i++) {
+                            let maxEl = Math.abs(M[i][i]);
+                            let maxRow = i;
+                            for (let k = i + 1; k < n; k++) {
+                              if (Math.abs(M[k][i]) > maxEl) {
+                                maxEl = Math.abs(M[k][i]);
+                                maxRow = k;
+                              }
+                            }
+                            if (maxRow !== i) {
+                              const tmp = M[i];
+                              M[i] = M[maxRow];
+                              M[maxRow] = tmp;
+                            }
+                            const pivot = M[i][i];
+                            if (Math.abs(pivot) < 1e-12) continue;
+                            for (let j = i; j <= n; j++) M[i][j] /= pivot;
+                            for (let k = i + 1; k < n; k++) {
+                              const factor = M[k][i];
+                              for (let j = i; j <= n; j++) M[k][j] -= factor * M[i][j];
+                            }
+                          }
+                          // Back substitution
+                          const x = Array(n).fill(0);
+                          for (let i = n - 1; i >= 0; i--) {
+                            x[i] = M[i][n];
+                            for (let k = i - 1; k >= 0; k--) M[k][n] -= M[k][i] * x[i];
+                          }
+                          return x;
+                        };
+
+                        const XtX = buildXtX(Xrows);
+                        const Xty = buildXty(Xrows, filteredDependentData);
+                        const coefficients = solveGaussian(XtX, Xty); // [intercept, b1, b2, ...]
+
+                        // 3) Run Save workers in parallel to get ZPRED and SRESID
+                        const runPredictedWorker = () =>
+                          new Promise<any[]>((resolve, reject) => {
+                            try {
+                              const worker = new Worker('/workers/Regression/Save/predictedValues.js');
+                              worker.postMessage({
+                                independentData: Xrows,
+                                coefficients,
+                                dependentData: filteredDependentData,
+                              });
+                              worker.onmessage = (ev: MessageEvent) => {
+                                if (ev.data && ev.data.error) {
+                                  worker.terminate();
+                                  reject(new Error(ev.data.error));
+                                } else {
+                                  const arr = Array.isArray(ev.data) ? ev.data : [];
+                                  worker.terminate();
+                                  resolve(arr);
+                                }
+                              };
+                              worker.onerror = (err: ErrorEvent) => {
+                                worker.terminate();
+                                reject(new Error(err.message));
+                              };
+                            } catch (err) {
+                              reject(err);
+                            }
+                          });
+
+                        const runResidualsWorker = () =>
+                          new Promise<any[]>((resolve, reject) => {
+                            try {
+                              const worker = new Worker('/workers/Regression/Save/residuals.js');
+                              worker.postMessage({
+                                independentData: Xrows,
+                                coefficients,
+                                dependentData: filteredDependentData,
+                              });
+                              worker.onmessage = (ev: MessageEvent) => {
+                                if (ev.data && ev.data.error) {
+                                  worker.terminate();
+                                  reject(new Error(ev.data.error));
+                                } else {
+                                  const arr = Array.isArray(ev.data) ? ev.data : [];
+                                  worker.terminate();
+                                  resolve(arr);
+                                }
+                              };
+                              worker.onerror = (err: ErrorEvent) => {
+                                worker.terminate();
+                                reject(new Error(err.message));
+                              };
+                            } catch (err) {
+                              reject(err);
+                            }
+                          });
+
+                        const [predictedResults, residualResults] = await Promise.all([
+                          runPredictedWorker(),
+                          runResidualsWorker(),
+                        ]);
+
+                        // 4) Compose scatter (ZPRED vs SRESID)
+                        const scatterPairs: Array<[number, number]> = [];
+                        const N = Math.min(predictedResults.length, residualResults.length);
+                        for (let i = 0; i < N; i++) {
+                          const x = Number(predictedResults[i]?.standardized);
+                          const y = Number(residualResults[i]?.studentized);
+                          if (isFinite(x) && isFinite(y)) scatterPairs.push([x, y]);
+                        }
+
+                        if (scatterPairs.length > 0) {
+                          const processed = DataProcessingService.processDataForChart({
+                            chartType: 'Scatter Plot',
+                            rawData: scatterPairs,
+                            variables: [
+                              { name: 'ZPRED', type: 'NUMERIC' as const },
+                              { name: 'SRESID', type: 'NUMERIC' as const },
+                            ],
+                            chartVariables: { x: ['ZPRED'], y: ['SRESID'] },
+                            processingOptions: { filterEmpty: true },
+                          });
+
+                          const chartJSON = ChartService.createChartJSON({
+                            chartType: 'Scatter Plot',
+                            chartData: processed.data,
+                            chartVariables: { x: ['ZPRED'], y: ['SRESID'] },
+                            chartMetadata: {
+                              title: 'Linearity Scatter Plot',
+                              subtitle: 'ZPRED (X) vs SRESID (Y)',
+                              description: 'Standardized predicted values vs studentized residuals',
+                            },
+                            chartConfig: {
+                              width: 800,
+                              height: 500,
+                              axisLabels: { x: 'Standardized Predicted Values (ZPRED)', y: 'Studentized Residuals' },
+                            },
+                          });
+
+                          await addStatistic(analyticId, {
+                            title: 'Linearity Scatter Plot',
+                            output_data: JSON.stringify(chartJSON),
+                            components: 'Chart',
+                            description: 'Standardized predicted values vs studentized residuals',
+                          });
+                        }
+                    } catch (scatterErr) {
+                        console.error('Failed to create/save linearity scatter plot:', scatterErr);
+                    }
+
                     setLinearityTestSuccess(true);
                 }
 
