@@ -12,15 +12,6 @@ export const getTempDir = (): string =>
     ? path.resolve(process.env.TEMP_DIR)
     : path.join(__dirname, '../temp');
 
-// Boolean env-flag parser (accepts: 1, true, yes, on; case-insensitive)
-const isTruthy = (val?: string): boolean => /^(1|true|yes|on)$/i.test(val ?? '');
-
-// Global rate limiting toggle: enabled by default unless explicitly disabled via env
-export const RATE_LIMIT_ENABLED: boolean =
-  process.env.RATE_LIMIT_ENABLED !== undefined
-    ? isTruthy(process.env.RATE_LIMIT_ENABLED)
-    : true;
-
 export const ALLOWED_ORIGINS: string[] = [
   'https://statify-dev.student.stis.ac.id',
   'http://statify-dev.student.stis.ac.id',
