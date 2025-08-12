@@ -270,13 +270,13 @@ self.onmessage = function (event) {
     return 1 - incBeta;
   }
 
-  const sigFChange = fPvalue(fChange, df1, df2);
-  console.log("[Worker] Sig. F Change:", sigFChange);
+  const pValue = fPvalue(fChange, df1, df2);
+  console.log("[Worker] p-value F Change:", pValue);
 
   // Format nilai R Square Change (.058a)
   const rSquareChange = rSquared.toFixed(3).replace(/^0/, "") + "a";
   const fChangeRounded = parseFloat(fChange.toFixed(3));
-  const sigFChangeRounded = parseFloat(sigFChange.toFixed(3));
+  const pValueRounded = parseFloat(pValue.toFixed(3));
 
   // Buat catatan kaki untuk prediktor dengan label jika tersedia
   let predictorsDisplay = [];
@@ -304,7 +304,7 @@ self.onmessage = function (event) {
               { header: "F Change", key: "fChange" },
               { header: "df1", key: "df1" },
               { header: "df2", key: "df2" },
-              { header: "Sig. F Change", key: "sigFChange" }
+              { header: "p-value F Change", key: "pValue" }
             ]
           }
         ],
@@ -315,7 +315,7 @@ self.onmessage = function (event) {
             fChange: fChangeRounded,
             df1: df1,
             df2: df2,
-            sigFChange: sigFChangeRounded
+            pValue: pValueRounded
           }
         ],
         footnotes: [footnoteText]
