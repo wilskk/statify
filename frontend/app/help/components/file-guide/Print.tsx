@@ -73,21 +73,27 @@ export const Print = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Kualitas Cetak',
-      content: 'Gunakan orientasi landscape untuk tabel data yang lebar agar lebih mudah dibaca.'
+      title: 'Orientasi Optimal',
+      content: 'Gunakan orientasi landscape untuk tabel data yang lebar agar lebih mudah dibaca dan tercetak dengan baik.'
     },
     {
       type: 'info' as const,
       title: 'Ekspor PDF',
-      content: 'Simpan sebagai PDF untuk berbagi hasil analisis dengan kolega atau untuk arsip.'
+      content: 'Simpan sebagai PDF untuk berbagi hasil analisis dengan kolega atau untuk keperluan arsip dokumentasi.'
+    },
+    {
+      type: 'success' as const,
+      title: 'Kualitas Tinggi',
+      content: 'Grafik dan chart dicetak dalam resolusi tinggi yang cocok untuk presentasi profesional.'
     }
   ];
 
   const relatedTopics = [
     { title: 'Ekspor ke Excel', href: '/help/file-guide/export-excel' },
     { title: 'Ekspor ke CSV', href: '/help/file-guide/export-csv' },
+    { title: 'Panduan Manajemen File', href: '/help/file-guide' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' },
-    { title: 'Panduan Manajemen File', href: '/help/file-guide' }
+    { title: 'Panduan Visualisasi', href: '/help/chart-guide' }
   ];
 
   return (

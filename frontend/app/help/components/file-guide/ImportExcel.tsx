@@ -57,7 +57,7 @@ export const ImportExcel = () => {
       )
     },
     {
-      id: 'features',
+      id: 'formats',
       title: 'Format Yang Didukung',
       description: 'Jenis file dan fitur yang dapat Anda gunakan',
       icon: FileSpreadsheet,
@@ -79,9 +79,9 @@ export const ImportExcel = () => {
       )
     },
     {
-      id: 'tips',
-      title: 'Informasi Berguna',
-      description: 'Apa yang perlu Anda ketahui tentang file Excel',
+      id: 'features',
+      title: 'Fitur & Informasi',
+      description: 'Informasi penting tentang impor file Excel',
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
@@ -101,18 +101,24 @@ export const ImportExcel = () => {
     {
       type: 'tip' as const,
       title: 'Header Kolom',
-      content: 'Pastikan baris pertama berisi nama variabel yang jelas untuk hasil impor terbaik.'
+      content: 'Pastikan baris pertama berisi nama variabel yang jelas untuk hasil impor yang optimal dan mudah dipahami.'
     },
     {
       type: 'info' as const,
-      title: 'Pemilihan Sheet',
-      content: 'Untuk file dengan beberapa worksheet, Anda dapat memilih sheet mana yang akan diimpor.'
+      title: 'Pemilihan Worksheet',
+      content: 'Untuk file dengan beberapa worksheet, Anda dapat memilih sheet mana yang akan diimpor ke Statify.'
+    },
+    {
+      type: 'success' as const,
+      title: 'Format Fleksibel',
+      content: 'Mendukung format .xlsx (Excel 2007+) dan .xls (Excel 97-2003) dengan preservasi metadata yang baik.'
     }
   ];
 
   const relatedTopics = [
     { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
     { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
+    { title: 'Impor dari Clipboard', href: '/help/file-guide/import-clipboard' },
     { title: 'Ekspor ke Excel', href: '/help/file-guide/export-excel' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];

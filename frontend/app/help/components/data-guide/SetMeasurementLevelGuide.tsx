@@ -1,9 +1,56 @@
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { Ruler, Hash, Settings } from 'lucide-react';
+import { HelpCard, HelpAlert, HelpSection, HelpStep } from '../../ui/HelpLayout';
+import { Ruler, Hash, Settings, ListOrdered } from 'lucide-react';
 
 export default function SetMeasurementLevelGuide() {
   const sections = [
+    {
+      id: 'how-to-steps',
+      title: 'Cara Mengatur Tingkat Pengukuran',
+      description: 'Langkah-langkah untuk mendefinisikan tingkat pengukuran variabel',
+      icon: ListOrdered,
+      content: (
+        <div className="space-y-4">
+          <HelpStep number={1} title="Buka Dialog Tingkat Pengukuran">
+            <p className="text-sm">
+              Akses menu <strong>Data → Atur Tingkat Pengukuran</strong> untuk membuka dialog.
+              Sistem akan otomatis menampilkan variabel dengan tingkat pengukuran yang belum diketahui.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={2} title="Identifikasi Jenis Data">
+            <p className="text-sm">
+              Tentukan jenis data untuk setiap variabel:
+            </p>
+            <ul className="list-disc ml-6 mt-2 text-sm space-y-1">
+              <li><strong>Nominal</strong>: Kategori tanpa urutan (Jenis Kelamin, Warna, Agama)</li>
+              <li><strong>Ordinal</strong>: Kategori dengan urutan (Tingkat Pendidikan, Rating Kepuasan)</li>
+              <li><strong>Skala</strong>: Data numerik (Umur, Pendapatan, Tinggi Badan)</li>
+            </ul>
+          </HelpStep>
+
+          <HelpStep number={3} title="Pilih dan Pindahkan Variabel">
+            <p className="text-sm">
+              Pilih variabel dari daftar "Tersedia" dan gunakan tombol panah untuk memindahkannya 
+              ke kategori yang sesuai (Nominal, Ordinal, atau Skala).
+            </p>
+          </HelpStep>
+
+          <HelpStep number={4} title="Verifikasi Pengelompokan">
+            <p className="text-sm">
+              Periksa kembali pengelompokan variabel. Anda dapat memindahkan variabel antar kategori 
+              jika diperlukan sebelum menyimpan perubahan.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={5} title="Simpan Perubahan">
+            <p className="text-sm">
+              Klik tombol <strong>OK</strong> untuk menyimpan pengaturan tingkat pengukuran secara permanen.
+            </p>
+          </HelpStep>
+        </div>
+      )
+    },
     {
       id: 'overview',
       title: 'Ringkasan',
@@ -124,32 +171,38 @@ export default function SetMeasurementLevelGuide() {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Identifikasi Cepat',
-      content: 'Pertimbangkan sifat data Anda: apakah kategorikal (nominal/ordinal) atau numerik (skala)?'
+      title: 'Identifikasi Jenis Data dengan Cepat',
+      content: 'Pertimbangkan sifat data Anda: apakah berupa kategori tanpa urutan (nominal), kategori dengan urutan (ordinal), atau data numerik (skala)?'
     },
     {
       type: 'info' as const,
-      title: 'Seleksi Berganda',
-  content: 'Gunakan fitur seleksi berganda pada dialog untuk memilih beberapa variabel sekaligus dan memindahkannya bersamaan.'
+      title: 'Pemilihan Multiple Variabel',
+      content: 'Gunakan fitur seleksi multiple pada dialog untuk memilih beberapa variabel sekaligus dan memindahkannya bersamaan ke kategori yang sama.'
     },
     {
       type: 'warning' as const,
-      title: 'Validasi Hasil',
-      content: 'Selalu periksa kembali kategori yang dipilih sebelum menyimpan perubahan.'
+      title: 'Validasi Sebelum Simpan',
+      content: 'Selalu periksa kembali kategori yang dipilih sebelum menyimpan perubahan. Tingkat pengukuran yang salah dapat mempengaruhi analisis statistik.'
+    },
+    {
+      type: 'tip' as const,
+      title: 'Contoh Praktis Pengelompokan',
+      content: 'Nominal: Jenis Kelamin, Agama, Warna. Ordinal: Rating, Tingkat Pendidikan, Skala Likert. Skala: Umur, Pendapatan, Berat Badan.'
     }
   ];
 
   const relatedTopics = [
+    { title: 'Manajemen Data', href: '/help/data-guide' },
     { title: 'Properti Variabel', href: '/help/data-guide/define-var-props' },
-    { title: 'Panduan Jenis Data', href: '/help/data-guide' },
+    { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
     { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' },
     { title: 'Validasi Data', href: '/help/data-guide/unusual-cases' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Fitur Atur Tingkat Pengukuran"
-      description="Panduan ini memberikan gambaran umum tentang fitur 'Atur Tingkat Pengukuran' yang memungkinkan Anda secara efisien mendefinisikan tingkat pengukuran (Nominal, Ordinal, atau Skala) untuk variabel yang saat ini memiliki tingkat pengukuran 'Tidak Diketahui'."
+      title="Atur Tingkat Pengukuran"
+      description="Panduan lengkap untuk mendefinisikan tingkat pengukuran (Nominal, Ordinal, Skala) variabel dalam dataset"
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

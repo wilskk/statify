@@ -1,10 +1,55 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { ArrowUpDown, Settings } from 'lucide-react';
+import { HelpCard, HelpAlert, HelpSection, HelpStep } from '../../ui/HelpLayout';
+import { ArrowUpDown, Settings, ListOrdered } from 'lucide-react';
 
 const SortCasesGuide = () => {
   const sections = [
+    {
+      id: 'how-to-steps',
+      title: 'Cara Mengurutkan Kasus',
+      description: 'Langkah-langkah untuk mengatur ulang baris berdasarkan kriteria tertentu',
+      icon: ListOrdered,
+      content: (
+        <div className="space-y-4">
+          <HelpStep number={1} title="Buka Dialog Urutkan Kasus">
+            <p className="text-sm">
+              Akses menu <strong>Data → Urutkan Kasus</strong> untuk membuka dialog pengurutan.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={2} title="Pilih Variabel Pengurutan">
+            <p className="text-sm">
+              Pindahkan variabel dari daftar tersedia ke daftar "Urutkan Berdasarkan". 
+              Variabel pertama akan menjadi kunci utama pengurutan.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={3} title="Atur Arah Pengurutan">
+            <p className="text-sm">
+              Pilih arah pengurutan untuk setiap variabel:
+            </p>
+            <ul className="list-disc ml-6 mt-2 text-sm space-y-1">
+              <li><strong>Menaik</strong>: dari nilai terkecil ke terbesar (A-Z, 1-9)</li>
+              <li><strong>Menurun</strong>: dari nilai terbesar ke terkecil (Z-A, 9-1)</li>
+            </ul>
+          </HelpStep>
+
+          <HelpStep number={4} title="Atur Prioritas (Opsional)">
+            <p className="text-sm">
+              Untuk pengurutan multi-tingkat, gunakan tombol prioritas untuk mengubah 
+              urutan variabel dalam daftar pengurutan.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={5} title="Terapkan Pengurutan">
+            <p className="text-sm">
+              Klik tombol <strong>OK</strong> untuk menerapkan pengurutan ke dataset Anda.
+            </p>
+          </HelpStep>
+        </div>
+      )
+    },
     {
       id: 'interface',
       title: 'Antarmuka & Fungsionalitas Komponen',
@@ -103,18 +148,23 @@ const SortCasesGuide = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Urutan Prioritas',
-      content: 'Variabel yang dipilih pertama memiliki prioritas tertinggi dalam pengurutan multi-tingkat.'
+      title: 'Urutan Prioritas Pengurutan',
+      content: 'Variabel yang dipilih pertama memiliki prioritas tertinggi dalam pengurutan multi-tingkat. Gunakan tombol prioritas untuk mengatur ulang urutan.'
     },
     {
       type: 'info' as const,
-      title: 'Arah Pengurutan',
-      content: 'Menaik: dari terkecil ke terbesar. Menurun: dari terbesar ke terkecil.'
+      title: 'Pemahaman Arah Pengurutan',
+      content: 'Menaik berarti dari nilai terkecil ke terbesar (A-Z, 1-9). Menurun berarti dari nilai terbesar ke terkecil (Z-A, 9-1).'
     },
     {
       type: 'warning' as const,
-      title: 'Perubahan Urutan',
-      content: 'Pengurutan akan mengubah urutan baris dalam dataset Anda secara permanen.'
+      title: 'Perubahan Urutan Permanen',
+      content: 'Pengurutan akan mengubah urutan baris dalam dataset Anda secara permanen. Simpan salinan data asli sebelum melakukan pengurutan jika diperlukan.'
+    },
+    {
+      type: 'tip' as const,
+      title: 'Pengurutan Data Kosong',
+      content: 'Nilai kosong (missing values) akan selalu ditempatkan di akhir daftar, terlepas dari arah pengurutan yang dipilih.'
     }
   ];
 
@@ -122,13 +172,14 @@ const SortCasesGuide = () => {
     { title: 'Manajemen Data', href: '/help/data-guide' },
     { title: 'Pilih Kasus', href: '/help/data-guide/select-cases' },
     { title: 'Urutkan Variabel', href: '/help/data-guide/sort-vars' },
+    { title: 'Tingkat Pengukuran', href: '/help/data-guide/set-measurement-level' },
     { title: 'Persiapan Data', href: '/help/data-guide/restructure' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Fitur Urutkan Kasus"
-      description="Panduan ini menjelaskan fungsionalitas Urutkan Kasus, yang memungkinkan Anda mengatur ulang baris (kasus) dalam dataset Anda berdasarkan nilai dari satu atau lebih variabel."
+      title="Urutkan Kasus"
+      description="Panduan lengkap untuk mengatur ulang baris (kasus) dalam dataset berdasarkan nilai variabel tertentu"
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

@@ -1,45 +1,66 @@
 /* eslint-disable react/no-unescaped-entities */
+import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert } from '../../ui/HelpLayout';
+import { HelpCard, HelpAlert, HelpStep, HelpSection } from '../../ui/HelpLayout';
 import { Calendar, Clock, Settings } from 'lucide-react';
 
 const DefineDateTimeGuide = () => {
   const sections = [
     {
-      id: 'overview',
-      title: 'Ringkasan',
-      description: 'Panduan lengkap untuk mengatur struktur tanggal dan waktu untuk data Anda',
+      id: 'how-to-steps',
+      title: 'Cara Mendefinisikan Tanggal dan Waktu',
+      description: 'Panduan langkah demi langkah untuk mengatur struktur tanggal dan waktu',
       icon: Calendar,
       content: (
         <div className="space-y-4">
-          <p>
-            Fitur Definisi Tanggal membantu Anda membuat struktur berbasis waktu untuk data Anda. 
-            Ketika Anda memilih format tanggal (seperti "Tahun, kuartal, bulan"), sistem secara otomatis:
-          </p>
-          <ol className="list-decimal list-inside ml-4 mt-2 space-y-1">
-            <li>
-              <strong>Membuat variabel baru</strong> untuk setiap komponen waktu yang Anda butuhkan
-              (seperti YEAR_, QUARTER_, MONTH_).
-            </li>
-            <li>
-              <strong>Membangun variabel tanggal yang diformat</strong> yang disebut DATE_ yang menampilkan
-              tanggal lengkap dalam format yang mudah dibaca.
-            </li>
-            <li>
-              <strong>Menampilkan pratinjau</strong> dengan contoh data sehingga Anda dapat melihat
-              persis bagaimana struktur tanggal Anda akan terlihat.
-            </li>
-          </ol>
+          <HelpStep
+            number={1}
+            title="Buka Menu Data"
+            description="Klik 'Data' di bilah menu atas aplikasi."
+          />
+          <HelpStep
+            number={2}
+            title="Pilih Define Dates"
+            description="Klik Data → Define Dates untuk membuka dialog definisi tanggal."
+          />
+          <HelpStep
+            number={3}
+            title="Pilih Format Tanggal"
+            description="Pilih format tanggal yang sesuai dengan struktur data Anda (misalnya: Tahun, Kuartal, Bulan)."
+          />
+          <HelpStep
+            number={4}
+            title="Tinjau Pratinjau"
+            description="Periksa pratinjau variabel yang akan dibuat dan contoh data yang ditampilkan."
+          />
+          <HelpStep
+            number={5}
+            title="Terapkan Definisi"
+            description="Klik 'OK' untuk membuat variabel tanggal baru dalam dataset Anda."
+          />
         </div>
       )
     },
     {
-      id: 'functionality',
-      title: 'Cara Kerjanya',
-      description: 'Memahami proses langkah demi langkah',
+      id: 'features',
+      title: 'Fitur & Manfaat',
+      description: 'Memahami cara kerja dan manfaat fitur definisi tanggal',
       icon: Settings,
       content: (
         <div className="space-y-4">
+          <HelpCard title="Pembuatan Variabel Otomatis" variant="feature">
+            <p className="text-sm text-muted-foreground">
+              Sistem secara otomatis membuat variabel baru untuk setiap komponen waktu yang Anda butuhkan
+              (seperti YEAR_, QUARTER_, MONTH_).
+            </p>
+          </HelpCard>
+          
+          <HelpCard title="Variabel DATE_ Terformat" variant="feature">
+            <p className="text-sm text-muted-foreground">
+              Membangun variabel tanggal yang diformat untuk menampilkan tanggal lengkap dalam format yang mudah dibaca.
+            </p>
+          </HelpCard>
+          
           <HelpAlert variant="info" title="Pengaturan Otomatis">
             <p className="text-sm mt-2">
               Setelah Anda memilih format tanggal, sistem secara otomatis mengatur variabel Anda 
@@ -47,8 +68,7 @@ const DefineDateTimeGuide = () => {
             </p>
           </HelpAlert>
           
-          <div className="space-y-4">
-            <h4 className="font-semibold">Contoh: Tahun dan Bulan</h4>
+          <HelpSection title="Contoh: Tahun dan Bulan">
             <HelpCard title="Yang Akan Anda Dapatkan" variant="feature">
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>Pilihan Anda</strong>: Tahun, bulan</li>
@@ -62,8 +82,9 @@ const DefineDateTimeGuide = () => {
                 </li>
               </ul>
             </HelpCard>
-            
-            <h4 className="font-semibold">Contoh: Minggu dan Hari Kerja</h4>
+          </HelpSection>
+          
+          <HelpSection title="Contoh: Minggu dan Hari Kerja">
             <HelpCard title="Yang Akan Anda Dapatkan" variant="feature">
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>Pilihan Anda</strong>: Minggu, hari kerja (minggu 5 hari)</li>
@@ -77,7 +98,7 @@ const DefineDateTimeGuide = () => {
                 </li>
               </ul>
             </HelpCard>
-          </div>
+          </HelpSection>
         </div>
       )
     },
@@ -143,32 +164,33 @@ const DefineDateTimeGuide = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Rencanakan Format Anda',
-      content: 'Pikirkan struktur tanggal Anda sebelum memulai analisis deret waktu untuk hasil terbaik.'
+      title: 'Perencanaan Format',
+      content: 'Pikirkan struktur tanggal yang dibutuhkan sebelum memulai untuk memastikan hasil analisis deret waktu yang optimal.'
     },
     {
       type: 'info' as const,
-      title: 'Pratinjau Data Anda',
-      content: 'Sistem menampilkan contoh data sehingga Anda dapat melihat persis bagaimana tanggal Anda akan terlihat.'
+      title: 'Pratinjau Hasil',
+      content: 'Sistem menampilkan contoh data sehingga Anda dapat melihat persis bagaimana struktur tanggal akan terlihat setelah diterapkan.'
     },
     {
-      type: 'warning' as const,
-      title: 'Simpan Pekerjaan Anda',
-      content: 'Pengaturan tanggal Anda mempengaruhi semua analisis deret waktu, jadi simpan dataset Anda setelah mengatur tanggal.'
+      type: 'success' as const,
+      title: 'Integrasi Analisis',
+      content: 'Variabel tanggal yang dibuat secara otomatis akan kompatibel dengan semua fitur analisis deret waktu di Statify.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Manajemen Data', href: '/help/data-guide' },
-    { title: 'Analisis Deret Waktu', href: '/help/statistics-guide' },
-    { title: 'Properti Variabel', href: '/help/data-guide/define-var-props' },
-    { title: 'Restrukturisasi Data', href: '/help/data-guide/restructure' }
+    { title: 'Definisi Properti Variabel', href: '/help/data-guide/define-var-props' },
+    { title: 'Restrukturisasi Data', href: '/help/data-guide/restructure' },
+    { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
+    { title: 'Panduan Analisis Statistik', href: '/help/statistics-guide' },
+    { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Fitur Definisi Tanggal"
-      description="Panduan lengkap untuk mengatur struktur berbasis waktu untuk dataset Anda"
+      title="Definisi Tanggal dan Waktu"
+      description="Panduan lengkap untuk mengatur struktur berbasis waktu dalam dataset Anda di Statify"
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}
