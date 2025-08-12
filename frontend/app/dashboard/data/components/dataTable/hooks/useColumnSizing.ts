@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
 import { DEFAULT_COLUMN_WIDTH } from '../constants';
-import type Handsontable from 'handsontable';
 import type { HotTableRef } from '@handsontable/react-wrapper';
 
 interface UseColumnSizingProps {

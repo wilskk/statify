@@ -1,6 +1,7 @@
 import { formatStatisticsTable } from '../utils/formatters';
 import type { FrequenciesResult } from '../types';
 import type { Variable } from '@/types/Variable';
+import { spssSecondsToDateString } from '@/lib/spssDateConverter';
 
 describe('formatStatisticsTable across variable types', () => {
   const numVar: Variable = {
@@ -105,17 +106,24 @@ describe('formatStatisticsTable across variable types', () => {
     expect(meanRow.dateVar).toBe('');
     expect(meanRow.strVar ?? '').toBe('');
 
-    // Mode row: numeric formatted, string raw label, date unformatted numeric
+    // Mode row: numeric formatted, string raw label, date formatted as dd-mm-yyyy
     const modeRow = table.rows.find((r: any) => r.rowHeader[0] === 'Mode');
     expect(modeRow.numVar).toBe('8.00');
     expect(modeRow.strVar).toBe('A');
-    expect(modeRow.dateVar).toBe('18628');
+    const expectedModeDate = spssSecondsToDateString(18628) as string;
+    expect(modeRow.dateVar).toBe(expectedModeDate);
 
-    // Percentiles should hide for date (.) and format for numeric
+    // Median row: date should be formatted as dd-mm-yyyy
+    const medianRow = table.rows.find((r: any) => r.rowHeader[0] === 'Median');
+    const expectedMedianDate = spssSecondsToDateString(18628) as string;
+    expect(medianRow.dateVar).toBe(expectedMedianDate);
+
+    // Percentiles should show for date formatted as dd-mm-yyyy and for numeric with decimals
     const percentilesGroup = table.rows.find((r: any) => r.rowHeader[0] === 'Percentiles');
     const p25 = percentilesGroup.children.find((r: any) => r.rowHeader[1] === '25');
     expect(p25.numVar).toBe('8.00');
-    expect(p25.dateVar).toBe('.');
+    const expectedP25Date = spssSecondsToDateString(18500) as string;
+    expect(p25.dateVar).toBe(expectedP25Date);
   });
 });
 

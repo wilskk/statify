@@ -317,6 +317,7 @@ class DescriptiveCalculator {
         const { W } = this.#getDistribution();
         const { mode } = this.#getMode();
         return {
+            variable: this.variable,
             stats: {
                 N: this.data.length,
                 Valid: W,
@@ -335,6 +336,7 @@ class DescriptiveCalculator {
         const median = this.#getPercentile(50);
         const iqr = (p75 !== null && p25 !== null) ? (p75 - p25) : null;
         return {
+            variable: this.variable,
             stats: {
                 N: this.data.length,
                 Valid: W,

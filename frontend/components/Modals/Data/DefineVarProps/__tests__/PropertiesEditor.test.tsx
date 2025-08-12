@@ -25,7 +25,6 @@ const mockVariables: Variable[] = [
 ];
 
 describe('PropertiesEditor', () => {
-    const onSave = jest.fn();
     const onClose = jest.fn();
     const user = userEvent.setup();
     let mockState: any;
@@ -190,4 +189,4 @@ describe('PropertiesEditor', () => {
 
         expect(onClose).toHaveBeenCalledTimes(1);
     });
-}); 
+});

@@ -1,7 +1,4 @@
 import { useState } from "react";
-// Store imports are no longer directly needed here as service handles them
-// import { useDataStore, CellUpdate } from "@/stores/useDataStore"; 
-import { useVariableStore } from "@/stores/useVariableStore";
 import { 
     CSVProcessingError 
 } from "../importCsvUtils"; 
@@ -34,7 +31,6 @@ export const useImportCsvProcessor = () => {
             
             return result; // Still returning result for potential use, though stores are updated
         } catch (error) {
-            console.error("Error in useImportCsvProcessor:", error);
             if (error instanceof CSVProcessingError) {
                 throw error;
             }
@@ -52,4 +48,4 @@ export const useImportCsvProcessor = () => {
         processCSV,
         isProcessing
     };
-}; 
+};

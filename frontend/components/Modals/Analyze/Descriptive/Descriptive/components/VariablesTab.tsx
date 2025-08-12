@@ -54,10 +54,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // const isStringType = (t?: VariableType): boolean => t === 'STRING'; // reserved if needed later
     const isDateType = (t?: VariableType): boolean => !!t && spssDateTypes.has(t);
 
-    // For Descriptives, only show numeric variables with scale measurement level
-    const filteredAvailableVariables = availableVariables.filter(variable => 
-        isNumericType(variable.type) && 
-        (variable.measure === 'scale' || variable.measure === 'unknown' || !variable.measure)
+    // For Descriptives, show only:
+    // - Numeric variables (any measurement level)
+    // - Date variables with width exactly 10 (dd-mm-yyyy)
+    const filteredAvailableVariables = availableVariables.filter(variable =>
+        (isNumericType(variable.type)) ||
+        (isDateType(variable.type) && variable.width === 10)
     );
 
     const getDisplayName = (variable: Variable) => {
@@ -68,8 +70,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         // Prevent moving from available to selected if it's disabled (numeric scale only)
         if (sourceListId === 'available') {
-            const isValidForDescriptives = isNumericType(variable.type) && 
-                (variable.measure === 'scale' || variable.measure === 'unknown' || !variable.measure);
+            const isValidForDescriptives =
+                isNumericType(variable.type) ||
+                (isDateType(variable.type) && variable.width === 10);
             if (!isValidForDescriptives) {
                 return;
             }

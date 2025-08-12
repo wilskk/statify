@@ -64,8 +64,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             </div>
 
             <div id="explore-additional-stats-section" data-testid="explore-additional-stats-section" className="p-4 border rounded-md space-y-2 relative">
-                {/* M-estimators Checkbox - COMMENTED OUT */}
-                {/* <div className="flex items-center space-x-2">
+                {/* M-estimators Checkbox */}
+                <div className="flex items-center space-x-2">
                     <Checkbox
                         id="mEstimators"
                         checked={showMEstimators}
@@ -75,7 +75,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <Label htmlFor="mEstimators" className="text-sm font-medium cursor-pointer">
                         M-estimators
                     </Label>
-                </div> */}
+                </div>
 
                 {/* Outliers Checkbox */}
                 <div className="flex items-center space-x-2">
@@ -91,8 +91,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     </Label>
                 </div>
 
-                {/* Percentiles Checkbox - COMMENTED OUT */}
-                {/* <div className="flex items-center space-x-2">
+                {/* Percentiles Checkbox */}
+                <div className="flex items-center space-x-2">
                     <Checkbox
                         id="percentiles"
                         checked={showPercentiles}
@@ -102,7 +102,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <Label htmlFor="percentiles" className="text-sm font-medium cursor-pointer">
                         Percentiles
                     </Label>
-                </div> */}
+                </div>
                 <ActiveElementHighlight active={tourActive && currentStep === additionalStatsStep} />
             </div>
         </div>

@@ -1,5 +1,4 @@
 import type React from 'react';
-import dynamic from 'next/dynamic';
 
 // Import statistics components
 import LinearityTest from './LinearityTest';
@@ -44,4 +43,4 @@ export const getStatisticsComponent = (name: string): React.ComponentType<any> |
 };
 
 // Default export for convenience
-export default StatisticsComponents; 
+export default StatisticsComponents;

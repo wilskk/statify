@@ -36,30 +36,17 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // --- Adapt props for VariableListManager ---
     const variableIdKeyToUse: keyof Variable = 'id';
     
-    // Filter to show only NUMERIC variables with scale or unknown measurement in available list
+    // Filter to show only NUMERIC variables in available list (include all measurements for NUMERIC)
     const filteredAvailableVariables = availableVariables.filter(variable => 
-        variable.type === 'NUMERIC' && 
-        (variable.measure === 'scale' || variable.measure === 'unknown')
+        variable.type === 'NUMERIC'
     );
 
     // Show toast notifications for filtered variables
     useEffect(() => {
-        const filteredOutVariables = availableVariables.filter(variable => 
-            variable.type !== 'NUMERIC' || 
-            (variable.measure !== 'scale' && variable.measure !== 'unknown')
-        );
-        
+        const filteredOutVariables = availableVariables.filter(variable => variable.type !== 'NUMERIC');
         if (filteredOutVariables.length > 0) {
-            const nonNumericCount = filteredOutVariables.filter(v => v.type !== 'NUMERIC').length;
-            const nonScaleCount = filteredOutVariables.filter(v => v.type === 'NUMERIC' && v.measure !== 'scale' && v.measure !== 'unknown').length;
-            
-            if (nonNumericCount > 0 || nonScaleCount > 0) {
-                const messages = [];
-                if (nonNumericCount > 0) messages.push(`${nonNumericCount} non-numeric variable${nonNumericCount > 1 ? 's' : ''}`);
-                if (nonScaleCount > 0) messages.push(`${nonScaleCount} non-scale variable${nonScaleCount > 1 ? 's' : ''}`);
-                
-                toast.info(`${messages.join(' and ')} ${messages.length > 1 ? 'were' : 'was'} filtered out from available variables for descriptive analysis`);
-            }
+            const nonNumericCount = filteredOutVariables.length;
+            toast.info(`${nonNumericCount} non-numeric variable${nonNumericCount > 1 ? 's' : ''} ${nonNumericCount > 1 ? 'were' : 'was'} filtered out from available variables for exploratory analysis`);
         }
     }, [availableVariables]);
 
@@ -84,7 +71,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             draggableItems: true,
             droppable: true,
             allowedTypes: ['NUMERIC'],
-            allowedMeasurements: ['scale', 'unknown'],
+            allowedMeasurements: ['unknown', 'nominal', 'ordinal', 'scale'],
         },
         {
             id: 'factor',
@@ -94,7 +81,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             draggableItems: true,
             droppable: true,
             allowedTypes: ['NUMERIC'],
-            allowedMeasurements: ['scale', 'unknown'],
+            allowedMeasurements: ['unknown', 'nominal', 'ordinal', 'scale'],
         }
     ];
 

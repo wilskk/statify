@@ -205,6 +205,56 @@ describe('useDescriptivesAnalysis', () => {
         expect(result.current.isCalculating).toBe(false);
     });
     
+    it('omits numeric-only /STATISTICS when only date variables are selected', async () => {
+        const dateVar: Variable = { name: 'date1', label: 'Date 1', columnIndex: 0, type: 'DATE', tempId: 'd1', width: 10, decimals: 0, values: [], missing: {}, align: 'left', measure: 'scale', role: 'input', columns: 10 } as any;
+
+        // Provide a data matrix containing a single date string column
+        mockedUseAnalysisData.mockReturnValueOnce({ data: [['01-01-2020']], weights: null });
+
+        const displayStatistics = {
+            mean: true,
+            sum: true,
+            stdDev: true,
+            variance: true,
+            range: true,
+            minimum: true,
+            maximum: true,
+            standardError: true,
+            median: true,
+            skewness: true,
+            kurtosis: true,
+        };
+
+        const { result } = renderHook(() => useDescriptivesAnalysis({
+            selectedVariables: [dateVar],
+            displayStatistics,
+            saveStandardized: false,
+            displayOrder: 'variableList',
+            onClose: mockOnClose,
+        }));
+
+        await act(async () => {
+            await result.current.runAnalysis();
+        });
+
+        const mockWorkerResult = {
+            status: 'success',
+            variableName: 'date1',
+            results: { variable: dateVar, stats: { N: 1, Missing: 0, Valid: 1 } }
+        };
+
+        await act(async () => {
+            workerOnMessage({ data: mockWorkerResult });
+        });
+
+        expect(mockAddLog).toHaveBeenCalled();
+        const logArg = mockAddLog.mock.calls[0][0];
+        const logText: string = logArg.log;
+        const statLine = logText.split('\n').find(l => l.trim().startsWith('/STATISTICS=')) || '';
+        expect(statLine).not.toMatch(/MEAN|SUM|STDDEV|VARIANCE|RANGE|SKEWNESS|KURTOSIS|SEMEAN/);
+        expect(statLine).toMatch(/\/STATISTICS=MIN MAX MEDIAN/);
+    });
+    
     it('should handle critical worker instantiation errors', async () => {
         const { result } = renderTestHook();
         

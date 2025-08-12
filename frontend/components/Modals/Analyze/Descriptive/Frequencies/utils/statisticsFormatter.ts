@@ -1,5 +1,6 @@
 import type { DescriptiveStatistics, FrequenciesResult } from '../types';
 import { spssDateTypes } from '@/types/Variable';
+import { spssSecondsToDateString } from '@/lib/spssDateConverter';
 
 // Konstanta untuk precision yang konsisten
 const STATS_DECIMAL_PLACES = 2;
@@ -7,6 +8,16 @@ const STATS_DECIMAL_PLACES = 2;
 // Helper function to check if a variable is a date type
 const isDateVariable = (variable: any): boolean => {
     return variable?.type && spssDateTypes.has(variable.type);
+};
+
+// Helper to format SPSS seconds or string dates to dd-mm-yyyy
+const formatDateValue = (value: any): string => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        const s = spssSecondsToDateString(value);
+        return s ?? '';
+    }
+    if (typeof value === 'string') return value;
+    return '';
 };
 
 /**
@@ -64,12 +75,22 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         const row: any = { rowHeader: [config.name] };
         variableNames.forEach(name => {
             const variable = statsResults.find(r => r.variable.name === name)?.variable;
+            // Primary value from stats
+            let value: any = (statsMap.get(name) as any)?.[config.key];
+            // Fallback: if Median missing, use Percentiles['50']
+            if ((value === undefined || value === null) && config.key === 'Median') {
+                const p = statsMap.get(name)?.Percentiles as any;
+                value = p?.[50] ?? p?.['50'];
+            }
             if (isDateVariable(variable)) {
-                // For date variables, don't show numerical statistics like Mean, Median, SE Mean
-                row[name] = '';
+                // Show Median for date variables; keep Mean/SE Mean hidden
+                if (config.key === 'Median') {
+                    row[name] = formatDateValue(value);
+                } else {
+                    row[name] = '';
+                }
             } else {
-                const value = (statsMap.get(name) as any)?.[config.key];
-                row[name] = typeof value === 'number' ? value.toFixed(config.precision) : value ?? '';
+                row[name] = typeof value === 'number' ? value.toFixed(config.precision) : (value ?? '');
             }
         });
         rows.push(row);
@@ -81,12 +102,12 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         const variable = statsResults.find(r => r.variable.name === name)?.variable;
         const modes = statsMap.get(name)?.Mode;
         if (modes && Array.isArray(modes) && modes.length > 0) {
+            const first = modes[0] as unknown;
             if (isDateVariable(variable)) {
-                // For date variables, show mode without decimal formatting
-                modeRow[name] = modes[0] + (modes.length > 1 ? '<sup>a</sup>' : '');
+                // For date variables, format numeric seconds to dd-mm-yyyy; pass through strings
+                modeRow[name] = formatDateValue(first) + (modes.length > 1 ? '<sup>a</sup>' : '');
             } else {
                 // For numeric variables, format with decimals; otherwise, show as-is (string/value-label)
-                const first = modes[0] as unknown;
                 modeRow[name] = (typeof first === 'number'
                     ? first.toFixed(STATS_DECIMAL_PLACES)
                     : String(first)) + (modes.length > 1 ? '<sup>a</sup>' : '');
@@ -140,11 +161,12 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
             const childRow: any = { rowHeader: [null, level.toString()] };
             variableNames.forEach(name => {
                 const variable = statsResults.find(r => r.variable.name === name)?.variable;
+                const value = statsMap.get(name)?.Percentiles?.[level];
                 if (isDateVariable(variable)) {
-                    // For date variables, don't show percentiles as they are not meaningful
-                    childRow[name] = '.';
+                    // Show date percentiles (25, 50, 75) as dd-mm-yyyy
+                    const formatted = formatDateValue(value);
+                    childRow[name] = formatted || '.';
                 } else {
-                    const value = statsMap.get(name)?.Percentiles?.[level];
                     childRow[name] = typeof value === 'number' ? value.toFixed(STATS_DECIMAL_PLACES) : '.';
                 }
             });

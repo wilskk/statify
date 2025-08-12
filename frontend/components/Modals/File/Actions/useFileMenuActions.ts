@@ -18,30 +18,30 @@ interface FileActionPayload {
 }
 
 export const useFileMenuActions = () => {
-    const { openModal } = useModal();
+    const { openModal: _openModal } = useModal();
     const router = useRouter();
 
-    const handleAction = async ({ actionType, data }: FileActionPayload) => {
+    const handleAction = async ({ actionType, data: _data }: FileActionPayload) => {
         switch (actionType) {
             case "New":
                 await useDataStore.getState().resetData();
                 await useVariableStore.getState().resetVariables();
                 await useMetaStore.getState().resetMeta();
                 useResultStore.getState().clearAll();
-                console.log("New session started. Data, variables, and metadata reset.");
+                // New session started. Data, variables, and metadata reset.
                 break;
             case "Save":
                 // Explicitly save the current state of all relevant stores
                 try {
-                    console.log("Explicit save action triggered.");
+                    // Explicit save action triggered.
                     // Assuming existence of explicit save functions in stores
                     await useMetaStore.getState().saveMeta();
                     await useVariableStore.getState().saveVariables();
                     await useDataStore.getState().saveData();
-                    console.log("All stores saved successfully.");
+                    // All stores saved successfully.
                     // Add user feedback (e.g., toast notification)
-                } catch (error) {
-                    console.error("Error during explicit save action:", error);
+                } catch (_error) {
+                    // Error during explicit save action
                     alert("An error occurred while saving data. Please check the console.");
                 }
                 break;
@@ -141,9 +141,9 @@ export const useFileMenuActions = () => {
                     const savFileData = { data: transformedData, variables: transformedVariables };
                     const blob = await createSavFile(savFileData);
                     downloadBlobAsFile(blob, "data.sav");
-                } catch (error) {
-                    console.error(`Error during ${actionType} action:`, error);
-                    alert(`Terjadi kesalahan saat menyimpan file .sav (${actionType}). Error: ${error instanceof Error ? error.message : String(error)}`);
+                } catch (_error) {
+                    // Error during action
+                    alert(`Terjadi kesalahan saat menyimpan file .sav (${actionType}). Error: ${_error instanceof Error ? _error.message : String(_error)}`);
                 }
                 break;
 
@@ -153,17 +153,17 @@ export const useFileMenuActions = () => {
                     await useVariableStore.getState().resetVariables();
                     await useMetaStore.getState().resetMeta();
                     await useResultStore.getState().clearAll();
-                    console.log("Exiting application. All data cleared.");
+                    // Exiting application. All data cleared.
                     router.push('/');
-                } catch (error) {
-                    console.error("Error during Exit action while resetting stores:", error);
+                } catch (_error) {
+                    // Error during Exit action while resetting stores
                     alert("An error occurred while clearing data before exiting. Please try again.");
                 }
                 break;
             default:
-                console.warn("Unknown file action:", actionType);
+                // Unknown file action
         }
     };
 
     return { handleAction };
-}; 
+};

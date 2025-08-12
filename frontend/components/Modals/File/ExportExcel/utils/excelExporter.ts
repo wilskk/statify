@@ -26,7 +26,7 @@ export const generateExcelWorkbook = (
         dataSheetData.push(variables.map(v => v.name));
     }
     data.forEach(row => {
-        const dataRow = variables.map((variable, index) => row[variable.columnIndex] ?? (options.includeDataLabels ? "SYSMIS" : ""));
+        const dataRow = variables.map((variable, _index) => row[variable.columnIndex] ?? (options.includeDataLabels ? "SYSMIS" : ""));
         dataSheetData.push(dataRow);
     });
 
@@ -74,4 +74,4 @@ export const generateExcelWorkbook = (
     }
 
     return wb;
-}; 
+};

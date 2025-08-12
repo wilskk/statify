@@ -10,7 +10,7 @@ import {
 } from "../importClipboard.utils";
 
 export const useImportClipboardProcessor = () => {
-    const { setData } = useDataStore();
+    const { setData: _setData } = useDataStore();
     const { overwriteAll } = useVariableStore();
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -28,10 +28,8 @@ export const useImportClipboardProcessor = () => {
             let parsedDataResult: string[][];
             
             if (options.excelProcessedData && options.excelProcessedData.length > 0) {
-                console.log('Using pre-processed data from Excel-style parser');
                 parsedDataResult = options.excelProcessedData;
             } else {
-                console.log('Starting Excel-style Text to Columns processing...');
                 const currentDelimiter = getDelimiterCharacter(options);
                 const excelParsedResult = excelStyleTextToColumns(text, {
                     delimiterType: 'delimited',
@@ -42,7 +40,6 @@ export const useImportClipboardProcessor = () => {
                     detectDataTypes: options.detectDataTypes,
                     hasHeaderRow: options.firstRowAsHeader
                 });
-                console.log('Excel-style Text to Columns processing complete.');
                 parsedDataResult = excelParsedResult;
             }
             
@@ -110,7 +107,6 @@ export const useImportClipboardProcessor = () => {
             return { headers, data: dataRows };
             
         } catch (error) {
-            console.error("Error processing clipboard data:", error);
             throw error;
         } finally {
             setIsProcessing(false);
@@ -123,4 +119,4 @@ export const useImportClipboardProcessor = () => {
         excelStyleTextToColumns,
         parsePreviewData,
     };
-}; 
+};

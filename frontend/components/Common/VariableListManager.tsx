@@ -2,7 +2,7 @@ import type { FC} from 'react';
 import React, { useState, useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getVariableIcon as defaultGetVariableIcon } from './iconHelper';
-import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft, ArrowBigRight } from 'lucide-react';
+import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigLeft, ArrowBigRight } from 'lucide-react';
 import type { Variable } from "@/types/Variable";
 import { useMobile } from "@/hooks/useMobile";
 

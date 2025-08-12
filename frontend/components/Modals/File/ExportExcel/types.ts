@@ -1,6 +1,3 @@
-import { Variable } from "@/types/Variable";
-import { DataRow } from "@/types/Data";
-import { Meta } from "@/types/Meta";
 import type { ContainerType } from "@/types/ui";
 
 // Options for the core Excel generation utility
@@ -41,4 +38,4 @@ export interface ExportExcelProps {
     onClose: () => void;
     containerType?: ContainerType; // Diterima dari ModalRenderer
     // exportOptions, isExporting, dan handler akan datang dari hook internal
-} 
+}

@@ -111,6 +111,13 @@ export function formatDescriptiveTableOld(
   // 1. Build Multi-level Column Headers (SPSS-style)
   // ------------------------------------------------------------------
   const columnHeaders: TableColumnHeader[] = [{ header: "" }];
+  // Hanya tampilkan statistik numerik murni jika ada setidaknya 1 variabel numerik non-date
+  const hasNumericNonDate = data.some(({ variable }) => {
+    const t = variable.type as any;
+    if (!t) return true; // asumsi numerik jika tidak diketahui
+    if (spssDateTypes.has(t)) return false;
+    return t !== 'STRING';
+  });
 
   const addSingleStatHeader = (label: string, key: string) => {
     columnHeaders.push({ header: label, children: [{ header: "Statistic", key }] });
@@ -122,17 +129,25 @@ export function formatDescriptiveTableOld(
   addSingleStatHeader("Valid", "Valid");
 
   // Detect stats that depend on measurement (Mode, Percentiles)
-  const includeMode = data.some(({ stats }) => stats && (stats as any).Mode !== undefined);
-  const includePercentiles = data.some(({ stats }) => stats && (((stats as any)["25th Percentile"]) !== undefined || ((stats as any)["75th Percentile"]) !== undefined));
+  // Tampilkan kolom Mode hanya bila ada variabel non-date yang menyediakannya
+  const includeMode = data.some(({ variable, stats }) => {
+    const isDate = variable.type ? spssDateTypes.has(variable.type) : false;
+    return !isDate && !!(stats && (stats as any).Mode !== undefined);
+  });
+  // Tampilkan kolom persentil jika ada setidaknya satu variabel yang menyediakannya
+  const includePercentiles = data.some(({ stats }) =>
+    !!(stats && (((stats as any)["25th Percentile"]) !== undefined || ((stats as any)["75th Percentile"]) !== undefined))
+  );
   if (includeMode) addSingleStatHeader("Mode", "Mode");
 
-  if (displayStatistics.range) addSingleStatHeader("Range", "Range");
+  if (displayStatistics.range && hasNumericNonDate) addSingleStatHeader("Range", "Range");
   if (displayStatistics.minimum) addSingleStatHeader("Minimum", "Minimum");
   if (displayStatistics.maximum) addSingleStatHeader("Maximum", "Maximum");
-  if (displayStatistics.sum) addSingleStatHeader("Sum", "Sum");
+  if (displayStatistics.median) addSingleStatHeader("Median", "Median");
+  if (displayStatistics.sum && hasNumericNonDate) addSingleStatHeader("Sum", "Sum");
 
   // Mean (Statistic + Std. Error when requested)
-  if (displayStatistics.mean) {
+  if (displayStatistics.mean && hasNumericNonDate) {
     const meanChildren: TableColumnHeader[] = [{ header: "Statistic", key: "Mean" }];
     if (displayStatistics.standardError) {
       meanChildren.push({ header: "Std. Error", key: "SEMean" });
@@ -140,11 +155,11 @@ export function formatDescriptiveTableOld(
     columnHeaders.push({ header: "Mean", children: meanChildren });
   }
 
-  if (displayStatistics.stdDev) addSingleStatHeader("Std. Deviation", "StdDev");
-  if (displayStatistics.variance) addSingleStatHeader("Variance", "Variance");
+  if (displayStatistics.stdDev && hasNumericNonDate) addSingleStatHeader("Std. Deviation", "StdDev");
+  if (displayStatistics.variance && hasNumericNonDate) addSingleStatHeader("Variance", "Variance");
 
   // Skewness & Kurtosis (each may include Std. Error)
-  if (displayStatistics.skewness) {
+  if (displayStatistics.skewness && hasNumericNonDate) {
     const skewChildren: TableColumnHeader[] = [{ header: "Statistic", key: "Skewness" }];
     if (displayStatistics.skewness) {
       skewChildren.push({ header: "Std. Error", key: "SESkewness" });
@@ -152,7 +167,7 @@ export function formatDescriptiveTableOld(
     columnHeaders.push({ header: "Skewness", children: skewChildren });
   }
 
-  if (displayStatistics.kurtosis) {
+  if (displayStatistics.kurtosis && hasNumericNonDate) {
     const kurtChildren: TableColumnHeader[] = [{ header: "Statistic", key: "Kurtosis" }];
     if (displayStatistics.kurtosis) {
       kurtChildren.push({ header: "Std. Error", key: "SEKurtosis" });
@@ -207,7 +222,7 @@ export function formatDescriptiveTableOld(
     row.N = stats.N;
     row.Missing = stats.Missing;
     if ((stats as any).Valid !== undefined) row.Valid = (stats as any).Valid;
-    if (includeMode) {
+    if (includeMode && !isDateType) {
       const modeVal: any = (stats as any).Mode;
       if (Array.isArray(modeVal)) {
         row.Mode = modeVal.length === 0 ? null : modeVal.map(v => String(v)).join(', ');
@@ -217,20 +232,23 @@ export function formatDescriptiveTableOld(
     }
     
     // Tetapkan setiap stat secara eksplisit untuk keamanan tipe
-    if (displayStatistics.range) row.Range = format(stats.Range, 'number');
+    // Catatan: Untuk variabel tanggal, kita sengaja MENYEMBUNYIKAN statistik numerik murni
+    // (Sum, Mean, S.E. Mean, StdDev, Variance, Skewness, Kurtosis, Range)
+    // dan hanya menampilkan yang relevan: Min/Max, Median, dan Persentil.
+    if (displayStatistics.range && !isDateType) row.Range = format(stats.Range, 'number');
     if (displayStatistics.minimum) row.Minimum = format(stats.Minimum, 'date');
     if (displayStatistics.maximum) row.Maximum = format(stats.Maximum, 'date');
-    if (displayStatistics.sum) row.Sum = format(stats.Sum, 'number');
-    if (displayStatistics.mean) row.Mean = format(stats.Mean, 'date');
-    if (displayStatistics.standardError) row.SEMean = format(stats.SEMean, 'number');
+    if (displayStatistics.sum && !isDateType) row.Sum = format(stats.Sum, 'number');
+    if (displayStatistics.mean && !isDateType) row.Mean = format(stats.Mean, 'number');
+    if (displayStatistics.standardError && !isDateType) row.SEMean = format(stats.SEMean, 'number');
     if (displayStatistics.median) row.Median = format(stats.Median, 'date');
-    if (displayStatistics.stdDev) row.StdDev = format(stats.StdDev, 'number');
-    if (displayStatistics.variance) row.Variance = format(stats.Variance, 'number');
-    if (displayStatistics.skewness) {
+    if (displayStatistics.stdDev && !isDateType) row.StdDev = format(stats.StdDev, 'number');
+    if (displayStatistics.variance && !isDateType) row.Variance = format(stats.Variance, 'number');
+    if (displayStatistics.skewness && !isDateType) {
       row.Skewness = format(stats.Skewness, 'number');
       row.SESkewness = format(stats.SESkewness, 'number');
     }
-    if (displayStatistics.kurtosis) {
+    if (displayStatistics.kurtosis && !isDateType) {
       row.Kurtosis = format(stats.Kurtosis, 'number');
       row.SEKurtosis = format(stats.SEKurtosis, 'number');
     }

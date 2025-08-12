@@ -42,10 +42,7 @@ export const ExportCsv: FC<ExportCsvProps> = ({
         endTour 
     } = useTourGuide(containerType);
 
-    // Helper function untuk mencari step index berdasarkan targetId (sesuai panduan)
-    const getStepIndex = useCallback((targetId: string): number => {
-        return tourSteps.findIndex(step => step.targetId === targetId);
-    }, [tourSteps]);
+
 
     // Helper function untuk mengecek apakah step sedang aktif (sesuai panduan)
     const isStepActive = useCallback((targetId: string): boolean => {

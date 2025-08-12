@@ -11,6 +11,7 @@ import { useZScoreProcessing } from './useZScoreProcessing';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
+import { spssDateTypes } from '@/types/Variable';
 
 export const useDescriptivesAnalysis = ({
     selectedVariables,
@@ -142,8 +143,14 @@ export const useDescriptivesAnalysis = ({
                         kurtosis: "KURTOSIS",
                     };
 
+                    // Gate numeric-only stats when ALL selected variables are date types
+                    const hasNonDate = selectedVariables.some(v => (v.type ? !spssDateTypes.has(v.type) : true));
+                    const numericOnlyKeys: (keyof typeof displayStatistics)[] = [
+                        'mean','sum','stdDev','variance','range','skewness','kurtosis','standardError'
+                    ];
                     const requestedStats = (Object.keys(displayStatistics) as (keyof typeof displayStatistics)[])
                         .filter(key => displayStatistics[key])
+                        .filter(key => hasNonDate || !numericOnlyKeys.includes(key))
                         .map(key => statKeywordMap[key]);
 
                     if (requestedStats.length > 0) {
