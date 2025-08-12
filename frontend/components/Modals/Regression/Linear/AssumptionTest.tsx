@@ -654,52 +654,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
                         console.error('Failed to create/save Q-Q Plot chart:', qqErr);
                     }
 
-                    // Generate Q-Q Plot for each independent variable
-                    try {
-                        for (let i = 0; i < selectedIndependentVariables.length; i++) {
-                            const variable = selectedIndependentVariables[i];
-                            const displayName = variable.label && variable.label.trim() !== '' ? variable.label : variable.name;
-                            const values: number[] = (filteredIndependentData?.[i] || [])
-                              .map((v: any) => Number(v))
-                              .filter((v: any) => typeof v === 'number' && !isNaN(v));
-
-                            if (!values || values.length === 0) continue;
-
-                            const processedInd = DataProcessingService.processDataForChart({
-                                chartType: 'Q-Q Plot',
-                                rawData: values.map((v) => [v]),
-                                variables: [{ name: variable.name, type: 'NUMERIC' }],
-                                chartVariables: { y: [variable.name] },
-                                processingOptions: { filterEmpty: true },
-                            });
-
-                            const qqChartJSONInd = ChartService.createChartJSON({
-                                chartType: 'Q-Q Plot',
-                                chartData: processedInd.data,
-                                chartVariables: { y: [variable.name] },
-                                chartMetadata: {
-                                    title: `Normal Q-Q Plot of ${displayName}`,
-                                    subtitle: 'Testing normality assumption',
-                                    description: 'Normal Q-Q plot showing the relationship between theoretical and sample quantiles',
-                                },
-                                chartConfig: {
-                                    axisLabels: {
-                                        x: 'Theoretical Quantiles',
-                                        y: 'Sample Quantiles',
-                                    },
-                                },
-                            });
-
-                            await addStatistic(analyticId, {
-                                title: `Normal Q-Q Plot of ${displayName}`,
-                                output_data: JSON.stringify(qqChartJSONInd),
-                                components: 'Chart',
-                                description: 'Normal Q-Q plot showing the relationship between theoretical and sample quantiles',
-                            });
-                        }
-                    } catch (indErr) {
-                        console.error('Failed to create/save independent variables Q-Q Plots:', indErr);
-                    }
+                    // Removed per requirement: do not generate Q-Q plots for each independent variable
                     setNormalityTestSuccess(true);
                 }
 
