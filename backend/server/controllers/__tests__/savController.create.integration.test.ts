@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import request from 'supertest';
 
 // Mock sav-writer to avoid real file generation and to create a dummy file for download
@@ -18,24 +17,6 @@ jest.mock('sav-writer', () => ({
 import { app } from '../../app';
 
 describe('POST /api/sav/create (integration)', () => {
-  const tempDir = path.join(__dirname, '..', '..', '..', 'temp_test_integration');
-
-  beforeAll(() => {
-    process.env.TEMP_DIR = tempDir;
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-  });
-
-  afterAll(() => {
-    // Cleanup
-    try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    } catch {
-      void 0;
-    }
-    delete process.env.TEMP_DIR;
-  });
 
   it('should validate payload and return a downloaded .sav file, then remove temp file', async () => {
     const payload = {

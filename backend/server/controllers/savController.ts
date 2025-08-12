@@ -7,7 +7,7 @@ import path from 'path';
 import { saveToFile, VariableType, VariableAlignment, VariableMeasure } from 'sav-writer';
 import { z } from 'zod';
 
-import { MAX_UPLOAD_SIZE_MB, getTempDir } from '../config/constants';
+import { MAX_UPLOAD_SIZE_MB, getTempDir, DEBUG_SAV } from '../config/constants';
 import * as savService from '../services/savService'; // Import the service
 import type { VariableInput, TransformedVariable } from '../types/sav.types';
 
@@ -220,7 +220,6 @@ export const createSavFile = (req: Request, res: Response): void => {
         return;
     }
     const { data, variables } = parsed.data;
-    const DEBUG_SAV = ['1','true','yes','on'].includes(String(process.env.DEBUG_SAV).toLowerCase());
     if (DEBUG_SAV) {
         console.warn('Received SAV writer request:', { data, variables });
     }
