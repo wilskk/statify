@@ -776,7 +776,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   };
 
   useEffect(() => {
-    if (parsedData && parsedData.charts && Array.isArray(parsedData.charts)) {
+    if (parsedData?.charts && Array.isArray(parsedData.charts)) {
       const nodes = parsedData.charts.map(
         (chartData: ChartData, index: number) => {
           const {
@@ -1577,10 +1577,10 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
         >
           <div
             className={
-              "absolute top-2 right-2 flex gap-2 z-10 transition-opacity chart-actions " +
-              (actionsHidden[id]
+              `absolute top-2 right-2 flex gap-2 z-10 transition-opacity chart-actions ${ 
+              actionsHidden[id]
                 ? "opacity-0"
-                : "opacity-0 group-hover:opacity-100 pointer-events-auto")
+                : "opacity-0 group-hover:opacity-100 pointer-events-auto"}`
             }
             onMouseEnter={() => {
               if (actionTimers.current[id])

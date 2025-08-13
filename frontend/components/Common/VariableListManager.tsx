@@ -444,7 +444,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
     // --- Rendering Logic ---
     const renderVariableItem = (variable: Variable, listId: string, index: number) => {
-        const varRawId = variable[variableIdKey] ?? (variable as any).columnIndex ?? (variable as any).aggregateId ?? (variable as any).name;
+        const extra = variable as Partial<{ columnIndex: unknown; aggregateId: unknown; name: unknown }>;
+        const varRawId = variable[variableIdKey] ?? extra.columnIndex ?? extra.aggregateId ?? extra.name;
         const varId = varRawId !== undefined && varRawId !== null ? String(varRawId) : undefined;
         if (varId === undefined) {
             console.warn("Variable missing identifier for rendering:", variable);
@@ -644,6 +645,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     // --- Main Return with Responsive Layout ---
     // Only use flex column layout if mobile AND portrait orientation
     const useVerticalLayout = isMobile && isPortrait;
+    const availableList = allLists.find(l => l.id === 'available');
 
     if (useVerticalLayout) {
         return (
@@ -658,7 +660,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                     id="available-variables-section"
                     data-testid="available-variables-section"
                 >
-                    {renderList(allLists.find(l => l.id === 'available')!)}
+                    {availableList ? renderList(availableList) : null}
                 </div>
                 
                 {/* Central Arrow Button for Mobile */}
@@ -718,7 +720,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     const arrowButtons: Record<string, ArrowInfo> = {};
     
     if (isFromAvailable && eligibleTargets.length > 0) {
-        const variableToMove = allLists.find(l => l.id === 'available')?.variables.find(
+        const variableToMove = availableList?.variables.find(
             v => String(v[variableIdKey]) === highlightedVariable?.id
         );
         
@@ -782,7 +784,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         }
     }
 
-    // Pendekatan baru dengan layout 2 kolom dan tombol di antara kolom
+    // Desktop layout
     return (
         <div 
             className="flex gap-8 items-start relative"
@@ -795,7 +797,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 id="available-variables-column"
                 data-testid="available-variables-column"
             >
-                {renderList(allLists.find(l => l.id === 'available')!)}
+                {availableList ? renderList(availableList) : null}
                 
                 <div 
                     className="flex flex-col mt-2 space-y-2"

@@ -1,415 +1,775 @@
-# File Modal Components Documentation
+# File Operations Modals - Import, Export, and File Management
 
-## Overview
+Direktori `File/` berisi modal system untuk file operations dalam Statify. Modals ini menangani critical file management tasks termasuk data import/export, file format conversion, dan comprehensive data handling workflows.
 
-This directory contains all file-related modal components for handling data import/export operations. Each component follows a consistent architecture pattern with separated concerns for UI, business logic, and utilities.
+## 📁 Struktur Arsitektur
 
-## Component Architecture
-
-### Core Design Pattern
-All file modal components follow a standardized structure:
-- **Hooks**: Business logic and state management
-- **Services**: API interactions and external service calls
-- **Utils**: Pure functions for data processing and transformations
-- **Types**: TypeScript interfaces and type definitions
-- **Tests**: Unit tests for each component layer
-
-### Shared Dependencies
-- **State Management**: Zustand stores for data, variables, and metadata
-- **UI Framework**: React with TypeScript
-- **Styling**: Tailwind CSS with consistent design tokens
-- **Testing**: Jest and React Testing Library
-
-## Component Details
-
-### 1. ExampleDataset
-**Purpose**: Provides pre-loaded example datasets for user testing and exploration.
-
-**Algorithm**:
-1. **Data Loading**: Fetches `.sav` files from `/exampleData/` directory
-2. **File Processing**: Uses existing SPSS file processing pipeline
-3. **State Integration**: Updates Zustand stores with new data
-4. **Metadata**: Sets project metadata including filename and creation date
-
-**Key Files**:
-- `example-datasets.ts`: Dataset definitions and metadata
-- `services/services.ts`: File fetching and processing logic
-- `hooks/useExampleDatasetLogic.ts`: State management and user interactions
-
-### 2. ExportCsv
-**Purpose**: Exports current dataset to CSV format with configurable options.
-
-**Algorithm**:
-1. **Data Validation**: Checks for valid data availability
-2. **Option Processing**: Handles delimiter, headers, and formatting preferences
-3. **File Generation**: Creates CSV content using utility functions
-4. **Download Trigger**: Initiates browser download with proper MIME type
-
-**Key Options**:
-- Delimiter selection (comma, tab, semicolon)
-- Header inclusion toggle
-- Variable properties inclusion
-- String quoting preferences
-- Encoding selection (UTF-8, etc.)
-
-**Key Files**:
-- `hooks/useExportCsv.ts`: Main export logic and state management
-- `utils/exportCsvUtils.ts`: CSV content generation algorithms
-- `types.ts`: Type definitions for export options
-
-### 3. ExportExcel
-**Purpose**: Exports current dataset to Excel format with advanced formatting options.
-
-**Algorithm**:
-1. **Data Synchronization**: Fetches latest data from stores
-2. **Workbook Creation**: Uses SheetJS (XLSX) library for Excel generation
-3. **Multi-sheet Support**: Creates separate sheets for data, variables, and metadata
-4. **Styling Application**: Applies formatting based on user preferences
-
-**Key Features**:
-- Multiple worksheet generation
-- Variable properties sheet
-- Metadata inclusion
-- Header styling options
-- Data label formatting
-
-**Key Files**:
-- `hooks/useExportExcelLogic.ts`: Export orchestration logic
-- `utils/excelExporter.ts`: Excel workbook generation utilities
-- `utils/constants.ts`: Default values and configuration
-
-### 4. ImportClipboard
-**Purpose**: Imports data directly from system clipboard with parsing capabilities.
-
-**Algorithm**:
-1. **Text Parsing**: Analyzes clipboard content structure
-2. **Delimiter Detection**: Automatically detects common delimiters
-3. **Data Validation**: Validates parsed data structure
-4. **Configuration**: Allows user to adjust parsing parameters
-
-**Parsing Strategy**:
-- Tab-delimited detection
-- CSV format recognition
-- Fixed-width data handling
-- Error handling for malformed data
-
-**Key Files**:
-- `hooks/useImportClipboardLogic.ts`: Clipboard handling and parsing logic
-- `services/clipboardParser.ts`: Text parsing algorithms
-- `types.ts`: Stage management and data structures
-
-### 5. ImportCsv
-**Purpose**: Imports CSV files with comprehensive parsing and configuration options.
-
-**Algorithm**:
-1. **File Reading**: Uses FileReader API for text file processing
-2. **Content Validation**: Validates file content and structure
-3. **Parsing Configuration**: Allows delimiter and encoding selection
-4. **Data Integration**: Updates application state with imported data
-
-**Processing Pipeline**:
-- File type validation
-- Content reading with encoding detection
-- Delimiter configuration
-- Data matrix generation
-
-**Key Files**:
-- `hooks/useImportCsvFileReader.ts`: File reading and validation
-- `hooks/useImportCsvProcessor.ts`: Data processing pipeline
-- `utils/importCsvUtils.ts`: CSV parsing algorithms
-
-### 6. ImportExcel
-**Purpose**: Imports Excel files with worksheet selection and range configuration.
-
-**Algorithm**:
-1. **File Analysis**: Uses web worker for Excel file processing
-2. **Sheet Detection**: Identifies available worksheets
-3. **Range Selection**: Allows user to specify data ranges
-4. **Data Extraction**: Extracts data with type preservation
-
-**Worker Architecture**:
-- Off-thread processing for large files
-- Progressive loading indicators
-- Error handling with user feedback
-- Memory-efficient processing
-
-**Key Files**:
-- `hooks/useImportExcelLogic.ts`: Main import orchestration
-- `hooks/useExcelWorker.ts`: Web worker integration
-- `utils/importExcelUtils.ts`: Excel parsing utilities
-
-### 7. OpenSavFile
-**Purpose**: Opens SPSS `.sav` files with full metadata preservation.
-
-**Algorithm**:
-1. **File Validation**: Validates `.sav` file format
-2. **Upload Processing**: Sends file to backend for processing
-3. **Response Handling**: Processes SPSS-specific metadata
-4. **State Integration**: Updates application with SPSS data
-
-**SPSS Features**:
-- Variable metadata preservation
-- Date/time handling with SPSS epoch
-- Label and value label support
-- Missing value handling
-
-**Key Files**:
-- `hooks/useOpenSavFileLogic.ts`: SPSS file handling logic
-- `services/services.ts`: Backend communication
-- `utils/savFileUtils.ts`: SPSS-specific data processing
-
-### 8. Print
-**Purpose**: Generates PDF reports from current dataset with formatting options.
-
-**Algorithm**:
-1. **Data Preparation**: Formats data for PDF generation
-2. **Layout Design**: Creates table layouts with styling
-3. **PDF Generation**: Uses jsPDF library for document creation
-4. **Download Trigger**: Initiates browser download
-
-**Report Features**:
-- Tabular data presentation
-- Variable information inclusion
-- Customizable formatting
-- Professional report styling
-
-**Key Files**:
-- `hooks/usePrintLogic.ts`: Print orchestration logic
-- `services/pdfPrintService.ts`: PDF generation services
-- `utils/printUtils.ts`: Data formatting for print output
-
-## Testing Strategy
-
-### Test Structure
-Each component includes comprehensive test suites:
-
-1. **Component Tests**: UI rendering and user interaction
-2. **Hook Tests**: Business logic and state management
-3. **Service Tests**: API integration and external dependencies
-4. **Utility Tests**: Pure function validation
-
-### Test Coverage Areas
-- File format validation
-- Error handling scenarios
-- User interaction flows
-- Data processing accuracy
-- Performance optimization
-
-## Usage Patterns
-
-### Common Integration Flow
-```typescript
-// Example usage pattern for any file modal
-const { openModal } = useModal();
-
-// Open specific modal
-openModal('importCsv', {
-  onSuccess: (data) => {
-    // Handle successful import
-    console.log('Data imported:', data);
-  },
-  onError: (error) => {
-    // Handle import errors
-    console.error('Import failed:', error);
-  }
-});
+```
+File/
+├── FileRegistry.tsx          # File modal registration system
+├── index.ts                  # Module exports
+│
+├── Export/                   # Data export operations
+│   ├── index.tsx                # Main export modal
+│   ├── README.md               # Export documentation
+│   ├── types.ts                # Export type definitions
+│   ├── __tests__/              # Test files
+│   │   └── index.test.tsx
+│   ├── components/             # UI components
+│   │   ├── ExportContent.tsx       # Main export interface
+│   │   ├── Tour.tsx                # Guided tour component
+│   │   └── __tests__/
+│   │       └── ExportContent.test.tsx
+│   └── hooks/                  # Business logic hooks
+│       ├── useExportForm.ts        # Export form management
+│       └── __test__/
+│           └── useExportForm.test.ts
+│
+├── ImportData/               # Data import operations
+│   ├── index.tsx                # Main import modal
+│   ├── README.md               # Import documentation
+│   ├── types.ts                # Import type definitions
+│   ├── __tests__/              # Test files
+│   │   └── index.test.tsx
+│   ├── components/             # UI components
+│   │   ├── ImportContent.tsx       # Main import interface
+│   │   ├── Tour.tsx                # Guided tour component
+│   │   └── __tests__/
+│   │       └── ImportContent.test.tsx
+│   └── hooks/                  # Business logic hooks
+│       ├── useImportForm.ts        # Import form management
+│       └── __test__/
+│           └── useImportForm.test.ts
+│
+├── ReadDatabase/             # Database reading operations
+│   ├── index.tsx                # Main database modal
+│   ├── README.md               # Database documentation
+│   ├── types.ts                # Database type definitions
+│   ├── __tests__/              # Test files
+│   │   └── index.test.tsx
+│   ├── components/             # UI components
+│   │   ├── DatabaseContent.tsx     # Main database interface
+│   │   ├── Tour.tsx                # Guided tour component
+│   │   └── __tests__/
+│   │       └── DatabaseContent.test.tsx
+│   └── hooks/                  # Business logic hooks
+│       ├── useDatabaseForm.ts      # Database form management
+│       └── __test__/
+│           └── useDatabaseForm.test.ts
+│
+├── ReadTextData/             # Text file reading operations
+│   ├── index.tsx                # Main text import modal
+│   ├── README.md               # Text import documentation
+│   ├── types.ts                # Text import type definitions
+│   ├── __tests__/              # Test files
+│   │   └── index.test.tsx
+│   ├── components/             # UI components
+│   │   ├── TextDataContent.tsx     # Main text import interface
+│   │   ├── Tour.tsx                # Guided tour component
+│   │   └── __tests__/
+│   │       └── TextDataContent.test.tsx
+│   └── hooks/                  # Business logic hooks
+│       ├── useTextImportForm.ts    # Text import form management
+│       └── __test__/
+│           └── useTextImportForm.test.ts
+│
+└── SaveAs/                   # Save operations
+    ├── index.tsx                # Main save modal
+    ├── README.md               # Save documentation
+    ├── types.ts                # Save type definitions
+    ├── __tests__/              # Test files
+    │   └── index.test.tsx
+    ├── components/             # UI components
+    │   ├── SaveAsContent.tsx       # Main save interface
+    │   ├── Tour.tsx                # Guided tour component
+    │   └── __tests__/
+    │       └── SaveAsContent.test.tsx
+    └── hooks/                  # Business logic hooks
+        ├── useSaveAsForm.ts        # Save form management
+        └── __test__/
+            └── useSaveAsForm.test.ts
 ```
 
-### State Management Integration
-All components integrate with Zustand stores:
-- `useDataStore`: Dataset management
-- `useVariableStore`: Variable definitions and metadata
-- `useMetaStore`: Project information and settings
+## 🎯 File Operations Overview
 
-## Development Guidelines
+### Operation Categories
 
-### Adding New File Format Support
-1. Create new directory under `components/Modals/File/`
-2. Implement standardized hook structure
-3. Add service layer for format-specific processing
-4. Include comprehensive test coverage
-5. Update this documentation
+#### **Data Import Operations**
+- **File Import**: Support untuk multiple file formats (.sav, .csv, .xlsx, .txt, .json)
+- **Database Import**: Direct database connections dan SQL queries
+- **Text Import**: Advanced text file parsing dengan custom delimiters
+- **Validation**: Comprehensive data validation dan error detection
 
-### Error Handling Standards
-- User-friendly error messages
-- Console logging for debugging
-- Graceful degradation for edge cases
-- Clear validation feedback
+#### **Data Export Operations**
+- **Format Export**: Export ke multiple formats dengan format-specific options
+- **Filtered Export**: Export selected data subsets atau filtered results
+- **Statistical Export**: Export analysis results dan statistical summaries
+- **Batch Export**: Multiple dataset export capabilities
 
-### Performance Considerations
-- Web worker usage for heavy processing
-- Progressive loading indicators
-- Memory management for large files
-- Efficient state updates
+## 📥 Data Import System
 
-## API Integration
+### Import Data Operations (`ImportData/`)
 
-### Backend Endpoints
-- `/api/upload-sav`: SPSS file processing
-- `/api/parse-excel`: Excel file parsing
-- `/api/process-csv`: CSV file processing
-
-### Error Response Format
-```json
-{
-  "error": "Specific error message",
-  "details": "Additional context",
-  "code": "ERROR_CODE"
+#### Core Features
+```typescript
+interface ImportDataFeatures {
+  // File format support
+  formatSupport: {
+    spssFiles: boolean;      // .sav files
+    csvFiles: boolean;       // .csv files
+    excelFiles: boolean;     // .xlsx, .xls files
+    textFiles: boolean;      // .txt, .dat files
+    jsonFiles: boolean;      // .json files
+    xmlFiles: boolean;       // .xml files
+  };
+  
+  // Import options
+  importOptions: {
+    dataTypeDetection: boolean;
+    headerDetection: boolean;
+    encodingSelection: boolean;
+    delimiterCustomization: boolean;
+    previewMode: boolean;
+    partialImport: boolean;
+  };
+  
+  // Validation features
+  validationFeatures: {
+    dataTypeValidation: boolean;
+    rangeValidation: boolean;
+    completenessCheck: boolean;
+    duplicateDetection: boolean;
+    errorReporting: boolean;
+  };
+  
+  // Advanced features
+  advancedFeatures: {
+    mappingInterface: boolean;
+    transformationRules: boolean;
+    conditionalImport: boolean;
+    progressTracking: boolean;
+    undoSupport: boolean;
+  };
 }
 ```
 
-## Maintenance and Updates
+#### Import Logic Implementation
+```typescript
+interface ImportLogic {
+  // File processing
+  fileProcessing: {
+    fileReader: FileReader;
+    formatDetection: FormatDetector;
+    parsers: {
+      csvParser: CSVParser;
+      excelParser: ExcelParser;
+      textParser: TextParser;
+      spssParser: SPSSParser;
+    };
+  };
+  
+  // Data transformation
+  dataTransformation: {
+    typeConversion: TypeConverter;
+    headerMapping: HeaderMapper;
+    valueTransformation: ValueTransformer;
+    validationEngine: ValidationEngine;
+  };
+  
+  // Import workflow
+  importWorkflow: {
+    fileSelection: FileSelectionStep;
+    formatConfiguration: FormatConfigStep;
+    dataPreview: DataPreviewStep;
+    mappingConfiguration: MappingConfigStep;
+    validation: ValidationStep;
+    importExecution: ImportExecutionStep;
+  };
+}
 
-### Version Control
-- Semantic versioning for API changes
-- Backward compatibility considerations
-- Migration guides for breaking changes
-
-### Documentation Updates
-- Keep this README synchronized with code changes
-- Update test documentation for new features
-- Maintain changelog for significant updates
-
-_Last updated: 2025-07-29_
-
-## Registrasi Fitur
-
-Semua modal dalam kategori ini didaftarkan melalui `FileRegistry.tsx`, yang kemudian digabungkan ke dalam sistem modal utama.
-
----
-
-## 🧪 Unit Testing – Test Suite Index
-
-This section serves as the single entry-point for every **Jest & React-Testing-Library** test that lives inside `components/Modals/File/*`.  If you need to locate where a particular File-modal feature is validated—​or where to place new coverage—​start here.
-
-### 🗂️ Directory Map
-
-```text
-components/Modals/File/
-├─ ImportCsv/
-│  └─ __tests__/
-├─ ImportExcel/
-│  └─ __tests__/
-├─ ImportClipboard/
-│  └─ __tests__/
-├─ ExportCsv/
-│  └─ __tests__/
-├─ ExportExcel/
-│  └─ __tests__/
-├─ ExampleDataset/
-│  └─ __tests__/
-├─ OpenSavFile/
-│  └─ __tests__/
-└─ Print/
-   └─ __tests__/
+// useImportForm.ts - Core import hook
+interface ImportFormHook {
+  // Form state
+  formState: {
+    selectedFile: File | null;
+    fileFormat: FileFormat;
+    importOptions: ImportOptions;
+    mappingConfiguration: MappingConfig;
+    validationResults: ValidationResult[];
+  };
+  
+  // File operations
+  fileOperations: {
+    selectFile: (file: File) => void;
+    detectFormat: (file: File) => Promise<FileFormat>;
+    previewData: (file: File, options: ImportOptions) => Promise<PreviewData>;
+    validateFile: (file: File) => Promise<ValidationResult>;
+  };
+  
+  // Import operations
+  importOperations: {
+    configureImport: (config: ImportConfig) => void;
+    executeImport: () => Promise<ImportResult>;
+    cancelImport: () => void;
+    retryImport: (errorCorrections: ErrorCorrection[]) => Promise<ImportResult>;
+  };
+  
+  // Progress tracking
+  progressTracking: {
+    importProgress: number;
+    currentStep: ImportStep;
+    estimatedTimeRemaining: number;
+    isImporting: boolean;
+  };
+}
 ```
 
-Each `__tests__` folder follows a common convention:
+#### File Format Handlers
+```typescript
+interface FileFormatHandlers {
+  // SPSS file handler
+  spssHandler: {
+    readMetadata: (file: File) => Promise<SPSSMetadata>;
+    readData: (file: File) => Promise<SPSSData>;
+    readValueLabels: (file: File) => Promise<ValueLabels>;
+    readVariableLabels: (file: File) => Promise<VariableLabels>;
+  };
+  
+  // CSV file handler
+  csvHandler: {
+    detectDelimiter: (file: File) => Promise<string>;
+    detectEncoding: (file: File) => Promise<string>;
+    parseHeaders: (file: File, options: CSVOptions) => Promise<string[]>;
+    parseData: (file: File, options: CSVOptions) => Promise<CSVData>;
+  };
+  
+  // Excel file handler
+  excelHandler: {
+    getSheetNames: (file: File) => Promise<string[]>;
+    readSheet: (file: File, sheetName: string) => Promise<ExcelData>;
+    detectDataRange: (file: File, sheetName: string) => Promise<Range>;
+    parseFormulas: (file: File, sheetName: string) => Promise<Formula[]>;
+  };
+  
+  // Text file handler
+  textHandler: {
+    detectFormat: (file: File) => Promise<TextFormat>;
+    parseFixedWidth: (file: File, columnSpecs: ColumnSpec[]) => Promise<TextData>;
+    parseDelimited: (file: File, delimiter: string) => Promise<TextData>;
+    detectColumnTypes: (data: TextData) => Promise<ColumnType[]>;
+  };
+}
+```
 
-1. **Component tests** target the orchestrator / UI surface.
-2. **Hook tests** isolate business logic & state management.
-3. **Utility / Worker tests** validate pure helpers or off-thread code.
+### Database Reading (`ReadDatabase/`)
+
+#### Database Connection Features
+```typescript
+interface DatabaseFeatures {
+  // Database support
+  databaseSupport: {
+    mysql: boolean;
+    postgresql: boolean;
+    sqlite: boolean;
+    mssql: boolean;
+    oracle: boolean;
+    access: boolean;
+  };
+  
+  // Connection management
+  connectionManagement: {
+    connectionPool: boolean;
+    connectionTesting: boolean;
+    credentialStorage: boolean;
+    sslSupport: boolean;
+    timeoutHandling: boolean;
+  };
+  
+  // Query capabilities
+  queryCapabilities: {
+    sqlEditor: boolean;
+    queryBuilder: boolean;
+    tableSelection: boolean;
+    joinSupport: boolean;
+    parameterizedQueries: boolean;
+    queryHistory: boolean;
+  };
+  
+  // Data handling
+  dataHandling: {
+    largeDatasetSupport: boolean;
+    streamingImport: boolean;
+    progressTracking: boolean;
+    errorRecovery: boolean;
+    transactionSupport: boolean;
+  };
+}
+```
+
+#### Database Logic Implementation
+```typescript
+// useDatabaseForm.ts
+interface DatabaseFormHook {
+  // Connection state
+  connectionState: {
+    connectionConfig: DatabaseConfig;
+    isConnected: boolean;
+    connectionError: Error | null;
+    availableTables: TableInfo[];
+    availableColumns: ColumnInfo[];
+  };
+  
+  // Connection operations
+  connectionOperations: {
+    testConnection: (config: DatabaseConfig) => Promise<ConnectionResult>;
+    establishConnection: (config: DatabaseConfig) => Promise<void>;
+    closeConnection: () => void;
+    refreshSchema: () => Promise<void>;
+  };
+  
+  // Query operations
+  queryOperations: {
+    executeQuery: (sql: string, params?: QueryParams) => Promise<QueryResult>;
+    buildQuery: (tableConfig: TableConfig) => string;
+    validateQuery: (sql: string) => Promise<ValidationResult>;
+    getQueryHistory: () => QueryHistoryItem[];
+  };
+  
+  // Data operations
+  dataOperations: {
+    previewTable: (tableName: string, limit?: number) => Promise<PreviewData>;
+    importTable: (tableName: string, options: ImportOptions) => Promise<ImportResult>;
+    importQuery: (sql: string, options: ImportOptions) => Promise<ImportResult>;
+  };
+}
+```
+
+### Text Data Reading (`ReadTextData/`)
+
+#### Text Import Features
+```typescript
+interface TextImportFeatures {
+  // File format detection
+  formatDetection: {
+    delimiterDetection: boolean;
+    encodingDetection: boolean;
+    headerDetection: boolean;
+    dataTypeDetection: boolean;
+    structureAnalysis: boolean;
+  };
+  
+  // Parsing options
+  parsingOptions: {
+    customDelimiters: boolean;
+    fixedWidthSupport: boolean;
+    multilineRecords: boolean;
+    quoteHandling: boolean;
+    escapeCharacters: boolean;
+    commentLines: boolean;
+  };
+  
+  // Data transformation
+  dataTransformation: {
+    columnMapping: boolean;
+    typeConversion: boolean;
+    valueTransformation: boolean;
+    conditionalLogic: boolean;
+    calculatedFields: boolean;
+  };
+  
+  // Quality control
+  qualityControl: {
+    previewMode: boolean;
+    errorDetection: boolean;
+    dataValidation: boolean;
+    statisticalSummary: boolean;
+    completenessAnalysis: boolean;
+  };
+}
+```
+
+#### Text Import Logic
+```typescript
+// useTextImportForm.ts
+interface TextImportFormHook {
+  // File analysis
+  fileAnalysis: {
+    analyzeStructure: (file: File) => Promise<StructureAnalysis>;
+    detectDelimiter: (file: File) => Promise<DelimiterDetection>;
+    detectEncoding: (file: File) => Promise<EncodingDetection>;
+    sampleData: (file: File, sampleSize: number) => Promise<SampleData>;
+  };
+  
+  // Parsing configuration
+  parsingConfiguration: {
+    delimiter: string;
+    encoding: string;
+    hasHeader: boolean;
+    quoteCharacter: string;
+    escapeCharacter: string;
+    skipRows: number;
+    maxRows: number;
+  };
+  
+  // Column configuration
+  columnConfiguration: {
+    columnNames: string[];
+    columnTypes: DataType[];
+    columnFormats: Format[];
+    includeColumns: boolean[];
+    transformations: Transformation[];
+  };
+  
+  // Import execution
+  importExecution: {
+    previewImport: () => Promise<PreviewResult>;
+    executeImport: () => Promise<ImportResult>;
+    validateImport: () => Promise<ValidationResult>;
+    cancelImport: () => void;
+  };
+}
+```
+
+## 📤 Data Export System
+
+### Export Operations (`Export/`)
+
+#### Export Features
+```typescript
+interface ExportFeatures {
+  // Format support
+  formatSupport: {
+    spssExport: boolean;     // .sav files
+    csvExport: boolean;      // .csv files
+    excelExport: boolean;    // .xlsx files
+    textExport: boolean;     // .txt files
+    jsonExport: boolean;     // .json files
+    pdfExport: boolean;      // .pdf reports
+  };
+  
+  // Export options
+  exportOptions: {
+    dataSelection: boolean;
+    variableSelection: boolean;
+    formatCustomization: boolean;
+    compressionOptions: boolean;
+    metadataInclusion: boolean;
+    batchExport: boolean;
+  };
+  
+  // Quality control
+  qualityControl: {
+    exportValidation: boolean;
+    integrityChecks: boolean;
+    formatVerification: boolean;
+    sizeOptimization: boolean;
+    errorReporting: boolean;
+  };
+  
+  // Advanced features
+  advancedFeatures: {
+    scheduledExports: boolean;
+    templateSupport: boolean;
+    automationSupport: boolean;
+    versionControl: boolean;
+    auditTrail: boolean;
+  };
+}
+```
+
+#### Export Logic Implementation
+```typescript
+// useExportForm.ts
+interface ExportFormHook {
+  // Export configuration
+  exportConfiguration: {
+    targetFormat: ExportFormat;
+    outputPath: string;
+    fileName: string;
+    exportOptions: ExportOptions;
+    dataSelection: DataSelection;
+  };
+  
+  // Data preparation
+  dataPreparation: {
+    selectData: (criteria: SelectionCriteria) => Promise<SelectedData>;
+    prepareData: (data: SelectedData, options: ExportOptions) => Promise<PreparedData>;
+    validateData: (data: PreparedData) => Promise<ValidationResult>;
+    optimizeData: (data: PreparedData) => Promise<OptimizedData>;
+  };
+  
+  // Export operations
+  exportOperations: {
+    previewExport: () => Promise<ExportPreview>;
+    executeExport: () => Promise<ExportResult>;
+    cancelExport: () => void;
+    retryExport: () => Promise<ExportResult>;
+  };
+  
+  // Progress tracking
+  progressTracking: {
+    exportProgress: number;
+    currentPhase: ExportPhase;
+    estimatedTimeRemaining: number;
+    isExporting: boolean;
+  };
+}
+```
+
+### Save Operations (`SaveAs/`)
+
+#### Save Features
+```typescript
+interface SaveFeatures {
+  // Save options
+  saveOptions: {
+    nativeFormat: boolean;   // .statify format
+    backupCreation: boolean;
+    versionHistory: boolean;
+    incrementalSave: boolean;
+    compressionOptions: boolean;
+  };
+  
+  // File management
+  fileManagement: {
+    locationSelection: boolean;
+    nameValidation: boolean;
+    overwriteProtection: boolean;
+    pathOptimization: boolean;
+    metadataStorage: boolean;
+  };
+  
+  // Version control
+  versionControl: {
+    automaticVersioning: boolean;
+    manualVersioning: boolean;
+    versionComparison: boolean;
+    rollbackSupport: boolean;
+    changeTracking: boolean;
+  };
+  
+  // Integration
+  integration: {
+    cloudStorage: boolean;
+    networkDrives: boolean;
+    databaseStorage: boolean;
+    recentFiles: boolean;
+    projectIntegration: boolean;
+  };
+}
+```
+
+## 🧪 Testing Strategy
+
+### Test Coverage per Feature
+```typescript
+// Import testing
+describe('ImportDataModal', () => {
+  describe('File handling', () => {
+    it('handles various file formats');
+    it('detects file encoding correctly');
+    it('validates file structure');
+    it('handles large files efficiently');
+  });
+  
+  describe('Data processing', () => {
+    it('parses CSV files correctly');
+    it('handles Excel sheets');
+    it('processes SPSS files');
+    it('validates imported data');
+  });
+  
+  describe('useImportForm hook', () => {
+    it('manages import state');
+    it('handles file selection');
+    it('processes import operations');
+    it('tracks progress correctly');
+  });
+});
+
+// Export testing
+describe('ExportModal', () => {
+  describe('Export functionality', () => {
+    it('exports to multiple formats');
+    it('handles data selection');
+    it('applies export options');
+    it('validates exported files');
+  });
+  
+  describe('useExportForm hook', () => {
+    it('configures export settings');
+    it('prepares data for export');
+    it('executes export operations');
+    it('handles export errors');
+  });
+});
+
+// Database testing
+describe('ReadDatabaseModal', () => {
+  describe('Connection management', () => {
+    it('establishes database connections');
+    it('tests connection validity');
+    it('handles connection errors');
+    it('manages connection pools');
+  });
+  
+  describe('Query operations', () => {
+    it('executes SQL queries');
+    it('validates query syntax');
+    it('handles query results');
+    it('manages query history');
+  });
+});
+```
+
+### Integration Testing
+```typescript
+interface FileModalIntegrationTests {
+  // Cross-modal integration
+  crossModalIntegration: {
+    importWithDataModals: boolean;
+    exportWithAnalysisModals: boolean;
+    saveWithEditModals: boolean;
+  };
+  
+  // File system integration
+  fileSystemIntegration: {
+    localFileAccess: boolean;
+    networkFileAccess: boolean;
+    cloudStorageAccess: boolean;
+  };
+  
+  // Data integrity testing
+  dataIntegrityTesting: {
+    importExportRoundtrip: boolean;
+    formatConversionAccuracy: boolean;
+    metadataPreservation: boolean;
+  };
+}
+```
+
+## 📋 Development Guidelines
+
+### File Modal Development Standards
+```typescript
+interface FileModalStandards {
+  // Architecture
+  streamingSupport: boolean;
+  progressTracking: boolean;
+  errorRecovery: boolean;
+  
+  // Performance
+  largeFileHandling: boolean;
+  memoryOptimization: boolean;
+  backgroundProcessing: boolean;
+  
+  // Security
+  fileValidation: boolean;
+  pathSanitization: boolean;
+  accessControl: boolean;
+  
+  // Quality
+  testCoverage: number; // >= 85%
+  errorHandling: boolean;
+  documentation: boolean;
+}
+```
+
+### Best Practices
+```typescript
+// 1. Streaming file processing
+const useStreamingFileProcessor = () => {
+  const processLargeFile = async (file: File, processor: StreamProcessor) => {
+    const chunkSize = 1024 * 1024; // 1MB chunks
+    const fileSize = file.size;
+    let processedBytes = 0;
+    
+    const reader = file.stream().getReader();
+    
+    try {
+      while (processedBytes < fileSize) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        await processor.processChunk(value);
+        processedBytes += value.length;
+        
+        // Update progress
+        const progress = (processedBytes / fileSize) * 100;
+        processor.updateProgress(progress);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  };
+  
+  return { processLargeFile };
+};
+
+// 2. Progressive data validation
+const useProgressiveValidation = () => {
+  const validateData = async (data: ImportData, validators: Validator[]) => {
+    const results: ValidationResult[] = [];
+    const totalRows = data.rows.length;
+    
+    for (let i = 0; i < totalRows; i += VALIDATION_BATCH_SIZE) {
+      const batch = data.rows.slice(i, i + VALIDATION_BATCH_SIZE);
+      
+      const batchResults = await Promise.all(
+        validators.map(validator => validator.validateBatch(batch))
+      );
+      
+      results.push(...batchResults.flat());
+      
+      // Update progress
+      const progress = Math.min(((i + VALIDATION_BATCH_SIZE) / totalRows) * 100, 100);
+      updateValidationProgress(progress);
+      
+      // Allow UI updates
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    
+    return results;
+  };
+  
+  return { validateData };
+};
+
+// 3. Error recovery pattern
+const useErrorRecovery = () => {
+  const withErrorRecovery = async <T>(
+    operation: () => Promise<T>,
+    recovery: ErrorRecoveryStrategy
+  ): Promise<T> => {
+    let attempts = 0;
+    const maxAttempts = recovery.maxAttempts || 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        return await operation();
+      } catch (error) {
+        attempts++;
+        
+        if (attempts >= maxAttempts) {
+          throw error;
+        }
+        
+        const shouldRetry = await recovery.shouldRetry(error, attempts);
+        if (!shouldRetry) {
+          throw error;
+        }
+        
+        await recovery.beforeRetry(error, attempts);
+      }
+    }
+    
+    throw new Error('Max attempts exceeded');
+  };
+  
+  return { withErrorRecovery };
+};
+```
 
 ---
 
-### 📥 ImportCsv
-Location: `ImportCsv/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `index.test.tsx` | Orchestrator UI – stage switching, file selection → configuration flow, button states. |
-| `useImportCsvFileReader.test.ts` | Hook – FileReader handling, loading / error states. |
-| `useImportCsvProcessor.test.ts` | Hook – worker orchestration, store population. |
-| `useCsvWorker.test.ts` | Hook – Promise state (processing / error). |
-| `importCsv.utils.test.ts` *(optional)* | Pure CSV parsing helpers. |
-
----
-
-### 📥 ImportExcel
-Location: `ImportExcel/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `ImportExcelSelectionStep.test.tsx` | UI – file chooser interactions, validation errors. |
-| `ImportExcelConfigurationStep.test.tsx` | UI – worksheet & range selection, option toggles. |
-| `useImportExcelLogic.test.ts` | Hook – state transitions, validation, store writes. |
-| `useExcelWorker.test.ts` | Hook – worker lifecycle, progress & error handling. |
-| `importExcel.utils.test.ts` | Utility – workbook parsing helpers. |
-
----
-
-### 📋 ImportClipboard
-Location: `ImportClipboard/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `ImportClipboardPasteStep.test.tsx` | UI – paste interaction, textarea behaviours. |
-| `ImportClipboardConfigurationStep.test.tsx` | UI – delimiter & header detection settings. |
-| `useImportClipboardLogic.test.ts` | Hook – text handling, validation, stage switching. |
-| `useImportClipboardProcessor.test.ts` | Hook – worker call & store population. |
-| `importClipboard.utils.test.ts` | Utility – TSV/CSV string parsing edge-cases. |
-| `services.test.ts` | Service mocks – clipboard worker messaging. |
-
----
-
-### 📤 ExportCsv
-Location: `ExportCsv/__test__/`
-
-| File | Focus |
-|------|-------|
-| `index.test.tsx` | UI – form rendering, option toggles, disabled / loading states. |
-| `useExportCsv.test.ts` | Hook – option state, validation, export flow. |
-| `exportCsvUtils.test.ts` | Utility – `generateCsvContent` formatting correctness. |
-
----
-
-### 📤 ExportExcel
-Location: `ExportExcel/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `ExportExcel.test.tsx` | UI – main modal rendering, option handling. |
-| `useExportExcelLogic.test.ts` | Hook – state, validation, XLSX generation orchestration. |
-| `excelExporter.test.ts` | Service – workbook creation & file writing via `xlsx`. |
-
----
-
-### 📚 ExampleDataset
-Location: `ExampleDataset/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `ExampleDatasetModal.test.tsx` | UI – list rendering, dataset selection, loading & error overlays, cancel flow. |
-| `useExampleDatasetLogic.test.ts` | Hook – dataset loading orchestration, store updates, meta handling, error states. |
-| `services.test.ts` *(optional)* | Service – network fetch & upload logic. |
-
----
-
-### 📄 OpenSavFile
-Location: `OpenSavFile/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `OpenSavFileModal.test.tsx` | UI – file selection, validation, OK/Cancel flow. |
-| `useOpenSavFileLogic.test.ts` | Hook – file reading, worker calls, error handling. |
-
----
-
-### 🖨️ Print
-Location: `Print/__tests__/`
-
-| File | Focus |
-|------|-------|
-| `usePrintLogic.test.ts` | Hook – state management & PDF flow orchestration. |
-| `pdfPrintService.test.ts` | Service – section rendering, jsPDF calls. |
-| `print.utils.test.ts` | Utility – table data transformation helpers. |
-
----
-
-### Adding New Tests
-1. Create the test file inside the appropriate feature's `__tests__` directory.
-2. Update the **feature-specific README** *and* **this central index** so others can find it quickly.
-
----
-
-_Last updated: <!-- KEEP THIS COMMENT: the CI tool replaces it with commit SHA & date -->_
+File operations modals menyediakan comprehensive file management capabilities dengan emphasis pada data integrity, performance optimization, dan seamless integration dengan statistical analysis workflows dalam Statify.

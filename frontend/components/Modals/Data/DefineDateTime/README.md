@@ -1,52 +1,515 @@
-# Define Dates Feature
+# Define DateTime Modal - Time Series Variable Creation
 
-This document outlines the functionality and architecture of the "Define Dates" feature, which allows users to create a time-based structure for their dataset.
+Modal untuk defining date/time structures dan creating time-based variables dalam Statify. Feature ini memungkinkan users untuk establish chronological frameworks untuk time-series data analysis dengan automated variable generation.
 
-## 1. Overview
+## 📁 Component Architecture
 
-The "Define Dates" feature provides a user-friendly interface to establish a chronological framework for time-series data. When a user selects a predefined date and time format (e.g., "Years, quarters, months"), this module automatically:
+```
+DefineDateTime/
+├── index.tsx                   # Main modal component
+├── types.ts                    # TypeScript type definitions
+├── README.md                   # Documentation
+│
+├── __tests__/                  # Test suite
+│   ├── DefineDateTime.test.tsx     # Main component tests
+│   ├── useDefineDateTime.test.ts   # Hook logic tests
+│   ├── dateTimeService.test.ts     # Service function tests
+│   ├── dateTimeFormatters.test.ts  # Utility function tests
+│   └── README.md                   # Test documentation
+│
+├── hooks/                      # Business logic hooks
+│   └── useDefineDateTime.ts        # Core datetime logic
+│
+├── services/                   # Business logic services
+│   └── dateTimeService.ts          # Variable creation service
+│
+└── utils/                      # Utility functions
+    └── dateTimeFormatters.ts       # Date formatting utilities
+```
 
-1.  **Creates New Variables**: Generates a separate variable for each time component specified in the format (e.g., `YEAR_`, `QUARTER_`, `MONTH_`).
-2.  **Generates a Formatted Date Variable**: Creates a single string variable named `DATE_` that displays the complete, formatted date entry for each case.
-3.  **Populates with Sample Data**: Fills the newly created variables with sequential date and time values for the first 20 rows (or the total number of existing rows if less than 20) to provide an immediate visual representation of the structure.
-4.  **Stores Metadata**: Saves the chosen date format configuration in the application's metadata, allowing other time-series features to recognize and utilize this structure.
+## 🎯 Core Functionality
 
-## 2. Feature Architecture
+### DateTime Variable Creation Workflow
+```typescript
+interface DateTimeWorkflow {
+  // Step 1: Format selection
+  formatSelection: {
+    timeComponents: TimeComponent[];     // Selected components (year, month, day, etc.)
+    formatString: string;               // Display format (e.g., "Years, months, days")
+    periodicity: TimePeriodicity;       // Data frequency (daily, monthly, etc.)
+    startingPoint: StartingPoint;       // First case definition
+  };
+  
+  // Step 2: Variable planning
+  variablePlanning: {
+    componentVariables: ComponentVar[]; // Individual time component variables
+    dateStringVariable: DateStringVar;  // Formatted date display variable
+    metadataStorage: MetadataConfig;    // Format configuration storage
+    namingConventions: NamingRules;     // Variable naming patterns
+  };
+  
+  // Step 3: Data generation
+  dataGeneration: {
+    sequentialGeneration: DataSequencer; // Sequential date progression
+    sampleDataCreation: SampleCreator;   // First 20 rows population
+    carryOverLogic: CarryOverHandler;    // Month->Year progression logic
+    boundaryHandling: BoundaryHandler;   // Date range boundaries
+  };
+  
+  // Step 4: Integration
+  integration: {
+    variableCreation: VariableCreator;  // Add to variable store
+    dataPopulation: DataPopulator;      // Update data store
+    metadataUpdate: MetadataUpdater;    // Store format configuration
+  };
+}
+```
 
-The feature follows the standard modal architecture, separating concerns into hooks, services, and utils.
+## 📅 Time Component System
 
--   **`index.tsx`**: The main entry point for the modal. It assembles the UI and is responsible for rendering the content.
--   **`hooks/useDefineDateTime.ts`**: The central orchestrator for the feature's logic. It manages the UI state (like the currently selected date format), handles user interactions (button clicks), and coordinates calls between the service and the global stores.
--   **`services/dateTimeService.ts`**: Contains the core business logic. Its primary responsibility is to prepare the definitions for the new variables and generate the corresponding cell data. It is a pure module that does not directly interact with global stores, making it highly testable.
--   **`utils/dateTimeFormatters.ts`**: A collection of pure, reusable utility functions for parsing user selections and formatting date/time strings for display.
--   **`types.ts`**: Defines the TypeScript types and interfaces specific to this feature, such as `TimeComponent`.
+### Available Time Components
+```typescript
+interface TimeComponents {
+  // Temporal hierarchy
+  temporalHierarchy: {
+    year: {
+      variableName: 'YEAR_';
+      dataType: 'numeric';
+      range: [1900, 2100];
+      increment: 1;
+    };
+    quarter: {
+      variableName: 'QUARTER_';
+      dataType: 'numeric';
+      range: [1, 4];
+      carryOver: 'year';
+    };
+    month: {
+      variableName: 'MONTH_';
+      dataType: 'numeric';
+      range: [1, 12];
+      carryOver: 'year';
+    };
+    week: {
+      variableName: 'WEEK_';
+      dataType: 'numeric';
+      range: [1, 53];
+      carryOver: 'year';
+    };
+    day: {
+      variableName: 'DAY_';
+      dataType: 'numeric';
+      range: [1, 31];
+      carryOver: 'month';
+    };
+    hour: {
+      variableName: 'HOUR_';
+      dataType: 'numeric';
+      range: [0, 23];
+      carryOver: 'day';
+    };
+    minute: {
+      variableName: 'MINUTE_';
+      dataType: 'numeric';
+      range: [0, 59];
+      carryOver: 'hour';
+    };
+    second: {
+      variableName: 'SECOND_';
+      dataType: 'numeric';
+      range: [0, 59];
+      carryOver: 'minute';
+    };
+  };
+  
+  // Formatted date variable
+  dateStringVariable: {
+    variableName: 'DATE_';
+    dataType: 'string';
+    format: 'composite';
+    content: 'formatted display string';
+  };
+}
+```
 
-## 3. Data Flow
+### Time Progression Logic
+```typescript
+interface TimeProgressionLogic {
+  // Carry-over rules
+  carryOverRules: {
+    month: {
+      maxValue: 12;
+      carryTo: 'year';
+      resetValue: 1;
+      incrementCarryTarget: 1;
+    };
+    day: {
+      maxValue: 'daysInMonth';  // Dynamic based on month/year
+      carryTo: 'month';
+      resetValue: 1;
+      incrementCarryTarget: 1;
+    };
+    hour: {
+      maxValue: 23;
+      carryTo: 'day';
+      resetValue: 0;
+      incrementCarryTarget: 1;
+    };
+    minute: {
+      maxValue: 59;
+      carryTo: 'hour';
+      resetValue: 0;
+      incrementCarryTarget: 1;
+    };
+  };
+  
+  // Progression calculation
+  progressionCalculation: {
+    calculateNextPeriod: (current: TimeValues, components: TimeComponent[]) => TimeValues;
+    validateDateBoundaries: (timeValues: TimeValues) => ValidationResult;
+    handleLeapYears: (year: number, month: number, day: number) => number;
+    generateSequence: (start: TimeValues, count: number) => TimeValues[];
+  };
+}
+```
 
-The data processing flow is designed to be clear and maintainable:
+## 🔧 Hook Implementation
 
-1.  **User Interaction**: The user selects a desired date format from the "Cases Are" list (e.g., "Days, hours").
-2.  **State Update**: The `useDefineDateTime` hook updates its internal state to reflect this selection. The UI re-renders to show the relevant input fields for the "First Case Is" section.
-3.  **Confirmation**: The user clicks the "OK" button.
-4.  **Hook Orchestration**: The `handleOk` function within the hook is triggered.
-5.  **Service Call**: The hook calls the `prepareDateVariables` function from `dateTimeService.ts`, passing the current time components, the list of existing variables, and the number of rows in the dataset.
-6.  **Logic Execution**: The service function:
-    -   Calculates the required new variables (`YEAR_`, `DAY_`, `HOUR_`, `DATE_`, etc.).
-    -   Generates the sequential sample data for each new variable.
-    -   Returns a single object containing two arrays: `variablesToCreate` and `cellUpdates`.
-7.  **Store Interaction**: The `handleOk` function in the hook receives this object and performs the following actions in sequence:
-    -   It iterates through the `variablesToCreate` array, calling the `addVariable` action from the `useVariableStore` for each new variable.
-    -   It calls the `updateCells` action from the `useDataStore`, passing the entire `cellUpdates` array to populate the grid in a single, efficient operation.
-    -   It updates the `useMetaStore` with the selected date format string.
-8.  **Modal Close**: The modal closes, and the user sees the newly created and populated variables in the main data grid.
+### useDefineDateTime Hook
+```typescript
+interface UseDefineDateTimeHook {
+  // State management
+  state: {
+    selectedComponents: TimeComponent[];
+    startingValues: TimeValues;
+    formatString: string;
+    previewData: PreviewRow[];
+    validationErrors: ValidationError[];
+  };
+  
+  // Component selection
+  componentSelection: {
+    availableFormats: DateTimeFormat[];
+    selectFormat: (format: DateTimeFormat) => void;
+    customizeComponents: (components: TimeComponent[]) => void;
+    validateSelection: () => ValidationResult;
+  };
+  
+  // Starting point configuration
+  startingPointConfig: {
+    setStartingYear: (year: number) => void;
+    setStartingMonth: (month: number) => void;
+    setStartingDay: (day: number) => void;
+    setStartingHour: (hour: number) => void;
+    setStartingMinute: (minute: number) => void;
+    validateStartingPoint: () => ValidationResult;
+  };
+  
+  // Preview generation
+  previewGeneration: {
+    generatePreview: () => PreviewRow[];
+    updatePreview: () => void;
+    previewCount: number;
+    showPreview: boolean;
+  };
+  
+  // Execution
+  execution: {
+    createDateTimeVariables: () => Promise<CreationResult>;
+    validateConfiguration: () => ValidationResult;
+    resetConfiguration: () => void;
+    cancelCreation: () => void;
+  };
+}
+```
 
-## 4. Feature Specifications & Examples
+### Date Time Service
+```typescript
+interface DateTimeService {
+  // Variable preparation
+  variablePreparation: {
+    prepareComponentVariables: (components: TimeComponent[]) => VariableDefinition[];
+    prepareDateStringVariable: (format: string) => VariableDefinition;
+    validateVariableNames: (variables: VariableDefinition[], existing: Variable[]) => ValidationResult;
+    generateUniqueNames: (variables: VariableDefinition[], existing: Variable[]) => VariableDefinition[];
+  };
+  
+  // Data generation
+  dataGeneration: {
+    generateSequentialData: (
+      components: TimeComponent[],
+      startingValues: TimeValues,
+      rowCount: number
+    ) => CellUpdate[];
+    generateDateStrings: (
+      timeValues: TimeValues[],
+      format: string
+    ) => string[];
+    populateSampleRows: (
+      variables: VariableDefinition[],
+      data: any[][],
+      rowCount: number
+    ) => CellUpdate[];
+  };
+  
+  // Metadata management
+  metadataManagement: {
+    createFormatMetadata: (format: DateTimeFormat, components: TimeComponent[]) => FormatMetadata;
+    storeConfiguration: (metadata: FormatMetadata) => void;
+    retrieveConfiguration: () => FormatMetadata | null;
+    validateConfiguration: (metadata: FormatMetadata) => ValidationResult;
+  };
+}
+```
 
-This section details the behavior of the "Define Dates" feature for various configurations. The system generates new variables based on user selections and populates them with sequential data.
+## 📊 Date Format Examples
 
-### Example 1: Years and Months
+### Example Configurations
+```typescript
+interface DateFormatExamples {
+  // Years and months
+  yearsMonths: {
+    components: ['year', 'month'];
+    variables: ['YEAR_', 'MONTH_', 'DATE_'];
+    sampleData: [
+      { YEAR_: 2024, MONTH_: 1, DATE_: '2024 Jan' },
+      { YEAR_: 2024, MONTH_: 2, DATE_: '2024 Feb' },
+      { YEAR_: 2024, MONTH_: 3, DATE_: '2024 Mar' }
+    ];
+    carryOverExample: 'Month 12 → Month 1, Year + 1';
+  };
+  
+  // Days, hours, minutes
+  daysHoursMinutes: {
+    components: ['day', 'hour', 'minute'];
+    variables: ['DAY_', 'HOUR_', 'MINUTE_', 'DATE_'];
+    sampleData: [
+      { DAY_: 1, HOUR_: 0, MINUTE_: 0, DATE_: 'Day 1, 00:00' },
+      { DAY_: 1, HOUR_: 0, MINUTE_: 1, DATE_: 'Day 1, 00:01' },
+      { DAY_: 1, HOUR_: 0, MINUTE_: 2, DATE_: 'Day 1, 00:02' }
+    ];
+    carryOverExample: 'Minute 59 → Minute 0, Hour + 1';
+  };
+  
+  // Weeks and days
+  weeksDays: {
+    components: ['week', 'day'];
+    variables: ['WEEK_', 'DAY_', 'DATE_'];
+    sampleData: [
+      { WEEK_: 1, DAY_: 1, DATE_: 'Week 1, Day 1' },
+      { WEEK_: 1, DAY_: 2, DATE_: 'Week 1, Day 2' },
+      { WEEK_: 1, DAY_: 7, DATE_: 'Week 1, Day 7' }
+    ];
+    carryOverExample: 'Day 7 → Day 1, Week + 1';
+  };
+}
+```
 
-This example demonstrates the carry-over logic from `MONTH_` to `YEAR_`.
+### Carry-Over Logic Implementation
+```typescript
+interface CarryOverImplementation {
+  // Progression calculator
+  progressionCalculator: {
+    calculateNext: (current: TimeValues, components: TimeComponent[]) => TimeValues;
+    handleCarryOver: (component: TimeComponent, value: number, timeValues: TimeValues) => TimeValues;
+    validateBounds: (component: TimeComponent, value: number, context: TimeValues) => boolean;
+    resetDependentComponents: (carryComponent: TimeComponent, timeValues: TimeValues) => TimeValues;
+  };
+  
+  // Specific carry-over handlers
+  carryOverHandlers: {
+    monthToYear: (month: number, year: number) => { month: number; year: number };
+    dayToMonth: (day: number, month: number, year: number) => { day: number; month: number; year: number };
+    hourToDay: (hour: number, day: number) => { hour: number; day: number };
+    minuteToHour: (minute: number, hour: number) => { minute: number; hour: number };
+    secondToMinute: (second: number, minute: number) => { second: number; minute: number };
+  };
+  
+  // Boundary validation
+  boundaryValidation: {
+    validateDateExists: (year: number, month: number, day: number) => boolean;
+    getDaysInMonth: (year: number, month: number) => number;
+    isLeapYear: (year: number) => boolean;
+    validateTimeRange: (hour: number, minute: number, second: number) => boolean;
+  };
+}
+```
+
+## 🎨 UI Components
+
+### Format Selection Interface
+```typescript
+interface FormatSelectionUI {
+  // Predefined formats
+  predefinedFormats: {
+    displayFormats: DateTimeFormat[];
+    formatDescriptions: Map<string, string>;
+    examplePreviews: Map<string, string[]>;
+    popularFormats: string[];
+  };
+  
+  // Custom format builder
+  customFormatBuilder: {
+    availableComponents: TimeComponent[];
+    selectedComponents: TimeComponent[];
+    componentSelector: ComponentSelector;
+    formatPreview: FormatPreview;
+  };
+  
+  // Starting point configuration
+  startingPointConfig: {
+    yearInput: NumberInput;
+    monthSelector: DropdownSelector;
+    dayInput: NumberInput;
+    hourInput: NumberInput;
+    minuteInput: NumberInput;
+    secondInput: NumberInput;
+  };
+}
+```
+
+## 🧪 Testing Strategy
+
+### Test Coverage Areas
+```typescript
+// Component testing
+describe('DefineDateTimeModal', () => {
+  describe('Format selection', () => {
+    it('displays available formats');
+    it('updates components on format selection');
+    it('validates format selection');
+    it('shows preview data');
+  });
+  
+  describe('Starting point configuration', () => {
+    it('accepts starting values');
+    it('validates date boundaries');
+    it('handles leap years correctly');
+    it('updates preview on changes');
+  });
+  
+  describe('Variable creation', () => {
+    it('creates component variables');
+    it('creates date string variable');
+    it('populates sample data');
+    it('updates metadata');
+  });
+});
+
+// Service testing
+describe('dateTimeService', () => {
+  describe('Variable preparation', () => {
+    it('prepares component variables correctly');
+    it('generates unique variable names');
+    it('validates against existing variables');
+  });
+  
+  describe('Data generation', () => {
+    it('generates sequential data correctly');
+    it('handles carry-over logic properly');
+    it('formats date strings correctly');
+    it('respects date boundaries');
+  });
+});
+
+// Utility testing
+describe('dateTimeFormatters', () => {
+  describe('Format parsing', () => {
+    it('parses format strings correctly');
+    it('extracts components properly');
+    it('validates format syntax');
+  });
+  
+  describe('Date formatting', () => {
+    it('formats dates correctly');
+    it('handles different locales');
+    it('manages missing components');
+  });
+});
+```
+
+## 📋 Development Guidelines
+
+### Adding New Time Components
+```typescript
+// 1. Define component specification
+interface NewTimeComponent extends TimeComponent {
+  id: 'custom_component';
+  name: 'Custom Component';
+  variableName: 'CUSTOM_';
+  dataType: 'numeric' | 'string';
+  range: [minValue, maxValue];
+  carryOver?: 'parent_component';
+  increment: number;
+}
+
+// 2. Implement progression logic
+const handleCustomComponentCarryOver = (
+  value: number,
+  timeValues: TimeValues
+): TimeValues => {
+  if (value > maxValue) {
+    return {
+      ...timeValues,
+      custom_component: minValue,
+      parent_component: timeValues.parent_component + 1
+    };
+  }
+  return { ...timeValues, custom_component: value };
+};
+
+// 3. Add formatting support
+const formatCustomComponent = (value: number): string => {
+  return `Custom ${value}`;
+};
+
+// 4. Register component
+const TIME_COMPONENTS = {
+  ...existingComponents,
+  custom_component: {
+    handler: handleCustomComponentCarryOver,
+    formatter: formatCustomComponent,
+    validator: validateCustomComponent
+  }
+};
+```
+
+### Performance Optimization
+```typescript
+// 1. Efficient data generation
+const optimizeDataGeneration = (
+  components: TimeComponent[],
+  rowCount: number
+) => {
+  // Pre-calculate progression patterns
+  const progressionPattern = calculateProgressionPattern(components);
+  
+  // Batch generate data
+  const data = new Array(rowCount);
+  for (let i = 0; i < rowCount; i++) {
+    data[i] = applyProgressionPattern(progressionPattern, i);
+  }
+  
+  return data;
+};
+
+// 2. Memory-efficient updates
+const batchUpdateCells = (
+  updates: CellUpdate[],
+  batchSize: number = 1000
+) => {
+  const batches = chunk(updates, batchSize);
+  
+  return batches.reduce(async (promise, batch) => {
+    await promise;
+    return updateCellsBatch(batch);
+  }, Promise.resolve());
+};
+```
+
+---
+
+DefineDateTime modal menyediakan comprehensive time series variable creation dengan automated progression logic dan flexible formatting options untuk temporal data analysis dalam Statify.
 
 -   **User Selection**: `Years, months`
 -   **First Case Input**: `Year: 2022`, `Month: 11`

@@ -2,7 +2,7 @@ import React from 'react';
 import { HelpCard, HelpAlert, HelpStep } from '@/app/help/ui/HelpLayout';
 import { Table, Calculator, BarChart3, EyeOff } from 'lucide-react';
 import 'katex/dist/katex.min.css';
-import { BlockMath, InlineMath } from 'react-katex';
+import { BlockMath } from 'react-katex';
 
 export const CellsTab = () => (
   <div className="space-y-6">
