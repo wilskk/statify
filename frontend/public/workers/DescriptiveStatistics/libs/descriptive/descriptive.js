@@ -381,6 +381,16 @@ class DescriptiveCalculator {
             Percentiles: { '25': p25, '75': p75 },
         };
 
+        // Include Mode for scale variables as well, consistent with nominal/ordinal.
+        // #getMode returns modes in ascending order for numeric-like variables,
+        // so the first element is the smallest mode.
+        const modeInfo = this.#getMode();
+        if (modeInfo && Array.isArray(modeInfo.mode)) {
+            stats.Mode = modeInfo.mode;
+        } else {
+            stats.Mode = null;
+        }
+
         const shouldSaveZScores = this.options.saveStandardized && stats.StdDev && stats.StdDev > 0;
         let zScores = null;
 

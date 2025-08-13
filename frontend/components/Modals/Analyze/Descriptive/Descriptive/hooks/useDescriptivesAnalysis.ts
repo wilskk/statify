@@ -143,10 +143,11 @@ export const useDescriptivesAnalysis = ({
                         kurtosis: "KURTOSIS",
                     };
 
-                    // Gate numeric-only stats when ALL selected variables are date types
+                    // Gate numeric-only stats when ALL selected variables are date types.
+                    // Exception: RANGE is meaningful for dates (shown in days), so do not gate it.
                     const hasNonDate = selectedVariables.some(v => (v.type ? !spssDateTypes.has(v.type) : true));
                     const numericOnlyKeys: (keyof typeof displayStatistics)[] = [
-                        'mean','sum','stdDev','variance','range','skewness','kurtosis','standardError'
+                        'mean','sum','stdDev','variance','skewness','kurtosis','standardError'
                     ];
                     const requestedStats = (Object.keys(displayStatistics) as (keyof typeof displayStatistics)[])
                         .filter(key => displayStatistics[key])

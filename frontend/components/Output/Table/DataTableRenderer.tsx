@@ -87,7 +87,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                             key={`col-header-${level}-${idx}`}
                             colSpan={colSpan}
                             rowSpan={rowSpan}
-                            className="border border-border bg-muted px-2 py-1 text-center text-sm font-medium"
+                            className="border border-border bg-muted px-2 py-1 text-center text-sm font-medium whitespace-nowrap"
                         >
                             {renderContent(col.header)}
                         </th>
@@ -174,7 +174,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                     key={`rowheader-${rowIndex}-${colIdx}`}
                     rowSpan={rowSpan}
                     colSpan={2}
-                    className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal"
+                    className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal whitespace-nowrap"
                 >
                     {renderContent(current)}
                 </th>
@@ -198,7 +198,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 <th
                     key={`rowheader-${rowIndex}-${colIdx}`}
                     rowSpan={rowSpan}
-                    className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal"
+                    className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal whitespace-nowrap"
                 >
                     {renderContent(current)}
                 </th>
@@ -363,7 +363,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                         </div>
                         <table
                             id={tableDomId}
-                            className="border-collapse border border-border text-sm rounded-md"
+                            className="border-collapse border border-border text-sm rounded-md min-w-max"
                         >
                             <thead>
                             <tr>
@@ -388,7 +388,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                                         {leafCols.map((colKey, i) => (
                                             <td
                                                 key={i}
-                                                className="border border-border px-2 py-1 text-center text-sm"
+                                                className="border border-border px-2 py-1 text-center text-sm whitespace-nowrap"
                                             >
                                                 {renderContent(row[colKey] ?? "")}
                                             </td>

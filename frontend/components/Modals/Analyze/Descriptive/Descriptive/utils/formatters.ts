@@ -129,18 +129,22 @@ export function formatDescriptiveTableOld(
   addSingleStatHeader("Valid", "Valid");
 
   // Detect stats that depend on measurement (Mode, Percentiles)
-  // Tampilkan kolom Mode hanya bila ada variabel non-date yang menyediakannya
-  const includeMode = data.some(({ variable, stats }) => {
-    const isDate = variable.type ? spssDateTypes.has(variable.type) : false;
-    return !isDate && !!(stats && (stats as any).Mode !== undefined);
-  });
+  // Tampilkan kolom Mode bila ada variabel yang menyediakannya (termasuk DATE)
+  const includeMode = data.some(({ stats }) => !!(stats && (stats as any).Mode !== undefined));
   // Tampilkan kolom persentil jika ada setidaknya satu variabel yang menyediakannya
   const includePercentiles = data.some(({ stats }) =>
     !!(stats && (((stats as any)["25th Percentile"]) !== undefined || ((stats as any)["75th Percentile"]) !== undefined))
   );
   if (includeMode) addSingleStatHeader("Mode", "Mode");
 
-  if (displayStatistics.range && hasNumericNonDate) addSingleStatHeader("Range", "Range");
+  // Range ditampilkan untuk variabel numerik maupun tanggal
+  const hasRangeEligible = data.some(({ variable }) => {
+    const t = variable.type as any;
+    if (!t) return true; // asumsi numerik jika tidak diketahui
+    if (spssDateTypes.has(t)) return true; // DATE eligible
+    return t !== 'STRING';
+  });
+  if (displayStatistics.range && hasRangeEligible) addSingleStatHeader("Range", "Range");
   if (displayStatistics.minimum) addSingleStatHeader("Minimum", "Minimum");
   if (displayStatistics.maximum) addSingleStatHeader("Maximum", "Maximum");
   if (displayStatistics.median) addSingleStatHeader("Median", "Median");
@@ -206,15 +210,17 @@ export function formatDescriptiveTableOld(
     }
     const row: TableRow = { rowHeader: [headerText] };
     const isDateType = variable.type ? spssDateTypes.has(variable.type) : false;
+    const isOrdinalMeasure = variable && (variable as any).measure === 'ordinal';
     const decimals = STATS_DECIMAL_PLACES; // Use consistent decimal places
 
     // Fungsi helper untuk memformat nilai
-    const format = (value: number | null | undefined, formatAs: 'date' | 'number') => {
+    const format = (value: number | null | undefined, formatAs: 'date' | 'number', roundToInteger: boolean = false) => {
       if (value === null || value === undefined) return value;
       if (isDateType && formatAs === 'date') return spssSecondsToDateString(value);
-      if (typeof value === 'number' && decimals >= 0) {
+      if (typeof value === 'number') {
+        const dp = roundToInteger ? 0 : decimals;
         // Use toFixed for rounding and convert back to number to remove trailing zeros
-        return parseFloat(value.toFixed(decimals));
+        return parseFloat(value.toFixed(dp));
       }
       return value;
     };
@@ -222,26 +228,50 @@ export function formatDescriptiveTableOld(
     row.N = stats.N;
     row.Missing = stats.Missing;
     if ((stats as any).Valid !== undefined) row.Valid = (stats as any).Valid;
-    if (includeMode && !isDateType) {
-      const modeVal: any = (stats as any).Mode;
-      if (Array.isArray(modeVal)) {
-        row.Mode = modeVal.length === 0 ? null : modeVal.map(v => String(v)).join(', ');
-      } else {
-        row.Mode = modeVal;
+    if (includeMode) {
+      const modes: any = (stats as any).Mode;
+      if (Array.isArray(modes) && modes.length > 0) {
+        const first = modes[0]; // modes already sorted ascending in worker
+        const multiple = modes.length > 1;
+        let firstStr = '';
+        if (isDateType) {
+          firstStr = typeof first === 'number' ? (spssSecondsToDateString(first) ?? '') : String(first);
+        } else {
+          firstStr = typeof first === 'number' ? first.toFixed(STATS_DECIMAL_PLACES) : String(first);
+        }
+        row.Mode = firstStr + (multiple ? '<sup>a</sup>' : '');
       }
     }
     
     // Tetapkan setiap stat secara eksplisit untuk keamanan tipe
-    // Catatan: Untuk variabel tanggal, kita sengaja MENYEMBUNYIKAN statistik numerik murni
-    // (Sum, Mean, S.E. Mean, StdDev, Variance, Skewness, Kurtosis, Range)
-    // dan hanya menampilkan yang relevan: Min/Max, Median, dan Persentil.
-    if (displayStatistics.range && !isDateType) row.Range = format(stats.Range, 'number');
+    // Catatan: Untuk variabel tanggal, statistik numerik murni selain Range
+    // (Sum, Mean, S.E. Mean, StdDev, Variance, Skewness, Kurtosis)
+    // disembunyikan. Range ditampilkan dalam satuan hari, sedangkan Min/Max,
+    // Median, dan Persentil diformat sebagai tanggal.
+    if (displayStatistics.range) {
+      if (isDateType) {
+        const secs = (stats as any).Range;
+        if (typeof secs === 'number' && isFinite(secs)) {
+          const days = Math.round(secs / 86400);
+          row.Range = `${days} days`;
+        } else if (secs != null) {
+          row.Range = `${secs} days`;
+        } else {
+          row.Range = secs;
+        }
+      } else {
+        row.Range = format(stats.Range, 'number');
+      }
+    }
     if (displayStatistics.minimum) row.Minimum = format(stats.Minimum, 'date');
     if (displayStatistics.maximum) row.Maximum = format(stats.Maximum, 'date');
     if (displayStatistics.sum && !isDateType) row.Sum = format(stats.Sum, 'number');
     if (displayStatistics.mean && !isDateType) row.Mean = format(stats.Mean, 'number');
     if (displayStatistics.standardError && !isDateType) row.SEMean = format(stats.SEMean, 'number');
-    if (displayStatistics.median) row.Median = format(stats.Median, 'date');
+    if (displayStatistics.median) {
+      const roundInt = isOrdinalMeasure && !isDateType;
+      row.Median = format(stats.Median, 'date', roundInt);
+    }
     if (displayStatistics.stdDev && !isDateType) row.StdDev = format(stats.StdDev, 'number');
     if (displayStatistics.variance && !isDateType) row.Variance = format(stats.Variance, 'number');
     if (displayStatistics.skewness && !isDateType) {
@@ -253,16 +283,24 @@ export function formatDescriptiveTableOld(
       row.SEKurtosis = format(stats.SEKurtosis, 'number');
     }
     if (includePercentiles) {
-      row["25th Percentile"] = format((stats as any)["25th Percentile"], 'date');
-      row["75th Percentile"] = format((stats as any)["75th Percentile"], 'date');
+      const roundInt = isOrdinalMeasure && !isDateType;
+      row["25th Percentile"] = format((stats as any)["25th Percentile"], 'date', roundInt);
+      row["75th Percentile"] = format((stats as any)["75th Percentile"], 'date', roundInt);
     }
     
     return row;
+  });
+
+  // Add footnote when any variable has multiple modes
+  const hasMultipleModes = includeMode && sortedStats.some(({ stats }) => {
+    const m: any = (stats as any)?.Mode;
+    return Array.isArray(m) && m.length > 1;
   });
 
   return {
     title: "Descriptive Statistics",
     columnHeaders: columnHeaders,
     rows: rows,
+    ...(hasMultipleModes && { footer: '<sup>a</sup>. Multiple modes exist. The smallest value is shown.' }),
   };
-} 
+}

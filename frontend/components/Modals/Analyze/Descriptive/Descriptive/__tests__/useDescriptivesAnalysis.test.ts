@@ -251,8 +251,8 @@ describe('useDescriptivesAnalysis', () => {
         const logArg = mockAddLog.mock.calls[0][0];
         const logText: string = logArg.log;
         const statLine = logText.split('\n').find(l => l.trim().startsWith('/STATISTICS=')) || '';
-        expect(statLine).not.toMatch(/MEAN|SUM|STDDEV|VARIANCE|RANGE|SKEWNESS|KURTOSIS|SEMEAN/);
-        expect(statLine).toMatch(/\/STATISTICS=MIN MAX MEDIAN/);
+        expect(statLine).not.toMatch(/MEAN|SUM|STDDEV|VARIANCE|SKEWNESS|KURTOSIS|SEMEAN/);
+        expect(statLine).toMatch(/\/STATISTICS=RANGE MIN MAX MEDIAN/);
     });
     
     it('should handle critical worker instantiation errors', async () => {

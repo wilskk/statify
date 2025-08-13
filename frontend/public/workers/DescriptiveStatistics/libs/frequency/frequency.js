@@ -305,6 +305,55 @@ class FrequencyCalculator {
         // Always set Mode from our method (ensures date modes are formatted as dd-mm-yyyy)
         stats.Mode = this.getMode();
 
+        // --- Dynamic Percentiles -------------------------------------------
+        // Merge any requested percentiles into stats.Percentiles.
+        // Only applicable for numeric-like measures (scale/ordinal).
+        try {
+            if (this.isNumeric && this.options && this.options.statisticsOptions) {
+                const pOpts = this.options.statisticsOptions.percentileValues || {};
+                const requested = new Set();
+
+                // Quartiles: add 25 and 75 (Median handled separately unless explicitly requested)
+                if (pOpts.quartiles) {
+                    requested.add(25);
+                    requested.add(75);
+                }
+
+                // Cut points: NTILES = n => (n-1) cut points at k*100/n for k=1..n-1
+                if (pOpts.cutPoints && typeof pOpts.cutPointsN === 'number' && isFinite(pOpts.cutPointsN)) {
+                    const n = Math.floor(pOpts.cutPointsN);
+                    if (n > 1) {
+                        for (let k = 1; k < n; k++) {
+                            requested.add((k * 100) / n);
+                        }
+                    }
+                }
+
+                // Arbitrary percentile list
+                if (pOpts.enablePercentiles && Array.isArray(pOpts.percentilesList)) {
+                    for (const p of pOpts.percentilesList) {
+                        const num = typeof p === 'number' ? p : parseFloat(p);
+                        if (typeof num === 'number' && isFinite(num) && num >= 0 && num <= 100) {
+                            requested.add(num);
+                        }
+                    }
+                }
+
+                if (requested.size > 0) {
+                    const base = stats.Percentiles ? { ...stats.Percentiles } : {};
+                    for (const p of requested) {
+                        // Normalize key to at most 1 decimal to avoid long repeating fractions
+                        const keyNum = typeof p === 'number' ? p : Number(p);
+                        const key = Number.isInteger(keyNum) ? String(keyNum) : parseFloat(keyNum.toFixed(1)).toString();
+                        base[key] = this.getPercentile(keyNum, 'waverage');
+                    }
+                    stats.Percentiles = base;
+                }
+            }
+        } catch (e) {
+            // Do not fail stats if percentile options are malformed; just skip dynamic percentiles
+        }
+
         const results = {
             summary: {
                 valid: W,

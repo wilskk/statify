@@ -1,9 +1,9 @@
-import React, { FC, useCallback, useEffect } from "react";
+import React, { FC, useCallback, useEffect, useRef } from "react";
 import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 import { VariablesTabProps } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { toast } from "sonner";
+import { toast as sonner } from "sonner";
 
 // Source types remain the same, but used internally by the parent mostly
 type AllSource = 'available' | 'dependent' | 'factor' | 'label';
@@ -33,6 +33,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
     const varListsStep = getStepIndex('explore-variable-lists');
 
+    // Sonner guards to reduce duplicate notifications
+    const filteredSonnerShownRef = useRef(false);
+    const prevUnknownCountRef = useRef(0);
+
     // --- Adapt props for VariableListManager ---
     const variableIdKeyToUse: keyof Variable = 'id';
     
@@ -41,12 +45,14 @@ const VariablesTab: FC<VariablesTabProps> = ({
         variable.type === 'NUMERIC'
     );
 
-    // Show toast notifications for filtered variables
+    // Show sonner notifications for filtered variables (once per mount)
     useEffect(() => {
+        if (filteredSonnerShownRef.current) return;
         const filteredOutVariables = availableVariables.filter(variable => variable.type !== 'NUMERIC');
         if (filteredOutVariables.length > 0) {
             const nonNumericCount = filteredOutVariables.length;
-            toast.info(`${nonNumericCount} non-numeric variable${nonNumericCount > 1 ? 's' : ''} ${nonNumericCount > 1 ? 'were' : 'was'} filtered out from available variables for exploratory analysis`);
+            sonner.info(`${nonNumericCount} non-numeric variable${nonNumericCount > 1 ? 's' : ''} ${nonNumericCount > 1 ? 'were' : 'was'} filtered out from available variables for exploratory analysis`, { id: 'explore-non-numeric-filtered' });
+            filteredSonnerShownRef.current = true;
         }
     }, [availableVariables]);
 
@@ -54,10 +60,16 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const unknownVariables = [...dependentVariables, ...factorVariables].filter(variable => variable.measure === 'unknown');
     const unknownCount = unknownVariables.length;
 
-    // Show toast for unknown measurement levels
+    // Show sonner for unknown measurement levels (only when transitioning 0 -> >0)
     useEffect(() => {
-        if (unknownCount > 0) {
-            toast.warning(`${unknownCount} variable${unknownCount > 1 ? 's' : ''} with unknown measurement level selected. Consider reviewing variable properties.`);
+        if (unknownCount > 0 && prevUnknownCountRef.current === 0) {
+            sonner.warning(`${unknownCount} variable${unknownCount > 1 ? 's' : ''} with unknown measurement level selected. Consider reviewing variable properties.`, { id: 'explore-unknown-measurement' });
+        }
+        // Track last seen count and reset when it returns to 0
+        if (unknownCount === 0) {
+            prevUnknownCountRef.current = 0;
+        } else {
+            prevUnknownCountRef.current = unknownCount;
         }
     }, [unknownCount]);
 
@@ -107,16 +119,16 @@ const VariablesTab: FC<VariablesTabProps> = ({
             case 'available':
                 if (source === 'dependent' || source === 'factor' || source === 'label') {
                     moveToAvailableVariables(variable, source, targetIndex);
-                    toast.success(`Variable "${variable.name}" moved to available variables`);
+                    // notification suppressed to reduce noise: moved to available variables
                 }
                 break;
             case 'dependent':
                 moveToDependentVariables(variable, targetIndex);
-                toast.success(`Variable "${variable.name}" added to dependent list`);
+                // notification suppressed to reduce noise: added to dependent list
                 break;
             case 'factor':
                 moveToFactorVariables(variable, targetIndex);
-                toast.success(`Variable "${variable.name}" added to factor list`);
+                // notification suppressed to reduce noise: added to factor list
                 break;
             // 'label' list removed – no action needed
         }
