@@ -95,7 +95,7 @@ export interface DescriptiveStatistics {
     Missing?: number;
     Mean?: number | null;
     Median?: number | null;
-    Mode?: number | null;
+    Mode?: (number | string)[] | number | null;
     Sum?: number | null;
     StdDev?: number | null;
     Variance?: number | null;

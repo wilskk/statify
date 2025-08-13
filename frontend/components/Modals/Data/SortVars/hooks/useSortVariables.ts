@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { sortDataColumns } from "../services/sortVarsService";
 
 // Map UI column names to variable field names

@@ -1,4 +1,4 @@
-import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 export interface DefineVariablePropsProps {
     onClose: () => void;
@@ -23,4 +23,4 @@ export interface PropertiesEditorProps {
     containerType?: "dialog" | "sidebar";
 }
 
-// PropertiesEditorProps will be added here later when refactoring that component 
+// PropertiesEditorProps will be added here later when refactoring that component

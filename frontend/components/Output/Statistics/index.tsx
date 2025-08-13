@@ -1,5 +1,4 @@
-import React from 'react';
-import dynamic from 'next/dynamic';
+import type React from 'react';
 
 // Import statistics components
 import LinearityTest from './LinearityTest';
@@ -17,22 +16,22 @@ interface StatisticsComponentsRegistry {
 // Create a registry of statistics components mapped by name
 export const StatisticsComponents: StatisticsComponentsRegistry = {
   // Add LinearityTest component
-  'LinearityTest': LinearityTest,
+  LinearityTest,
   
   // Add NormalityTest component
-  'NormalityTest': NormalityTest,
+  NormalityTest,
   
   // Add HomoscedasticityTest component
-  'HomoscedasticityTest': HomoscedasticityTest,
+  HomoscedasticityTest,
   
   // Add AutocorrelationTest component
-  'AutocorrelationTest': AutocorrelationTest,
+  AutocorrelationTest,
   
   // Add NonautocorrelationTest component
-  'NonautocorrelationTest': NonautocorrelationTest,
+  NonautocorrelationTest,
   
-  // Add MulticollinearityChecking component
-  'MulticollinearityChecking': MulticollinearityTest,
+  // Add MulticollinearityTest component
+  MulticollinearityTest,
   
 };
 
@@ -42,4 +41,4 @@ export const getStatisticsComponent = (name: string): React.ComponentType<any> |
 };
 
 // Default export for convenience
-export default StatisticsComponents; 
+export default StatisticsComponents;

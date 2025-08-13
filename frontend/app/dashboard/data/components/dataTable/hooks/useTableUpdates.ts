@@ -1,17 +1,18 @@
-import { useCallback, useMemo, useRef, useEffect } from 'react';
-import debounce from 'lodash/debounce';
+import { useCallback, useMemo, useRef } from 'react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useStoreMediator } from '@/stores/useStoreMediator';
-import { Variable } from '@/types/Variable';
-import { toast } from '@/hooks/use-toast';
-import Handsontable from 'handsontable';
+import type { Variable } from '@/types/Variable';
+import { toast } from "sonner";
+import type Handsontable from 'handsontable';
+import type { CellUpdate } from '@/stores/useDataStore';
+import type { StoreMediatorState } from '@/stores/useStoreMediator';
 
 /** Handle creation of new variables when data is pasted into spare columns */
 async function handleNewColumns(
-  updates: Array<{ row: number; col: number; value: string | number }>,
+  updates: CellUpdate[],
   currentVariables: Variable[],
-  mediator: any
+  mediator: Pick<StoreMediatorState, 'emit'>
 ) {
   const addVariablesAction = useVariableStore.getState().addVariables;
 
@@ -23,7 +24,7 @@ async function handleNewColumns(
   const newColIndices = Array.from({ length: maxCol - actualNumCols + 1 }, (_, i) => actualNumCols + i);
 
   // Group updates by new column index
-  const updatesByCol: Record<number, any[]> = {};
+  const updatesByCol: Record<number, Array<string | number>> = {};
   updates.forEach(({ col, value }) => {
     if (col >= actualNumCols) {
       (updatesByCol[col] ||= []).push(value);
@@ -57,11 +58,7 @@ async function handleNewColumns(
     });
   } catch (error) {
     console.error('Failed to add new variables/columns:', error);
-    toast({
-      variant: "destructive",
-      title: "Error Creating Columns",
-      description: "Could not add new columns automatically.",
-    });
+    toast.error("Error Creating Columns: Could not add new columns automatically.");
   }
 }
 
@@ -83,11 +80,11 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
     );
 
     // Adaptive debouncing: different delays for single vs bulk operations
-    const pendingUpdatesRef = useRef<Array<{ row: number; col: number; value: any }>>([]);
+    const pendingUpdatesRef = useRef<CellUpdate[]>([]);
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
     const adaptiveUpdateCells = useMemo(() => {
-        return (updates: Array<{ row: number; col: number; value: any }>) => {
+        return (updates: CellUpdate[]) => {
             // Add to pending updates
             pendingUpdatesRef.current.push(...updates);
             
@@ -112,7 +109,7 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
     }, [updateCells]);
 
     const handleBeforeChange = useCallback(
-        (changes: (Handsontable.CellChange | null)[] | null, source: string): void | boolean => {
+        (changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource): void | boolean => {
             if (source === 'loadData' || !changes) {
                 return;
             }
@@ -145,25 +142,23 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
             }
             return;
         },
-        [variables]
+        [variableMap]
     );
 
     const handleAfterChange = useCallback(
-        async (changes: Handsontable.CellChange[] | null, source: string) => {
+        async (changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource) => {
             if (!changes || source === 'loadData' || source === 'updateData') {
              return;
          }
  
              try {
-                 // Batch process changes for better performance
-                 const changeMap = new Map<number, Map<number, any>>();
-                 
-                 const validUpdates = changes
+                 const validUpdates: CellUpdate[] = changes
                      .filter((change): change is Handsontable.CellChange => !!change && change[2] !== change[3])
                      .map(([row, col, , newValue]) => {
                          const columnIdx = col as number;
-                         let valueToSave = newValue;
- 
+                         let valueToSave: string | number =
+                           typeof newValue === 'number' ? newValue : String(newValue ?? '');
+
                          if (viewMode === 'label') {
                              const variable = variableMap.get(columnIdx);
                              if (variable?.values?.length && newValue !== null && newValue !== undefined) {
@@ -185,7 +180,7 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
                                  // We leave the value as is (e.g. for empty strings).
                              }
                          }
-                         return { row, col: columnIdx, value: valueToSave };
+                         return { row, col: columnIdx, value: valueToSave } as CellUpdate;
                      });
  
                  if (validUpdates.length === 0) return;
@@ -207,14 +202,10 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
  
              } catch (error) {
                  console.error("Error processing changes:", error);
-                 toast({
-                     variant: "destructive",
-                     title: "Terjadi Kesalahan",
-                     description: "Perubahan Anda tidak dapat disimpan.",
-                 });
+                 toast.error("Perubahan Anda tidak dapat disimpan.");
              }
         },
-        [variableMap, adaptiveUpdateCells, viewMode, mediator]
+        [variableMap, adaptiveUpdateCells, viewMode, mediator, variables]
     );
 
      const handleAfterColumnResize = useCallback((newSize: number, col: number) => {
@@ -227,7 +218,15 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
          }
      }, [variables, updateMultipleFields]);
 
-    const handleAfterValidate = (isValid: boolean, value: any, row: number, prop: any) => {};
+    const handleAfterValidate = (
+        _isValid: boolean,
+        _value: unknown,
+        _row: number,
+        _prop: number | string
+    ) => {
+        // Intentionally a no-op for now; keep hook to allow future validation side-effects
+        void _isValid; void _value; void _row; void _prop;
+    };
 
     return {
         handleBeforeChange,

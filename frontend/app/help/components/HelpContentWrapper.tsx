@@ -1,6 +1,4 @@
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { HelpLayout } from "../ui/HelpLayout";
 
 /**
  * @deprecated Use HelpLayout from ../ui/HelpLayout instead
@@ -23,12 +21,7 @@ export const HelpContentWrapper: React.FC<HelpContentWrapperProps> = ({
   description,
   hasCard = true 
 }) => {
-  // Show deprecation warning in development
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(
-      'HelpContentWrapper is deprecated. Use HelpLayout from ../ui/HelpLayout instead.'
-    );
-  }
+  // Note: HelpContentWrapper is deprecated. Use HelpLayout from ../ui/HelpLayout instead.
 
   const content = (
     <>

@@ -1,4 +1,4 @@
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { evaluateCondition } from "./evaluator";
 
 export interface RandomSampleConfig {
@@ -49,7 +49,7 @@ export function selectRandomSample(data: any[][], config: RandomSampleConfig): n
   const totalCases = data.length;
   if (totalCases === 0) return [];
   
-  let selectedIndices: number[] = [];
+  const selectedIndices: number[] = [];
   
   if (config.sampleType === "approximate" && config.percentage) {
     const sampleSize = Math.round((config.percentage / 100) * totalCases);

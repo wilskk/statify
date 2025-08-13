@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, FC, useMemo, useEffect, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { InfoIcon, ChevronDownIcon, ArrowLeft, HelpCircle, Loader2, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { InfoIcon, ChevronDownIcon, ArrowLeft, Loader2, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -12,7 +13,7 @@ import {
     TooltipProvider
 } from "@/components/ui/tooltip";
 import { useImportCsvProcessor } from "../hooks/useImportCsvProcessor";
-import { 
+import type { 
     DelimiterOption, 
     DecimalOption, 
     TextQualifierOption, 
@@ -22,7 +23,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { processCSVContent } from "../importCsvUtils";
 import { RefreshCw } from "lucide-react";
 
@@ -323,7 +324,7 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
     
     const { processCSV, isProcessing: hookIsProcessing } = useImportCsvProcessor();
     const [submissionError, setSubmissionError] = useState<string | null>(null);
-    const { toast } = useToast();
+
     
     // Preview data state
     const [parsedData, setParsedData] = useState<{variables: any[], data: string[][]} | null>(null);
@@ -349,7 +350,7 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
+
     const nextStep = useCallback(() => { if (currentStep < updatedTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep, updatedTourSteps.length]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);
@@ -407,11 +408,7 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
             });
             
             // Tampilkan toast sukses
-            toast({
-                title: "Import Berhasil",
-                description: `File ${fileName} berhasil diimpor ke dalam sistem.`,
-                variant: "default"
-            });
+            toast.success(`Import Berhasil: File ${fileName} berhasil diimpor ke dalam sistem.`);
             
             onClose();
         } catch (err: any) {
@@ -419,11 +416,7 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
             setSubmissionError(errorMessage);
             
             // Tampilkan toast error
-            toast({
-                title: "Import Gagal",
-                description: errorMessage,
-                variant: "destructive"
-            });
+            toast.error(`Import Gagal: ${errorMessage}`);
         }
     };
 

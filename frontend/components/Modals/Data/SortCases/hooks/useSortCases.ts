@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { Variable } from "@/types/Variable";
-import { SortVariableConfig } from "../types";
+import type { Variable } from "@/types/Variable";
+import type { SortVariableConfig } from "../types";
 
 interface UseSortCasesProps {
     onClose: () => void;

@@ -2,10 +2,12 @@ import { useCallback, useMemo } from 'react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { getContextMenuConfig } from '../services/menuConfig';
-import { VariableAlign } from '@/types/Variable';
+import type { VariableAlign } from '@/types/Variable';
+import type { HotTableRef } from '@handsontable/react-wrapper';
+import type { CellUpdate } from '@/stores/useDataStore';
 
 export interface ContextMenuLogicProps {
-    hotTableRef: React.RefObject<any>;
+    hotTableRef: React.RefObject<HotTableRef>;
     actualNumRows: number;
     actualNumCols: number;
 }
@@ -13,7 +15,7 @@ export interface ContextMenuLogicProps {
 /**
  * Custom hook to manage Handsontable context menu logic, including item configuration and actions.
  */
-export const useContextMenuLogic = ({ hotTableRef, actualNumRows, actualNumCols }: ContextMenuLogicProps) => {
+export const useContextMenuLogic = ({ hotTableRef, actualNumRows: _actualNumRows, actualNumCols }: ContextMenuLogicProps) => {
     const isDataLoading = useDataStore(state => state.isLoading);
     const isVarLoading = useVariableStore(state => state.isLoading);
     const isLoading = isDataLoading || isVarLoading;
@@ -38,7 +40,7 @@ export const useContextMenuLogic = ({ hotTableRef, actualNumRows, actualNumCols 
     const isRangeSelected = useCallback(() => {
         if (isLoading) return false;
         const hot = hotTableRef.current?.hotInstance;
-        return hot && hot.getSelectedRangeLast() !== undefined;
+        return hot?.getSelectedRangeLast() !== undefined;
     }, [hotTableRef, isLoading]);
 
     // Memoize handlers with minimal dependencies to prevent unnecessary re-creation
@@ -47,7 +49,7 @@ export const useContextMenuLogic = ({ hotTableRef, actualNumRows, actualNumCols 
         if (row === -1) return;
         const insertIndex = above ? row : row + 1;
         await useDataStore.getState().addRow(insertIndex);
-    }, []);
+    }, [getSelectedCell]);
 
     const handleInsertColumn = useCallback(async (left: boolean) => {
         const { col } = getSelectedCell();
@@ -55,21 +57,21 @@ export const useContextMenuLogic = ({ hotTableRef, actualNumRows, actualNumCols 
         const insertIndex = left ? col : col + 1;
         if (insertIndex > actualNumCols) return;
         await useVariableStore.getState().addVariable({ columnIndex: insertIndex });
-    }, [actualNumCols]);
+    }, [actualNumCols, getSelectedCell]);
 
     const handleRemoveRow = useCallback(async () => {
         const range = getSelectedRange();
         if (!range) return;
         const indices = Array.from({ length: range.rows[1] - range.rows[0] + 1 }, (_, i) => range.rows[0] + i);
         if (indices.length > 0) await useDataStore.getState().deleteRows(indices);
-    }, []);
+    }, [getSelectedRange]);
 
     const handleRemoveColumn = useCallback(async () => {
         const range = getSelectedRange();
         if (!range) return;
         const indices = Array.from({ length: range.cols[1] - range.cols[0] + 1 }, (_, i) => range.cols[0] + i);
         if (indices.length > 0) await useVariableStore.getState().deleteVariables(indices);
-    }, []);
+    }, [getSelectedRange]);
 
     const applyAlignment = useCallback(async (alignment: VariableAlign) => {
         const range = getSelectedRange();
@@ -77,19 +79,19 @@ export const useContextMenuLogic = ({ hotTableRef, actualNumRows, actualNumCols 
         const batch = Array.from({ length: range.cols[1] - range.cols[0] + 1 }, (_, i) => range.cols[0] + i)
             .map(colIndex => ({ identifier: colIndex, changes: { align: alignment } }));
         if (batch.length > 0) await useVariableStore.getState().updateMultipleVariables(batch);
-    }, []);
+    }, [getSelectedRange]);
 
     const handleClearColumn = useCallback(async () => {
         const range = getSelectedRange();
         if (!range) return;
-        const updates = [];
+        const updates: CellUpdate[] = [];
         for (let r = range.rows[0]; r <= range.rows[1]; r++) {
             for (let c = range.cols[0]; c <= range.cols[1]; c++) {
                 updates.push({ row: r, col: c, value: "" });
             }
         }
         if (updates.length > 0) await useDataStore.getState().updateCells(updates);
-    }, []);
+    }, [getSelectedRange]);
 
     // Memoize handlers object to enable effective caching in menuConfig
     const handlers = useMemo(() => ({
@@ -97,9 +99,9 @@ export const useContextMenuLogic = ({ hotTableRef, actualNumRows, actualNumCols 
         insertColumn: handleInsertColumn,
         removeRow: handleRemoveRow,
         removeColumn: handleRemoveColumn,
-        applyAlignment: applyAlignment,
+        applyAlignment,
         clearColumn: handleClearColumn,
-        isRangeSelected: isRangeSelected,
+        isRangeSelected,
     }), [handleInsertRow, handleInsertColumn, handleRemoveRow, handleRemoveColumn, applyAlignment, handleClearColumn, isRangeSelected]);
 
     // Memoize context menu config with handlers object for effective WeakMap caching

@@ -1,7 +1,7 @@
 import { getUniqueValuesWithCounts, suggestMeasurementLevel, saveVariableProperties } from '../services/variablePropertiesService';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 // Mock the stores
 jest.mock('@/stores/useDataStore');

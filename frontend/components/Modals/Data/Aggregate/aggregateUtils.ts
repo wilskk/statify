@@ -305,7 +305,6 @@ export const calculateAggregateValue = (
                 return values.filter(v => v !== null && v !== "").length;
 
             default:
-                console.log(`Unrecognized function: ${aggFunction}`);
                 return null;
         }
     } catch (error) {

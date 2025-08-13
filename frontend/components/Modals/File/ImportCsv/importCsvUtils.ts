@@ -1,5 +1,5 @@
-import { Variable } from "@/types/Variable";
-import { CSVProcessingOptions } from "./types";
+import type { Variable } from "@/types/Variable";
+import type { CSVProcessingOptions } from "./types";
 
 export class CSVProcessingError extends Error {
     constructor(message: string) {
@@ -55,7 +55,7 @@ export const processCSVContent = (fileContent: string, options: CSVProcessingOpt
 
         const lines = fileContent.split(/\r\n|\n|\r/);
         
-        let parsedRows: string[][] = [];
+        const parsedRows: string[][] = [];
         for (const line of lines) {
             if (line.trim() === "") continue;
 
@@ -91,7 +91,7 @@ export const processCSVContent = (fileContent: string, options: CSVProcessingOpt
         const variables: Variable[] = [];
         for (let colIndex = 0; colIndex < numCols; colIndex++) {
             const colData = parsedRows.map(row => row[colIndex] || '');
-            const variableName = (firstLineContains && headerRow && headerRow[colIndex]) 
+            const variableName = (firstLineContains && headerRow?.[colIndex]) 
                 ? headerRow[colIndex].trim() 
                 : `VAR${String(colIndex + 1).padStart(3, '0')}`;
 

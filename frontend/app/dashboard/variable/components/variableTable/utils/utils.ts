@@ -1,6 +1,7 @@
-import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
+import type { Variable, ValueLabel } from "@/types/Variable";
 import { DEFAULT_MIN_ROWS, COLUMN_INDEX_TO_FIELD_MAP } from '../tableConfig';
-import Handsontable from 'handsontable';
+import type Handsontable from 'handsontable';
+import { textRenderer } from 'handsontable/renderers';
 
 /**
  * Enhanced text renderer that prevents word breaking and ensures proper text overflow handling
@@ -18,11 +19,11 @@ export function enhancedTextRenderer(
     row: number,
     col: number,
     prop: string | number,
-    value: any,
+    value: string | number | null | undefined,
     cellProperties: Handsontable.CellProperties
 ): HTMLTableCellElement {
     // Use the default text renderer first
-    Handsontable.renderers.TextRenderer(instance, td, row, col, prop, value, cellProperties);
+    textRenderer(instance, td, row, col, prop, value, cellProperties);
     
     // Apply enhanced CSS properties programmatically
     td.style.whiteSpace = 'nowrap';
@@ -36,7 +37,7 @@ export function enhancedTextRenderer(
     td.style.maxWidth = '100%';
     
     // Add title attribute for tooltip on hover
-    if (value != null && value !== '') {
+    if (value !== null && value !== '') {
         td.title = String(value);
     } else {
         td.removeAttribute('title');
@@ -54,11 +55,11 @@ export function nullSafeEnhancedRenderer(
     row: number,
     col: number,
     prop: string | number,
-    value: any,
+    value: string | number | null | undefined,
     cellProperties: Handsontable.CellProperties
 ): HTMLTableCellElement {
-    if (value == null || value === undefined) {
-        Handsontable.renderers.TextRenderer(instance, td, row, col, prop, '', cellProperties);
+    if (value === null || value === undefined) {
+        textRenderer(instance, td, row, col, prop, '', cellProperties);
         return td;
     }
     return enhancedTextRenderer(instance, td, row, col, prop, value, cellProperties);

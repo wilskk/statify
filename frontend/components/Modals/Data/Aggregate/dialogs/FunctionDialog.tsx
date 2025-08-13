@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { AggregatedVariable } from "../types";
+import type { AggregatedVariable } from "../types";
 import { Separator } from "@/components/ui/separator";
 import { useMobile } from '@/hooks/useMobile';
 

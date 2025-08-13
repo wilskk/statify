@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { File, Database, Loader2 } from 'lucide-react';
 import { useExampleDatasetLogic } from './hooks/useExampleDatasetLogic';
 import { exampleFiles } from './example-datasets';
-import { BaseModalProps } from '@/types/modalTypes';
+import type { BaseModalProps } from '@/types/modalTypes';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { ExampleDataset } from './types';
+import type { ExampleDataset } from './types';
 
 const renderFileList = (
     files: ExampleDataset[],
     handleFileClick: (path: string) => void,
-    isLoading: boolean
+    _isLoading: boolean
 ) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
         {files.map((file) => (

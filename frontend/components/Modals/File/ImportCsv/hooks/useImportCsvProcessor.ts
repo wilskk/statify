@@ -1,14 +1,12 @@
 import { useState } from "react";
-// Store imports are no longer directly needed here as service handles them
-// import { useDataStore, CellUpdate } from "@/stores/useDataStore"; 
-import { useVariableStore } from "@/stores/useVariableStore";
 import { 
     CSVProcessingError 
 } from "../importCsvUtils"; 
-import { CSVProcessingOptions } from "../types";
+import type { CSVProcessingOptions } from "../types";
 // import { DataRow } from "@/types/Data"; // No longer needed here
 import { importCsvDataService } from "../services/services"; // Import the new service
-import { parseCsvWithWorker, ProcessedCsvData } from "../services/services";
+import type { ProcessedCsvData } from "../services/services";
+import { parseCsvWithWorker } from "../services/services";
 
 interface ProcessCSVParams {
     fileContent: string;
@@ -33,7 +31,6 @@ export const useImportCsvProcessor = () => {
             
             return result; // Still returning result for potential use, though stores are updated
         } catch (error) {
-            console.error("Error in useImportCsvProcessor:", error);
             if (error instanceof CSVProcessingError) {
                 throw error;
             }
@@ -51,4 +48,4 @@ export const useImportCsvProcessor = () => {
         processCSV,
         isProcessing
     };
-}; 
+};

@@ -32,7 +32,7 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
   try {
     // Parse the JSON data
     const parsedData = JSON.parse(data);
-    const { title, description, isHomoscedastic, tests, residualStats, visualizations } = parsedData;
+    const { title, description, isHomoscedastic, tests, residualStats, visualizations: _visualizations } = parsedData;
 
     if (!tests) {
       return (
@@ -74,8 +74,8 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(tests).map(([key, test]: [string, any]) => {
-                  const testResult = test as HomoscedasticityTestResult;
+                {Object.entries(tests as Record<string, HomoscedasticityTestResult>).map(([key, test]) => {
+                  const testResult = test;
                   return (
                     <TableRow key={key}>
                       <TableCell>{testResult.testName}</TableCell>

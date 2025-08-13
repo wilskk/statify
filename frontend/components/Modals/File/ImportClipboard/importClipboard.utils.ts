@@ -1,4 +1,4 @@
-import { ClipboardProcessingOptions } from "./types"; // Corrected path
+import type { ClipboardProcessingOptions } from "./types"; // Corrected path
 
 // Utility functions originally from useImportClipboardProcessor.ts
 
@@ -70,14 +70,9 @@ export const excelStyleTextToColumns = (
         hasHeaderRow?: boolean; // Added for clarity, used by calling logic
     }
 ): string[][] => {
-    console.log('[excelStyleTextToColumns] INPUT Text:', text.substring(0, 100), 'Options:', options);
-
     if (!text || text.trim() === '') {
         return [];
     }
-    
-    console.log('Excel Text to Columns - Processing with options:', options);
-    console.log('Input text sample:', text.slice(0, 200) + (text.length > 200 ? '...' : ''));
     
     const {
         delimiterType = 'delimited',
@@ -95,13 +90,9 @@ export const excelStyleTextToColumns = (
     const result: string[][] = [];
     
     if (delimiterType === 'delimited') {
-        console.log('Using delimited mode with delimiter:', JSON.stringify(delimiter));
-        console.log('Text qualifier:', JSON.stringify(textQualifier));
-        
         const rows = text.split(/\r?\n/);
-        console.log(`Found ${rows.length} rows`);
         
-        rows.forEach((row, rowIndex) => {
+        rows.forEach((row, _rowIndex) => {
             // Skip processing for completely empty rows if skipEmptyRows is part of general options (handled by caller or here)
             // For now, this function processes all non-blank-trimmed rows
             if (options.trimWhitespace && row.trim() === '') return; 
@@ -163,23 +154,16 @@ export const excelStyleTextToColumns = (
             }
             
             result.push(parsedRow);
-            
-            if (rowIndex < 3) {
-                console.log(`Row ${rowIndex + 1}:`, parsedRow);
-            }
         });
     }
     else if (delimiterType === 'fixed') {
-        console.log('Using fixed width mode with positions:', fixedWidthPositions);
         if (!fixedWidthPositions || fixedWidthPositions.length === 0) {
-            console.error('No fixed width positions provided');
             return [];
         }
         
         const rows = text.split(/\r?\n/);
-        console.log(`Found ${rows.length} rows`);
         
-        rows.forEach((row, rowIndex) => {
+        rows.forEach((row, _rowIndex) => {
             if (options.trimWhitespace && row.trim() === '') return;
 
             const parsedRow: string[] = [];
@@ -204,45 +188,9 @@ export const excelStyleTextToColumns = (
             }
             
             result.push(parsedRow);
-            
-            if (rowIndex < 3) {
-                console.log(`Row ${rowIndex + 1}:`, parsedRow);
-            }
         });
     }
     
-    console.log(`Text to Columns processing complete. Parsed ${result.length} rows`);
-    
-    if (result.length > 0 && result[0]) { // Check if result[0] exists
-        const columnCount = result[0].length;
-        console.log(`Number of columns: ${columnCount}`);
-        
-        const typeSamples: {[column: number]: Set<string>} = {};
-        
-        // Only sample if data exists
-        for (let i = 0; i < Math.min(result.length, 10); i++) {
-            const sampleRow = result[i];
-            if (!sampleRow) continue; // Should not happen if result.length > 0
-            for (let j = 0; j < sampleRow.length; j++) {
-                if (!typeSamples[j]) {
-                    typeSamples[j] = new Set();
-                }
-                const type = detectValueType(sampleRow[j]);
-                typeSamples[j].add(type);
-            }
-        }
-        
-        console.log('Column type samples:');
-        Object.keys(typeSamples).forEach(colIndex => {
-            const columnIndex = Number(colIndex);
-            const types = Array.from(typeSamples[columnIndex]).join(', ');
-            console.log(`Column ${columnIndex + 1}: ${types}`);
-        });
-    } else {
-        console.log('No data parsed or first row is undefined.');
-    }
-    
-    console.log('[excelStyleTextToColumns] OUTPUT Result:', JSON.stringify(result));
     return result;
 };
 
@@ -274,4 +222,4 @@ export const parsePreviewData = async (
         });
         
     return processedRows;
-}; 
+};

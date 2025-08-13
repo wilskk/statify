@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SortVarsUI } from '../SortVarsUI';
-import { SortVarsUIProps } from '../types';
+import type { SortVarsUIProps } from '../types';
 
 const mockHandleOk = jest.fn();
 const mockHandleReset = jest.fn();

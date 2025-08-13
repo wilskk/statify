@@ -1,5 +1,6 @@
-import React, { lazy, Suspense } from 'react';
-import { ModalType, BaseModalProps } from '@/types/modalTypes';
+import React, { Suspense } from 'react';
+import type { BaseModalProps } from '@/types/modalTypes';
+import { ModalType } from '@/types/modalTypes';
 
 // Import file modals directly - prioritize commonly used modals
 import { ImportCsv } from '@/components/Modals/File/ImportCsv';
@@ -14,7 +15,7 @@ import { ExampleDatasetModal } from '@/components/Modals/File/ExampleDataset';
 /**
  * LoadingModal - Displayed while modal components are loading
  */
-const LoadingModal: React.FC<BaseModalProps> = ({ onClose }) => (
+const LoadingModal: React.FC<BaseModalProps> = ({ _onClose }) => (
   <div className="p-6 text-center" data-testid="file-modal-loading">
     <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" data-testid="file-modal-loading-spinner" />
     <p className="text-sm text-muted-foreground" data-testid="file-modal-loading-text">Loading file modal...</p>
@@ -24,7 +25,7 @@ const LoadingModal: React.FC<BaseModalProps> = ({ onClose }) => (
 /**
  * withSuspense - HOC for wrapping lazy-loaded components with Suspense
  */
-function withSuspense(Component: React.ComponentType<BaseModalProps>): React.ComponentType<BaseModalProps> {
+function _withSuspense(Component: React.ComponentType<BaseModalProps>): React.ComponentType<BaseModalProps> {
   const WrappedComponent = (props: BaseModalProps) => (
     <Suspense fallback={<LoadingModal onClose={props.onClose} />}>
       <Component {...props} />

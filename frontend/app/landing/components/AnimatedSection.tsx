@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, Variants, Easing } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 
 interface AnimatedSectionProps {
   children: React.ReactNode;
@@ -32,7 +32,7 @@ export const AnimatedSection = ({
       transition: {
         duration: 0.8,
         ease: [0.25, 0.1, 0.25, 1.0], // cubic-bezier easing
-        delay: delay
+        delay
       }
     }
   };
@@ -58,4 +58,4 @@ export const AnimatedSection = ({
 // Export additional animated elements for convenience
 export const AnimatedCard = motion.div;
 export const AnimatedText = motion.div;
-export const AnimatedImage = motion.img; 
+export const AnimatedImage = motion.img;

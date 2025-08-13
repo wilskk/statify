@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useModalStore } from "@/stores/useModalStore";
-import { Variable, VariableType, VariableMeasure } from "@/types/Variable";
-import { AggregatedVariable } from "../types";
+import type { Variable, VariableType} from "@/types/Variable";
+import type { AggregatedVariable } from "../types";
 import {
     createVariableName,
     mapUIFunctionToCalculationFunction,
@@ -13,7 +13,7 @@ import {
 
 export const useAggregateData = () => {
     const { variables } = useVariableStore();
-    const { data, updateCells } = useDataStore();
+    const { data } = useDataStore();
     const { setStatisticProgress } = useModalStore();
 
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
@@ -628,4 +628,4 @@ export const useAggregateData = () => {
         handleConfirm,
         onAvailableOrBreakHighlighted,
     };
-}; 
+};

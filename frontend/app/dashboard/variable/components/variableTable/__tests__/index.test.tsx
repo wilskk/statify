@@ -39,7 +39,7 @@ jest.mock('../dialog/MissingValuesDialog', () => ({
 
 // Mock HotTable from @handsontable/react-wrapper
 jest.mock('@handsontable/react-wrapper', () => ({
-    HotTable: React.forwardRef((props, ref) => <div data-testid="hot-table" />),
+    HotTable: React.forwardRef((_props, _ref) => <div data-testid="hot-table" />),
 }));
 
 
@@ -49,4 +49,4 @@ describe('VariableTable Component', () => {
     // Check if the HotTable mock is rendered
     expect(screen.getByTestId('hot-table')).toBeInTheDocument();
   });
-}); 
+});

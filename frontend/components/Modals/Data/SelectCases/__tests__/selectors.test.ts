@@ -5,7 +5,7 @@ import {
     selectRandomSample
 } from '../services/selectors';
 import * as evaluator from '../services/evaluator';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 jest.mock('../services/evaluator');
 const mockedEvaluator = evaluator as jest.Mocked<typeof evaluator>;

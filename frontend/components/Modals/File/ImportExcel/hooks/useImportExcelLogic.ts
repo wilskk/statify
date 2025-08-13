@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useMobile } from "@/hooks/useMobile";
-import { ImportExcelStage, UseImportExcelLogicProps, UseImportExcelLogicOutput, SheetData } from "../types";
+import type { ImportExcelStage, UseImportExcelLogicProps, UseImportExcelLogicOutput, SheetData } from "../types";
 import { useExcelWorker } from "./useExcelWorker";
 
 export const useImportExcelLogic = ({
@@ -40,9 +40,10 @@ export const useImportExcelLogic = ({
             const sheets = await parse(file);
             setParsedSheets(sheets);
             setStage("configure");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("File processing error:", err);
-            setError(err.message || "Failed to read or process file.");
+            const message = err instanceof Error ? err.message : String(err);
+            setError(message ?? "Failed to read or process file.");
         } finally {
             setIsLoading(false);
         }

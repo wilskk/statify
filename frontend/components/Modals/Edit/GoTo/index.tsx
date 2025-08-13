@@ -11,7 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
-import { GoToMode, GoToModalProps } from "./types";
+import type { GoToModalProps } from "./types";
+import { GoToMode } from "./types";
 import { GoToContent } from './components/GoToContent';
 
 const GoToModal: React.FC<GoToModalProps> = ({

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { TourStep, HorizontalPosition } from '@/types/tourTypes';
+import type { TourStep, HorizontalPosition } from '@/types/tourTypes';
 
 // Define tour steps for ExportExcel component
 const baseTourSteps: TourStep[] = [
@@ -96,7 +96,7 @@ export const useTourGuide = (
 
   const findTargetElement = useCallback((stepId: string): HTMLElement | null => {
     try {
-      return document.getElementById(stepId) || document.querySelector(`[data-tour-id="${stepId}"]`);
+      return document.getElementById(stepId) ?? document.querySelector(`[data-tour-id="${stepId}"]`);
     } catch (error) {
       console.error(`Error finding target element for ${stepId}:`, error);
       return null;
@@ -148,7 +148,7 @@ export const useTourGuide = (
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep(prev => prev - 1);
     }
   }, [currentStep]);
 
@@ -162,7 +162,7 @@ export const useTourGuide = (
       return null;
     }
     const currentStepData = tourSteps[currentStep];
-    return currentStepData ? targetElements[currentStepData.targetId] || null : null;
+    return currentStepData ? (targetElements[currentStepData.targetId] ?? null) : null;
   }, [tourActive, tourSteps, currentStep, targetElements]);
 
   return {

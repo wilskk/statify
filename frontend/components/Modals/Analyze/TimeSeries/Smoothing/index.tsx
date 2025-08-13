@@ -273,13 +273,6 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
             <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleAnalyzes}
-                        disabled={isCalculating}
-                    >
-                        {isCalculating ? "Processing..." : "OK"}
-                    </Button>
-                    <Button
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         disabled={isCalculating}
@@ -296,12 +289,11 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
                         Cancel
                     </Button>
                     <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="text-white hover:bg-[#444444] h-8 px-4"
+                        onClick={handleAnalyzes}
                         disabled={isCalculating}
-                        onClick={() => window.open("https://drive.google.com/file/d/1RkrwpeQQqO3YDJdSKxtcos2fdMax49ML/view?usp=sharing", "_blank")}
                     >
-                        Help
+                        {isCalculating ? "Processing..." : "OK"}
                     </Button>
                 </div>
             </div>

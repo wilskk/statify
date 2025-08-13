@@ -1,5 +1,6 @@
 "use client"
-import React, { useState, FC, useEffect, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";

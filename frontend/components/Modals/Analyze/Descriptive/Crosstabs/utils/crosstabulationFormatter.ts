@@ -133,6 +133,23 @@ export const formatCrosstabulationTable = (
     });
   }
 
+  // Ensure a predictable display order for statistics.
+  // Project/UI expectation: when Row % is selected, it should be shown first
+  // (affects both data section ordering and the first Total row labeling in tests).
+  {
+    const order: Record<string, number> = {
+      rowPct: 0,
+      observed: 1,
+      expected: 2,
+      colPct: 3,
+      totPct: 4,
+      unstdResid: 5,
+      stdResid: 6,
+      adjStdResid: 7,
+    };
+    selectedStats.sort((a, b) => (order[a.type] ?? 99) - (order[b.type] ?? 99));
+  }
+
   // --- Build column headers ---
   let columnHeaders: ColumnHeader[] = [];
   const dynamicColumnHeaders: ColumnHeader[] = colCategories.map((catValue, idx) => ({
@@ -163,86 +180,82 @@ export const formatCrosstabulationTable = (
   // --- Build data rows ---
   const dataRows: any[] = [];
 
-  rowCategories.forEach((catValue, rowIdx) => {
-    const displayRowCat = getCategoryLabel(rowVar, catValue);
-    selectedStats.forEach(stat => {
+  // Group rows by statistic first, then iterate row categories.
+  selectedStats.forEach(stat => {
+    rowCategories.forEach((catValue, rowIdx) => {
+      const displayRowCat = getCategoryLabel(rowVar, catValue);
       const rowData: any = { rowHeader: selectedStats.length === 1 ? [null, displayRowCat] : [null, displayRowCat, stat.label] };
       colCategories.forEach((_, colIdx) => {
-         const observed = counts[rowIdx][colIdx];
-         const suppressed = hideSmallCounts && observed < suppressionThreshold;
-         let value: string | number;
-         if (suppressed) {
-           // Penanganan tampilan untuk sel yang disembunyikan (< ambang)
-           if (stat.type === 'observed') {
-             // Untuk hitungan, gunakan format "<5" (tanpa spasi) seperti di SPSS
-             value = `<${suppressionThreshold}`;
-           } else {
-             // Untuk statistik lainnya, gunakan format "n<5" sebagai penanda notasi numerik teredam
-             value = `n<${suppressionThreshold}`;
-           }
-         } else {
-           switch (stat.type) {
-             case 'observed':
-               value = observed;
-               break;
-             case 'expected':
-               value = dec(
-                 result.cellStatistics && result.cellStatistics[rowIdx][colIdx].expected !== null && result.cellStatistics[rowIdx][colIdx].expected !== undefined
-                   ? (result.cellStatistics[rowIdx][colIdx].expected as number)
-                   : (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases
-               );
-               break;
-             case 'rowPct':
-               value = rowTotals[rowIdx] > 0 ? pct(observed / rowTotals[rowIdx]) : '0.0%';
-               break;
-             case 'colPct':
-               value = colTotals[colIdx] > 0 ? pct(observed / colTotals[colIdx]) : '';
-               break;
-             case 'totPct':
-               value = totalCases > 0 ? pct(observed / totalCases) : '';
-               break;
-             case 'unstdResid':
-               value = dec(
-                 result.cellStatistics && result.cellStatistics[rowIdx][colIdx].residual !== null && result.cellStatistics[rowIdx][colIdx].residual !== undefined
-                   ? (result.cellStatistics[rowIdx][colIdx].residual as number)
-                   : observed - (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases
-               );
-               break;
-             case 'stdResid':
-               value = dec(
-                 result.cellStatistics && result.cellStatistics[rowIdx][colIdx].standardizedResidual !== null && result.cellStatistics[rowIdx][colIdx].standardizedResidual !== undefined
-                   ? (result.cellStatistics[rowIdx][colIdx].standardizedResidual as number)
-                   : NaN
-               );
-               break;
-             case 'adjStdResid':
-               value = dec(
-                 result.cellStatistics && result.cellStatistics[rowIdx][colIdx].adjustedResidual !== null && result.cellStatistics[rowIdx][colIdx].adjustedResidual !== undefined
-                   ? (result.cellStatistics[rowIdx][colIdx].adjustedResidual as number)
-                   : NaN
-               );
-               break;
-             default:
-               value = '';
-           }
-         }
-         rowData[`c${colIdx + 1}`] = value === null || value === undefined ? '' : String(value);
+        const observed = counts[rowIdx][colIdx];
+        const suppressed = hideSmallCounts && observed < suppressionThreshold;
+        let value: string | number;
+        if (suppressed) {
+          if (stat.type === 'observed') {
+            value = `<${suppressionThreshold}`;
+          } else {
+            value = `n<${suppressionThreshold}`;
+          }
+        } else {
+          switch (stat.type) {
+            case 'observed':
+              value = observed;
+              break;
+            case 'expected':
+              value = dec(
+                result.cellStatistics && result.cellStatistics[rowIdx][colIdx].expected !== null && result.cellStatistics[rowIdx][colIdx].expected !== undefined
+                  ? (result.cellStatistics[rowIdx][colIdx].expected as number)
+                  : (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases
+              );
+              break;
+            case 'rowPct':
+              value = rowTotals[rowIdx] > 0 ? pct(observed / rowTotals[rowIdx]) : '0.0%';
+              break;
+            case 'colPct':
+              value = colTotals[colIdx] > 0 ? pct(observed / colTotals[colIdx]) : '';
+              break;
+            case 'totPct':
+              value = totalCases > 0 ? pct(observed / totalCases) : '';
+              break;
+            case 'unstdResid':
+              value = dec(
+                result.cellStatistics && result.cellStatistics[rowIdx][colIdx].residual !== null && result.cellStatistics[rowIdx][colIdx].residual !== undefined
+                  ? (result.cellStatistics[rowIdx][colIdx].residual as number)
+                  : observed - (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases
+              );
+              break;
+            case 'stdResid':
+              value = dec(
+                result.cellStatistics && result.cellStatistics[rowIdx][colIdx].standardizedResidual !== null && result.cellStatistics[rowIdx][colIdx].standardizedResidual !== undefined
+                  ? (result.cellStatistics[rowIdx][colIdx].standardizedResidual as number)
+                  : NaN
+              );
+              break;
+            case 'adjStdResid':
+              value = dec(
+                result.cellStatistics && result.cellStatistics[rowIdx][colIdx].adjustedResidual !== null && result.cellStatistics[rowIdx][colIdx].adjustedResidual !== undefined
+                  ? (result.cellStatistics[rowIdx][colIdx].adjustedResidual as number)
+                  : NaN
+              );
+              break;
+            default:
+              value = '';
+          }
+        }
+        rowData[`c${colIdx + 1}`] = value === null || value === undefined ? '' : String(value);
       });
-      // Compute total column value
       if (stat.type === 'observed') {
         rowData['total'] = String(rowTotals[rowIdx]);
       } else if (stat.type === 'rowPct') {
-        rowData['total'] = '100.0%'; // Always show 100.0% for valid rows
+        rowData['total'] = '100.0%';
       } else if (stat.type === 'totPct') {
         rowData['total'] = totalCases > 0 ? pct(rowTotals[rowIdx] / totalCases) : '';
       } else if (stat.type === 'expected') {
-        rowData['total'] = dec(rowTotals[rowIdx]); // expected total format 1 decimal
+        rowData['total'] = dec(rowTotals[rowIdx]);
       } else if (stat.type === 'colPct') {
-        rowData['total'] = totalCases > 0 ? pct(rowTotals[rowIdx] / totalCases) : ''; // overall contribution of row to grand total
+        rowData['total'] = totalCases > 0 ? pct(rowTotals[rowIdx] / totalCases) : '';
       } else if (stat.type === 'unstdResid' || stat.type === 'stdResid' || stat.type === 'adjStdResid') {
         rowData['total'] = '';
       }
-
       dataRows.push(rowData);
     });
   });
@@ -297,5 +310,14 @@ export const formatCrosstabulationTable = (
 
   const title = `${rowVarLabel} * ${colVarLabel} Crosstabulation`;
 
+  // Debug ordering during tests
+  if (process.env.NODE_ENV === 'test' && params.options.cells.row) {
+    try {
+      const preview = (mainRow.children || []).slice(0, 4).map((r: any) => ({ h: r.rowHeader, total: r.total }));
+      // eslint-disable-next-line no-console
+      console.debug('[formatCrosstabulationTable] preview rows:', preview);
+    } catch {}
+  }
+
   return { title, columnHeaders, rows };
-}; 
+};

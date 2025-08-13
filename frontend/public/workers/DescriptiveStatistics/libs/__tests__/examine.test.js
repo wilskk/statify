@@ -14,7 +14,13 @@ const loadScript = (scriptPath) => {
 // -------------------------------------------------------------
 
 global.self = global;
-global.importScripts = loadScript;
+global.importScripts = (url) => {
+  // Ignore external CDN import attempts
+  if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+    return;
+  }
+  loadScript(url);
+};
 
 // Mock jStat for testing
 global.jStat = {

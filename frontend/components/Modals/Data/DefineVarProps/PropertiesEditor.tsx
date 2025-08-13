@@ -1,6 +1,7 @@
 "use client"
 
-import React, { FC, useEffect, useRef, useCallback } from "react";
+import type { FC} from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
     DialogContent,
     DialogHeader,
@@ -30,11 +31,11 @@ import {
     TooltipTrigger
 } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PropertiesEditorProps } from "./types";
+import type { PropertiesEditorProps } from "./types";
 import { usePropertiesEditor } from "./hooks/usePropertiesEditor";
-import { Variable } from "@/types/Variable";
-import { DATE_FORMAT_SPECS, isDateType } from "./constants/dateSpecs";
-import { getFormattedTypeName, formatDropdownText } from "./utils/typeFormatters";
+import type { Variable } from "@/types/Variable";
+
+import { formatDropdownText } from "./utils/typeFormatters";
 
 // Register all Handsontable modules
 registerAllModules();
@@ -42,10 +43,6 @@ registerAllModules();
 // Dropdown options
 const ROLE_OPTIONS = ["input", "target", "both", "none", "partition", "split"];
 const MEASURE_OPTIONS = ["scale", "ordinal", "nominal"];
-const TYPE_OPTIONS = [
-    "NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "DATE", "DOLLAR",
-    "CCA", "CCB", "CCC", "CCD", "CCE", "PERCENT", "STRING", "RESTRICTED_NUMERIC"
-];
 
 const getVariableIcon = (variable: Variable | null) => {
     if (!variable) return <Ruler size={12} className="text-muted-foreground mr-1 flex-shrink-0" />;
@@ -72,11 +69,9 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
         modifiedVariables,
         selectedVariableIndex,
         currentVariable,
-        gridData, setGridData, 
-        showTypeDropdown, setShowTypeDropdown,
+        gridData, setGridData,
         showRoleDropdown, setShowRoleDropdown,
         showMeasureDropdown, setShowMeasureDropdown,
-        showDateFormatDropdown, setShowDateFormatDropdown,
         errorMessage, errorDialogOpen, setErrorDialogOpen,
         suggestDialogOpen, setSuggestDialogOpen, suggestedMeasure, measurementExplanation, 
         unlabeledValuesCount,   
@@ -85,7 +80,6 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
         handleVariableFieldChange, 
         handleGridDataChange,   
         handleAutoLabel,        
-        handleSuggestMeasurement, 
         handleAcceptSuggestion, 
         handleSave,             
     } = usePropertiesEditor({
@@ -149,15 +143,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
         return td;
     }, [gridData, setGridData]);
 
-    const handleCopyFromVariable = () => {
-        setErrorDialogOpen(true);
-        console.warn("handleCopyFromVariable: Feature not fully implemented. Error dialog shown.");
-    };
 
-    const handleCopyToVariables = () => {
-        setErrorDialogOpen(true);
-        console.warn("handleCopyToVariables: Feature not fully implemented. Error dialog shown.");
-    };
 
     const renderDropdown = (options: string[], currentValue: string, onChange: (value: string) => void, onCloseDropdown: () => void) => {
         return (
@@ -176,27 +162,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
         );
     };
 
-    const renderDateFormatDropdown = (currentVar: Variable | null, handleVarFieldChangeFn: (field: keyof Variable, value: any) => void, setShowDd: (show: boolean) => void) => {
-        if (!currentVar) return null;
-        return (
-            <div className="absolute top-full right-0 z-50 mt-1 w-60 bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
-                {DATE_FORMAT_SPECS.map((format, index) => (
-                    <div
-                        key={index}
-                        className="text-sm p-1 hover:bg-accent cursor-pointer text-popover-foreground"
-                        onClick={() => {
-                            handleVarFieldChangeFn('type', format.type);
-                            handleVarFieldChangeFn('width', format.width);
-                            setShowDd(false);
-                        }}
-                        title={format.format}
-                    >
-                        {format.format}
-                    </div>
-                ))}
-            </div>
-        );
-    };
+
     
     return (
         <div className="flex flex-col flex-grow h-full">

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { DataAction, ResourceItem } from './types';
+import type { DataAction, ResourceItem } from './types';
 import { DataActionCard } from './DataActionCard';
 import { ResourceCard } from './ResourceCard';
 

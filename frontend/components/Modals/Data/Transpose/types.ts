@@ -1,4 +1,4 @@
-import { useTranspose } from "./hooks/useTranspose";
+import type { useTranspose } from "./hooks/useTranspose";
 
 export interface TransposeModalProps {
     onClose: () => void;

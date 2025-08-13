@@ -1,13 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { SheetData, parseExcelWithWorker } from "../services/services";
+import { useState, useCallback } from "react";
+import type { SheetData} from "../services/services";
+import { parseExcelWithWorker } from "../services/services";
 
 export const useExcelWorker = () => {
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const workerPromiseRef = useRef<{
-    promise: Promise<SheetData[]>;
-    cancel: () => void;
-  } | null>(null);
 
   const parse = useCallback((file: File): Promise<SheetData[]> => {
     setIsParsing(true);
@@ -17,19 +14,13 @@ export const useExcelWorker = () => {
         setIsParsing(false);
         return result;
       })
-      .catch((err) => {
-        setError(err.message);
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
         setIsParsing(false);
         return Promise.reject(err);
       });
-    workerPromiseRef.current = { promise, cancel: () => {} };
     return promise;
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      // no-op: worker in service self-terminates
-    };
   }, []);
 
   return { isParsing, error, parse };

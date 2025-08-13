@@ -1,28 +1,18 @@
 import { useState, useMemo, useCallback } from 'react';
-import Handsontable from 'handsontable';
-import { useStoreMediator } from '@/stores/useStoreMediator';
+import type Handsontable from 'handsontable';
+import type { HotTableRef } from '@handsontable/react-wrapper';
 import { useVariableStore } from '@/stores/useVariableStore';
 import {
-    COLUMN_INDEX,
     DEFAULT_VARIABLE_TYPE,
     COLUMN_INDEX_TO_FIELD_MAP,
     DIALOG_TRIGGER_COLUMNS,
 } from '../tableConfig';
-import { Variable, VariableType, ValueLabel, MissingValuesSpec } from '@/types/Variable';
+import type { Variable, VariableType, ValueLabel, MissingValuesSpec } from '@/types/Variable';
 
 type ValuesChangePayload = ValueLabel[];
 type MissingChangePayload = MissingValuesSpec | null;
 
-/**
- * A comprehensive hook to manage all logic for the VariableTable component.
- * It integrates state management for dialogs, event handling for the Handsontable grid,
- * and business logic for creating, updating, and deleting variables.
- *
- * @param hotTableRef A React ref object pointing to the Handsontable instance.
- * @returns An object containing all necessary state and handlers for the VariableTable component.
- */
-export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
-    const mediator = useStoreMediator();
+export function useVariableTableLogic(hotTableRef: React.RefObject<HotTableRef>) {
     const { variables, addVariable, updateMultipleFields, deleteVariables } = useVariableStore();
 
     // --- DIALOG STATE MANAGEMENT ---
@@ -37,7 +27,7 @@ export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
     }, [selectedCell, variables]);
 
     const selectedVariableType = useMemo(() => {
-        return selectedVariable?.type || DEFAULT_VARIABLE_TYPE;
+        return selectedVariable?.type ?? DEFAULT_VARIABLE_TYPE;
     }, [selectedVariable]);
 
     // --- DIALOG HANDLERS ---
@@ -101,7 +91,10 @@ export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
             const [row, prop, , newValue] = change;
             if (typeof row !== 'number') continue;
 
-            const columnIndex = hotTableRef.current?.hotInstance?.propToCol(prop) ?? -1;
+            const columnIndex: number = (typeof prop === 'number' || typeof prop === 'string')
+                ? (hotTableRef.current?.hotInstance?.propToCol(prop) ?? -1)
+                : -1;
+
             if (columnIndex === -1) continue;
 
             if (DIALOG_TRIGGER_COLUMNS.includes(columnIndex)) {
@@ -167,7 +160,9 @@ export function useVariableTableLogic(hotTableRef: React.RefObject<any>) {
 
         const variable = variables.find(v => v.columnIndex === row);
         if (variable) {
-            const { id, tempId, ...copyData } = variable;
+            const copyData: Partial<Variable> = { ...(variable as Variable) };
+            delete (copyData as { id?: unknown }).id;
+            delete (copyData as { tempId?: unknown }).tempId;
             navigator.clipboard.writeText(JSON.stringify(copyData));
         }
     }, [hotTableRef, variables]);

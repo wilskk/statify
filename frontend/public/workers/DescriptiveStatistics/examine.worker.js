@@ -1,21 +1,4 @@
 importScripts('/workers/DescriptiveStatistics/libs/utils/utils.js');
-
-function roundDeep(value, decimals) {
-  if (typeof value === 'number') {
-    return roundToDecimals(value, decimals);
-  }
-  if (Array.isArray(value)) {
-    return value.map(v => roundDeep(v, decimals));
-  }
-  if (value && typeof value === 'object') {
-    const result = {};
-    for (const key in value) {
-      result[key] = roundDeep(value[key], decimals);
-    }
-    return result;
-  }
-  return value;
-}
 importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
 importScripts('/workers/DescriptiveStatistics/libs/frequency/frequency.js');
 importScripts('/workers/DescriptiveStatistics/libs/examine/examine.js');
@@ -29,24 +12,6 @@ onmessage = function (event) {
     const results = calculator.getStatistics();
 
     
-    
-    if (results.descriptives) {
-      results.descriptives = roundDeep(results.descriptives, STATS_DECIMAL_PLACES);
-    }
-    
-    
-    if (results.percentiles) {
-      results.percentiles = roundDeep(results.percentiles, STATS_DECIMAL_PLACES);
-    }
-    if (results.trimmedMean !== undefined) {
-      results.trimmedMean = roundDeep(results.trimmedMean, STATS_DECIMAL_PLACES);
-    }
-    if (results.mEstimators) {
-      results.mEstimators = roundDeep(results.mEstimators, STATS_DECIMAL_PLACES);
-    }
-    if (results.descriptives?.confidenceInterval) {
-      results.descriptives.confidenceInterval = roundDeep(results.descriptives.confidenceInterval, STATS_DECIMAL_PLACES);
-    }
 
     console.log('[ExamineWorker] Calculation success – posting results');
     postMessage({

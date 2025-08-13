@@ -38,9 +38,35 @@ self.onmessage = function (e) {
 
     // X matrix with rows = observations, cols = variables
     const X = transpose(independentVars);
+    
+    // Validate data before regression
+    if (X.length < X[0].length + 1) {
+      self.postMessage({
+        error: "Cannot perform linearity test: Insufficient observations. Need at least " + 
+               (X[0].length + 2) + " observations for " + X[0].length + " independent variables."
+      });
+      return;
+    }
+    
+    // Check for constant variables
+    for (let j = 0; j < X[0].length; j++) {
+      const column = X.map(row => row[j]);
+      const min = Math.min(...column);
+      const max = Math.max(...column);
+      if (Math.abs(max - min) < 1e-10) {
+        self.postMessage({
+          error: "Cannot perform linearity test: Variable " + (j + 1) + " appears to be constant or nearly constant."
+        });
+        return;
+      }
+    }
+    
     const restricted = multipleLinearRegression(dependentData, X);
     const restrictedSSE = restricted.sse;
     const yHat = restricted.yHat;
+
+    // Define maxPower for Ramsey RESET test (typically 2 or 3)
+    const maxPower = 3;
 
     const augmentedX = X.map((row, i) => {
       const extras = [];
@@ -104,7 +130,22 @@ function multipleLinearRegression(y, X) {
   // Matrix operations for OLS (X'X)^(-1)X'y
   const XTranspose = transpose(XWithIntercept);
   const XTX = matrixMultiply(XTranspose, XWithIntercept);
-  const XTXInv = matrixInverse(XTX);
+  
+  let XTXInv;
+  try {
+    XTXInv = matrixInverse(XTX);
+  } catch (error) {
+    if (error.message.includes("singular")) {
+      throw new Error("Cannot perform linearity test: The data matrix is singular or nearly singular. This may be due to:\n" +
+        "1. Perfect multicollinearity between variables\n" +
+        "2. Insufficient data variation\n" +
+        "3. More variables than observations\n" +
+        "4. Constant or nearly constant variables\n" +
+        "Please check your data and variable selection.");
+    }
+    throw error;
+  }
+  
   const XTY = matrixMultiplyVector(XTranspose, y);
   const beta = matrixMultiplyVector(XTXInv, XTY);
 

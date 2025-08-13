@@ -1,11 +1,11 @@
 "use client";
 
-import React, { FC, useState, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, FileText, Loader2, X, HelpCircle, ChevronLeft, ChevronRight, Info, UploadCloud } from "lucide-react";
+import { AlertCircle, FileText, Loader2, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { useMobile } from "@/hooks/useMobile";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -194,7 +194,6 @@ export const ImportCsvSelection: FC<ImportCsvSelectionProps> = ({
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
     const nextStep = useCallback(() => { if (currentStep < baseTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);
@@ -248,7 +247,7 @@ export const ImportCsvSelection: FC<ImportCsvSelectionProps> = ({
         [onFileSelect]
     );
 
-    const { getRootProps, getInputProps } = useDropzone({
+    useDropzone({
         onDrop: handleDropZone,
         noClick: true,
         noKeyboard: true,

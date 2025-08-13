@@ -1,22 +1,18 @@
 "use client";
 
-import React, { useState, FC, useEffect } from "react";
-import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import type { FC} from "react";
+import React, { useState, useEffect } from "react";
 import { ImportCsvSelection } from "./components/ImportCsvSelection"; 
 import { ImportCsvConfiguration } from "./components/ImportCsvConfiguration";
-import { ContainerType } from "@/types/ui";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+
 import { useImportCsvFileReader } from "./hooks/useImportCsvFileReader";
 
 interface ImportCsvProps { 
     onClose: () => void;
-    containerType: ContainerType; // Made non-optional as container should always decide
 }
 
 export const ImportCsv: FC<ImportCsvProps> = ({ 
     onClose,
-    containerType, // No default here, should be explicitly passed
 }) => {
     const [file, setFile] = useState<File | null>(null);
     const [stage, setStage] = useState<"select" | "configure">("select");

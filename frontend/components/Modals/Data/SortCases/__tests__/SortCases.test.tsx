@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { SortCasesUI } from '../SortCasesUI';
-import { Variable } from '@/types/Variable';
-import { SortCasesUIProps, SortVariableConfig } from '../types';
+import type { Variable } from '@/types/Variable';
+import type { SortCasesUIProps, SortVariableConfig } from '../types';
 import VariableListManager from '@/components/Common/VariableListManager';
 
 // Mock the child component to control its behavior
@@ -17,7 +17,7 @@ jest.mock('@/components/Common/VariableListManager', () => ({
                 Move VAR1
             </button>
             {/* Render the footer so we can interact with its controls */}
-            {renderListFooter && renderListFooter()}
+            {renderListFooter?.()}
         </div>
     )),
 }));

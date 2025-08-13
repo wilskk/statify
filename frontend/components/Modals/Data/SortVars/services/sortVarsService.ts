@@ -1,5 +1,5 @@
-import { Variable } from "@/types/Variable";
-import { DataRow } from "@/types/Data";
+import type { Variable } from "@/types/Variable";
+import type { DataRow } from "@/types/Data";
 
 /**
  * Reorders the columns of the dataset based on the new variable order.

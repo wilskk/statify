@@ -21,12 +21,10 @@ jest.mock('@/stores/useMetaStore', () => ({
   useMetaStore: () => ({ setMeta: setMetaMock }),
 }));
 
-const processSavFileFromUrlMock = jest.fn();
 jest.mock('../services/services', () => ({
   processSavFileFromUrl: jest.fn(),
 }));
 
-const processSavApiResponseMock = jest.fn();
 jest.mock('@/utils/savFileUtils', () => ({
   processSavApiResponse: jest.fn(),
 }));
@@ -115,4 +113,4 @@ describe('useExampleDatasetLogic hook', () => {
     // Assert: Check that loading is set back to false
     expect(result.current.isLoading).toBe(false);
   });
-}); 
+});

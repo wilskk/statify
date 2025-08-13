@@ -34,7 +34,7 @@ export const readExcelFileAsBinary = (file: File): Promise<string> => {
     });
 }; 
 
-export interface SheetData { sheetName: string; data: any[][]; }
+export interface SheetData { sheetName: string; data: unknown[][]; }
 
 export const parseExcelWithWorker = (file: File): Promise<SheetData[]> => {
   return new Promise((resolve, reject) => {

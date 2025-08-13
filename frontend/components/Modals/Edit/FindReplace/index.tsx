@@ -11,7 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
-import { FindReplaceMode, FindAndReplaceModalProps } from "./types";
+import type { FindAndReplaceModalProps } from "./types";
+import { FindReplaceMode } from "./types";
 import { FindReplaceContent } from "./components/FindReplaceContent";
 
 export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({

@@ -11,8 +11,11 @@
     "strict": true,
     "sourceMap": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "composite": true,
+    "declaration": true,
+    "rootDir": "server"
   },
   "include": ["server/**/*.ts"],
-  "exclude": ["node_modules", "dist", "server/__tests__", "jest.config.js"]
+  "exclude": ["node_modules", "dist", "**/__tests__/**", "jest.config.js"]
 }

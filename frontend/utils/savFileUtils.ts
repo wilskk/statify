@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Variable, ValueLabel, MissingValuesSpec, MissingRange, spssDateTypes, VariableType } from "@/types/Variable";
 import { spssSecondsToDateString } from "@/lib/spssDateConverter";
+import type { SavUploadResponse, SavSysVar, SavValueLabelsForVariable, SavValueLabelEntry } from "@/types/SavUploadResponse";
 
 /**
  * Processes a single cell's raw data value based on its variable definition.
@@ -48,11 +49,22 @@ const processCellData = (rawDataValue: any, variable: Variable | undefined): any
 };
 
 /**
+ * Maps arbitrary measurement level strings to the strict VariableMeasure union.
+ */
+const toVariableMeasure = (input: unknown): "scale" | "ordinal" | "nominal" | "unknown" => {
+    if (typeof input === "string") {
+        const m = input.toLowerCase();
+        if (m === "scale" || m === "ordinal" || m === "nominal") return m;
+    }
+    return "unknown";
+};
+
+/**
  * Maps SPSS format type string to a VariableType.
  */
 export const mapSPSSTypeToInterface = (formatType: string): VariableType => {
     const typeMap: { [key: string]: VariableType } = {
-        "F": "NUMERIC", "COMMA": "COMMA", "E": "SCIENTIFIC", "DATE": "DATE",
+        "F": "NUMERIC", "COMMA": "COMMA", "DOT": "DOT", "E": "SCIENTIFIC", "DATE": "DATE",
         "ADATE": "ADATE", "EDATE": "EDATE", "SDATE": "SDATE", "JDATE": "JDATE",
         "QYR": "QYR", "MOYR": "MOYR", "WKYR": "WKYR", "DATETIME": "DATETIME",
         "TIME": "TIME", "DTIME": "DTIME", "WKDAY": "WKDAY", "MONTH": "MONTH",
@@ -66,7 +78,7 @@ export const mapSPSSTypeToInterface = (formatType: string): VariableType => {
  * Processes the raw API response from a .sav file upload.
  * It extracts metadata, variables, and data, standardizing them for the application.
  */
-export const processSavApiResponse = (apiResponse: any) => {
+export const processSavApiResponse = (apiResponse: SavUploadResponse) => {
     const metaHeader = apiResponse.meta?.header;
     const sysvars = apiResponse.meta?.sysvars;
     const valueLabelsData = apiResponse.meta?.valueLabels;
@@ -87,18 +99,18 @@ export const processSavApiResponse = (apiResponse: any) => {
         tempId: uuidv4(),
     }));
 
-    const variables: Variable[] = sysvars.map((varInfo: any, colIndex: number): Variable => {
+    const variables: Variable[] = sysvars.map((varInfo: SavSysVar, colIndex: number): Variable => {
         const variableName = varInfo.name || `VAR${String(colIndex + 1).padStart(3, '0')}`;
         const formatType = varInfo.printFormat?.typestr || (varInfo.type === 1 ? "A" : "F");
         const isString = formatType === "A";
         const tempId = variablePlaceholders[colIndex].tempId;
 
         const valueLabelsObj = valueLabelsData?.find(
-            (vl: any) => vl.appliesToNames?.includes(variableName)
+            (vl: SavValueLabelsForVariable) => vl.appliesToNames?.includes(variableName)
         );
         const values: ValueLabel[] = valueLabelsObj ?
-            valueLabelsObj.entries.map((entry: any): ValueLabel => ({
-                variableId: tempId as any,
+            valueLabelsObj.entries.map((entry: SavValueLabelEntry): ValueLabel => ({
+                variableId: colIndex,
                 value: entry.val,
                 label: entry.label
             })) : [];
@@ -133,7 +145,7 @@ export const processSavApiResponse = (apiResponse: any) => {
             missing: missingValueSpec,
             columns: (varInfo.writeFormat?.width || varInfo.printFormat?.width || 8) * 8,
             align: isString ? "left" : "right",
-            measure: varInfo.measurementLevel?.toLowerCase() || "unknown",
+            measure: toVariableMeasure(varInfo.measurementLevel),
             role: "input"
         };
     });

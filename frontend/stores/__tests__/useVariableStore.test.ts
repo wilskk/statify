@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useVariableStore } from '../useVariableStore';
 import { Variable } from '@/types/Variable';
+import { variableService, sheetService } from '@/services/data';
 
 // Mock the entire module from where variableService is imported
 jest.mock('@/services/data', () => ({
@@ -94,7 +95,7 @@ describe('useVariableStore', () => {
 
     it('should add a new variable to the end of the list', async () => {
         const { result } = renderHook(() => useVariableStore());
-        const { variableService, sheetService } = require('@/services/data');
+        // use mocked services from jest.mock above
         const initialVar = createMockVariable(0, 'VarA');
         
         act(() => {

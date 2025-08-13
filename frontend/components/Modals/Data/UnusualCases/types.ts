@@ -1,8 +1,8 @@
-import React from 'react';
+import type React from 'react';
 import type { Variable } from "@/types/Variable";
 import type { TourStep } from './hooks/useTourGuide';
 import type { Dispatch, SetStateAction } from 'react';
-import { useUnusualCases } from './hooks/useUnusualCases';
+import type { useUnusualCases } from './hooks/useUnusualCases';
 
 export type TabType = 'variables' | 'options';
 

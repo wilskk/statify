@@ -1,10 +1,12 @@
+import type React from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
 import { DEFAULT_COLUMN_WIDTH } from '../constants';
+import type { HotTableRef } from '@handsontable/react-wrapper';
 
 interface UseColumnSizingProps {
-    hotTableRef: React.RefObject<any>;
+    hotTableRef: React.RefObject<HotTableRef>;
     actualNumRows: number;
     actualNumCols: number;
 }
@@ -22,7 +24,6 @@ const AUTO_COLUMN_SIZE_THRESHOLD = {
  */
 export const useColumnSizing = ({ hotTableRef, actualNumRows, actualNumCols }: UseColumnSizingProps) => {
     const variables = useVariableStore(state => state.variables);
-    const updateVariable = useVariableStore(state => state.updateVariable);
     const data = useDataStore(state => state.data);
     
     // Track apakah column sizing sudah dihitung

@@ -1,5 +1,3 @@
-import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
-
 // Props for the main component
 export interface OpenSavFileProps {
     onClose: () => void;

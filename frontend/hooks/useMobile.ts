@@ -54,7 +54,6 @@ export function useMobile(): OrientationState {
         mediaQuery.addEventListener('change', (e) => handleOrientationChange());
       } else {
         // Deprecated addListener for older browsers
-        // eslint-disable-next-line deprecation/deprecation
         mediaQuery.addListener((e) => handleOrientationChange());
       }
     } else {
@@ -71,7 +70,6 @@ export function useMobile(): OrientationState {
         if (mediaQuery.removeEventListener) {
           mediaQuery.removeEventListener('change', (e) => handleOrientationChange());
         } else {
-          // eslint-disable-next-line deprecation/deprecation
           mediaQuery.removeListener((e) => handleOrientationChange());
         }
       } else {

@@ -1,8 +1,8 @@
 import * as XLSX from 'xlsx';
-import { DataRow } from '@/types/Data';
-import { Variable } from '@/types/Variable';
+import type { DataRow } from '@/types/Data';
+import type { Variable } from '@/types/Variable';
 // import { Meta } from '@/types/Meta'; // Assuming Meta might not be available or needed directly here for now
-import { ExcelUtilOptions } from '../types';
+import type { ExcelUtilOptions } from '../types';
 
 /**
  * Generates an Excel Workbook object from data, variables, and metadata.
@@ -26,7 +26,7 @@ export const generateExcelWorkbook = (
         dataSheetData.push(variables.map(v => v.name));
     }
     data.forEach(row => {
-        const dataRow = variables.map((variable, index) => row[variable.columnIndex] ?? (options.includeDataLabels ? "SYSMIS" : ""));
+        const dataRow = variables.map((variable, _index) => row[variable.columnIndex] ?? (options.includeDataLabels ? "SYSMIS" : ""));
         dataSheetData.push(dataRow);
     });
 
@@ -74,4 +74,4 @@ export const generateExcelWorkbook = (
     }
 
     return wb;
-}; 
+};

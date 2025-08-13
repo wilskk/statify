@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Menu, ChevronRight, BarChart2, LayoutGrid, BookOpen, Users, Cpu } from 'lucide-react';
+import { Menu, ChevronRight, BarChart2, LayoutGrid, Cpu } from 'lucide-react';
 import {
     NavigationMenu,
     NavigationMenuItem,
@@ -18,7 +18,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 
 export default function LandingHeader() {
     const [open, setOpen] = useState(false);
@@ -137,7 +137,7 @@ export default function LandingHeader() {
                                 {/* Menu Navigation */}
                                 <div className="flex-1 overflow-auto">
                                     <nav className="flex flex-col">
-                                        {navItems.map((item, i) => (
+                                        {navItems.map((item, _) => (
                                             <SheetClose asChild key={item.name}>
                                                 <Link
                                                     href={item.href}

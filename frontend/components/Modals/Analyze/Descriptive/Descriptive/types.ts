@@ -81,8 +81,11 @@ export interface TableRow {
 export interface DescriptiveStats {
     N: number;
     Missing: number;
+    Valid?: number | null;
     Mean?: number | null;
     Median?: number | null;
+    '25th Percentile'?: number | null;
+    '75th Percentile'?: number | null;
     Sum?: number | null;
     StdDev?: number | null;
     Variance?: number | null;
@@ -94,6 +97,7 @@ export interface DescriptiveStats {
     SEKurtosis?: number | null;
     Skewness?: number | null;
     SESkewness?: number | null;
+    Mode?: (string | number)[] | string | number | null;
 }
 
 export interface DescriptiveResult {

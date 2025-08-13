@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ImportCsvSelection } from '../components/ImportCsvSelection';
-import { useMobile } from '@/hooks/useMobile';
 
 // Mock the useMobile hook
 jest.mock('@/hooks/useMobile', () => ({
@@ -118,4 +117,4 @@ describe('ImportCsvSelection Component', () => {
         // Verify it was called with the correct file outside of waitFor (single assertion rule)
         expect(mockOnFileSelect).toHaveBeenCalledWith(file);
     });
-}); 
+});

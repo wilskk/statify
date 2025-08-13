@@ -3,7 +3,6 @@ import { FindReplaceMode, TabType } from "../types"; // Adjust path as necessary
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useTableRefStore } from "@/stores/useTableRefStore";
-import { Variable } from "@/types/Variable";
 
 interface UseFindReplaceFormProps {
     // columns?: string[]; // Will be fetched from useVariableStore
@@ -327,4 +326,4 @@ export const useFindReplaceForm = ({
         currentResultNumber: currentSearchResultIndex + 1, // For display (1-based)
         isLoadingSearch, // Expose loading state
     };
-}; 
+};

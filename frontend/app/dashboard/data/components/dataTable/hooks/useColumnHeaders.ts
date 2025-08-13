@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { getVariableIcon } from '@/components/Common/iconHelper';
+import type { Variable } from '@/types/Variable';
 
 /**
  * Hook untuk mengelola column headers dengan caching dan cleanup
@@ -16,14 +17,15 @@ export const useColumnHeaders = (displayNumCols: number, targetVisualDataCols: n
 
     // Cleanup cache saat component unmount atau variables berubah drastis
     useEffect(() => {
+        const cache = headerCacheRef.current;
         return () => {
-            headerCacheRef.current.clear();
+            cache.clear();
         };
     }, []);
 
     // Buat variable map untuk O(1) lookups
     const variableMap = useMemo(() => {
-        const map = new Map();
+        const map = new Map<number, Variable>();
         variables.forEach(v => map.set(v.columnIndex, v));
         return map;
     }, [variables]);
@@ -45,8 +47,9 @@ export const useColumnHeaders = (displayNumCols: number, targetVisualDataCols: n
                 const cacheKey = `${variable.columnIndex}-${variable.name}-${variable.type}`;
                 
                 // Check cache terlebih dahulu
-                if (headerCacheRef.current.has(cacheKey)) {
-                    return headerCacheRef.current.get(cacheKey)!;
+                const cached = headerCacheRef.current.get(cacheKey);
+                if (cached !== undefined) {
+                    return cached;
                 }
                 
                 // Render dan cache hasilnya

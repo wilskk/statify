@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, BarChart2, ArrowRightCircle, Sparkles } from 'lucide-react';
-import { AnimatedSection } from './AnimatedSection';
+
 import { motion } from 'framer-motion';
 
 export const HeroSection = () => {

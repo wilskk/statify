@@ -6,14 +6,12 @@ import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { DatabaseIcon, VariableIcon, BarChartIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useMobile } from "@/hooks/useMobile";
 import useAutoSync from "@/hooks/useAutoSync";
 import SyncStatus from "@/components/ui/SyncStatus";
 
 export default function Footer() {
     const pathname = usePathname();
     const router = useRouter();
-    const { isMobile } = useMobile();
     useAutoSync();
     const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>('online');
 

@@ -1,58 +1,92 @@
-// importScripts('../utils/utils.js'); // Commented out for tests - utils.js loaded separately
-
-function roundToDecimals(number, decimals) {
-    if (typeof number !== 'number' || isNaN(number) || !isFinite(number)) return number;
-    return parseFloat(number.toFixed(decimals));
+// Dynamically load utility and descriptive scripts if running as a worker,
+// but not when testing in a Node.js environment.
+if (typeof self !== 'undefined' && typeof self.importScripts === 'function') {
+    // Load dependencies only if they haven't been loaded yet.
+    if (typeof isNumeric === 'undefined') {
+        importScripts('../utils/utils.js');
+    }
+    if (typeof DescriptiveCalculator === 'undefined') {
+        importScripts('./descriptive.js');
+    }
 }
 
 class FrequencyCalculator {
-    constructor({ variable, data, weights = null, options = {} }) {
+    constructor({ variable, data, weights = null, caseNumbers = null, options = {} }) {
         this.variable = variable;
         this.data = data;
         this.weights = weights;
+        this.caseNumbers = caseNumbers;
         this.options = options || {};
 
-        this.descCalc = new DescriptiveCalculator({ variable, data, weights, options });
-
-        // Periksa apakah data mengandung tanggal dd-mm-yyyy
-        this.isDateData = this.data.some(value => 
-            typeof value === 'string' && isDateString(value)
-        );
-
+        // Use effective measurement and core type (from descriptive.js helpers)
+        // - effective measure maps 'unknown' based on type: numeric/date -> scale, string -> nominal
+        // - numeric-like measures: scale and ordinal (treated numerically for distribution/percentiles)
+        this.effMeasure = typeof getEffectiveMeasure === 'function' ? getEffectiveMeasure(this.variable) : (this.variable.measure || 'unknown');
+        this.coreType = typeof getCoreType === 'function' ? getCoreType(this.variable) : 'numeric';
+        this.isNumeric = this.effMeasure === 'scale' || this.effMeasure === 'ordinal';
         this.memo = {};
+
+        if (this.isNumeric) {
+            this.descCalc = new DescriptiveCalculator({ variable, data, weights, options });
+        }
     }
 
-    getSortedData() {
-        if (this.memo.sortedData) return this.memo.sortedData;
+    #getDistribution() {
+        if (this.memo.distribution) return this.memo.distribution;
 
         const weightedValues = new Map();
-        let totalWeight = 0;
+        let validWeight = 0;        // Sum of weights for valid (non-missing) cases
+        let totalWeightAll = 0;     // Sum of weights for all cases with valid weight (> 0), including missing
+        let validN = 0;             // Count of valid cases (unweighted)
 
         for (let i = 0; i < this.data.length; i++) {
-            const value = this.data[i];
+            const raw = this.data[i];
             const weight = this.weights ? (this.weights[i] ?? 1) : 1;
-
-            if (!isNumeric(value) || typeof weight !== 'number' || weight <= 0) continue;
-            
-            let numValue;
-            // Jika value adalah string tanggal dd-mm-yyyy, konversi ke SPSS seconds
-            if (typeof value === 'string' && isDateString(value)) {
-                numValue = dateStringToSpssSeconds(value);
-                if (numValue === null) continue;
-            } else {
-                numValue = parseFloat(value);
+            if (typeof weight !== 'number' || !isFinite(weight) || weight <= 0) {
+                continue; // Ignore non-positive or invalid weights entirely
             }
-            
-            weightedValues.set(numValue, (weightedValues.get(numValue) || 0) + weight);
-            totalWeight += weight;
+
+            // T (total) denominator includes all cases with valid weight
+            totalWeightAll += weight;
+
+            let processedValue;
+            if (this.isNumeric) {
+                // Numeric-like: coerce to number; support dd-mm-yyyy -> SPSS seconds
+                if (typeof raw === 'string' && isDateString(raw)) {
+                    processedValue = dateStringToSpssSeconds(raw);
+                } else if (isNumeric(raw)) {
+                    processedValue = parseFloat(raw);
+                } else {
+                    continue; // Skip non-numeric for numeric-like variables
+                }
+                if (processedValue === null || checkIsMissing(processedValue, this.variable.missing, true)) {
+                    continue;
+                }
+            } else {
+                // Nominal/string-like: keep as trimmed string
+                if (raw === null || raw === undefined) continue;
+                const s = String(raw).trim();
+                if (s === '' || checkIsMissing(s, this.variable.missing, false)) continue;
+                processedValue = s;
+            }
+
+            weightedValues.set(processedValue, (weightedValues.get(processedValue) || 0) + weight);
+            validWeight += weight;
+            validN++;
         }
 
         if (weightedValues.size === 0) {
-            this.memo.sortedData = null;
-            return null;
+            // Return an empty distribution with computed total weight so that callers
+            // can still build summaries (avoids null handling and worker errors)
+            const distribution = { y: [], c: [], cc: [], W: 0, N: 0, T: totalWeightAll };
+            this.memo.distribution = distribution;
+            return distribution;
         }
 
-        const sortedUniqueValues = Array.from(weightedValues.keys()).sort((a, b) => a - b);
+        const sortedUniqueValues = this.isNumeric
+            ? Array.from(weightedValues.keys()).sort((a, b) => a - b)
+            : Array.from(weightedValues.keys()).sort();
+
         const y = sortedUniqueValues;
         const c = y.map(val => weightedValues.get(val));
         const cc = c.reduce((acc, val) => {
@@ -60,58 +94,337 @@ class FrequencyCalculator {
             return acc;
         }, []);
 
-        this.memo.sortedData = { y, c, cc, W: totalWeight };
-        return this.memo.sortedData;
+        const distribution = { y, c, cc, W: validWeight, N: validN, T: totalWeightAll };
+        this.memo.distribution = distribution;
+        return distribution;
     }
 
     getMode() {
         if (this.memo.mode) return this.memo.mode;
-        
-        const sortedData = this.getSortedData();
-        if (!sortedData) {
+
+        const distribution = this.#getDistribution();
+        if (!distribution) {
             this.memo.mode = null;
             return null;
         }
-        
-        const { y, c } = sortedData;
+
+        const { y, c } = distribution;
         const maxFreq = Math.max(...c);
         let modes = y.filter((_, index) => c[index] === maxFreq);
 
-        // Konversi kembali ke format tanggal jika data adalah tanggal
-        if (this.isDateData) {
-            modes = modes.map(value => {
-                if (typeof value === 'number') {
-                    const dateString = spssSecondsToDateString(value);
-                    return dateString || value;
-                }
-                return value;
-            });
+        // If core type is date, convert numeric seconds back to dd-mm-yyyy for display
+        if (this.coreType === 'date') {
+            modes = modes.map(value => spssSecondsToDateString(value) || value);
         }
 
         this.memo.mode = modes;
         return this.memo.mode;
     }
 
+    getExtremeValues(extremeCount = 5) {
+        if (!this.isNumeric) return null;
+
+        const entries = [];
+        for (let i = 0; i < this.data.length; i++) {
+            const val = this.data[i];
+            const weight = this.weights ? (this.weights[i] ?? 1) : 1;
+            if (!isNumeric(val) || typeof weight !== 'number' || weight <= 0) continue;
+
+            const caseNumber = this.caseNumbers && this.caseNumbers[i] ? this.caseNumbers[i] : i + 1;
+            entries.push({ caseNumber, value: parseFloat(val) });
+        }
+
+        if (entries.length === 0) return null;
+
+        const q1 = this.getPercentile(25, 'waverage');
+        const q3 = this.getPercentile(75, 'waverage');
+        if (q1 === null || q3 === null) return null;
+        const iqr = q3 - q1;
+
+        if (iqr === 0) {
+            const sortedAsc = [...entries].sort((a, b) => a.value - b.value);
+            const sortedDesc = [...entries].sort((a, b) => b.value - a.value);
+            return buildExtremeValueObject(sortedAsc, sortedDesc, extremeCount);
+        }
+
+        const step = 1.5 * iqr;
+        const lowerInner = q1 - step;
+        const upperInner = q3 + step;
+        const lowerOuter = q1 - (2 * step);
+        const upperOuter = q3 + (2 * step);
+
+        const isHighExtreme = (v) => v > upperOuter;
+        const isLowExtreme = (v) => v < lowerOuter;
+        const isHighOutlier = (v) => v > upperInner && v <= upperOuter;
+        const isLowOutlier = (v) => v < lowerInner && v >= lowerOuter;
+
+        const sortedAsc = [...entries].sort((a, b) => a.value - b.value);
+        const sortedDesc = [...entries].sort((a, b) => b.value - a.value);
+
+        function pickCandidates(source, predicate) {
+            const arr = [];
+            for (const item of source) {
+                if (predicate(item.value)) {
+                    arr.push(item);
+                    if (arr.length === extremeCount) break;
+                }
+            }
+            return arr;
+        }
+
+        let highest = pickCandidates(sortedDesc, isHighExtreme);
+        if (highest.length < extremeCount) {
+            const additional = pickCandidates(sortedDesc, isHighOutlier);
+            highest.push(...additional.slice(0, extremeCount - highest.length));
+        }
+
+        let lowest = pickCandidates(sortedAsc, isLowExtreme);
+        if (lowest.length < extremeCount) {
+            const additional = pickCandidates(sortedAsc, isLowOutlier);
+            lowest.push(...additional.slice(0, extremeCount - lowest.length));
+        }
+
+        const fillByValue = (list, source) => {
+            const existingCaseNumbers = new Set(list.map(item => item.caseNumber));
+            if (list.length >= extremeCount) return list;
+
+            for (const item of source) {
+                if (!existingCaseNumbers.has(item.caseNumber)) {
+                    list.push(item);
+                    if (list.length === extremeCount) break;
+                }
+            }
+            return list;
+        };
+
+        lowest = fillByValue(lowest, sortedAsc);
+        highest = fillByValue(highest, sortedDesc);
+
+        const checkPartial = (sourceArray, fullSorted, direction) => {
+            if (sourceArray.length === 0) return;
+            const lastIncluded = sourceArray[sourceArray.length - 1];
+            const lastValue = lastIncluded.value;
+            const indexInFull = fullSorted.findIndex(e => e.caseNumber === lastIncluded.caseNumber);
+            const nextIndex = indexInFull + 1;
+            if (nextIndex < fullSorted.length && fullSorted[nextIndex].value === lastValue) {
+                lastIncluded.isPartial = true;
+            }
+        };
+
+        checkPartial(lowest, sortedAsc, 'lowest');
+        checkPartial(highest, sortedDesc, 'highest');
+
+        const isOutlier = (v) => (v < lowerInner && v >= lowerOuter) || (v > upperInner && v <= upperOuter);
+        const isExtreme = (v) => v < lowerOuter || v > upperOuter;
+
+        const tagType = (arr) => arr.map(item => ({ ...item, type: isExtreme(item.value) ? 'extreme' : (isOutlier(item.value) ? 'outlier' : 'normal') }));
+
+        return {
+            highest: tagType(highest),
+            lowest: tagType(lowest),
+            isTruncated: extremeCount > entries.length,
+            fences: {
+                lowerInner,
+                upperInner,
+                lowerOuter,
+                upperOuter,
+            },
+        };
+
+        function buildExtremeValueObject(sortedAsc, sortedDesc, count) {
+            const lo = sortedAsc.slice(0, count);
+            const hi = sortedDesc.slice(0, count);
+            return {
+                highest: hi,
+                lowest: lo,
+                isTruncated: count > entries.length
+            };
+        }
+    }
+
+    getStatistics() {
+        if (this.memo.statistics) return this.memo.statistics;
+
+        const distribution = this.#getDistribution();
+        if (!distribution) return null;
+
+        const { y, c, cc, W, N, T } = distribution;
+
+        const totalDenom = (typeof T === 'number' && T > 0) ? T : W; // fallback
+        const frequencyTable = y.map((value, index) => {
+            const freq = c[index];
+            const percent = totalDenom > 0 ? (freq / totalDenom) * 100 : 0;
+            const validPercent = W > 0 ? (freq / W) * 100 : 0;
+            const cumulativePercent = W > 0 ? (cc[index] / W) * 100 : 0;
+            let displayValue = value;
+            if (this.coreType === 'date' && typeof value === 'number') {
+                displayValue = spssSecondsToDateString(value) || value;
+            }
+            return {
+                value: displayValue,
+                frequency: freq,
+                percent: percent,
+                validPercent: validPercent,
+                cumulativePercent: cumulativePercent,
+            };
+        });
+
+        // Summary uses weighted totals for consistency with row frequencies
+        const totalWeighted = typeof T === 'number' ? T : W;
+        const missingWeighted = totalWeighted - W;
+
+        // Build statistics based on effective measurement level
+        let stats = {};
+
+        switch (this.effMeasure) {
+            case 'scale':
+            case 'ordinal': {
+                if (this.descCalc && typeof this.descCalc.getStatistics === 'function') {
+                    const descStats = this.descCalc.getStatistics();
+                    if (descStats && descStats.stats) {
+                        stats = { ...descStats.stats };
+                    }
+                }
+                break;
+            }
+            case 'nominal':
+            default: {
+                // Minimal stats for nominal (use weighted totals)
+                stats = {
+                    N: W,
+                    Missing: missingWeighted,
+                };
+                break;
+            }
+        }
+
+        // Align N and Missing with weighted totals for all measures
+        stats.N = W;
+        stats.Missing = missingWeighted;
+
+        // Always set Mode from our method (ensures date modes are formatted as dd-mm-yyyy)
+        stats.Mode = this.getMode();
+
+        // --- Dynamic Percentiles -------------------------------------------
+        // Merge any requested percentiles into stats.Percentiles.
+        // Only applicable for numeric-like measures (scale/ordinal).
+        try {
+            if (this.isNumeric && this.options && this.options.statisticsOptions) {
+                const pOpts = this.options.statisticsOptions.percentileValues || {};
+                const requested = new Set();
+
+                // Quartiles: add 25 and 75 (Median handled separately unless explicitly requested)
+                if (pOpts.quartiles) {
+                    requested.add(25);
+                    requested.add(75);
+                }
+
+                // Cut points: NTILES = n => (n-1) cut points at k*100/n for k=1..n-1
+                if (pOpts.cutPoints && typeof pOpts.cutPointsN === 'number' && isFinite(pOpts.cutPointsN)) {
+                    const n = Math.floor(pOpts.cutPointsN);
+                    if (n > 1) {
+                        for (let k = 1; k < n; k++) {
+                            requested.add((k * 100) / n);
+                        }
+                    }
+                }
+
+                // Arbitrary percentile list
+                if (pOpts.enablePercentiles && Array.isArray(pOpts.percentilesList)) {
+                    for (const p of pOpts.percentilesList) {
+                        const num = typeof p === 'number' ? p : parseFloat(p);
+                        if (typeof num === 'number' && isFinite(num) && num >= 0 && num <= 100) {
+                            requested.add(num);
+                        }
+                    }
+                }
+
+                if (requested.size > 0) {
+                    const base = stats.Percentiles ? { ...stats.Percentiles } : {};
+                    for (const p of requested) {
+                        // Normalize key to at most 1 decimal to avoid long repeating fractions
+                        const keyNum = typeof p === 'number' ? p : Number(p);
+                        const key = Number.isInteger(keyNum) ? String(keyNum) : parseFloat(keyNum.toFixed(1)).toString();
+                        base[key] = this.getPercentile(keyNum, 'waverage');
+                    }
+                    stats.Percentiles = base;
+                }
+            }
+        } catch (e) {
+            // Do not fail stats if percentile options are malformed; just skip dynamic percentiles
+        }
+
+        const results = {
+            summary: {
+                valid: W,
+                missing: missingWeighted,
+                total: totalWeighted,
+            },
+            stats,
+            frequencyTable,
+        };
+
+        this.memo.statistics = results;
+        return results;
+    }
+
     getPercentile(p, method) {
-        const sortedData = this.getSortedData();
+        if (!this.isNumeric) return null; 
+        const sortedData = this.#getDistribution();
         if (!sortedData) return null;
 
         const { y, c, cc, W } = sortedData;
-        const n = W; // Gunakan total bobot sebagai n
 
-        switch (method.toLowerCase()) {
+        const methodKey = (method || 'waverage').toLowerCase();
+
+        switch (methodKey) {
+            case 'tukeyhinges': { // Tukey's Hinges for quartiles only (25, 50, 75)
+                if (W === 0) return null;
+                const target = Math.round(p);
+                if (target !== 25 && target !== 50 && target !== 75) {
+                    // Fallback for non-quartiles
+                    return this.getPercentile(p, 'waverage');
+                }
+
+                // Build expanded positions using rounded weights approximation
+                // to derive Tukey hinges positions.
+                const positions = [];
+                let Wapprox = 0;
+                for (let i = 0; i < y.length; i++) {
+                    const count = Math.max(1, Math.round(c[i]));
+                    for (let k = 0; k < count; k++) positions.push(y[i]);
+                    Wapprox += count;
+                }
+                if (Wapprox === 0) return null;
+
+                const depthMedian = (Wapprox + 1) / 2;
+                const depthHinge = (Math.floor(depthMedian) + 1) / 2;
+                const lowerIndex = Math.max(1, Math.round(depthHinge));
+                const upperIndex = Wapprox - lowerIndex + 1;
+
+                const Q1 = positions[lowerIndex - 1];
+                const Q3 = positions[upperIndex - 1];
+                let Q2;
+                if (Wapprox % 2 === 1) {
+                    Q2 = positions[(Wapprox + 1) / 2 - 1];
+                } else {
+                    const a = positions[Wapprox / 2 - 1];
+                    const b = positions[Wapprox / 2];
+                    Q2 = (isFinite(a) && isFinite(b)) ? (a + b) / 2 : b;
+                }
+
+                if (target === 25) return Q1;
+                if (target === 50) return Q2;
+                return Q3; // 75
+            }
             case 'waverage': { // Weighted Average (SPSS Definition 1)
                 if (W === 0) return null;
 
-                // SPSS Definition 1 (Weighted Average) - Formula from EXAMINE Algorithms
-                // tc₁ = W * p / 100
                 const tc1 = W * p / 100;
                 
-                // Handle edge cases first
                 if (tc1 <= 0) return y[0];
                 if (tc1 >= W) return y[y.length - 1];
                 
-                // Find k₁ where cc[k₁-1] ≤ tc₁ < cc[k₁]
                 let k1 = -1;
                 for (let i = 0; i < cc.length; i++) {
                     if (cc[i] >= tc1) {
@@ -122,311 +435,56 @@ class FrequencyCalculator {
                 
                 if (k1 === -1) return y[y.length - 1];
                 
-                // Get values and cumulative frequencies
-                const cc_k1_minus_1 = k1 > 0 ? cc[k1 - 1] : 0;
-                const c_k1_plus_1 = c[k1]; // Weight of observation at position k1
-                const y_k1 = k1 > 0 ? y[k1 - 1] : y[0]; // Value at position k1-1
-                const y_k1_plus_1 = y[k1]; // Value at position k1
-                
-                // Calculate g₁* = tc₁ - cc[k₁-1]
-                const g1_star = tc1 - cc_k1_minus_1;
-                
-                // Calculate g₁ = g₁* / c[k₁]
-                const g1 = c_k1_plus_1 > 0 ? g1_star / c_k1_plus_1 : 0;
-                
-                // Apply SPSS EXAMINE conditional formula
-                // The key insight: g1* represents how far into the current weight group we are
-                if (g1_star >= c_k1_plus_1) {
-                    // We've gone past the current observation, use next value
-                    return y_k1_plus_1;
-                } else if (c_k1_plus_1 >= 1) {
-                    // Integer weights: use g1_star directly for interpolation
-                    return (1 - g1_star) * y_k1 + g1_star * y_k1_plus_1;
-                } else {
-                    // Fractional weights: use normalized g1 for interpolation
-                    return (1 - g1) * y_k1 + g1_star * y_k1_plus_1;
-                }
+                const cc_prev = k1 > 0 ? cc[k1 - 1] : 0;
+                const w_k = c[k1];
+                const y_prev = k1 > 0 ? y[k1 - 1] : y[0];
+                const y_k = y[k1];
+
+                if (w_k === 0) return y_k; // Avoid division by zero
+
+                const g = (tc1 - cc_prev) / w_k;
+                return (1 - g) * y_prev + g * y_k;
             }
-            case 'haverage': { // Weighted Average (SPSS Definition 4)
+            case 'haverage': { // HAVERAGE / AFREQUENCIES (SPSS classic)
                 if (W === 0) return null;
-                
-                // SPSS Definition 4 (Weighted Average) - Formula from EXAMINE Algorithms
-                // tc₂ = (W + 1) * p / 100
-                const tc2 = (W + 1) * p / 100;
-                
-                // Handle edge cases first
-                if (tc2 <= 0) return y[0];
-                if (tc2 >= W) return y[y.length - 1];
-                
-                // Find k₂ where cc[k₂-1] ≤ tc₂ < cc[k₂]
-                let k2 = -1;
-                for (let i = 0; i < cc.length; i++) {
-                    if (cc[i] >= tc2) {
-                        k2 = i;
+
+                const r = (W + 1) * p / 100; // target order position in expanded data
+
+                if (r <= 1) return y[0];
+                if (r >= W) return y[y.length - 1];
+
+                const lowerPos = Math.floor(r);
+                const upperPos = Math.ceil(r);
+
+                let cumulative = 0;
+                let lowerValue;
+                let upperValue;
+
+                for (let i = 0; i < y.length; i++) {
+                    cumulative += c[i];
+                    if (lowerValue === undefined && cumulative >= lowerPos) {
+                        lowerValue = y[i];
+                    }
+                    if (cumulative >= upperPos) {
+                        upperValue = y[i];
                         break;
                     }
                 }
-                
-                if (k2 === -1) return y[y.length - 1];
-                
-                // Get values and cumulative frequencies
-                const cc_k2_minus_1 = k2 > 0 ? cc[k2 - 1] : 0;
-                const c_k2_plus_1 = c[k2]; // Weight of observation at position k2
-                const y_k2 = k2 > 0 ? y[k2 - 1] : y[0]; // Value at position k2-1
-                const y_k2_plus_1 = y[k2]; // Value at position k2
-                
-                // Calculate g₂* = tc₂ - cc[k₂-1]
-                const g2_star = tc2 - cc_k2_minus_1;
-                
-                // Calculate g₂ = g₂* / c[k₂]
-                const g2 = c_k2_plus_1 > 0 ? g2_star / c_k2_plus_1 : 0;
-                
-                // Apply SPSS EXAMINE conditional formula for haverage
-                if (g2_star >= c_k2_plus_1) {
-                    return y_k2_plus_1;
-                } else if (c_k2_plus_1 >= 1) {
-                    return (1 - g2_star) * y_k2 + g2_star * y_k2_plus_1;
-                } else {
-                    return (1 - g2) * y_k2 + g2_star * y_k2_plus_1;
-                }
-            }
-            case 'tukeyhinges': { // Tukey's Hinges - Metode Khusus untuk Kuartil (Q1, Q2, Q3)
-                if (W === 0) return null;
-                
-                // Tukey's Hinges hanya untuk persentil 25, 50, dan 75
-                if (p !== 25 && p !== 50 && p !== 75) {
-                    // Fallback ke waverage untuk persentil lainnya
-                    return this.getPercentile(p, 'waverage');
-                }
-                
-                // Implementasi Tukey's Hinges yang benar
-                // Untuk data tanpa bobot (semua c[i] = 1), gunakan metode standar Tukey
-                const allWeightsOne = c.every(weight => weight === 1);
-                
-                if (allWeightsOne) {
-                    // Metode Tukey's Hinges standar untuk data tanpa bobot
-                    const n = y.length;
-                    
-                    if (p === 50) {
-                        // Median
-                        if (n % 2 === 1) {
-                            return y[Math.floor(n / 2)];
-                        } else {
-                            const mid1 = y[n / 2 - 1];
-                            const mid2 = y[n / 2];
-                            return (mid1 + mid2) / 2;
-                        }
-                    } else if (p === 25) {
-                        // Q1 - median dari lower half (termasuk median jika n ganjil)
-                        let lowerHalf;
-                        if (n % 2 === 1) {
-                            // Include median in lower half
-                            lowerHalf = y.slice(0, Math.floor(n / 2) + 1);
-                        } else {
-                            lowerHalf = y.slice(0, n / 2);
-                        }
-                        const lowerN = lowerHalf.length;
-                        if (lowerN % 2 === 1) {
-                            return lowerHalf[Math.floor(lowerN / 2)];
-                        } else {
-                            const mid1 = lowerHalf[lowerN / 2 - 1];
-                            const mid2 = lowerHalf[lowerN / 2];
-                            return (mid1 + mid2) / 2;
-                        }
-                    } else { // p === 75
-                        // Q3 - median dari upper half (termasuk median jika n ganjil)
-                        let upperHalf;
-                        if (n % 2 === 1) {
-                            // Include median in upper half
-                            upperHalf = y.slice(Math.floor(n / 2));
-                        } else {
-                            upperHalf = y.slice(n / 2);
-                        }
-                        const upperN = upperHalf.length;
-                        if (upperN % 2 === 1) {
-                            return upperHalf[Math.floor(upperN / 2)];
-                        } else {
-                            const mid1 = upperHalf[upperN / 2 - 1];
-                            const mid2 = upperHalf[upperN / 2];
-                            return (mid1 + mid2) / 2;
-                        }
-                    }
-                } else {
-                    // Untuk data berbobot, fallback ke waverage
-                    return this.getPercentile(p, 'waverage');
-                }
-            }
-            case 'aempirical': { // Empirical with Averaging (SPSS Definition 4)
-                if (W === 0) return null;
-                const rank = (p / 100) * W;
-                const k = Math.floor(rank);
-                const g = rank - k;
-                
-                if (g === 0) {
-                     if (k < 1 || k > y.length) return null;
-                     const y_k = y[k - 1];
-                     const y_k_plus_1 = (k < y.length) ? y[k] : y_k;
-                     return (y_k + y_k_plus_1) / 2;
-                } else {
-                     if (k + 1 > y.length) return y[y.length - 1];
-                     return y[k];
-                }
-            }
-             case 'empirical': { // Empirical Distribution Function (SPSS Definition 2)
-                if (W === 0) return null;
-                const rank = (p / 100) * W;
-                const k = Math.ceil(rank);
-                if (k < 1) return y[0];
-                if (k > y.length) return y[y.length - 1];
-                return y[k-1];
-            }
-            case 'round': { // Round to nearest observation (SPSS Definition 5)
-                 if (W === 0) return null;
-                 const rank = Math.round((p / 100) * W);
-                 if (rank < 1) return y[0];
-                 if (rank > y.length) return y[y.length - 1];
-                 return y[rank - 1];
+
+                // Safety fallbacks
+                if (lowerValue === undefined) lowerValue = y[0];
+                if (upperValue === undefined) upperValue = y[y.length - 1];
+
+                const frac = r - lowerPos; // fractional part in [0,1)
+                if (!isFinite(lowerValue) || !isFinite(upperValue)) return upperValue;
+                return (1 - frac) * lowerValue + frac * upperValue;
             }
             default:
                 return null;
         }
     }
-    
-    getStatistics() {
-        if (this.memo.allStats) return this.memo.allStats;
-
-        const descStatsResults = this.descCalc.getStatistics();
-        const descStats = descStatsResults.stats;
-
-        let percentileObj = {};
-        const statOpts = (this.options && this.options.statisticsOptions) ? this.options.statisticsOptions : null;
-        if (statOpts && statOpts.percentileValues) {
-            const { quartiles, cutPoints, cutPointsN, enablePercentiles, percentilesList } = statOpts.percentileValues;
-            let pctList = [];
-
-            if (quartiles) pctList.push(25, 50, 75);
-
-            if (cutPoints) {
-                const n = parseInt(cutPointsN, 10);
-                if (!isNaN(n) && n > 1) {
-                    for (let i = 1; i < n; i++) {
-                        pctList.push((100 / n) * i);
-                    }
-                }
-            }
-
-            if (enablePercentiles && Array.isArray(percentilesList)) {
-                percentilesList.forEach(pStr => {
-                    const p = parseFloat(pStr);
-                    if (!isNaN(p)) pctList.push(p);
-                });
-            }
-
-            pctList = Array.from(new Set(pctList.filter(p => p >= 0 && p <= 100)));
-            pctList.sort((a, b) => a - b);
-
-            pctList.forEach(p => {
-                percentileObj[p] = this.getPercentile(p, 'waverage');
-            });
-        }
-
-        if (Object.keys(percentileObj).length === 0) {
-            percentileObj = {
-                '25': this.getPercentile(25, 'waverage'),  
-                '50': this.getPercentile(50, 'waverage'),  
-                '75': this.getPercentile(75, 'waverage'),  
-            };
-        }
-
-        const allStatistics = {
-            ...descStats,
-            Mode: this.getMode(),
-            Percentiles: percentileObj,
-        };
-
-        if (percentileObj['50'] !== undefined) {
-            allStatistics.Median = percentileObj['50'];
-        }
-
-        const q1 = percentileObj['25'];
-        const q3 = percentileObj['75'];
-        if (q1 !== undefined && q1 !== null && q3 !== undefined && q3 !== null) {
-            allStatistics.IQR = q3 - q1;
-        }
-
-        const finalResult = {
-            variable: this.variable,
-            stats: this.options.displayDescriptive ? allStatistics : null,
-            frequencyTable: this.options.displayFrequency ? this.getFrequencyTable() : null
-        };
-        
-        this.memo.allStats = finalResult;
-        return finalResult;
-    }
-
-    getFrequencyTable() {
-        if (this.memo.frequencyTable) return this.memo.frequencyTable;
-
-        const sortedData = this.getSortedData();
-        const descStatsResult = this.descCalc.getStatistics();
-        
-        // Tambahkan null check untuk mencegah error 'Cannot read properties of undefined'
-        if (!descStatsResult || !descStatsResult.stats) {
-            console.warn('[FrequencyCalculator] descStats is undefined or null');
-            return null;
-        }
-        
-        const descStats = descStatsResult.stats;
-        const totalN = descStats.N;            
-        const validN = descStats.Valid;        
-        
-        const missingN = descStats.Missing;
-
-        if (!sortedData || validN === 0) return null;
-
-        const { y, c } = sortedData;
-        let cumulativePercent = 0;
-
-        const rows = y.map((value, index) => {
-            const frequency = c[index];
-            const rawPercent = totalN > 0 ? (frequency / totalN) * 100 : 0;
-            const rawValidPercent = validN > 0 ? (frequency / validN) * 100 : 0;
-
-            // SPSS rounds percentages to one decimal place in its output tables
-            const percent = parseFloat(rawPercent.toFixed(1));
-            const validPercent = parseFloat(rawValidPercent.toFixed(1));
-            cumulativePercent = parseFloat((cumulativePercent + validPercent).toFixed(1));
-
-            // Konversi kembali ke format tanggal jika data adalah tanggal
-            let displayLabel;
-            if (this.isDateData && typeof value === 'number') {
-                const dateString = spssSecondsToDateString(value);
-                displayLabel = dateString || String(value);
-            } else {
-                displayLabel = String(value);
-            }
-
-            return {
-                label: displayLabel, // placeholder; worker may convert based on value-labels
-                frequency,
-                percent,
-                validPercent,
-                cumulativePercent
-            };
-        });
-
-        this.memo.frequencyTable = {
-            title: this.variable.label || this.variable.name,
-            rows,
-            summary: {
-                valid: validN,
-                missing: missingN,
-                total: totalN,
-            }
-        };
-
-        return this.memo.frequencyTable;
-    }
 }
 
-self.FrequencyCalculator = FrequencyCalculator;
+if (typeof self !== 'undefined') {
+    self.FrequencyCalculator = FrequencyCalculator;
+}

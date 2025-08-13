@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { restructureData } from "../services/restructureService";
-import { RestructureConfig } from "../types";
+import type { RestructureConfig } from "../types";
 
 export enum RestructureMethod {
     VariablesToCases = "variables_to_cases",

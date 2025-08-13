@@ -6,7 +6,6 @@ import {
     Calculator,
     BarChart3,
     TrendingUp,
-    Layers,
     Target,
 } from "lucide-react";
 
@@ -76,26 +75,26 @@ export const ContrastFactors: React.FC = () => {
                             Deviation
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Compare levels with grand mean</li>
+                            <li>Compare levels with grand mean</li>
                             <li>
-                                • Coefficients: 1 for target level, -1/k for
+                                Coefficients: 1 for target level, -1/k for
                                 others
                             </li>
-                            <li>• Reference: First or Last</li>
-                            <li>• Number of contrasts: k-1</li>
+                            <li>Reference: First or Last</li>
+                            <li>Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <h4 className="font-bold text-blue-800 mb-2">Simple</h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Compare levels with reference level</li>
+                            <li>Compare levels with reference level</li>
                             <li>
-                                • Coefficients: 1 for target level, -1 for
+                                Coefficients: 1 for target level, -1 for
                                 reference
                             </li>
-                            <li>• Reference: First or Last</li>
-                            <li>• Number of contrasts: k-1</li>
+                            <li>Reference: First or Last</li>
+                            <li>Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
@@ -104,26 +103,26 @@ export const ContrastFactors: React.FC = () => {
                             Difference
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Level_i vs mean of previous levels</li>
+                            <li>Level_i vs mean of previous levels</li>
                             <li>
-                                • Coefficients: 1 for level_i, -1/i for levels
+                                Coefficients: 1 for level_i, -1/i for levels
                                 1..i-1
                             </li>
-                            <li>• No reference required</li>
-                            <li>• Number of contrasts: k-1</li>
+                            <li>No reference required</li>
+                            <li>Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                         <h4 className="font-bold text-red-800 mb-2">Helmert</h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Level_i vs mean of subsequent levels</li>
+                            <li>Level_i vs mean of subsequent levels</li>
                             <li>
-                                • Coefficients: 1 for level_i, -1/(k-i) for
-                                levels i+1..k
+                                Coefficients: 1 for level_i, -1/(k-i) for levels
+                                i+1..k
                             </li>
-                            <li>• No reference required</li>
-                            <li>• Number of contrasts: k-1</li>
+                            <li>No reference required</li>
+                            <li>Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
@@ -132,13 +131,13 @@ export const ContrastFactors: React.FC = () => {
                             Repeated
                         </h4>
                         <ul className="text-sm text-purple-700 space-y-1">
-                            <li>• Level_i vs level_{`i + 1`}</li>
+                            <li>Level_i vs level_{`i + 1`}</li>
                             <li>
-                                • Coefficients: 1 for level_i, -1 for level_
+                                Coefficients: 1 for level_i, -1 for level_
                                 {`i + 1`}
                             </li>
-                            <li>• No reference required</li>
-                            <li>• Number of contrasts: k-1</li>
+                            <li>No reference required</li>
+                            <li>Number of contrasts: k-1</li>
                         </ul>
                     </div>
 
@@ -147,12 +146,12 @@ export const ContrastFactors: React.FC = () => {
                             Polynomial
                         </h4>
                         <ul className="text-sm text-indigo-700 space-y-1">
-                            <li>• Linear trend (degree 1 only)</li>
+                            <li>Linear trend (degree 1 only)</li>
                             <li>
-                                • Coefficients: centered and normalized values
+                                Coefficients: centered and normalized values
                             </li>
-                            <li>• No reference required</li>
-                            <li>• Number of contrasts: 1 (if k ≥ 2)</li>
+                            <li>No reference required</li>
+                            <li>Number of contrasts: 1 (if k ≥ 2)</li>
                         </ul>
                     </div>
                 </div>
@@ -168,28 +167,28 @@ export const ContrastFactors: React.FC = () => {
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Parse Specification:</strong> Extract
-                            factor name, method, and reference
+                            <strong>Parse Specification:</strong> Extract factor
+                            name, method, and reference
                         </li>
                         <li>
-                            <strong>2. Determine Number of Contrasts:</strong>{" "}
+                            <strong>Determine Number of Contrasts:</strong>{" "}
                             Based on method and number of levels
                         </li>
                         <li>
-                            <strong>3. Initialize L Matrix:</strong> Empty
-                            matrix with appropriate dimensions
+                            <strong>Initialize L Matrix:</strong> Empty matrix
+                            with appropriate dimensions
                         </li>
                         <li>
-                            <strong>4. Generate Coefficients:</strong> For each
+                            <strong>Generate Coefficients:</strong> For each
                             contrast based on method
                         </li>
                         <li>
-                            <strong>5. Averaging Logic:</strong> For other
-                            factors in parameters
+                            <strong>Averaging Logic:</strong> For other factors
+                            in parameters
                         </li>
                         <li>
-                            <strong>6. Generate Descriptions:</strong> Labels
-                            and descriptions for each contrast
+                            <strong>Generate Descriptions:</strong> Labels and
+                            descriptions for each contrast
                         </li>
                     </ol>
                 </div>
@@ -203,15 +202,15 @@ export const ContrastFactors: React.FC = () => {
                             <strong>For k = 2:</strong>
                         </div>
                         <div>
-                            • Target level: 0.5 (if ref = Last) or -0.5 (if ref
-                            = First)
+                            Target level: 0.5 (if ref = Last) or -0.5 (if ref =
+                            First)
                         </div>
-                        <div>• Other level: -0.5 or 0.5</div>
+                        <div>Other level: -0.5 or 0.5</div>
                         <div>
                             <strong>For k {">"} 2:</strong>
                         </div>
-                        <div>• Target level: 1 - 1/k</div>
-                        <div>• Other levels: -1/k</div>
+                        <div>Target level: 1 - 1/k</div>
+                        <div>Other levels: -1/k</div>
                     </div>
                 </div>
 
@@ -221,9 +220,9 @@ export const ContrastFactors: React.FC = () => {
                         <div>
                             <strong>Coefficients:</strong>
                         </div>
-                        <div>• Target level: 1.0</div>
-                        <div>• Reference level: -1.0</div>
-                        <div>• Other levels: 0.0</div>
+                        <div>Target level: 1.0</div>
+                        <div>Reference level: -1.0</div>
+                        <div>Other levels: 0.0</div>
                     </div>
                 </div>
 
@@ -233,9 +232,9 @@ export const ContrastFactors: React.FC = () => {
                         <div>
                             <strong>For level_{`i + 1`}:</strong>
                         </div>
-                        <div>• Level_{`i + 1`}: 1.0</div>
-                        <div>• Levels 1..i: -1/i</div>
-                        <div>• Levels i+2..k: 0.0</div>
+                        <div>Level_{`i + 1`}: 1.0</div>
+                        <div>Levels 1..i: -1/i</div>
+                        <div>Levels i+2..k: 0.0</div>
                     </div>
                 </div>
 
@@ -245,9 +244,9 @@ export const ContrastFactors: React.FC = () => {
                         <div>
                             <strong>For level_i:</strong>
                         </div>
-                        <div>• Level_i: 1.0</div>
-                        <div>• Levels i+1..k: -1/(k-i)</div>
-                        <div>• Levels 1..i-1: 0.0</div>
+                        <div>Level_i: 1.0</div>
+                        <div>Levels i+1..k: -1/(k-i)</div>
+                        <div>Levels 1..i-1: 0.0</div>
                     </div>
                 </div>
 
@@ -257,9 +256,9 @@ export const ContrastFactors: React.FC = () => {
                         <div>
                             <strong>For level_i vs level_{`i + 1`}:</strong>
                         </div>
-                        <div>• Level_i: 1.0</div>
-                        <div>• Level_{`i + 1`}: -1.0</div>
-                        <div>• Other levels: 0.0</div>
+                        <div>Level_i: 1.0</div>
+                        <div>Level_{`i + 1`}: -1.0</div>
+                        <div>Other levels: 0.0</div>
                     </div>
                 </div>
 
@@ -269,8 +268,8 @@ export const ContrastFactors: React.FC = () => {
                         <div>
                             <strong>Linear Trend:</strong>
                         </div>
-                        <div>• x_i = i - (k-1)/2 (centered values)</div>
-                        <div>• Normalized: x_i / √(Σx_i²)</div>
+                        <div>x_i = i - (k-1)/2 (centered values)</div>
+                        <div>Normalized: x_i / √(Σx_i²)</div>
                     </div>
                 </div>
 
@@ -393,9 +392,9 @@ export const ContrastFactors: React.FC = () => {
                             When to Use Deviation
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Want to compare with overall average</li>
-                            <li>• Reference level has no special meaning</li>
-                            <li>• Focus on deviations from grand mean</li>
+                            <li>Want to compare with overall average</li>
+                            <li>Reference level has no special meaning</li>
+                            <li>Focus on deviations from grand mean</li>
                         </ul>
                     </div>
 
@@ -404,9 +403,9 @@ export const ContrastFactors: React.FC = () => {
                             When to Use Simple
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• There is a control or baseline level</li>
-                            <li>• Want to compare with specific level</li>
-                            <li>• Reference level has theoretical meaning</li>
+                            <li>There is a control or baseline level</li>
+                            <li>Want to compare with specific level</li>
+                            <li>Reference level has theoretical meaning</li>
                         </ul>
                     </div>
 
@@ -415,9 +414,9 @@ export const ContrastFactors: React.FC = () => {
                             When to Use Helmert
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Levels have natural ordering</li>
-                            <li>• Want to compare with subsequent levels</li>
-                            <li>• Suitable for ordinal variables</li>
+                            <li>Levels have natural ordering</li>
+                            <li>Want to compare with subsequent levels</li>
+                            <li>Suitable for ordinal variables</li>
                         </ul>
                     </div>
 
@@ -426,9 +425,9 @@ export const ContrastFactors: React.FC = () => {
                             When to Use Polynomial
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Levels have numerical ordering</li>
-                            <li>• Want to test linear trends</li>
-                            <li>• Interval or ratio variables</li>
+                            <li>Levels have numerical ordering</li>
+                            <li>Want to test linear trends</li>
+                            <li>Interval or ratio variables</li>
                         </ul>
                     </div>
                 </div>
@@ -482,27 +481,6 @@ export const ContrastFactors: React.FC = () => {
                         </li>
                     </ul>
                 </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>rust/src/stats/contrast_factors.rs</code> -
-                        Contrast factors implementation
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> - Contrast result
-                        structures
-                    </li>
-                    <li>
-                        <code>rust/src/models/config.rs</code> - Contrast method
-                        configuration
-                    </li>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/
-                        </code>
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

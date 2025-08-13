@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { usePropertiesEditor } from '../hooks/usePropertiesEditor';
 import * as variablePropertiesService from '../services/variablePropertiesService';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 jest.mock('../services/variablePropertiesService');
 

@@ -8,7 +8,7 @@ import { devtools } from 'zustand/middleware';
  * Minimal implementation focusing on critical data flow coordination
  */
 
-type StoreEvent = 
+export type StoreEvent = 
   | { type: 'DATA_UPDATED'; payload: { rowCount: number; colCount: number } }
   | { type: 'VARIABLES_UPDATED'; payload: { variableCount: number; maxColumnIndex: number } }
   | { type: 'STRUCTURE_CHANGED'; payload: { source: 'data' | 'variables' } }
@@ -16,8 +16,11 @@ type StoreEvent =
 
 type EventHandler = (event: StoreEvent) => void;
 
-interface StoreMediatorState {
+export interface StoreMediatorState {
   subscribers: Map<string, EventHandler[]>;
+  // Cached values (derived from events) for quick access
+  _cachedDataDimensions?: { rows: number; cols: number };
+  _cachedVariableCount?: number;
   
   // Core methods
   subscribe: (eventType: string, handler: EventHandler) => () => void;
@@ -61,7 +64,7 @@ export const useStoreMediator = create<StoreMediatorState>()(devtools(
       if (event.type === 'DATA_UPDATED') {
         set(state => ({ 
           ...state,
-          _cachedDataDimensions: event.payload 
+          _cachedDataDimensions: { rows: event.payload.rowCount, cols: event.payload.colCount }
         }));
       } else if (event.type === 'VARIABLES_UPDATED') {
         set(state => ({ 
@@ -81,13 +84,13 @@ export const useStoreMediator = create<StoreMediatorState>()(devtools(
     },
     
     getDataDimensions: () => {
-      const state = get() as any;
-      return state._cachedDataDimensions || null;
+      const { _cachedDataDimensions } = get();
+      return _cachedDataDimensions || null;
     },
     
     getVariableCount: () => {
-      const state = get() as any;
-      return state._cachedVariableCount || 0;
+      const { _cachedVariableCount } = get();
+      return _cachedVariableCount || 0;
     }
   }),
   { name: 'StoreMediator' }
@@ -96,7 +99,7 @@ export const useStoreMediator = create<StoreMediatorState>()(devtools(
 // Utility hook for selective store subscriptions
 export const useSelectiveSubscription = <T>(
   selector: () => T,
-  deps: any[] = []
+  deps: React.DependencyList = []
 ) => {
   const [value, setValue] = React.useState<T>(selector);
   const prevDepsRef = React.useRef(deps);
@@ -108,7 +111,7 @@ export const useSelectiveSubscription = <T>(
       setValue(selector());
       prevDepsRef.current = deps;
     }
-  }, deps);
+  }, [selector, ...deps]);
   
   return value;
 };

@@ -5,8 +5,6 @@ import {
     HelpCircle,
     Calculator,
     BarChart3,
-    TrendingUp,
-    AlertTriangle,
 } from "lucide-react";
 
 export const LevenesTest: React.FC = () => {
@@ -127,22 +125,22 @@ export const LevenesTest: React.FC = () => {
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Calculate Group Medians</strong>
+                            <strong>Calculate Group Medians</strong>
                             <br />
                             Mᵢ = median of group i
                         </li>
                         <li>
-                            <strong>2. Calculate Absolute Deviations</strong>
+                            <strong>Calculate Absolute Deviations</strong>
                             <br />
                             Zᵢⱼ = |Yᵢⱼ - Mᵢ|
                         </li>
                         <li>
-                            <strong>3. Calculate Mean Deviations</strong>
+                            <strong>Calculate Mean Deviations</strong>
                             <br />
                             Z̄ᵢ = mean of Zᵢⱼ for group i
                         </li>
                         <li>
-                            <strong>4. Calculate F Statistic</strong>
+                            <strong>Calculate F Statistic</strong>
                             <br />F = MSB / MSW for Zᵢⱼ
                         </li>
                     </ol>
@@ -332,22 +330,6 @@ export const LevenesTest: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>rust/src/wasm/function.rs</code> - Function
-                        calculate_levene_test
-                    </li>
-                    <li>
-                        <code>rust/src/stats/core.rs</code> - Levene's Test
-                        calculation implementation
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> - Levene's Test
-                        result structures
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

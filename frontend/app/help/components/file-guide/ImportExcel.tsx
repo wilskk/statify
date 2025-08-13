@@ -2,77 +2,92 @@
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { FileSpreadsheet, Upload, Lightbulb, BookOpen, Database, Layers } from 'lucide-react';
+import { FileSpreadsheet, Upload, Lightbulb, Layers } from 'lucide-react';
 
 export const ImportExcel = () => {
   const sections = [
     {
       id: 'import-steps',
-      title: 'How to Import Excel Files',
-      description: 'Step-by-step guide to bring your Excel data into Statify',
+      title: 'Cara Impor File Excel',
+      description: 'Panduan langkah demi langkah untuk mengimpor data Excel Anda ke Statify',
       icon: Upload,
       content: (
         <div className="space-y-4">
           <HelpStep
             number={1}
-            title="Open File Menu"
-            description="Click 'File' in the top menu bar of the application."
+            title="Buka Menu File"
+            description="Klik 'File' di bilah menu atas aplikasi."
           />
           <HelpStep
             number={2}
-            title="Choose Excel Import"
-            description="Select 'Open Excel File' from the dropdown options."
+            title="Pilih Import Data → Excel"
+            description="Klik File → Import Data → Excel."
           />
           <HelpStep
             number={3}
-            title="Select Your File"
-            description="Browse your computer and choose the Excel file (.xlsx or .xls) you want to work with."
+            title="Pilih File Anda"
+            description="Telusuri komputer Anda dan pilih file Excel (.xlsx atau .xls) yang ingin Anda gunakan."
           />
           <HelpStep
             number={4}
-            title="Pick Your Sheet"
-            description="If your Excel file has multiple sheets, choose which one to import."
+            title="Lanjut ke Konfigurasi"
+            description="Klik 'Continue' untuk membuka konfigurasi impor."
           />
           <HelpStep
             number={5}
-            title="Load Your Data"
-            description="Click 'Open' to bring your data into Statify's data editor."
+            title="Pilih Worksheet"
+            description="Pilih worksheet yang akan diimpor."
+          />
+          <HelpStep
+            number={6}
+            title="Atur Opsi Impor"
+            description="Sesuaikan opsi: First line contains variable names, Read hidden rows/columns, Range, dan perlakuan sel kosong."
+          />
+          <HelpStep
+            number={7}
+            title="Tinjau Data Preview"
+            description="Periksa pratinjau data untuk memastikan pengaturan sudah benar."
+          />
+          <HelpStep
+            number={8}
+            title="Impor"
+            description="Klik tombol 'Import' untuk menyelesaikan proses impor."
           />
         </div>
       )
     },
     {
-      id: 'features',
-      title: 'Supported Formats',
-      description: 'File types and features you can work with',
+      id: 'formats',
+      title: 'Format Yang Didukung',
+      description: 'Jenis file dan fitur yang dapat Anda gunakan',
       icon: FileSpreadsheet,
       content: (
         <div className="space-y-4">
-          <HelpCard title="File Types" icon={FileSpreadsheet} variant="feature">
+          <HelpCard title="Jenis File" icon={FileSpreadsheet} variant="feature">
             <ul className="text-sm space-y-1 mt-2">
-              <li>• .xlsx (Excel 2007 and newer)</li>
+              <li>• .xlsx (Excel 2007 dan yang lebih baru)</li>
               <li>• .xls (Excel 97-2003)</li>
             </ul>
           </HelpCard>
           
-          <HelpCard title="Multiple Worksheets" icon={Layers} variant="feature">
+          <HelpCard title="Multiple Worksheet" icon={Layers} variant="feature">
             <p className="text-sm text-muted-foreground">
-              Statify can handle Excel files with multiple worksheets and lets you choose which sheet to import.
+              Statify dapat menangani file Excel dengan beberapa worksheet dan memungkinkan Anda memilih sheet mana yang akan diimpor.
             </p>
           </HelpCard>
         </div>
       )
     },
     {
-      id: 'tips',
-      title: 'Helpful Information',
-      description: 'What you need to know about Excel files',
+      id: 'features',
+      title: 'Fitur & Informasi',
+      description: 'Informasi penting tentang impor file Excel',
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="info" title="Did you know?">
+          <HelpAlert variant="info" title="Tahukah Anda?">
             <p className="text-sm mt-2">
-              Statify works perfectly with both .xlsx (Excel 2007+) and .xls (Excel 97-2003) formats.
+              Statify bekerja sempurna dengan format .xlsx (Excel 2007+) dan .xls (Excel 97-2003).
             </p>
           </HelpAlert>
         </div>
@@ -85,31 +100,35 @@ export const ImportExcel = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Column Headers',
-      content: 'Make sure your first row contains clear variable names for the best import results.'
+      title: 'Header Kolom',
+      content: 'Pastikan baris pertama berisi nama variabel yang jelas untuk hasil impor yang optimal dan mudah dipahami.'
     },
     {
       type: 'info' as const,
-      title: 'Sheet Selection',
-      content: 'For files with multiple worksheets, you can choose which sheet to import.'
+      title: 'Pemilihan Worksheet',
+      content: 'Untuk file dengan beberapa worksheet, Anda dapat memilih sheet mana yang akan diimpor ke Statify.'
+    },
+    {
+      type: 'success' as const,
+      title: 'Format Fleksibel',
+      content: 'Mendukung format .xlsx (Excel 2007+) dan .xls (Excel 97-2003) dengan preservasi metadata yang baik.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Import CSV Files', href: '/help/file-guide/import-csv' },
-    { title: 'Import SPSS Files', href: '/help/file-guide/import-sav' },
-    { title: 'Export to Excel', href: '/help/file-guide/export-excel' },
-    { title: 'Data Management Guide', href: '/help/data-guide' }
+    { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
+    { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
+    { title: 'Impor dari Clipboard', href: '/help/file-guide/import-clipboard' },
+    { title: 'Ekspor ke Excel', href: '/help/file-guide/export-excel' },
+    { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Import Excel Files"
-      description="Complete guide for bringing Excel data into Statify"
-      category="File Management"
+      title="Impor File Excel"
+      description="Panduan lengkap untuk mengimpor data Excel ke Statify"
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

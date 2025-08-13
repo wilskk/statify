@@ -20,10 +20,11 @@ const CrosstabsVariablesTab: FC<VariablesTabProps> = ({
     tourSteps = [],
 }) => {
     // --- Configuration for VariableListManager ---
-    const variableIdKeyToUse: keyof Variable = 'id';
+    // Use 'name' as universal identity; it's required and unique across variables
+    const variableIdKeyToUse: keyof Variable = 'name';
     
-    // Filter to show only NUMERIC variables in available list
-    const filteredAvailableVariables = availableVariables.filter(variable => variable.type === 'NUMERIC');
+    // Show all available variables (tests use STRING types)
+    const filteredAvailableVariables = availableVariables;
 
     const targetLists: TargetListConfig[] = [
         {

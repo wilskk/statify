@@ -1,7 +1,7 @@
 import { generateCsvContent } from '../utils/exportCsvUtils';
-import { Variable } from '@/types/Variable';
-import { DataRow } from '@/types/Data';
-import { CsvExportOptions } from '../types';
+import type { Variable } from '@/types/Variable';
+import type { DataRow } from '@/types/Data';
+import type { CsvExportOptions } from '../types';
 
 describe('generateCsvContent', () => {
     const mockVariables: Variable[] = [
@@ -23,13 +23,6 @@ describe('generateCsvContent', () => {
             quoteStrings: false,
         };
         const result = generateCsvContent(mockData, mockVariables, options);
-        const expected = [
-            'ID,Name,Score',
-            '1,Alice,95.5',
-            '2,"Bob, ""The Builder""","88"', // 88 is a number, but the logic might quote it if quoteStrings is true. Let's re-verify logic. The logic will not quote it.
-            '3,Charlie,',
-        ].join('\n');
-        // Let's refine the expectation
         const expectedRefined = [
             'ID,Name,Score',
             '1,Alice,95.5',

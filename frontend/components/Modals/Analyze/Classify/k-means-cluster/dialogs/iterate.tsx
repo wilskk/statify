@@ -132,7 +132,7 @@ export const KMeansClusterIterate = ({
                     <Input
                         id="ConvergenceCriterion"
                         type="number"
-                        value={iterateState.ConvergenceCriterion || ""}
+                        value={iterateState.ConvergenceCriterion || "0"}
                         min={0}
                         max={1}
                         onChange={(e) =>

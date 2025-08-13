@@ -1,6 +1,7 @@
 // index.tsx
 "use client";
 import React, { useState, useEffect, FC, useMemo } from "react";
+
 import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,12 +42,13 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
     const [rowVariables, setRowVariables] = useState<Variable[]>([]);
     const [columnVariables, setColumnVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<VariableHighlight>(null);
-    
-    const tabControl = useMemo((): TabControlProps => ({
-        setActiveTab,
-        currentActiveTab: activeTab,
-    }), [activeTab]);
-    
+  
+  const tabControl = useMemo((): TabControlProps => ({
+      setActiveTab,
+      currentActiveTab: activeTab,
+  }), [activeTab]);
+
+
     const { 
         tourActive, 
         currentStep, 
@@ -79,6 +81,16 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
     
     const { variables } = useVariableStore();
 
+    // Helper to compute a robust identity key for variables across different contexts
+    const getVarKey = (v: Variable) => {
+        // Prefer stable unique identifiers when available
+        // Access optional id when present at runtime
+        if ((v as any).id !== undefined && (v as any).id !== null) return (v as any).id;
+        if (v.tempId !== undefined && v.tempId !== null) return v.tempId;
+        if (v.columnIndex !== undefined && v.columnIndex !== null) return v.columnIndex;
+        return v.name;
+    };
+
     // Load saved Crosstabs data when variables are available
     useEffect(() => {
         (async () => {
@@ -88,14 +100,15 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
 
             const validVars = variables.filter(v => v.name !== "");
 
+
             const savedRow: Variable[] = Array.isArray(saved.rowVariables) ? saved.rowVariables : [];
             const savedCol: Variable[] = Array.isArray(saved.columnVariables) ? saved.columnVariables : [];
 
             setRowVariables(savedRow);
             setColumnVariables(savedCol);
 
-            const selectedIds = new Set([...savedRow, ...savedCol].map(v => v.id));
-            const avail = validVars.filter(v => v.id !== undefined && !selectedIds.has(v.id));
+            const selectedKeys = new Set([...savedRow, ...savedCol].map(getVarKey));
+            const avail = validVars.filter(v => !selectedKeys.has(getVarKey(v)));
             setAvailableVariables(avail);
 
             if (saved.options) {
@@ -109,22 +122,18 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
 
     // Analysis Hook
     const { runAnalysis, isCalculating, error } = useCrosstabsAnalysis(
-        { rowVariables, columnVariables, options }, 
+        { rowVariables, columnVariables, options },
         onClose
     );
 
-    // Sync available, row, and column variable lists whenever the underlying dataset changes
-    // (e.g., the user deletes or renames variables in the Data Editor).
-    // Any variables that are no longer present in the global `variables` array will be
-    // removed from the Row/Column selections to keep the UI in sync.
+    // Keep selections in sync with dataset changes and compute available list
     useEffect(() => {
         const validVars = variables.filter(v => v.name !== "");
+        const validKeys = new Set(validVars.map(getVarKey));
 
-        // Filter existing selections so that they only contain currently valid variables
-        const filteredRow = rowVariables.filter(rv => validVars.some(v => v.id === rv.id));
-        const filteredColumn = columnVariables.filter(cv => validVars.some(v => v.id === cv.id));
+        const filteredRow = rowVariables.filter(rv => validKeys.has(getVarKey(rv)));
+        const filteredColumn = columnVariables.filter(cv => validKeys.has(getVarKey(cv)));
 
-        // Update state if pruning actually removed something (avoid unnecessary rerenders)
         if (filteredRow.length !== rowVariables.length) {
             setRowVariables(filteredRow);
         }
@@ -132,9 +141,8 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
             setColumnVariables(filteredColumn);
         }
 
-        // Anything not in the current Row / Column lists is available
-        const selectedIds = new Set([...filteredRow, ...filteredColumn].map(v => v.id));
-        const newAvailable = validVars.filter(v => v.id !== undefined && !selectedIds.has(v.id));
+        const selectedKeys = new Set([...filteredRow, ...filteredColumn].map(getVarKey));
+        const newAvailable = validVars.filter(v => !selectedKeys.has(getVarKey(v)));
         setAvailableVariables(newAvailable);
     }, [variables, rowVariables, columnVariables]);
 
@@ -187,27 +195,30 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
     // Variable list management functions
     const moveToRowVariables = (variable: Variable) => {
         setRowVariables(prev => [...prev, variable]);
-        setAvailableVariables(prev => prev.filter(v => v.id !== variable.id));
+        const key = getVarKey(variable);
+        setAvailableVariables(prev => prev.filter(v => getVarKey(v) !== key));
         setHighlightedVariable(null);
     };
 
     const moveToColumnVariables = (variable: Variable) => {
         setColumnVariables(prev => [...prev, variable]);
-        setAvailableVariables(prev => prev.filter(v => v.id !== variable.id));
+        const key = getVarKey(variable);
+        setAvailableVariables(prev => prev.filter(v => getVarKey(v) !== key));
         setHighlightedVariable(null);
     };
 
     const moveToAvailableVariables = (variable: Variable, source: 'row' | 'column') => {
         setAvailableVariables(prev => [...prev, variable]);
-        if (source === 'row') setRowVariables(prev => prev.filter(v => v.id !== variable.id));
-        else if (source === 'column') setColumnVariables(prev => prev.filter(v => v.id !== variable.id));
+        const key = getVarKey(variable);
+        if (source === 'row') setRowVariables(prev => prev.filter(v => getVarKey(v) !== key));
+        else if (source === 'column') setColumnVariables(prev => prev.filter(v => getVarKey(v) !== key));
         setHighlightedVariable(null);
     };
 
-    const reorderVariables = (source: 'available' | 'row' | 'column', variables: Variable[]) => {
-        if (source === 'available') setAvailableVariables([...variables]);
-        else if (source === 'row') setRowVariables([...variables]);
-        else if (source === 'column') setColumnVariables([...variables]);
+    const reorderVariables = (source: 'available' | 'row' | 'column', variablesArg: Variable[]) => {
+        if (source === 'available') setAvailableVariables([...variablesArg]);
+        else if (source === 'row') setRowVariables([...variablesArg]);
+        else if (source === 'column') setColumnVariables([...variablesArg]);
     };
 
     return (

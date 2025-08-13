@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useUnusualCases } from '../hooks/useUnusualCases';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable, VariableType, VariableMeasure, VariableAlign, VariableRole } from '@/types/Variable';
+import type { Variable, VariableType, VariableMeasure, VariableAlign, VariableRole } from '@/types/Variable';
 
 jest.mock('@/stores/useVariableStore');
 

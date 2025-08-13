@@ -1,11 +1,11 @@
 "use client";
 
-import React, { FC, useState, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, FileSpreadsheet, Loader2, X, HelpCircle, ChevronLeft, ChevronRight, Info } from "lucide-react";
-import { ImportExcelSelectionStepProps } from "../types";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertCircle, FileSpreadsheet, Loader2, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import type { ImportExcelSelectionStepProps } from "../types";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,7 +35,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "import-excel-dropzone-wrapper",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
-        icon: "📂",
+        icon: "",
     },
     {
         title: "Continue",
@@ -43,7 +43,7 @@ const baseTourSteps: TourStep[] = [
         targetId: "import-excel-continue-button-wrapper",
         defaultPosition: 'top',
         defaultHorizontalPosition: 'right',
-        icon: "➡️",
+        icon: "",
     }
 ];
 
@@ -65,7 +65,7 @@ const TourPopup: FC<{
     onClose: () => void;
     targetElement: HTMLElement | null;
 }> = ({ step, currentStep, totalSteps, onNext, onPrev, onClose, targetElement }) => {
-    const position = step.position || step.defaultPosition;
+    const position = step.position ?? step.defaultPosition;
     const horizontalPosition = step.horizontalPosition;
     const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
     const popupRef = useRef<HTMLDivElement>(null);
@@ -74,7 +74,7 @@ const TourPopup: FC<{
         if (!targetElement) return;
         const updatePosition = () => {
             const rect = targetElement.getBoundingClientRect();
-            const popupHeight = popupRef.current?.offsetHeight || 170;
+            const popupHeight = popupRef.current?.offsetHeight ?? 170;
             const popupWidth = 280;
             const popupBuffer = 20;
             let top: number, left: number;
@@ -188,7 +188,7 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
+    const _startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
     const nextStep = useCallback(() => { if (currentStep < baseTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);
@@ -204,11 +204,11 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
 
     const currentTargetElement = useMemo(() => {
         if (!tourActive) return null;
-        return targetElements[baseTourSteps[currentStep].targetId] || null;
+        return targetElements[baseTourSteps[currentStep].targetId] ?? null;
     }, [tourActive, currentStep, targetElements]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selected = e.target.files?.[0] || null;
+        const selected = e.target.files?.[0] ?? null;
         if (selected) {
             onFileSelect(selected);
         }

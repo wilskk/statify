@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore, CellUpdate } from "@/stores/useDataStore";
 import type { Variable, VariableType } from "@/types/Variable";
@@ -48,7 +48,7 @@ export const RecodeDifferentVariablesModal: FC<
 > = ({ onClose, containerType = "dialog" }) => {
   const allVariablesFromStore = useVariableStore.getState().variables;
   const dataStore = useDataStore();
-  const { toast } = useToast();
+
   const resultStore = useResultStore();
 
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
@@ -382,20 +382,12 @@ export const RecodeDifferentVariablesModal: FC<
 
   const handleOk = async () => {
     if (recodeMappings.length === 0) {
-      setErrorDialog({
-        open: true,
-        title: "No variables selected",
-        description: "Please select at least one variable to recode.",
-      });
+      toast.error("Please select at least one variable to recode.");
       return;
     }
 
     if (recodeRules.length === 0) {
-      setErrorDialog({
-        open: true,
-        title: "No recode rules defined",
-        description: "Please define at least one rule for recoding.",
-      });
+      toast.error("Please define at least one rule for recoding.");
       return;
     }
 
@@ -572,19 +564,12 @@ export const RecodeDifferentVariablesModal: FC<
         description: "",
       });
 
-      toast({
-        title: "Success",
-        description: "Variables have been recoded successfully.",
-      });
+      toast.success("Variables have been recoded successfully.");
 
       onClose();
     } catch (error) {
       console.error("Error during recode:", error);
-      setErrorDialog({
-        open: true,
-        title: "Error",
-        description: "An error occurred while recoding variables.",
-      });
+      toast.error("An error occurred while recoding variables.");
     } finally {
       setIsProcessing(false);
     }

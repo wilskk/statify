@@ -1,4 +1,4 @@
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 /**
  * Evaluates a condition expression against a data row
@@ -47,7 +47,7 @@ export function evaluateCondition(expression: string, row: any[], variables: Var
     
     // Safely evaluate the expression
     // eslint-disable-next-line no-new-func
-    const result = new Function('return ' + processedExpression)();
+    const result = new Function(`return ${  processedExpression}`)();
     return !!result;
   } catch (error) {
     console.error("Error evaluating condition:", error);

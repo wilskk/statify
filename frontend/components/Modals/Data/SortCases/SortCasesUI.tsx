@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import {
     Dialog,
     DialogContent,
@@ -20,9 +21,10 @@ import {
     HelpCircle,
     AlertTriangle,
 } from "lucide-react";
-import { Variable } from "@/types/Variable";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
-import { SortCasesUIProps, SortVariableConfig } from "./types";
+import type { Variable } from "@/types/Variable";
+import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
+import type { SortCasesUIProps, SortVariableConfig } from "./types";
 
 const SortCasesUIContent: React.FC<SortCasesUIProps> = ({ 
     onClose,

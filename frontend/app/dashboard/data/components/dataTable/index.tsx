@@ -3,13 +3,13 @@
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import HandsontableWrapper from './HandsontableWrapper';
 import { registerAllModules } from 'handsontable/registry';
-import { useDataStore } from '@/stores/useDataStore';
 import { useDataTableLogic } from './hooks';
 import { useColumnSizing } from './hooks/useColumnSizing';
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useMetaStore } from '@/stores/useMetaStore';
 import './DataTable.css';
+import type { HotTableRef } from '@handsontable/react-wrapper';
 
 registerAllModules();
 
@@ -17,7 +17,7 @@ registerAllModules();
 const MemoizedHandsontableWrapper = React.memo(HandsontableWrapper);
 
 function Index() {
-    const hotTableRef = useRef<any>(null);
+    const hotTableRef = useRef<HotTableRef>(null);
     const { viewMode, setDataTableRef } = useTableRefStore();
     
     const {
@@ -37,7 +37,7 @@ function Index() {
     
     // Column sizing optimization
     const { shouldUseAutoColumnSize, resetColumnSizingCache } = useColumnSizing({
-        hotTableRef: hotTableRef,
+        hotTableRef,
         actualNumRows,
         actualNumCols
     });
@@ -80,17 +80,19 @@ function Index() {
         if (hotTableRef.current) {
             setDataTableRef(hotTableRef);
         }
+        // Capture the instance reference at effect time
+        const instanceRef = hotTableRef.current;
         
         // Cleanup function to prevent memory leaks
         return () => {
-            if (hotTableRef.current?.hotInstance) {
+            if (instanceRef?.hotInstance) {
                 try {
-                    hotTableRef.current.hotInstance.destroy();
+                    instanceRef.hotInstance.destroy();
                 } catch (error) {
                     console.warn('Error destroying Handsontable instance:', error);
                 }
             }
-            setDataTableRef({ current: null });
+            setDataTableRef(null);
         };
     }, [setDataTableRef]);
 
@@ -105,7 +107,7 @@ function Index() {
             
             // Only update if there are actual structural changes
             if (lastUpdateRef.current !== currentHash) {
-                hotInstance.updateSettings({ colHeaders, columns: columns as any });
+                hotInstance.updateSettings({ colHeaders, columns });
                 hotInstance.render();
                 lastUpdateRef.current = currentHash;
             }
@@ -137,7 +139,7 @@ function Index() {
         minRows: displayNumRows,
         minCols: displayNumCols,
         colHeaders,
-        columns: columns as any
+        columns
     }), [displayData, displayNumRows, displayNumCols, colHeaders, columns]);
 
     // Combine props with minimal re-creation

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { GoToContent } from '../components/GoToContent';
@@ -41,7 +41,6 @@ describe('GoToContent', () => {
     };
 
     it('disables the Go button when variable tab is active and no variable is selected', async () => {
-        const user = userEvent.setup();
         renderComponent({ defaultMode: GoToMode.VARIABLE });
 
         // Initially, a variable should be selected by default, so the button is enabled
@@ -72,4 +71,4 @@ describe('GoToContent', () => {
         expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-}); 
+});

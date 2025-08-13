@@ -135,8 +135,8 @@ const sections = [
   tips={[
     {
       type: "tip",
-      title: "Pro Tip",
-      content: "Gunakan shortcut Ctrl+S untuk menyimpan"
+  title: "Tip",
+  content: "Simpan perubahan Anda secara berkala melalui menu yang tersedia"
     }
   ]}
   relatedTopics={[

@@ -3,7 +3,7 @@ import { useRestructure, RestructureMethod } from '../hooks/useRestructure';
 import { restructureData } from '../services/restructureService';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 jest.mock('../services/restructureService');
 jest.mock('@/stores/useDataStore');

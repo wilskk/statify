@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, FC, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, FileText, X, AlertCircle, FolderOpen, HelpCircle, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { useOpenSavFileLogic } from "./hooks/useOpenSavFileLogic";
-import { OpenSavFileProps, OpenSavFileStepProps } from "./types";
+import type { OpenSavFileProps, OpenSavFileStepProps } from "./types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -65,7 +66,7 @@ const TourPopup: FC<{
     onClose: () => void;
     targetElement: HTMLElement | null;
 }> = ({ step, currentStep, totalSteps, onNext, onPrev, onClose, targetElement }) => {
-    const position = step.position || step.defaultPosition;
+    const position = step.position ?? step.defaultPosition;
     const horizontalPosition = step.horizontalPosition;
     const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
     const popupRef = useRef<HTMLDivElement>(null);
@@ -74,7 +75,7 @@ const TourPopup: FC<{
         if (!targetElement) return;
         const updatePosition = () => {
             const rect = targetElement.getBoundingClientRect();
-            const popupHeight = popupRef.current?.offsetHeight || 170;
+            const popupHeight = popupRef.current?.offsetHeight ?? 170;
             const popupWidth = 280;
             const popupBuffer = 20;
             let top: number, left: number;
@@ -205,13 +206,13 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
 
     const currentTargetElement = useMemo(() => {
         if (!tourActive) return null;
-        return targetElements[baseTourSteps[currentStep].targetId] || null;
+        return targetElements[baseTourSteps[currentStep].targetId] ?? null;
     }, [tourActive, currentStep, targetElements]);
 
     const handleFileSelectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] || null;
+        const file = e.target.files?.[0] ?? null;
         onFileSelect(file);
-        if(file && file.name.endsWith('.sav')) clearError(); 
+        if (file?.name.endsWith('.sav')) clearError(); 
     };
 
     const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -220,7 +221,7 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             const droppedFile = e.dataTransfer.files[0];
             onFileSelect(droppedFile);
-            if(droppedFile && droppedFile.name.endsWith('.sav')) clearError();
+            if (droppedFile?.name.endsWith('.sav')) clearError();
         }
     };
 
@@ -366,7 +367,7 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
 // Main component following ImportExcelModal pattern
 export const OpenSavFileModal: React.FC<OpenSavFileProps> = ({
     onClose,
-    containerType,
+    containerType: _containerType,
 }) => {
     const {
         file,

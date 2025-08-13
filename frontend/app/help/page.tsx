@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, cloneElement } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
     GettingStarted,
     FAQ,
@@ -11,47 +11,8 @@ import {
     type SectionItem,
 } from "@/app/help/components";
 import {
-    AggregateGuide,
-    DefineDateTimeGuide,
-    DefineVarPropsGuide,
-    DuplicateCasesGuide,
-    RestructureGuide,
-    SelectCasesGuide,
-    SetMeasurementLevelGuide,
-    SortCasesGuide,
-    SortVarsGuide,
-    TransposeGuide,
-    WeightCasesGuide,
+    DataGuide
 } from "@/app/help/components/data-guide";
-
-const DataGuide = ({ section }: { section?: string }) => {
-    switch (section) {
-        case "aggregate":
-            return <AggregateGuide />;
-        case "define-datetime":
-            return <DefineDateTimeGuide />;
-        case "define-var-props":
-            return <DefineVarPropsGuide />;
-        case "duplicate-cases":
-            return <DuplicateCasesGuide />;
-        case "restructure":
-            return <RestructureGuide />;
-        case "select-cases":
-            return <SelectCasesGuide />;
-        case "set-measurement-level":
-            return <SetMeasurementLevelGuide />;
-        case "sort-cases":
-            return <SortCasesGuide />;
-        case "sort-vars":
-            return <SortVarsGuide />;
-        case "transpose":
-            return <TransposeGuide />;
-        case "weight-cases":
-            return <WeightCasesGuide />;
-        default:
-            return <AggregateGuide />; // Show a default guide
-    }
-};
 
 export default function HelpPage() {
     const [selected, setSelected] = useState("getting-started");
@@ -64,9 +25,8 @@ export default function HelpPage() {
     useEffect(() => {
         setMounted(true);
     }, []);
-
     // -------------------- SECTIONS DATA --------------------
-    const sectionsData: SectionItem[] = [
+    const sectionsData: SectionItem[] = useMemo(() => ([
         {
             key: "getting-started",
             label: "Getting Started",
@@ -75,7 +35,7 @@ export default function HelpPage() {
         {
             key: "file-guide",
             label: "File Management",
-            content: <FileGuide section={activeChild || undefined} />,
+            content: <FileGuide section={activeChild ?? undefined} />,
             children: [
                 { key: "import-sav", label: "Import .sav", parentKey: "file-guide", childContent: "import-sav" },
                 { key: "import-csv", label: "Import CSV", parentKey: "file-guide", childContent: "import-csv" },
@@ -90,40 +50,45 @@ export default function HelpPage() {
         {
             key: "data-guide",
             label: "Data Management",
-            content: <DataGuide section={activeChild || undefined} />,
+            content: <DataGuide section={activeChild ?? undefined} />,
             children: [
                 { key: "aggregate", label: "Aggregate", parentKey: "data-guide", childContent: "aggregate" },
                 { key: "define-datetime", label: "Define Date and Time", parentKey: "data-guide", childContent: "define-datetime" },
                 { key: "define-var-props", label: "Define Variable Properties", parentKey: "data-guide", childContent: "define-var-props" },
                 { key: "duplicate-cases", label: "Identify Duplicate Cases", parentKey: "data-guide", childContent: "duplicate-cases" },
+                { key: "linear", label: "Linear Regression", parentKey: "statistics-guide", childContent: "linear" },
+                { key: "k-means", label: "K-Means Clustering", parentKey: "statistics-guide", childContent: "k-means" },
                 { key: "restructure", label: "Restructure", parentKey: "data-guide", childContent: "restructure" },
                 { key: "select-cases", label: "Select Cases", parentKey: "data-guide", childContent: "select-cases" },
                 { key: "set-measurement-level", label: "Set Measurement Level", parentKey: "data-guide", childContent: "set-measurement-level" },
                 { key: "sort-cases", label: "Sort Cases", parentKey: "data-guide", childContent: "sort-cases" },
                 { key: "sort-vars", label: "Sort Variables", parentKey: "data-guide", childContent: "sort-vars" },
-                { key: "transpose", label: "Transpose", parentKey: "data-guide", childContent: "transpose" },
-                { key: "unusual-cases", label: "Identify Unusual Cases", parentKey: "data-guide", childContent: "unusual-cases" },
                 { key: "weight-cases", label: "Weight Cases", parentKey: "data-guide", childContent: "weight-cases" },
             ],
         },
         {
             key: "statistics-guide",
             label: "Statistics Guide",
-            content: <StatisticsGuide section={activeChild || undefined} />,
+            content: <StatisticsGuide section={activeChild ?? undefined} />,
             children: [
                 { key: "frequencies", label: "Frequencies", parentKey: "statistics-guide", childContent: "frequencies" },
                 { key: "descriptives", label: "Descriptives", parentKey: "statistics-guide", childContent: "descriptives" },
                 { key: "explore", label: "Explore", parentKey: "statistics-guide", childContent: "explore" },
                 { key: "linear", label: "Linear Regression", parentKey: "statistics-guide", childContent: "linear" },
                 { key: "crosstabs", label: "Crosstabs", parentKey: "statistics-guide", childContent: "crosstabs" },
-                { key: "k-means-clustering", label: "K-Means Clustering", parentKey: "statistics-guide", childContent: "k-means-clustering" },
+                { key: "smoothing", label: "Smoothing", parentKey: "statistics-guide", childContent: "smoothing" },
+                { key: "decomposition", label: "Decomposition", parentKey: "statistics-guide", childContent: "decomposition" },
+                { key: "autocorrelation", label: "Autocorrelation", parentKey: "statistics-guide", childContent: "autocorrelation" },
+                { key: "unit-root-test", label: "Unit Root Test", parentKey: "statistics-guide", childContent: "unit-root-test" },
+                { key: "box-jenkins-model", label: "Box-Jenkins Model", parentKey: "statistics-guide", childContent: "box-jenkins-model" },
+                { key: "k-means", label: "K-Means Clustering", parentKey: "statistics-guide", childContent: "k-means" },
                 { key: "univariate", label: "GLM Univariate", parentKey: "statistics-guide", childContent: "univariate" },
                 { key: "univariate-design-matrix", label: "GLM Univariate: Design Matrix", parentKey: "statistics-guide", childContent: "univariate-design-matrix" },
                 { key: "univariate-contrast-factors", label: "GLM Univariate: Contrast Factors", parentKey: "statistics-guide", childContent: "univariate-contrast-factors" },
                 { key: "univariate-heteroscedasticity-tests", label: "GLM Univariate: Heteroscedasticity Tests", parentKey: "statistics-guide", childContent: "univariate-heteroscedasticity-tests" },
                 { key: "univariate-lack-of-fit-tests", label: "GLM Univariate: Lack of Fit Tests", parentKey: "statistics-guide", childContent: "univariate-lack-of-fit-tests" },
                 { key: "univariate-sum-of-squares", label: "GLM Univariate: Sum of Squares", parentKey: "statistics-guide", childContent: "univariate-sum-of-squares" },
-                { key: "univariate-em-means", label: "GLM Univariate: EM Means", parentKey: "statistics-guide", childContent: "univariate-em-means" },
+                { key: "univariate-emmeans", label: "GLM Univariate: EM Means", parentKey: "statistics-guide", childContent: "univariate-emmeans" },
                 { key: "univariate-parameter-estimates", label: "GLM Univariate: Parameter Estimates", parentKey: "statistics-guide", childContent: "univariate-parameter-estimates" },
                 { key: "univariate-levenes-test", label: "GLM Univariate: Levene's Test", parentKey: "statistics-guide", childContent: "univariate-levenes-test" },
             ],
@@ -138,8 +103,43 @@ export default function HelpPage() {
             label: "Send Feedback",
             content: <Feedback />,
         },
-    ];
+    ]), [activeChild]);
     // ------------------ END SECTIONS DATA ------------------
+
+    // Sync in-page navigation with URL hash: /help#<parentKey>:<childKey?>
+    const applyHash = useCallback(() => {
+        if (typeof window === 'undefined') return;
+        const hash = window.location.hash.replace(/^#/, "");
+        if (!hash) return;
+        const [parentKey, maybeChild] = hash.split(":");
+        if (!parentKey) return;
+        // set selected only if changed
+        setSelected((prev) => (prev !== parentKey ? parentKey : prev));
+        // expand the parent
+        setExpandedKeys((prev) => {
+            if (prev.has(parentKey)) return prev;
+            const next = new Set(prev);
+            next.add(parentKey);
+            return next;
+        });
+        // validate and set child if present
+        if (maybeChild) {
+            const parent = sectionsData.find(s => s.key === parentKey);
+            const isValidChild = !!parent?.children?.some(c => c.key === maybeChild);
+            setActiveChild((prev) => (isValidChild ? (prev !== maybeChild ? maybeChild : prev) : (prev !== null ? null : prev)));
+        } else {
+            setActiveChild((prev) => (prev !== null ? null : prev));
+        }
+    }, [sectionsData]);
+
+    useEffect(() => {
+        // Apply on mount and on hash changes
+        applyHash();
+        if (typeof window !== 'undefined') {
+            window.addEventListener('hashchange', applyHash);
+            return () => window.removeEventListener('hashchange', applyHash);
+        }
+    }, [applyHash]);
 
     const searchLower =
         typeof search === "string" && typeof search.toLowerCase === "function"
@@ -148,16 +148,14 @@ export default function HelpPage() {
 
     const filteredSectionsResult = sectionsData.filter(
         (s) =>
-            s.label.toLowerCase().includes(searchLower) ||
-            (s.children &&
-                s.children.some(
+            s.label.toLowerCase().includes(searchLower) ??
+            s.children?.some(
                     (child) =>
-                        child.label.toLowerCase().includes(searchLower) ||
-                        (child.children &&
-                            child.children.some((subchild) =>
-                                subchild.label.toLowerCase().includes(searchLower)
-                            ))
-                ))
+                        child.label.toLowerCase().includes(searchLower) ??
+                        child.children?.some((subchild) =>
+                            subchild.label.toLowerCase().includes(searchLower)
+                        )
+                )
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,6 +205,10 @@ export default function HelpPage() {
             if (!item.parentKey) {
                 setSelected(item.key);
                 setActiveChild(null);
+                // update hash to parent only
+                if (typeof window !== 'undefined') {
+                    window.history.replaceState(null, '', `#${item.key}`);
+                }
             }
         } else {
             // It's a leaf item, set it as active
@@ -221,7 +223,7 @@ export default function HelpPage() {
                 const newExpandedKeys = new Set(expandedKeys);
                 while (parentKey) {
                     newExpandedKeys.add(parentKey);
-                    const parent = findItem(sectionsData, parentKey);
+                    const parent = sectionsData.find(s => s.key === parentKey);
                     if (parent) {
                         topLevelKey = parent.key;
                         parentKey = parent.parentKey;
@@ -233,25 +235,18 @@ export default function HelpPage() {
             }
 
             setSelected(topLevelKey);
+            // update hash to parent:child
+            if (typeof window !== 'undefined') {
+                window.history.replaceState(null, '', `#${topLevelKey}:${key}`);
+            }
         }
     };
 
     const sectionsToDisplayInSidebar = search ? filteredSectionsResult : sectionsData;
 
-    // Correctly pass the active child content to the main component
-    const selectedSection = sectionsData.find((s) => s.key === selected);
-    const contentToRender =
-        selectedSection && selectedSection.content
-            ? cloneElement(selectedSection.content, {
-                  section: activeChild || undefined,
-              })
-            : null;
-
     return (
         <div
-            className={`bg-background h-screen overflow-hidden transition-opacity duration-300 ${
-                mounted ? "opacity-100" : "opacity-0"
-            }`}
+            className={`bg-background h-screen overflow-hidden transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}
         >
             <HelpContent
                 sections={sectionsData}
@@ -263,7 +258,6 @@ export default function HelpPage() {
                 displaySections={sectionsToDisplayInSidebar}
                 expandedKeys={expandedKeys}
             />
-            <div className="flex-1 overflow-y-auto p-6 md:p-8">{contentToRender}</div>
         </div>
     );
 }

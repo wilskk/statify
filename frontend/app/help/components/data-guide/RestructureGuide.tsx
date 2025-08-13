@@ -1,28 +1,28 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { RefreshCw, ArrowRightLeft, Database, Settings, FileText } from 'lucide-react';
+import { RefreshCw, ArrowRightLeft, Settings, FileText } from 'lucide-react';
 
 const RestructureGuide = () => {
   const sections = [
     {
       id: 'overview',
-      title: 'Overview',
-      description: 'Introduction to the data restructuring wizard',
+      title: 'Ringkasan',
+      description: 'Pengantar wizard restrukturisasi data',
       icon: RefreshCw,
       content: (
         <div className="space-y-4">
           <p>
-            This feature provides a step-by-step wizard to easily restructure your dataset. 
-            You can transform your data between wide and long formats, or transpose your entire dataset. 
-            This is useful when your current data format doesn't match the requirements of your intended analysis.
+            Fitur ini menyediakan wizard langkah demi langkah untuk dengan mudah merestrukturisasi dataset Anda. 
+            Anda dapat mengubah data Anda antara format lebar dan panjang, atau mentranspose seluruh dataset Anda. 
+            Ini berguna ketika format data Anda saat ini tidak sesuai dengan persyaratan analisis yang Anda inginkan.
           </p>
           
-          <HelpAlert variant="info" title="When to Use Data Restructuring">
+          <HelpAlert variant="info" title="Kapan Menggunakan Restrukturisasi Data">
             <p className="text-sm mt-2">
-              Use data restructuring when your current format doesn't fit your analysis needs. 
-              For example, repeated measures analysis typically requires long format, 
-              while some multivariate analyses work better with wide format data.
+              Gunakan restrukturisasi data ketika format Anda saat ini tidak sesuai dengan kebutuhan analisis Anda. 
+              Misalnya, analisis pengukuran berulang biasanya memerlukan format panjang, 
+              sedangkan beberapa analisis multivariat bekerja lebih baik dengan data format lebar.
             </p>
           </HelpAlert>
         </div>
@@ -30,28 +30,28 @@ const RestructureGuide = () => {
     },
     {
       id: 'restructure-methods',
-      title: 'Restructuring Methods',
-      description: 'Available data restructuring options',
+      title: 'Metode Restrukturisasi',
+      description: 'Opsi restrukturisasi data yang tersedia',
       icon: ArrowRightLeft,
       content: (
         <div className="space-y-4">
-          <HelpCard title="Variables to Cases" variant="feature">
+          <HelpCard title="Variabel ke Kasus" variant="feature">
             <p className="text-sm">
-              Transform multiple variables (columns) into fewer variables by creating new cases (rows). 
-              This converts wide format data to long format, commonly needed for repeated measures analysis.
+              Mengubah beberapa variabel (kolom) menjadi lebih sedikit variabel dengan membuat kasus baru (baris). 
+              Ini mengonversi data format lebar ke format panjang, umumnya diperlukan untuk analisis pengukuran berulang.
             </p>
           </HelpCard>
           
-          <HelpCard title="Cases to Variables" variant="feature">
+          <HelpCard title="Kasus ke Variabel" variant="feature">
             <p className="text-sm">
-              The reverse of the previous method - transform multiple cases (rows) into variables (columns). 
-              This converts long format data to wide format.
+              Kebalikan dari metode sebelumnya - mengubah beberapa kasus (baris) menjadi variabel (kolom). 
+              Ini mengonversi data format panjang ke format lebar.
             </p>
           </HelpCard>
           
           <HelpCard title="Transpose All Data" variant="feature">
             <p className="text-sm">
-              Simply swap all rows and columns in your dataset. This transposes the entire dataset.
+              Menukar semua baris dan kolom pada seluruh dataset. Tidak memerlukan pemilihan variabel.
             </p>
           </HelpCard>
         </div>
@@ -59,64 +59,68 @@ const RestructureGuide = () => {
     },
     {
       id: 'wizard-flow',
-      title: 'Wizard Flow',
-      description: 'Step-by-step guide to using the restructuring wizard',
+      title: 'Alur Wizard',
+      description: 'Panduan langkah demi langkah menggunakan wizard restrukturisasi',
       icon: FileText,
       content: (
         <div className="space-y-4">
           <p>
-            The wizard guides you through a simple 3-step process. Each step must be completed 
-            before moving to the next one.
+            Wizard memandu Anda melalui 3 langkah: Method → Variables → Options. Selesaikan tiap langkah
+            sebelum melanjutkan.
           </p>
           
-          <HelpSection title="Step 1: Choose Restructuring Method">
+          <HelpSection title="Langkah 1: Pilih Metode Restrukturisasi (Method)">
             <p className="text-sm">
-              Select one of the three restructuring methods described above based on your needs.
+              Pilih salah satu dari tiga metode restrukturisasi yang dijelaskan di atas berdasarkan kebutuhan Anda.
             </p>
           </HelpSection>
           
-          <HelpSection title="Step 2: Configure Variables">
+          <HelpSection title="Langkah 2: Variabel (Variables)">
             <p className="text-sm mb-3">
-              Based on your chosen method, configure the variables using the drag-and-drop interface:
+              Berdasarkan metode yang dipilih, konfigurasikan variabel menggunakan antarmuka drag-and-drop:
             </p>
             
             <div className="space-y-3">
-              <HelpCard title='For "Variables to Cases"' variant="step">
+              <HelpCard title='Variables ke Kasus (Variables to Cases) — Target lists' variant="step">
                 <ul className="text-sm space-y-1 mt-2">
-                  <li>• Select variables to transform into new cases</li>
-                  <li>• Name the new variable that will be created</li>
-                  <li>• Name the variable that will contain original values</li>
+          <li>• Variables to Restructure: variabel yang akan dikonversi jadi baris.</li>
+          <li>• Index Variables: variabel pengelompokan (mis. Subject ID).</li>
                 </ul>
               </HelpCard>
               
-              <HelpCard title='For "Cases to Variables"' variant="step">
+              <HelpCard title='Kasus ke Variabel (Cases to Variables) — Target lists' variant="step">
                 <ul className="text-sm space-y-1 mt-2">
-                  <li>• Select the identifier variable that groups cases</li>
-                  <li>• Select the variable containing values for new variables</li>
-                  <li>• Name the new variables that will be created</li>
+          <li>• Variables to Restructure: variabel sumber nilai yang akan dipecah ke kolom.</li>
+          <li>• Index Variables: variabel pengelompokan (mis. Subject ID).</li>
+          <li>• Identifier Variables: variabel pembeda (mis. Time) — maksimal 1.</li>
                 </ul>
               </HelpCard>
               
-              <HelpCard title='For "Transpose All Data"' variant="step">
+              <HelpCard title='Transpose Semua Data (Transpose All Data)' variant="step">
                 <ul className="text-sm space-y-1 mt-2">
-                  <li>• No additional configuration needed</li>
-                  <li>• System will swap all rows and columns automatically</li>
+                  <li>• Tidak diperlukan konfigurasi tambahan</li>
+                  <li>• Sistem akan menukar semua baris dan kolom secara otomatis</li>
                 </ul>
               </HelpCard>
             </div>
           </HelpSection>
-          
-          <HelpSection title="Step 3: Review and Confirm">
-            <p className="text-sm">
-              Before applying changes, the system shows a preview of the results. 
-              Review and confirm the restructuring before it's applied permanently.
-            </p>
+          <HelpSection title="Langkah 3: Opsi (Options)">
+            <div className="space-y-3 text-sm">
+              <p>
+                Opsi yang tersedia mengikuti metode yang dipilih:
+              </p>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>Variables to Cases</strong>: Create count variable; Create index variable.</li>
+                <li><strong>Cases to Variables</strong>: Drop empty variables.</li>
+                <li>Transpose All Data: Tidak ada opsi tambahan.</li>
+              </ul>
+            </div>
           </HelpSection>
           
-          <HelpAlert variant="warning" title="Important">
+          <HelpAlert variant="warning" title="Penting">
             <p className="text-sm mt-2">
-              Data restructuring can significantly change your dataset structure. 
-              Make sure you understand the implications before applying changes.
+              Restrukturisasi data dapat mengubah struktur dataset Anda secara signifikan. 
+              Pastikan Anda memahami implikasinya sebelum menerapkan perubahan.
             </p>
           </HelpAlert>
         </div>
@@ -124,43 +128,42 @@ const RestructureGuide = () => {
     },
     {
       id: 'best-practices',
-      title: 'Tips and Best Practices',
-      description: 'Best practices for effective data restructuring',
+      title: 'Tips dan Praktik Terbaik',
+      description: 'Praktik terbaik untuk restrukturisasi data yang efektif',
       icon: Settings,
       content: (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <HelpCard title="Backup Your Data" variant="step">
+            <HelpCard title="Cadangkan Data Anda" variant="step">
               <p className="text-sm">
-                Always create a backup of your dataset before major restructuring 
-                to prevent data loss.
+                Selalu buat cadangan dataset Anda sebelum restrukturisasi besar 
+                untuk mencegah kehilangan data.
               </p>
             </HelpCard>
             
-            <HelpCard title="Validate Results" variant="step">
+            <HelpCard title="Validasi Hasil" variant="step">
               <p className="text-sm">
-                Check the results to ensure no data is lost or distorted during the process.
+                Periksa hasil untuk memastikan tidak ada data yang hilang atau terdistorsi selama proses.
               </p>
             </HelpCard>
             
-            <HelpCard title="Test with Subset" variant="step">
+            <HelpCard title="Uji dengan Subset" variant="step">
               <p className="text-sm">
-                Try restructuring with a small subset of your data first 
-                before applying to the entire dataset.
+                Coba restrukturisasi dengan subset kecil data Anda terlebih dahulu 
+                sebelum menerapkan ke seluruh dataset.
               </p>
             </HelpCard>
             
-            <HelpCard title="Document Changes" variant="step">
+            <HelpCard title="Dokumentasikan Perubahan" variant="step">
               <p className="text-sm">
-                Record your restructuring steps for reproducibility and future reference.
+                Catat langkah-langkah restrukturisasi Anda untuk reproduktibilitas dan referensi masa depan.
               </p>
             </HelpCard>
           </div>
           
-          <HelpAlert variant="success" title="Pro Tip">
+          <HelpAlert variant="success" title="Tips Pro">
             <p className="text-sm mt-2">
-              Use the preview feature to see restructuring results before applying them. 
-              This helps ensure the outcome matches your expectations.
+              Tinjau ringkasan di langkah Options (Method dan jumlah variabel terpilih) sebelum mengeksekusi.
             </p>
           </HelpAlert>
         </div>
@@ -172,36 +175,34 @@ const RestructureGuide = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Plan Your Format',
-      content: 'Plan your desired data structure before starting restructuring for optimal results.'
+      title: 'Rencanakan Format Anda',
+      content: 'Rencanakan struktur data yang diinginkan sebelum memulai restrukturisasi untuk hasil yang optimal.'
     },
     {
       type: 'info' as const,
-      title: 'Analysis Compatibility',
-      content: 'Ensure the resulting data format is compatible with your intended analysis type.'
+      title: 'Kompatibilitas Analisis',
+      content: 'Pastikan format data yang dihasilkan kompatibel dengan jenis analisis yang Anda rencanakan.'
     },
     {
       type: 'warning' as const,
-      title: 'Validate Integrity',
-      content: 'Always validate data integrity after restructuring to ensure no data is lost.'
+      title: 'Validasi Integritas',
+      content: 'Selalu validasi integritas data setelah restrukturisasi untuk memastikan tidak ada data yang hilang.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Data Management', href: '/help/data-guide' },
+    { title: 'Manajemen Data', href: '/help/data-guide' },
     { title: 'Transpose Data', href: '/help/data-guide/transpose' },
-    { title: 'Sort Cases', href: '/help/data-guide/sort-cases' },
-    { title: 'Aggregate Data', href: '/help/statistics-guide/descriptive' }
+    { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
+    { title: 'Agregasi Data', href: '/help/statistics-guide/descriptive' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Data Restructuring Guide"
-      description="Step-by-step wizard to easily restructure your dataset"
-      category="Data Management"
+      title="Panduan Restrukturisasi Data"
+      description="Wizard langkah demi langkah untuk merestrukturisasi dataset Anda dengan mudah"
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

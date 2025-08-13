@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TourPopup } from '../TourComponents';
-import { TourStep } from '@/types/tourTypes';
+import type { TourStep } from '@/types/tourTypes';
 
 // Mock data for a single tour step
 const mockStep: TourStep = {

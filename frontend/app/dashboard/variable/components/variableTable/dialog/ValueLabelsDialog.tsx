@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ValueLabel } from "@/types/Variable";
+import type { ValueLabel } from "@/types/Variable";
 import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
 import { Separator } from "@/components/ui/separator";
@@ -47,7 +47,7 @@ export const ValueLabelsDialog = ({
     const isStringType = variableType === "STRING";
 
     useEffect(() => {
-        setValues(initialValues || []);
+        setValues(initialValues ?? []);
     }, [initialValues]);
 
     const validateValue = (value: string): boolean => {
@@ -174,7 +174,7 @@ export const ValueLabelsDialog = ({
 
     const isValueChanged = () => {
         if (selectedIndex === null) return false;
-        return originalValue !== currentValue || originalLabel !== currentLabel;
+        return isStringType ? (originalValue !== currentValue || originalLabel !== currentLabel) : (Number(originalValue ?? "") !== Number(currentValue ?? "") || originalLabel !== currentLabel);
     };
 
     const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,7 +226,7 @@ export const ValueLabelsDialog = ({
             >
                 <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
                     <DialogHeader className="p-0">
-                        <DialogTitle className="text-base font-semibold">
+                        <DialogTitle className="text/base font-semibold">
                             Value Labels
                         </DialogTitle>
                     </DialogHeader>

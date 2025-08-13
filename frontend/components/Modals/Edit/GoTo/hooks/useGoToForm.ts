@@ -18,12 +18,12 @@ const selectRow = (hotInstance: any, rowIndex: number): boolean => {
             hotInstance.selectCell(rowIndex, 0, rowIndex, colCount - 1);
         }
         return true;
-    } catch (err) {
+    } catch (_err) {
         try {
             hotInstance.selectCell(rowIndex, 0);
             return true;
-        } catch (finalErr) {
-            console.error("Failed to select cell:", finalErr);
+        } catch (_finalErr) {
+            console.error("Failed to select cell:", _finalErr);
             return false;
         }
     }
@@ -38,12 +38,12 @@ const selectColumn = (hotInstance: any, colIndex: number): boolean => {
             hotInstance.selectCell(0, colIndex, rowCount - 1, colIndex);
         }
         return true;
-    } catch (err) {
+    } catch (_err) {
         try {
             hotInstance.selectCell(0, colIndex);
             return true;
-        } catch (finalErr) {
-            console.error("Failed to select cell:", finalErr);
+        } catch (_finalErr) {
+            console.error("Failed to select cell:", _finalErr);
             return false;
         }
     }
@@ -193,4 +193,4 @@ export const useGoToForm = ({ defaultMode = GoToMode.CASE, onClose }: UseGoToFor
     handleClose,
     lastNavigationSuccess
   };
-}; 
+};

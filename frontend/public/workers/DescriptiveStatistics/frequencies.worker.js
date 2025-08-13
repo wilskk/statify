@@ -3,29 +3,6 @@ importScripts('/workers/DescriptiveStatistics/libs/descriptive/descriptive.js');
 importScripts('/workers/DescriptiveStatistics/libs/frequency/frequency.js');
 
 
-function roundStatsObject(obj, decimals) {
-  const rounded = {};
-  for (const key in obj) {
-    const val = obj[key];
-    if (['N', 'Valid', 'Missing'].includes(key)) {
-      rounded[key] = val;
-    } else if (typeof val === 'number') {
-      rounded[key] = roundToDecimals(val, decimals);
-    } else if (Array.isArray(val)) {
-      rounded[key] = val.map(v => (typeof v === 'number' ? roundToDecimals(v, decimals) : v));
-    } else if (val && typeof val === 'object') {
-      const inner = {};
-      for (const k in val) {
-        inner[k] = typeof val[k] === 'number' ? roundToDecimals(val[k], decimals) : val[k];
-      }
-      rounded[key] = inner;
-    } else {
-      rounded[key] = val;
-    }
-  }
-  return rounded;
-}
-
 onmessage = function (event) {
   const {
     variable,
@@ -57,14 +34,18 @@ onmessage = function (event) {
           options: freqOptions,
         });
 
-        const { stats, frequencyTable } = calculator.getStatistics();
+        const { stats, frequencyTable, summary } = calculator.getStatistics();
 
         let processedStats = stats;
-        if (stats) {
-          processedStats = roundStatsObject(stats, STATS_DECIMAL_PLACES);
-        }
 
-        let processedFreqTbl = frequencyTable ? applyValueLabels(frequencyTable, varDef) : null;
+        // Build full frequency table object with title, rows, and summary
+        let processedFreqTbl = frequencyTable
+          ? applyValueLabels({
+              title: varDef.label || varDef.name,
+              rows: frequencyTable,
+              summary: summary,
+            }, varDef)
+          : null;
 
         if (processedStats) combinedResults.statistics[varDef.name] = processedStats;
         if (processedFreqTbl) combinedResults.frequencyTables[varDef.name] = processedFreqTbl;
@@ -84,9 +65,7 @@ onmessage = function (event) {
   try {
     const calculator = new self.FrequencyCalculator({ variable, data, weights, options });
     const results = calculator.getStatistics();
-    if (results && results.stats) {
-       results.stats = roundStatsObject(results.stats, STATS_DECIMAL_PLACES);
-    }
+    
     if (results && results.frequencyTable) {
        results.frequencyTable = applyValueLabels(results.frequencyTable, variable);
     }

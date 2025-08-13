@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { X } from "lucide-react";
-import { ModalType, BaseModalProps, getModalTitle } from "@/types/modalTypes";
+import type { ModalType, BaseModalProps} from "@/types/modalTypes";
+import { getModalTitle } from "@/types/modalTypes";
 import { getModalComponent, getModalContainerType } from "./ModalRegistry";
 import { useMobile } from "@/hooks/useMobile";
 

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, FC, useEffect, useMemo, useCallback, useRef } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,9 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, RefreshCw, HelpCircle, Clipboard, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
-import { useDataStore } from "@/stores/useDataStore";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { ImportClipboardConfigurationStepProps, ClipboardProcessingOptions } from "../types";
+
+import type { ImportClipboardConfigurationStepProps, ClipboardProcessingOptions } from "../types";
 import { useImportClipboardProcessor } from "../hooks/useImportClipboardProcessor";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -312,7 +312,7 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
+    const _startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
     const nextStep = useCallback(() => { if (currentStep < baseTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);
@@ -351,17 +351,15 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
             setIsPreviewLoading(true);
             setError(null);
             try {
-                let result;
-                const currentDelimiter = getDelimiterCharacter();
-                result = excelStyleTextToColumns(pastedText, {
-                    delimiterType: 'delimited',
-                    delimiter: currentDelimiter,
-                    textQualifier: textQualifierOption === "NO_QUALIFIER" ? "" : textQualifierOption,
-                    treatConsecutiveDelimitersAsOne: options.skipEmptyRows,
-                    trimWhitespace: options.trimWhitespace,
-                    detectDataTypes: options.detectDataTypes,
-                    hasHeaderRow: options.firstRowAsHeader
-                });
+                const result = excelStyleTextToColumns(pastedText, {
+                delimiterType: 'delimited',
+                delimiter: getDelimiterCharacter(),
+                textQualifier: textQualifierOption === "NO_QUALIFIER" ? "" : textQualifierOption,
+                treatConsecutiveDelimitersAsOne: options.skipEmptyRows,
+                trimWhitespace: options.trimWhitespace,
+                detectDataTypes: options.detectDataTypes,
+                hasHeaderRow: options.firstRowAsHeader
+            });
                 setPreviewData(result);
             } catch (err: any) {
                 setError(err?.message || "Failed to update preview");
@@ -377,7 +375,7 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
 
     }, [options, customDelimiter, pastedText, excelStyleTextToColumns, textQualifierOption, getDelimiterCharacter]);
 
-    const { dataForTable, columnHeaders, variables } = useMemo(() => {
+    const { dataForTable, columnHeaders } = useMemo(() => {
         if (!previewData || previewData.length === 0) {
             setOriginalRowCount(0);
             setOriginalColCount(0);
@@ -409,13 +407,9 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
         
         setIsPreviewTruncated(fullData.length > PREVIEW_ROW_LIMIT || fullHeaders.length > PREVIEW_COL_LIMIT);
         
-        const variables = slicedHeaders.map((header, index) => ({
-            name: header,
-            type: 'string' as const,
-            index
-        }));
 
-        return { dataForTable: slicedData, columnHeaders: slicedHeaders, variables };
+
+        return { dataForTable: slicedData, columnHeaders: slicedHeaders };
     }, [previewData, options.firstRowAsHeader]);
 
     const handleOptionChange = (key: keyof ClipboardProcessingOptions, value: any) => {

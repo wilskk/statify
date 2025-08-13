@@ -1,5 +1,5 @@
 import Handsontable from 'handsontable';
-import { VariableAlign } from '@/types/Variable';
+import type { VariableAlign } from '@/types/Variable';
 
 export interface ContextMenuHandlers {
   insertRow: (above: boolean) => void;

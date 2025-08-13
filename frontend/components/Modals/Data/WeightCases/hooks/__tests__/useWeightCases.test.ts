@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useWeightCases } from '../useWeightCases';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 const mockVariables: Variable[] = [
   { name: 'var1', type: 'NUMERIC', columnIndex: 0, tempId: '1' } as Variable,

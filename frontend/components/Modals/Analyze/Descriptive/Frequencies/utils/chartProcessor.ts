@@ -59,7 +59,10 @@ export const processAndAddCharts = async (
             datasets: [
                 {
                     label: chartOptions.values === 'percentages' ? 'Percentage' : 'Frequency',
-                    data: table.rows.map(row => chartOptions.values === 'percentages' ? row.validPercent : row.frequency),
+                    data: table.rows.map(row => chartOptions.values === 'percentages' 
+                        ? (row.validPercent ?? row.percent ?? 0)
+                        : (row.frequency ?? 0)
+                    ),
                 }
             ]
         };

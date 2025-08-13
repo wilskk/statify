@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { SortVariablesModalProps } from "./types";
+import type { SortVariablesModalProps } from "./types";
 import { useSortVariables } from "./hooks/useSortVariables";
 import { SortVarsUI } from "./SortVarsUI";
 

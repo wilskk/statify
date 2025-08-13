@@ -201,7 +201,6 @@ const validConfig = {
     updatedAt: "2025-07-27T18:14:22.663Z",
 };
 
-// --- Helper untuk Menjalankan Test ---
 const runAnalysisTest = async ({
     config,
     targetData,
@@ -225,14 +224,12 @@ const runAnalysisTest = async ({
             config
         );
     } catch (e: any) {
-        // Tangkap error yang dilempar oleh konstruktor WASM
         error = e;
     }
     return error;
 };
 
 describe("K-Means Constructor Test", () => {
-    // Inisialisasi modul WASM satu kali sebelum semua tes berjalan
     beforeAll(async () => {
         const wasmPath = path.join(__dirname, "../rust/pkg/wasm_bg.wasm");
         const wasmBuffer = fs.readFileSync(wasmPath);
@@ -328,7 +325,6 @@ describe("K-Means Constructor Test", () => {
     });
 
     it("T09: Harus error parsing saat field wajib pada config_data hilang", async () => {
-        // Buat config yang bisa lolos dari JS tapi gagal di Rust Serde
         const invalidConfig = {
             ...validConfig,
             iterate: {},

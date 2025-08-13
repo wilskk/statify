@@ -1,4 +1,5 @@
-import { generateAutoTableDataFromString, TableData } from '../print.utils';
+import type { TableData } from '../print.utils';
+import { generateAutoTableDataFromString } from '../print.utils';
 
 // Mock data based on a realistic structure from an analysis result
 const mockStatisticsData: { tables: TableData[] } = {

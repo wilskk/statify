@@ -6,7 +6,6 @@ import {
     Calculator,
     BarChart3,
     TrendingUp,
-    AlertTriangle,
     CheckCircle,
 } from "lucide-react";
 
@@ -53,10 +52,10 @@ export const LackOfFitTests: React.FC = () => {
                             Adequate Model (H₀)
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Model fits the data well</li>
-                            <li>• No lack of fit</li>
-                            <li>• Error is only random error</li>
-                            <li>• F-value not significant</li>
+                            <li>Model fits the data well</li>
+                            <li>No lack of fit</li>
+                            <li>Error is only random error</li>
+                            <li>F-value not significant</li>
                         </ul>
                     </div>
 
@@ -65,10 +64,10 @@ export const LackOfFitTests: React.FC = () => {
                             Inadequate Model (H₁)
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Model does not fit the data well</li>
-                            <li>• Lack of fit present</li>
-                            <li>• Error includes systematic error</li>
-                            <li>• F-value significant</li>
+                            <li>Model does not fit the data well</li>
+                            <li>Lack of fit present</li>
+                            <li>Error includes systematic error</li>
+                            <li>F-value significant</li>
                         </ul>
                     </div>
                 </div>
@@ -84,10 +83,10 @@ export const LackOfFitTests: React.FC = () => {
                             Total Error
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Variation not explained by model</li>
-                            <li>• SSE = Σ(yᵢ - ŷᵢ)²</li>
-                            <li>• df = n - p</li>
-                            <li>• Contains random + systematic error</li>
+                            <li>Variation not explained by model</li>
+                            <li>SSE = Σ(yᵢ - ŷᵢ)²</li>
+                            <li>df = n - p</li>
+                            <li>Contains random + systematic error</li>
                         </ul>
                     </div>
 
@@ -96,10 +95,10 @@ export const LackOfFitTests: React.FC = () => {
                             Pure Error
                         </h4>
                         <ul className="text-sm text-yellow-700 space-y-1">
-                            <li>• Pure variation in data</li>
-                            <li>• SS_PE = ΣΣ(yᵢⱼ - ȳᵢ)²</li>
-                            <li>• df = n - c</li>
-                            <li>• Only random error</li>
+                            <li>Pure variation in data</li>
+                            <li>SS_PE = ΣΣ(yᵢⱼ - ȳᵢ)²</li>
+                            <li>df = n - c</li>
+                            <li>Only random error</li>
                         </ul>
                     </div>
 
@@ -108,10 +107,10 @@ export const LackOfFitTests: React.FC = () => {
                             Lack of Fit
                         </h4>
                         <ul className="text-sm text-purple-700 space-y-1">
-                            <li>• Systematic variation</li>
-                            <li>• SS_LOF = SS_Error - SS_PE</li>
-                            <li>• df = c - p</li>
-                            <li>• Measures model inadequacy</li>
+                            <li>Systematic variation</li>
+                            <li>SS_LOF = SS_Error - SS_PE</li>
+                            <li>df = c - p</li>
+                            <li>Measures model inadequacy</li>
                         </ul>
                     </div>
 
@@ -120,10 +119,10 @@ export const LackOfFitTests: React.FC = () => {
                             Replication
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Observations with same X</li>
-                            <li>• Required for pure error</li>
-                            <li>• At least 2 observations per combination</li>
-                            <li>• Without replication, test invalid</li>
+                            <li>Observations with same X</li>
+                            <li>Required for pure error</li>
+                            <li>At least 2 observations per combination</li>
+                            <li>Without replication, test invalid</li>
                         </ul>
                     </div>
                 </div>
@@ -267,19 +266,18 @@ export const LackOfFitTests: React.FC = () => {
                     </h4>
                     <ol className="text-sm text-blue-700 space-y-2">
                         <li>
-                            <strong>1. Hash X Rows:</strong> Each X row is
-                            hashed for unique identification
+                            <strong>Hash X Rows:</strong> Each X row is hashed
+                            for unique identification
                         </li>
                         <li>
-                            <strong>2. Group Y:</strong> Y values with same X
-                            hash are grouped
+                            <strong>Group Y:</strong> Y values with same X hash
+                            are grouped
                         </li>
                         <li>
-                            <strong>3. Calculate Means:</strong> ȳᵢ for each
-                            group
+                            <strong>Calculate Means:</strong> ȳᵢ for each group
                         </li>
                         <li>
-                            <strong>4. Calculate Pure Error:</strong> Deviations
+                            <strong>Calculate Pure Error:</strong> Deviations
                             from group means
                         </li>
                     </ol>
@@ -352,10 +350,10 @@ export const LackOfFitTests: React.FC = () => {
                             p-value ≥ 0.05
                         </h4>
                         <ul className="text-sm text-green-700 space-y-1">
-                            <li>• Fail to reject H₀</li>
-                            <li>• Model is adequate</li>
-                            <li>• No lack of fit</li>
-                            <li>• Model can be used</li>
+                            <li>Fail to reject H₀</li>
+                            <li>Model is adequate</li>
+                            <li>No lack of fit</li>
+                            <li>Model can be used</li>
                         </ul>
                     </div>
 
@@ -364,10 +362,10 @@ export const LackOfFitTests: React.FC = () => {
                             p-value {"<"} 0.05
                         </h4>
                         <ul className="text-sm text-red-700 space-y-1">
-                            <li>• Reject H₀</li>
-                            <li>• Model is inadequate</li>
-                            <li>• Lack of fit present</li>
-                            <li>• Consider alternative models</li>
+                            <li>Reject H₀</li>
+                            <li>Model is inadequate</li>
+                            <li>Lack of fit present</li>
+                            <li>Consider alternative models</li>
                         </ul>
                     </div>
                 </div>
@@ -404,63 +402,12 @@ export const LackOfFitTests: React.FC = () => {
                         When test is invalid:
                     </h4>
                     <ul className="text-sm text-red-700 space-y-1">
-                        <li>• No replication (c = n)</li>
-                        <li>• Saturated model (p ≥ c)</li>
-                        <li>• MS_PE = 0 (no variation in replication)</li>
-                        <li>• df_lack_of_fit ≤ 0</li>
+                        <li>No replication (c = n)</li>
+                        <li>Saturated model (p ≥ c)</li>
+                        <li>MS_PE = 0 (no variation in replication)</li>
+                        <li>df_lack_of_fit ≤ 0</li>
                     </ul>
                 </div>
-
-                <h2 className="mt-8">Solutions for Lack of Fit</h2>
-
-                <div className="bg-blue-50 p-4 rounded-lg my-4">
-                    <h4 className="font-bold text-blue-800 mb-2">
-                        When Lack of Fit is Detected:
-                    </h4>
-                    <ul className="text-sm text-blue-700 space-y-2">
-                        <li>
-                            <strong>1. Add Predictors:</strong> Include relevant
-                            variables
-                        </li>
-                        <li>
-                            <strong>2. Transformation:</strong> Transform
-                            dependent or predictor variables
-                        </li>
-                        <li>
-                            <strong>3. Interactions:</strong> Add predictor
-                            interactions
-                        </li>
-                        <li>
-                            <strong>4. Non-linear Models:</strong> Use
-                            polynomial or non-linear models
-                        </li>
-                        <li>
-                            <strong>5. Outliers:</strong> Check and handle
-                            outliers
-                        </li>
-                    </ul>
-                </div>
-
-                <h2 className="mt-8">Related Files</h2>
-                <ul>
-                    <li>
-                        <code>rust/src/stats/lack_of_fit.rs</code> - Lack of fit
-                        tests implementation
-                    </li>
-                    <li>
-                        <code>rust/src/models/result.rs</code> - Test result
-                        structures
-                    </li>
-                    <li>
-                        <code>rust/src/stats/core.rs</code> - Helper calculation
-                        functions
-                    </li>
-                    <li>
-                        <code>
-                            components/Modals/Analyze/general-linear-model/univariate/
-                        </code>
-                    </li>
-                </ul>
             </div>
         </HelpContentWrapper>
     );

@@ -7,8 +7,6 @@ import init, {
 import path from "path";
 import fs from "fs";
 
-// --- Data Sampel untuk Pengujian ---
-
 const invalidFormatData = [
     {
         happiness: null,
@@ -58,8 +56,6 @@ const validWlsData = [
         { weight: 0.8 },
     ],
 ];
-
-// --- Definisi Variabel untuk Pengujian ---
 
 const invalidDefsFormat = [
     {
@@ -164,9 +160,6 @@ const validWlsDefs = [
     ],
 ];
 
-// --- Konfigurasi untuk Pengujian ---
-
-// Definisikan variabel untuk digunakan dalam a
 const depVar = "happiness";
 const fixFactor = ["gender"];
 const randFactor = ["school"];
@@ -316,11 +309,8 @@ const validConfig = {
     updatedAt: new Date().toISOString(),
 };
 
-const invalidConfig = {
-    // Properti 'main' sengaja dihilangkan untuk memicu error parsing
-};
+const invalidConfig = {};
 
-// --- Helper untuk Menjalankan Test ---
 const runAnalysisTest = async ({
     depData = validDepData,
     fixFactorData = validFixFactorData,

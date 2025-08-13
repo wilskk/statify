@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import RestructureDataWizard from "./index";
-import { BaseModalProps } from "@/types/modalTypes";
+import type { BaseModalProps } from "@/types/modalTypes";
 
 /**
  * Test component for the Restructure Data Wizard
@@ -23,7 +23,7 @@ const RestructureTest: React.FC = () => {
 
     const modalProps: BaseModalProps = {
         onClose: handleCloseModal,
-        containerType: containerType
+        containerType
     };
 
     return (

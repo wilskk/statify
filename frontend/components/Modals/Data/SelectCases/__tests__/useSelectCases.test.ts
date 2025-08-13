@@ -5,7 +5,7 @@ import { useDataStore } from '@/stores/useDataStore';
 import { useModalStore } from '@/stores/useModalStore';
 import { useMetaStore } from '@/stores/useMetaStore';
 import * as selectors from '../services/selectors';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 
 jest.mock('@/stores/useVariableStore');
 jest.mock('@/stores/useDataStore');

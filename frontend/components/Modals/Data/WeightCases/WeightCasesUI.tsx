@@ -8,8 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, InfoIcon } from "lucide-react";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
-import { WeightCasesUIProps } from "./types";
+import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
+import type { WeightCasesUIProps } from "./types";
 
 export const WeightCasesUI: React.FC<WeightCasesUIProps> = ({
     onClose,

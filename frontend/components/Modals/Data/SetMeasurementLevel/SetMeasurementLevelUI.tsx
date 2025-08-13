@@ -1,4 +1,5 @@
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import {
     Dialog,
     DialogContent,
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { InfoIcon } from "lucide-react";
 import VariableListManager from "@/components/Common/VariableListManager";
 import type { TargetListConfig } from "@/components/Common/VariableListManager";
-import { SetMeasurementLevelUIProps } from "./types";
+import type { SetMeasurementLevelUIProps } from "./types";
 
 const SetMeasurementLevelUIContent: FC<SetMeasurementLevelUIProps> = ({
     onClose,

@@ -18,21 +18,6 @@ export const useOptimizedSubscription = <T, U>(
 };
 
 /**
- * Hook for subscribing to multiple store slices with individual equality functions
- */
-export const useMultipleSubscriptions = <T>(
-  subscriptions: Array<{
-    useStore: any;
-    selector: (state: any) => any;
-    equalityFn?: EqualityFn<any>;
-  }>
-) => {
-  return subscriptions.map(({ useStore, selector, equalityFn = shallow }) =>
-    useStore(selector, equalityFn)
-  );
-};
-
-/**
  * Debounced subscription hook for high-frequency updates
  */
 export const useDebouncedSubscription = <T, U>(

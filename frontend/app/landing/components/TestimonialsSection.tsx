@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Quote, Star } from 'lucide-react';
 import { AnimatedSection } from './AnimatedSection';
-import { motion, Variants } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 
 export const TestimonialsSection = () => {
     const testimonials = [

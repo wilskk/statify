@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useMobile } from "@/hooks/useMobile";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
 import { useMetaStore } from "@/stores/useMetaStore";
 import { processSavFile } from "../services/services";
-import { spssSecondsToDateString } from "@/lib/spssDateConverter";
-import { UseOpenSavFileLogicProps, UseOpenSavFileLogicOutput } from "../types";
+import type { UseOpenSavFileLogicProps, UseOpenSavFileLogicOutput } from "../types";
 import { processSavApiResponse } from "@/utils/savFileUtils";
 
 export const useOpenSavFileLogic = ({
@@ -65,8 +63,11 @@ export const useOpenSavFileLogic = ({
             
             onClose();
 
-        } catch (err: any) {
-            setError(err.message || "An unexpected error occurred while opening the file.");
+        } catch (err: unknown) {
+            const message = err instanceof Error
+                ? (err.message ?? "An unexpected error occurred while opening the file.")
+                : "An unexpected error occurred while opening the file.";
+            setError(message);
         } finally {
             setIsLoading(false);
         }

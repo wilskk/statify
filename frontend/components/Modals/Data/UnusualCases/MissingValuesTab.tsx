@@ -3,7 +3,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { MissingValuesTabProps } from "./types";
+import type { MissingValuesTabProps } from "./types";
 
 const MissingValuesTab: React.FC<MissingValuesTabProps> = ({
     missingValuesOption,

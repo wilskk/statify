@@ -13,9 +13,10 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon, AlertTriangle, HelpCircle } from "lucide-react";
 import { Variable } from "@/types/Variable";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
+import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import { RestructureMethod } from "./types";
-import { UseRestructureReturn } from "./hooks/useRestructure";
+import type { UseRestructureReturn } from "./hooks/useRestructure";
 
 interface RestructureUIProps {
     hook: UseRestructureReturn;

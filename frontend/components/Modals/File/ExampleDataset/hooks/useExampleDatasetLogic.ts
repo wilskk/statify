@@ -3,7 +3,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useMetaStore } from "@/stores/useMetaStore";
 import { processSavFileFromUrl } from "@/components/Modals/File/ExampleDataset/services/services";
-import { UseExampleDatasetLogicProps, UseExampleDatasetLogicOutput } from "@/components/Modals/File/ExampleDataset/types";
+import type { UseExampleDatasetLogicProps, UseExampleDatasetLogicOutput } from "@/components/Modals/File/ExampleDataset/types";
 import { processSavApiResponse } from "@/utils/savFileUtils";
 
 export const useExampleDatasetLogic = ({
@@ -13,7 +13,7 @@ export const useExampleDatasetLogic = ({
     const [error, setError] = useState<string | null>(null);
 
     const { overwriteAll } = useVariableStore();
-    const { setData, resetData } = useDataStore();
+    const { resetData } = useDataStore();
     const { setMeta: setProjectMeta } = useMetaStore();
 
     const loadDataset = async (filePath: string) => {
@@ -46,4 +46,4 @@ export const useExampleDatasetLogic = ({
         error,
         loadDataset,
     };
-}; 
+};

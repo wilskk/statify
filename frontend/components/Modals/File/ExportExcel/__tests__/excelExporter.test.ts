@@ -1,7 +1,7 @@
 import { generateExcelWorkbook } from '../utils/excelExporter';
-import { DataRow } from '@/types/Data';
-import { Variable } from '@/types/Variable';
-import { ExcelUtilOptions } from '../types';
+import type { DataRow } from '@/types/Data';
+import type { Variable } from '@/types/Variable';
+import type { ExcelUtilOptions } from '../types';
 import * as XLSX from 'xlsx';
 
 // Mock the XLSX library to inspect its usage without creating actual files

@@ -1,13 +1,17 @@
 declare module 'sav-reader' {
+    import type { SavMeta } from './sav.types';
+
     export class SavBufferReader {
         constructor(buffer: Buffer);
         open(): Promise<void>;
-        meta: any;
-        readAllRows(): Promise<any[]>;
+        meta: SavMeta;
+        readAllRows(): Promise<Record<string, unknown>[]>;
     }
 }
 
 declare module 'sav-writer' {
+    import type { TransformedVariable } from './sav.types';
+
     export const VariableType: {
         Numeric: number;
         String: number;
@@ -27,5 +31,9 @@ declare module 'sav-writer' {
         Continuous: number;
     };
 
-    export function saveToFile(filePath: string, data: any[], variables: any[]): void;
+    export function saveToFile(
+        filePath: string,
+        data: Array<Record<string, string | number | Date | null>>,
+        variables: TransformedVariable[]
+    ): void;
 }

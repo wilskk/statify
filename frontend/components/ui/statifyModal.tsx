@@ -11,7 +11,7 @@ import {
 import { X } from 'lucide-react';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import { ModalType } from '@/hooks/useModal';
+import type { ModalType } from '@/hooks/useModal';
 
 // ======== Size Variants ========
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';

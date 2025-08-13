@@ -136,13 +136,19 @@ describe('useExploreAnalysis', () => {
         expect(result.current.isCalculating).toBe(true);
         expect(global.Worker).toHaveBeenCalledTimes(1);
         expect(mockPostMessage).toHaveBeenCalledTimes(1);
-        expect(mockPostMessage).toHaveBeenCalledWith({
+        expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
             analysisType: 'examine',
             variable: mockDepVars[0],
             data: [10, 20, 15, 25], // all data for dep1
             weights: mockWeights,
-            options: expect.any(Object),
-        });
+            caseNumbers: [1, 2, 3, 4],
+            options: expect.objectContaining({
+                confidenceInterval: 95,
+                showMEstimators: false,
+                showPercentiles: false,
+                showOutliers: false,
+            }),
+        }));
 
         const mockWorkerResult = {
             status: 'success',

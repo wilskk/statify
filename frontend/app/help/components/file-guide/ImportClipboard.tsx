@@ -2,56 +2,56 @@
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep } from '../../ui/HelpLayout';
-import { Clipboard, Copy, Upload, Zap, Database } from 'lucide-react';
+import { Clipboard, Copy, Zap } from 'lucide-react';
 
 export const ImportClipboard = () => {
   const sections = [
     {
       id: 'import-steps',
-      title: 'How to Import from Clipboard',
-      description: 'Step-by-step guide to bring data directly from your clipboard',
+      title: 'Cara Impor dari Clipboard',
+      description: 'Panduan langkah demi langkah untuk mengimpor data langsung dari clipboard Anda',
       icon: Clipboard,
       content: (
         <div className="space-y-4">
           <HelpStep
             number={1}
-            title="Copy Your Data"
-            description="Copy data from any source (Excel, Google Sheets, etc.) using Ctrl+C."
+            title="Salin Data Anda"
+            description="Salin data dari sumber mana pun (Excel, Google Sheets, dll.) menggunakan fitur Salin pada aplikasi tersebut."
           />
           <HelpStep
             number={2}
-            title="Open File Menu"
-            description="Go to 'File' menu in Statify."
+            title="Buka Menu File"
+            description="Pergi ke menu 'File' di Statify."
           />
           <HelpStep
             number={3}
-            title="Choose Clipboard Import"
-            description="Select 'Import from Clipboard' from the dropdown."
+            title="Pilih Import Data → From Clipboard"
+            description="Klik File → Import Data → From Clipboard."
           />
           <HelpStep
             number={4}
-            title="Load Your Data"
-            description="Your data will automatically load into the data editor."
+            title="Muat Data Anda"
+            description="Data Anda akan secara otomatis dimuat ke editor data."
           />
         </div>
       )
     },
     {
       id: 'features',
-      title: 'Features & Benefits',
-      description: 'Why clipboard import is so useful',
+      title: 'Fitur & Manfaat',
+      description: 'Keuntungan menggunakan impor clipboard',
       icon: Zap,
       content: (
         <div className="space-y-4">
-          <HelpAlert variant="info" title="Quick Import">
+          <HelpAlert variant="info" title="Impor Cepat">
             <p className="text-sm mt-2">
-              This is the fastest way to get data into Statify. Just copy from any spreadsheet and paste directly.
+              Ini adalah cara tercepat untuk memasukkan data ke Statify. Cukup salin dari spreadsheet mana pun dan tempel langsung.
             </p>
           </HelpAlert>
           
-          <HelpCard title="Universal Support" icon={Copy} variant="feature">
+          <HelpCard title="Dukungan Universal" icon={Copy} variant="feature">
             <p className="text-sm text-muted-foreground">
-              Works with data from Excel, Google Sheets, LibreOffice Calc, and other spreadsheet applications.
+              Bekerja dengan data dari Excel, Google Sheets, LibreOffice Calc, dan aplikasi spreadsheet lainnya.
             </p>
           </HelpCard>
         </div>
@@ -62,31 +62,35 @@ export const ImportClipboard = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Data Format',
-      content: 'Make sure your data has headers in the first row for the best import results.'
+      title: 'Format Data',
+      content: 'Pastikan data Anda memiliki header di baris pertama untuk hasil impor yang optimal.'
     },
     {
       type: 'info' as const,
-      title: 'Auto Detection',
-      content: 'Statify automatically detects data format and column types when importing from clipboard.'
+      title: 'Deteksi Otomatis',
+      content: 'Statify secara otomatis mendeteksi format data dan jenis kolom saat mengimpor dari clipboard.'
+    },
+    {
+      type: 'success' as const,
+      title: 'Kecepatan Impor',
+      content: 'Metode tercepat untuk memasukkan data dari aplikasi spreadsheet lain ke Statify.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Import CSV Files', href: '/help/file-guide/import-csv' },
-    { title: 'Import Excel Files', href: '/help/file-guide/import-excel' },
-    { title: 'Import SPSS Files', href: '/help/file-guide/import-sav' },
-    { title: 'Data Management Guide', href: '/help/data-guide' }
+    { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
+    { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
+    { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
+    { title: 'Dataset Contoh', href: '/help/file-guide/example-data' },
+    { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Import from Clipboard"
-      description="Complete guide for bringing data directly from your clipboard into Statify"
-      category="File Management"
+      title="Impor dari Clipboard"
+      description="Panduan lengkap untuk mengimpor data langsung dari clipboard Anda ke Statify"
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

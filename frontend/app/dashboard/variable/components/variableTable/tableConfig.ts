@@ -1,6 +1,6 @@
-import Handsontable from 'handsontable';
+import type Handsontable from 'handsontable';
 import 'handsontable/dist/handsontable.full.min.css';
-import { VariableType, Variable } from '@/types/Variable';
+import type { VariableType, Variable } from '@/types/Variable';
 import { nullSafeEnhancedRenderer } from './utils/utils';
 
 // Default UI constants
@@ -24,13 +24,6 @@ export const colHeaders = [
 ];
 
 // SPSS Variable Types list
-const VARIABLE_TYPES: VariableType[] = [
-  'NUMERIC','COMMA','DOT','SCIENTIFIC','DATE','ADATE','EDATE',
-  'SDATE','JDATE','QYR','MOYR','WKYR','DATETIME','TIME','DTIME',
-  'WKDAY','MONTH','DOLLAR','CCA','CCB','CCC','CCD','CCE','STRING',
-  'RESTRICTED_NUMERIC'
-];
-
 export const DATE_VARIABLE_TYPES: VariableType[] = [
   'DATE','ADATE','EDATE','SDATE','JDATE','QYR','MOYR',
   'WKYR','DATETIME','TIME','DTIME','WKDAY','MONTH'

@@ -2,6 +2,8 @@ import { useTableDimensions } from './useTableDimensions';
 import { useColumnHeaders } from './useColumnHeaders';
 import { useColumnConfigs } from './useColumnConfigs';
 import { useDisplayData } from './useDisplayData';
+import type Handsontable from 'handsontable';
+import type { DataRow } from '@/types/Data';
 
 /**
  * Hook yang telah direfactor untuk mengurangi kompleksitas dan mencegah memory leaks.
@@ -9,7 +11,19 @@ import { useDisplayData } from './useDisplayData';
  * 
  * @returns Object berisi semua properti yang diperlukan untuk rendering Handsontable instance
  */
-export const useTableLayout = () => {
+type UseTableLayoutResult = {
+    // Dimensions
+    actualNumRows: number;
+    actualNumCols: number;
+    displayNumRows: number;
+    displayNumCols: number;
+    // Structure
+    colHeaders: string[];
+    columns: Handsontable.ColumnSettings[];
+    displayData: DataRow[];
+};
+
+export const useTableLayout = (): UseTableLayoutResult => {
     // 1. Hitung dimensi tabel
     const dimensions = useTableDimensions();
     const {

@@ -1,4 +1,4 @@
-import { useWeightCases } from "./hooks/useWeightCases";
+import type { useWeightCases } from "./hooks/useWeightCases";
 
 export interface WeightCasesModalProps {
     onClose: () => void;

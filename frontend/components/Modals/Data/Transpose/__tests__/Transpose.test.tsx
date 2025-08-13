@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { TransposeUI } from '../TransposeUI';
-import { Variable } from '@/types/Variable';
-import { TransposeUIProps } from '../types';
+import type { Variable } from '@/types/Variable';
+import type { TransposeUIProps } from '../types';
 import VariableListManager from '@/components/Common/VariableListManager';
 
 // Mock the VariableListManager to control its behavior

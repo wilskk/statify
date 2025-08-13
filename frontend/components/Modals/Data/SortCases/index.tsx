@@ -1,7 +1,7 @@
 "use client";
 
 import React, { FC } from "react";
-import { SortCasesModalProps } from "./types";
+import type { SortCasesModalProps } from "./types";
 import { useSortCases } from "./hooks/useSortCases";
 import { SortCasesUI } from "./SortCasesUI";
 

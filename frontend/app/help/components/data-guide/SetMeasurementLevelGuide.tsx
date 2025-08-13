@@ -1,28 +1,75 @@
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { Ruler, Hash, Settings } from 'lucide-react';
+import { HelpCard, HelpAlert, HelpSection, HelpStep } from '../../ui/HelpLayout';
+import { Ruler, Hash, Settings, ListOrdered } from 'lucide-react';
 
 export default function SetMeasurementLevelGuide() {
   const sections = [
     {
+      id: 'how-to-steps',
+      title: 'Cara Mengatur Tingkat Pengukuran',
+      description: 'Langkah-langkah untuk mendefinisikan tingkat pengukuran variabel',
+      icon: ListOrdered,
+      content: (
+        <div className="space-y-4">
+          <HelpStep number={1} title="Buka Dialog Tingkat Pengukuran">
+            <p className="text-sm">
+              Akses menu <strong>Data → Atur Tingkat Pengukuran</strong> untuk membuka dialog.
+              Sistem akan otomatis menampilkan variabel dengan tingkat pengukuran yang belum diketahui.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={2} title="Identifikasi Jenis Data">
+            <p className="text-sm">
+              Tentukan jenis data untuk setiap variabel:
+            </p>
+            <ul className="list-disc ml-6 mt-2 text-sm space-y-1">
+              <li><strong>Nominal</strong>: Kategori tanpa urutan (Jenis Kelamin, Warna, Agama)</li>
+              <li><strong>Ordinal</strong>: Kategori dengan urutan (Tingkat Pendidikan, Rating Kepuasan)</li>
+              <li><strong>Skala</strong>: Data numerik (Umur, Pendapatan, Tinggi Badan)</li>
+            </ul>
+          </HelpStep>
+
+          <HelpStep number={3} title="Pilih dan Pindahkan Variabel">
+            <p className="text-sm">
+              Pilih variabel dari daftar "Tersedia" dan gunakan tombol panah untuk memindahkannya 
+              ke kategori yang sesuai (Nominal, Ordinal, atau Skala).
+            </p>
+          </HelpStep>
+
+          <HelpStep number={4} title="Verifikasi Pengelompokan">
+            <p className="text-sm">
+              Periksa kembali pengelompokan variabel. Anda dapat memindahkan variabel antar kategori 
+              jika diperlukan sebelum menyimpan perubahan.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={5} title="Simpan Perubahan">
+            <p className="text-sm">
+              Klik tombol <strong>OK</strong> untuk menyimpan pengaturan tingkat pengukuran secara permanen.
+            </p>
+          </HelpStep>
+        </div>
+      )
+    },
+    {
       id: 'overview',
-      title: 'Overview',
-      description: 'Introduction to the Set Measurement Level feature',
+      title: 'Ringkasan',
+      description: 'Pengantar fitur Atur Tingkat Pengukuran',
       icon: Ruler,
       content: (
         <div className="space-y-4">
           <p>
-            This feature helps you quickly define measurement levels for your variables.
-            When opened, it automatically detects and displays all variables in your dataset
-            that don't have their measurement level determined yet. You can easily move
-            these variables to the appropriate category using an intuitive interface.
+            Fitur ini membantu Anda dengan cepat mendefinisikan tingkat pengukuran untuk variabel Anda.
+            Ketika dibuka, fitur ini secara otomatis mendeteksi dan menampilkan semua variabel dalam dataset Anda
+            yang belum ditentukan tingkat pengukurannya. Anda dapat dengan mudah memindahkan
+            variabel-variabel ini ke kategori yang sesuai menggunakan antarmuka yang intuitif.
           </p>
           
-          <HelpAlert variant="info" title="Why It Matters">
+          <HelpAlert variant="info" title="Mengapa Ini Penting">
             <p className="text-sm mt-2">
-              Measurement level determines what statistical analyses you can perform
-              and how to interpret your results. Proper classification is essential
-              for valid analysis.
+              Tingkat pengukuran menentukan analisis statistik apa yang dapat Anda lakukan
+              dan cara menginterpretasikan hasil Anda. Klasifikasi yang tepat sangat penting
+              untuk analisis yang valid.
             </p>
           </HelpAlert>
         </div>
@@ -30,49 +77,49 @@ export default function SetMeasurementLevelGuide() {
     },
     {
       id: 'interface',
-      title: 'Interface and Components',
-      description: 'Components within the Set Measurement Level modal',
+      title: 'Antarmuka dan Komponen',
+      description: 'Komponen dalam modal Atur Tingkat Pengukuran',
       icon: Settings,
       content: (
         <div className="space-y-4">
-          <HelpCard title="Available Variables List" variant="feature">
+          <HelpCard title="Daftar Variabel Tersedia" variant="feature">
             <p className="text-sm">
-              Displays all variables with unknown measurement levels.
-              These variables appear automatically when the modal opens.
+              Menampilkan semua variabel dengan tingkat pengukuran yang tidak diketahui.
+              Variabel-variabel ini muncul secara otomatis ketika modal dibuka.
             </p>
           </HelpCard>
           
-          <HelpCard title="Target Lists" variant="feature">
+          <HelpCard title="Daftar Target" variant="feature">
             <p className="text-sm mb-3">
-              Three separate boxes to hold variables based on their measurement level:
+              Tiga kotak terpisah untuk menampung variabel berdasarkan tingkat pengukurannya:
             </p>
             <div className="space-y-3">
-              <div className="bg-blue-50 p-3 rounded-lg">
+              <div className="bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-700 p-3 rounded-lg">
                 <p className="font-semibold text-sm mb-1">Nominal</p>
                 <p className="text-xs">
-                  For categorical data without order (e.g., 'Gender', 'City').
+                  Untuk data kategorikal tanpa urutan (misalnya, &apos;Jenis Kelamin&apos;, &apos;Kota&apos;).
                 </p>
               </div>
-              <div className="bg-green-50 p-3 rounded-lg">
+              <div className="bg-white dark:bg-slate-900 border border-green-200 dark:border-green-700 p-3 rounded-lg">
                 <p className="font-semibold text-sm mb-1">Ordinal</p>
                 <p className="text-xs">
-                  For categorical data with order (e.g., 'Education Level', 'Customer Satisfaction').
+                  Untuk data kategorikal dengan urutan (misalnya, &apos;Tingkat Pendidikan&apos;, &apos;Kepuasan Pelanggan&apos;).
                 </p>
               </div>
-              <div className="bg-purple-50 p-3 rounded-lg">
-                <p className="font-semibold text-sm mb-1">Scale</p>
+              <div className="bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-700 p-3 rounded-lg">
+                <p className="font-semibold text-sm mb-1">Skala</p>
                 <p className="text-xs">
-                  For quantitative/numeric data (e.g., 'Age', 'Income').
+                  Untuk data kuantitatif/numerik (misalnya, &apos;Umur&apos;, &apos;Pendapatan&apos;).
                 </p>
               </div>
             </div>
           </HelpCard>
           
-          <HelpCard title="Arrow Buttons" variant="feature">
+          <HelpCard title="Tombol Panah" variant="feature">
             <p className="text-sm">
-              Allow you to move highlighted variables from the "Available" list
-              to the appropriate target list. Select variables first, then click
-              the arrow button pointing to your desired category.
+              Memungkinkan Anda memindahkan variabel yang disorot dari daftar &quot;Tersedia&quot;
+              ke daftar target yang sesuai. Pilih variabel terlebih dahulu, kemudian klik
+              tombol panah yang menunjuk ke kategori yang Anda inginkan.
             </p>
           </HelpCard>
         </div>
@@ -80,38 +127,38 @@ export default function SetMeasurementLevelGuide() {
     },
     {
       id: 'workflow',
-      title: 'Workflow and Usage Examples',
-      description: 'Step-by-step guide to using this feature',
+      title: 'Alur Kerja dan Contoh Penggunaan',
+      description: 'Panduan langkah demi langkah untuk menggunakan fitur ini',
       icon: Hash,
       content: (
         <div className="space-y-4">
-          <HelpSection title="Step 1: Initialization">
+          <HelpSection title="Langkah 1: Inisialisasi">
             <p className="text-sm">
-              When you open the modal, all variables with unknown measurement levels
-              are automatically loaded into the "Available" list.
+              Ketika Anda membuka modal, semua variabel dengan tingkat pengukuran yang tidak diketahui
+              secara otomatis dimuat ke dalam daftar &quot;Tersedia&quot;.
             </p>
           </HelpSection>
           
-          <HelpSection title="Step 2: User Interaction">
+          <HelpSection title="Langkah 2: Interaksi Pengguna">
             <p className="text-sm">
-              Select one or more variables from the "Available" list
-              and use the arrow buttons to move them to the appropriate
-              Nominal, Ordinal, or Scale category.
+              Pilih satu atau lebih variabel dari daftar &quot;Tersedia&quot;
+              dan gunakan tombol panah untuk memindahkannya ke kategori yang sesuai
+              yaitu Nominal, Ordinal, atau Skala.
             </p>
           </HelpSection>
           
-          <HelpSection title="Step 3: Save Changes">
+          <HelpSection title="Langkah 3: Simpan Perubahan">
             <p className="text-sm">
-              Click **OK** and the measurement levels for moved variables
-              are permanently updated in your dataset.
+              Klik **OK** dan tingkat pengukuran untuk variabel yang dipindahkan
+              akan diperbarui secara permanen dalam dataset Anda.
             </p>
           </HelpSection>
           
-          <HelpAlert variant="success" title="Usage Tips">
+          <HelpAlert variant="success" title="Tips Penggunaan">
             <div className="text-sm mt-2 space-y-1">
-              <p>• You can select multiple variables at once using Ctrl+Click</p>
-              <p>• Variables can be moved back if you change your mind about the category</p>
-              <p>• Changes are only saved after clicking OK</p>
+              <p>• Anda dapat memilih beberapa variabel sekaligus melalui antarmuka pemilihan yang tersedia</p>
+              <p>• Variabel dapat dipindahkan kembali jika Anda berubah pikiran tentang kategorinya</p>
+              <p>• Perubahan hanya disimpan setelah mengklik OK</p>
             </div>
           </HelpAlert>
         </div>
@@ -124,36 +171,40 @@ export default function SetMeasurementLevelGuide() {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Quick Identification',
-      content: 'Consider the nature of your data: is it categorical (nominal/ordinal) or numeric (scale)?'
+      title: 'Identifikasi Jenis Data dengan Cepat',
+      content: 'Pertimbangkan sifat data Anda: apakah berupa kategori tanpa urutan (nominal), kategori dengan urutan (ordinal), atau data numerik (skala)?'
     },
     {
       type: 'info' as const,
-      title: 'Multiple Selection',
-      content: 'Use Ctrl+Click to select multiple variables at once and move them together.'
+      title: 'Pemilihan Multiple Variabel',
+      content: 'Gunakan fitur seleksi multiple pada dialog untuk memilih beberapa variabel sekaligus dan memindahkannya bersamaan ke kategori yang sama.'
     },
     {
       type: 'warning' as const,
-      title: 'Validate Results',
-      content: 'Always double-check your selected categories before saving changes.'
+      title: 'Validasi Sebelum Simpan',
+      content: 'Selalu periksa kembali kategori yang dipilih sebelum menyimpan perubahan. Tingkat pengukuran yang salah dapat mempengaruhi analisis statistik.'
+    },
+    {
+      type: 'tip' as const,
+      title: 'Contoh Praktis Pengelompokan',
+      content: 'Nominal: Jenis Kelamin, Agama, Warna. Ordinal: Rating, Tingkat Pendidikan, Skala Likert. Skala: Umur, Pendapatan, Berat Badan.'
     }
   ];
 
   const relatedTopics = [
-    { title: 'Variable Properties', href: '/help/data-guide/define-var-props' },
-    { title: 'Data Types Guide', href: '/help/data-guide' },
-    { title: 'Descriptive Statistics', href: '/help/statistics-guide/descriptive' },
-    { title: 'Data Validation', href: '/help/data-guide/unusual-cases' }
+    { title: 'Manajemen Data', href: '/help/data-guide' },
+    { title: 'Properti Variabel', href: '/help/data-guide/define-var-props' },
+    { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
+    { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' },
+    { title: 'Validasi Data', href: '/help/data-guide/unusual-cases' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Set Measurement Level Feature"
-      description="This guide provides an overview of the 'Set Measurement Level' feature that allows you to efficiently define measurement levels (Nominal, Ordinal, or Scale) for variables that currently have 'Unknown' measurement levels."
-      category="Data Management"
+      title="Atur Tingkat Pengukuran"
+      description="Panduan lengkap untuk mendefinisikan tingkat pengukuran (Nominal, Ordinal, Skala) variabel dalam dataset"
       lastUpdated="2024-01-15"
       sections={sections}
-
       tips={tips}
       relatedTopics={relatedTopics}
     />

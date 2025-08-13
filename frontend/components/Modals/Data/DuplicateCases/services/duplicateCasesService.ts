@@ -1,4 +1,4 @@
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { formatFrequencyTable } from "@/components/Modals/Analyze/Descriptive/Frequencies/utils/formatters";
 import type { FrequencyTable } from "@/components/Modals/Analyze/Descriptive/Frequencies/types";
 
@@ -44,6 +44,10 @@ export function processDuplicates({
             duplicateGroups.set(key, []);
         }
         duplicateGroups.get(key)!.push({ rowIndex, row });
+        const group = duplicateGroups.get(key);
+        if (group) {
+            group.push({ rowIndex, row });
+        }
     });
 
     if (sortingIndices.length > 0) {
@@ -189,4 +193,4 @@ export function generateStatistics({
     }
 
     return statistics;
-} 
+}

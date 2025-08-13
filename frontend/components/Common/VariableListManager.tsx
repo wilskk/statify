@@ -1,7 +1,8 @@
-import React, { FC, useState, useCallback, useMemo } from 'react';
+import type { FC} from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getVariableIcon as defaultGetVariableIcon } from './iconHelper';
-import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft, ArrowBigRight } from 'lucide-react';
+import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigLeft, ArrowBigRight } from 'lucide-react';
 import type { Variable } from "@/types/Variable";
 import { useMobile } from "@/hooks/useMobile";
 
@@ -14,6 +15,10 @@ export interface TargetListConfig {
     maxItems?: number;        // Optional limit for the number of items
     droppable?: boolean;      // Whether items can be dropped into this list (defaults to true)
     draggableItems?: boolean; // Whether items *within* this list can be dragged (defaults to true)
+    
+    // Optional filtering rules for variable type and measurement scale
+    allowedTypes?: string[];           // Array of allowed variable types (e.g., ['numeric', 'string', 'date'])
+    allowedMeasurements?: string[];    // Array of allowed measurement levels (e.g., ['nominal', 'ordinal', 'scale', 'unknown'])
 }
 
 // Props for the reusable component
@@ -90,6 +95,27 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     // Use the mobile hook to detect mobile devices and orientation
     const { isMobile, isPortrait } = useMobile();
 
+    // Helper function to check if a variable matches filtering criteria
+    const isVariableAllowedInList = useCallback((variable: Variable, listConfig: TargetListConfig): boolean => {
+        // Check type filtering
+        if (listConfig.allowedTypes && listConfig.allowedTypes.length > 0) {
+            const variableType = variable.type?.toLowerCase();
+            if (!variableType || !listConfig.allowedTypes.some(type => type.toLowerCase() === variableType)) {
+                return false;
+            }
+        }
+
+        // Check measurement scale filtering
+        if (listConfig.allowedMeasurements && listConfig.allowedMeasurements.length > 0) {
+            const variableMeasurement = variable.measure?.toLowerCase();
+            if (!variableMeasurement || !listConfig.allowedMeasurements.some(measure => measure.toLowerCase() === variableMeasurement)) {
+                return false;
+            }
+        }
+
+        return true;
+    }, []);
+
     // Combine available variables and target lists for unified handling
     const allLists = useMemo(() => [
         { id: 'available', title: 'Available Variables', variables: availableVariables, height: availableListHeight },
@@ -107,7 +133,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         
         e.dataTransfer.setData('application/json', JSON.stringify({
             variableId: varId,
-            sourceListId: sourceListId
+            sourceListId
         }));
         e.dataTransfer.effectAllowed = 'move';
         setDraggedItem({ variable, sourceListId });
@@ -125,8 +151,14 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         const targetListConfig = allLists.find(l => l.id === targetListId);
         const targetDroppable = (targetListConfig as TargetListConfig)?.droppable !== false; // Default true
 
-        // Prevent dropping into non-droppable lists or lists that are full
-        if (!targetDroppable || (targetListConfig?.maxItems && 
+        // Check if the dragged variable is allowed in the target list
+        let isAllowed = true;
+        if (draggedItem && targetListConfig && targetListId !== 'available') {
+            isAllowed = isVariableAllowedInList(draggedItem.variable, targetListConfig as TargetListConfig);
+        }
+
+        // Prevent dropping into non-droppable lists, lists that are full, or when variable is not allowed
+        if (!targetDroppable || !isAllowed || (targetListConfig?.maxItems && 
             targetListConfig.variables.length >= targetListConfig.maxItems && 
             draggedItem?.sourceListId !== targetListId)) {
             e.dataTransfer.dropEffect = 'none';
@@ -140,7 +172,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 setDragOverIndex(null);
             }
         }
-    }, [draggedItem, dragOverIndex, allLists]);
+    }, [draggedItem, dragOverIndex, allLists, isVariableAllowedInList]);
 
     const handleItemDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, targetIndex: number, listId: string) => {
         e.preventDefault();
@@ -201,6 +233,15 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             const variableToMove = sourceList.find(v => v[variableIdKey] === variableId);
             if (!variableToMove) throw new Error(`Variable with ID ${variableId} not found in source list ${sourceListId}`);
 
+            // Check if variable is allowed in target list (for non-available lists)
+            if (targetListId !== 'available' && targetListConfig) {
+                const isAllowed = isVariableAllowedInList(variableToMove, targetListConfig as TargetListConfig);
+                if (!isAllowed) {
+                    handleDragEnd();
+                    return;
+                }
+            }
+
             // --- Handle single-item list overwrite logic ---
             const isReplacingSingleItem = sourceListId !== targetListId &&
                 targetListConfig?.maxItems === 1 &&
@@ -258,7 +299,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         } finally {
             handleDragEnd(); // Always reset drag state
         }
-    }, [allLists, variableIdKey, onReorderVariable, onMoveVariable, handleDragEnd]);
+    }, [allLists, variableIdKey, onReorderVariable, onMoveVariable, handleDragEnd, isVariableAllowedInList]);
 
     // --- Selection and Double Click Handlers ---
     const handleVariableSelect = useCallback((variable: Variable, sourceListId: string) => {
@@ -282,7 +323,13 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         
         // Default double-click behavior: move between available and first target list
         const targetListId = sourceListId === 'available'
-            ? targetLists.find(l => l.droppable !== false && (!l.maxItems || l.variables.length < l.maxItems || l.maxItems === 1))?.id
+            ? targetLists.find(l => {
+                if (l.droppable === false) return false;
+                if (l.maxItems && l.variables.length >= l.maxItems && l.maxItems !== 1) return false;
+                
+                // Check if variable is allowed in this target list
+                return isVariableAllowedInList(variable, l);
+            })?.id
             : 'available';
 
         if (targetListId) {
@@ -308,7 +355,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             // Move the double-clicked variable
             onMoveVariable(variable, sourceListId, targetListId);
         }
-    }, [targetLists, onMoveVariable, allLists, onVariableDoubleClick]);
+    }, [targetLists, onMoveVariable, allLists, onVariableDoubleClick, isVariableAllowedInList]);
 
     // --- Arrow Button Rendering (centralized) ---
     const renderCentralArrowButton = () => {
@@ -327,11 +374,16 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         // Case 1: Variable selected from "available" list – may move to ANY valid target list
         // ---------------------------
         if (isFromAvailable) {
-            // Collect all candidate target lists that can accept another variable
+            // Collect all candidate target lists that can accept another variable and allow the variable
             const candidateTargets = targetLists.filter(t => {
                 if (t.droppable === false) return false;
                 if (t.maxItems && t.variables.length >= t.maxItems && t.maxItems !== 1) return false;
-                return true;
+                
+                const variableToMove = getSelectedVariable();
+                if (!variableToMove) return false;
+                
+                // Check if variable is allowed in this target list
+                return isVariableAllowedInList(variableToMove, t);
             });
 
             if (candidateTargets.length === 0) return null; // No place to move
@@ -584,7 +636,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                         {variables.map((variable, index) => renderVariableItem(variable, id, index))}
                     </div>
                 </div>
-                {renderListFooter && renderListFooter(id)}
+                {renderListFooter?.(id)}
             </div>
         );
     };
@@ -625,7 +677,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                     data-testid="target-lists-section"
                 >
                     {targetLists.map(listConfig => renderList(listConfig))}
-                    {renderRightColumnFooter && renderRightColumnFooter()}
+                    {renderRightColumnFooter?.()}
                 </div>
 
                 {/* Helper Text */}
@@ -642,7 +694,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                         <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
                         <span>Drag or double-click to move. Tap to select, then use arrow.</span>
                     </div>
-                    {renderExtraInfoContent && renderExtraInfoContent()}
+                    {renderExtraInfoContent?.()}
                 </div>
             </div>
         );
@@ -758,7 +810,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                         <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
                         <span>Drag or double-click to move.</span>
                     </div>
-                    {renderExtraInfoContent && renderExtraInfoContent()}
+                    {renderExtraInfoContent?.()}
                 </div>
             </div>
 
@@ -773,7 +825,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                         {renderList(listConfig, arrowButtons[listConfig.id])}
                     </React.Fragment>
                 ))}
-                {renderRightColumnFooter && renderRightColumnFooter()}
+                {renderRightColumnFooter?.()}
             </div>
         </div>
     );

@@ -5,6 +5,7 @@ const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
+    distDir: process.env.NODE_ENV === 'production' ? '.next' : '.next-dev',
     webpack: (config, { isServer }) => {
         if (!isServer) {
             config.module.rules.push({

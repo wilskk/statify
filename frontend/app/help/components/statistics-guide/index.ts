@@ -8,4 +8,4 @@ export * from './univariate';
 export * from './k-means/KMeansClustering';
 // export * from './inferential';
 // export * from './modeling';
-// export * from './timeseries';
+export * from './time-series'; 

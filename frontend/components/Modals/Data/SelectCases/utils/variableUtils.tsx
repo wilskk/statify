@@ -1,4 +1,4 @@
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { Shapes, Ruler, BarChartHorizontal } from "lucide-react";
 import React from "react";
 

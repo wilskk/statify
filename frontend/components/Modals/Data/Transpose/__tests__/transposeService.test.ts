@@ -1,12 +1,12 @@
 import { transposeDataService } from '../services/transposeService';
-import { Variable, VariableType, VariableMeasure, VariableAlign, VariableRole } from '@/types/Variable';
+import type { Variable, VariableType, VariableMeasure, VariableAlign, VariableRole } from '@/types/Variable';
 
 const createMockVariable = (
     name: string,
     columnIndex: number,
     type: VariableType = 'NUMERIC',
     measure: VariableMeasure = 'scale',
-    label: string = ''
+    label = ''
 ): Variable => ({
     id: columnIndex + 1,
     name,

@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
@@ -26,10 +26,8 @@ export enum RecodeMode {
   SAME_VARIABLES = "recodeSameVariables",
 }
 
-// Interface extending BaseModalProps for type safety with our modal system
-export interface RecodeSameVariablesModalProps extends BaseModalProps {
-  // Additional props specific to this modal
-}
+// Type alias to BaseModalProps (avoid empty interface rule)
+export type RecodeSameVariablesModalProps = BaseModalProps;
 
 // Interface for the content component
 interface RecodeSameVariablesContentProps {
@@ -87,7 +85,7 @@ const RecodeSameVariablesContent: React.FC<RecodeSameVariablesContentProps> = ({
   handlePaste,
   handleReset,
 }) => {
-  const { toast } = useToast();
+
 
   return (
     <div className="flex flex-col h-full">
@@ -139,12 +137,7 @@ const RecodeSameVariablesContent: React.FC<RecodeSameVariablesContentProps> = ({
               className="flex-1"
               onClick={() => {
                 if (variablesToRecode.length === 0) {
-                  toast({
-                    title: "No variables selected",
-                    description:
-                      "Please select at least one variable to recode.",
-                    variant: "destructive",
-                  });
+                  toast.error("Please select at least one variable to recode.");
                   return;
                 }
                 handleShowOldNewSetup();
@@ -203,7 +196,7 @@ export const RecodeSameVariablesModal: React.FC<
 > = ({ onClose, containerType = "dialog", ...props }) => {
   const allVariablesFromStore = useVariableStore.getState().variables;
   const dataStore = useDataStore();
-  const { toast } = useToast();
+
   const resultStore = useResultStore();
 
   // State management
@@ -454,20 +447,12 @@ export const RecodeSameVariablesModal: React.FC<
 
   const handleOk = async () => {
     if (variablesToRecode.length === 0) {
-      toast({
-        title: "No variables selected",
-        description: "Please select at least one variable to recode.",
-        variant: "destructive",
-      });
+      toast.error("Please select at least one variable to recode.");
       return;
     }
 
     if (recodeRules.length === 0) {
-      toast({
-        title: "No recode rules defined",
-        description: "Please define at least one rule for recoding.",
-        variant: "destructive",
-      });
+      toast.error("Please define at least one rule for recoding.");
       return;
     }
 
@@ -570,19 +555,12 @@ export const RecodeSameVariablesModal: React.FC<
         description: "",
       });
 
-      toast({
-        title: "Recoding complete",
-        description: `Successfully recoded ${variablesToRecode.length} variable(s).`,
-      });
+      toast.success(`Successfully recoded ${variablesToRecode.length} variable(s).`);
 
       onClose();
     } catch (error) {
       console.error("Error applying recode rules:", error);
-      toast({
-        title: "Error recoding variables",
-        description: "An error occurred while applying recode rules.",
-        variant: "destructive",
-      });
+      toast.error("An error occurred while applying recode rules.");
     } finally {
       setIsProcessing(false);
     }

@@ -5,14 +5,12 @@ import {
   HelpCard, 
   HelpAlert, 
   HelpStep, 
-  HelpCodeBlock,
-  HelpQuickActions,
-  HelpTOC,
+  HelpCodeBlock
 } from "@/app/help/ui/HelpLayout";
-import { Button } from "@/components/ui/button";
+
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { LucideIcon, Play, BookOpen, Settings, HelpCircle } from "lucide-react";
+
+import { type LucideIcon, BookOpen, Settings, HelpCircle } from "lucide-react";
 
 /**
  * Template standar untuk semua guide pages
@@ -65,8 +63,8 @@ export const HelpGuideTemplate: React.FC<HelpGuideTemplateProps> = ({
   overview,
   sections,
   prerequisites,
-  relatedTopics,
-  quickActions,
+  relatedTopics: _relatedTopics,
+  quickActions: _,
   tips,
   troubleshooting
 }) => {

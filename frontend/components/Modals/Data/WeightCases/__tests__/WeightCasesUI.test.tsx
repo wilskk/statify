@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { WeightCasesUI } from '../WeightCasesUI';
-import { Variable } from '@/types/Variable';
-import { WeightCasesUIProps } from '../types';
+import type { Variable } from '@/types/Variable';
+import type { WeightCasesUIProps } from '../types';
 import VariableListManager from '@/components/Common/VariableListManager';
 
 // Mock the child component

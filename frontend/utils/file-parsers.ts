@@ -1,12 +1,12 @@
-import { Variable, MissingValuesSpec, MissingRange } from '@/types/Variable';
+import { Variable, MissingValuesSpec, MissingRange, VariableType } from '@/types/Variable';
 import { DataRow } from '@/types/Data';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
 // Helper function to map SPSS format types to our interface types
-export const mapSPSSTypeToInterface = (formatType: string): string => {
-    const typeMap: { [key: string]: string } = {
-        "F": "NUMERIC", "COMMA": "COMMA", "E": "SCIENTIFIC", "DATE": "DATE",
+export const mapSPSSTypeToInterface = (formatType: string): VariableType => {
+    const typeMap: { [key: string]: VariableType } = {
+        "F": "NUMERIC", "COMMA": "COMMA", "DOT": "DOT", "E": "SCIENTIFIC", "DATE": "DATE",
         "ADATE": "ADATE", "EDATE": "EDATE", "SDATE": "SDATE", "JDATE": "JDATE",
         "QYR": "QYR", "MOYR": "MOYR", "WKYR": "WKYR", "DATETIME": "DATETIME",
         "TIME": "TIME", "DTIME": "DTIME", "WKDAY": "WKDAY", "MONTH": "MONTH",

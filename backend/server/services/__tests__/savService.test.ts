@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+
 import { processUploadedSav } from '../savService';
 
 /**
@@ -8,25 +9,29 @@ import { processUploadedSav } from '../savService';
  * variable inside each test.
  */
 let mockShouldThrow = false;
-let mockMeta: any = {};
-let mockRows: any[] = [];
+let mockMeta: unknown = {};
+let mockRows: unknown[] = [];
 
 // Define mock inside factory function so it is available when Jest executes it (avoids TDZ)
 jest.mock('sav-reader', () => {
   return {
     SavBufferReader: class {
       private buffer: Buffer;
-      public meta: any;
+      public meta: unknown;
       constructor(buffer: Buffer) {
         this.buffer = buffer;
         this.meta = mockMeta;
       }
       async open() {
-        if (mockShouldThrow) throw new Error('open failed');
+        if (mockShouldThrow) {
+          throw new Error('open failed');
+        }
       }
       async readAllRows() {
-        if (mockShouldThrow) throw new Error('read failed');
-        return mockRows;
+        if (mockShouldThrow) {
+          throw new Error('read failed');
+        }
+        return mockRows as unknown[];
       }
     },
   };

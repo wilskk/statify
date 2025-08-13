@@ -1,4 +1,7 @@
-import React, { useMemo } from 'react';
+import type React from 'react';
+import type Handsontable from 'handsontable';
+import type { HotTableRef } from '@handsontable/react-wrapper';
+import { useMemo } from 'react';
 import { useTableLayout } from './useTableLayout';
 import { useTableUpdates } from './useTableUpdates';
 import { useContextMenuLogic } from './useContextMenuLogic';
@@ -9,7 +12,7 @@ import { useTableRefStore } from '@/stores/useTableRefStore';
  * Main hook for the DataTable component.
  * This hook composes other hooks to manage layout, updates, and context menu logic.
  */
-export const useDataTableLogic = (hotTableRef: React.RefObject<any>) => {
+export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableRef>) => {
     const { measureRender, measureUpdate } = useDataTablePerformance();
     
     // 1. Get viewMode from the store
@@ -36,12 +39,16 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<any>) => {
     
     // 4. Wrap handlers with performance monitoring
     const updateHandlers = useMemo(() => ({
-        handleBeforeChange: (changes: any, source: string) => {
-            measureRender(() => {});
-            return originalHandleBeforeChange(changes, source);
+        handleBeforeChange: (changes: (Handsontable.CellChange | null)[], source: Handsontable.ChangeSource) => {
+            measureRender(() => {
+                // HotTable passes an array with possibly null items; our inner handler expects
+                // a nullable array of non-null items. Normalize by removing nulls.
+                const normalized = (changes?.filter(Boolean) ?? []) as Handsontable.CellChange[];
+                originalHandleBeforeChange(normalized, source);
+            });
         },
-        handleAfterChange: async (changes: any, source: string) => {
-            return measureUpdate(() => originalHandleAfterChange(changes, source));
+        handleAfterChange: (changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource) => {
+            void measureUpdate(() => originalHandleAfterChange(changes, source));
         },
         handleAfterColumnResize,
         handleAfterValidate,

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { FC, useState, useRef, useEffect } from "react";
+import type { FC} from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
     DialogContent,
     DialogHeader,
@@ -26,7 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import {
     Search,
     ArrowLeft,
@@ -98,15 +99,15 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
     
     const handleVariableDoubleClick = (variable: Variable) => {
         // Insert variable name on double click
-        insertAtCursor(variable.name + " ");
+        insertAtCursor(`${variable.name  } `);
     };
 
     const handleOperatorClick = (operator: string) => {
-        insertAtCursor(" " + operator + " ");
+        insertAtCursor(` ${  operator  } `);
     };
 
     const handleFunctionClick = (functionName: string) => {
-        insertAtCursor(functionName + "()");
+        insertAtCursor(`${functionName  }()`);
         
         // Position cursor inside parentheses
         setTimeout(() => {

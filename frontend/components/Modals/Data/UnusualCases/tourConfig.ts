@@ -1,5 +1,5 @@
-import { TourStep as BaseTourStep } from '@/types/tourTypes';
-import { TabType } from './types';
+import type { TourStep as BaseTourStep } from '@/types/tourTypes';
+import type { TabType } from './types';
 
 // Extended TourStep with required tab property
 export type TourStep = BaseTourStep & {
