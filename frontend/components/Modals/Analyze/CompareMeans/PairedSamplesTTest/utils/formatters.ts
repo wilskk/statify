@@ -1,4 +1,4 @@
-import {
+import type {
     PairedSamplesTTestResult,
     PairedSamplesTTestTable,
     TableColumnHeader,
@@ -101,8 +101,8 @@ export function formatPairedSamplesStatisticsTable(
 
     return {
         title: "Paired Samples Statistics",
-        columnHeaders: columnHeaders,
-        rows: rows
+        columnHeaders,
+        rows
     };
 }
 
@@ -139,8 +139,8 @@ export function formatPairedSamplesCorrelationTable(
 
         rows.push({
             rowHeader: [`Pair ${metadata.pair}`],
-            correlationLabel: correlationLabel,
-            N: N,
+            correlationLabel,
+            N,
             Correlation: formatNumber(Correlation, Math.max(result.variable1.decimals, result.variable2.decimals)+3),
             PValue: formatPValue(correlationPValue)
         });
@@ -148,8 +148,8 @@ export function formatPairedSamplesCorrelationTable(
 
     return {
         title: "Paired Samples Correlation",
-        columnHeaders: columnHeaders,
-        rows: rows
+        columnHeaders,
+        rows
     };
 }
 
@@ -218,8 +218,8 @@ export function formatPairedSamplesTestTable (
 
     return {
         title: "Paired Samples Test",
-        columnHeaders: columnHeaders,
-        rows: rows
+        columnHeaders,
+        rows
     };
 }
 

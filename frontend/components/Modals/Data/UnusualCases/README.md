@@ -1,53 +1,824 @@
-# Identify Unusual Cases Feature
+# Identify Unusual Cases Modal - Advanced Anomaly Detection and Outlier Analysis
 
-This document provides a comprehensive overview of the "Identify Unusual Cases" feature, detailing its functionality, architecture, and testing strategy. The feature is designed to detect anomalous records within a dataset by comparing each case against its peers.
+Modal untuk identifying dan analyzing unusual cases dalam Statify dengan sophisticated peer group analysis, comprehensive anomaly detection algorithms, dan flexible outlier identification strategies. Feature ini menyediakan powerful data quality assessment dan anomaly detection capabilities.
 
-## 1. Overview
+## 📁 Component Architecture
 
-The "Identify Unusual Cases" feature helps users find records that differ significantly from others in the dataset. It employs a peer group analysis algorithm to identify outliers by grouping similar cases and calculating how much each case deviates from its group's norms. This is particularly useful for data cleaning, outlier detection, and identifying genuinely unique cases that may warrant further investigation.
+```
+UnusualCases/
+├── index.tsx                   # Main modal component
+├── UnusualCasesUI.tsx         # Main unusual cases interface
+├── UnusualCasesTest.tsx       # Anomaly detection testing
+├── types.ts                   # TypeScript type definitions
+├── README.md                  # Documentation
+│
+├── components/                # Tab components
+│   ├── VariablesTab.tsx           # Variable selection tab
+│   ├── OptionsTab.tsx             # Analysis options tab
+│   ├── OutputTab.tsx              # Output configuration tab
+│   ├── SaveTab.tsx                # Save results tab
+│   └── MissingValuesTab.tsx       # Missing values handling tab
+│
+├── __tests__/                 # Test suite
+│   ├── UnusualCases.test.tsx      # Main component tests
+│   ├── useUnusualCases.test.ts    # Hook logic tests
+│   ├── anomalyService.test.ts     # Service function tests
+│   └── README.md                  # Test documentation
+│
+├── hooks/                     # Business logic hooks
+│   └── useUnusualCases.ts         # Core anomaly detection logic
+│
+└── services/                  # Business logic services
+    └── anomalyDetectionService.ts # Anomaly detection algorithms
+```
 
-The entire analysis is performed on the client-side, using a multi-tabbed dialog to guide the user through the configuration process.
+## 🎯 Core Functionality
 
-## 2. Feature Walkthrough & UI Components
+### Anomaly Detection Methods
+```typescript
+interface AnomalyDetectionMethods {
+  // Peer group analysis
+  peerGroupAnalysis: {
+    purpose: 'Group similar cases and identify outliers within groups';
+    algorithm: 'Clustering-based anomaly detection';
+    methodology: PeerGroupMethodology;
+    advantages: ['Context-aware detection', 'Reduces false positives', 'Interpretable results'];
+  };
+  
+  // Statistical outlier detection
+  statisticalOutlierDetection: {
+    purpose: 'Identify cases based on statistical deviation';
+    methods: StatisticalMethod[];
+    thresholds: OutlierThreshold[];
+    implementation: StatisticalDetector;
+  };
+  
+  // Multivariate anomaly detection
+  multivariateAnomalyDetection: {
+    purpose: 'Detect anomalies across multiple variables simultaneously';
+    techniques: MultivariateDetectionTechnique[];
+    correlationAnalysis: CorrelationAnalyzer;
+    implementation: MultivariateDetector;
+  };
+  
+  // Machine learning-based detection
+  machineLearningDetection: {
+    purpose: 'Use ML algorithms for sophisticated anomaly detection';
+    algorithms: MLAnomalyAlgorithm[];
+    featureEngineering: FeatureEngineer;
+    implementation: MLAnomalyDetector;
+  };
+}
+```
 
-The user interacts with a modal dialog organized into five tabs. A guided tour is also available to walk users through the key functionalities.
+### Peer Group Analysis
+```typescript
+interface PeerGroupAnalysis {
+  // Clustering configuration
+  clusteringConfiguration: {
+    clusteringAlgorithm: ClusteringAlgorithm;   // Algorithm for peer group formation
+    numberOfGroups: GroupConfiguration;        // Number of peer groups to create
+    distanceMetric: DistanceMetric;            // Metric for measuring similarity
+    clusterValidation: ClusterValidation;      // Validation of cluster quality
+  };
+  
+  // Similarity measurement
+  similarityMeasurement: {
+    euclideanDistance: EuclideanDistanceCalculator;
+    manhattanDistance: ManhattanDistanceCalculator;
+    mahalanobisDistance: MahalanobisDistanceCalculator;
+    cosineDistance: CosineDistanceCalculator;
+    customDistance: CustomDistanceCalculator;
+  };
+  
+  // Group formation strategies
+  groupFormationStrategies: {
+    kMeansClustering: {
+      algorithm: 'K-means clustering for peer group formation';
+      implementation: KMeansClusterer;
+      convergenceCriteria: ConvergenceCriteria;
+      initializationMethod: InitializationMethod;
+    };
+    
+    hierarchicalClustering: {
+      algorithm: 'Hierarchical clustering for peer groups';
+      implementation: HierarchicalClusterer;
+      linkageCriteria: LinkageCriteria;
+      dendrogramCutoff: DendrogramCutoff;
+    };
+    
+    dbscanClustering: {
+      algorithm: 'Density-based clustering for peer groups';
+      implementation: DBSCANClusterer;
+      densityParameters: DensityParameters;
+      noiseHandling: NoiseHandler;
+    };
+    
+    gaussianMixture: {
+      algorithm: 'Gaussian mixture model for peer groups';
+      implementation: GaussianMixtureClusterer;
+      componentSelection: ComponentSelector;
+      expectationMaximization: EMAlgorithm;
+    };
+  };
+  
+  // Anomaly scoring within groups
+  anomalyScoringWithinGroups: {
+    localOutlierFactor: {
+      description: 'LOF-based scoring within peer groups';
+      implementation: LOFCalculator;
+      localityParameter: LocalityParameter;
+      reachabilityDistance: ReachabilityCalculator;
+    };
+    
+    isolationForest: {
+      description: 'Isolation-based scoring within groups';
+      implementation: IsolationForestScorer;
+      treeParameters: IsolationTreeParameters;
+      pathLengthCalculation: PathLengthCalculator;
+    };
+    
+    oneClassSVM: {
+      description: 'SVM-based anomaly scoring';
+      implementation: OneClassSVMScorer;
+      kernelFunction: KernelFunction;
+      boundaryOptimization: BoundaryOptimizer;
+    };
+    
+    statisticalScoring: {
+      description: 'Statistical deviation-based scoring';
+      implementation: StatisticalScorer;
+      deviationMetrics: DeviationMetric[];
+      probabilityModeling: ProbabilityModeler;
+    };
+  };
+}
+```
 
-### 2.1. Variables Tab (`VariablesTab.tsx`)
+## 🔍 Advanced Anomaly Detection Algorithms
 
-This is the initial tab where users define the scope of the analysis.
+### Statistical Methods
+```typescript
+interface StatisticalAnomalyDetection {
+  // Univariate outlier detection
+  univariateOutlierDetection: {
+    zScoreMethod: {
+      description: 'Standard score-based outlier detection';
+      threshold: number; // Typically 2.5 or 3
+      implementation: ZScoreDetector;
+      assumptions: ['Normal distribution', 'No extreme skewness'];
+    };
+    
+    modifiedZScore: {
+      description: 'Robust z-score using median absolute deviation';
+      threshold: number; // Typically 3.5
+      implementation: ModifiedZScoreDetector;
+      robustness: 'High resistance to extreme outliers';
+    };
+    
+    interquartileRange: {
+      description: 'IQR-based outlier detection';
+      multiplier: number; // Typically 1.5 or 3
+      implementation: IQRDetector;
+      applicability: 'Works with any distribution';
+    };
+    
+    grubbsTest: {
+      description: 'Statistical test for single outlier';
+      significance: number; // Typically 0.05
+      implementation: GrubbsTestDetector;
+      limitations: 'Assumes normal distribution';
+    };
+  };
+  
+  // Multivariate outlier detection
+  multivariateOutlierDetection: {
+    mahalanobisDistance: {
+      description: 'Distance-based multivariate outlier detection';
+      implementation: MahalanobisDetector;
+      covarianceEstimation: CovarianceEstimator;
+      degreeOfFreedom: DegreesOfFreedomCalculator;
+    };
+    
+    hotellingsT2: {
+      description: 'Hotelling T² test for multivariate outliers';
+      implementation: HotellingT2Detector;
+      controlLimits: ControlLimitCalculator;
+      statisticalSignificance: SignificanceTest;
+    };
+    
+    minimumCovarianceDeterminant: {
+      description: 'Robust covariance-based detection';
+      implementation: MCDDetector;
+      robustEstimation: RobustCovarianceEstimator;
+      contaminationRate: ContaminationRateEstimator;
+    };
+    
+    principalComponentAnalysis: {
+      description: 'PCA-based anomaly detection';
+      implementation: PCAAnomalyDetector;
+      componentSelection: ComponentSelector;
+      reconstructionError: ReconstructionErrorCalculator;
+    };
+  };
+  
+  // Time series anomaly detection
+  timeSeriesAnomalyDetection: {
+    seasonalDecomposition: {
+      description: 'Seasonal-trend decomposition for anomaly detection';
+      implementation: SeasonalDecompositionDetector;
+      seasonalityDetection: SeasonalityDetector;
+      trendAnalysis: TrendAnalyzer;
+    };
+    
+    changepointDetection: {
+      description: 'Statistical changepoint detection';
+      implementation: ChangepointDetector;
+      changeStatistics: ChangeStatistic[];
+      penaltyFunction: PenaltyFunction;
+    };
+    
+    autoregressiveModeling: {
+      description: 'AR model-based anomaly detection';
+      implementation: ARModelDetector;
+      modelSelection: ModelSelector;
+      residualAnalysis: ResidualAnalyzer;
+    };
+  };
+}
+```
 
--   **Analysis Variables**: Users select the primary variables (typically scale or numeric) to be evaluated for unusualness. The algorithm analyzes patterns across these variables.
--   **Case Identifier Variable**: An optional, single variable (e.g., an ID or name) can be selected to label cases in the output, making it easier to identify specific records.
+### Machine Learning Methods
+```typescript
+interface MachineLearningAnomalyDetection {
+  // Unsupervised methods
+  unsupervisedMethods: {
+    isolationForest: {
+      description: 'Tree-based anomaly detection';
+      parameters: {
+        nEstimators: number;
+        maxSamples: number;
+        contamination: number;
+        randomState: number;
+      };
+      implementation: IsolationForestDetector;
+      advantages: ['No assumptions about data distribution', 'Efficient for large datasets'];
+    };
+    
+    localOutlierFactor: {
+      description: 'Density-based local anomaly detection';
+      parameters: {
+        nNeighbors: number;
+        algorithm: 'auto' | 'ball_tree' | 'kd_tree' | 'brute';
+        leafSize: number;
+        metric: DistanceMetric;
+      };
+      implementation: LOFDetector;
+      advantages: ['Captures local density variations', 'Effective for clustered data'];
+    };
+    
+    oneClassSVM: {
+      description: 'Support vector machine for anomaly detection';
+      parameters: {
+        kernel: 'linear' | 'poly' | 'rbf' | 'sigmoid';
+        gamma: 'scale' | 'auto' | number;
+        nu: number;
+        coef0: number;
+      };
+      implementation: OneClassSVMDetector;
+      advantages: ['Works well in high dimensions', 'Flexible decision boundaries'];
+    };
+    
+    ellipticEnvelope: {
+      description: 'Robust covariance estimation for outlier detection';
+      parameters: {
+        storeLocation: boolean;
+        assumeCentered: boolean;
+        supportFraction: number;
+        contamination: number;
+      };
+      implementation: EllipticEnvelopeDetector;
+      advantages: ['Robust to outliers in training', 'Assumes Gaussian distribution'];
+    };
+  };
+  
+  // Deep learning methods
+  deepLearningMethods: {
+    autoencoder: {
+      description: 'Neural network-based anomaly detection';
+      architecture: AutoencoderArchitecture;
+      implementation: AutoencoderAnomalyDetector;
+      advantages: ['Can capture complex patterns', 'Unsupervised learning'];
+    };
+    
+    variationalAutoencoder: {
+      description: 'Probabilistic autoencoder for anomaly detection';
+      architecture: VAEArchitecture;
+      implementation: VAEAnomalyDetector;
+      advantages: ['Probabilistic framework', 'Handles uncertainty'];
+    };
+    
+    generativeAdversarialNetwork: {
+      description: 'GAN-based anomaly detection';
+      architecture: GANArchitecture;
+      implementation: GANAnomalyDetector;
+      advantages: ['Can generate synthetic normal data', 'Sophisticated modeling'];
+    };
+  };
+  
+  // Ensemble methods
+  ensembleMethods: {
+    combinedDetectors: {
+      description: 'Ensemble of multiple anomaly detectors';
+      votingStrategy: VotingStrategy;
+      implementation: EnsembleAnomalyDetector;
+      advantages: ['Improved robustness', 'Better generalization'];
+    };
+    
+    stackedDetectors: {
+      description: 'Hierarchical ensemble of detectors';
+      stackingStrategy: StackingStrategy;
+      implementation: StackedAnomalyDetector;
+      advantages: ['Learns from detector outputs', 'Adaptive combination'];
+    };
+  };
+}
+```
 
-The tab is implemented using the shared `VariableListManager` component to provide a consistent drag-and-drop experience.
+## 🔧 Hook Implementation
 
-### 2.2. Options Tab (`OptionsTab.tsx`)
+### useUnusualCases Hook
+```typescript
+interface UseUnusualCasesHook {
+  // Analysis configuration state
+  analysisConfigurationState: {
+    analysisVariables: Variable[];          // Variables for anomaly analysis
+    identifierVariable: Variable;           // Variable for case identification
+    availableVariables: Variable[];         // All available variables
+    selectedAlgorithm: AnomalyDetectionAlgorithm; // Selected detection algorithm
+    algorithmParameters: AlgorithmParameters; // Algorithm-specific parameters
+  };
+  
+  // Detection options
+  detectionOptions: {
+    identificationCriteria: IdentificationCriteria; // Criteria for flagging cases
+    anomalyCutoff: number;                  // Minimum anomaly score threshold
+    peerGroupConfiguration: PeerGroupConfig; // Peer group settings
+    maxReasons: number;                     // Maximum reasons to report per case
+    confidenceLevel: number;                // Statistical confidence level
+  };
+  
+  // Output configuration
+  outputConfiguration: {
+    generateCaseList: boolean;              // Generate list of unusual cases
+    generatePeerGroupNorms: boolean;        // Generate peer group statistics
+    generateAnomalyIndices: boolean;        // Generate anomaly index distribution
+    generateReasonOccurrence: boolean;      // Generate reason frequency table
+    generateProcessingSummary: boolean;     // Generate processing summary
+    outputFormat: OutputFormat;            // Format for output generation
+  };
+  
+  // Save options
+  saveOptions: {
+    saveAnomalyIndex: boolean;              // Save anomaly index as variable
+    savePeerGroupMembership: boolean;       // Save peer group information
+    saveReasons: boolean;                   // Save anomaly reasons
+    replaceExisting: boolean;               // Replace existing variables
+    variablePrefix: string;                 // Prefix for new variable names
+  };
+  
+  // Missing value handling
+  missingValueHandling: {
+    strategy: MissingValueStrategy;         // Strategy for missing values
+    imputationMethod: ImputationMethod;     // Method for value imputation
+    usePropMissing: boolean;               // Include proportion missing as feature
+    listweiseDeletion: boolean;            // Use listwise deletion
+  };
+  
+  // Analysis execution
+  analysisExecution: {
+    executeAnalysis: () => Promise<AnomalyDetectionResult>;
+    cancelAnalysis: () => void;
+    validateConfiguration: () => ValidationResult;
+    estimateComplexity: () => ComplexityEstimate;
+    analysisProgress: AnalysisProgress;
+  };
+  
+  // Results management
+  resultsManagement: {
+    analysisResults: AnomalyDetectionResult;
+    resultsSummary: ResultsSummary;
+    saveResults: () => Promise<void>;
+    exportResults: (format: ExportFormat) => void;
+    clearResults: () => void;
+  };
+}
+```
 
-This tab allows users to fine-tune the detection algorithm.
+### Anomaly Detection Service
+```typescript
+interface AnomalyDetectionService {
+  // Core detection algorithms
+  coreDetectionAlgorithms: {
+    peerGroupAnalysis: (
+      data: DataMatrix,
+      config: PeerGroupConfig
+    ) => Promise<PeerGroupAnalysisResult>;
+    
+    statisticalOutlierDetection: (
+      data: DataMatrix,
+      config: StatisticalConfig
+    ) => Promise<StatisticalDetectionResult>;
+    
+    machineLearnigDetection: (
+      data: DataMatrix,
+      config: MLConfig
+    ) => Promise<MLDetectionResult>;
+    
+    ensembleDetection: (
+      data: DataMatrix,
+      detectors: AnomalyDetector[],
+      config: EnsembleConfig
+    ) => Promise<EnsembleDetectionResult>;
+  };
+  
+  // Data preprocessing
+  dataPreprocessing: {
+    handleMissingValues: (
+      data: DataMatrix,
+      strategy: MissingValueStrategy
+    ) => PreprocessedData;
+    
+    normalizeFeatures: (
+      data: DataMatrix,
+      method: NormalizationMethod
+    ) => NormalizedData;
+    
+    detectDataTypes: (data: DataMatrix) => DataTypeAnalysis;
+    validateDataQuality: (data: DataMatrix) => DataQualityReport;
+  };
+  
+  // Clustering and peer group formation
+  clusteringPeerGroupFormation: {
+    kMeansClustering: (
+      data: DataMatrix,
+      k: number,
+      config: KMeansConfig
+    ) => ClusteringResult;
+    
+    hierarchicalClustering: (
+      data: DataMatrix,
+      config: HierarchicalConfig
+    ) => ClusteringResult;
+    
+    dbscanClustering: (
+      data: DataMatrix,
+      config: DBSCANConfig
+    ) => ClusteringResult;
+    
+    optimizeClusterCount: (
+      data: DataMatrix,
+      method: ClusterOptimizationMethod
+    ) => OptimalClusterCount;
+  };
+  
+  // Anomaly scoring
+  anomalyScoring: {
+    calculateLocalOutlierFactor: (
+      data: DataMatrix,
+      neighbors: number
+    ) => LOFScores;
+    
+    calculateIsolationScore: (
+      data: DataMatrix,
+      forest: IsolationForest
+    ) => IsolationScores;
+    
+    calculateMahalanobisDistance: (
+      data: DataMatrix,
+      center: Vector,
+      covariance: Matrix
+    ) => MahalanobisScores;
+    
+    calculateStatisticalScores: (
+      data: DataMatrix,
+      method: StatisticalScoringMethod
+    ) => StatisticalScores;
+  };
+  
+  // Result interpretation
+  resultInterpretation: {
+    identifyUnusualCases: (
+      scores: AnomalyScore[],
+      criteria: IdentificationCriteria
+    ) => UnusualCase[];
+    
+    generateReasons: (
+      cases: UnusualCase[],
+      data: DataMatrix,
+      maxReasons: number
+    ) => CaseReason[];
+    
+    calculateGroupNorms: (
+      data: DataMatrix,
+      groupAssignments: GroupAssignment[]
+    ) => GroupNorm[];
+    
+    generateSummaryStatistics: (
+      results: AnomalyDetectionResult
+    ) => SummaryStatistics;
+  };
+  
+  // Quality assurance
+  qualityAssurance: {
+    validateDetectionResults: (
+      results: AnomalyDetectionResult
+    ) => ValidationReport;
+    
+    assessDetectionQuality: (
+      results: AnomalyDetectionResult,
+      groundTruth?: GroundTruth
+    ) => QualityAssessment;
+    
+    detectFalsePositives: (
+      results: AnomalyDetectionResult,
+      data: DataMatrix
+    ) => FalsePositiveReport;
+    
+    optimizeThresholds: (
+      scores: AnomalyScore[],
+      criteria: OptimizationCriteria
+    ) => OptimalThresholds;
+  };
+}
+```
 
--   **Identification Criteria**: Users can choose to identify a specific percentage of cases with the highest anomaly scores or a fixed number of cases.
--   **Anomaly Cutoff**: An optional minimum anomaly index value can be set. Only cases meeting or exceeding this cutoff will be flagged.
--   **Peer Groups**: Users can specify the minimum and maximum number of peer groups to be formed during the clustering phase.
--   **Reasons**: Defines the maximum number of reasons to report for why a case is considered unusual.
+## 🎨 UI Components
 
-### 2.3. Output Tab (`OutputTab.tsx`)
+### Multi-Tab Interface Components
+```typescript
+// Variables Tab Component
+interface VariablesTabProps {
+  availableVariables: Variable[];
+  analysisVariables: Variable[];
+  identifierVariable: Variable;
+  onAnalysisVariablesChange: (variables: Variable[]) => void;
+  onIdentifierVariableChange: (variable: Variable) => void;
+  validationResults: ValidationResult[];
+}
 
-This tab controls which summary tables and lists are generated in the output viewer.
+// Options Tab Component
+interface OptionsTabProps {
+  identificationCriteria: IdentificationCriteria;
+  onIdentificationCriteriaChange: (criteria: IdentificationCriteria) => void;
+  anomalyCutoff: number;
+  onAnomalyCutoffChange: (cutoff: number) => void;
+  peerGroupConfig: PeerGroupConfig;
+  onPeerGroupConfigChange: (config: PeerGroupConfig) => void;
+  maxReasons: number;
+  onMaxReasonsChange: (reasons: number) => void;
+  algorithmSelection: AnomalyDetectionAlgorithm;
+  onAlgorithmSelectionChange: (algorithm: AnomalyDetectionAlgorithm) => void;
+}
 
--   **List of Unusual Cases**: The primary output, showing each flagged case and the reasons for its identification.
--   **Peer Group Norms**: A table showing the distribution of variable values within each peer group.
--   **Anomaly Indices**: A summary of the distribution of anomaly index values.
--   **Reason Occurrence**: A table reporting how often each analysis variable contributed to a case being flagged.
--   **Case Processed Summary**: A summary of how many cases were included and excluded from the analysis.
+// Output Tab Component
+interface OutputTabProps {
+  outputConfiguration: OutputConfiguration;
+  onOutputConfigurationChange: (config: OutputConfiguration) => void;
+  estimatedOutputSize: OutputSizeEstimate;
+  outputPreview: OutputPreview;
+  onGeneratePreview: () => void;
+}
 
-### 2.4. Save Tab (`SaveTab.tsx`)
+// Save Tab Component
+interface SaveTabProps {
+  saveOptions: SaveOptions;
+  onSaveOptionsChange: (options: SaveOptions) => void;
+  existingVariables: Variable[];
+  conflictResolution: ConflictResolution;
+  onConflictResolutionChange: (resolution: ConflictResolution) => void;
+}
 
-This tab allows users to save the results of the analysis back into the active dataset as new variables.
+// Missing Values Tab Component
+interface MissingValuesTabProps {
+  missingValueStrategy: MissingValueStrategy;
+  onMissingValueStrategyChange: (strategy: MissingValueStrategy) => void;
+  imputationMethod: ImputationMethod;
+  onImputationMethodChange: (method: ImputationMethod) => void;
+  missingValueStatistics: MissingValueStatistics;
+  dataQualityAssessment: DataQualityAssessment;
+}
+```
 
--   **Save Anomaly Index**: Creates a new variable containing the anomaly index for each case.
--   **Save Peer Group Membership**: Creates new variables for each case's peer group ID, the size of that group, and its percentage of the total.
--   **Save Reasons**: Creates a set of new variables detailing the reasons for unusualness (e.g., the specific variable, its value, and its deviation from the norm).
--   **Replace Existing**: An option to overwrite variables with the same name if they already exist.
+### UnusualCasesTest Component
+```typescript
+interface UnusualCasesTestProps {
+  // Test scenarios
+  testScenarios: AnomalyDetectionTestScenario[];
+  selectedScenario: AnomalyDetectionTestScenario;
+  onScenarioSelect: (scenario: AnomalyDetectionTestScenario) => void;
+  
+  // Test data
+  testData: {
+    syntheticDatasets: SyntheticDataset[];
+    realWorldDatasets: RealWorldDataset[];
+    groundTruthLabels: GroundTruthLabel[];
+    benchmarkResults: BenchmarkResult[];
+  };
+  
+  // Algorithm comparison
+  algorithmComparison: {
+    availableAlgorithms: AnomalyDetectionAlgorithm[];
+    selectedAlgorithms: AnomalyDetectionAlgorithm[];
+    onAlgorithmSelect: (algorithms: AnomalyDetectionAlgorithm[]) => void;
+    comparisonMetrics: ComparisonMetric[];
+  };
+  
+  // Performance evaluation
+  performanceEvaluation: {
+    precisionRecallCurves: PRCurve[];
+    rocCurves: ROCCurve[];
+    detectionAccuracy: AccuracyMetrics;
+    computationalPerformance: ComputationalMetrics;
+  };
+  
+  // Test execution
+  testExecution: {
+    onRunTest: () => void;
+    onRunAllTests: () => void;
+    onRunBenchmark: () => void;
+    onRunPerformanceEvaluation: () => void;
+    testResults: AnomalyDetectionTestResult[];
+  };
+}
+```
+
+## 🧪 Testing Strategy
+
+### Test Coverage Areas
+```typescript
+// Anomaly detection functionality testing
+describe('UnusualCasesModal', () => {
+  describe('Peer group analysis', () => {
+    it('forms appropriate peer groups');
+    it('calculates group norms correctly');
+    it('identifies outliers within groups');
+    it('handles different cluster configurations');
+  });
+  
+  describe('Statistical outlier detection', () => {
+    it('detects univariate outliers correctly');
+    it('identifies multivariate anomalies');
+    it('applies appropriate statistical thresholds');
+    it('handles different data distributions');
+  });
+  
+  describe('Machine learning detection', () => {
+    it('trains anomaly detection models correctly');
+    it('scores anomalies appropriately');
+    it('handles high-dimensional data');
+    it('provides interpretable results');
+  });
+  
+  describe('Missing value handling', () => {
+    it('applies different imputation strategies');
+    it('handles missing value patterns');
+    it('maintains data integrity during processing');
+    it('provides appropriate warnings');
+  });
+  
+  describe('Result generation', () => {
+    it('generates comprehensive anomaly reports');
+    it('provides detailed case reasons');
+    it('calculates appropriate summary statistics');
+    it('exports results in various formats');
+  });
+  
+  describe('Performance', () => {
+    it('handles large datasets efficiently');
+    it('optimizes algorithm selection');
+    it('provides progress feedback');
+    it('manages memory usage effectively');
+  });
+});
+
+// Service testing
+describe('anomalyDetectionService', () => {
+  describe('Detection algorithms', () => {
+    it('implements detection algorithms correctly');
+    it('validates algorithm parameters');
+    it('handles edge cases appropriately');
+    it('provides consistent results');
+  });
+  
+  describe('Quality assurance', () => {
+    it('validates detection results');
+    it('assesses result quality');
+    it('detects potential issues');
+    it('optimizes detection parameters');
+  });
+});
+```
+
+## 📋 Development Guidelines
+
+### Adding New Anomaly Detection Algorithms
+```typescript
+// 1. Define algorithm interface
+interface NewAnomalyDetectionAlgorithm extends AnomalyDetectionAlgorithm {
+  id: 'newAlgorithm';
+  name: 'New Anomaly Detection Algorithm';
+  description: 'Description of algorithm characteristics';
+  type: 'statistical' | 'ml' | 'ensemble';
+  parameters: AlgorithmParameters;
+  capabilities: AlgorithmCapabilities;
+}
+
+// 2. Implement algorithm logic
+const newAlgorithmImplementation = {
+  detect: (
+    data: DataMatrix,
+    parameters: AlgorithmParameters
+  ): Promise<AnomalyDetectionResult> => {
+    // Algorithm implementation
+  },
+  
+  validate: (
+    data: DataMatrix,
+    parameters: AlgorithmParameters
+  ): ValidationResult => {
+    // Parameter validation
+  },
+  
+  optimize: (
+    data: DataMatrix,
+    criteria: OptimizationCriteria
+  ): OptimalParameters => {
+    // Parameter optimization
+  }
+};
+
+// 3. Register algorithm
+const ANOMALY_DETECTION_ALGORITHMS = {
+  ...existingAlgorithms,
+  newAlgorithm: newAlgorithmImplementation
+};
+
+// 4. Add comprehensive tests
+describe('New Anomaly Detection Algorithm', () => {
+  it('detects anomalies correctly');
+  it('handles various data types');
+  it('provides interpretable results');
+  it('performs within expected complexity bounds');
+});
+```
+
+### Performance Optimization Guidelines
+```typescript
+// 1. Algorithm selection optimization
+const selectOptimalAlgorithm = (
+  dataCharacteristics: DataCharacteristics,
+  requirements: DetectionRequirements
+) => {
+  if (dataCharacteristics.hasClusteredStructure) {
+    return 'localOutlierFactor';
+  }
+  
+  if (dataCharacteristics.isHighDimensional) {
+    return 'isolationForest';
+  }
+  
+  if (requirements.requiresInterpretability) {
+    return 'statisticalDetection';
+  }
+  
+  return 'ensembleDetection';
+};
+
+// 2. Memory and computation optimization
+const optimizeDetectionPerformance = (
+  dataSize: DataSize,
+  algorithmType: AlgorithmType
+) => {
+  if (dataSize.rows > LARGE_DATASET_THRESHOLD) {
+    return {
+      useSampling: true,
+      sampleSize: calculateOptimalSampleSize(dataSize),
+      enableParallelProcessing: true,
+      chunkProcessing: true
+    };
+  }
+  
+  return {
+    useFullDataset: true,
+    enableCaching: true
+  };
+};
+```
+
+---
+
+UnusualCases modal menyediakan comprehensive anomaly detection capabilities dengan sophisticated peer group analysis, advanced statistical methods, dan machine learning algorithms untuk robust outlier identification dan data quality assessment dalam Statify.
 
 ### 2.5. Missing Values Tab (`MissingValuesTab.tsx`)
 

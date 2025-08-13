@@ -4,7 +4,7 @@ import { useResultStore } from "@/stores/useResultStore"; // Untuk log dan stati
 import { useVariableStore } from "@/stores/useVariableStore"; // Untuk akses variabel
 import { useDataStore } from "@/stores/useDataStore";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
-import { Variable } from "@/types/Variable"; // Untuk tipe data variabel
+import type { Variable } from "@/types/Variable"; // Untuk tipe data variabel
 
 export function useAnalyzeHook(
     selectedMethod: string[],

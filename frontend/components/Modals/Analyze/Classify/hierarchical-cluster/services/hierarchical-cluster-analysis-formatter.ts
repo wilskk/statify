@@ -1,6 +1,6 @@
 // hierarchical-clustering-formatter.ts
 import {formatDisplayNumber} from "@/hooks/useFormatter";
-import {ResultJson, Table} from "@/types/Table";
+import type {ResultJson, Table} from "@/types/Table";
 
 export function transformHierClusResult(data: any): ResultJson {
     const resultJson: ResultJson = {
@@ -86,8 +86,7 @@ export function transformHierClusResult(data: any): ResultJson {
 
     // 2. Proximity Matrix
     if (
-        data.proximity_matrix &&
-        data.proximity_matrix.distances &&
+        data.proximity_matrix?.distances &&
         data.proximity_matrix.distances.length > 0
     ) {
         // Extract unique case names to build header while preserving original order
@@ -159,7 +158,7 @@ export function transformHierClusResult(data: any): ResultJson {
     }
 
     // 3. Agglomeration Schedule
-    if (data.agglomeration_schedule && data.agglomeration_schedule.stages) {
+    if (data.agglomeration_schedule?.stages) {
         const table: Table = {
             key: "agglomeration_schedule",
             title: "Agglomeration Schedule",
@@ -275,7 +274,7 @@ export function transformHierClusResult(data: any): ResultJson {
     }
 
     // 6. Dendrogram data (if available)
-    if (data.dendrogram && data.dendrogram.nodes) {
+    if (data.dendrogram?.nodes) {
         const table: Table = {
             key: "dendrogram_data",
             title: "Dendrogram Data",

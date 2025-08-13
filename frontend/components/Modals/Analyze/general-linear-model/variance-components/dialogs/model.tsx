@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     VarianceCompsModelProps,
     VarianceCompsModelType,
 } from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components";
@@ -14,7 +14,7 @@ import {
     BUILDTERMMETHOD
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
 import {Checkbox} from "@/components/ui/checkbox";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {Badge} from "@/components/ui/badge";
 import {ScrollArea} from "@/components/ui/scroll-area";
 

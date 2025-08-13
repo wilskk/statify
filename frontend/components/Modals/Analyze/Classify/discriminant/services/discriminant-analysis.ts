@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {DiscriminantAnalysisType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
+import type {DiscriminantAnalysisType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
 
 // import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
 
@@ -17,20 +17,20 @@ export async function analyzeDiscriminant({
         : [];
 
     const slicedDataForGrouping = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: GroupingVariable,
     });
 
     const slicedDataForIndependent = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: IndependentVariables,
     });
 
     const slicedDataForSelection = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: SelectionVariable,
     });
 

@@ -6,12 +6,12 @@ import {Label} from "@/components/ui/label";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {Input} from "@/components/ui/input";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     DiscriminantClassifyProps,
     DiscriminantClassifyType,
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
 import React, {useEffect, useState} from "react";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 
 export const DiscriminantClassify = ({
     isClassifyOpen,

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { ChevronRight } from 'lucide-react';
-import { Variable } from '@/types/Variable'; // Assuming Variable type is defined here or adjust import
+import type { Variable } from '@/types/Variable'; // Assuming Variable type is defined here or adjust import
 import { Ruler, Shapes, BarChartHorizontal, InfoIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 

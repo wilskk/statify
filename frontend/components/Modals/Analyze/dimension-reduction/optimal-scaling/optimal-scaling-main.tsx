@@ -4,7 +4,7 @@ import {
     OptScaDefineDefault
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/constants/optimal-scaling-define-default";
 import {useModal} from "@/hooks/useModal";
-import {
+import type {
     OptScaContainerProps,
     OptScaDefineMainType,
     OptScaDefineType,

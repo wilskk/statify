@@ -1,5 +1,5 @@
 import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
+import type { BaseModalProps } from "@/types/modalTypes";
 
 // === Statistics Options ===
 export interface PercentileOptions {

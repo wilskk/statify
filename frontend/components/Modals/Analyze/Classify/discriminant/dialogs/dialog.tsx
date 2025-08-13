@@ -5,7 +5,7 @@ import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/component
 import {Label} from "@/components/ui/label";
 import {Separator} from "@/components/ui/separator";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
-import {
+import type {
     DiscriminantDialogProps,
     DiscriminantMainType,
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";

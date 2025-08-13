@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useAnalysisData } from "@/hooks/useAnalysisData";
@@ -189,7 +189,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
             const workerData = {
                 dependentData: filteredDependentData,
                 independentData: filteredIndependentData,
-                independentVariableInfos: independentVariableInfos,
+                independentVariableInfos,
             };
 
             console.log("Sending data to worker:", {
@@ -380,7 +380,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
             const workerData = {
                 dependentData: filteredDependentData,
                 independentData: filteredIndependentData,
-                independentVariableInfos: independentVariableInfos,
+                independentVariableInfos,
             };
 
             console.log("Sending data to normality worker:", {
@@ -550,7 +550,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
             const workerData = {
                 dependentData: filteredDependentData,
                 independentData: filteredIndependentData,
-                independentVariableInfos: independentVariableInfos,
+                independentVariableInfos,
             };
 
             console.log("Sending data to homoscedasticity worker:", {
@@ -708,7 +708,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
             // Prepare the data to send to the worker
             const workerData = {
                 independentData: filteredIndependentData,
-                independentVariableInfos: independentVariableInfos,
+                independentVariableInfos,
             };
 
             console.log("Sending data to multicollinearity worker:", {
@@ -989,7 +989,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
 
             // Prepare the data to send to the worker
             const workerData = {
-                residuals: residuals,
+                residuals,
             };
 
             console.log("Sending data to nonautocorrelation worker:", {

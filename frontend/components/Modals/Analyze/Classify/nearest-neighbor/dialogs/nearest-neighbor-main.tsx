@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
 import {KNNDialog} from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/dialog";
-import {
+import type {
     KNNContainerProps,
     KNNMainType,
     KNNType,
@@ -103,8 +103,8 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
             await analyzeKNN({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

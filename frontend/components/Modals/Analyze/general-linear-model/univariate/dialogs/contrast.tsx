@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
+import type {
     UnivariateContrastProps,
     UnivariateContrastType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";

@@ -16,11 +16,11 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import type { Variable, VariableType } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
+import type { BaseModalProps } from "@/types/modalTypes";
 import RecodeVariablesTab from "../components/RecodeVariablesTab";
 import OldNewValuesSetup from "../components/OldNewValuesSetup";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RecodeRule } from "../Types";
+import type { RecodeRule } from "../Types";
 
 export enum RecodeMode {
   SAME_VARIABLES = "recodeSameVariables",
@@ -512,11 +512,11 @@ export const RecodeSameVariablesModal: React.FC<
             case "rangeHighest":
               return `${rule.oldValueDisplay} → ${rule.newValueDisplay}`;
             case "systemMissing":
-              return "System Missing → " + rule.newValueDisplay;
+              return `System Missing → ${  rule.newValueDisplay}`;
             case "systemOrUserMissing":
-              return "System or User Missing → " + rule.newValueDisplay;
+              return `System or User Missing → ${  rule.newValueDisplay}`;
             case "else":
-              return "Else → " + rule.newValueDisplay;
+              return `Else → ${  rule.newValueDisplay}`;
             default:
               return "";
           }

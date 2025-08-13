@@ -4,7 +4,7 @@ import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     DiscriminantDefineRangeProps,
     DiscriminantDefineRangeType,
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";

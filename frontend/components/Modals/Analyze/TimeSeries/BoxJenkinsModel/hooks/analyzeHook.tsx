@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";

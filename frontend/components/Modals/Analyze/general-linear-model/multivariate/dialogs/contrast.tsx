@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     MultivariateContrastProps,
     MultivariateContrastType,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate";

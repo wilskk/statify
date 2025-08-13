@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
+import type {
     KMeansClusterOptionsProps,
     KMeansClusterOptionsType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/resizable";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
+import type { CheckedState } from "@radix-ui/react-checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { HelpCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";

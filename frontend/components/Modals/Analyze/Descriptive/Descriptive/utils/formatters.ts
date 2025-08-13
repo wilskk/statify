@@ -92,8 +92,8 @@ export const formatDescriptiveTable = (results: DescriptiveResult[]): any => {
     return {
         tables: [{
             title: "Descriptive Statistics",
-            columnHeaders: columnHeaders,
-            rows: rows,
+            columnHeaders,
+            rows,
         }]
     };
 };
@@ -206,7 +206,7 @@ export function formatDescriptiveTableOld(
   const rows: TableRow[] = sortedStats.map(({ variable, stats }) => {
     let headerText = variable.label || variable.name;
     if (headerText.length > 50) { // Truncate long labels
-        headerText = headerText.substring(0, 47) + '...';
+        headerText = `${headerText.substring(0, 47)  }...`;
     }
     const row: TableRow = { rowHeader: [headerText] };
     const isDateType = variable.type ? spssDateTypes.has(variable.type) : false;
@@ -299,8 +299,8 @@ export function formatDescriptiveTableOld(
 
   return {
     title: "Descriptive Statistics",
-    columnHeaders: columnHeaders,
-    rows: rows,
+    columnHeaders,
+    rows,
     ...(hasMultipleModes && { footer: '<sup>a</sup>. Multiple modes exist. The smallest value is shown.' }),
   };
 }

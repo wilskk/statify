@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { handleDecomposition } from "@/components/Modals/Analyze/TimeSeries/Decomposition/analyze/analyze";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
@@ -178,7 +178,7 @@ export function useAnalyzeHook(
             graphicSeasonal, graphicIrregular] = results;
 
         // Create log entry
-        const logMsg = `DECOMPOSITION: ${dataVarDef.label ? dataVarDef.label + ' Using' : dataVarDef.name + ' Using'} ${selectedDecompositionMethod[1]}.`;
+        const logMsg = `DECOMPOSITION: ${dataVarDef.label ? `${dataVarDef.label  } Using` : `${dataVarDef.name  } Using`} ${selectedDecompositionMethod[1]}.`;
         const logId = await addLog({ log: logMsg });
 
         // Create analytic entry

@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     RocAnalysisDefineGroupsProps,
     RocAnalysisDefineGroupsType,
 } from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis";

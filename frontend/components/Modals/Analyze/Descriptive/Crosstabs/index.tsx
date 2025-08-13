@@ -1,6 +1,7 @@
 // index.tsx
 "use client";
-import React, { useState, useEffect, FC, useMemo } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,13 @@ import {
 import { HelpCircle } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useResultStore } from "@/stores/useResultStore";
-import { BaseModalProps } from "@/types/modalTypes";
-import { 
+import type { BaseModalProps } from "@/types/modalTypes";
+import type { 
     CrosstabsAnalysisParams,
     VariableHighlight, 
 } from "./types";
-import { useTourGuide, TabType, TabControlProps } from "./hooks/useTourGuide";
+import type { TabType, TabControlProps } from "./hooks/useTourGuide";
+import { useTourGuide } from "./hooks/useTourGuide";
 import { useCrosstabsAnalysis } from "./hooks/useCrosstabsAnalysis";
 import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { AnimatePresence } from "framer-motion";

@@ -11,8 +11,8 @@ import {
 import {Button} from "@/components/ui/button";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
-import {RocCurveDialogProps, RocCurveMainType,} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {RocCurveDialogProps, RocCurveMainType,} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";
 import {Checkbox} from "@/components/ui/checkbox";

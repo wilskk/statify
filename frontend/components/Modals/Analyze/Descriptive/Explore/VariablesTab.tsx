@@ -1,7 +1,9 @@
-import React, { FC, useCallback, useEffect, useRef } from "react";
+import type { FC} from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import type { Variable } from "@/types/Variable";
-import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
-import { VariablesTabProps } from "./types";
+import type { TargetListConfig } from '@/components/Common/VariableListManager';
+import VariableListManager from '@/components/Common/VariableListManager';
+import type { VariablesTabProps } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { toast as sonner } from "sonner";
 

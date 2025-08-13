@@ -1,5 +1,5 @@
 import { formatDisplayNumber, formatSig } from "@/hooks/useFormatter";
-import { ResultJson, Row, Table } from "@/types/Table";
+import type { ResultJson, Row, Table } from "@/types/Table";
 
 export function formatPart3(
     data: any,
@@ -10,8 +10,7 @@ export function formatPart3(
     if (data.emmeans) {
         const emmeans = data.emmeans;
         const depVarName =
-            (data.tests_of_between_subjects_effects &&
-                data.tests_of_between_subjects_effects.dependent_variable) ||
+            (data.tests_of_between_subjects_effects?.dependent_variable) ||
             (data.descriptive_statistics &&
                 Object.values(data.descriptive_statistics).length > 0 &&
                 (Object.values(data.descriptive_statistics)[0] as any)
@@ -326,7 +325,7 @@ export function formatPart3(
                             )}`,
                             title: `Univariate Tests`,
                             subtitle: `Dependent Variable: ${depVarName}`,
-                            columnHeaders: columnHeaders,
+                            columnHeaders,
                             rows: [],
                             note: test.note,
                             interpretation: test.interpretation,
@@ -475,7 +474,7 @@ export function formatPart3(
                         /\W/g,
                         "_"
                     )}`,
-                    title: title,
+                    title,
                     columnHeaders: lMatrixHeaders,
                     rows: [],
                     note: contrastCoeffs.note,
@@ -506,7 +505,7 @@ export function formatPart3(
         Object.entries(data.plots).forEach(
             ([plotName, plotData]: [string, any]) => {
                 // Only process if we have series and points
-                if (plotData && plotData.series && plotData.series.length > 0) {
+                if (plotData?.series && plotData.series.length > 0) {
                     const table: Table = {
                         key: `plot_${plotName
                             .toLowerCase()
@@ -526,8 +525,7 @@ export function formatPart3(
                     // Process each series and its points
                     plotData.series.forEach((series: any) => {
                         if (
-                            series &&
-                            series.points &&
+                            series?.points &&
                             series.points.length > 0
                         ) {
                             series.points.forEach((point: any) => {
@@ -577,14 +575,14 @@ export function formatPart3(
             varKeys.forEach((key) => {
                 columnHeaders.push({
                     header: nameMapping[key] || key,
-                    key: key,
+                    key,
                 });
             });
 
             const table: Table = {
                 key: "saved_variables_table",
                 title: "Case Diagnostics",
-                columnHeaders: columnHeaders,
+                columnHeaders,
                 rows: [],
                 note: data.saved_variables.note,
                 interpretation: data.saved_variables.interpretation,
@@ -649,8 +647,7 @@ export function formatPart3(
         }
 
         const depVarName =
-            (data.tests_of_between_subjects_effects &&
-                data.tests_of_between_subjects_effects.dependent_variable) ||
+            (data.tests_of_between_subjects_effects?.dependent_variable) ||
             (data.descriptive_statistics &&
                 Object.values(data.descriptive_statistics).length > 0 &&
                 (Object.values(data.descriptive_statistics)[0] as any)
@@ -885,7 +882,7 @@ export function formatPart3(
                         key: `custom_test_results_${index}`,
                         title: "Test Results",
                         subtitle: `Dependent Variable: ${depVarName}`,
-                        columnHeaders: columnHeaders,
+                        columnHeaders,
                         rows: [],
                         note: test_result.note,
                         interpretation: test_result.interpretation,
@@ -970,7 +967,7 @@ export function formatPart3(
                     table.rows.push({
                         rowHeader: [],
                         context: isFirstRowForContext ? currentContext : "",
-                        message: message,
+                        message,
                     });
                     isFirstRowForContext = false;
                 }

@@ -1,16 +1,17 @@
-import {
-    KIndependentSamplesTestResults,
-    KIndependentSamplesTestResult,
+import type {
     KIndependentSamplesTestTable,
     TableColumnHeader,
     TableRow,
+    DisplayStatisticsOptions} from '../types';
+import {
+    KIndependentSamplesTestResults,
+    KIndependentSamplesTestResult,
     Ranks,
     KruskalWallisHTestStatistics,
     Frequencies,
     MedianTestStatistics,
     JonckheereTerpstraTest,
-    DescriptiveStatistics,
-    DisplayStatisticsOptions,
+    DescriptiveStatistics
 } from '../types';
 
 /**
@@ -42,7 +43,7 @@ export function formatRanksTable(
         };
     }
     
-    let columnHeaders: TableColumnHeader[] = [
+    const columnHeaders: TableColumnHeader[] = [
         { header: "", key: "rowHeader" },
         { header: groupingVariable, key: "groupingVariable" },
         { header: "N", key: "N" },
@@ -115,7 +116,7 @@ export function formatKruskalWallisHTestStatisticsTable(
     if (testResults && testResults.length > 0) {
         // Add a column for each variable
         testResults.forEach((result, index) => {
-            if (result && result.variable1) {
+            if (result?.variable1) {
                 table.columnHeaders.push({
                     header: result.variable1.label || result.variable1.name || `Variable ${index + 1}`,
                     key: `var_${index}`

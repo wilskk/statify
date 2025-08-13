@@ -2,11 +2,11 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     HierClusMethodProps,
     HierClusMethodType,
 } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/types/hierarchical-cluster";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Label} from "@/components/ui/label";
 import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";

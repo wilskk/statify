@@ -1,8 +1,9 @@
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { CellsTabProps } from "./types";
+import type { CellsTabProps } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { useMetaStore } from "@/stores/useMetaStore";
 

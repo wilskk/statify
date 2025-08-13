@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     FactorOptionsProps,
     FactorOptionsType,
 } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
@@ -11,7 +11,7 @@ import {Label} from "@/components/ui/label";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Input} from "@/components/ui/input";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 
 export const FactorOptions = ({
     isOptionsOpen,

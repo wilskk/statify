@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
+import type {
     UnivariateEMMeansProps,
     UnivariateEMMeansType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
@@ -15,10 +15,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { CIADJUSTMENTMETHOD } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import VariableListManager, {
+import type { CheckedState } from "@radix-ui/react-checkbox";
+import type {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
 import { HelpCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";

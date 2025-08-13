@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {TreeValidationProps, TreeValidationType,} from "@/components/Modals/Analyze/Classify/tree/types/tree";
+import type {TreeValidationProps, TreeValidationType,} from "@/components/Modals/Analyze/Classify/tree/types/tree";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";

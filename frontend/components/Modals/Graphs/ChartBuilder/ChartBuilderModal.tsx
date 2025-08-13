@@ -27,10 +27,12 @@ import {
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { useDataStore } from "@/stores/useDataStore"; // Import useDataStore
-import ChartPreview, { ChartPreviewRef } from "./ChartPreview";
+import type { ChartPreviewRef } from "./ChartPreview";
+import ChartPreview from "./ChartPreview";
 import VariableSelection from "./VariableSelection";
 import ChartSelection from "./ChartSelection";
-import { chartTypes, ChartType } from "@/components/Modals/Graphs/ChartTypes";
+import type { ChartType } from "@/components/Modals/Graphs/ChartTypes";
+import { chartTypes } from "@/components/Modals/Graphs/ChartTypes";
 import ResultOutput from "@/app/dashboard/result/components/ResultOutput";
 import { chartVariableConfig } from "./ChartVariableConfig";
 import {
@@ -184,7 +186,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
         case "ci":
           newErrorBarOptions = {
             type: "ci",
-            confidenceLevel: confidenceLevel,
+            confidenceLevel,
           };
           break;
         case "se":

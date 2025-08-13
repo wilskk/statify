@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     RepeatedMeasuresSaveProps,
     RepeatedMeasuresSaveType,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures";
@@ -11,7 +11,7 @@ import {Label} from "@/components/ui/label";
 import {Checkbox} from "@/components/ui/checkbox";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {Input} from "@/components/ui/input";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 
 export const RepeatedMeasuresSave = ({
     isSaveOpen,

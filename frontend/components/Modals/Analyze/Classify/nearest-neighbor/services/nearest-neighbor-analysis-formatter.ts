@@ -1,5 +1,5 @@
 import {formatDisplayNumber} from "@/hooks/useFormatter";
-import {ResultJson, Table} from "@/types/Table";
+import type {ResultJson, Table} from "@/types/Table";
 
 // Define an interface for the setting object
 interface SystemSetting {
@@ -176,7 +176,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
             ) {
                 table.rows.push({
                     rowHeader: ["Training", i.toString()],
-                    ["category_" + i]: formatDisplayNumber(
+                    [`category_${  i}`]: formatDisplayNumber(
                         data.classification_table.training.predicted[i]
                     ),
                     percent_correct: formatDisplayNumber(
@@ -208,7 +208,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
             ) {
                 table.rows.push({
                     rowHeader: ["Holdout", i.toString()],
-                    ["category_" + i]: formatDisplayNumber(
+                    [`category_${  i}`]: formatDisplayNumber(
                         data.classification_table.holdout.predicted[i]
                     ),
                     percent_correct: formatDisplayNumber(
@@ -351,7 +351,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     }
 
     // 7. Nearest Neighbors
-    if (data.nearest_neighbors && data.nearest_neighbors.focal_neighbor_sets) {
+    if (data.nearest_neighbors?.focal_neighbor_sets) {
         const table: Table = {
             key: "nearest_neighbors",
             title: "k Nearest Neighbors and Distances",
@@ -415,7 +415,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     }
 
     // 8. Peers Chart Data
-    if (data.peers_chart && data.peers_chart.focal_neighbor_sets) {
+    if (data.peers_chart?.focal_neighbor_sets) {
         const table: Table = {
             key: "peers_chart",
             title: "Peers Chart Data",
@@ -464,7 +464,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     }
 
     // 9. Quadrant Map Data
-    if (data.quadrant_map && data.quadrant_map.focal_neighbor_sets) {
+    if (data.quadrant_map?.focal_neighbor_sets) {
         const table: Table = {
             key: "quadrant_map",
             title: "Quadrant Map Data",

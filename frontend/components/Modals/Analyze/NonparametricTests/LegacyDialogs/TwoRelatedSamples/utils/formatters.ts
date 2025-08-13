@@ -1,13 +1,14 @@
-import {
-    TwoRelatedSamplesResults,
-    TwoRelatedSamplesResult,
+import type {
     TwoRelatedSamplesTable,
     TableColumnHeader,
     TableRow,
     RanksFrequencies,
     TestStatistics,
-    DescriptiveStatistics,
-    DisplayStatistics,
+    DisplayStatistics} from '../types';
+import {
+    TwoRelatedSamplesResults,
+    TwoRelatedSamplesResult,
+    DescriptiveStatistics
 } from '../types';
 
 /**
@@ -23,7 +24,7 @@ export function formatRanksFrequenciesTable(
     
     if (!results || results.length === 0) {
         return {
-            title: title,
+            title,
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
@@ -34,13 +35,13 @@ export function formatRanksFrequenciesTable(
     
     if (testResults.length === 0) {
         return {
-            title: title,
+            title,
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
     }
     
-    let columnHeaders: TableColumnHeader[] = [
+    const columnHeaders: TableColumnHeader[] = [
         { header: "", key: "rowHeader" },
         { header: "", key: "type" },
         { header: "N", key: "N" }
@@ -165,7 +166,7 @@ export function formatTestStatisticsTable (
 
         if (testType === "WILCOXON") {
             testResults.forEach((result, index) => {
-                if (result && result.variable1 && result.variable2 && result.testStatisticsWilcoxon && !result.metadata?.insufficientType.includes('empty')) {
+                if (result?.variable1 && result.variable2 && result.testStatisticsWilcoxon && !result.metadata?.insufficientType.includes('empty')) {
                     const stats = result.testStatisticsWilcoxon as TestStatistics;
 
                     table.columnHeaders.push({
@@ -180,7 +181,7 @@ export function formatTestStatisticsTable (
 
         if (testType === "SIGN") {
             testResults.forEach((result, index) => {
-                if (result && result.variable1 && result.variable2 && result.testStatisticsSign && !result.metadata?.insufficientType.includes('empty')) {
+                if (result?.variable1 && result.variable2 && result.testStatisticsSign && !result.metadata?.insufficientType.includes('empty')) {
                     const stats = result.testStatisticsSign as TestStatistics;
                     table.columnHeaders.push({
                         header: `${result.variable1.label || result.variable1.name} - ${result.variable2.label || result.variable2.name}`,

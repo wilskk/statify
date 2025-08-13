@@ -1,4 +1,4 @@
-import {OptScaOveralsType} from "./optimal-scaling-overals";
+import type {OptScaOveralsType} from "./optimal-scaling-overals";
 
 export type OptScaOveralsAnalysisType = {
     configData: OptScaOveralsType;

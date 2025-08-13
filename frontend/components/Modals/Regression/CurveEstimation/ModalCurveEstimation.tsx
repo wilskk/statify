@@ -19,13 +19,15 @@ import { Button } from '@/components/ui/button';
 import { Loader2, HelpCircle } from 'lucide-react';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { TourPopup, ActiveElementHighlight } from '@/components/Common/TourComponents';
-import { useTourGuide, TabControlProps } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
+import type { TabControlProps } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
+import { useTourGuide } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
 import { baseTourSteps } from './hooks/tourConfig';
 import { AnimatePresence } from 'framer-motion';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useResultStore } from '@/stores/useResultStore';
-import { Variable, VariableType } from '@/types/Variable';
+import type { Variable} from '@/types/Variable';
+import { VariableType } from '@/types/Variable';
 import { Chart, registerables } from 'chart.js';
 // Import ChartService for generating scatter plot JSON with multiple fit lines
 import { ChartService } from '@/services/chart/ChartService';
@@ -385,7 +387,7 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
                               break;
                           case "Logistic":
                               fn = "x => parameters.c / (1 + parameters.a * Math.pow(parameters.b, x))";
-                              parameters = { a: a, b: b1 as number, c: b2 as number };
+                              parameters = { a, b: b1 as number, c: b2 as number };
                               break;
                           default:
                               fn = "x => 0";
@@ -471,7 +473,7 @@ export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onCl
         }
       };
 
-      console.log("[CurveEstimation OLD CALC] Sending data to worker:", { models: selectedModels, X_length: X_data.length, Y_length: Y_data.length, upperBound: upperBound });
+      console.log("[CurveEstimation OLD CALC] Sending data to worker:", { models: selectedModels, X_length: X_data.length, Y_length: Y_data.length, upperBound });
       // Payload postMessage LAMA (tidak mengirim includeConstant/displayANOVA)
       workerRef.current.postMessage({
         action: 'runRegression',

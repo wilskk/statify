@@ -11,7 +11,7 @@ import {
 import {Button} from "@/components/ui/button";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     VarianceCompsDialogProps,
     VarianceCompsMainType,
 } from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components";

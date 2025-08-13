@@ -7,11 +7,11 @@ import {Label} from "@/components/ui/label";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {Input} from "@/components/ui/input";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     DiscriminantBootstrapProps,
     DiscriminantBootstrapType,
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {Badge} from "@/components/ui/badge";
 import {ScrollArea} from "@/components/ui/scroll-area";
 

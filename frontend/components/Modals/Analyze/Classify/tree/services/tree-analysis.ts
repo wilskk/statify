@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {TreeAnalysisType} from "@/components/Modals/Analyze/Classify/tree/types/tree-worker";
+import type {TreeAnalysisType} from "@/components/Modals/Analyze/Classify/tree/types/tree-worker";
 
 export async function analyzeTree({
     configData,
@@ -14,20 +14,20 @@ export async function analyzeTree({
         ? [configData.main.InfluenceTargetVar]
         : [];
     const slicedDataForDependent = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: DependentVariable,
     });
 
     const slicedDataForIndependent = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: IndependentVariables,
     });
 
     const slicedDataForInfluence = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: InfluenceVariable,
     });
 

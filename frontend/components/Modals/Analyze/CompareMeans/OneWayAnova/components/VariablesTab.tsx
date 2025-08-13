@@ -1,10 +1,12 @@
-import { FC, useCallback } from "react";
+import type { FC} from "react";
+import { useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import type { TargetListConfig } from '@/components/Common/VariableListManager';
+import VariableListManager from '@/components/Common/VariableListManager';
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { Variable } from "@/types/Variable";
-import { VariablesTabProps } from "../types";
+import type { Variable } from "@/types/Variable";
+import type { VariablesTabProps } from "../types";
 
 const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,

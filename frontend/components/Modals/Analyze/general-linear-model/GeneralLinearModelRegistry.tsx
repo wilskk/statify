@@ -1,5 +1,6 @@
 import React, {lazy, Suspense} from "react";
-import {BaseModalProps, ModalType} from "@/types/modalTypes";
+import type {BaseModalProps} from "@/types/modalTypes";
+import { ModalType} from "@/types/modalTypes";
 
 /**
  * LoadingModal - Displayed while modal components are loading

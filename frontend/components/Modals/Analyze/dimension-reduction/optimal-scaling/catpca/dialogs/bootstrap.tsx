@@ -2,14 +2,14 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     OptScaCatpcaBootstrapProps,
     OptScaCatpcaBootstrapType,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/types/optimal-scaling-captca";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Label} from "@/components/ui/label";
 import {Checkbox} from "@/components/ui/checkbox";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {Input} from "@/components/ui/input";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";

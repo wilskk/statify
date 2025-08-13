@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 import { useVariableStore } from '@/stores/useVariableStore';
 
 export interface VariableSelectionProps {

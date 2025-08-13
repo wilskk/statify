@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Variable, VariableType, spssDateTypes } from '@/types/Variable';
+import type { Variable, VariableType} from '@/types/Variable';
+import { spssDateTypes } from '@/types/Variable';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { 
+import type { 
   VariableSelectionProps,
   HighlightedVariableInfo 
 } from '../types';

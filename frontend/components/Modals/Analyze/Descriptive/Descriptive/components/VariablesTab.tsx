@@ -1,13 +1,16 @@
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Variable, spssDateTypes, VariableType } from "@/types/Variable";
-import { HighlightedVariableInfo } from "../types";
-import { Dispatch, SetStateAction } from "react";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
+import type { Variable, VariableType } from "@/types/Variable";
+import { spssDateTypes } from "@/types/Variable";
+import type { HighlightedVariableInfo } from "../types";
+import type { Dispatch, SetStateAction } from "react";
+import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { TourStep } from "../hooks/useTourGuide";
+import type { TourStep } from "../hooks/useTourGuide";
 
 export interface VariablesTabProps {
     availableVariables: Variable[];

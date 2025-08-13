@@ -3,13 +3,13 @@ import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTi
 import {Button} from "@/components/ui/button";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     HierClusDialogProps,
     HierClusMainType,
 } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/types/hierarchical-cluster";
 import {Label} from "@/components/ui/label";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Badge} from "@/components/ui/badge";
 import {ScrollArea} from "@/components/ui/scroll-area";

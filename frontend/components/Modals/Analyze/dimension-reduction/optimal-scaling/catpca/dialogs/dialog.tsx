@@ -3,7 +3,7 @@ import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTi
 import {Button} from "@/components/ui/button";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     DialogHandlers,
     OptScaCatpcaDefineRangeScaleType,
     OptScaCatpcaDefineScaleType,

@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {HierClusDialog} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/dialog";
-import {
+import type {
     HierClusContainerProps,
     HierClusMainType,
     HierClusType,
@@ -83,8 +83,8 @@ export const HierClusContainer = ({ onClose }: HierClusContainerProps) => {
 
             await analyzeHierClus({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {
+import type {
     OptScaMCAAnalysisType
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/types/optimal-scaling-mca-worker";
 
@@ -15,20 +15,20 @@ export async function analyzeOptScaMCA({
     const LabelingVariables = configData.main.LabelingVars || [];
 
     const slicedDataForAnalysis = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: AnalysisVariables,
     });
 
     const slicedDataForSupplement = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: SupplementVariables,
     });
 
     const slicedDataForLabeling = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: LabelingVariables,
     });
 
