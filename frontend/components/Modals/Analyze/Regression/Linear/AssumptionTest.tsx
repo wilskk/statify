@@ -444,9 +444,25 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
                 linearityWorker.terminate();
             };
 
-            linearityWorker.onerror = (error: ErrorEvent) => {
-                console.error("Linearity test worker error:", error);
-                setLinearityTestError(error.message);
+            linearityWorker.onerror = (ev: ErrorEvent) => {
+                console.error("Linearity test worker error:", {
+                    message: ev.message,
+                    filename: ev.filename,
+                    lineno: ev.lineno,
+                    colno: ev.colno,
+                    error: (ev as any)?.error,
+                });
+                const details = [
+                    ev.message || '',
+                    ev.filename ? `at ${ev.filename}:${ev.lineno}:${ev.colno}` : '',
+                ].filter(Boolean).join(' ');
+                setLinearityTestError(details || 'Worker error occurred during linearity test. See console for details.');
+                setIsTestingLinearity(false);
+                linearityWorker.terminate();
+            };
+            linearityWorker.onmessageerror = (e: MessageEvent) => {
+                console.error('Linearity worker message error:', e);
+                setLinearityTestError('Failed to process message from worker.');
                 setIsTestingLinearity(false);
                 linearityWorker.terminate();
             };
