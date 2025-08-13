@@ -1,6 +1,6 @@
 ## Curve Estimation Modal — Developer Guide
 
-Dokumen ini menjelaskan arsitektur, alur data, dependensi, serta titik-ekstensi untuk modul Curve Estimation pada UI. Fokus pada berkas di `frontend/components/Modals/Regression/CurveEstimation` dan relasinya dengan store, hooks, serta Web Worker `public/workers/CurveEstimation/curve_estimation.js`.
+Dokumen ini menjelaskan arsitektur, alur data, dependensi, serta titik-ekstensi untuk modul Curve Estimation pada UI. Fokus pada berkas di `frontend/components/Modals/Analyze/Regression/CurveEstimation` dan relasinya dengan store, hooks, serta Web Worker `public/workers/CurveEstimation/curve_estimation.js`.
 
 ### Ringkasan Modul
 - **Orkestrator**: `ModalCurveEstimation.tsx` — mengelola tab, pemilihan variabel, model regresi, menjalankan kalkulasi via worker, dan menyimpan hasil ke `useResultStore`.

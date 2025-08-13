@@ -32,7 +32,7 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
   try {
     // Parse the JSON data
     const parsedData = JSON.parse(data);
-    const { title, description, isHomoscedastic, tests, residualStats, visualizations: _visualizations } = parsedData;
+    const { title, description, isHomoscedastic, tests, residualStats, visualizations } = parsedData;
 
     if (!tests) {
       return (

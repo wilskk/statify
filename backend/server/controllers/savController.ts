@@ -225,7 +225,7 @@ export const createSavFile = (req: Request, res: Response): void => {
     }
 
     try {
-        const filteredVariables = variables.filter((variable) => {
+        const filteredVariables = variables.filter((variable: any) => {
             if (variable.type === "DATE") {
                 return Number(variable.width) === 10;
             }
@@ -251,7 +251,7 @@ export const createSavFile = (req: Request, res: Response): void => {
 
         // Transform inputs
         const transformedVariables: TransformedVariable[] = filteredVariables.map(transformVariable);
-        const transformedData = data?.map((record) => transformRecord(record, transformedVariables)) ?? [];
+        const transformedData = data?.map((record: any) => transformRecord(record, transformedVariables)) ?? [];
 
         const outputDir = getTempDir();
         if (!fs.existsSync(outputDir)) {

@@ -1,6 +1,6 @@
 ## Linear Regression Modal — Developer Guide
 
-Dokumen ini menjelaskan arsitektur, alur data, dependensi, dan titik-ekstensi (extension points) untuk modul Linear Regression di UI. Fokusnya adalah komponen dalam direktori `frontend/components/Modals/Regression/Linear` dan relasi dengan store, hooks, serta Web Workers yang berada di `public/workers/Regression/*`.
+Dokumen ini menjelaskan arsitektur, alur data, dependensi, dan titik-ekstensi (extension points) untuk modul Linear Regression di UI. Fokusnya adalah komponen dalam direktori `frontend/components/Modals/Analyze/Regression/Linear` dan relasi dengan store, hooks, serta Web Workers yang berada di `public/workers/Regression/*`.
 
 ### Ringkasan Modul
 - **Orkestrator**: `ModalLinear.tsx` — mengelola state global tab, pemilihan variabel, parameter, eksekusi analisis (OK), dan konsolidasi hasil (menambahkan statistik/chart ke `useResultStore`).
