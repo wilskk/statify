@@ -1,53 +1,123 @@
-# App Directory - Next.js App Router
-
-Direktori `app/` berisi semua routing dan pages untuk aplikasi Statify menggunakan Next.js App Router.
-
-## 📁 Struktur
+# Ap## Directory Structure
 
 ```
 app/
-├── globals.css           # Global styles
-├── layout.tsx           # Root layout
-├── page.tsx            # Home page
-├── favicon.ico         # Favicon
-├── dashboard/          # Main application dashboard
-├── help/              # Help and documentation system
-└── landing/           # Landing page
+├── globals.css  ## Development Guidelines
+
+### File Naming Conventions      # Global Tailwind CSS styles and custom properties
+├── layout.tsx           # Root layout with providers and metadata
+├── page.tsx            # Home page with routing logic
+├── favicon.ico         # Application favicon
+├── dashboard/          # Main dashboard application (protected routes)
+├── help/              # Help system and documentation pages
+└── landing/           # Public landing page and marketing content
 ```
 
-## 🎯 Konsep Routing
+## Architecture OverviewNext.js App Router
 
-### App Router Pattern
-- File-based routing dengan Next.js 13+ App Router
-- Server Components by default
-- Nested layouts dan loading states
-- Error boundaries terintegrasi
+> **Developer Documentation**: Core application routing and page structure for Statify using Next.js 13+ App Router pattern.
 
-### Layout Hierarchy
+## 📁 Directory Structure
+
 ```
-app/layout.tsx (Root)
-├── dashboard/layout.tsx (Dashboard)
-│   ├── data/page.tsx
-│   ├── variable/page.tsx
-│   └── result/page.tsx
-├── help/page.tsx
-└── landing/layout.tsx (Landing)
+app/
+├── globals.css           # Global Tailwind CSS styles and custom properties
+├── layout.tsx           # Root layout with providers and metadata
+├── page.tsx            # Home page with routing logic
+├── favicon.ico         # Application favicon
+├── dashboard/          # Main dashboard application (protected routes)
+├── help/              # Help system and documentation pages
+└── landing/           # Public landing page and marketing content
 ```
 
-## 📄 Pages Overview
+## � Architecture Overview
 
-### 🏠 Root (`/`)
-- **File**: `page.tsx`
-- **Purpose**: Homepage/redirect ke dashboard
-- **Features**: Initial routing logic
+### App Router Implementation
+- **Framework**: Next.js 13+ App Router with TypeScript
+- **Rendering**: Server Components by default, Client Components marked with 'use client'
+- **Layouts**: Nested layout system with shared UI components
+- **Loading**: Concurrent features with Suspense boundaries
+- **Error Handling**: Error boundaries with fallback UI
 
-### 🏗 Dashboard (`/dashboard`)
-Main application interface dengan sub-routes:
+### Route Organization
+```
+app/
+├── layout.tsx                    # Root layout (providers, metadata)
+├── page.tsx                     # Homepage (redirect logic)
+├── dashboard/
+│   ├── layout.tsx               # Dashboard layout (auth, navigation)
+│   ├── loading.tsx              # Dashboard loading state
+│   ├── page.tsx                 # Dashboard landing
+│   ├── data/page.tsx            # Data management interface
+│   ├── variable/page.tsx        # Variable metadata editor
+│   └── result/page.tsx          # Analysis results viewer
+├── help/
+│   └── page.tsx                 # Help system entry point
+└── landing/
+    ├── layout.tsx               # Landing page layout
+    └── page.tsx                 # Marketing/landing content
+```
 
-#### 📊 Data Management (`/dashboard/data`)
-- **Purpose**: Import, view, dan manage datasets
-- **Components**: DataTable, Toolbar, Import modals
-- **Features**: CSV/Excel import, data editing, export
+## � Development Guidelines
+
+### File Naming Conventions
+- **Pages**: `page.tsx` for route components
+- **Layouts**: `layout.tsx` for layout components
+- **Loading**: `loading.tsx` for loading UI
+- **Error**: `error.tsx` for error boundaries
+- **Not Found**: `not-found.tsx` for 404 pages
+
+### Component Organization
+```typescript
+// Standard page component structure
+export default function PageName() {
+  return (
+    <div>
+      {/* Page content */}
+    </div>
+  );
+}
+
+// Metadata export (SEO)
+export const metadata = {
+  title: 'Page Title',
+  description: 'Page description'
+};
+```
+
+### State Management
+- **Global State**: Zustand stores in `/stores`
+- **Server State**: React Query in API routes
+- **Local State**: React hooks (useState, useReducer)
+
+## Route Documentation
+
+### Root Route (`/`)
+- **File**: `app/page.tsx`
+- **Type**: Server Component
+- **Purpose**: Application entry point and routing logic
+- **Redirect**: Authenticated users → `/dashboard`, others → `/landing`
+
+### Dashboard Routes (`/dashboard/*`)
+Protected application area requiring authentication:
+
+#### Data Management (`/dashboard/data`)
+- **Component**: DataTable with Handsontable integration
+- **Features**: Import/export, cell editing, data validation
+- **State**: useDataStore, useTableRefStore
+- **Performance**: Virtual scrolling, optimized rendering
+
+#### Variable Management (`/dashboard/variable`)
+- **Component**: VariableTable for metadata editing
+- **Features**: Bulk editing, property validation, SPSS compatibility
+- **State**: useVariableStore, useMetaStore
+- **Performance**: Optimized table rendering, lazy loading
+
+#### Results Display (`/dashboard/result`)
+- **Component**: ResultOutput with hierarchical navigation
+- **Features**: Chart rendering, export capabilities, result navigation
+- **State**: useResultStore, useTimeSeriesStore
+- **Performance**: Chart virtualization, progressive loading
 
 #### 🔧 Variable Management (`/dashboard/variable`)
 - **Purpose**: Manage variable properties dan metadata

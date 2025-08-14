@@ -1,53 +1,223 @@
-# Data Page - Dataset Management Interface
+# Data Page - Dataset Managem## Architecture Overviewnt Interface
 
-Direktori `data/` berisi interface utama untuk manajemen dataset dalam aplikasi Statify. Page ini menyediakan spreadsheet-like interface untuk viewing, editing, dan manipulasi data dengan performance yang dioptimalkan.
+> **Developer Documentation**: Spreadsheet-like data management interface with Handsontable integration for viewing, editing, and manipulating datasets.
 
-## 📁 Struktur
+## Directory Structure
 
 ```
 data/
 ├── page.tsx                 # Main data page component
-├── loading.tsx             # Loading state untuk data page
+├── loading.tsx             # Suspense loading state for data operations
 └── components/
-    ├── Toolbar.tsx         # Actions toolbar
+    ├── Toolbar.tsx         # Data manipulation actions toolbar
     └── dataTable/          # Advanced data table system
-        ├── index.tsx           # Main DataTable component
-        ├── HandsontableWrapper.tsx  # Handsontable integration
-        ├── constants.ts        # Table constants
-        ├── DataTable.css      # Table styling
-        ├── README.md          # Component documentation
-        ├── REFACTOR_NOTES.md  # Development notes
-        ├── TEXT_OVERFLOW_FIX.md # Specific fixes
-        ├── __tests__/         # Component tests
-        ├── config/            # Table configuration
-        ├── hooks/             # Custom hooks
-        ├── services/          # Business logic
-        ├── types/             # TypeScript definitions
-        ├── utils/             # Utility functions
-        └── validators/        # Data validation
+        ├── index.tsx                  # Main DataTable component export
+        ├── HandsontableWrapper.tsx    # Handsontable React integration
+        ├── constants.ts               # Table configuration constants
+        ├── DataTable.css             # Custom table styling
+        ├── README.md                 # Component documentation
+        ├── REFACTOR_NOTES.md         # Development and refactor notes
+        ├── TEXT_OVERFLOW_FIX.md      # Specific fix documentation
+        ├── __tests__/                # Jest/RTL component tests
+        ├── config/                   # Table configuration modules
+        ├── hooks/                    # Custom React hooks
+        ├── services/                 # Business logic services
+        ├── types/                    # TypeScript type definitions
+        ├── utils/                    # Utility functions
+        └── validators/               # Data validation logic
 ```
 
-## 🎯 Page Overview
+## � Architecture Overview
 
-### Primary Purpose
-Data page menyediakan interface spreadsheet untuk:
-- **Data Viewing**: Display large datasets dengan virtualization
-- **Data Editing**: In-place cell editing dengan validation
-- **Data Operations**: Insert/delete rows dan columns
-- **Data Export**: Export ke berbagai format
-
-### Technical Architecture
+### Component Hierarchy
 ```typescript
-interface DataPage {
-  // Core components
-  toolbar: ToolbarComponent;
-  dataTable: DataTableComponent;
-  
-  // State management
+DataPage
+├── Toolbar (actions, view controls)
+└── DataTable
+    ├── HandsontableWrapper (core table)
+    ├── DataTableErrorBoundary (error handling)
+    └── TableManager (state coordination)
+```
+
+### State Management
+```typescript
+// Primary stores used
+import { useDataStore } from '@/stores/useDataStore';
+import { useTableRefStore } from '@/stores/useTableRefStore';
+import { useMetaStore } from '@/stores/useMetaStore';
+
+// Table state structure
+interface DataTableState {
+  data: CellValue[][];
+  hotRef: RefObject<HotTable>;
+  selectedCells: CellSelection[];
   viewMode: 'numeric' | 'text';
-  tableRef: HotTableRef;
+  isEditing: boolean;
+}
+```
+
+### Performance Architecture
+```typescript
+// Virtualization and optimization
+const tableConfig = {
+  virtualization: true,
+  maxRows: 1000000,
+  maxCols: 500,
+  renderAllRows: false,
+  preventOverflow: 'horizontal'
+};
+
+// Memory management
+const optimizations = {
+  lazyLoading: true,
+  cellCaching: true,
+  batchUpdates: true,
+  debounceInput: 300
+};
+```
+
+## Development Guidelines
+
+### Component Implementation
+```typescript
+// Standard data page component pattern
+export default function DataPage() {
+  const { data, isLoading } = useDataStore();
+  const { hotRef } = useTableRefStore();
   
-  // Performance
+  if (isLoading) {
+    return <DataPageLoading />;
+  }
+  
+  return (
+    <div className="data-page">
+      <Toolbar />
+      <DataTable ref={hotRef} data={data} />
+    </div>
+  );
+}
+```
+
+### Error Handling Strategy
+```typescript
+// Error boundary implementation
+<DataTableErrorBoundary>
+  <Suspense fallback={<DataTableSkeleton />}>
+    <DataTable />
+  </Suspense>
+</DataTableErrorBoundary>
+
+// Error types handled:
+// - Large dataset memory errors
+// - Cell validation errors
+// - Import/export errors
+// - Network connectivity issues
+```
+
+### Testing Strategy
+```typescript
+// Testing utilities for data table
+import { createMockDataset } from '@/utils/test-helpers';
+import { renderDataTable } from '@/components/dataTable/__tests__/utils';
+
+// Test scenarios:
+// - Large dataset rendering
+// - Cell editing and validation
+// - Import/export operations
+// - Keyboard navigation
+// - Copy/paste functionality
+```
+
+## Core Components
+
+### Toolbar Component
+- **File**: `components/Toolbar.tsx`
+- **Purpose**: Data manipulation actions and view controls
+- **Features**: Import/export, view toggle, selection actions, formatting
+- **State Integration**: Direct integration with useDataStore
+- **Performance**: Debounced actions, optimized re-renders
+
+### DataTable System
+- **Main Component**: `components/dataTable/index.tsx`
+- **Integration**: Handsontable React wrapper with custom optimizations
+- **Features**: 
+  - Virtual scrolling for large datasets
+  - In-place cell editing with validation
+  - Copy/paste with Excel compatibility
+  - Keyboard navigation (Excel-like shortcuts)
+  - Column resizing and reordering
+  - Cell formatting and data types
+
+### HandsontableWrapper
+```typescript
+// Core integration component
+interface HandsontableWrapperProps {
+  data: CellValue[][];
+  viewMode: 'numeric' | 'text';
+  onCellChange: (changes: CellChange[]) => void;
+  onSelection: (selection: CellSelection) => void;
+}
+
+// Key configurations:
+// - Custom cell renderers for data types
+// - Validation rules for cell inputs
+// - Context menu customization
+// - Keyboard shortcut handling
+```
+
+## Performance Optimizations
+
+### Large Dataset Handling
+- **Virtual Scrolling**: Only render visible cells
+- **Lazy Loading**: Load data in chunks
+- **Memory Management**: Cleanup unused data references
+- **Batch Updates**: Group multiple changes for efficiency
+
+### Rendering Optimizations
+- **React.memo**: Prevent unnecessary re-renders
+- **useCallback**: Stabilize function references
+- **useMemo**: Cache expensive calculations
+- **Debouncing**: Limit update frequency for user input
+
+### State Optimization
+```typescript
+// Optimized store subscription
+const data = useDataStore(
+  (state) => state.data,
+  shallow  // Prevent deep equality checks
+);
+
+// Selective updates
+const updateCell = useDataStore(
+  (state) => state.updateCell
+);
+```
+
+## Testing Guidelines
+
+### Component Testing
+```typescript
+// Example test structure
+describe('DataPage', () => {
+  it('renders large dataset efficiently', async () => {
+    const largeDataset = createMockDataset(10000, 50);
+    render(<DataPage initialData={largeDataset} />);
+    
+    // Test virtual scrolling
+    expect(screen.getByTestId('handsontable')).toBeInTheDocument();
+    
+    // Test performance
+    const renderTime = performance.now();
+    // Assert render time < threshold
+  });
+});
+```
+
+### Integration Testing
+- **Data Import**: Test CSV/Excel import with various formats
+- **Cell Editing**: Test validation rules and data type conversion
+- **Export**: Test data export with formatting preservation
+- **Performance**: Test with large datasets (stress testing)
   suspenseBoundary: boolean;
   lazyLoading: boolean;
 }

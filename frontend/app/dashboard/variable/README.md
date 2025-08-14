@@ -1,53 +1,466 @@
-# Variable Page - Variable Metadata Management Interface
+# Variable Page - Va## Architecture Overviewiable Metadata Management Interface
 
-Direktori `variable/` berisi interface untuk mengelola metadata variabel dalam dataset. Page ini menyediakan comprehensive tools untuk editing variable properties, labels, dan characteristics dengan focused editing experience.
+> **Developer Documentation**: Comprehensive variable metadata management system with bulk editing capabilities, SPSS compatibility, and real-time validation.
 
-## 📁 Struktur
+## Directory Structure
 
 ```
 variable/
 ├── page.tsx                 # Main variable page component
-├── loading.tsx             # Loading state untuk variable page
+├── loading.tsx             # Suspense loading state for variable operations
 └── components/
     └── variableTable/      # Variable metadata table system
-        ├── index.tsx           # Main VariableTable component
-        ├── ColumnRenderer.tsx  # Dynamic column rendering
-        ├── DialogManager.tsx   # Edit dialog management
-        ├── TableManager.tsx    # Table state management
-        ├── README.md          # Component documentation
-        └── __tests__/         # Component tests
+        ├── index.tsx              # Main VariableTable component export
+        ├── ColumnRenderer.tsx     # Dynamic column rendering system
+        ├── DialogManager.tsx      # Edit dialog management
+        ├── TableManager.tsx       # Table state coordination
+        ├── README.md             # Component documentation
+        └── __tests__/            # Jest/RTL component tests
 ```
 
-## 🎯 Page Overview
+## � Architecture Overview
 
-### Primary Purpose
-Variable page menyediakan interface untuk:
-- **Metadata Editing**: Edit variable properties (name, label, measure, type)
-- **Bulk Operations**: Multi-variable editing dengan efficient workflows
-- **Data Validation**: Ensure metadata consistency dan integrity
-- **Property Management**: Comprehensive variable characteristic management
-
-### Technical Architecture
+### Component Hierarchy
 ```typescript
-interface VariablePage {
-  // Core components
-  variableTable: VariableTableComponent;
-  
-  // State management
-  viewMode: 'text' | 'numeric';
-  editMode: boolean;
-  
-  // Dialog system
-  editDialog: boolean;
-  dialogManager: DialogManagerComponent;
-  
-  // Performance
-  suspenseBoundary: boolean;
-  optimizedRendering: boolean;
+VariablePage
+├── VariableTable
+│   ├── TableManager (state coordination)
+│   ├── ColumnRenderer (dynamic columns)
+│   └── DialogManager (edit dialogs)
+└── VariableActions (bulk operations, validation)
+```
+
+### State Management
+```typescript
+// Primary stores used
+import { useVariableStore } from '@/stores/useVariableStore';
+import { useMetaStore } from '@/stores/useMetaStore';
+import { useDataStore } from '@/stores/useDataStore';
+
+// Variable state structure
+interface VariableState {
+  variables: Variable[];
+  selectedVariables: string[];
+  editingVariable: string | null;
+  validationErrors: ValidationError[];
+  bulkOperationMode: boolean;
 }
 ```
 
-## 📄 Main Page Component (`page.tsx`)
+### Data Model
+```typescript
+// Variable metadata structure
+interface Variable {
+  id: string;
+  name: string;
+  label: string;
+  type: 'numeric' | 'string' | 'date';
+  measure: 'scale' | 'ordinal' | 'nominal';
+  decimals?: number;
+  width?: number;
+  alignment?: 'left' | 'center' | 'right';
+  values?: ValueLabel[];
+  missing?: MissingValue[];
+  role?: 'input' | 'target' | 'both' | 'none';
+}
+
+// SPSS compatibility
+interface SPSSVariable extends Variable {
+  format: SPSSFormat;
+  columns: number;
+  spssType: number;
+}
+```
+
+## Development Guidelines
+
+### Component Implementation
+```typescript
+// Standard variable page pattern
+export default function VariablePage() {
+  const { variables, isLoading } = useVariableStore();
+  const [editMode, setEditMode] = useState(false);
+  const [selectedVars, setSelectedVars] = useState<string[]>([]);
+  
+  if (isLoading) {
+    return <VariablePageLoading />;
+  }
+  
+  return (
+    <div className="variable-page">
+      <VariableActions 
+        selectedVariables={selectedVars}
+        onBulkEdit={handleBulkEdit}
+      />
+      <VariableTable 
+        variables={variables}
+        editMode={editMode}
+        onSelectionChange={setSelectedVars}
+      />
+    </div>
+  );
+}
+```
+
+### Validation Strategy
+```typescript
+// Variable validation rules
+const validationRules = {
+  name: {
+    required: true,
+    pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/,
+    maxLength: 64,
+    unique: true
+  },
+  label: {
+    maxLength: 255,
+    optional: true
+  },
+  type: {
+    required: true,
+    enum: ['numeric', 'string', 'date']
+  },
+  measure: {
+    required: true,
+    enum: ['scale', 'ordinal', 'nominal']
+  }
+};
+
+// Real-time validation
+const validateVariable = (variable: Partial<Variable>) => {
+  const errors: ValidationError[] = [];
+  
+  // Validate each field
+  Object.keys(validationRules).forEach(field => {
+    const rule = validationRules[field];
+    const value = variable[field];
+    
+    if (rule.required && !value) {
+      errors.push({ field, message: `${field} is required` });
+    }
+    
+    // Additional validation logic...
+  });
+  
+  return errors;
+};
+```
+
+### Performance Optimization
+```typescript
+// Large variable set handling
+const optimizations = {
+  virtualizedTable: true,
+  memoizedRendering: true,
+  debouncedValidation: 300,
+  batchUpdates: true
+};
+
+// Table virtualization
+const tableConfig = {
+  estimatedRowHeight: 40,
+  bufferSize: 10,
+  maxVisibleRows: 50,
+  lazyRendering: true
+};
+```
+
+## Core Components
+
+### VariableTable Component
+- **File**: `components/variableTable/index.tsx`
+- **Purpose**: Main table interface for variable metadata
+- **Features**:
+  - Editable cells with real-time validation
+  - Column sorting and filtering
+  - Bulk selection and operations
+  - Keyboard navigation (Excel-like)
+  - Undo/redo functionality
+
+```typescript
+// VariableTable implementation
+interface VariableTableProps {
+  variables: Variable[];
+  editMode: boolean;
+  selectedVariables: string[];
+  onVariableUpdate: (id: string, updates: Partial<Variable>) => void;
+  onSelectionChange: (selectedIds: string[]) => void;
+}
+
+// Key features:
+// - Optimistic updates with rollback
+// - Cell-level validation feedback
+// - Context menu for row operations
+// - Drag and drop for reordering
+```
+
+### ColumnRenderer Component
+- **File**: `components/variableTable/ColumnRenderer.tsx`
+- **Purpose**: Dynamic column rendering based on data types
+- **Features**:
+  - Type-specific cell renderers
+  - Custom input components (dropdowns, number inputs)
+  - Validation indicator display
+  - Formatting preview
+
+```typescript
+// Column renderer types
+interface ColumnConfig {
+  field: keyof Variable;
+  header: string;
+  editable: boolean;
+  validator?: (value: any) => ValidationResult;
+  renderer?: CellRenderer;
+  editor?: CellEditor;
+}
+
+// Supported cell types:
+// - Text input with validation
+// - Dropdown for categorical values
+// - Number input with min/max
+// - Checkbox for boolean values
+// - Custom value labels editor
+```
+
+### DialogManager Component
+- **File**: `components/variableTable/DialogManager.tsx`
+- **Purpose**: Modal dialogs for complex variable editing
+- **Features**:
+  - Value labels editor
+  - Missing values configuration
+  - Bulk property editing
+  - Variable type conversion wizard
+
+```typescript
+// Dialog types supported
+type DialogType = 
+  | 'editValueLabels'
+  | 'editMissingValues'
+  | 'bulkEdit'
+  | 'typeConversion'
+  | 'variableInfo';
+
+// Dialog state management
+interface DialogState {
+  activeDialog: DialogType | null;
+  dialogData: any;
+  isSubmitting: boolean;
+  validationErrors: ValidationError[];
+}
+```
+
+## Data Synchronization
+
+### Variable-Data Synchronization
+```typescript
+// Sync variable changes with data store
+const syncVariableWithData = (variable: Variable, oldVariable?: Variable) => {
+  const dataStore = useDataStore.getState();
+  
+  // Handle name changes
+  if (oldVariable && variable.name !== oldVariable.name) {
+    dataStore.renameColumn(oldVariable.name, variable.name);
+  }
+  
+  // Handle type changes
+  if (oldVariable && variable.type !== oldVariable.type) {
+    dataStore.convertColumnType(variable.name, variable.type);
+  }
+  
+  // Update metadata
+  dataStore.updateColumnMetadata(variable.name, {
+    label: variable.label,
+    measure: variable.measure,
+    decimals: variable.decimals
+  });
+};
+```
+
+### SPSS Compatibility
+```typescript
+// SPSS import/export compatibility
+const spssCompatibility = {
+  // Map SPSS types to internal types
+  mapSPSSType: (spssType: number) => {
+    switch (spssType) {
+      case 0: return 'numeric';
+      case 1: return 'string';
+      case 2: return 'date';
+      default: return 'string';
+    }
+  },
+  
+  // Export to SPSS format
+  exportToSPSS: (variables: Variable[]) => {
+    return variables.map(variable => ({
+      ...variable,
+      spssType: mapToSPSSType(variable.type),
+      format: generateSPSSFormat(variable),
+      columns: calculateSPSSColumns(variable)
+    }));
+  }
+};
+```
+
+## Performance Optimizations
+
+### Large Variable Set Handling
+```typescript
+// Virtual table for large variable sets
+const virtualTableConfig = {
+  estimatedRowHeight: 40,
+  bufferRows: 20,
+  maxRenderedRows: 100,
+  scrollDebounce: 16
+};
+
+// Optimized rendering
+const renderOptimizations = {
+  useMemo: ['sortedVariables', 'filteredVariables'],
+  useCallback: ['handleVariableUpdate', 'handleSelectionChange'],
+  React.memo: ['VariableRow', 'ColumnHeader']
+};
+```
+
+### State Optimization
+```typescript
+// Optimized store subscriptions
+const variables = useVariableStore(
+  (state) => state.variables,
+  shallow // Prevent deep equality checks
+);
+
+// Batch updates for bulk operations
+const batchUpdate = useVariableStore(
+  (state) => state.batchUpdateVariables
+);
+
+// Debounced validation
+const debouncedValidate = useDebouncedCallback(
+  validateVariable,
+  300
+);
+```
+
+## Testing Guidelines
+
+### Component Testing
+```typescript
+// Variable table testing
+describe('VariableTable', () => {
+  it('renders variable list correctly', () => {
+    const mockVariables = createMockVariables(10);
+    render(<VariableTable variables={mockVariables} />);
+    
+    expect(screen.getAllByRole('row')).toHaveLength(11); // 10 + header
+    expect(screen.getByText('Variable Name')).toBeInTheDocument();
+  });
+  
+  it('validates variable name uniqueness', async () => {
+    const variables = [
+      { id: '1', name: 'var1', type: 'numeric' },
+      { id: '2', name: 'var2', type: 'string' }
+    ];
+    
+    render(<VariableTable variables={variables} editMode={true} />);
+    
+    // Try to change var2 name to var1
+    const nameCell = screen.getByDisplayValue('var2');
+    fireEvent.change(nameCell, { target: { value: 'var1' } });
+    
+    await waitFor(() => {
+      expect(screen.getByText(/name must be unique/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+### Integration Testing
+```typescript
+// Variable-data synchronization testing
+describe('Variable-Data Sync', () => {
+  it('syncs variable name changes with data columns', async () => {
+    const { variableStore, dataStore } = setupStores();
+    
+    // Change variable name
+    variableStore.updateVariable('var1', { name: 'newVar1' });
+    
+    // Check if data column was renamed
+    await waitFor(() => {
+      const columns = dataStore.getColumns();
+      expect(columns).toContain('newVar1');
+      expect(columns).not.toContain('var1');
+    });
+  });
+});
+```
+
+### Performance Testing
+```typescript
+// Large variable set performance
+describe('Variable Performance', () => {
+  it('handles 1000+ variables efficiently', async () => {
+    const largeVariableSet = createMockVariables(1000);
+    const startTime = performance.now();
+    
+    render(<VariableTable variables={largeVariableSet} />);
+    
+    const renderTime = performance.now() - startTime;
+    expect(renderTime).toBeLessThan(500); // 500ms limit
+  });
+});
+```
+
+## Bulk Operations
+
+### Bulk Editing Features
+```typescript
+// Bulk operation types
+type BulkOperation = 
+  | 'updateMeasure'
+  | 'updateType'
+  | 'updateAlignment'
+  | 'addValueLabels'
+  | 'clearMissing'
+  | 'setDecimals';
+
+// Bulk operation implementation
+const handleBulkOperation = (
+  operation: BulkOperation,
+  selectedVariables: string[],
+  value: any
+) => {
+  const updates = selectedVariables.map(id => ({
+    id,
+    updates: { [operation]: value }
+  }));
+  
+  batchUpdateVariables(updates);
+};
+```
+
+### Validation for Bulk Operations
+```typescript
+// Validate bulk operations before applying
+const validateBulkOperation = (
+  operation: BulkOperation,
+  variables: Variable[],
+  value: any
+): ValidationResult => {
+  switch (operation) {
+    case 'updateType':
+      // Check if type conversion is safe
+      return validateTypeConversion(variables, value);
+    
+    case 'updateMeasure':
+      // Check if measure is compatible with data
+      return validateMeasureCompatibility(variables, value);
+    
+    default:
+      return { valid: true };
+  }
+};
+```
 
 ### Implementation Details
 ```typescript

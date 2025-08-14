@@ -1,53 +1,346 @@
 # Result Page - Analysis Results Display Interface
 
-Direktori `result/` berisi interface untuk displaying dan managing hasil analisis statistik. Page ini menyediakan comprehensive results visualization dengan hierarchical navigation, export capabilities, dan interactive result exploration.
+> **Developer Documentation**: Comprehensive results visualization system with hierarchical navigation, interactive charts, and multi-format export capabilities.
 
-## 📁 Struktur
+## Directory Structure
 
 ```
 result/
 ├── page.tsx                 # Main result page component
-├── loading.tsx             # Loading state untuk result page
+├── loading.tsx             # Suspense loading state for result operations
 └── components/
-    ├── ResultOutput.tsx     # Main results display component
-    └── Sidebar.tsx         # Results navigation sidebar
+    ├── ResultOutput.tsx     # Main results display and rendering
+    └── Sidebar.tsx         # Hierarchical results navigation
 ```
 
-## 🎯 Page Overview
+## Architecture Overview
 
-### Primary Purpose
-Result page menyediakan interface untuk:
-- **Results Visualization**: Display analysis results dalam multiple formats
-- **Hierarchical Navigation**: Tree-based navigation untuk complex analyses
-- **Export Functionality**: Export results ke berbagai formats
-- **Interactive Exploration**: Drill-down dan detail exploration
-
-### Technical Architecture
+### Component Hierarchy
 ```typescript
-interface ResultPage {
-  // Core components
-  resultOutput: ResultOutputComponent;
-  sidebar: SidebarComponent;
-  
-  // State management
-  viewMode: 'numeric' | 'text';
+ResultPage
+├── Sidebar (navigation tree, breadcrumbs)
+└── ResultOutput
+    ├── ChartRenderer (D3.js, Chart.js integration)
+    ├── TableRenderer (tabular results display)
+    ├── TextRenderer (statistical text output)
+    └── ExportActions (multi-format export)
+```
+
+### State Management
+```typescript
+// Primary stores used
+import { useResultStore } from '@/stores/useResultStore';
+import { useTimeSeriesStore } from '@/stores/useTimeSeriesStore';
+import { useModalStore } from '@/stores/useModalStore';
+
+// Result state structure
+interface ResultState {
+  results: AnalysisResult[];
   selectedResult: string | null;
-  
-  // Navigation
-  resultNavigation: NavigationTree;
-  breadcrumb: BreadcrumbPath;
-  
-  // Performance
-  suspenseBoundary: boolean;
-  lazyRendering: boolean;
+  navigationTree: NavigationNode[];
+  viewMode: 'chart' | 'table' | 'text';
+  exportFormat: 'png' | 'pdf' | 'csv' | 'excel';
 }
 ```
 
-## 📄 Main Page Component (`page.tsx`)
-
-### Implementation Details
+### Navigation Architecture
 ```typescript
+// Hierarchical result navigation
+interface NavigationNode {
+  id: string;
+  type: 'analysis' | 'table' | 'chart';
+  title: string;
+  children?: NavigationNode[];
+  metadata: ResultMetadata;
+}
+
+// Navigation state management
+const navigationState = {
+  expandedNodes: Set<string>;
+  selectedNode: string | null;
+  breadcrumb: BreadcrumbItem[];
+  searchQuery: string;
+};
+```
+
+## Development Guidelines
+
+### Component Implementation
+```typescript
+// Standard result page pattern
 export default function ResultPage() {
+  const { results, selectedResult } = useResultStore();
+  const [viewMode, setViewMode] = useState<ViewMode>('chart');
+  
+  return (
+    <div className="result-page grid grid-cols-[300px,1fr]">
+      <Sidebar 
+        results={results}
+        onSelectResult={setSelectedResult}
+      />
+      <ResultOutput 
+        result={selectedResult}
+        viewMode={viewMode}
+      />
+    </div>
+  );
+}
+```
+
+### Chart Rendering Strategy
+```typescript
+// Chart rendering with D3.js integration
+import { ChartBuilder } from '@/utils/chartBuilder';
+
+interface ChartRendererProps {
+  data: ChartData;
+  type: ChartType;
+  options: ChartOptions;
+}
+
+// Supported chart types:
+// - Histogram, Box Plot, Scatter Plot
+// - Bar Chart, Line Chart, Area Chart
+// - Heatmap, Correlation Matrix
+// - Time Series, Regression Plots
+```
+
+### Performance Optimizations
+```typescript
+// Large result set handling
+const optimizations = {
+  virtualizedNavigation: true,
+  lazyChartRendering: true,
+  progressiveDataLoading: true,
+  memoizedCalculations: true
+};
+
+// Chart rendering optimization
+const chartConfig = {
+  maxDataPoints: 10000,
+  samplingThreshold: 5000,
+  renderingEngine: 'canvas', // vs 'svg'
+  animationDuration: 300
+};
+```
+
+## Core Components
+
+### ResultOutput Component
+- **File**: `components/ResultOutput.tsx`
+- **Purpose**: Primary results display with multi-format rendering
+- **Features**: 
+  - Dynamic chart rendering (D3.js, Chart.js)
+  - Table display with sorting and filtering
+  - Statistical text formatting
+  - Export functionality (PNG, PDF, CSV, Excel)
+  - Print optimization
+
+```typescript
+// ResultOutput implementation
+interface ResultOutputProps {
+  result: AnalysisResult | null;
+  viewMode: 'chart' | 'table' | 'text';
+  exportOptions: ExportOptions;
+}
+
+// Key features:
+// - Lazy rendering for performance
+// - Error boundaries for chart failures
+// - Responsive design for mobile
+// - Accessibility (ARIA labels, keyboard navigation)
+```
+
+### Sidebar Component
+- **File**: `components/Sidebar.tsx`
+- **Purpose**: Hierarchical navigation and result organization
+- **Features**:
+  - Tree navigation with expand/collapse
+  - Search and filtering
+  - Breadcrumb navigation
+  - Result metadata display
+  - Quick actions (export, share, delete)
+
+```typescript
+// Sidebar navigation structure
+interface SidebarProps {
+  results: AnalysisResult[];
+  selectedResult: string | null;
+  onSelectResult: (id: string) => void;
+  searchQuery: string;
+  onSearch: (query: string) => void;
+}
+
+// Navigation features:
+// - Virtualized tree for large result sets
+// - Keyboard navigation (arrow keys, enter)
+// - Context menu for result actions
+// - Drag and drop for organization
+```
+
+## Chart Rendering System
+
+### Chart Types Supported
+```typescript
+// Chart type definitions
+type ChartType = 
+  | 'histogram' | 'boxplot' | 'scatter'
+  | 'bar' | 'line' | 'area'
+  | 'heatmap' | 'correlation'
+  | 'timeseries' | 'regression'
+  | 'violin' | 'density';
+
+// Chart rendering pipeline
+const chartPipeline = {
+  dataPreprocessing: preprocessChartData,
+  chartGeneration: generateChart,
+  interactivity: addInteractions,
+  responsiveness: makeResponsive,
+  accessibility: addA11yFeatures
+};
+```
+
+### D3.js Integration
+```typescript
+// Custom D3 chart builder
+import { ChartBuilder } from '@/utils/chartBuilder';
+
+const chartBuilder = new ChartBuilder()
+  .setData(resultData)
+  .setType('histogram')
+  .setDimensions({ width: 800, height: 600 })
+  .setInteractive(true)
+  .setResponsive(true)
+  .build();
+
+// Features:
+// - Responsive design with container queries
+// - Interactive tooltips and zooming
+// - Animation support with performance optimization
+// - Accessibility compliance (WCAG 2.1)
+```
+
+## Performance Optimizations
+
+### Large Result Set Handling
+```typescript
+// Virtual scrolling for navigation
+const virtualizedNavigation = {
+  itemHeight: 32,
+  bufferSize: 10,
+  windowSize: 20,
+  preloadItems: 5
+};
+
+// Progressive loading strategy
+const loadingStrategy = {
+  initialBatch: 50,
+  incrementalBatch: 25,
+  lazyThreshold: 1000,
+  cacheStrategy: 'LRU'
+};
+```
+
+### Chart Performance
+```typescript
+// Chart rendering optimization
+const chartOptimization = {
+  dataPointLimit: 10000,
+  samplingAlgorithm: 'LTTB', // Largest Triangle Three Buckets
+  canvasRendering: true,
+  webWorkerCalculations: true,
+  memoizedTransformations: true
+};
+
+// Memory management
+const memoryManagement = {
+  chartCache: new Map(),
+  maxCacheSize: 20,
+  cleanupInterval: 300000, // 5 minutes
+  weakReferences: true
+};
+```
+
+## Export System
+
+### Multi-Format Export
+```typescript
+// Export capabilities
+interface ExportOptions {
+  format: 'png' | 'pdf' | 'svg' | 'csv' | 'excel' | 'json';
+  quality: 'low' | 'medium' | 'high';
+  dimensions?: { width: number; height: number };
+  includeData?: boolean;
+  includeMetadata?: boolean;
+}
+
+// Export implementations:
+// - PNG/SVG: Canvas/SVG to image conversion
+// - PDF: jsPDF with chart embedding
+// - CSV/Excel: Structured data export
+// - JSON: Full result object serialization
+```
+
+### Export Performance
+```typescript
+// Optimized export handling
+const exportOptimization = {
+  backgroundProcessing: true,
+  progressIndicator: true,
+  batchExport: true,
+  compressionOptions: {
+    png: { quality: 0.9 },
+    pdf: { compression: 'high' }
+  }
+};
+```
+
+## Testing Guidelines
+
+### Component Testing
+```typescript
+// Result page testing strategy
+describe('ResultPage', () => {
+  it('renders navigation tree correctly', () => {
+    const mockResults = createMockResultSet();
+    render(<ResultPage results={mockResults} />);
+    
+    expect(screen.getByRole('tree')).toBeInTheDocument();
+    expect(screen.getAllByRole('treeitem')).toHaveLength(mockResults.length);
+  });
+  
+  it('handles chart rendering errors gracefully', async () => {
+    const invalidData = createInvalidChartData();
+    render(<ResultOutput data={invalidData} type="histogram" />);
+    
+    await waitFor(() => {
+      expect(screen.getByText(/error rendering chart/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+### Performance Testing
+```typescript
+// Performance benchmarks
+describe('Result Performance', () => {
+  it('renders large result sets within time limit', async () => {
+    const largeResultSet = createLargeResultSet(1000);
+    const startTime = performance.now();
+    
+    render(<ResultPage results={largeResultSet} />);
+    
+    const renderTime = performance.now() - startTime;
+    expect(renderTime).toBeLessThan(1000); // 1 second limit
+  });
+});
+```
+
+### Integration Testing
+- **Chart Export**: Test all export formats with various chart types
+- **Navigation**: Test tree navigation with large hierarchies
+- **Search**: Test result filtering and search functionality
+- **Accessibility**: Test keyboard navigation and screen reader compatibility
   const { setViewMode } = useTableRefStore();
   
   useEffect(() => {

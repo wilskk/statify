@@ -1,53 +1,162 @@
-# Dashboard Directory - Statify Main Application Interface
+# Dashboard Directory - Main Application In## Architecture Overviewerface
 
-Direktori `dashboard/` merupakan komponen inti dari aplikasi Statify yang menyediakan interface utama untuk analisis data statistik. Dashboard menggunakan Next.js App Router dengan layout yang responsif dan performa yang dioptimalkan.
+> **Developer Documentation**: Core dashboard implementation with data analysis workspace, variable management, and results visualization.
 
-## 📁 Struktur
+## Directory Structure
 
 ```
 dashboard/
-├── layout.tsx                    # Dashboard layout dengan resizable panels
-├── loading.tsx                   # Loading UI untuk dashboard
-├── page.tsx                     # Dashboard landing page
-├── components/                  # Komponen shared dashboard
-│   ├── landing/                # Landing page components
-│   │   ├── DashboardLanding.tsx
-│   │   ├── DataActionCard.tsx
-│   │   ├── ResourceCard.tsx
-│   │   ├── types.ts
+├── layout.tsx                    # Dashboard layout with resizable panels
+├── loading.tsx                   # Suspense loading UI for dashboard
+├── page.tsx                     # Dashboard landing/workspace selector
+├── components/                  # Shared dashboard components
+│   ├── landing/                # Dashboard landing page components
+│   │   ├── DashboardLanding.tsx    # Main landing component
+│   │   ├── DataActionCard.tsx      # Quick action cards
+│   │   ├── ResourceCard.tsx        # Resource/example cards
+│   │   ├── types.ts               # Landing page types
 │   │   └── hooks/
-│   │       └── useExampleDatasetLoader.ts
-│   └── layout/                 # Layout components
-│       ├── Footer.tsx
-│       ├── Header.tsx
-│       ├── HamburgerMenu.tsx
-│       └── Navbar.tsx
-├── data/                       # Data management interface
-│   ├── page.tsx
-│   ├── loading.tsx
+│   │       └── useExampleDatasetLoader.ts  # Example data hook
+│   └── layout/                 # Layout and navigation components
+│       ├── Footer.tsx             # Dashboard footer
+│       ├── Header.tsx             # Dashboard header
+│       ├── HamburgerMenu.tsx      # Mobile navigation
+│       └── Navbar.tsx             # Main navigation bar
+├── data/                       # Data management workspace
+│   ├── page.tsx                   # Data table interface
+│   ├── loading.tsx                # Data loading state
 │   └── components/
-│       ├── Toolbar.tsx
-│       └── dataTable/         # Advanced data table component
+│       ├── Toolbar.tsx            # Data manipulation toolbar
+│       └── dataTable/             # Advanced data table system
 ├── variable/                   # Variable metadata management
-│   ├── page.tsx
-│   ├── loading.tsx
+│   ├── page.tsx                   # Variable properties editor
+│   ├── loading.tsx                # Variable loading state
 │   └── components/
-│       └── variableTable/     # Variable properties editor
+│       └── variableTable/         # Variable table components
 └── result/                     # Analysis results display
-    ├── page.tsx
-    ├── loading.tsx
+    ├── page.tsx                   # Results viewer
+    ├── loading.tsx                # Results loading state
     └── components/
-        ├── ResultOutput.tsx
-        └── Sidebar.tsx
+        ├── ResultOutput.tsx       # Chart and table output
+        └── Sidebar.tsx           # Results navigation
 ```
 
-## 🎯 Dashboard Overview
+## � Architecture Overview
 
-### Core Functionality
-Dashboard Statify menyediakan tiga workspace utama:
-1. **Data View**: Import, view, dan edit datasets
-2. **Variable View**: Manage variable properties dan metadata
-3. **Result View**: Display dan export analysis results
+### Dashboard Layout System
+```typescript
+// dashboard/layout.tsx
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+}
+
+// Features:
+// - Resizable panel layout using react-resizable-panels
+// - Protected route authentication
+// - Global state initialization
+// - Tour system integration
+// - Error boundaries
+```
+
+### State Management Architecture
+```typescript
+// Core stores used across dashboard
+import { useDataStore } from '@/stores/useDataStore';
+import { useVariableStore } from '@/stores/useVariableStore';
+import { useResultStore } from '@/stores/useResultStore';
+import { useModalStore } from '@/stores/useModalStore';
+
+// Store mediator for cross-store communication
+import { useStoreMediator } from '@/stores/useStoreMediator';
+```
+
+### Component Communication Pattern
+```
+Layout (dashboard/layout.tsx)
+├── Navigation State (Navbar, Header)
+├── Panel Management (Resizable Panels)
+└── Page Content
+    ├── Data Store Integration
+    ├── Modal System
+    └── Tour System
+```
+
+## Development Guidelines
+
+### Route Implementation
+Each dashboard route follows this pattern:
+```typescript
+// Standard dashboard page structure
+export default function DashboardSubPage() {
+  return (
+    <Suspense fallback={<LoadingComponent />}>
+      <PageContent />
+    </Suspense>
+  );
+}
+
+// With error boundary
+export default function DashboardSubPage() {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback />}>
+      <Suspense fallback={<LoadingComponent />}>
+        <PageContent />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
+
+### Performance Considerations
+- **Lazy Loading**: Heavy components loaded on demand
+- **Virtual Scrolling**: For large datasets in tables
+- **Memoization**: React.memo for expensive renders
+- **State Optimization**: Zustand with selective subscriptions
+
+### Testing Strategy
+```typescript
+// Component testing pattern
+import { render, screen } from '@testing-library/react';
+import { DashboardProviders } from '@/components/providers';
+
+function renderWithProviders(component: React.ReactElement) {
+  return render(
+    <DashboardProviders>
+      {component}
+    </DashboardProviders>
+  );
+}
+```
+
+## Route Documentation
+
+### Dashboard Landing (`/dashboard`)
+- **Component**: `DashboardLanding`
+- **Purpose**: Workspace selection and quick actions
+- **Features**: Example data loading, recent files, workspace cards
+- **State**: Global store initialization, tour state
+- **Performance**: Lazy component loading, optimized asset loading
+
+### Data Workspace (`/dashboard/data`)
+- **Component**: Advanced data table with Handsontable
+- **Features**: Import/export, cell editing, data validation, toolbar actions
+- **State**: `useDataStore`, `useTableRefStore`
+- **Performance**: Virtual scrolling, optimized rendering for large datasets
+- **Testing**: End-to-end data manipulation scenarios
+
+### Variable Workspace (`/dashboard/variable`)
+- **Component**: Variable metadata editor
+- **Features**: Bulk property editing, SPSS compatibility, validation
+- **State**: `useVariableStore`, `useMetaStore`
+- **Performance**: Optimized table rendering, efficient property updates
+- **Testing**: Variable property validation, bulk operations
+
+### Results Workspace (`/dashboard/result`)
+- **Component**: Results visualization and navigation
+- **Features**: Chart rendering, hierarchical navigation, export
+- **State**: `useResultStore`, chart data management
+- **Performance**: Chart virtualization, progressive result loading
+- **Testing**: Chart rendering, navigation, export functionality
 
 ### Architecture Patterns
 - **Client-Side Rendering**: Semua pages menggunakan `"use client"` untuk interaktivity

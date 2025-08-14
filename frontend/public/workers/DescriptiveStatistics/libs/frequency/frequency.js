@@ -341,11 +341,26 @@ class FrequencyCalculator {
 
                 if (requested.size > 0) {
                     const base = stats.Percentiles ? { ...stats.Percentiles } : {};
+                    const decimals = (this.variable && typeof this.variable.decimals === 'number')
+                        ? Math.max(0, Math.min(16, this.variable.decimals))
+                        : 1;
+                    const roundIfOrdinal = (v) => {
+                        if (this.effMeasure !== 'ordinal') return v;
+                        if (typeof v !== 'number' || !isFinite(v)) return v;
+                        // Do not round when core type is date (values are SPSS seconds)
+                        try {
+                            const core = typeof getCoreType === 'function' ? getCoreType(this.variable) : 'numeric';
+                            if (core === 'date') return v;
+                        } catch (_) { /* ignore */ }
+                        if (typeof toSPSSFixed === 'function') return toSPSSFixed(v, decimals);
+                        return v;
+                    };
                     for (const p of requested) {
                         // Normalize key to at most 1 decimal to avoid long repeating fractions
                         const keyNum = typeof p === 'number' ? p : Number(p);
                         const key = Number.isInteger(keyNum) ? String(keyNum) : parseFloat(keyNum.toFixed(1)).toString();
-                        base[key] = this.getPercentile(keyNum, 'waverage');
+                        const rawVal = this.getPercentile(keyNum, 'waverage');
+                        base[key] = roundIfOrdinal(rawVal);
                     }
                     stats.Percentiles = base;
                 }

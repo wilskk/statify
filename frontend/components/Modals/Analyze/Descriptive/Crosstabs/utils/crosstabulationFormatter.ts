@@ -201,11 +201,15 @@ export const formatCrosstabulationTable = (
               value = observed;
               break;
             case 'expected':
-              value = dec(
-                result.cellStatistics?.[rowIdx][colIdx].expected !== null && result.cellStatistics[rowIdx][colIdx].expected !== undefined
-                  ? (result.cellStatistics[rowIdx][colIdx].expected as number)
-                  : (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases
-              );
+              {
+                const cs = result.cellStatistics?.[rowIdx]?.[colIdx];
+                const exp = cs?.expected;
+                const expectedVal =
+                  exp !== null && exp !== undefined
+                    ? (exp as number)
+                    : (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases;
+                value = dec(expectedVal);
+              }
               break;
             case 'rowPct':
               value = rowTotals[rowIdx] > 0 ? pct(observed / rowTotals[rowIdx]) : '0.0%';
@@ -217,25 +221,32 @@ export const formatCrosstabulationTable = (
               value = totalCases > 0 ? pct(observed / totalCases) : '';
               break;
             case 'unstdResid':
-              value = dec(
-                result.cellStatistics?.[rowIdx][colIdx].residual !== null && result.cellStatistics[rowIdx][colIdx].residual !== undefined
-                  ? (result.cellStatistics[rowIdx][colIdx].residual as number)
-                  : observed - (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases
-              );
+              {
+                const cs = result.cellStatistics?.[rowIdx]?.[colIdx];
+                const res = cs?.residual;
+                const expectedVal = (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases;
+                const residVal =
+                  res !== null && res !== undefined ? (res as number) : observed - expectedVal;
+                value = dec(residVal);
+              }
               break;
             case 'stdResid':
-              value = dec(
-                result.cellStatistics?.[rowIdx][colIdx].standardizedResidual !== null && result.cellStatistics[rowIdx][colIdx].standardizedResidual !== undefined
-                  ? (result.cellStatistics[rowIdx][colIdx].standardizedResidual as number)
-                  : NaN
-              );
+              {
+                const cs = result.cellStatistics?.[rowIdx]?.[colIdx];
+                const std = cs?.standardizedResidual;
+                const stdVal =
+                  std !== null && std !== undefined ? (std as number) : NaN;
+                value = dec(stdVal);
+              }
               break;
             case 'adjStdResid':
-              value = dec(
-                result.cellStatistics?.[rowIdx][colIdx].adjustedResidual !== null && result.cellStatistics[rowIdx][colIdx].adjustedResidual !== undefined
-                  ? (result.cellStatistics[rowIdx][colIdx].adjustedResidual as number)
-                  : NaN
-              );
+              {
+                const cs = result.cellStatistics?.[rowIdx]?.[colIdx];
+                const adj = cs?.adjustedResidual;
+                const adjVal =
+                  adj !== null && adj !== undefined ? (adj as number) : NaN;
+                value = dec(adjVal);
+              }
               break;
             default:
               value = '';
