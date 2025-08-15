@@ -15,10 +15,18 @@ npm run test:stress     # Stress test (50 VU, 120s)
 npm run test:report     # Test dengan JSON report
 ```
 
+### Browser UI Tests
+```bash
+npm run test:browser:frequencies        # Test frequencies analysis workflow (slow, ~5-10 min)
+npm run test:browser:frequencies:patient # Same test with quiet output for slow operations  
+npm run test:browser:smoke             # Browser smoke test (fast, ~10-30 sec)
+npm run test:browser:simple            # Alias for smoke test
+```
+
+**Note**: Test frequencies analysis membutuhkan waktu lama karena proses import dataset di Statify memang lambat. Test ini akan menunggu hingga 15 detik untuk dataset loading dan total timeout 10 menit.
 ### Statify Specific Tests
 ```bash
 npm run test:dashboard       # Test dashboard page (5 VU, 60s)
-npm run test:dashboard:load  # Load test dashboard (10 VU, 120s)
 npm run test:multi-page      # Test multiple pages (3 VU, 45s)
 npm run test:all-statify     # Run all Statify tests
 ```
@@ -37,6 +45,8 @@ tests/
     basic-test.js          # Basic test template
     statify-dashboard-test.js    # Specific dashboard test
     statify-multi-page-test.js   # Multi-page test
+  browser/                  # k6 browser UI tests
+    statify-frequencies-analysis.js  # Frequencies analysis workflow test
 reports/                   # Test reports dan hasil
 ```
 

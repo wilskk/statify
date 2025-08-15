@@ -99,3 +99,4 @@ frontend/.trae/rules/project_rules.md
 /testing/reports/e2e
 /frontend/.next-dev
 /backend/coverage
+/testing/playwright-report/data

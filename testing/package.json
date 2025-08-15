@@ -11,7 +11,18 @@
     "test:dashboard": "k6 run tests/performance/statify-dashboard-test.js",
     "test:dashboard:load": "k6 run --vus 10 --duration 120s tests/performance/statify-dashboard-test.js",
     "test:multi-page": "k6 run tests/performance/statify-multi-page-test.js",
-    "test:all-statify": "k6 run tests/performance/statify-dashboard-test.js && k6 run tests/performance/statify-multi-page-test.js"
+    "test:all-statify": "k6 run tests/performance/statify-dashboard-test.js && k6 run tests/performance/statify-multi-page-test.js",
+    "test:browser:frequencies": "k6 run tests/browser/statify-frequencies-analysis.js",
+    "test:browser:frequencies:patient": "k6 run --quiet tests/browser/statify-frequencies-analysis.js",
+    "test:browser:smoke": "k6 run tests/browser/statify-simple-smoke.js",
+    "test:browser:simple": "k6 run tests/browser/statify-simple-smoke.js",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "playwright:install": "playwright install"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
 }
