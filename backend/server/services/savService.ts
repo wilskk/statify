@@ -1,9 +1,13 @@
+/*
+ * Service SAV
+ * Membaca file .sav dan mengembalikan { meta, rows }.
+ */
 import fs from 'fs';
 import { SavBufferReader } from 'sav-reader';
 
 import type { SavResponse, SavMeta } from '../types/sav.types';
 
-// Read SAV file and return { meta, rows }.
+// Baca file .sav dan kembalikan { meta, rows }
 export const processUploadedSav = async (filePath: string): Promise<SavResponse> => {
 
     try {
@@ -11,11 +15,11 @@ export const processUploadedSav = async (filePath: string): Promise<SavResponse>
         const sav: SavBufferReader = new SavBufferReader(fileData);
         await sav.open();
 
-        // Casts preserve runtime behavior and satisfy lint rules.
+        // Casting untuk menjaga perilaku runtime dan memenuhi aturan lint
         const meta: SavMeta = sav.meta as unknown as SavMeta;
         const rows: Record<string, unknown>[] = (await sav.readAllRows()) as unknown as Record<string, unknown>[];
 
-        // Cleanup temp file
+        // Bersihkan file sementara upload
         fs.unlink(filePath, (unlinkErr) => {
             if (unlinkErr) {
                 console.error("Error deleting temporary upload file:", unlinkErr);
@@ -27,10 +31,10 @@ export const processUploadedSav = async (filePath: string): Promise<SavResponse>
     } catch (error: unknown) {
         const errMsg = error instanceof Error ? (error.stack || error.message) : String(error);
         console.error('Error processing SAV file in service:', errMsg);
-        // Attempt cleanup even on error
+        // Tetap coba hapus file sementara meski terjadi error
         fs.unlink(filePath, (unlinkErr) => {
             if (unlinkErr) {
-                // Log secondary error
+                // Catat error sekunder
                 console.error("Error deleting temporary upload file after processing error:", unlinkErr);
             }
         });

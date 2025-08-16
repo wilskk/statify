@@ -1,18 +1,21 @@
+/*
+ * Konfigurasi statis server (tanpa environment variables)
+ */
 import path from 'path';
 import os from 'os';
 
-// Centralized static config (no environment variables)
+// Port HTTP untuk server Express
 export const PORT: number = 5000;
 
 export const MAX_UPLOAD_SIZE_MB: number = 10;
 
-// TEMP dir resolver -> use OS temp directory to ensure write permissions
-// Example: C:\\Users\\<user>\\AppData\\Local\\Temp\\statify
+// Lokasi direktori sementara: gunakan direktori temp OS untuk memastikan izin tulis
+// Contoh: C:\\Users\\<user>\\AppData\\Local\\Temp\\statify
 export const getTempDir = (): string => path.join(os.tmpdir(), 'statify');
 
 // Feature flags
-export const RATE_LIMIT_ENABLED: boolean = false; // Disabled for local/dev load testing
-export const DEBUG_SAV: boolean = false; // Verbose logging toggle for SAV create
+export const RATE_LIMIT_ENABLED: boolean = false; // Nonaktif secara default (ramah untuk uji beban lokal/dev)
+export const DEBUG_SAV: boolean = false; // Log detail untuk proses pembuatan SAV
 
 export const ALLOWED_ORIGINS: string[] = [
   'https://statify-dev.student.stis.ac.id',
@@ -21,5 +24,5 @@ export const ALLOWED_ORIGINS: string[] = [
   'http://localhost:3000',
 ];
 
-export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 min
-export const RATE_LIMIT_MAX = 100; // max per key per window
+export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 menit
+export const RATE_LIMIT_MAX = 100; // kuota maksimum per kunci per jendela waktu
