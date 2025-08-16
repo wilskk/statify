@@ -2,7 +2,7 @@
 
 **Statify** adalah aplikasi web untuk analisis data statistik yang modern dan intuitif, dibangun dengan Next.js, TypeScript, dan teknologi web terkini.
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Gambaran Umum](#gambaran-umum)
 - [Teknologi & Arsitektur](#teknologi--arsitektur)
@@ -13,28 +13,44 @@
 - [Deployment](#deployment)
 - [Dokumentasi](#dokumentasi)
 
-## 🔍 Gambaran Umum
+## Gambaran Umum
 
-Statify Frontend adalah interface pengguna untuk platform analisis statistik yang memungkinkan pengguna:
+Statify Frontend adalah **alternatif modern berbasis web untuk SPSS** yang menggunakan **client-side processing**. Platform ini memungkinkan pengguna melakukan analisis statistik profesional langsung di browser tanpa perlu menginstall software desktop atau mengirim data ke server.
 
-- Import data dari berbagai format (CSV, Excel, SPSS)
-- Melakukan analisis statistik deskriptif, eksplorasi, dan inferensial
-- Visualisasi data dengan berbagai jenis chart
-- Manajemen data dan transformasi
-- Export hasil analisis
+### Keunggulan sebagai Alternatif SPSS
+- **Berbasis Web**: Tidak perlu instalasi, dapat diakses dari browser mana saja
+- **Client-Side Processing**: Semua pemrosesan data dilakukan di browser pengguna, memastikan privasi dan keamanan data
+- **Real-time Analysis**: Analisis data langsung tanpa upload ke server
+- **Cost-effective**: Alternatif gratis untuk software statistik berbayar
+- **Cross-platform**: Dapat digunakan di Windows, Mac, Linux, bahkan tablet
 
-## 🛠 Teknologi & Arsitektur
+### Fitur Utama
+- **Import data** dari berbagai format (CSV, Excel, SPSS .sav files)
+- **Analisis statistik** deskriptif, eksplorasi, dan inferensial
+- **Visualisasi data** dengan berbagai jenis chart interaktif
+- **Manajemen data** dan transformasi variabel
+- **Export hasil** analisis dan visualisasi
+- **Interface intuitif** yang familiar bagi pengguna SPSS
+
+## Teknologi & Arsitektur
 
 ### Tech Stack
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS + Shadcn/ui
 - **State Management**: Zustand
-- **Data Processing**: Web Workers
+- **Data Processing**: Web Workers (client-side processing)
 - **Charts**: D3.js + custom chart builders
-- **Tables**: Handsontable
+- **Tables**: Handsontable (seperti interface SPSS)
 - **Testing**: Jest + React Testing Library
 - **Build Tools**: SWC, ESLint, Prettier
+
+### Client-Side Processing Architecture
+Statify menggunakan **Web Workers** untuk memproses data langsung di browser pengguna:
+- **Main Thread**: UI rendering dan interaksi pengguna
+- **Worker Threads**: Pemrosesan data, kalkulasi statistik, dan transformasi
+- **IndexedDB**: Penyimpanan lokal data di browser
+- **No Server Upload**: Data tidak pernah meninggalkan perangkat pengguna
 
 ### Arsitektur Aplikasi
 ```
@@ -49,7 +65,7 @@ Statify Frontend adalah interface pengguna untuk platform analisis statistik yan
 └── public/                # Static assets & web workers
 ```
 
-## 🚀 Setup Development
+## Setup Development
 
 ### Prerequisites
 - Node.js 18+
@@ -83,7 +99,7 @@ npm run lint         # ESLint check
 npm run type-check   # TypeScript check
 ```
 
-## 📁 Struktur Proyek
+## Struktur Proyek
 
 ### Core Directories
 
@@ -120,27 +136,27 @@ npm run type-check   # TypeScript check
 
 ### Key Features
 
-#### 📊 Data Management
+#### Data Management
 - Import/Export berbagai format data
 - Data cleaning dan transformation
 - Variable management
 - Missing values handling
 
-#### 📈 Statistical Analysis
+#### Statistical Analysis
 - Descriptive statistics
 - Frequency analysis
 - Crosstabs analysis
 - Explore data analysis
 - Chart generation
 
-#### 🎨 User Interface
+#### User Interface
 - Responsive design
 - Dark/Light theme
 - Modal system
 - Tour guide system
 - Help documentation
 
-## 👨‍💻 Panduan Development
+## Panduan Development
 
 ### Code Style & Standards
 - Menggunakan ESLint + Prettier untuk code formatting
@@ -183,7 +199,7 @@ const useDataStore = create<DataStore>((set) => ({
 - Dynamic modal registration
 - Type-safe modal props
 
-## 🧪 Testing
+## Testing
 
 ### Testing Strategy
 - Unit tests untuk utilities dan hooks
@@ -207,7 +223,7 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With coverage report
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Build Process
 ```bash
@@ -227,7 +243,7 @@ docker build -f Dockerfile.frontend -t statify-frontend .
 docker run -p 3000:3000 statify-frontend
 ```
 
-## 📚 Dokumentasi
+## Dokumentasi
 
 ### Developer Resources
 - [FDD Documentation](./docs/FDD/) - Feature-Driven Development process
