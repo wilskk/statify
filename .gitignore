@@ -100,3 +100,7 @@ frontend/.trae/rules/project_rules.md
 /frontend/.next-dev
 /backend/coverage
 /testing/playwright-report/data
+
+# Backend temp dirs (hasil sementara .sav)
+backend/temp/
+backend/server/temp/

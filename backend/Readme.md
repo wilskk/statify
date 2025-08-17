@@ -105,6 +105,16 @@ Backend menggunakan konfigurasi statis yang terletak di `server/config/constants
 | `RATE_LIMIT_ENABLED` | false | Enable/disable rate limiting |
 | `RATE_LIMIT_WINDOW_MS` | 900000 | Jendela waktu rate limit (15 menit) |
 | `RATE_LIMIT_MAX` | 100 | Maksimum request per jendela |
+| `DEBUG_SAV` | false | Mengaktifkan log debug proses pembuatan SAV |
+
+#### Direktori Sementara
+Direktori sementara ditentukan oleh fungsi `getTempDir()` yang mengembalikan `path.join(os.tmpdir(), 'statify')`. Contoh (Windows):
+
+```
+C:\\Users\\<user>\\AppData\\Local\\Temp\\statify
+```
+
+Catatan: File sementara dibersihkan per-operasi (setelah upload dibaca atau setelah unduhan selesai), tidak ada job pembersihan terjadwal.
 
 ### CORS Configuration
 ```typescript
@@ -133,7 +143,6 @@ backend/
 │   │   └── savService.ts     # Business logic
 │   └── types/
 │       └── sav.types.ts      # TypeScript definitions
-├── temp/                     # Temporary files (auto-cleaned)
 ├── docs/
 │   └── API.md               # API documentation
 ├── package.json
@@ -386,13 +395,14 @@ docker build -f Dockerfile.backend -t statify-backend .
 docker run -p 5000:5000 statify-backend
 ```
 
-### Environment Variables Production
-```typescript
-// Override constants via environment variables
-PORT=5000
-MAX_UPLOAD_SIZE_MB=50
-RATE_LIMIT_ENABLED=true
-```
+Jika Anda mengubah nilai di `server/config/constants.ts`, lakukan rebuild image sebelum deploy ulang.
+
+### Mengubah Konfigurasi untuk Production
+Konfigurasi backend tidak dibaca dari environment variables. Untuk menyesuaikan port, batas upload, CORS, atau rate limiting:
+
+1. Edit nilai pada `server/config/constants.ts`.
+2. Rebuild: `npm run build` (atau rebuild Docker image).
+3. Deploy ulang aplikasi/container.
 
 ### Deployment Checklist
 - [ ] Build production: `npm run build`
@@ -404,17 +414,13 @@ RATE_LIMIT_ENABLED=true
 
 ### PM2 Configuration
 ```javascript
-// ecosystem.config.js
+// ecosystem.config.js (contoh minimal)
 module.exports = {
   apps: [{
     name: 'statify-backend',
     script: 'dist/index.js',
     instances: 'max',
-    exec_mode: 'cluster',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 5000
-    }
+    exec_mode: 'cluster'
   }]
 };
 ```

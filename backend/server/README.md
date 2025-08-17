@@ -72,8 +72,6 @@ server/
 │   ├── __tests__/               # Service tests
 │   │   └── savService.test.ts
 │   └── savService.ts            # Business logic layer
-├── temp/                        # Temporary file storage
-│   └── *.sav                    # Auto-cleaned temp files
 └── types/
     ├── external.d.ts            # External type definitions
     └── sav.types.ts             # Core TypeScript types
@@ -89,9 +87,8 @@ Entry point utama server yang menangani:
 
 ```typescript
 // Key features:
-- Port configuration: process.env.PORT || 5000
-- Error handling for uncaught exceptions
-- Graceful shutdown on SIGTERM
+- Port configuration: menggunakan `PORT` dari `server/config/constants.ts` (tanpa process.env)
+- Start: `app.listen(PORT)` di `server/index.ts`
 ```
 
 ## 🌐 Express Application
@@ -110,14 +107,24 @@ app.use(cors({
     methods: ['GET', 'POST'],
 }));
 
-// 3. Rate Limiting - API protection
-const apiLimiter = rateLimit({
+// 3. JSON body parsing
+app.use(express.json());
+
+// 4. (Opsional) Rate Limiting - API protection pada prefix /api
+if (RATE_LIMIT_ENABLED) {
+  const apiLimiter = rateLimit({
     windowMs: RATE_LIMIT_WINDOW_MS,    // 15 minutes
-    max: RATE_LIMIT_MAX,                // 100 requests
+    max: RATE_LIMIT_MAX,               // 100 requests
+    standardHeaders: true,
+    legacyHeaders: false,
     keyGenerator: (req) => {
-        return req.headers['x-user-id'] || req.ip;
+      const userIdHeader = req.headers['x-user-id'];
+      const id = Array.isArray(userIdHeader) ? userIdHeader[0] : userIdHeader;
+      return String(id ?? req.ip);
     }
-});
+  });
+  app.use('/api', apiLimiter);
+}
 ```
 
 #### Routes
@@ -132,16 +139,19 @@ const apiLimiter = rateLimit({
 Konfigurasi statis terpusat:
 
 ```typescript
-export const PORT = 5000;
-export const MAX_UPLOAD_SIZE_MB = 10;
+export const PORT: number = 5000;
+export const MAX_UPLOAD_SIZE_MB: number = 10;
 export const getTempDir = (): string => path.join(os.tmpdir(), 'statify');
 
-// Security
-export const RATE_LIMIT_ENABLED = false; // Toggle for development
-export const ALLOWED_ORIGINS = [
+// Feature flags
+export const RATE_LIMIT_ENABLED: boolean = false; // Nonaktif secara default
+export const DEBUG_SAV: boolean = false; // Log detail untuk proses pembuatan SAV
+
+export const ALLOWED_ORIGINS: string[] = [
   'https://statify-dev.student.stis.ac.id',
-  'http://localhost:3000',
+  'http://statify-dev.student.stis.ac.id',
   'http://localhost:3001',
+  'http://localhost:3000',
 ];
 
 export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 min
@@ -286,13 +296,7 @@ npm run test:watch
 ## 🛡️ Error Handling
 
 ### Global Error Handling
-```typescript
-// Express error middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something broke!');
-});
-```
+Saat ini tidak ada global error middleware yang diregistrasikan di `app.ts`. Error ditangani di level controller/service dan respons terarah dikirimkan (mis. 400, 500). Penambahan middleware global dapat dipertimbangkan ke depan.
 
 ### Service Layer Errors
 - File read/write errors
@@ -374,11 +378,7 @@ npm start
 5. **Review**: Code review before merge
 
 ### Debug Mode
-Enable debug logging:
-```typescript
-// Set DEBUG_SAV = true in constants.ts
-export const DEBUG_SAV = true; // Verbose SAV processing logs
-```
+Aktifkan debug logging dengan mengubah `DEBUG_SAV` menjadi `true` di `server/config/constants.ts`, kemudian rebuild/jalankan ulang.
 
 ### Common Development Tasks
 
@@ -390,26 +390,12 @@ export const DEBUG_SAV = true; // Verbose SAV processing logs
 5. Update API documentation
 
 #### Debugging File Processing
-```typescript
-// Enable debug mode
-DEBUG_SAV = true;
+- Cek direktori sementara yang digunakan: `console.log('Temp dir:', getTempDir());`
+- Pastikan file sementara terhapus setelah proses selesai. Jika tidak, cek log error di controller/service.
 
-// Check temp directory
-console.log('Temp dir:', getTempDir());
-
-// Monitor file cleanup
-fs.unlink(filePath, (err) => {
-    if (err) console.error('Cleanup failed:', err);
-});
-```
-
-### Environment Variables (Development)
-```bash
-# Development overrides
-PORT=5001                    # Different port for dev
-RATE_LIMIT_ENABLED=false   # Disable rate limiting
-DEBUG_SAV=true              # Enable debug logging
-```
+### Static Config Changes (Development)
+- Semua konfigurasi runtime berada di `server/config/constants.ts` (tanpa environment variables).
+- Untuk mengubah nilai seperti `PORT`, `ALLOWED_ORIGINS`, `RATE_LIMIT_*`, `DEBUG_SAV`, edit file tersebut lalu rebuild (`npm run build`) dan jalankan ulang server.
 
 ## 📊 Monitoring & Logging
 
@@ -449,8 +435,10 @@ EXPOSE 5000
 CMD ["node", "dist/index.js"]
 ```
 
+Catatan: Backend tidak membaca environment variables untuk konfigurasi runtime. Jika Anda mengubah `server/config/constants.ts`, rebuild image Docker sebelum deploy ulang.
+
 ### Production Checklist
-- [ ] Environment variables configured
+- [ ] Static configuration reviewed (`server/config/constants.ts`)
 - [ ] Rate limiting enabled
 - [ ] Security headers verified
 - [ ] SSL/TLS configured
