@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     RepeatedMeasuresModelProps,
     RepeatedMeasuresModelType,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures";
@@ -16,7 +16,7 @@ import {
     SUMSQUARESMETHOD,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {Badge} from "@/components/ui/badge";
 
 export const RepeatedMeasuresModel = ({
@@ -149,7 +149,7 @@ export const RepeatedMeasuresModel = ({
             }
             // Jika tidak, tambahkan spasi dan variabel
             else {
-                setCurrentBuildTerm((prev) => prev + " " + selectedVariable);
+                setCurrentBuildTerm((prev) => `${prev  } ${  selectedVariable}`);
             }
         }
     };
@@ -171,7 +171,7 @@ export const RepeatedMeasuresModel = ({
             !currentBuildTerm.endsWith(" * ") &&
             !currentBuildTerm.endsWith("(")
         ) {
-            setCurrentBuildTerm((prev) => prev + " * ");
+            setCurrentBuildTerm((prev) => `${prev  } * `);
         }
     };
 
@@ -202,9 +202,9 @@ export const RepeatedMeasuresModel = ({
 
                 // Sisipkan "({variable})" sebelum kurung tutup terakhir
                 newTerm =
-                    newTerm.substring(0, lastClosingIndex) +
-                    "({variable})" +
-                    newTerm.substring(lastClosingIndex);
+                    `${newTerm.substring(0, lastClosingIndex) 
+                    }({variable})${ 
+                    newTerm.substring(lastClosingIndex)}`;
             } else {
                 // Kasus: term tidak berakhir dengan ")" - seperti "Age"
                 // Kita ingin mengubahnya menjadi "Age({variable})"

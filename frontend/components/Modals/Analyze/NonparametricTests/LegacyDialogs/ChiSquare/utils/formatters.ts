@@ -1,4 +1,4 @@
-import {
+import type {
     ChiSquareResult,
     ChiSquareTable,
     TableColumnHeader,
@@ -47,7 +47,7 @@ function formatFrequenciesGetFromData(
         results.forEach((result) => {
             const { variable1, frequencies, metadata } = result;
 
-            if (variable1 && frequencies && frequencies.categoryList && frequencies.categoryList.length > 0) {
+            if (variable1 && frequencies?.categoryList && frequencies.categoryList.length > 0) {
                 const freqStats = frequencies;
                 const decimals = variable1.decimals;
 
@@ -158,12 +158,12 @@ function formatFrequenciesUseSpecifiedRange(
     if (results && results.length > 0) {
         // Find first result with sufficient data
         const firstResult = results.find(result => 
-            result && result.frequencies && 
+            result?.frequencies && 
             'categoryList' in result.frequencies && 
             !result.metadata?.hasInsufficientData
         );
         
-        if (firstResult && firstResult.frequencies && 'categoryList' in firstResult.frequencies) {
+        if (firstResult?.frequencies && 'categoryList' in firstResult.frequencies) {
             const freqStats = firstResult.frequencies;
             const categoryList = freqStats.categoryList;
             
@@ -232,7 +232,7 @@ function formatFrequenciesUseSpecifiedRange(
     if (results) {
         results.forEach((result, varIndex) => {
             const stats = result.frequencies;
-            if (stats && stats.observedN && !result.metadata?.hasInsufficientData) {
+            if (stats?.observedN && !result.metadata?.hasInsufficientData) {
                 totalRow[`observedN${varIndex}`] = stats.observedN.reduce((sum, val) => sum + val, 0);
             } else {
                 totalRow[`observedN${varIndex}`] = "";

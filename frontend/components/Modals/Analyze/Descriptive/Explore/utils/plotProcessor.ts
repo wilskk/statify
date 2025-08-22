@@ -1,7 +1,7 @@
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
-import { ExploreAnalysisParams } from "../types";
-import { Variable } from "@/types/Variable";
+import type { ExploreAnalysisParams } from "../types";
+import type { Variable } from "@/types/Variable";
 
 // Date utility functions
 function isDateString(value: string): boolean {

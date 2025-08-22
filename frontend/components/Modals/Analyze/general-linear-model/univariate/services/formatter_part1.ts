@@ -1,5 +1,5 @@
 import { formatDisplayNumber, formatSig } from "@/hooks/useFormatter";
-import { ResultJson, Row, Table } from "@/types/Table";
+import type { ResultJson, Row, Table } from "@/types/Table";
 
 export function formatPart1(data: any, resultJson: ResultJson) {
     // 1. Between-Subjects Factors table
@@ -136,8 +136,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
     if (data.levene_test && data.levene_test.length > 0) {
         const firstTest = data.levene_test[0];
         const isSimpleLevene =
-            firstTest &&
-            firstTest.entries &&
+            firstTest?.entries &&
             firstTest.entries.length === 1 &&
             firstTest.entries[0].function === "Levene";
 
@@ -253,7 +252,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
                     ...nullColumns,
                 });
             }
-            if (firstTest && firstTest.design) {
+            if (firstTest?.design) {
                 table.rows.push({
                     rowHeader: [`b. Design: ${firstTest.design}`],
                     ...nullColumns,
@@ -579,7 +578,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
             const table: Table = {
                 key: "tests_of_between_subjects_effects",
                 title: `Tests of Between-Subjects Effects`,
-                columnHeaders: columnHeaders,
+                columnHeaders,
                 rows: [],
                 note: effects.note,
                 interpretation: effects.interpretation,
@@ -632,7 +631,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
     }
 
     // 5. Parameter Estimates table
-    if (data.parameter_estimates && data.parameter_estimates.estimates) {
+    if (data.parameter_estimates?.estimates) {
         const estimates = data.parameter_estimates;
         let depVarName = "";
         const notes: string[] = [];
@@ -713,7 +712,7 @@ export function formatPart1(data: any, resultJson: ResultJson) {
         const table: Table = {
             key: "parameter_estimates",
             title: `Parameter Estimates`,
-            columnHeaders: columnHeaders,
+            columnHeaders,
             rows: [],
             note: estimates.note,
             interpretation: estimates.interpretation,

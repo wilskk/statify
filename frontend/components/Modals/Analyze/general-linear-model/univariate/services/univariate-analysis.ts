@@ -1,5 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { UnivariateAnalysisType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
+import type { UnivariateAnalysisType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
 import { transformUnivariateResult } from "./univariate-analysis-formatter";
 import { resultUnivariateAnalysis } from "./univariate-analysis-output";
 import init, {
@@ -20,32 +20,32 @@ export async function analyzeUnivariate({
         : [];
 
     const slicedDataForDependent = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: DependentVariables,
     });
 
     const slicedDataForFixFactor = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: FixFactorVariables,
     });
 
     const slicedDataForRandomFactor = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: RandomFactorVariables,
     });
 
     const slicedDataForCovariate = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: CovariateVariables,
     });
 
     const slicedDataForWlsWeight = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: WlsWeightVariable,
     });
 
@@ -92,7 +92,7 @@ export async function analyzeUnivariate({
      * */
     await resultUnivariateAnalysis({
         formattedResult: formattedResults ?? [],
-        configData: configData,
-        variables: variables,
+        configData,
+        variables,
     });
 }

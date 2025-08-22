@@ -3,9 +3,10 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-import {
+import type {
     OneWayAnovaAnalysisProps,
-    OneWayAnovaResult,
+    OneWayAnovaResult} from '../types';
+import {
     Descriptives,
     HomogeneityOfVariance,
     HomogeneousSubsets
@@ -131,7 +132,7 @@ export const useOneWayAnovaAnalysis = ({
                     const logId = await addLog({ log: logMsg });
 
                     let oneWayAnovaNote = "";
-                    let typeToVars: Record<string, string[]> = {};
+                    const typeToVars: Record<string, string[]> = {};
                     if (insufficientDataVarsRef.current.length > 0) {
                         oneWayAnovaNote += "Note: ";
                         for (const { variable1Label, variable1Name, insufficientType } of insufficientDataVarsRef.current) {

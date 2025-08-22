@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-import {
+import type {
     RepeatedMeasuresContainerProps,
     RepeatedMeasuresMainType,
     RepeatedMeasuresType,
@@ -178,8 +178,8 @@ export const RepeatedMeasuresContainer = ({
 
             await analyzeRepeatedMeasures({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

@@ -1,11 +1,12 @@
-import React, { FC, useState, useEffect } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // Axis label inputs removed
-import { TourStep } from "./hooks/useTourGuide";
+import type { TourStep } from "./hooks/useTourGuide";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { ChartsSettingsResult } from "./hooks";
+import type { ChartsSettingsResult } from "./hooks";
 
 export interface ChartsTabProps {
     settings: ChartsSettingsResult;

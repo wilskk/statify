@@ -3,10 +3,12 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-import {
+import type {
     ChiSquareAnalysisProps,
-    ChiSquareResults,
     ChiSquareResult
+} from '../types';
+import {
+    ChiSquareResults
 } from '../types';
 
 import {
@@ -82,7 +84,7 @@ export const useChiSquareAnalysis = ({
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
-                if (results.metadata && results.metadata.hasInsufficientData) {
+                if (results.metadata?.hasInsufficientData) {
                     insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
                     // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                   }
@@ -138,7 +140,7 @@ export const useChiSquareAnalysis = ({
 
                         let chiSquareNote = "";
                         let note = "";
-                        let typeToVars: Record<string, string[]> = {};
+                        const typeToVars: Record<string, string[]> = {};
                         if (insufficientDataVarsRef.current.length > 0) {
                             for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
                                 for (const type of insufficientType) {
@@ -181,7 +183,7 @@ export const useChiSquareAnalysis = ({
                                     // hitung banyak baris, jika hanya 2, tambahkan note
                                     let freqNote = "";
                                     if (table && Array.isArray(table.rows) && table.rows.length === 2) {
-                                        freqNote += (freqNote ? " " : "") + "Note: The Chi-Square Test cannot be performed because this variable have only one category (constant value).";
+                                        freqNote += `${freqNote ? " " : ""  }Note: The Chi-Square Test cannot be performed because this variable have only one category (constant value).`;
                                     }
                                     await addStatistic(analyticId, {
                                         title: "Frequencies",

@@ -1,6 +1,6 @@
 // roc-curve-analysis-output.ts
-import {RocCurveFinalResultType} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve-worker";
-import {Table} from "@/types/Table";
+import type {RocCurveFinalResultType} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve-worker";
+import type {Table} from "@/types/Table";
 import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultROCCurve({

@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
 import {FactorDialog} from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/dialog";
-import {
+import type {
     FactorContainerProps,
     FactorMainType,
     FactorType,
@@ -81,8 +81,8 @@ export const FactorContainer = ({ onClose }: FactorContainerProps) => {
 
             await analyzeFactor({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

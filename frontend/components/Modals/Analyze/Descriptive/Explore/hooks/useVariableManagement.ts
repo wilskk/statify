@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Variable } from "@/types/Variable";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { HighlightedVariable } from '../types';
+import type { HighlightedVariable } from '../types';
 
 export interface VariableManagementState {
     availableVariables: Variable[];
@@ -108,7 +108,7 @@ export const useVariableManagement = (): UseVariableManagementResult => {
 
     const moveToLabelVariable = useCallback((variable: Variable) => {
         if (variable.id === undefined || variable.id === null) return;
-        if (labelVariable && labelVariable.id !== undefined && labelVariable.id !== null) {
+        if (labelVariable?.id !== undefined && labelVariable.id !== null) {
             setAvailableVariables(prev => {
                 if (!prev.some(v => String(v.id) === String(labelVariable.id))) {
                     const newList = [...prev, labelVariable];

@@ -8,7 +8,7 @@ import {
     Shapes,
     BarChartHorizontal
 } from 'lucide-react';
-import { Variable } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface VariablesTabProps {

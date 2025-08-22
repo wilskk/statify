@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {
+import type {
     MultivariateAnalysisType
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate-worker";
 
@@ -16,26 +16,26 @@ export async function analyzeMultivariate({
         : [];
 
     const slicedDataForDependent = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: DependentVariables,
     });
 
     const slicedDataForFixFactor = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: FixFactorVariables,
     });
 
     const slicedDataForCovariate = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: CovariateVariables,
     });
 
     const slicedDataForWlsWeight = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: WlsWeightVariable,
     });
 

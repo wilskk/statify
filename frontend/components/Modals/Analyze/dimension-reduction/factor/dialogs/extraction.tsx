@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     FactorExtractionProps,
     FactorExtractionType,
 } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
@@ -13,7 +13,7 @@ import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVal
 import {EXTRACTIONMETHOD} from "@/components/Modals/Analyze/dimension-reduction/factor/constants/factor-method";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Input} from "@/components/ui/input";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 
 export const FactorExtraction = ({
     isExtractionOpen,

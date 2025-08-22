@@ -1,5 +1,5 @@
-import {HierClusType} from "./hierarchical-cluster";
-import {ResultJson} from "@/types/Table";
+import type {HierClusType} from "./hierarchical-cluster";
+import type {ResultJson} from "@/types/Table";
 
 export type HierClusAnalysisType = {
     configData: HierClusType;

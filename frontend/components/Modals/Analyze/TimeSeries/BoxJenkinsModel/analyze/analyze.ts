@@ -27,15 +27,15 @@ export async function handleBoxJenkinsModel(
 
         const arima = new Arima(new Float64Array(data), orderParameter[0], orderParameter[1], orderParameter[2]);
         // let test = Array.from(burg_alg(5, new Float64Array(data)));
-        let coef = Array.from(arima.estimate_coef());
-        let se = Array.from(arima.estimate_se()); 
-        let tStat = Array.from(arima.t_stat());
-        let pValue = Array.from(arima.p_value());
-        let selCritValue = Array.from(arima.selection_criteria());
+        const coef = Array.from(arima.estimate_coef());
+        const se = Array.from(arima.estimate_se()); 
+        const tStat = Array.from(arima.t_stat());
+        const pValue = Array.from(arima.p_value());
+        const selCritValue = Array.from(arima.selection_criteria());
 
         // Description Table
-        let dateArray = await generateDate(typeDate, startHour, startDay, startMonth, startYear, data.length);
-        let descriptionJSON = JSON.stringify({
+        const dateArray = await generateDate(typeDate, startHour, startDay, startMonth, startYear, data.length);
+        const descriptionJSON = JSON.stringify({
             tables: [
                 {
                     title: `Description Table`,
@@ -74,7 +74,7 @@ export async function handleBoxJenkinsModel(
             ],
         });
 
-        let coefName = ['Constant'];
+        const coefName = ['Constant'];
 
         if(orderParameter[0] > 0){
             for(let i = 1; i <= orderParameter[0]; i++){
@@ -87,7 +87,7 @@ export async function handleBoxJenkinsModel(
             }
         }
 
-        let coefStruct: Record<string, any> = {}; // Menggunakan objek kosong
+        const coefStruct: Record<string, any> = {}; // Menggunakan objek kosong
         // Jika Nilai SE elemen ke-0, maka determinan 0 maka matriks singular
         for (let i = 0; i < se.length; i++) {
             if (se[i] == 0.0) {
@@ -110,7 +110,7 @@ export async function handleBoxJenkinsModel(
         } else {
             throw new Error("Data length is not equal");
         }
-        let coefStructJson = JSON.stringify({
+        const coefStructJson = JSON.stringify({
             tables: [{
                 title: `Coefficients Test for ARIMA (${orderParameter[0]},${orderParameter[1]},${orderParameter[2]})`,
                 columnHeaders: [{header: ""}, {header: "coef"}, {header: "std. error"}, {header: "t value"}, {header: "p-value"}],
@@ -124,7 +124,7 @@ export async function handleBoxJenkinsModel(
             }]
         });
 
-        let selCritName = orderParameter[0] == 0 && orderParameter[2] == 0 ? 
+        const selCritName = orderParameter[0] == 0 && orderParameter[2] == 0 ? 
         [
             `S.E. of Regression`,`Sum Squared Resid`,
             `Log Likelihood`, `Mean Dependent Var`, `S.D. Dependent Var`,
@@ -136,7 +136,7 @@ export async function handleBoxJenkinsModel(
             `Log Likelihood`, `F-Statistic`, `Prob(F-Stat)`, `Mean Dependent Var`, `S.D. Dependent Var`,
             `Akaike Info Crit`, `Schwarz Criterion`, `Hannan-Quinn`, `Durbin-Watson`
         ];
-        let selCritStruct: Record<string, any> = {}; // Menggunakan objek kosong
+        const selCritStruct: Record<string, any> = {}; // Menggunakan objek kosong
         // Mengecek panjang seluruh data apakah sama
         if ((selCritName.length + selCritValue.length) % selCritValue.length == 0) {
             for (let i = 0; i < selCritName.length; i++) {
@@ -148,7 +148,7 @@ export async function handleBoxJenkinsModel(
         } else {
             throw new Error("Data length is not equal");
         }
-        let selCritStructJson = JSON.stringify({
+        const selCritStructJson = JSON.stringify({
             tables: [{
                 title: `Selection Criteria for ${dataHeader}`,
                 columnHeaders: [{header: ""}, {header: "value"}],
@@ -165,7 +165,7 @@ export async function handleBoxJenkinsModel(
         let graphicJSON = "";
         if (forecasting) {
             forecast = Array.from(arima.forecast());
-            let structuredForecasting: any[] = [];
+            const structuredForecasting: any[] = [];
             // Validasi panjang array
             if (data.length === forecast.length) {
                 for (let i = 0; i < data.length; i++) {
@@ -229,8 +229,8 @@ export async function handleBoxJenkinsModel(
 
         return ["success", descriptionJSON, [...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast, graphicJSON];
     } catch (error) {
-        let errorMessage = error as Error;
-        let errorJSON = JSON.stringify({
+        const errorMessage = error as Error;
+        const errorJSON = JSON.stringify({
             tables: [
                 {
                     title: `Error Table`,

@@ -7,7 +7,7 @@ import {
     ResizablePanel,
     ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import {
+import type {
     KMeansClusterDialogProps,
     KMeansClusterMainType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
+import type { CheckedState } from "@radix-ui/react-checkbox";
 import {
     Accordion,
     AccordionContent,
@@ -30,9 +30,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useModal } from "@/hooks/useModal";
 import { toast } from "sonner";
-import VariableListManager, {
+import type {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import { TourPopup } from "@/components/Common/TourComponents";
 import type { Variable } from "@/types/Variable";
 import { useTourGuide } from "../hooks/useTourGuide";

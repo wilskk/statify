@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {
+import type {
     VarianceCompsAnalysisType
 } from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components-worker";
 
@@ -17,32 +17,32 @@ export async function analyzeVarianceComps({
         : [];
 
     const slicedDataForDependent = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: DependentVariables,
     });
 
     const slicedDataForFixFactor = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: FixFactorVariables,
     });
 
     const slicedDataForRandomFactor = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: RandomFactorVariables,
     });
 
     const slicedDataForCovariate = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: CovariateVariables,
     });
 
     const slicedDataForWlsWeight = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: WlsWeightVariable,
     });
 

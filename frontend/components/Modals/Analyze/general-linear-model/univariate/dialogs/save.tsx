@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
+import type {
     UnivariateSaveProps,
     UnivariateSaveType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import { CheckedState } from "@radix-ui/react-checkbox";
+import type { CheckedState } from "@radix-ui/react-checkbox";
 import { HelpCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import {

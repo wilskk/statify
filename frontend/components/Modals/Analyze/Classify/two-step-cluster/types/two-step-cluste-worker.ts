@@ -1,5 +1,5 @@
-import {TwoStepClusterType} from "./two-step-cluster";
-import {ResultJson} from "@/types/Table";
+import type {TwoStepClusterType} from "./two-step-cluster";
+import type {ResultJson} from "@/types/Table";
 
 export type TwoStepClusterAnalysisType = {
     configData: TwoStepClusterType;

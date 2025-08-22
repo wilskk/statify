@@ -1,3 +1,9 @@
+/*
+  * Aplikasi Express
+  * - Keamanan: helmet, CORS, parsing JSON
+  * - (Opsional) Rate limit global pada prefix /api
+  * - Health check dan rute /api/sav
+  */
 import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
@@ -5,7 +11,6 @@ import helmet from 'helmet';
 
 import { ALLOWED_ORIGINS, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_ENABLED } from './config/constants';
 import { savRouter } from './routes/savRoutes';
-
 
 const app = express();
 
@@ -16,7 +21,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Global rate limiting (keyed by X-User-Id or IP)
+// Rate limit global (berdasarkan X-User-Id atau alamat IP)
 if (RATE_LIMIT_ENABLED) {
     const apiLimiter = rateLimit({
         windowMs: RATE_LIMIT_WINDOW_MS,
@@ -24,7 +29,7 @@ if (RATE_LIMIT_ENABLED) {
         standardHeaders: true,
         legacyHeaders: false,
         keyGenerator: (req: express.Request) => {
-            // Prefer header X-User-Id; fallback to IP. Always return string.
+            // Utamakan header X-User-Id; jika tidak ada gunakan IP. Wajib mengembalikan string.
             const userIdHeader = req.headers['x-user-id'];
             const id = Array.isArray(userIdHeader) ? userIdHeader[0] : userIdHeader;
             return String(id ?? req.ip);
@@ -33,7 +38,7 @@ if (RATE_LIMIT_ENABLED) {
     app.use('/api', apiLimiter);
 }
 
-// Health check
+// Health check sederhana
 app.get('/', (req: express.Request, res) => {
     res.status(200).send('Backend is running!');
 });

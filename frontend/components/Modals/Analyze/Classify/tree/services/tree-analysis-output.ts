@@ -1,5 +1,5 @@
 import {useResultStore} from "@/stores/useResultStore";
-import {Table} from "@/types/Table";
+import type {Table} from "@/types/Table";
 
 export async function resultTree(formattedResult: any) {
     try {

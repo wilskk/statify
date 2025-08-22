@@ -3,7 +3,7 @@ import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTi
 import {Button} from "@/components/ui/button";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
-import {FactorDialogProps, FactorMainType,} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
+import type {FactorDialogProps, FactorMainType,} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
 import {Label} from "@/components/ui/label";
 import {Badge} from "@/components/ui/badge";
 import {ScrollArea} from "@/components/ui/scroll-area";

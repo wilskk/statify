@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
 import { Variable } from '@/types/Variable';
-import { 
+import type { 
     DescriptivesAnalysisProps, 
     DescriptiveResult, 
     ZScoreData
@@ -10,7 +10,8 @@ import { formatDescriptiveTableOld } from '../utils/formatters';
 import { useZScoreProcessing } from './useZScoreProcessing';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
-import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
+import type { WorkerClient } from '@/utils/workerClient';
+import { createPooledWorkerClient } from '@/utils/workerClient';
 import { spssDateTypes } from '@/types/Variable';
 
 export const useDescriptivesAnalysis = ({

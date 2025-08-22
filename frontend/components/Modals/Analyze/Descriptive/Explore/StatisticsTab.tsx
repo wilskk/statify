@@ -1,9 +1,10 @@
 "use client";
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { StatisticsTabProps } from "./types";
+import type { StatisticsTabProps } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 const StatisticsTab: FC<StatisticsTabProps> = ({

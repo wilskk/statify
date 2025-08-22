@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, FC, useEffect, useCallback } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,7 +24,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore, CellUpdate } from "@/stores/useDataStore";
+import type { CellUpdate } from "@/stores/useDataStore";
+import { useDataStore } from "@/stores/useDataStore";
 import type { Variable, VariableType } from "@/types/Variable";
 import RecodeVariablesTab from "../components/RecodeVariablesTab";
 import OldNewValuesSetup from "../components/OldNewValuesSetup";
@@ -31,8 +33,8 @@ import { useResultStore } from "@/stores/useResultStore";
 import { X } from "lucide-react";
 import VariableMappingEditor from "./VariableMappingEditor";
 import OutputOptions from "./OutputOptions";
-import { RecodeRule, RecodeMapping } from "../Types";
-import { BaseModalProps } from "@/types/modalTypes";
+import type { RecodeRule, RecodeMapping } from "../Types";
+import type { BaseModalProps } from "@/types/modalTypes";
 
 export enum RecodeMode {
   DIFFERENT_VARIABLES = "recodeDifferentVariables",
@@ -460,7 +462,7 @@ export const RecodeDifferentVariablesModal: FC<
         // Apply recode rules to create new data
         const newData = data.map((value) => {
           const safeValue = value === null ? "" : value;
-          let recodedValue = evaluateValueWithRules(
+          const recodedValue = evaluateValueWithRules(
             safeValue,
             recodeRules,
             getRecodeType(mapping.sourceVariable.type),
@@ -491,7 +493,7 @@ export const RecodeDifferentVariablesModal: FC<
           bulkUpdates.push({
             row: rowIndex,
             col: columnOffset,
-            value: value,
+            value,
           });
         });
 
@@ -519,11 +521,11 @@ export const RecodeDifferentVariablesModal: FC<
             case "rangeHighest":
               return `${rule.oldValueDisplay} → ${rule.newValueDisplay}`;
             case "systemMissing":
-              return "System Missing → " + rule.newValueDisplay;
+              return `System Missing → ${  rule.newValueDisplay}`;
             case "systemOrUserMissing":
-              return "System or User Missing → " + rule.newValueDisplay;
+              return `System or User Missing → ${  rule.newValueDisplay}`;
             case "else":
-              return "Else → " + rule.newValueDisplay;
+              return `Else → ${  rule.newValueDisplay}`;
             default:
               return "";
           }

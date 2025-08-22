@@ -7,11 +7,11 @@ import {Label} from "@/components/ui/label";
 import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {Input} from "@/components/ui/input";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     DiscriminantMethodProps,
     DiscriminantMethodType
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 
 export const DiscriminantMethod = ({isMethodOpen, setIsMethodOpen, updateFormData, data}: DiscriminantMethodProps) => {
     const [methodState, setMethodState] = useState<DiscriminantMethodType>({...data});

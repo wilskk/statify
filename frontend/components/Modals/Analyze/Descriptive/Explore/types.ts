@@ -1,8 +1,8 @@
 import type { Variable } from "@/types/Variable";
-import { TourStep } from './hooks/useTourGuide';
-import { UseVariableManagementResult } from './hooks/useVariableManagement';
-import { UseStatisticsSettingsResult } from './hooks/useStatisticsSettings';
-import { UsePlotsSettingsResult } from './hooks/usePlotsSettings';
+import type { TourStep } from './hooks/useTourGuide';
+import type { UseVariableManagementResult } from './hooks/useVariableManagement';
+import type { UseStatisticsSettingsResult } from './hooks/useStatisticsSettings';
+import type { UsePlotsSettingsResult } from './hooks/usePlotsSettings';
 
 // Type for highlighted variable
 export type HighlightedVariable = {

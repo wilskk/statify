@@ -1,6 +1,6 @@
 import React from 'react';
 import { HelpCard, HelpAlert } from '@/app/help/ui/HelpLayout';
-import { Calculator, TrendingUp, Target, BarChart3, AlertTriangle, Lightbulb } from 'lucide-react';
+import { Calculator, TrendingUp, Target, BarChart3, AlertTriangle } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
 

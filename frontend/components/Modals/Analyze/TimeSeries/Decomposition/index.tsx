@@ -1,11 +1,12 @@
 "use client";
 
-import React, { FC, useState, useEffect } from "react";
+import type { FC} from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { useOptionHook } from "@/components/Modals/Analyze/TimeSeries/Decomposition/hooks/optionHook";
 import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeHook";
 import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/Decomposition/hooks/analyzeHook";
@@ -13,7 +14,7 @@ import VariablesTab from "@/components/Modals/Analyze/TimeSeries/Decomposition/V
 import OptionTab from "@/components/Modals/Analyze/TimeSeries/Decomposition/OptionTab";
 import TimeTab from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
-import { DataRow } from "@/types/Data";
+import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 
 interface DecompositionProps {
@@ -71,7 +72,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
 
     useEffect(() => {
         if (combinedError) {
-            toast.error("Error: " + String(combinedError));
+            toast.error(`Error: ${  String(combinedError)}`);
         }
     }, [combinedError]);
 
@@ -82,7 +83,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                 const savedData = await getFormData("Decomposition", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
 
-                if (savedData && savedData.prevDataRef) {
+                if (savedData?.prevDataRef) {
                     // If previous data reference exists, check if it matches current data
                     setPrevDataRef(savedData.prevDataRef);
                     if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
@@ -98,7 +99,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                     setSaveAsVariable(savedData.saveAsVariable);
                 }
                 
-                if (savedData && savedData.availableVariables && savedData.selectedVariables) {
+                if (savedData?.availableVariables && savedData.selectedVariables) {
                     // Validate that saved variables still exist in current variable store
                     const validAvailableVars = savedData.availableVariables.filter((savedVar: Variable) =>
                         filteredVariables.some(v => v.columnIndex === savedVar.columnIndex)
@@ -145,7 +146,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                 };
                 const stateToSave = {
                     ...variableToSave,
-                    saveAsVariable: saveAsVariable,
+                    saveAsVariable,
                     prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("Decomposition", stateToSave, "variables");

@@ -30,16 +30,19 @@ import { DataProcessingService } from '@/services/chart/DataProcessingService';
 import Statistics, { StatisticsParams } from '@/components/Modals/Analyze/Regression/Linear/Statistics';
 import PlotsLinear, { PlotsLinearParams } from '@/components/Modals/Analyze/Regression/Linear/PlotsLinear';
 import SaveLinear from './SaveLinear';
-import { SaveLinearParams } from './Type/SaveLinearParams';
-import OptionsLinear, { OptionsLinearParams } from './OptionsLinear';
+import type { SaveLinearParams } from './Type/SaveLinearParams';
+import type { OptionsLinearParams } from './OptionsLinear';
+import OptionsLinear from './OptionsLinear';
 import VariablesLinearTab from './VariablesLinearTab';
-import AssumptionTest, { AssumptionTestParams } from './AssumptionTest';
-import { Variable } from '@/types/Variable';
-import { CellUpdate } from '@/stores/useDataStore';
+import type { AssumptionTestParams } from './AssumptionTest';
+import AssumptionTest from './AssumptionTest';
+import type { Variable } from '@/types/Variable';
+import type { CellUpdate } from '@/stores/useDataStore';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, HelpCircle } from "lucide-react";
 import { TourPopup, ActiveElementHighlight } from '@/components/Common/TourComponents';
-import { useTourGuide, TabControlProps } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
+import type { TabControlProps } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
+import { useTourGuide } from '@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide';
 import { baseTourSteps } from './hooks/tourConfig';
 import { AnimatePresence } from 'framer-motion';
 
@@ -424,7 +427,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependent: filteredDependentData,
             independent: filteredIndependentData,
             dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos
           });
 
           variablesWorker.onmessage = async (e: MessageEvent) => {
@@ -520,7 +523,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           coefficientsWorker.postMessage({
             dependentData: filteredDependentData,
             independentData: filteredIndependentData,
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos
           });
 
           coefficientsWorker.onmessage = async (e: MessageEvent) => {
@@ -655,7 +658,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             console.log("[Analyze] Received response from worker:", e.data);
             const response = e.data;
             
-            if (response && response.error) {
+            if (response?.error) {
               console.error("[Analyze] Worker error:", response.error);
               alert(`Error in Predicted Values worker: ${response.error}`);
             } else {
@@ -798,7 +801,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           predictedValuesWorker.onerror = (error: ErrorEvent) => {
             console.error("[Analyze] Worker error:", {
               message: error.message,
-              error: error
+              error
             });
             alert(`Failed to run Predicted Values worker: ${error.message}`);
             predictedValuesWorker.terminate();
@@ -862,7 +865,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
               console.log("[Analyze] Received response from residuals worker:", e.data);
               const response = e.data;
               
-              if (response && response.error) {
+              if (response?.error) {
                 console.error("[Analyze] Residuals worker error:", response.error);
                 alert(`Error in Residuals worker: ${response.error}`);
               } else {
@@ -993,7 +996,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             residualsWorker.onerror = (error: ErrorEvent) => {
               console.error("[Analyze] Residuals worker error:", {
                 message: error.message,
-                error: error
+                error
               });
               alert(`Failed to run Residuals worker: ${error.message}`);
               residualsWorker.terminate();
@@ -1082,7 +1085,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependent: filteredDependentData,
             independent: filteredIndependentData,
             dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-            independentVariableInfos: independentVariableInfos,
+            independentVariableInfos,
             confidenceLevel: parseFloat(currentStatsParams.confidenceLevel) || 95, // Pass confidence level
           });
     
@@ -1129,7 +1132,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           partAndPartialWorker.postMessage({
             dependent: filteredDependentData,
             independents: filteredIndependentData,
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos
           });
     
           partAndPartialWorker.onmessage = async (e: MessageEvent) => {
@@ -1167,7 +1170,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
           collinearityWorker.postMessage({
             dependent: filteredDependentData,
             independent: filteredIndependentData,
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos
           });
     
           collinearityWorker.onmessage = async (e: MessageEvent) => {
@@ -1200,7 +1203,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependent: filteredDependentData,
             independent: filteredIndependentData,
             dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos
           });
     
           collinearityDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
@@ -1366,7 +1369,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependent: filteredDependentData,
             independent: filteredIndependentData,
             dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos
           });
     
           coefficientCorrelationsWorker.onmessage = async (e: MessageEvent) => {
@@ -1404,7 +1407,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependent: filteredDependentData,
             independent: filteredIndependentData,
             dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos
           });
     
           descriptiveWorker.onmessage = async (e: MessageEvent) => {
@@ -1437,7 +1440,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
             dependent: filteredDependentData,
             independent: filteredIndependentData,
             dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
-            independentVariableInfos: independentVariableInfos
+            independentVariableInfos
           });
     
           correlationsWorker.onmessage = async (e: MessageEvent) => {

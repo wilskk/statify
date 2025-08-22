@@ -1,14 +1,15 @@
-import {
-    TwoIndependentSamplesTestResults,
+import type {
     TwoIndependentSamplesTestTable,
     TableColumnHeader,
     TableRow,
     FrequenciesRanks,
     MannWhitneyUTestStatistics,
     KolmogorovSmirnovZTestStatistics,
-    DescriptiveStatistics,
     DisplayStatisticsOptions,
-    TwoIndependentSamplesTestResult,
+    TwoIndependentSamplesTestResult} from '../types';
+import {
+    TwoIndependentSamplesTestResults,
+    DescriptiveStatistics
 } from '../types';
 
 /**
@@ -25,12 +26,12 @@ export function formatFrequenciesRanksTable(
     
     if (!results || results.length === 0) {
         return {
-            title: title,
+            title,
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
     }
-    let columnHeaders: TableColumnHeader[] = [
+    const columnHeaders: TableColumnHeader[] = [
         { header: "", key: "rowHeader" },
         { header: groupingVariable, key: "groupingVariable" },
         { header: "N", key: "N" }
@@ -289,11 +290,11 @@ export function formatDescriptiveStatisticsTable (
         
         table.rows.push({
             rowHeader: [result.variable1.name],
-            N: N,
+            N,
             Mean: formatNumber(Mean, decimals + 2),
             StdDev: formatNumber(StdDev, decimals + 3),
-            Min: Min,
-            Max: Max,
+            Min,
+            Max,
             Percentile25: formatNumber(Percentile25, decimals + 2),
             Percentile50: formatNumber(Percentile50, decimals + 2),
             Percentile75: formatNumber(Percentile75, decimals + 2)

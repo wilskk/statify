@@ -1,4 +1,5 @@
-import { ModalType, BaseModalProps } from '@/types/modalTypes';
+import type { BaseModalProps } from '@/types/modalTypes';
+import { ModalType } from '@/types/modalTypes';
 import { isTimeSeriesModal } from '@/components/Modals/Analyze/TimeSeries/TimeSeriesModal';
 
 // Import time series modals directly from their directories

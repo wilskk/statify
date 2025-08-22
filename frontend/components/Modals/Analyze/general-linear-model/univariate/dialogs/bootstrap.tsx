@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
+import type {
     UnivariateBootstrapProps,
     UnivariateBootstrapType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
@@ -13,11 +13,12 @@ import {
     ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CheckedState } from "@radix-ui/react-checkbox";
+import type { CheckedState } from "@radix-ui/react-checkbox";
 import { toast } from "sonner";
-import VariableListManager, {
+import type {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
 import { HelpCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";

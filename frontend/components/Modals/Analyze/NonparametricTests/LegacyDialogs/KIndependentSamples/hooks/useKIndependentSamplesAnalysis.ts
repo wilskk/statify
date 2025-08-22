@@ -3,10 +3,12 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-import {
+import type {
     KIndependentSamplesTestAnalysisProps,
-    KIndependentSamplesTestResults,
     KIndependentSamplesTestResult
+} from '../types';
+import {
+    KIndependentSamplesTestResults
 } from '../types';
 
 import {
@@ -103,7 +105,7 @@ export const useKIndependentSamplesAnalysis = ({
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
-                if (results.metadata && results.metadata.hasInsufficientData) {
+                if (results.metadata?.hasInsufficientData) {
                     insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
                     // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                 }
@@ -151,7 +153,7 @@ export const useKIndependentSamplesAnalysis = ({
 
                         let kIndependentSamplesNote = "";
                         let note = "";
-                        let typeToVars: Record<string, string[]> = {};
+                        const typeToVars: Record<string, string[]> = {};
                         if (insufficientDataVarsRef.current.length > 0) {
                             kIndependentSamplesNote += "Note: "; 
                             for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
@@ -161,7 +163,7 @@ export const useKIndependentSamplesAnalysis = ({
                                 }
                             }
                             if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
-                                let testNames = [];
+                                const testNames = [];
                                 if (testType.kruskalWallisH) testNames.push("Kruskal-Wallis H Test");
                                 if (testNames.length > 0) {
                                     note += `Note: There are not enough valid cases to perform the ${testNames.join(" and ")} for ${typeToVars["empty"].join(", ")}. No statistics are computed.`;

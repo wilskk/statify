@@ -118,10 +118,10 @@ export function useTimeHook(
 
         const dataToSave = {
             selectedPeriod,
-            year: year,
-            month: month,
-            day: day,
-            hour: hour,
+            year,
+            month,
+            day,
+            hour,
         };
         
         saveFormData("TimeSeriesStore", dataToSave).catch(console.error);

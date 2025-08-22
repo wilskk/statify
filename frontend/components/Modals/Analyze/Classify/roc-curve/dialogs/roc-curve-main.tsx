@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-import {
+import type {
     RocCurveContainerProps,
     RocCurveMainType,
     RocCurveType,
@@ -73,8 +73,8 @@ export const RocCurveContainer = ({ onClose }: RocCurveContainerProps) => {
 
             await analyzeRocCurve({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

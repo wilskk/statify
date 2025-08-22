@@ -1,5 +1,5 @@
-import {FactorType} from "./factor";
-import {ResultJson} from "@/types/Table";
+import type {FactorType} from "./factor";
+import type {ResultJson} from "@/types/Table";
 
 export type FactorAnalysisType = {
     configData: FactorType;

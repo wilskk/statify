@@ -334,7 +334,28 @@ class DescriptiveCalculator {
         const p25 = this.#getPercentile(25);
         const p75 = this.#getPercentile(75);
         const median = this.#getPercentile(50);
-        const iqr = (p75 !== null && p25 !== null) ? (p75 - p25) : null;
+        // Apply custom rounding for ordinal percentiles (round-half-even at variable precision)
+        const decimals = (this.variable && typeof this.variable.decimals === 'number')
+            ? Math.max(0, Math.min(16, this.variable.decimals))
+            : 1;
+        const roundOrdinal = (v) => {
+            if (typeof v !== 'number' || !isFinite(v)) return v;
+            // Do not round date-core variables' percentiles (they are SPSS seconds)
+            try {
+                const core = typeof getCoreType === 'function' ? getCoreType(this.variable) : 'numeric';
+                if (core === 'date') return v;
+            } catch (_) { /* ignore */ }
+            if (typeof toSPSSFixed === 'function') return toSPSSFixed(v, decimals);
+            if (typeof roundToDecimals === 'function') return roundToDecimals(v, decimals);
+            return v;
+        };
+        const rp25 = roundOrdinal(p25);
+        const rp75 = roundOrdinal(p75);
+        const rMedian = roundOrdinal(median);
+        // IQR should be derived from unrounded quartiles to avoid compounding rounding
+        const iqr = (typeof p75 === 'number' && isFinite(p75) && typeof p25 === 'number' && isFinite(p25))
+            ? (p75 - p25)
+            : null;
         return {
             variable: this.variable,
             stats: {
@@ -342,11 +363,11 @@ class DescriptiveCalculator {
                 Valid: W,
                 Missing: this.data.length - W,
                 Mode: mode,
-                Median: median,
-                '25th Percentile': p25,
-                '75th Percentile': p75,
+                Median: rMedian,
+                '25th Percentile': rp25,
+                '75th Percentile': rp75,
                 IQR: iqr,
-                Percentiles: { '25': p25, '75': p75 },
+                Percentiles: { '25': rp25, '75': rp75 },
             },
             zScores: null,
         };

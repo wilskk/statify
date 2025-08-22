@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {RocCurveAnalysisType} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve-worker";
+import type {RocCurveAnalysisType} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve-worker";
 
 export async function analyzeRocCurve({
     configData,
@@ -12,14 +12,14 @@ export async function analyzeRocCurve({
         : [];
 
     const slicedDataForTest = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: TestVariables,
     });
 
     const slicedDataForState = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: StateVariable,
     });
 

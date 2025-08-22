@@ -136,7 +136,7 @@ export const useStatisticsSettings = ({
         quartiles: quartilesChecked,
         cutPoints: cutPointsChecked,
         cutPointsN: parseInt(cutPointsValue, 10) || 10,
-        enablePercentiles: enablePercentiles,
+        enablePercentiles,
         percentilesList: percentileValues,
       },
       centralTendency: {

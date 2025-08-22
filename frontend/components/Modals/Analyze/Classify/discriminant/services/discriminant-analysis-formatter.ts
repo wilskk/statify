@@ -1,6 +1,6 @@
 // discriminant-analysis-formatter.ts
 import {formatDisplayNumber} from "@/hooks/useFormatter";
-import {ResultJson, Table} from "@/types/Table";
+import type {ResultJson, Table} from "@/types/Table";
 
 export function transformDiscriminantResult(data: any): ResultJson {
     const resultJson: ResultJson = {
@@ -563,7 +563,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
     }
 
     // 11. Canonical Discriminant Function Coefficients
-    if (data.canonical_functions && data.canonical_functions.coefficients) {
+    if (data.canonical_functions?.coefficients) {
         // Get the number of functions from the first coefficient's values length
         const numFunctions =
             data.canonical_functions.coefficients.length > 0
@@ -626,8 +626,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 12. Standardized Canonical Discriminant Function Coefficients
     if (
-        data.canonical_functions &&
-        data.canonical_functions.standardized_coefficients &&
+        data.canonical_functions?.standardized_coefficients &&
         data.canonical_functions.standardized_coefficients.length > 0
     ) {
         // Get the number of functions from the first coefficient's values length
@@ -683,8 +682,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 13. Functions at Group Centroids
     if (
-        data.canonical_functions &&
-        data.canonical_functions.function_at_centroids &&
+        data.canonical_functions?.function_at_centroids &&
         data.canonical_functions.function_at_centroids.length > 0
     ) {
         // Get the number of functions from the first centroid's values length
@@ -747,8 +745,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 14. Structure Matrix
     if (
-        data.structure_matrix &&
-        data.structure_matrix.correlations &&
+        data.structure_matrix?.correlations &&
         data.structure_matrix.correlations.length > 0
     ) {
         // Get the number of functions from the first correlation's values length
@@ -828,8 +825,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 15. Stepwise Statistics
     if (
-        data.stepwise_statistics &&
-        data.stepwise_statistics.variables_entered
+        data.stepwise_statistics?.variables_entered
     ) {
         const table: Table = {
             key: "stepwise_statistics",
@@ -920,8 +916,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 16. Variables in the Analysis
     if (
-        data.stepwise_statistics &&
-        data.stepwise_statistics.variables_in_analysis
+        data.stepwise_statistics?.variables_in_analysis
     ) {
         const table: Table = {
             key: "variables_in_analysis",
@@ -967,8 +962,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 17. Variables Not in the Analysis
     if (
-        data.stepwise_statistics &&
-        data.stepwise_statistics.variables_not_in_analysis
+        data.stepwise_statistics?.variables_not_in_analysis
     ) {
         const table: Table = {
             key: "variables_not_in_analysis",
@@ -1237,8 +1231,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 21. Classification Results
     if (
-        data.classification_results &&
-        data.classification_results.original_classification &&
+        data.classification_results?.original_classification &&
         data.classification_results.original_classification.length > 0
     ) {
         // Get the groups from original classification

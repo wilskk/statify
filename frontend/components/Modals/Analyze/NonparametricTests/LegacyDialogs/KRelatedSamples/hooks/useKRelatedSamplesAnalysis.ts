@@ -3,10 +3,12 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-import {
+import type {
     KRelatedSamplesAnalysisProps,
-    KRelatedSamplesResults,
     KRelatedSamplesResult
+} from '../types';
+import {
+    KRelatedSamplesResults
 } from '../types';
 
 import {

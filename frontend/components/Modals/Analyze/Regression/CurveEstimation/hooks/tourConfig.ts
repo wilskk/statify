@@ -1,4 +1,4 @@
-import { TourStep as BaseTourStep } from '@/types/tourTypes';
+import type { TourStep as BaseTourStep } from '@/types/tourTypes';
 
 export const TABS = {
   VARIABLES: 'variables' as const,

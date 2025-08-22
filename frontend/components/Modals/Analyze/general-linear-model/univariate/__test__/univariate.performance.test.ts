@@ -1,6 +1,6 @@
 /** @jest-environment node */
 
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";

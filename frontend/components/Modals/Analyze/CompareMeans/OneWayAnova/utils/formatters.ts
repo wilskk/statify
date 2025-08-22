@@ -1,13 +1,15 @@
-import { 
+import type { 
     OneWayAnovaResult, 
     OneWayAnovaTable, 
     TableColumnHeader, 
-    TableRow, 
-    MultipleComparisons,
-    HomogeneousSubsets,
+    TableRow,
     OneWayAnova
 } from '../types';
-import { Variable } from '@/types/Variable';
+import { 
+    MultipleComparisons,
+    HomogeneousSubsets
+} from '../types';
+import type { Variable } from '@/types/Variable';
 
 /**
  * Formats the ANOVA table
@@ -51,7 +53,7 @@ export function formatOneWayAnovaTable(
                 rowHeader: [variable1.label || variable1.name],
                 type: 'Between Groups',
                 SumOfSquares: formatNumber(SumOfSquares, decimals + 3),
-                df: df,
+                df,
                 MeanSquare: formatNumber(MeanSquare, decimals + 3),
             });
         } else {
@@ -59,7 +61,7 @@ export function formatOneWayAnovaTable(
                 rowHeader: [variable1.label || variable1.name],
                 type: 'Between Groups',
                 SumOfSquares: formatNumber(SumOfSquares, decimals + 3),
-                df: df,
+                df,
                 MeanSquare: formatNumber(MeanSquare, decimals + 3),
                 F: formatNumber(F, decimals + 3),
                 Sig: formatPValue(Sig)
@@ -214,7 +216,7 @@ export function formatHomogeneityOfVarianceTable(
             
             table.rows.push({
                 rowHeader: [variableName],
-                type: type,
+                type,
                 LeveneStatistic: formatNumber(LeveneStatistic, decimals + 3),
                 df1: formatDF(df1),
                 df2: formatDF(df2),
@@ -277,8 +279,8 @@ export function formatMultipleComparisonsTable(
                 
                 table.rows.push({
                     rowHeader: [variableName],
-                    factor1: factor1,
-                    factor2: factor2,
+                    factor1,
+                    factor2,
                     meanDifference: formatNumber(meanDifference, decimals),
                     stdError: formatNumber(stdError, decimals),
                     Sig: formatPValue(Sig),
@@ -315,7 +317,7 @@ export function formatHomogeneousSubsetsTable(
     // Find the result for this specific variable
     const variableResult = results;
 
-    if (!variableResult || !variableResult.homogeneousSubsets) {
+    if (!variableResult?.homogeneousSubsets) {
         return {
             title: variable.label || variable.name,
             columnHeaders: [{ header: "No Data", key: "noData" }],

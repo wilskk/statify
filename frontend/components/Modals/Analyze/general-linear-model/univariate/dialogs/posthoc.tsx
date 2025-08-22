@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
+import type {
     UnivariatePostHocProps,
     UnivariatePostHocType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
@@ -22,10 +22,11 @@ import {
 } from "@/components/ui/select";
 import { DUNNETMETHOD } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import VariableListManager, {
+import type { CheckedState } from "@radix-ui/react-checkbox";
+import type {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
 import { toast } from "sonner";
 import { HelpCircle } from "lucide-react";

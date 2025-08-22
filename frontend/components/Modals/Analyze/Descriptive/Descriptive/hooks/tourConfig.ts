@@ -1,4 +1,4 @@
-import { TourStep as BaseTourStep } from '@/types/tourTypes';
+import type { TourStep as BaseTourStep } from '@/types/tourTypes';
 
 // Constants
 export const TABS = {

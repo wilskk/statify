@@ -1,6 +1,6 @@
-// Note: We intentionally avoid importing enum types from 'sav-writer' here
-// because the package re-exports them as value-only aliases, which breaks
-// using them as types (TS2749). We keep numeric types to match the runtime enums.
+// Catatan: Hindari mengimpor enum dari 'sav-writer' di sini karena paket tersebut
+// mengekspor ulang sebagai alias nilai saja, sehingga tidak dapat dipakai sebagai tipe (TS2749).
+// Gunakan angka untuk mencocokkan enum di runtime.
 
 export type SPSSVariableType =
     'NUMERIC' | 'STRING' |
@@ -26,7 +26,7 @@ export interface SavVariable {
     }>;
 }
 
-// Minimal, forward-compatible meta shape returned by sav-reader that our FE consumes
+// Bentuk meta minimal (kompatibel ke depan) dari sav-reader yang dikonsumsi FE
 export interface SavMetaHeader {
     n_cases?: number;
     n_vars?: number;
@@ -34,16 +34,16 @@ export interface SavMetaHeader {
 }
 
 export interface SavSysVarPrintFormat {
-    // Mirrors sav-reader DisplayFormat (numeric enum under the hood)
+    // Menyimpan format tampilan dari sav-reader (enum numerik di balik layar)
     type?: number;
-    typestr?: string; // e.g. 'A', 'F', 'DATE', etc.
+    typestr?: string; // e.g. 'A', 'F', 'DATE', dll.
     width?: number;
     nbdec?: number;
     [key: string]: unknown;
 }
 
 export interface SavSysVarWriteFormat {
-    // Mirrors sav-reader DisplayFormat
+    // Mencerminkan DisplayFormat dari sav-reader
     type?: number;
     typestr?: string;
     width?: number;
@@ -61,12 +61,12 @@ export type SavMissingSpec =
 
 export interface SavSysVar {
     name: string;
-    // sav-reader commonly exposes 0 (numeric) / 1 (string)
+    // sav-reader umumnya menggunakan 0 (numeric) / 1 (string)
     type?: 0 | 1;
     label?: string;
     printFormat?: SavSysVarPrintFormat;
     writeFormat?: SavSysVarWriteFormat;
-    measurementLevel?: string; // e.g. 'scale', 'ordinal', 'nominal'
+    measurementLevel?: string; // mis. 'scale', 'ordinal', 'nominal'
     missing?: SavMissingSpec;
     [key: string]: unknown;
 }
@@ -93,13 +93,13 @@ export interface SavResponse {
     rows: Record<string, unknown>[];
 }
 
-// Value label as received from client payload (may be loosely typed)
+// Value label yang diterima dari payload klien (tipe dapat longgar)
 export interface ValueLabelInput {
     value?: string | number | null;
     label?: string | null;
 }
 
-// Variable shape as received from client payload
+// Bentuk variabel yang diterima dari payload klien
 export interface VariableInput {
     name: string;
     label?: string;
@@ -112,17 +112,17 @@ export interface VariableInput {
     valueLabels?: ValueLabelInput[];
 }
 
-// Variable shape required by sav-writer after transformation
-// Mirrors sav-writer's SavVariable from lib/writer/variables.d.ts
+// Bentuk variabel setelah transformasi (sesuai kebutuhan sav-writer)
+// Mencerminkan SavVariable milik sav-writer (lib/writer/variables.d.ts)
 export interface TransformedVariable {
     name: string;
     short?: string;
     label: string;
-    // enum values from sav-writer.types (Numeric=5, String=1, Date=20, DateTime=22)
+    // nilai enum dari sav-writer.types (Numeric=5, String=1, Date=20, DateTime=22)
     type: number;
     width: number;
     decimal: number;
-    // Optional per sav-writer interface
+    // Opsional sesuai antarmuka sav-writer
     alignment?: number;
     measure?: number;
     columns: number;

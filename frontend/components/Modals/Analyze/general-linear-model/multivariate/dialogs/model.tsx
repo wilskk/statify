@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     MultivariateModelProps,
     MultivariateModelType,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate";
@@ -16,7 +16,7 @@ import {
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";
 import {Checkbox} from "@/components/ui/checkbox";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {Badge} from "@/components/ui/badge";
 import {ScrollArea} from "@/components/ui/scroll-area";
 
@@ -147,7 +147,7 @@ export const MultivariateModel = ({
             }
             // Jika tidak, tambahkan spasi dan variabel
             else {
-                setCurrentBuildTerm((prev) => prev + " " + selectedVariable);
+                setCurrentBuildTerm((prev) => `${prev  } ${  selectedVariable}`);
             }
         }
     };
@@ -169,7 +169,7 @@ export const MultivariateModel = ({
             !currentBuildTerm.endsWith(" * ") &&
             !currentBuildTerm.endsWith("(")
         ) {
-            setCurrentBuildTerm((prev) => prev + " * ");
+            setCurrentBuildTerm((prev) => `${prev  } * `);
         }
     };
 
@@ -200,9 +200,9 @@ export const MultivariateModel = ({
 
                 // Sisipkan "({variable})" sebelum kurung tutup terakhir
                 newTerm =
-                    newTerm.substring(0, lastClosingIndex) +
-                    "({variable})" +
-                    newTerm.substring(lastClosingIndex);
+                    `${newTerm.substring(0, lastClosingIndex) 
+                    }({variable})${ 
+                    newTerm.substring(lastClosingIndex)}`;
             } else {
                 // Kasus: term tidak berakhir dengan ")" - seperti "Age"
                 // Kita ingin mengubahnya menjadi "Age({variable})"

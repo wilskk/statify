@@ -3,6 +3,8 @@
 // Inspired by react-hot-toast library
 import * as React from "react"
 
+import { toast as sonnerToast } from "sonner"
+
 import type {
   ToastActionElement,
   ToastProps,
@@ -145,13 +147,42 @@ type Toast = Omit<ToasterToast, "id">
 function toast({ ...props }: Toast) {
   const id = genId()
 
-  const update = (props: ToasterToast) =>
+  const message = (props?.title ?? props?.description ?? "") as React.ReactNode
+  const options: Record<string, unknown> = {}
+  if (props?.title && props?.description) {
+    options.description = props.description
+  }
+
+  const sonnerId =
+    (props as any)?.variant === "destructive"
+      ? (sonnerToast as any).error(message, options)
+      : (sonnerToast as any)(message, options)
+
+  const dismiss = () => {
+    try {
+      ;(sonnerToast as any).dismiss?.(sonnerId)
+    } catch {}
+    dispatch({ type: "DISMISS_TOAST", toastId: id })
+  }
+
+  const update = (next: ToasterToast) => {
+    const nextMsg = (next?.title ?? next?.description ?? "") as React.ReactNode
+    const nextOpts: Record<string, unknown> = {}
+    if (next?.title && next?.description) {
+      nextOpts.description = next.description
+    }
+    if ((next as any)?.variant === "destructive") {
+      ;(sonnerToast as any).error(nextMsg, nextOpts)
+    } else {
+      ;(sonnerToast as any)(nextMsg, nextOpts)
+    }
     dispatch({
       type: "UPDATE_TOAST",
-      toast: { ...props, id },
+      toast: { ...next, id },
     })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+  }
 
+  // Keep legacy memory state updates for compatibility with any listeners
   dispatch({
     type: "ADD_TOAST",
     toast: {

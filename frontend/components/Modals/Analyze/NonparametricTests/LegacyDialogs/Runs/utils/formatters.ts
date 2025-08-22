@@ -1,12 +1,13 @@
-import {
-    RunsTestResults,
+import type {
     RunsTestTable,
-    TableColumnHeader,
     TableRow,
     RunsTest,
-    DescriptiveStatistics,
     DisplayStatisticsOptions,
-    RunsTestResult,
+    RunsTestResult} from '../types';
+import {
+    RunsTestResults,
+    TableColumnHeader,
+    DescriptiveStatistics
 } from '../types';
 
 /**
@@ -29,16 +30,16 @@ export function formatRunsTestTable(
     
     // Group results by cut point type, excluding variables with "empty" insufficient type
     const medianResults = results.filter(r => 
-        r.runsTest && r.runsTest.median && 'TestValue' in r.runsTest.median && r.runsTest.median.TestValue !== undefined &&
+        r.runsTest?.median && 'TestValue' in r.runsTest.median && r.runsTest.median.TestValue !== undefined &&
         !r.metadata?.insufficientType.includes("empty"));
     const meanResults = results.filter(r => 
-        r.runsTest && r.runsTest.mean && 'TestValue' in r.runsTest.mean && r.runsTest.mean.TestValue !== undefined &&
+        r.runsTest?.mean && 'TestValue' in r.runsTest.mean && r.runsTest.mean.TestValue !== undefined &&
         !r.metadata?.insufficientType.includes("empty"));
     const modeResults = results.filter(r => 
-        r.runsTest && r.runsTest.mode && 'TestValue' in r.runsTest.mode && r.runsTest.mode.TestValue !== undefined &&
+        r.runsTest?.mode && 'TestValue' in r.runsTest.mode && r.runsTest.mode.TestValue !== undefined &&
         !r.metadata?.insufficientType.includes("empty"));
     const customResults = results.filter(r => 
-        r.runsTest && r.runsTest.custom && 'TestValue' in r.runsTest.custom && r.runsTest.custom.TestValue !== undefined &&
+        r.runsTest?.custom && 'TestValue' in r.runsTest.custom && r.runsTest.custom.TestValue !== undefined &&
         !r.metadata?.insufficientType.includes("empty"));
 
     // Create a table for each cut point type that was used
@@ -98,9 +99,7 @@ function formatSingleRunsTestTable(
     if (
         title === 'Custom' &&
         runsTestResults.length > 0 &&
-        runsTestResults[0].runsTest &&
-        runsTestResults[0].runsTest.custom &&
-        typeof runsTestResults[0].runsTest.custom.TestValue !== 'undefined'
+        typeof runsTestResults[0].runsTest?.custom?.TestValue !== 'undefined'
     ) {
         const testValue = runsTestResults[0].runsTest.custom.TestValue;
         displayTitle = `Custom (${testValue})`;
@@ -142,7 +141,7 @@ function formatSingleRunsTestTable(
 
     // Fill in the data for each variable
     runsTestResults.forEach((result, index) => {
-        if (!result || !result.runsTest) return;
+        if (!result?.runsTest) return;
         
         // Determine which test type to use based on the title
         let stats: RunsTest | undefined;
@@ -232,7 +231,7 @@ export function formatDescriptiveStatisticsTable(
 
     // Process each result
     results.forEach((result) => {
-        if (!result || !result.descriptiveStatistics) return;
+        if (!result?.descriptiveStatistics) return;
         
         const stats = result.descriptiveStatistics;
         const decimals = result.variable1.decimals;

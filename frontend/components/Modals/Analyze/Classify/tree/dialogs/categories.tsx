@@ -2,8 +2,8 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {TreeCategoriesProps, TreeCategoriesType,} from "@/components/Modals/Analyze/Classify/tree/types/tree";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {TreeCategoriesProps, TreeCategoriesType,} from "@/components/Modals/Analyze/Classify/tree/types/tree";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 
 export const TreeCategories = ({
     isCategoriesOpen,

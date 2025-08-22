@@ -42,7 +42,7 @@ export async function handleAutocorrelation(
         const df = Array.from(autocorrelation.get_df_lb());
 
         // Description Table
-        let descriptionJSON = JSON.stringify({
+        const descriptionJSON = JSON.stringify({
             tables: [
                 {
                     title: `Description Table`,
@@ -94,7 +94,7 @@ export async function handleAutocorrelation(
             ],
         });
 
-        let acfStruct: Record<string, any> = {}; // Menggunakan objek kosong
+        const acfStruct: Record<string, any> = {}; // Menggunakan objek kosong
         // Mengecek panjang seluruh data apakah sama
         if ((acf.length + acf_se.length + lb.length + df.length + pval.length) % acf.length == 0) {
             for (let i = 0; i < acf.length; i++) {
@@ -109,7 +109,7 @@ export async function handleAutocorrelation(
         } else {
             throw new Error("Data length is not equal");
         }
-        let acfJSON = JSON.stringify({
+        const acfJSON = JSON.stringify({
             tables: [{
                 title: "Autocorrelation Function (ACF)",
                 columnHeaders: [{header: ""}, {header: "ACF"}, {header: "SE"}, {header: "Ljung-Box"}, {header: "df"}, {header: "p-value"}],
@@ -124,7 +124,7 @@ export async function handleAutocorrelation(
             }]
         });
 
-        let pacfStruct: Record<string, any> = {};
+        const pacfStruct: Record<string, any> = {};
         // mengecek panjang seluruh data apakah sama
         if ((pacf.length + pacf_se.length) % pacf.length == 0) {
             for (let i = 0; i < pacf.length; i++) {
@@ -136,7 +136,7 @@ export async function handleAutocorrelation(
         }else{
             throw new Error("Data length is not equal");
         }
-        let pacfJSON = JSON.stringify({
+        const pacfJSON = JSON.stringify({
             tables: [{
                 title: "Partial Autocorrelation Function (PACF)",
                 columnHeaders: [{header: ""}, {header: "PACF"}, {header: "SE"}],
@@ -148,9 +148,9 @@ export async function handleAutocorrelation(
             }]
         });
 
-        let bartletLeftACF = Array.from(autocorrelation.calculate_bartlet_left (new Float64Array(acf_se), 0.05));
-        let bartletRightACF = Array.from(autocorrelation.calculate_bartlet_right (new Float64Array(acf_se), 0.05));
-        let structureACF: any[] = [];
+        const bartletLeftACF = Array.from(autocorrelation.calculate_bartlet_left (new Float64Array(acf_se), 0.05));
+        const bartletRightACF = Array.from(autocorrelation.calculate_bartlet_right (new Float64Array(acf_se), 0.05));
+        const structureACF: any[] = [];
         // Validasi panjang array
         for (let i = 0; i < acf.length; i++) {
             structureACF.push({
@@ -164,7 +164,7 @@ export async function handleAutocorrelation(
                 },
             });
         }
-        let acfGraphicJSON = JSON.stringify({
+        const acfGraphicJSON = JSON.stringify({
             charts: [
                 {
                     chartType: "Vertical Bar & Line Chart2",
@@ -190,9 +190,9 @@ export async function handleAutocorrelation(
             ]
         });
 
-        let bartletLeftPACF = Array.from(autocorrelation.calculate_bartlet_left(new Float64Array(pacf_se), 0.05));
-        let bartletRightPACF = Array.from(autocorrelation.calculate_bartlet_right(new Float64Array(pacf_se), 0.05));
-        let structurePACF: any[] = [];
+        const bartletLeftPACF = Array.from(autocorrelation.calculate_bartlet_left(new Float64Array(pacf_se), 0.05));
+        const bartletRightPACF = Array.from(autocorrelation.calculate_bartlet_right(new Float64Array(pacf_se), 0.05));
+        const structurePACF: any[] = [];
         // Validasi panjang array
         for (let i = 0; i < pacf.length; i++) {
             structurePACF.push({
@@ -206,7 +206,7 @@ export async function handleAutocorrelation(
                 },
             });
         }
-        let pacfGraphicJSON = JSON.stringify({
+        const pacfGraphicJSON = JSON.stringify({
             charts: [
                 {
                     chartType: "Vertical Bar & Line Chart2",
@@ -234,8 +234,8 @@ export async function handleAutocorrelation(
 
         return ["success", descriptionJSON, test7, acfJSON, pacfJSON, acfGraphicJSON, pacfGraphicJSON];
     } catch (error) {
-        let errorMessage = error as Error;
-        let errorJSON = JSON.stringify({
+        const errorMessage = error as Error;
+        const errorJSON = JSON.stringify({
             tables: [
                 {
                     title: `Error Table`,

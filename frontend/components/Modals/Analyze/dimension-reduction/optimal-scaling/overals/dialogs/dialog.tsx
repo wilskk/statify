@@ -3,7 +3,7 @@ import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTi
 import {Button} from "@/components/ui/button";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     DialogHandlers,
     OptScaOveralsDefineRangeScaleType,
     OptScaOveralsDefineRangeType,
@@ -161,7 +161,7 @@ export const OptScaOveralsDialog = forwardRef<
                                             .trim();
 
                                         variablesInfo[originalName] = {
-                                            measScale: measScale,
+                                            measScale,
                                             minimum: Number(numbers[1]),
                                             maximum: Number(numbers[2]),
                                         };
@@ -506,7 +506,7 @@ export const OptScaOveralsDialog = forwardRef<
                 const newVariableInfo = {
                     ...variableInfo,
                     [selectedVariable]: {
-                        measScale: measScale,
+                        measScale,
                         minimum: defineRangeScaleData.Minimum || 1,
                         maximum: defineRangeScaleData.Maximum || 5,
                     },
@@ -565,7 +565,7 @@ export const OptScaOveralsDialog = forwardRef<
                 0,
                 activePage - Math.floor(maxVisiblePages / 2)
             );
-            let endPage = Math.min(
+            const endPage = Math.min(
                 totalPages - 1,
                 startPage + maxVisiblePages - 1
             );

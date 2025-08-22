@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-import {
+import type {
     MultivariateContainerProps,
     MultivariateMainType,
     MultivariateType,
@@ -175,8 +175,8 @@ export const MultivariateContainer = ({
 
             await analyzeMultivariate({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

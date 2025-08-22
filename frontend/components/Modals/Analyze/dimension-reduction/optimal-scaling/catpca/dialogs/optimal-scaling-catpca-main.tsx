@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from "react";
-import {
+import type {
     DialogHandlers,
     OptScaCatpcaContainerProps,
     OptScaCatpcaDefineRangeScaleType,
@@ -221,8 +221,8 @@ export const OptScaCatpcaContainer = ({
 
             await analyzeOptScaCatpca({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

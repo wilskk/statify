@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
+import type {
     UnivariateContainerProps,
     UnivariateMainType,
     UnivariateType,
@@ -184,8 +184,8 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
 
             await analyzeUnivariate({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         };
 

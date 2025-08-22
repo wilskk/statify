@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {
+import type {
     RepeatedMeasuresAnalysisType
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures-worker";
 
@@ -13,20 +13,20 @@ export async function analyzeRepeatedMeasures({
     const CovariateVariables = configData.main.Covariates || [];
 
     const slicedDataForSubject = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: SubjectVariables,
     });
 
     const slicedDataForFactors = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: FactorsVariables,
     });
 
     const slicedDataForCovariate = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: CovariateVariables,
     });
 

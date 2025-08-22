@@ -1,8 +1,9 @@
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { OptionsTabProps } from "../types";
+import type { OptionsTabProps } from "../types";
 
 const OptionsTab: FC<OptionsTabProps> = ({
     estimateEffectSize,

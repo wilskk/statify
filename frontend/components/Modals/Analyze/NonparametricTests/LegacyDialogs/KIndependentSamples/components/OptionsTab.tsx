@@ -1,7 +1,8 @@
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { OptionsTabProps } from "../types";
+import type { OptionsTabProps } from "../types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 const OptionsTab: FC<OptionsTabProps> = ({

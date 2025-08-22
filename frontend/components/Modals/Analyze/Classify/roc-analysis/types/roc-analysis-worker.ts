@@ -1,5 +1,5 @@
-import {RocAnalysisType} from "./roc-analysis";
-import {ResultJson} from "@/types/Table";
+import type {RocAnalysisType} from "./roc-analysis";
+import type {ResultJson} from "@/types/Table";
 
 export type RocAnalysisAnalysisType = {
     configData: RocAnalysisType;

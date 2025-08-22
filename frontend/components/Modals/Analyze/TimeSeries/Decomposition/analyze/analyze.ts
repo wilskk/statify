@@ -55,7 +55,7 @@ export async function handleDecomposition(
         }
 
         // Testing
-        let centered = Array.from(decomposition.calculate_centered_moving_average());
+        const centered = Array.from(decomposition.calculate_centered_moving_average());
 
         let nameTrendMethod;
         switch (trendMethod) {
@@ -70,18 +70,18 @@ export async function handleDecomposition(
         }
 
         // get components
-        let seasonalComponent = Array.from(decomposition.get_seasonal_component());
-        let trendComponent = Array.from(decomposition.get_trend_component());
-        let irregularComponent = Array.from(decomposition.get_irregular_component());
+        const seasonalComponent = Array.from(decomposition.get_seasonal_component());
+        const trendComponent = Array.from(decomposition.get_trend_component());
+        const irregularComponent = Array.from(decomposition.get_irregular_component());
 
         // round component
-        let seasonalRound = seasonalComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
-        let trendRound = trendComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
-        let irregularRound = irregularComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
+        const seasonalRound = seasonalComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
+        const trendRound = trendComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
+        const irregularRound = irregularComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
 
         // Description Table
-        let dateArray = await generateDate(typeDate, startHour, startDay, startMonth, startYear, data.length);
-        let descriptionJSON = JSON.stringify({
+        const dateArray = await generateDate(typeDate, startHour, startDay, startMonth, startYear, data.length);
+        const descriptionJSON = JSON.stringify({
             tables: [
                 {
                     title: `Description Table`,
@@ -120,7 +120,7 @@ export async function handleDecomposition(
             ],
         });
 
-        let structuredData: any[] = [];
+        const structuredData: any[] = [];
         // Validasi panjang array
         if (data.length === forecastingRound.length) {
             for (let i = 0; i < data.length; i++) {
@@ -133,7 +133,7 @@ export async function handleDecomposition(
         } else {
             throw new Error("Panjang array tidak sama!");
         }
-        let dataGraphicJSON = JSON.stringify({
+        const dataGraphicJSON = JSON.stringify({
             charts: [
                 {
                     chartType: "Line Chart",
@@ -158,7 +158,7 @@ export async function handleDecomposition(
             ]
         });
 
-        let structuredTrend: any[] = [];
+        const structuredTrend: any[] = [];
         // Validasi panjang array
         if (data.length === forecastingRound.length) {
             for (let i = 0; i < data.length; i++) {
@@ -171,7 +171,7 @@ export async function handleDecomposition(
         } else {
             throw new Error("Panjang array tidak sama!");
         }
-        let trendGraphicJSON = JSON.stringify({
+        const trendGraphicJSON = JSON.stringify({
             charts: [
                 {
                     chartType: "Line Chart",
@@ -196,7 +196,7 @@ export async function handleDecomposition(
             ]
         });
 
-        let structuredSeasonal: any[] = [];
+        const structuredSeasonal: any[] = [];
         // Validasi panjang array
         if (data.length === forecastingRound.length) {
             for (let i = 0; i < data.length; i++) {
@@ -209,7 +209,7 @@ export async function handleDecomposition(
         } else {
             throw new Error("Panjang array tidak sama!");
         }
-        let seasonalGraphicJSON = JSON.stringify({
+        const seasonalGraphicJSON = JSON.stringify({
             charts: [
                 {
                     chartType: "Line Chart",
@@ -234,7 +234,7 @@ export async function handleDecomposition(
             ]
         });
 
-        let structuredIrregular: any[] = [];
+        const structuredIrregular: any[] = [];
         // Validasi panjang array
         if (data.length === forecastingRound.length) {
             for (let i = 0; i < data.length; i++) {
@@ -247,7 +247,7 @@ export async function handleDecomposition(
         } else {
             throw new Error("Panjang array tidak sama!");
         }
-        let irregularGraphicJSON = JSON.stringify({
+        const irregularGraphicJSON = JSON.stringify({
             charts: [
                 {
                     chartType: "Line Chart",
@@ -272,7 +272,7 @@ export async function handleDecomposition(
             ]
         });
 
-        let structuredForecasting: any[] = [];
+        const structuredForecasting: any[] = [];
         // Validasi panjang array
         if (data.length === forecastingRound.length) {
             for (let i = 0; i < data.length; i++) {
@@ -290,7 +290,7 @@ export async function handleDecomposition(
         } else {
             throw new Error("Panjang array tidak sama!");
         }
-        let forecastingGraphicJSON = JSON.stringify({
+        const forecastingGraphicJSON = JSON.stringify({
             charts: [
                 {
                     chartType: "Multiple Line Chart",
@@ -315,8 +315,8 @@ export async function handleDecomposition(
             ]
         });
 
-        let evalValue = await decomposition.decomposition_evaluation(new Float64Array(forecastingValue)) as Record<string, number>;
-        let evalJSON = JSON.stringify({
+        const evalValue = await decomposition.decomposition_evaluation(new Float64Array(forecastingValue)) as Record<string, number>;
+        const evalJSON = JSON.stringify({
             tables: [
                 {
                     title: `Decompostion Forecasting Evaluation Results`,
@@ -329,12 +329,12 @@ export async function handleDecomposition(
             ],
         });
 
-        let seasonalIndices = Array.from(decomposition.get_seasonal_indices());
-        let namePeriodLable = seasonalIndices.map((_, i) => `period ${i + 1} of ${periodValue}`);
-        let seasonValue: Record<string, number> = Object.fromEntries(
+        const seasonalIndices = Array.from(decomposition.get_seasonal_indices());
+        const namePeriodLable = seasonalIndices.map((_, i) => `period ${i + 1} of ${periodValue}`);
+        const seasonValue: Record<string, number> = Object.fromEntries(
             namePeriodLable.map((label, i) => [label, seasonalIndices[i]])
         );
-        let seasonJSON = JSON.stringify({
+        const seasonJSON = JSON.stringify({
             tables: [
                 {
                     title: `Seasonal Indices ${periodLable}`,
@@ -347,8 +347,8 @@ export async function handleDecomposition(
             ],
         });
 
-        let equation = decomposition.get_trend_equation() as string;
-        let equationJSON = JSON.stringify({
+        const equation = decomposition.get_trend_equation() as string;
+        const equationJSON = JSON.stringify({
             "tables": [
                 {
                 "title": `${nameTrendMethod}`,
@@ -367,8 +367,8 @@ export async function handleDecomposition(
                 forecastingRound, evalJSON, seasonJSON, equationJSON, forecastingGraphicJSON,
                 dataGraphicJSON, trendGraphicJSON, seasonalGraphicJSON, irregularGraphicJSON];
     } catch (error) {
-        let errorMessage = error as Error;
-        let errorJSON = JSON.stringify({
+        const errorMessage = error as Error;
+        const errorJSON = JSON.stringify({
             tables: [
                 {
                     title: `Error Table`,
