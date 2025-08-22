@@ -2,10 +2,7 @@ import type React from 'react';
 
 // Import statistics components
 import LinearityTest from './LinearityTest';
-import NormalityTest from './NormalityTest';
 import HomoscedasticityTest from './HomoscedasticityTest';
-import AutocorrelationTest from './AutocorrelationTest';
-import NonautocorrelationTest from './NonautocorrelationTest';
 import MulticollinearityTest from './MulticollinearityTest';
 
 // Define the StatisticsComponentsRegistry interface
@@ -17,22 +14,13 @@ interface StatisticsComponentsRegistry {
 export const StatisticsComponents: StatisticsComponentsRegistry = {
   // Add LinearityTest component
   LinearityTest,
-  
-  // Add NormalityTest component
-  NormalityTest,
-  
+
   // Add HomoscedasticityTest component
   HomoscedasticityTest,
-  
-  // Add AutocorrelationTest component
-  AutocorrelationTest,
-  
-  // Add NonautocorrelationTest component
-  NonautocorrelationTest,
-  
+
   // Add MulticollinearityTest component
   MulticollinearityTest,
-  
+
 };
 
 // Function to get a component by name
