@@ -8,6 +8,9 @@ import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
 
 import { ALLOWED_ORIGINS, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_ENABLED } from './config/constants';
 import { savRouter } from './routes/savRoutes';
@@ -20,6 +23,11 @@ app.use(cors({
     methods: ['GET', 'POST'],
 }));
 app.use(express.json());
+
+const swaggerPath = path.resolve(__dirname, '../docs/openapi.yaml');
+const swaggerDocument = YAML.load(swaggerPath);
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Rate limit global (berdasarkan X-User-Id atau alamat IP)
 if (RATE_LIMIT_ENABLED) {

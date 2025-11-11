@@ -19,6 +19,8 @@
     "helmet": "^7.0.0",
     "sav-reader": "^2.0.8",
     "sav-writer": "^1.0.0",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0",
     "zod": "^4.0.17"
   },
   "devDependencies": {
@@ -28,6 +30,8 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "@types/supertest": "^6.0.3",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@types/yamljs": "^0.2.34",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
     "eslint": "^9.33.0",
