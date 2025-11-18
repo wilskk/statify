@@ -104,6 +104,12 @@ const BoxJenkinsModelModal = lazy(() =>
     default: mod.default as React.ComponentType<BaseModalProps>,
   }))
 );
+const ModalBinaryLogistic = lazy(() =>
+  import("@/components/Modals/Analyze/Regression/BinaryLogistic/dialogs/BinaryLogisticMain").then((mod) => ({
+    // Pastikan Anda meng-export component sebagai 'BinaryLogisticMain' di file aslinya
+    default: mod.BinaryLogisticMain as React.ComponentType<BaseModalProps>,
+  }))
+);
 
 /**
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
@@ -177,6 +183,7 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   [ModalType.OptionsLinear]: withSuspense(OptionsLinear),
   [ModalType.PlotsLinear]: withSuspense(PlotsLinear),
   [ModalType.ModalCurveEstimation]: withSuspense(ModalCurveEstimation),
+  [ModalType.ModalBinaryLogistic]: withSuspense(ModalBinaryLogistic),
 
   // Chart modals - lazy loaded
   [ModalType.ChartBuilderModal]: withSuspense(ChartBuilderModal),
