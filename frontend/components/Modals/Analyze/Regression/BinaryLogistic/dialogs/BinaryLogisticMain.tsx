@@ -16,12 +16,17 @@ import { Loader2, HelpCircle } from "lucide-react";
 // Stores & Hooks
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useModalStore } from "@/stores/useModalStore";
+import { useDataStore } from "@/stores/useDataStore";
+import { useResultStore } from "@/stores/useResultStore";
 
 // Components
 import { VariablesTab } from "./VariablesTab";
 import { CategoricalTab } from "./CategoricalTab";
 import { SaveTab } from "./SaveTab";
 import { OptionsTab } from "./OptionsTab";
+
+// Formatter
+import { formatBinaryLogisticResult } from "../services/formatter";
 
 // Types
 import { Variable } from "@/types/Variable";
@@ -36,6 +41,9 @@ export const BinaryLogisticMain = () => {
   const { closeModal } = useModalStore();
   const variablesFromStore = useVariableStore((state) => state.variables);
 
+  const { data } = useDataStore();
+  const { addLog, addAnalytic, addStatistic } = useResultStore();
+
   // --- STATE ---
   const [activeTab, setActiveTab] = useState("variables");
   const [isLoading, setIsLoading] = useState(false);
@@ -45,11 +53,10 @@ export const BinaryLogisticMain = () => {
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] =
     useState<Variable | null>(null);
-
   const [options, setOptions] = useState<BinaryLogisticOptions>({
     dependent: null,
     covariates: [],
-    factors: [], // [FIX] Pastikan state ini ada
+    factors: [],
     method: "Enter",
   });
 
@@ -71,6 +78,7 @@ export const BinaryLogisticMain = () => {
     influenceLeverage: false,
     influenceDfBeta: false,
   });
+
   const [optParams, setOptParams] = useState<BinaryLogisticOptionsParams>({
     classificationPlots: false,
     hosmerLemeshow: false,
@@ -156,23 +164,133 @@ export const BinaryLogisticMain = () => {
     }));
   };
 
+  // --- LOGIKA UTAMA EKSEKUSI WORKER ---
   const handleAnalyze = async () => {
+    if (!options.dependent || options.covariates.length === 0) {
+      setErrorMsg(
+        "Please select a dependent variable and at least one covariate."
+      );
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setErrorMsg("No data available.");
+      return;
+    }
+
     setIsLoading(true);
     setErrorMsg(null);
 
-    console.log("Running Binary Logistic Analysis...");
-    console.log("Options:", options);
+    try {
+      // 1. Ambil Data Mentah
+      const depIndex = options.dependent.columnIndex;
+      const yData = data.map((row: any) => Number(row[depIndex]));
 
-    setTimeout(() => {
+      // Gabungkan covariates dan factors
+      const allPredictors = [...options.covariates, ...options.factors];
+      const xData = data.map((row: any) =>
+        allPredictors.map((v) => Number(row[v.columnIndex]))
+      );
+
+      // 2. Payload untuk Worker
+      const payload = {
+        y: yData,
+        x: xData,
+        config: {
+          cutoff: optParams.classificationCutoff,
+          max_iterations: optParams.maxIterations,
+          include_constant: optParams.includeConstant,
+        },
+      };
+
+      console.log("Sending payload to worker:", payload);
+
+      // 3. Panggil Web Worker
+      const worker = new Worker(
+        "/workers/Regression/binaryLogistic.worker.js",
+        {
+          type: "module",
+        }
+      );
+
+      worker.postMessage({ type: "RUN_ANALYSIS", payload });
+
+      worker.onmessage = async (event) => {
+        const { type, result, error } = event.data;
+
+        if (type === "SUCCESS") {
+          // 4. Format Hasil HTML
+          const htmlOutput = formatBinaryLogisticResult(
+            result,
+            options.dependent!.name
+          );
+
+          const varNames = options.covariates.map((c) => c.name).join(" ");
+          const logId = await addLog({
+            log: `LOGISTIC REGRESSION VARIABLES ${
+              options.dependent!.name
+            } /METHOD=ENTER ${varNames}`,
+          });
+
+          const analyticId = await addAnalytic(logId, {
+            title: "Binary Logistic Regression",
+            note: `Method: Enter`,
+          });
+
+          // [FIX] JSON.stringify agar tidak error "Invalid data: JSON format is incorrect"
+          await addStatistic(analyticId, {
+            title: "Logistic Regression Output",
+            output_data: JSON.stringify(htmlOutput), // PENTING: Stringify HTML
+            components: "HtmlOutput",
+            description: "Variables in Equation, Model Summary, etc.",
+          });
+
+          setIsLoading(false);
+          closeModal("BINARY_LOGISTIC");
+          worker.terminate();
+        } else {
+          // Tampilkan error dari worker dengan jelas
+          setErrorMsg(`Analysis Failed: ${error}`);
+          setIsLoading(false);
+          worker.terminate();
+        }
+      };
+
+      worker.onerror = (event) => {
+        console.error("WORKER ERROR EVENT:", event);
+
+        let message = "Unknown Worker Error";
+        if (event instanceof ErrorEvent) {
+          message = event.message;
+        } else {
+          message =
+            "Failed to load worker script. Check file path or Network tab (404).";
+        }
+
+        setErrorMsg(`Analysis Failed: ${message}`);
+        setIsLoading(false);
+        worker.terminate();
+      };
+    } catch (err: any) {
+      setErrorMsg("Error preparing data: " + err.message);
       setIsLoading(false);
-      closeModal("BINARY_LOGISTIC");
-    }, 1000);
+    }
   };
 
   // --- RENDER ---
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex-grow px-6 py-3 overflow-y-auto min-h-0">
+      <div className="px-6 py-4 flex-shrink-0">
+        <h2 className="text-lg font-semibold tracking-tight">
+          Binary Logistic Regression
+        </h2>
+      </div>
+
+      <div className="px-6 py-2">
+        <Separator className="my-2" />
+      </div>
+
+      <div className="flex-grow px-6 overflow-y-auto min-h-0">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
@@ -186,21 +304,20 @@ export const BinaryLogisticMain = () => {
           </TabsList>
 
           <div className="flex-grow min-h-0 overflow-hidden">
-            {/* TAB 1: VARIABLES */}
             <TabsContent value="variables" className="h-full mt-0">
               <VariablesTab
                 availableVariables={availableVariables}
                 selectedDependent={options.dependent}
                 selectedCovariates={options.covariates}
-                selectedFactors={options.factors} // [FIX] Passing factors
+                selectedFactors={options.factors}
                 highlightedVariable={highlightedVariable}
                 setHighlightedVariable={setHighlightedVariable}
                 onMoveToDependent={handleMoveToDependent}
                 onMoveToCovariates={handleMoveToCovariates}
-                onMoveToFactors={handleMoveToFactors} // [FIX] Passing handler
+                onMoveToFactors={handleMoveToFactors}
                 onRemoveDependent={handleRemoveDependent}
                 onRemoveCovariate={handleRemoveCovariate}
-                onRemoveFactor={handleRemoveFactor} // [FIX] Passing handler
+                onRemoveFactor={handleRemoveFactor}
                 method={options.method}
                 onMethodChange={(val) =>
                   setOptions((prev) => ({ ...prev, method: val }))
@@ -208,17 +325,15 @@ export const BinaryLogisticMain = () => {
               />
             </TabsContent>
 
-            {/* TAB 2: CATEGORICAL */}
             <TabsContent value="categorical" className="h-full mt-0">
               <CategoricalTab
                 covariates={options.covariates}
-                factors={options.factors} // [FIX] Passing factors
+                factors={options.factors}
                 params={catParams}
                 onChange={setCatParams}
               />
             </TabsContent>
 
-            {/* TAB 3: SAVE */}
             <TabsContent value="save" className="h-full mt-0">
               <SaveTab
                 params={saveParams}
@@ -226,7 +341,6 @@ export const BinaryLogisticMain = () => {
               />
             </TabsContent>
 
-            {/* TAB 4: OPTIONS */}
             <TabsContent value="options" className="h-full mt-0">
               <OptionsTab
                 params={optParams}
@@ -246,7 +360,6 @@ export const BinaryLogisticMain = () => {
         )}
       </div>
 
-      {/* Footer */}
       <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
         <div className="flex items-center text-muted-foreground">
           <TooltipProvider>

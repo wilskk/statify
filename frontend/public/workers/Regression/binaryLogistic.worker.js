@@ -1,34 +1,27 @@
 // frontend/public/workers/Regression/binaryLogistic.worker.js
 
-// 1. Import WASM (Nanti kita buat file Rust-nya di langkah berikutnya)
-// Saat ini path ini mungkin belum ada, tidak apa-apa, kita siapkan dulu.
-import init, { run_binary_logistic } from "../../components/Modals/Analyze/Regression/BinaryLogistic/rust/pkg/wasm.js";
-
-let wasmInitialized = false;
+// PERHATIKAN PATH IMPORT INI!
+// Path ini harus mengarah ke file .js yang dihasilkan wasm-pack tadi.
+import init, {
+  calculate_logistic_regression,
+} from "./pkg/statify_logistic.js";
 
 self.onmessage = async (event) => {
   const { type, payload } = event.data;
 
   if (type === "RUN_ANALYSIS") {
     try {
-      // 2. Inisialisasi WASM (Hanya sekali)
-      if (!wasmInitialized) {
-        await init();
-        wasmInitialized = true;
-      }
+      await init(); // Inisialisasi WASM
 
-      // 3. Jalankan komputasi berat di sini (memanggil Rust)
-      // Payload berisi: { data, options, variables }
-      console.log("Worker: Memulai analisis logistic regression...", payload);
-      
-      const result = run_binary_logistic(payload);
+      // Panggil fungsi Rust
+      // Payload harus berisi { y: [...], x: [[...], ...], config: {...} }
+      const result = calculate_logistic_regression(payload);
 
-      // 4. Kirim hasil balik ke Main Thread
+      // Kirim hasil sukses
       self.postMessage({ type: "SUCCESS", result });
-
     } catch (error) {
       console.error("Worker Error:", error);
-      self.postMessage({ type: "ERROR", error: error.message });
+      self.postMessage({ type: "ERROR", error: error.toString() });
     }
   }
 };
