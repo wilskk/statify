@@ -1,23 +1,19 @@
-// frontend/public/workers/Regression/binaryLogistic.worker.js
-
-// PERHATIKAN PATH IMPORT INI!
-// Path ini harus mengarah ke file .js yang dihasilkan wasm-pack tadi.
-import init, {
-  calculate_logistic_regression,
-} from "./pkg/statify_logistic.js";
+import init, { calculate_logistic_regression } from "./pkg/statify_logistic.js";
 
 self.onmessage = async (event) => {
   const { type, payload } = event.data;
 
   if (type === "RUN_ANALYSIS") {
     try {
-      await init(); // Inisialisasi WASM
-
-      // Panggil fungsi Rust
-      // Payload harus berisi { y: [...], x: [[...], ...], config: {...} }
+      await init();
+      console.log("Payload received in Worker:", payload);
+      // Cek apakah payload.x adalah array of arrays
+      if (payload.x && payload.x.length > 0 && !Array.isArray(payload.x[0])) {
+        throw new Error(
+          "Format Data Salah: 'x' harus berupa Matriks (Array of Arrays)."
+        );
+      }
       const result = calculate_logistic_regression(payload);
-
-      // Kirim hasil sukses
       self.postMessage({ type: "SUCCESS", result });
     } catch (error) {
       console.error("Worker Error:", error);

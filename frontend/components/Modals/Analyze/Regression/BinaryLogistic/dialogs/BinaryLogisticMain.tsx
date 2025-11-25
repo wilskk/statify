@@ -193,13 +193,15 @@ export const BinaryLogisticMain = () => {
       );
 
       // 2. Payload untuk Worker
+      // PERBAIKAN: Menggunakan camelCase agar cocok dengan Rust serde(rename_all="camelCase")
       const payload = {
         y: yData,
         x: xData,
         config: {
           cutoff: optParams.classificationCutoff,
-          max_iterations: optParams.maxIterations,
-          include_constant: optParams.includeConstant,
+          // Ubah snake_case ke camelCase di sini:
+          maxIterations: optParams.maxIterations,
+          includeConstant: optParams.includeConstant,
         },
       };
 
@@ -219,8 +221,8 @@ export const BinaryLogisticMain = () => {
         const { type, result, error } = event.data;
 
         if (type === "SUCCESS") {
-          // 4. Format Hasil HTML
-          const htmlOutput = formatBinaryLogisticResult(
+          // 4. Format Hasil (Sekarang mengembalikan Object JSON, bukan string HTML)
+          const formattedResult = formatBinaryLogisticResult(
             result,
             options.dependent!.name
           );
@@ -237,21 +239,18 @@ export const BinaryLogisticMain = () => {
             note: `Method: Enter`,
           });
 
-          // [FIX] JSON.stringify agar tidak error "Invalid data: JSON format is incorrect"
+          // Simpan sebagai JSON String.
+          // ResultOutput akan mem-parse ini, menemukan properti ".tables",
+          // dan menggunakan DataTableRenderer.
           await addStatistic(analyticId, {
             title: "Logistic Regression Output",
-            output_data: JSON.stringify(htmlOutput), // PENTING: Stringify HTML
-            components: "HtmlOutput",
+            output_data: JSON.stringify(formattedResult),
+            components: "Tables", // Ubah ini agar lebih semantik (opsional, tapi baik untuk kerapian)
             description: "Variables in Equation, Model Summary, etc.",
           });
 
           setIsLoading(false);
           closeModal("BINARY_LOGISTIC");
-          worker.terminate();
-        } else {
-          // Tampilkan error dari worker dengan jelas
-          setErrorMsg(`Analysis Failed: ${error}`);
-          setIsLoading(false);
           worker.terminate();
         }
       };

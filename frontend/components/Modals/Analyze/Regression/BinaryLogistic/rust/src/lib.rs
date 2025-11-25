@@ -5,17 +5,19 @@ use statrs::distribution::{ChiSquared, ContinuousCDF};
 
 // --- 1. STRUKTUR INPUT (Dari JS) ---
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")] 
 pub struct LogisticInput {
-    pub y: Vec<f64>,                // Dependent Variable (0/1)
-    pub x: Vec<Vec<f64>>,           // Independent Variables (Matrix)
+    pub y: Vec<f64>,                
+    pub x: Vec<Vec<f64>>,           
     pub config: LogisticConfig,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")] 
 pub struct LogisticConfig {
-    pub cutoff: f64,                // Default 0.5
-    pub max_iterations: usize,      // Default 20
-    pub include_constant: bool,     // Default true
+    pub cutoff: f64,                
+    pub max_iterations: usize,   
+    pub include_constant: bool,     
 }
 
 // --- 2. STRUKTUR OUTPUT (Ke JS) ---
