@@ -1,229 +1,197 @@
-use wasm_bindgen::prelude::*;
-use serde::{Serialize, Deserialize};
+mod models;
+mod stats;
+mod utils;
+
+use models::config::LogisticConfig;
+use models::result::{
+    ClassificationTable, LogisticResult, ModelSummary, OmniTests, VariableNotInEquation,
+    VariableRow,
+};
 use nalgebra::{DMatrix, DVector};
+use serde_wasm_bindgen::{from_value, to_value};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
-
-// --- 1. STRUKTUR INPUT (Dari JS) ---
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")] 
-pub struct LogisticInput {
-    pub y: Vec<f64>,                
-    pub x: Vec<Vec<f64>>,           
-    pub config: LogisticConfig,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")] 
-pub struct LogisticConfig {
-    pub cutoff: f64,                
-    pub max_iterations: usize,   
-    pub include_constant: bool,     
-}
-
-// --- 2. STRUKTUR OUTPUT (Ke JS) ---
-#[derive(Serialize)]
-pub struct LogisticResult {
-    pub model_summary: ModelSummary,
-    pub classification_table: ClassificationTable,
-    pub variables_in_equation: Vec<VariableRow>,
-    pub omni_tests: OmniTests,
-}
-
-#[derive(Serialize)]
-pub struct ModelSummary {
-    pub log_likelihood: f64,        // -2 Log Likelihood
-    pub cox_snell_r2: f64,
-    pub nagelkerke_r2: f64,
-}
-
-#[derive(Serialize)]
-pub struct ClassificationTable {
-    pub predicted_0_observed_0: i32,
-    pub predicted_1_observed_0: i32,
-    pub predicted_0_observed_1: i32,
-    pub predicted_1_observed_1: i32,
-    pub overall_percentage: f64,
-}
-
-#[derive(Serialize)]
-pub struct VariableRow {
-    pub label: String,      // "X", "X2", "Constant"
-    pub b: f64,             // Koefisien (B)
-    pub se: f64,            // S.E.
-    pub wald: f64,          // Wald
-    pub df: i32,            // df (biasanya 1)
-    pub sig: f64,           // Sig. (P-Value)
-    pub exp_b: f64,         // Exp(B) / Odds Ratio
-}
-
-#[derive(Serialize)]
-pub struct OmniTests {
-    pub chi_square: f64,
-    pub df: i32,
-    pub sig: f64,
-}
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub fn calculate_logistic_regression(input_val: JsValue) -> Result<JsValue, JsValue> {
-    let input: LogisticInput = serde_wasm_bindgen::from_value(input_val)?;
-    
-    let n = input.y.len();
-    let p_count = input.x[0].len(); // Jumlah predictor
-    
-    // 1. Persiapan Matriks X (Tambah Intercept jika perlu)
-    let mut x_vec = Vec::with_capacity(n * (p_count + 1));
-    for row in &input.x {
-        if input.config.include_constant {
-            x_vec.push(1.0); // Kolom konstanta (biasanya di awal)
-        }
-        x_vec.extend_from_slice(row);
-    }
-    
-    let cols = if input.config.include_constant { p_count + 1 } else { p_count };
-    let x_matrix = DMatrix::from_row_slice(n, cols, &x_vec);
-    let y_vector = DVector::from_vec(input.y);
+pub fn calculate_binary_logistic(
+    data_x: JsValue,
+    data_y: JsValue,
+    config_val: JsValue,
+) -> Result<JsValue, JsValue> {
+    // 1. Deserialisasi
+    let x_vec: Vec<Vec<f64>> = from_value(data_x).map_err(|e| e.to_string())?;
+    let y_vec: Vec<f64> = from_value(data_y).map_err(|e| e.to_string())?;
+    let config: LogisticConfig = from_value(config_val).unwrap_or_default();
 
-    // 2. Iteratively Reweighted Least Squares (IRLS)
-    // Inisialisasi Beta dengan 0
-    let mut beta = DVector::zeros(cols);
-    let mut final_likelihood = 0.0;
-    let mut var_matrix = DMatrix::zeros(cols, cols);
+    let n_samples = y_vec.len();
+    let n_features = x_vec[0].len(); // Jumlah variabel independen asli
 
-    for _iter in 0..input.config.max_iterations {
-        // Hitung Probabilitas (Sigmoid): p = 1 / (1 + e^-(X * beta))
-        let linear_pred = &x_matrix * &beta;
-        let p: DVector<f64> = linear_pred.map(|z| 1.0 / (1.0 + (-z).exp()));
-        
-        // Hitung Matriks Bobot Diagonal (W) = p * (1 - p)
-        let w_diag: Vec<f64> = p.iter().map(|&pi| pi * (1.0 - pi)).collect();
-        let w_matrix = DMatrix::from_diagonal(&DVector::from_vec(w_diag));
-        
-        // Hitung Hessian (X^T * W * X)
-        let hessian = &x_matrix.transpose() * &w_matrix * &x_matrix;
-        
-        // Invers Hessian (Variance-Covariance Matrix)
-        // Ini krusial untuk Standard Error (S.E.)
-        match hessian.try_inverse() {
-            Some(inv_hessian) => var_matrix = inv_hessian,
-            None => return Err(JsValue::from_str("Singular matrix, cannot invert")),
-        }
+    // Konversi Matriks
+    let mut x_mat =
+        DMatrix::from_vec(n_features, n_samples, x_vec.into_iter().flatten().collect()).transpose();
+    let y_vec = DVector::from_vec(y_vec);
 
-        // Update Beta: New = Old + (Hessian^-1 * Gradient)
-        // Gradient = X^T * (y - p)
-        let gradient = &x_matrix.transpose() * (&y_vector - &p);
-        let step = &var_matrix * gradient;
-        
-        let old_beta = beta.clone();
-        beta += step;
+    // ---------------------------------------------------------
+    // TAHAP 1: ANALISIS BLOCK 0 (Null Model / Hanya Intercept)
+    // ---------------------------------------------------------
 
-        // Cek Konvergensi (jika perubahan sangat kecil, stop)
-        if (&beta - old_beta).norm() < 1e-6 {
-            break;
-        }
-    }
+    // Hitung Mean Y (Probabilitas Null)
+    let sum_y = y_vec.sum();
+    let p_null = sum_y / n_samples as f64;
+    let p_safe_null = p_null.clamp(1e-10, 1.0 - 1e-10);
 
-    // 3. Hitung Log Likelihood Akhir (-2LL)
-    let linear_pred = &x_matrix * &beta;
-    let p_final: DVector<f64> = linear_pred.map(|z| 1.0 / (1.0 + (-z).exp()));
-    
-    let mut log_likelihood = 0.0;
-    for i in 0..n {
-        let yi = y_vector[i];
-        let pi = p_final[i];
-        // Mencegah log(0)
-        let safe_pi = if pi < 1e-10 { 1e-10 } else if pi > 1.0 - 1e-10 { 1.0 - 1e-10 } else { pi };
-        log_likelihood += yi * safe_pi.ln() + (1.0 - yi) * (1.0 - safe_pi).ln();
-    }
-    let minus_2ll = -2.0 * log_likelihood;
+    // Logit Null (B0 Constant) = ln(p / 1-p)
+    let b0_val = (p_safe_null / (1.0 - p_safe_null)).ln();
+    let b0_se = (1.0 / (n_samples as f64 * p_safe_null * (1.0 - p_safe_null))).sqrt(); // Approx SE
+    let b0_wald = (b0_val / b0_se).powi(2);
+    let b0_sig = 1.0 - ChiSquared::new(1.0).unwrap().cdf(b0_wald);
 
-    // 4. Hitung R-Square (Cox & Snell dan Nagelkerke)
-    // Butuh Log Likelihood Null Model (Hanya Intercept)
-    let mean_y = y_vector.sum() / n as f64;
-    let ll_null = n as f64 * (mean_y * mean_y.ln() + (1.0 - mean_y) * (1.0 - mean_y).ln());
-    let minus_2ll_null = -2.0 * ll_null;
-    
-    let cox_snell = 1.0 - (ll_null / log_likelihood).exp().powf(2.0 / n as f64); // Aproksimasi
-    // Rumus Cox & Snell asli: 1 - (L_null / L_model)^(2/n)
-    let l_null = (-minus_2ll_null / 2.0).exp();
-    let l_model = (-minus_2ll / 2.0).exp();
-    let cox_snell_real = 1.0 - (l_null / l_model).powf(2.0 / n as f64);
-    
-    let max_r2 = 1.0 - l_null.powf(2.0 / n as f64);
-    let nagelkerke = cox_snell_real / max_r2;
+    let block_0_constant = VariableRow {
+        label: "Constant".to_string(),
+        b: b0_val,
+        se: b0_se,
+        wald: b0_wald,
+        df: 1,
+        sig: b0_sig,
+        exp_b: b0_val.exp(),
+        lower_ci: 0.0, // Tidak relevan untuk Block 0 preview
+        upper_ci: 0.0,
+    };
 
-    // 5. Konstruksi Tabel "Variables in the Equation"
-    let mut variables_stats = Vec::new();
-    
-    // Ambil nama variabel dari input (ideally passed in config, here we simulate)
-    // Urutan beta: [Constant, X1, X2, X3...] jika include_constant true
-    
-    // Chi-Square Distribution untuk Sig.
-    let chi_dist = ChiSquared::new(1.0).unwrap();
+    // Hitung Score Test untuk "Variables Not in Equation" (Block 0)
+    // Score Test memeriksa korelasi residual Block 0 dengan setiap Variabel Independen
+    let mut vars_not_in_eq = Vec::new();
+    let residuals: DVector<f64> = y_vec.map(|y| y - p_null); // Residual null model
 
-    for i in 0..cols {
-        let b = beta[i];
-        let variance = var_matrix[(i, i)];
-        let se = variance.sqrt();
-        let wald = (b / se).powi(2);
-        let df = 1;
-        let sig = 1.0 - chi_dist.cdf(wald); // P-Value
-        let exp_b = b.exp();
-        
-        let label = if input.config.include_constant && i == 0 {
-            "Constant".to_string()
+    // Variance Global untuk Score Test: p(1-p)
+    let global_variance = p_null * (1.0 - p_null);
+
+    for i in 0..n_features {
+        // Ambil kolom variabel X ke-i
+        let col = x_mat.column(i);
+
+        // 1. Hitung Score (U) = Sum(residual * x)
+        // Centering X diperlukan untuk Score Test yang akurat pada intercept-only model
+        let mean_x = col.sum() / n_samples as f64;
+        let centered_x = col.map(|v| v - mean_x);
+
+        let score: f64 = centered_x.dot(&residuals);
+
+        // 2. Hitung Information (V) = Sum(x_centered^2) * p(1-p)
+        let sum_sq_x = centered_x.map(|v| v * v).sum();
+        let info = sum_sq_x * global_variance;
+
+        // 3. Score Statistic = U^2 / V
+        let score_stat = if info > 1e-10 {
+            (score * score) / info
         } else {
-             // Logic untuk mapping nama variabel X1, X2...
-             // Perlu disesuaikan indexnya
-             format!("Var {}", i) 
+            0.0
         };
+        let p_val = 1.0 - ChiSquared::new(1.0).unwrap().cdf(score_stat);
 
-        variables_stats.push(VariableRow {
-            label, b, se, wald, df, sig, exp_b
+        vars_not_in_eq.push(VariableNotInEquation {
+            label: format!("Var {}", i + 1), // Nanti di-map di worker
+            score: score_stat,
+            df: 1,
+            sig: p_val,
         });
     }
 
-    // 6. Classification Table
-    let mut pred_0_obs_0 = 0;
-    let mut pred_1_obs_0 = 0;
-    let mut pred_0_obs_1 = 0;
-    let mut pred_1_obs_1 = 0;
-    let mut correct = 0;
+    // ---------------------------------------------------------
+    // TAHAP 2: ANALISIS BLOCK 1 (Full Model)
+    // ---------------------------------------------------------
 
-    for i in 0..n {
-        let predicted_prob = p_final[i];
-        let observed = y_vector[i] as i32;
-        let predicted = if predicted_prob >= input.config.cutoff { 1 } else { 0 };
-        
-        if observed == 0 {
-            if predicted == 0 { pred_0_obs_0 += 1; correct += 1; }
-            else { pred_1_obs_0 += 1; }
-        } else {
-            if predicted == 0 { pred_0_obs_1 += 1; }
-            else { pred_1_obs_1 += 1; correct += 1; }
-        }
+    // Tambah Intercept ke Matriks X untuk fitting
+    if config.include_constant {
+        x_mat = x_mat.insert_column(0, 1.0);
     }
 
-    // 7. Return Hasil Akhir
+    // Jalankan Algoritma IRLS
+    let irls_result = stats::irls::fit(
+        &x_mat,
+        &y_vec,
+        config.max_iterations,
+        config.convergence_threshold,
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Hitung Statistik Variabel (Variables in Equation Block 1)
+    let mut variables_rows = Vec::new();
+    let standard_errors = irls_result.covariance_matrix.diagonal().map(|v| v.sqrt());
+
+    for i in 0..irls_result.beta.len() {
+        let b = irls_result.beta[i];
+        let se = standard_errors[i];
+        let wald = if se > 1e-10 { (b / se).powi(2) } else { 0.0 };
+        let sig = match ChiSquared::new(1.0) {
+            Ok(dist) => 1.0 - dist.cdf(wald),
+            Err(_) => 0.0,
+        };
+        let exp_b = b.exp();
+        let z_score = 1.96; // 95% CI
+        let lower = (b - z_score * se).exp();
+        let upper = (b + z_score * se).exp();
+
+        let label = if config.include_constant && i == 0 {
+            "Constant".to_string()
+        } else {
+            let idx = if config.include_constant { i } else { i + 1 };
+            format!("Var {}", idx)
+        };
+
+        variables_rows.push(VariableRow {
+            label,
+            b,
+            se,
+            wald,
+            df: 1,
+            sig,
+            exp_b,
+            lower_ci: lower,
+            upper_ci: upper,
+        });
+    }
+
+    // Hitung Metrics (Summary & Omnibus)
+    let metrics = stats::metrics::calculate_model_metrics(irls_result.final_log_likelihood, &y_vec);
+    let df_model = if config.include_constant {
+        (x_mat.ncols() - 1) as i32
+    } else {
+        x_mat.ncols() as i32
+    };
+    let omni_chi = stats::metrics::calculate_omnibus_chi_square(
+        metrics.null_log_likelihood,
+        metrics.model_log_likelihood,
+    );
+    let omni_sig = stats::metrics::calculate_sig(omni_chi, df_model);
+
+    let class_table = stats::table::calculate_classification_table(
+        &irls_result.predictions,
+        &y_vec,
+        config.cutoff,
+    );
+
     let result = LogisticResult {
-        model_summary: ModelSummary {
-            log_likelihood: minus_2ll,
-            cox_snell_r2: cox_snell_real,
-            nagelkerke_r2: nagelkerke,
+        summary: ModelSummary {
+            log_likelihood: -2.0 * metrics.model_log_likelihood,
+            cox_snell_r_square: metrics.cox_snell,
+            nagelkerke_r_square: metrics.nagelkerke,
+            iterations: irls_result.iterations,
+            converged: irls_result.converged,
         },
-        classification_table: ClassificationTable {
-            predicted_0_observed_0: pred_0_obs_0,
-            predicted_1_observed_0: pred_1_obs_0,
-            predicted_0_observed_1: pred_0_obs_1,
-            predicted_1_observed_1: pred_1_obs_1,
-            overall_percentage: (correct as f64 / n as f64) * 100.0,
-        },
-        variables_in_equation: variables_stats,
+        classification_table: class_table,
+        variables: variables_rows,
+
+        // Tambahan Data Baru
+        variables_not_in_equation: vars_not_in_eq,
+        block_0_constant: block_0_constant,
+
         omni_tests: OmniTests {
-            chi_square: minus_2ll_null - minus_2ll, // Model Chi-Square
-            df: p_count as i32,
-            sig: 1.0 - ChiSquared::new(p_count as f64).unwrap().cdf(minus_2ll_null - minus_2ll),
+            chi_square: omni_chi,
+            df: df_model,
+            sig: omni_sig,
         },
     };
 
-    Ok(serde_wasm_bindgen::to_value(&result)?)
+    Ok(to_value(&result).map_err(|e| e.to_string())?)
 }

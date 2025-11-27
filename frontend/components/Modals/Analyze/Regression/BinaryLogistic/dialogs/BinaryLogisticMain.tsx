@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   TooltipProvider,
@@ -59,6 +59,15 @@ export const BinaryLogisticMain = () => {
     factors: [],
     method: "Enter",
   });
+  const variableDetails = useMemo(() => {
+    return variablesFromStore.reduce((acc, v) => {
+      // Hanya masukkan ke map jika id-nya ada (tidak undefined)
+      if (v.id !== undefined) {
+        acc[v.id] = v;
+      }
+      return acc;
+    }, {} as Record<number, Variable>);
+  }, [variablesFromStore]);
 
   // Sub-Dialog Params State
   const [catParams, setCatParams] = useState<BinaryLogisticCategoricalParams>({
@@ -166,6 +175,7 @@ export const BinaryLogisticMain = () => {
 
   // --- LOGIKA UTAMA EKSEKUSI WORKER ---
   const handleAnalyze = async () => {
+    // 1. Validasi Input UI
     if (!options.dependent || options.covariates.length === 0) {
       setErrorMsg(
         "Please select a dependent variable and at least one covariate."
@@ -182,51 +192,31 @@ export const BinaryLogisticMain = () => {
     setErrorMsg(null);
 
     try {
-      // 1. Ambil Data Mentah
-      const depIndex = options.dependent.columnIndex;
-      const yData = data.map((row: any) => Number(row[depIndex]));
-
-      // Gabungkan covariates dan factors
-      const allPredictors = [...options.covariates, ...options.factors];
-      const xData = data.map((row: any) =>
-        allPredictors.map((v) => Number(row[v.columnIndex]))
-      );
-
-      // 2. Payload untuk Worker
-      // PERBAIKAN: Menggunakan camelCase agar cocok dengan Rust serde(rename_all="camelCase")
-      const payload = {
-        y: yData,
-        x: xData,
-        config: {
-          cutoff: optParams.classificationCutoff,
-          // Ubah snake_case ke camelCase di sini:
-          maxIterations: optParams.maxIterations,
-          includeConstant: optParams.includeConstant,
-        },
-      };
-
-      console.log("Sending payload to worker:", payload);
-
-      // 3. Panggil Web Worker
+      // 2. Inisialisasi Worker
+      // Pastikan path ini benar sesuai lokasi file di folder public/workers/...
       const worker = new Worker(
-        "/workers/Regression/binaryLogistic.worker.js",
-        {
-          type: "module",
-        }
+        new URL(
+          "/workers/Regression/binaryLogistic.worker.js",
+          window.location.origin
+        ),
+        { type: "module" } // PENTING: Wajib ada untuk support import di worker
       );
 
-      worker.postMessage({ type: "RUN_ANALYSIS", payload });
-
+      // 3. Setup Listener Pesan dari Worker
       worker.onmessage = async (event) => {
-        const { type, result, error } = event.data;
+        const { type, payload } = event.data;
 
         if (type === "SUCCESS") {
-          // 4. Format Hasil (Sekarang mengembalikan Object JSON, bukan string HTML)
+          // payload di sini adalah hasil perhitungan akhir dari Rust
+          // yang sudah di-enrich kembali oleh Worker.
+
+          // Format Hasil untuk Tampilan (DataTable / HTML)
           const formattedResult = formatBinaryLogisticResult(
-            result,
+            payload,
             options.dependent!.name
           );
 
+          // Logging ke System
           const varNames = options.covariates.map((c) => c.name).join(" ");
           const logId = await addLog({
             log: `LOGISTIC REGRESSION VARIABLES ${
@@ -236,42 +226,67 @@ export const BinaryLogisticMain = () => {
 
           const analyticId = await addAnalytic(logId, {
             title: "Binary Logistic Regression",
-            note: `Method: Enter`,
+            note: `Method: ${options.method}`,
           });
 
-          // Simpan sebagai JSON String.
-          // ResultOutput akan mem-parse ini, menemukan properti ".tables",
-          // dan menggunakan DataTableRenderer.
           await addStatistic(analyticId, {
             title: "Logistic Regression Output",
-            output_data: JSON.stringify(formattedResult),
-            components: "Tables", // Ubah ini agar lebih semantik (opsional, tapi baik untuk kerapian)
-            description: "Variables in Equation, Model Summary, etc.",
+            output_data: JSON.stringify(formattedResult), // Simpan JSON structure
+            components: "Tables",
+            description:
+              "Variables in Equation, Model Summary, Classification Table.",
           });
 
           setIsLoading(false);
-          closeModal("BINARY_LOGISTIC");
+          // Opsional: closeModal("BINARY_LOGISTIC");
+          worker.terminate(); // Matikan worker setelah selesai
+        } else if (type === "ERROR") {
+          // Tangani error yang dilempar secara eksplisit oleh Worker
+          console.error("Worker Logical Error:", payload);
+          setErrorMsg(
+            typeof payload === "string"
+              ? payload
+              : "Calculation error occurred."
+          );
+          setIsLoading(false);
           worker.terminate();
         }
       };
 
+      // 4. Setup Error Handler (System Error / 404)
       worker.onerror = (event) => {
-        console.error("WORKER ERROR EVENT:", event);
-
-        let message = "Unknown Worker Error";
-        if (event instanceof ErrorEvent) {
-          message = event.message;
-        } else {
-          message =
-            "Failed to load worker script. Check file path or Network tab (404).";
-        }
-
-        setErrorMsg(`Analysis Failed: ${message}`);
+        event.preventDefault();
+        console.error("Worker System Error:", event);
+        setErrorMsg(
+          "Failed to initialize calculation module. Please check console."
+        );
         setIsLoading(false);
         worker.terminate();
       };
+
+      // 5. Kirim Data Mentah ke Worker (ETL di Worker)
+      // Kita tidak lagi mapping data di sini. Kirim saja raw data.
+
+      const config = {
+        maxIterations: optParams.maxIterations,
+        includeConstant: optParams.includeConstant,
+        cutoff: optParams.classificationCutoff,
+        // ... parameter lain ...
+      };
+
+      worker.postMessage({
+        dependentId: options.dependent.id,
+        independentIds: [
+          ...options.covariates.map((v) => v.id),
+          ...options.factors.map((v) => v.id),
+        ],
+        data: data, // KIRIM RAW DATA
+        variableDetails: variableDetails, // Kirim metadata (tipe data, label, dll)
+        config: config,
+      });
     } catch (err: any) {
-      setErrorMsg("Error preparing data: " + err.message);
+      console.error("Main Thread Error:", err);
+      setErrorMsg("Failed to start analysis: " + err.message);
       setIsLoading(false);
     }
   };

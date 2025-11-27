@@ -1,5 +1,3 @@
-// frontend/components/Modals/Analyze/Regression/BinaryLogistic/services/formatter.ts
-
 interface LogisticResult {
   model_summary: {
     log_likelihood: number;
@@ -21,7 +19,23 @@ interface LogisticResult {
     df: number;
     sig: number;
     exp_b: number;
+    lower_ci: number;
+    upper_ci: number;
   }>;
+  variables_not_in_equation: Array<{
+    label: string;
+    score: number;
+    df: number;
+    sig: number;
+  }>;
+  block_0_constant: {
+    b: number;
+    se: number;
+    wald: number;
+    df: number;
+    sig: number;
+    exp_b: number;
+  };
   omni_tests: {
     chi_square: number;
     df: number;
@@ -42,7 +56,7 @@ export const formatBinaryLogisticResult = (
   // 1. PRE-CALCULATION DATA PROCESSING
   // ----------------------------------------------------------------------
 
-  // Hitung Totals dari Block 1 Classification Table (karena ini data asli)
+  // Hitung Totals dari Block 1 Classification Table
   const obs0 =
     result.classification_table.predicted_0_observed_0 +
     result.classification_table.predicted_1_observed_0;
@@ -50,25 +64,21 @@ export const formatBinaryLogisticResult = (
     result.classification_table.predicted_0_observed_1 +
     result.classification_table.predicted_1_observed_1;
   const nTotal = obs0 + obs1;
-  const nMissing = 0; // Rust saat ini asumsikan data bersih
+  const nMissing = 0; // Asumsi data bersih dari Rust
 
   // --- LOGIKA BLOCK 0 (Beginning Block) ---
-  // Di Block 0, model hanya menebak kategori mayoritas untuk SEMUA data.
+  // Di Block 0, model hanya menebak kategori mayoritas.
   const majorityIs1 = obs1 >= obs0;
 
-  // Prediksi Block 0
-  const b0_pred0_obs0 = majorityIs1 ? 0 : obs0; // Jika mayoritas 1, prediksi 0 untuk obs0 salah semua (0 benar)
-  const b0_pred1_obs0 = majorityIs1 ? obs0 : 0; // Jika mayoritas 1, prediksi 1 untuk obs0 (semua salah)
-
-  const b0_pred0_obs1 = majorityIs1 ? 0 : obs1; // Jika mayoritas 1, prediksi 0 untuk obs1 (0)
-  const b0_pred1_obs1 = majorityIs1 ? obs1 : 0; // Jika mayoritas 1, prediksi 1 untuk obs1 (semua benar)
-
+  const b0_pred0_obs0 = majorityIs1 ? 0 : obs0;
+  const b0_pred1_obs0 = majorityIs1 ? obs0 : 0;
+  const b0_pred0_obs1 = majorityIs1 ? 0 : obs1;
+  const b0_pred1_obs1 = majorityIs1 ? obs1 : 0;
   const b0_correct = majorityIs1 ? obs1 : obs0;
   const b0_overall_pct = (b0_correct / nTotal) * 100;
 
   // Hitung Konstanta Awal (B) untuk Block 0
-  // B = ln(prob(1) / prob(0)) = ln(obs1 / obs0)
-  const b0_constant = Math.log(obs1 / obs0);
+  const b0_constant = obs0 > 0 ? Math.log(obs1 / obs0) : 0;
   const b0_expB = Math.exp(b0_constant);
 
   return {
@@ -81,14 +91,14 @@ export const formatBinaryLogisticResult = (
         note: "a. If weight is in effect, see classification table for the total number of cases.",
         columnHeaders: [
           { header: "Unweighted Cases", key: "rowHeader" },
-          { header: "N", key: "n" },
-          { header: "Percent", key: "percent" },
+          { header: "N", key: "n", align: "right" },
+          { header: "Percent", key: "percent", align: "right" },
         ],
         rows: [
           {
             rowHeader: ["Selected Cases", "Included in Analysis"],
             n: nTotal,
-            percent: fmtPct(1.0), // Asumsi 100% included krn Rust clean data
+            percent: fmtPct(1.0),
           },
           {
             rowHeader: ["Selected Cases", "Missing Cases"],
@@ -125,11 +135,12 @@ export const formatBinaryLogisticResult = (
       },
 
       // ============================================================
-      // BLOCK 0: Beginning Block
+      // BLOCK 0
       // ============================================================
       {
-        title: "Classification Table",
-        note: "a. Constant is included in the model.\nb. The cut value is .500\nBlock 0: Beginning Block",
+        title:
+          "Block 0: Beginning Block<br/>Classification Table<sup style='display:none'></sup>",
+        note: "a. Constant is included in the model.\nb. The cut value is .500",
         columnHeaders: [
           {
             header: "Observed",
@@ -177,7 +188,6 @@ export const formatBinaryLogisticResult = (
       },
       {
         title: "Variables in the Equation",
-        note: "Block 0: Beginning Block",
         columnHeaders: [
           { header: "", key: "var" },
           { header: "B", key: "b" },
@@ -190,43 +200,71 @@ export const formatBinaryLogisticResult = (
         rows: [
           {
             rowHeader: ["Constant"],
-            b: fmt(b0_constant),
-            se: "", // Kita tidak hitung SE Null Model di Rust saat ini
-            wald: "",
+            b: fmt(result.block_0_constant?.b || b0_constant),
+            se: fmt(result.block_0_constant?.se || 0),
+            wald: fmt(result.block_0_constant?.wald || 0),
             df: "1",
-            sig: "",
-            expb: fmt(b0_expB),
+            sig: fmtSig(result.block_0_constant?.sig || 0),
+            expb: fmt(result.block_0_constant?.exp_b || b0_expB),
+          },
+        ],
+      },
+      {
+        title: "Variables not in the Equation",
+        columnHeaders: [
+          { header: "", key: "var" },
+          { header: "Score", key: "score" },
+          { header: "df", key: "df" },
+          { header: "Sig.", key: "sig" },
+        ],
+        rows: [
+          ...(result.variables_not_in_equation || []).map((v) => ({
+            rowHeader: [v.label],
+            score: fmt(v.score),
+            df: v.df,
+            sig: fmtSig(v.sig),
+          })),
+          {
+            rowHeader: ["Overall Statistics"],
+            score: fmt(
+              (result.variables_not_in_equation || []).reduce(
+                (acc, v) => acc + v.score,
+                0
+              )
+            ),
+            df: (result.variables_not_in_equation || []).length,
+            sig: fmtSig(0.0),
           },
         ],
       },
 
       // ============================================================
-      // BLOCK 1: Method = Enter
+      // BLOCK 1
       // ============================================================
       {
-        title: "Omnibus Tests of Model Coefficients",
-        note: "Block 1: Method = Enter",
+        title:
+          "Block 1: Method = Enter<br/>Omnibus Tests of Model Coefficients<sup style='display:none'></sup>",
         columnHeaders: [
-          { header: "", key: "rowHeader" },
+          { header: "", key: "rh" },
           { header: "Chi-square", key: "chi" },
           { header: "df", key: "df" },
           { header: "Sig.", key: "sig" },
         ],
         rows: [
           {
-            rowHeader: ["Step 1"],
+            rowHeader: ["Step 1", "Step"],
             chi: fmt(result.omni_tests.chi_square),
             df: result.omni_tests.df,
             sig: fmtSig(result.omni_tests.sig),
           },
           {
-            rowHeader: ["Block"],
+            rowHeader: ["Step 1", "Block"],
             chi: fmt(result.omni_tests.chi_square),
             df: result.omni_tests.df,
             sig: fmtSig(result.omni_tests.sig),
           },
           {
-            rowHeader: ["Model"],
+            rowHeader: ["Step 1", "Model"],
             chi: fmt(result.omni_tests.chi_square),
             df: result.omni_tests.df,
             sig: fmtSig(result.omni_tests.sig),
@@ -235,7 +273,6 @@ export const formatBinaryLogisticResult = (
       },
       {
         title: "Model Summary",
-        note: "Block 1: Method = Enter",
         columnHeaders: [
           { header: "Step", key: "step" },
           { header: "-2 Log likelihood", key: "ll" },
@@ -253,7 +290,7 @@ export const formatBinaryLogisticResult = (
       },
       {
         title: "Classification Table",
-        note: "a. The cut value is .500\nBlock 1: Method = Enter",
+        note: "a. The cut value is .500",
         columnHeaders: [
           {
             header: "Observed",
@@ -309,7 +346,6 @@ export const formatBinaryLogisticResult = (
       },
       {
         title: "Variables in the Equation",
-        note: "Block 1: Method = Enter",
         columnHeaders: [
           { header: "", key: "var" },
           { header: "B", key: "b" },
@@ -318,6 +354,13 @@ export const formatBinaryLogisticResult = (
           { header: "df", key: "df" },
           { header: "Sig.", key: "sig" },
           { header: "Exp(B)", key: "expb" },
+          {
+            header: "95% C.I.for EXP(B)",
+            children: [
+              { header: "Lower", key: "lo" },
+              { header: "Upper", key: "up" },
+            ],
+          },
         ],
         rows: result.variables_in_equation.map((row) => ({
           rowHeader: [row.label],
@@ -327,6 +370,8 @@ export const formatBinaryLogisticResult = (
           df: row.df,
           sig: fmtSig(row.sig),
           expb: fmt(row.exp_b),
+          lo: fmt(row.lower_ci),
+          up: fmt(row.upper_ci),
         })),
       },
     ],
