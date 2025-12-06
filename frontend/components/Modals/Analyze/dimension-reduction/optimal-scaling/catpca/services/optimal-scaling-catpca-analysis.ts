@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {
+import type {
     OptScaCatpcaAnalysisType
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/types/optimal-scaling-captca-worker";
 
@@ -13,20 +13,20 @@ export async function analyzeOptScaCatpca({
     const LabelingVariables = configData.main.LabelingVars || [];
 
     const slicedDataForAnalysis = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: AnalysisVariables,
     });
 
     const slicedDataForSupplement = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: SupplementVariables,
     });
 
     const slicedDataForLabeling = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: LabelingVariables,
     });
 

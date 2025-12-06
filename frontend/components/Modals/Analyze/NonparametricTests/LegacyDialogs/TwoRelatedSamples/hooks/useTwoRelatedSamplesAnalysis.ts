@@ -3,10 +3,12 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-import {
+import type {
     TwoRelatedSamplesAnalysisProps,
-    TwoRelatedSamplesResults,
     TwoRelatedSamplesResult
+} from '../types';
+import {
+    TwoRelatedSamplesResults
 } from '../types';
 
 import {
@@ -102,7 +104,7 @@ export const useTwoRelatedSamplesAnalysis = ({
 
             if (status === 'success' && results) {
                 // Check for insufficient data
-                if (results.metadata && results.metadata.hasInsufficientData) {
+                if (results.metadata?.hasInsufficientData) {
                     insufficientDataVarsRef.current.push({variable1Name: results.metadata.variable1Name, variable1Label: results.metadata.variable1Label, variable2Name: results.metadata.variable2Name, variable2Label: results.metadata.variable2Label, insufficientType: results.metadata.insufficientType});
                     // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                 }
@@ -159,7 +161,7 @@ export const useTwoRelatedSamplesAnalysis = ({
 
                         let twoRelatedSamplesNote = "";
                         let note = "";
-                        let typeToVars: Record<string, string[]> = {};
+                        const typeToVars: Record<string, string[]> = {};
                         if (insufficientDataVarsRef.current.length > 0) {
                             twoRelatedSamplesNote += "Note: "; 
                             for (const { variable1Name, variable1Label, variable2Name, variable2Label, insufficientType } of insufficientDataVarsRef.current) {
@@ -170,7 +172,7 @@ export const useTwoRelatedSamplesAnalysis = ({
                                 }
                             }
                             if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
-                                let testNames = [];
+                                const testNames = [];
                                 if (testType.wilcoxon) testNames.push("Wilcoxon Signed Ranks Test");
                                 if (testType.sign) testNames.push("Sign Test");
                                 if (testNames.length > 0) {

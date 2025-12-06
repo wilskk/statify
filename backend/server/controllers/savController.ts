@@ -1,4 +1,10 @@
-// Controller for SAV upload/create
+/*
+ * Controller SAV
+ * - Upload: terima file .sav, baca meta dan baris
+ * - Create: terima payload JSON, tulis .sav ke direktori sementara
+ * - Pembersihan: hapus file sementara lama
+ */
+
 import type { Request, Response } from 'express';
 import formidable from 'formidable';
 import type { Part, File, Fields } from 'formidable';
@@ -7,12 +13,11 @@ import path from 'path';
 import { saveToFile, VariableType, VariableAlignment, VariableMeasure } from 'sav-writer';
 import { z } from 'zod';
 
-import { MAX_UPLOAD_SIZE_MB, getTempDir } from '../config/constants';
+import { MAX_UPLOAD_SIZE_MB, getTempDir, DEBUG_SAV } from '../config/constants';
 import * as savService from '../services/savService'; // Import the service
 import type { VariableInput, TransformedVariable } from '../types/sav.types';
 
- 
-// Zod schemas for input validation
+// Skema Zod untuk validasi input
 const ValueLabelSchema = z.object({
     value: z.union([z.string(), z.number()]).nullable().optional(),
     label: z.string().nullable().optional(),
@@ -40,7 +45,7 @@ const CreateSavBodySchema = z.object({
     data: z.array(z.record(z.string(), z.unknown())).default([]),
 });
 
-// Normalize VariableInput to sav-writer format.
+// Normalisasi VariableInput ke format sav-writer
 export const transformVariable = (variable: VariableInput): TransformedVariable => {
     let type: number;
     if (variable.type === "STRING") {
@@ -107,7 +112,7 @@ export const transformVariable = (variable: VariableInput): TransformedVariable 
     };
 };
 
-// Coerce record values by transformed variable types (strings, dates, numbers).
+// Konversi nilai record sesuai tipe variabel tertransformasi (string, tanggal, angka)
 export const transformRecord = (
     record: Record<string, unknown>,
     transformedVariables: TransformedVariable[]
@@ -149,14 +154,15 @@ export const transformRecord = (
 export const uploadSavFile = (req: Request, res: Response): void => {
     const form = formidable({
         multiples: false,
-        // Limit file size (default 10 MB, configurable via env)
+        // Batas ukuran file (default 10 MB)
         maxFileSize: MAX_UPLOAD_SIZE_MB * 1024 * 1024,
-        // Only accept .sav with allowed mimetypes (checked before writing to disk)
+        // Hanya menerima .sav dengan mimetype yang diizinkan (dicek sebelum menulis ke disk)
         filter: (part: Part) => {
             const { originalFilename, mimetype } = part;
             if (!originalFilename) {
                 return false;
             }
+
             const ext = path.extname(originalFilename).toLowerCase();
             const allowedMimes = ['application/octet-stream', 'application/x-spss-sav'];
             const mimeOk = !mimetype || allowedMimes.includes(mimetype);
@@ -167,7 +173,7 @@ export const uploadSavFile = (req: Request, res: Response): void => {
     form.parse(req, (err: Error | null, fields: Fields, files: Record<string, File | File[] | undefined>) => {
         if (err) {
             console.error('Error parsing form:', err);
-            // Ensure temporary file is cleaned up if parsing fails and file exists
+            // Pastikan file sementara dibersihkan jika parsing gagal dan file ada
             const uploadedFileOnError = files['file'];
             if (uploadedFileOnError) {
                 const filePathOnError = Array.isArray(uploadedFileOnError)
@@ -202,11 +208,11 @@ export const uploadSavFile = (req: Request, res: Response): void => {
 
         void (async () => {
             try {
-                // Delegate to service
+                // Delegasi ke service
                 const { meta, rows } = await savService.processUploadedSav(filePath);
                 res.json({ meta, rows });
             } catch {
-                // Logged and cleaned up in service
+                // Logging dan pembersihan dilakukan di service
                 res.status(500).send('Error processing SAV file');
             }
         })();
@@ -219,21 +225,21 @@ export const createSavFile = (req: Request, res: Response): void => {
         res.status(400).json({ error: 'Payload tidak valid', issues: parsed.error.issues });
         return;
     }
+
     const { data, variables } = parsed.data;
-    const DEBUG_SAV = ['1','true','yes','on'].includes(String(process.env.DEBUG_SAV).toLowerCase());
     if (DEBUG_SAV) {
         console.warn('Received SAV writer request:', { data, variables });
     }
 
     try {
-        const filteredVariables = variables.filter((variable) => {
+        const filteredVariables = variables.filter((variable: any) => {
             if (variable.type === "DATE") {
                 return Number(variable.width) === 10;
             }
             if (variable.type === "DATETIME") {
                 return Number(variable.width) === 20;
             }
-            // Filter out unsupported date/time formats
+            // Saring format tanggal/waktu yang belum didukung
             if (["ADATE", "EDATE", "SDATE", "JDATE", "QYR", "MOYR", "WKYR", "WKDAY", "MONTH", "TIME", "DTIME"].includes(variable.type)) {
                 if (DEBUG_SAV) {
                     console.warn(`Variabel ${String(variable.name)} dengan tipe ${String(variable.type)} diabaikan: format tidak didukung.`);
@@ -250,9 +256,9 @@ export const createSavFile = (req: Request, res: Response): void => {
             return;
         }
 
-        // Transform inputs
+        // Transformasi input
         const transformedVariables: TransformedVariable[] = filteredVariables.map(transformVariable);
-        const transformedData = data?.map((record) => transformRecord(record, transformedVariables)) ?? [];
+        const transformedData = data?.map((record: any) => transformRecord(record, transformedVariables)) ?? [];
 
         const outputDir = getTempDir();
         if (!fs.existsSync(outputDir)) {
@@ -279,9 +285,7 @@ export const createSavFile = (req: Request, res: Response): void => {
                 if (DEBUG_SAV) {
                     console.warn('First value label:', {
                         value: firstVar.valueLabels[0].value,
-                        valueType: typeof firstVar.valueLabels[0].value,
-                        label: firstVar.valueLabels[0].label,
-                        labelType: typeof firstVar.valueLabels[0].label
+                        label: firstVar.valueLabels[0].label
                     });
                 }
             }

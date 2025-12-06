@@ -1,5 +1,3 @@
-// types/modalTypes.ts
-
 import React from "react";
 
 /**

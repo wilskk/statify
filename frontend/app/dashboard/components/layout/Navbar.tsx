@@ -99,6 +99,9 @@ const Navbar: React.FC = () => {
                   >
                     Curve Estimation...
                   </MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.ModalBinaryLogistic)}>
+                    Binary Logistic...
+                  </MenubarItem>
                 </MenubarSubContent>
               </MenubarSub>
                 <MenubarSub>

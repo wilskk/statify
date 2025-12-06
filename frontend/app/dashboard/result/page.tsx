@@ -12,7 +12,7 @@ export default function ResultPage() {
             <Suspense fallback={<SidebarSkeleton data-testid="result-sidebar-loading" />}>
                 <Sidebar />
             </Suspense>
-            <div className="h-full overflow-auto" data-testid="result-content">
+            <div className="h-full overflow-auto min-w-0" data-testid="result-content">
                 <Suspense fallback={<ResultsSkeleton data-testid="result-output-loading" />}>
                     <ResultOutput />
                 </Suspense>

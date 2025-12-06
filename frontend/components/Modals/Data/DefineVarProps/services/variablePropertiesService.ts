@@ -1,6 +1,5 @@
 import type { Variable, MissingValuesSpec } from "@/types/Variable";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
+
 
 /**
  * Checks if a value is considered missing based on a variable's missing value specification.
@@ -115,8 +114,8 @@ export const saveVariableProperties = async (
     });
 
     for (const modifiedVariable of updatesToApply) {
-        const { tempId, values, missing, name, label, type, width, decimals, role, measure, ...rest } = modifiedVariable;
+        const { values, missing, name, label, type, width, decimals, role, measure } = modifiedVariable;
         const updatePayload: Partial<Variable> = { values, missing, name, label, type, width, decimals, role, measure };
         await updateMultipleFields(modifiedVariable.columnIndex, updatePayload);
     }
-}; 
+};

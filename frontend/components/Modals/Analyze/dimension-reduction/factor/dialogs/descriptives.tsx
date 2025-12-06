@@ -2,11 +2,11 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     FactorDescriptivesProps,
     FactorDescriptivesType,
 } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
-import {CheckedState} from "@radix-ui/react-checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Label} from "@/components/ui/label";

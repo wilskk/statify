@@ -1,6 +1,6 @@
 import type { FC} from "react";
 import React, { useRef, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,7 @@ export const TourPopup: FC<{
   onClose, 
   targetElement 
 }) => {
-  const position = step.position || step.defaultPosition;
+  const position = step.position ?? step.defaultPosition;
   const horizontalPosition = step.horizontalPosition;
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
   const popupRef = useRef<HTMLDivElement>(null);
@@ -65,7 +65,7 @@ export const TourPopup: FC<{
     
     const updatePosition = () => {
       const rect = targetElement.getBoundingClientRect();
-      const popupHeight = popupRef.current?.offsetHeight || 170;
+      const popupHeight = popupRef.current?.offsetHeight ?? 170;
       const popupWidth = 280;
       const popupBuffer = 20;
       let top: number, left: number;

@@ -1,4 +1,4 @@
-import { TourStep } from "@/types/tourTypes";
+import type { TourStep } from "@/types/tourTypes";
 
 export const univariateTourSteps: TourStep[] = [
     {

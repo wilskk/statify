@@ -205,6 +205,19 @@ export const createScatterPlot = (
         tickValues: yTickValues,
       },
     });
+
+    // Draw horizontal baseline at y = 0 if within domain (for residual-based plots)
+    if (yMin <= 0 && yMax >= 0) {
+      svg
+        .append("line")
+        .attr("x1", margin.left)
+        .attr("x2", width - margin.right)
+        .attr("y1", y(0))
+        .attr("y2", y(0))
+        .attr("stroke", "currentColor")
+        .attr("stroke-opacity", 0.6)
+        .attr("stroke-dasharray", "4,2");
+    }
   }
 
   return svg.node();

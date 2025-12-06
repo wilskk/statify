@@ -3,9 +3,10 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-import {
+import type {
     BivariateAnalysisProps,
-    BivariateResults,
+    BivariateResults} from '../types';
+import {
     BivariateTable
 } from '../types';
 
@@ -174,7 +175,7 @@ export const useBivariateAnalysis = ({
                         // console.log('Results ref:', JSON.stringify(resultsRef.current));
                         // Prepare log message
                         const variableNames = testVariables.map(v => v.name).join(" ");
-                        let logMsg = `CORRELATIONS {VARIABLES=${variableNames}}`;
+                        const logMsg = `CORRELATIONS {VARIABLES=${variableNames}}`;
 
                         // 4. Catat waktu ketika data diubah ke format tabel
                         timingRef.current.dataFormattedToTable = performance.now();
@@ -246,7 +247,7 @@ export const useBivariateAnalysis = ({
                         }
 
                         if (correlationCoefficient.kendallsTauB || correlationCoefficient.spearman) {
-                            let correlationType = [];
+                            const correlationType = [];
                             if (correlationCoefficient.kendallsTauB) {
                                 correlationType.push("Kendall's tau_b");
                             }

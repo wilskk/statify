@@ -1,10 +1,11 @@
-import {
+import type {
     IndependentSamplesTTestTable,
-    TableColumnHeader,
-    TableRow,
     GroupStatistics,
     IndependentSamplesTest,
-    IndependentSamplesTTestResult,
+    IndependentSamplesTTestResult} from '../types';
+import {
+    TableColumnHeader,
+    TableRow
 } from '../types';
 
 /**

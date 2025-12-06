@@ -1,7 +1,7 @@
 // roc-analysis-main.tsx
 import {useEffect, useMemo, useState} from "react";
 import {RocAnalysisDialog} from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/dialog";
-import {
+import type {
     RocAnalysisContainerProps,
     RocAnalysisMainType,
     RocAnalysisType,
@@ -80,8 +80,8 @@ export const RocAnalysisContainer = ({
 
             await analyzeRocAnalysis({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

@@ -1,8 +1,8 @@
 // hierarchical-cluster-analysis-output.ts
-import {
+import type {
     HierClusFinalResultType
 } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/types/hierarchical-cluster-worker";
-import {Table} from "@/types/Table";
+import type {Table} from "@/types/Table";
 import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultHierarchicalCluster({

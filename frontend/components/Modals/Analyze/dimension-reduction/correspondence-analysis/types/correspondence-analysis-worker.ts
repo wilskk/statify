@@ -1,5 +1,5 @@
-import {CorrespondenceType} from "./correspondence-analysis";
-import {ResultJson} from "@/types/Table";
+import type {CorrespondenceType} from "./correspondence-analysis";
+import type {ResultJson} from "@/types/Table";
 
 export type CorrespondenceAnalysisType = {
     configData: CorrespondenceType;

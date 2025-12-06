@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { TourStep } from "@/types/tourTypes";
-import { HorizontalPosition } from "@/types/tourTypes";
+import type { TourStep } from "@/types/tourTypes";
+import type { HorizontalPosition } from "@/types/tourTypes";
 
 export interface UseTourGuideResult {
     tourActive: boolean;

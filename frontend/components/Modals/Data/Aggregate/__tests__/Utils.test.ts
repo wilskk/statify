@@ -82,7 +82,6 @@ describe('Aggregate Utils', () => {
 
     describe('calculateAggregateValue', () => {
         const numericData = [10, 20, 30, 40, 50];
-        const stringData = ['A', 'B', 'A', 'C', 'B'];
         const mixedData = [1, '2', null, 3, '', 4];
         const allNulls = [null, null, ''];
 
@@ -192,4 +191,4 @@ describe('Aggregate Utils', () => {
             expect(calculateAggregateValue('PGT', [], {percentageValue: '10'})).toBeNull();
         });
     });
-}); 
+});

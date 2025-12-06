@@ -3,7 +3,7 @@ import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTi
 import {Button} from "@/components/ui/button";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
-import {
+import type {
     RepeatedMeasuresDialogProps,
     RepeatedMeasuresMainType,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures";
@@ -143,7 +143,7 @@ export const RepeatedMeasuresDialog = ({
                         const format = formatMatch[0];
 
                         // Replace with ?_ + format
-                        updatedSubVar[varIndex] = "?_" + format;
+                        updatedSubVar[varIndex] = `?_${  format}`;
                         updatedState.SubVar = updatedSubVar;
                     } else {
                         // If no format is found, just remove the item (fallback)

@@ -1,5 +1,4 @@
 // components/Modals/Edit/index.ts
-import { ModalType } from "@/types/modalTypes";
 
 // Export registry
 export { 

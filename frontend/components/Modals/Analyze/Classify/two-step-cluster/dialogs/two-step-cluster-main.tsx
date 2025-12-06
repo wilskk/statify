@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-import {
+import type {
     TwoStepClusterContainerProps,
     TwoStepClusterMainType,
     TwoStepClusterType,
@@ -107,8 +107,8 @@ export const TwoStepClusterContainer = ({
 
             await analyzeTwoStepCluster({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

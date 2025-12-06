@@ -2,7 +2,7 @@
 
 self.onmessage = function (event) {
   console.log("[Worker] Data diterima:", event.data);
-  const { dependent, independent } = event.data;
+  const { dependent, independent, independentVariableInfos } = event.data;
 
   // Validasi input
   if (!Array.isArray(dependent)) {
@@ -270,20 +270,25 @@ self.onmessage = function (event) {
     return 1 - incBeta;
   }
 
-  const sigFChange = fPvalue(fChange, df1, df2);
-  console.log("[Worker] Sig. F Change:", sigFChange);
+  const pValue = fPvalue(fChange, df1, df2);
+  console.log("[Worker] p-value F Change:", pValue);
 
   // Format nilai R Square Change (.058a)
   const rSquareChange = rSquared.toFixed(3).replace(/^0/, "") + "a";
   const fChangeRounded = parseFloat(fChange.toFixed(3));
-  const sigFChangeRounded = parseFloat(sigFChange.toFixed(3));
+  const pValueRounded = parseFloat(pValue.toFixed(3));
 
-  // Buat catatan kaki untuk prediktor
-  const predictorVariables = [];
-  for (let i = k; i > 0; i--) {
-    predictorVariables.push(`VAR0000${i+1}`);
+  // Buat catatan kaki untuk prediktor dengan label jika tersedia
+  let predictorsDisplay = [];
+  if (Array.isArray(independentVariableInfos) && independentVariableInfos.length === k) {
+    predictorsDisplay = independentVariableInfos.map(v => (v.label && v.label.trim() !== '') ? v.label : v.name);
+  } else {
+    // Fallback ke penamaan generik jika info tidak tersedia
+    for (let i = 0; i < k; i++) {
+      predictorsDisplay.push(`VAR${String(i + 1).padStart(5, '0')}`);
+    }
   }
-  const footnoteText = `a. Predictors: (Constant), ${predictorVariables.join(', ')}`;
+  const footnoteText = `a. Predictors: (Constant), ${predictorsDisplay.join(', ')}`;
 
   // Susun output JSON sesuai format yang diinginkan
   const result = {
@@ -299,7 +304,7 @@ self.onmessage = function (event) {
               { header: "F Change", key: "fChange" },
               { header: "df1", key: "df1" },
               { header: "df2", key: "df2" },
-              { header: "Sig. F Change", key: "sigFChange" }
+              { header: "p-value F Change", key: "pValue" }
             ]
           }
         ],
@@ -310,7 +315,7 @@ self.onmessage = function (event) {
             fChange: fChangeRounded,
             df1: df1,
             df2: df2,
-            sigFChange: sigFChangeRounded
+            pValue: pValueRounded
           }
         ],
         footnotes: [footnoteText]

@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-import {FactorValueProps, FactorValueType,} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
+import type {FactorValueProps, FactorValueType,} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
 import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";
 

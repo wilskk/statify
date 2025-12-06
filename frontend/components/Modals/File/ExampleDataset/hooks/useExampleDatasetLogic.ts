@@ -13,7 +13,7 @@ export const useExampleDatasetLogic = ({
     const [error, setError] = useState<string | null>(null);
 
     const { overwriteAll } = useVariableStore();
-    const { setData, resetData } = useDataStore();
+    const { resetData } = useDataStore();
     const { setMeta: setProjectMeta } = useMetaStore();
 
     const loadDataset = async (filePath: string) => {
@@ -46,4 +46,4 @@ export const useExampleDatasetLogic = ({
         error,
         loadDataset,
     };
-}; 
+};

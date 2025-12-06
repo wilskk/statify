@@ -198,7 +198,7 @@ const ResultOutput: React.FC = () => {
                                       <div
                                         className={`${
                                           !isExpandedTable && isLongTable
-                                            ? "max-h-[500px] overflow-hidden"
+                                            ? "max-h-[500px] overflow-y-hidden"
                                             : ""
                                         } overflow-x-auto pb-2`}
                                         data-testid={`result-table-${stat.id}`}

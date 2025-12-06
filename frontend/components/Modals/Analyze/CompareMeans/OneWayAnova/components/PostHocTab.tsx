@@ -1,7 +1,8 @@
-import React, { FC } from "react";
+import type { FC } from "react";
+import React from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PostHocTabProps } from "../types";
+import type { PostHocTabProps } from "../types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 const PostHocTab: FC<PostHocTabProps> = ({

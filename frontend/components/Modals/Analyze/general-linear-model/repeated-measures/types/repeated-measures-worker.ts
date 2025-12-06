@@ -1,4 +1,4 @@
-import {RepeatedMeasuresType} from "./repeated-measures";
+import type {RepeatedMeasuresType} from "./repeated-measures";
 
 export type RepeatedMeasuresAnalysisType = {
     configData: RepeatedMeasuresType;

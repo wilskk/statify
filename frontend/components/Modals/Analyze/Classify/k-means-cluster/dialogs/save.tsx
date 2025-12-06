@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
+import type {
     KMeansClusterSaveProps,
     KMeansClusterSaveType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
+import type { CheckedState } from "@radix-ui/react-checkbox";
 import { HelpCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import {

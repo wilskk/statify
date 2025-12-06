@@ -2,7 +2,11 @@
 importScripts("https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js");
 self.onmessage = function (e) {
   try {
-    const { dependentData, independentData } = e.data;
+    const { dependentData, independentData, maxPower: inputMaxPower } = e.data;
+    // Default to 3rd power if not provided; ensure integer >= 2
+    const maxPower = (typeof inputMaxPower === 'number' && isFinite(inputMaxPower) && Math.floor(inputMaxPower) >= 2)
+      ? Math.floor(inputMaxPower)
+      : 3;
 
     if (!Array.isArray(dependentData) || dependentData.length === 0) {
       self.postMessage({ error: "Missing or empty dependent variable data" });
@@ -61,8 +65,7 @@ self.onmessage = function (e) {
     const restrictedSSE = restricted.sse;
     const yHat = restricted.yHat;
 
-    // Define maxPower for Ramsey RESET test (typically 2 or 3)
-    const maxPower = 3;
+    // Use computed maxPower (default 3) for Ramsey RESET test
 
     const augmentedX = X.map((row, i) => {
       const extras = [];
@@ -96,7 +99,7 @@ self.onmessage = function (e) {
 
     const summary = {
       title: "Linearity Test Results",
-      description: "Ramsey RESET test for overall model linearity (powers 2..3 of fitted values added); H0: model is linear.",
+      description: `Ramsey RESET test for overall model linearity (powers 2..${maxPower} of fitted values added); H0: model is linear.`,
       fStatistic: parseFloat(fStatistic.toFixed(6)),
       pValue: parseFloat(pValue.toFixed(6)),
       isLinear,

@@ -32,6 +32,46 @@ const LinearityTest: React.FC<LinearityTestProps> = ({ data }) => {
   try {
     // Parse the JSON data
     const parsedData = JSON.parse(data);
+
+    // New schema from AssumptionTest: { tables: [...] } wrapped with title/description via statistics store
+    if (parsedData && parsedData.tables && Array.isArray(parsedData.tables)) {
+      const table = parsedData.tables[0];
+      // Try to extract values
+      const fRow = table?.rows?.find((r: any) => Array.isArray(r.rowHeader) && (r.rowHeader[0] || '').toLowerCase().includes('f statistic'));
+      const pRow = table?.rows?.find((r: any) => Array.isArray(r.rowHeader) && (r.rowHeader[0] || '').toLowerCase().includes('p value'));
+      const fVal = fRow?.Value ?? fRow?.value ?? '';
+      const pVal = pRow?.Value ?? pRow?.value ?? '';
+
+      return (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold">Linearity Test Summary (Ramsey RESET)</h2>
+          <Card>
+            <CardContent className="p-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Metric</TableHead>
+                    <TableHead>Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>F Statistic</TableCell>
+                    <TableCell>{String(fVal)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>P Value</TableCell>
+                    <TableCell>{String(pVal)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    // Legacy schema support
     const { title, description, allLinear, results } = parsedData;
 
     if (!results || !Array.isArray(results)) {

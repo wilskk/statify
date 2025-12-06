@@ -305,6 +305,70 @@ class FrequencyCalculator {
         // Always set Mode from our method (ensures date modes are formatted as dd-mm-yyyy)
         stats.Mode = this.getMode();
 
+        // --- Dynamic Percentiles -------------------------------------------
+        // Merge any requested percentiles into stats.Percentiles.
+        // Only applicable for numeric-like measures (scale/ordinal).
+        try {
+            if (this.isNumeric && this.options && this.options.statisticsOptions) {
+                const pOpts = this.options.statisticsOptions.percentileValues || {};
+                const requested = new Set();
+
+                // Quartiles: add 25 and 75 (Median handled separately unless explicitly requested)
+                if (pOpts.quartiles) {
+                    requested.add(25);
+                    requested.add(75);
+                }
+
+                // Cut points: NTILES = n => (n-1) cut points at k*100/n for k=1..n-1
+                if (pOpts.cutPoints && typeof pOpts.cutPointsN === 'number' && isFinite(pOpts.cutPointsN)) {
+                    const n = Math.floor(pOpts.cutPointsN);
+                    if (n > 1) {
+                        for (let k = 1; k < n; k++) {
+                            requested.add((k * 100) / n);
+                        }
+                    }
+                }
+
+                // Arbitrary percentile list
+                if (pOpts.enablePercentiles && Array.isArray(pOpts.percentilesList)) {
+                    for (const p of pOpts.percentilesList) {
+                        const num = typeof p === 'number' ? p : parseFloat(p);
+                        if (typeof num === 'number' && isFinite(num) && num >= 0 && num <= 100) {
+                            requested.add(num);
+                        }
+                    }
+                }
+
+                if (requested.size > 0) {
+                    const base = stats.Percentiles ? { ...stats.Percentiles } : {};
+                    const decimals = (this.variable && typeof this.variable.decimals === 'number')
+                        ? Math.max(0, Math.min(16, this.variable.decimals))
+                        : 1;
+                    const roundIfOrdinal = (v) => {
+                        if (this.effMeasure !== 'ordinal') return v;
+                        if (typeof v !== 'number' || !isFinite(v)) return v;
+                        // Do not round when core type is date (values are SPSS seconds)
+                        try {
+                            const core = typeof getCoreType === 'function' ? getCoreType(this.variable) : 'numeric';
+                            if (core === 'date') return v;
+                        } catch (_) { /* ignore */ }
+                        if (typeof toSPSSFixed === 'function') return toSPSSFixed(v, decimals);
+                        return v;
+                    };
+                    for (const p of requested) {
+                        // Normalize key to at most 1 decimal to avoid long repeating fractions
+                        const keyNum = typeof p === 'number' ? p : Number(p);
+                        const key = Number.isInteger(keyNum) ? String(keyNum) : parseFloat(keyNum.toFixed(1)).toString();
+                        const rawVal = this.getPercentile(keyNum, 'waverage');
+                        base[key] = roundIfOrdinal(rawVal);
+                    }
+                    stats.Percentiles = base;
+                }
+            }
+        } catch (e) {
+            // Do not fail stats if percentile options are malformed; just skip dynamic percentiles
+        }
+
         const results = {
             summary: {
                 valid: W,

@@ -126,7 +126,7 @@ export class DataTableErrorBoundary extends Component<Props, State> {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle data-testid="data-table-error-title">Data Table Error</AlertTitle>
             <AlertDescription className="mt-2" data-testid="data-table-error-description">
-              {this.state.error?.message || 'An unexpected error occurred while processing table data.'}
+              {this.state.error?.message ?? 'An unexpected error occurred while processing table data.'}
               <br />
               <span className="text-xs text-muted-foreground mt-1 block" data-testid="data-table-error-details">
                 Error ID: {this.state.errorId} | Attempts: {this.state.retryCount}/{this.maxRetries}
@@ -169,13 +169,13 @@ export class DataTableErrorBoundary extends Component<Props, State> {
 export const withDataTableErrorBoundary = <P extends object>(
   Component: React.ComponentType<P>
 ) => {
-  const WrappedComponent = React.forwardRef<any, P>((props, ref) => (
+  const WrappedComponent = React.forwardRef<unknown, P>((props, ref) => (
     <DataTableErrorBoundary>
       <Component {...(props as P)} ref={ref} />
     </DataTableErrorBoundary>
   ));
   
-  WrappedComponent.displayName = `withDataTableErrorBoundary(${Component.displayName || Component.name})`;
+  WrappedComponent.displayName = `withDataTableErrorBoundary(${Component.displayName ?? Component.name})`;
   
   return WrappedComponent;
 };

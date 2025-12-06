@@ -1,4 +1,4 @@
-import {MultivariateType} from "./multivariate";
+import type {MultivariateType} from "./multivariate";
 
 export type MultivariateAnalysisType = {
     configData: MultivariateType;

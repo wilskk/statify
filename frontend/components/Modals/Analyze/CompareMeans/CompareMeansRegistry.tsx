@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
-import { ModalType, BaseModalProps } from '@/types/modalTypes';
+import type { BaseModalProps } from '@/types/modalTypes';
+import { ModalType } from '@/types/modalTypes';
 
 // Import directly-loaded descriptive modals
 // For now, we're creating a minimal registry structure

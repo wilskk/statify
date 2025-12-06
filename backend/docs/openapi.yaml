@@ -1,0 +1,103 @@
+openapi: 3.0.0
+info:
+  title: Statify Backend API
+  version: 1.0.0
+  description: Dokumentasi API untuk layanan backend Statify.
+servers:
+  - url: http://localhost:5000
+    description: Server Development
+
+paths:
+  /api/sav/upload:
+    post:
+      summary: Upload dan proses file (SAV, XLSX, CSV, JSON)
+      description: |
+        Menerima satu file (via multipart/form-data), mem-parsingnya di backend
+        menggunakan library yang sesuai (misal: SAV Reader), dan mengembalikan
+        data lengkap (data baris dan metadata) dalam format JSON standar Statify.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File yang akan diunggah (.sav, .xlsx, .csv, .json)
+      responses:
+        '200':
+          description: File berhasil diproses dan data JSON dikembalikan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metadata:
+                    type: object
+                    description: Metadata variabel (nama, label, tipe, value labels, missing values).
+                    example:
+                      variables:
+                        - name: "age"
+                          label: "Usia Responden"
+                          type: "numeric"
+                          valueLabels: []
+                  data:
+                    type: array
+                    description: Array berisi objek data per baris.
+                    items:
+                      type: object
+                    example:
+                      - age: 25, gender: "L"
+                      - age: 30, gender: "P"
+        '400':
+          description: Bad Request (misal: tidak ada file yang diunggah).
+        '500':
+          description: Kesalahan server saat memproses atau membaca file.
+
+  /api/sav/create:
+    post:
+      summary: Buat dan ekspor file .sav
+      description: |
+        Menerima data JSON standar Statify (data dan metadata) dari frontend,
+        mengubahnya menjadi format .sav di server, dan mengirimkan
+        file .sav tersebut kembali untuk di-download oleh klien.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Data dan metadata dalam format JSON standar Statify.
+              properties:
+                metadata:
+                  type: object
+                  description: Metadata variabel yang akan ditulis ke file .sav.
+                data:
+                  type: array
+                  description: Data baris yang akan ditulis.
+                  items:
+                    type: object
+              example:
+                metadata:
+                  variables:
+                    - name: "age"
+                      label: "Usia Responden"
+                      type: "numeric"
+                data:
+                  - age: 25
+                  - age: 30
+      responses:
+        '200':
+          description: File .sav berhasil dibuat dan dikembalikan sebagai binary stream.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                description: File .sav biner.
+        '400':
+          description: Bad Request (misal: format JSON tidak valid).
+        '500':
+          description: Kesalahan server saat membuat file .sav.

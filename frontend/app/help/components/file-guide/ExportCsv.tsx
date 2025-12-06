@@ -43,8 +43,8 @@ export const ExportCsv = () => {
     },
     {
       id: 'options',
-      title: 'Opsi Ekspor',
-      description: 'Pengaturan yang dapat Anda sesuaikan saat menyimpan file',
+      title: 'Opsi & Pengaturan',
+      description: 'Pengaturan yang dapat Anda sesuaikan saat mengekspor file',
       icon: Settings,
       content: (
         <div className="space-y-4">
@@ -66,17 +66,17 @@ export const ExportCsv = () => {
   const tips = [
     {
       type: 'warning' as const,
-      title: 'Catatan Data',
-      content: 'Ekspor CSV hanya menyimpan data mentah Anda. Properti variabel seperti label atau tingkat pengukuran tidak akan disertakan dalam file .csv.'
+      title: 'Keterbatasan Format',
+      content: 'Ekspor CSV hanya menyimpan data mentah. Properti variabel seperti label atau tingkat pengukuran tidak disertakan.'
     },
     {
       type: 'tip' as const,
-      title: 'Kompatibilitas',
+      title: 'Kompatibilitas Universal',
       content: 'File CSV bekerja dengan hampir semua program spreadsheet dan perangkat lunak statistik lainnya.'
     },
     {
       type: 'info' as const,
-      title: 'Dukungan Karakter',
+      title: 'Encoding UTF-8',
       content: 'File CSV disimpan dengan encoding UTF-8 untuk memastikan karakter khusus ditampilkan dengan benar.'
     }
   ];
@@ -84,7 +84,8 @@ export const ExportCsv = () => {
   const relatedTopics = [
     { title: 'Ekspor ke Excel', href: '/help/file-guide/export-excel' },
     { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
-    { title: 'Cetak Data Anda', href: '/help/file-guide/print' },
+    { title: 'Cetak Data', href: '/help/file-guide/print' },
+    { title: 'Panduan Manajemen File', href: '/help/file-guide' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 

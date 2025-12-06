@@ -39,7 +39,7 @@ export const ImportClipboard = () => {
     {
       id: 'features',
       title: 'Fitur & Manfaat',
-      description: 'Mengapa impor clipboard sangat berguna',
+      description: 'Keuntungan menggunakan impor clipboard',
       icon: Zap,
       content: (
         <div className="space-y-4">
@@ -63,12 +63,17 @@ export const ImportClipboard = () => {
     {
       type: 'tip' as const,
       title: 'Format Data',
-      content: 'Pastikan data Anda memiliki header di baris pertama untuk hasil impor yang terbaik.'
+      content: 'Pastikan data Anda memiliki header di baris pertama untuk hasil impor yang optimal.'
     },
     {
       type: 'info' as const,
       title: 'Deteksi Otomatis',
       content: 'Statify secara otomatis mendeteksi format data dan jenis kolom saat mengimpor dari clipboard.'
+    },
+    {
+      type: 'success' as const,
+      title: 'Kecepatan Impor',
+      content: 'Metode tercepat untuk memasukkan data dari aplikasi spreadsheet lain ke Statify.'
     }
   ];
 
@@ -76,6 +81,7 @@ export const ImportClipboard = () => {
     { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
     { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
     { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
+    { title: 'Dataset Contoh', href: '/help/file-guide/example-data' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 

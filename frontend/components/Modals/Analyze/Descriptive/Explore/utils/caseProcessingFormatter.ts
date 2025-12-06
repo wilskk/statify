@@ -1,5 +1,6 @@
-import { ExploreAnalysisParams } from '../types';
-import { ColumnHeader, FormattedTable, ExploreAggregatedResults, getFactorLabel, regroupByDepVar } from './helpers';
+import type { ExploreAnalysisParams } from '../types';
+import type { ColumnHeader, FormattedTable, ExploreAggregatedResults} from './helpers';
+import { getFactorLabel, regroupByDepVar } from './helpers';
 
 /**
  * Build the "Case Processing Summary" table for Explore analysis.

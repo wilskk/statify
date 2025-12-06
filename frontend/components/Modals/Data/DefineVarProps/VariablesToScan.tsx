@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, HelpCircle, InfoIcon } from "lucide-react";
+import { AlertCircle, InfoIcon } from "lucide-react";
 import VariableListManager from '@/components/Common/VariableListManager';
 import type { VariablesToScanProps } from "./types";
 import { useVariablesToScan } from "./hooks/useVariablesToScan";

@@ -1,7 +1,7 @@
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
-import { ExploreAnalysisParams } from "../types";
-import { Variable } from "@/types/Variable";
+import type { ExploreAnalysisParams } from "../types";
+import type { Variable } from "@/types/Variable";
 
 // Date utility functions
 function isDateString(value: string): boolean {
@@ -101,7 +101,7 @@ export const processAndAddPlots = async (
 
   // Determine output order: Boxplot(s), Histogram(s), then Stem-and-Leaf plot(s)
   const order: Array<{ type: string; enabled: boolean }> = [
-    { type: "Boxplot", enabled: boxplotType !== "none" },
+    { type: boxplotType === "factor-levels-together" ? "Clustered Boxplot" : "Boxplot", enabled: boxplotType !== "none" },
     { type: "Histogram", enabled: showHistogram },
     { type: "Stem And Leaf Plot", enabled: showStemAndLeaf },
   ];
@@ -228,7 +228,7 @@ export const processAndAddPlots = async (
       }
       if (clusterData.length > 0) {
         const chartTitle = dep.name; // Variable name only
-        pushChart("Boxplot", chartTitle, clusterData, "Boxplot");
+        pushChart("Clustered Boxplot", chartTitle, clusterData, "Clustered Boxplot");
       }
     }
   }

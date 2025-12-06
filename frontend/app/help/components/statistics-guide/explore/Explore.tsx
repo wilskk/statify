@@ -1,13 +1,19 @@
 import React from 'react';
-import { Calculator, BarChart3, Table } from 'lucide-react';
+import { Calculator, BarChart3, Table, BookOpen } from 'lucide-react';
 import StandardizedGuideLayout from '../shared/StandardizedGuideLayout';
+import { OverviewTab } from './tabs/OverviewTab';
 import { VariablesTab } from './tabs/VariablesTab';
 import { StatisticsTab } from './tabs/StatisticsTab';
 import { PlotsTab } from './tabs/PlotsTab';
-import { QuickStartGuide } from './tabs/QuickStartGuide';
 
 const Explore = () => {
   const tabs = [
+    {
+      id: 'overview',
+      label: 'Ringkasan',
+      icon: BookOpen,
+      component: OverviewTab
+    },
     {
       id: 'variables',
       label: 'Variabel',
@@ -33,9 +39,9 @@ const Explore = () => {
       title="Panduan Eksplorasi Data"
       description="Analisis statistik komprehensif dengan metode robust dan deteksi outlier"
       tabs={tabs}
-      defaultTab="variables"
+      defaultTab="overview"
     >
-      <QuickStartGuide />
+      
     </StandardizedGuideLayout>
   );
 };

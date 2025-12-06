@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-import {
+import type {
     VarianceCompsContainerProps,
     VarianceCompsMainType,
     VarianceCompsType,
@@ -110,8 +110,8 @@ export const VarianceCompsContainer = ({
 
             await analyzeVarianceComps({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

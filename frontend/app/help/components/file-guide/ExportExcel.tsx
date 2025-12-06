@@ -63,8 +63,8 @@ export const ExportExcel = () => {
     },
     {
       id: 'options',
-      title: 'Opsi Ekspor',
-      description: 'Pengaturan yang dapat Anda sesuaikan',
+      title: 'Opsi & Pengaturan',
+      description: 'Pengaturan yang dapat Anda sesuaikan saat mengekspor',
       icon: Settings,
       content: (
         <div className="space-y-4">
@@ -87,7 +87,7 @@ export const ExportExcel = () => {
     {
       type: 'success' as const,
       title: 'Preservasi Metadata',
-      content: 'Ekspor Excel menyimpan lebih banyak informasi metadata daripada format lain, termasuk label nilai dan format.'
+      content: 'Ekspor Excel menyimpan lebih banyak informasi metadata daripada format lain, termasuk label nilai dan format data.'
     },
     {
       type: 'tip' as const,
@@ -96,15 +96,16 @@ export const ExportExcel = () => {
     },
     {
       type: 'info' as const,
-      title: 'Lintas Platform',
-      content: 'Format .xlsx bekerja di berbagai platform dan aplikasi spreadsheet modern.'
+      title: 'Kompatibilitas Lintas Platform',
+      content: 'Format .xlsx bekerja di berbagai platform dan aplikasi spreadsheet modern seperti Excel, LibreOffice, dan Google Sheets.'
     }
   ];
 
   const relatedTopics = [
     { title: 'Ekspor ke CSV', href: '/help/file-guide/export-csv' },
     { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
-    { title: 'Cetak Data Anda', href: '/help/file-guide/print' },
+    { title: 'Cetak Data', href: '/help/file-guide/print' },
+    { title: 'Panduan Manajemen File', href: '/help/file-guide' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 

@@ -3,7 +3,7 @@
 import type { FC} from "react";
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { InfoIcon, ChevronDownIcon, ArrowLeft, HelpCircle, Loader2, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { InfoIcon, ChevronDownIcon, ArrowLeft, Loader2, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -350,7 +350,7 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
+
     const nextStep = useCallback(() => { if (currentStep < updatedTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep, updatedTourSteps.length]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);

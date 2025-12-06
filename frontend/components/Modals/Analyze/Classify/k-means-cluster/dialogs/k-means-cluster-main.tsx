@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { KMeansClusterDefault } from "@/components/Modals/Analyze/Classify/k-means-cluster/constants/k-means-cluster-default";
-import {
+import type {
     KMeansClusterContainerProps,
     KMeansClusterMainType,
     KMeansClusterType,
@@ -92,8 +92,8 @@ export const KMeansClusterContainer = ({
 
             await analyzeKMeansCluster({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         };
 

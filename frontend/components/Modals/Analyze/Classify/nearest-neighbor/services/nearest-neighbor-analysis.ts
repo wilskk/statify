@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {KNNAnalysisType} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
+import type {KNNAnalysisType} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
 
 export async function analyzeKNN({
     configData,
@@ -18,26 +18,26 @@ export async function analyzeKNN({
         : [];
 
     const slicedDataForTarget = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: TargetVariable,
     });
 
     const slicedDataForFeatures = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: FeaturesVariables,
     });
 
     const slicedDataForFocalCaseIdentifier = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: FocalCaseIdentifierVariable,
     });
 
     const slicedDataForCaseIdentifier = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: CaseIdentifierVariable,
     });
 

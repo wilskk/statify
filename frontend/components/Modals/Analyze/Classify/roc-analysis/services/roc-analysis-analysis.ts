@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {RocAnalysisAnalysisType} from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
+import type {RocAnalysisAnalysisType} from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
 
 export async function analyzeRocAnalysis({
     configData,
@@ -15,20 +15,20 @@ export async function analyzeRocAnalysis({
         : [];
 
     const slicedDataForTest = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: TestVariables,
     });
 
     const slicedDataForState = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: StateVariable,
     });
 
     const slicedDataForTargetGroup = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: TargetGroupVariable,
     });
 

@@ -5,11 +5,12 @@ import {
     ResizablePanel,
     ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import VariableListManager, {
+import type {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
-import {
+import type {
     UnivariateDialogProps,
     UnivariateMainType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";

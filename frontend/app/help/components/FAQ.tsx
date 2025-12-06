@@ -1,8 +1,8 @@
 import React from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
-import { HelpCard, HelpAlert } from "../ui/HelpLayout";
-import { Search, FileQuestion, FileCode, BarChart4, Clock, Save, BookOpen } from "lucide-react";
+import { HelpCard, HelpAlert, HelpStep } from "../ui/HelpLayout";
+import { Search, FileQuestion, FileCode, BarChart4, Clock, Save, BookOpen, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Data FAQ khusus Statify
@@ -57,6 +57,46 @@ const faqCategories = [
 
 export const FAQ = () => {
   const sections = [
+    {
+      id: 'how-to-search',
+      title: 'Cara Mencari Jawaban',
+      description: 'Panduan untuk menemukan informasi yang Anda butuhkan dengan cepat',
+      icon: ListOrdered,
+      content: (
+        <div className="space-y-4">
+          <HelpStep number={1} title="Gunakan Pencarian Cepat">
+            <p className="text-sm">
+              Ketik kata kunci yang terkait dengan pertanyaan Anda di kotak pencarian. 
+              Sistem akan menampilkan hasil yang relevan secara real-time.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={2} title="Jelajahi Kategori FAQ">
+            <p className="text-sm">
+              Telusuri kategori FAQ di bawah ini untuk menemukan jawaban berdasarkan topik:
+            </p>
+            <ul className="list-disc ml-6 mt-2 text-sm space-y-1">
+              <li><strong>Data & File</strong>: Import, export, dan manajemen file</li>
+              <li><strong>Analisis Statistik</strong>: Prosedur analisis dan interpretasi hasil</li>
+            </ul>
+          </HelpStep>
+
+          <HelpStep number={3} title="Periksa Panduan Terkait">
+            <p className="text-sm">
+              Jika tidak menemukan jawaban di FAQ, kunjungi panduan lengkap atau gunakan 
+              fitur pencarian untuk topik yang lebih spesifik.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={4} title="Hubungi Dukungan">
+            <p className="text-sm">
+              Masih butuh bantuan? Gunakan formulir umpan balik untuk menghubungi tim dukungan 
+              atau ajukan pertanyaan baru.
+            </p>
+          </HelpStep>
+        </div>
+      )
+    },
     {
       id: 'overview',
       title: 'Bantuan Cepat',
@@ -154,27 +194,38 @@ export const FAQ = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Umpan Balik',
-      content: 'Bantu kami meningkatkan dokumentasi dengan memberikan umpan balik pada setiap halaman bantuan.'
+      title: 'Pencarian Efektif',
+      content: 'Gunakan kata kunci spesifik seperti "import excel", "t-test", atau "missing values" untuk hasil pencarian yang lebih akurat.'
     },
     {
       type: 'info' as const,
-      title: 'Pencarian',
-      content: 'Gunakan fitur pencarian untuk menemukan jawaban dengan cepat menggunakan kata kunci.'
+      title: 'Bookmark Halaman Penting',
+      content: 'Simpan halaman bantuan yang sering Anda gunakan sebagai bookmark untuk akses cepat di masa mendatang.'
+    },
+    {
+      type: 'warning' as const,
+      title: 'Versi dan Fitur',
+      content: 'Beberapa fitur mungkin berbeda tergantung versi Statify yang Anda gunakan. Periksa nomor versi di menu About.'
+    },
+    {
+      type: 'tip' as const,
+      title: 'Umpan Balik Berharga',
+      content: 'Bantu kami meningkatkan dokumentasi dengan memberikan umpan balik tentang kejelasan dan kelengkapan jawaban FAQ.'
     }
   ];
 
   const relatedTopics = [
     { title: 'Memulai', href: '/help/getting-started' },
-    { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
-    { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' },
-    { title: 'Manajemen Data', href: '/help/data-guide' }
+    { title: 'Umpan Balik & Dukungan', href: '/help/feedback' },
+    { title: 'Panduan File', href: '/help/file-guide' },
+    { title: 'Panduan Data', href: '/help/data-guide' },
+    { title: 'Panduan Statistik', href: '/help/statistics-guide' }
   ];
 
   return (
     <HelpGuideTemplate
-      title="Pertanyaan yang Sering Diajukan"
-      description="Temukan jawaban untuk pertanyaan umum tentang penggunaan Statify"
+      title="FAQ - Pertanyaan Umum"
+      description="Temukan jawaban cepat untuk pertanyaan yang sering diajukan tentang penggunaan Statify"
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

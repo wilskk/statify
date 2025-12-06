@@ -1,5 +1,5 @@
 import { formatDisplayNumber } from "@/hooks/useFormatter";
-import { ResultJson, Table } from "@/types/Table";
+import type { ResultJson, Table } from "@/types/Table";
 
 export function transformKMeansResult(
     data: any,
@@ -111,7 +111,7 @@ export function transformKMeansResult(
     }
 
     // 3. Cluster Membership
-    if (data.cluster_membership && data.cluster_membership.data) {
+    if (data.cluster_membership?.data) {
         const membershipData = data.cluster_membership.data;
 
         // Check if any case has a name
@@ -368,7 +368,7 @@ export function transformKMeansResult(
                 title: "Cluster Plot",
                 subtitle: `${plot.y_label} vs ${plot.x_label}`,
             },
-            chartData: chartData,
+            chartData,
             chartConfig: {
                 width: 600,
                 height: 400,
@@ -430,7 +430,7 @@ export function transformKMeansResult(
                     table.rows.push({
                         rowHeader: [],
                         context: isFirstRowForContext ? currentContext : "",
-                        message: message,
+                        message,
                     });
                     isFirstRowForContext = false;
                 }

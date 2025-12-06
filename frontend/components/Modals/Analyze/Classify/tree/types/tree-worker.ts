@@ -1,4 +1,4 @@
-import {TreeType} from "./tree";
+import type {TreeType} from "./tree";
 
 export type TreeAnalysisType = {
     configData: TreeType;

@@ -1,11 +1,12 @@
-import {
-    KRelatedSamplesResults,
+import type {
     KRelatedSamplesTable,
     TableColumnHeader,
     TableRow,
+    DisplayStatisticsOptions} from '../types';
+import {
+    KRelatedSamplesResults,
     TestStatistics,
-    DescriptiveStatistics,
-    DisplayStatisticsOptions,
+    DescriptiveStatistics
 } from '../types';
 
 /**
@@ -25,9 +26,9 @@ export function formatRanksTable(
     }
     
     // Find the result with ranks
-    const ranksResult = results.find(result => result.ranks && result.ranks.groups);
+    const ranksResult = results.find(result => result.ranks?.groups);
     
-    if (!ranksResult || !ranksResult.ranks || !ranksResult.ranks.groups) {
+    if (!ranksResult?.ranks?.groups) {
         return {
             title: "Ranks",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -71,9 +72,9 @@ export function formatFrequenciesTable(
     }
     
     // Find the result with frequencies
-    const frequenciesResult = results.find(result => result.frequencies && result.frequencies.groups);
+    const frequenciesResult = results.find(result => result.frequencies?.groups);
     
-    if (!frequenciesResult || !frequenciesResult.frequencies || !frequenciesResult.frequencies.groups) {
+    if (!frequenciesResult?.frequencies?.groups) {
         return {
             title: "Frequencies",
             columnHeaders: [{ header: "No Data", key: "noData" }],

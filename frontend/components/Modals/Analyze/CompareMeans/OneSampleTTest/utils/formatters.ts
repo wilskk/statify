@@ -1,10 +1,11 @@
-import {
+import type {
     OneSampleTTestTable,
-    TableColumnHeader,
-    TableRow,
     OneSampleTest,
     OneSampleTTestResult,
-    OneSampleStatistics,
+    OneSampleStatistics} from '../types';
+import {
+    TableColumnHeader,
+    TableRow
 } from '../types';
 import { Variable } from '@/types/Variable';
 
@@ -73,7 +74,7 @@ export function formatOneSampleTestTable (
         };
     }
     
-    const testValueLabel = 'Test Value = ' + testValue;
+    const testValueLabel = `Test Value = ${  testValue}`;
 
     const table: OneSampleTTestTable = {
         title: 'One-Sample Test',
@@ -103,7 +104,7 @@ export function formatOneSampleTestTable (
 
     // Process each result
     results.forEach((result) => {
-        if (result.metadata && result.metadata.hasInsufficientData) {
+        if (result.metadata?.hasInsufficientData) {
             return;
         }
 

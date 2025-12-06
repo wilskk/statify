@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from "react";
-import {
+import type {
     DialogHandlers,
     OptScaMCAContainerProps,
     OptScaMCADefineVariableType,
@@ -181,8 +181,8 @@ export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
 
             await analyzeOptScaMCA({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
+                dataVariables,
+                variables,
             });
         } catch (error) {
             console.error(error);

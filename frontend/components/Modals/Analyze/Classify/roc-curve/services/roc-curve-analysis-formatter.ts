@@ -1,6 +1,6 @@
 // roc-curve-formatter.ts
 import {ensureEnoughHeaders, formatDisplayNumber} from "@/hooks/useFormatter";
-import {ResultJson, Table} from "@/types/Table";
+import type {ResultJson, Table} from "@/types/Table";
 
 export function transformROCCurveResult(data: any): ResultJson {
     const resultJson: ResultJson = {

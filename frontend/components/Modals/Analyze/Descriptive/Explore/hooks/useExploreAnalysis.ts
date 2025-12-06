@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
 import type { Variable } from '@/types/Variable';
-import { ExploreAnalysisParams } from '../types';
+import type { ExploreAnalysisParams } from '../types';
 import { createWorkerClient } from '@/utils/workerClient';
 import { formatCaseProcessingSummary, formatDescriptivesTable, formatMEstimatorsTable, formatPercentilesTable, formatExtremeValuesTable } from '../utils';
 import { processAndAddPlots } from '../utils/plotProcessor';
@@ -179,7 +179,7 @@ export const useExploreAnalysis = (params: ExploreAnalysisParams, onClose: () =>
                             variable: depVar,
                             data: dataForVar,
                             caseNumbers,
-                            weights: weights,
+                            weights,
                             options: {
                                 confidenceInterval: parseFloat(localParams.confidenceInterval) || 95,
                                 showMEstimators: localParams.showMEstimators,

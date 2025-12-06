@@ -14,8 +14,6 @@ import {
     DataGuide
 } from "@/app/help/components/data-guide";
 
-// DataGuide is now imported from data-guide components
-
 export default function HelpPage() {
     const [selected, setSelected] = useState("getting-started");
     const [search, setSearch] = useState("");

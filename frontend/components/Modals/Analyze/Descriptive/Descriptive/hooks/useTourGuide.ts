@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes';
+import type { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes';
 
 // Constants
 const TIMEOUT_DELAY = 200;

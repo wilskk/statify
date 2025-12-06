@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {
+import type {
     HierClusAnalysisType
 } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/types/hierarchical-cluster-worker";
 
@@ -15,14 +15,14 @@ export async function analyzeHierClus({
         : [];
 
     const slicedDataForCluster = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: ClusterVariables,
     });
 
     const slicedDataForLabelCases = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: LabelCasesVariable,
     });
 

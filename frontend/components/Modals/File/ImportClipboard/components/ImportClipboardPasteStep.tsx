@@ -3,7 +3,7 @@
 import type { FC} from "react";
 import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Clipboard, Loader2, HelpCircle, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { AlertCircle, Clipboard, Loader2, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import type { ImportClipboardPasteStepProps } from "../types"; // Updated path
 import { Textarea } from "@/components/ui/textarea";
 import { readTextFromClipboard } from "../services/services"; // Import the new service function
@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 
 // Tipe data untuk tour
@@ -218,8 +218,8 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
     isLoading,
     error,
     pastedText,
-    isMobile,
-    isPortrait
+    isMobile: _isMobile,
+    isPortrait: _isPortrait
 }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [clipboardApiError, setClipboardApiError] = useState<string | null>(null);
@@ -229,7 +229,7 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
+    const _startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
     const nextStep = useCallback(() => { if (currentStep < baseTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);

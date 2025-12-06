@@ -1,4 +1,4 @@
-import {
+import type {
     OptScaDefineMainType,
     OptScaDefineType,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/types/optimal-scaling-define";

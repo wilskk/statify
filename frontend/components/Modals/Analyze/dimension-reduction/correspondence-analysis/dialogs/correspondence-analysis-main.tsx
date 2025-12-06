@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-import {
+import type {
     CorrespondenceContainerProps,
     CorrespondenceMainType,
     CorrespondenceType,
@@ -120,9 +120,9 @@ export const CorrespondenceContainer = ({
 
             await analyzeCorrespondence({
                 configData: newFormData,
-                dataVariables: dataVariables,
-                variables: variables,
-                meta: meta,
+                dataVariables,
+                variables,
+                meta,
             });
         } catch (error) {
             console.error(error);

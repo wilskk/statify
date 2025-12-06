@@ -2,9 +2,10 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
-import { CrosstabsAnalysisParams } from '../types';
+import type { CrosstabsAnalysisParams } from '../types';
 import { formatCaseProcessingSummary, formatCrosstabulationTable } from '../utils/formatters';
-import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
+import type { WorkerClient } from '@/utils/workerClient';
+import { createPooledWorkerClient } from '@/utils/workerClient';
 import type { Variable } from '@/types/Variable';
 import type { NonintegerWeightsType } from '../types';
 
@@ -64,7 +65,7 @@ const buildCrosstabsLog = (
 
   // Tambahkan titik pada baris terakhir sesuai konvensi sintaks SPSS
   if (lines.length > 0) {
-    lines[lines.length - 1] = lines[lines.length - 1] + '.';
+    lines[lines.length - 1] = `${lines[lines.length - 1]  }.`;
   }
 
   return lines.join('\n');
@@ -246,7 +247,7 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
                 analysisType: 'crosstabs',
                 variable: { row: rowVariable, col: colVariable },
                 data: analysisData,
-                weights: weights,
+                weights,
                 options,
             });
         });

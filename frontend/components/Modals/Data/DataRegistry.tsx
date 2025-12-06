@@ -21,7 +21,7 @@ const SelectCases = lazy(() => import('@/components/Modals/Data/SelectCases'));
 /**
  * LoadingModal - Displayed while modal components are loading
  */
-const LoadingModal: React.FC<BaseModalProps> = ({ onClose }) => (
+const LoadingModal: React.FC<BaseModalProps> = () => (
   <div className="p-6 text-center" data-testid="data-modal-loading">
     <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" data-testid="data-modal-loading-spinner" />
     <p className="text-sm text-muted-foreground" data-testid="data-modal-loading-text">Loading data modal...</p>
@@ -108,4 +108,4 @@ export const DATA_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog
   [ModalType.Transpose]: "sidebar",
   [ModalType.Restructure]: "sidebar",
   [ModalType.Aggregate]: "sidebar",
-}; 
+};

@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import request from 'supertest';
 
 // Dynamic control for sav-writer behavior in this suite
@@ -19,22 +18,12 @@ jest.mock('sav-writer', () => ({
 }));
 
 import { app } from '../../app';
+import { getTempDir } from '../../config/constants';
 
 describe('savController branches', () => {
-  const tmpDir = path.join(__dirname, '..', '..', '..', 'temp_branch_tests');
-
   beforeAll(() => {
-    process.env.TEMP_DIR = tmpDir;
+    const tmpDir = getTempDir();
     if (!fs.existsSync(tmpDir)) { fs.mkdirSync(tmpDir, { recursive: true }); }
-  });
-
-  afterAll(() => {
-    try {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch {
-      void 0;
-    }
-    delete process.env.TEMP_DIR;
   });
 
   beforeEach(() => {

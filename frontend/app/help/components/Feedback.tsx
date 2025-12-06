@@ -6,11 +6,57 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
-import { HelpCard, HelpAlert } from "../ui/HelpLayout";
-import { SendHorizontal, Star, ThumbsUp, MessageSquare, Mail, BookOpen } from "lucide-react";
+import { HelpCard, HelpAlert, HelpStep } from "../ui/HelpLayout";
+import { SendHorizontal, Star, ThumbsUp, MessageSquare, Mail, BookOpen, ListOrdered } from "lucide-react";
 
 export const Feedback = () => {
   const sections = [
+    {
+      id: 'how-to-feedback',
+      title: 'Cara Memberikan Umpan Balik',
+      description: 'Panduan langkah demi langkah untuk menyampaikan umpan balik yang efektif',
+      icon: ListOrdered,
+      content: (
+        <div className="space-y-4">
+          <HelpStep number={1} title="Tentukan Jenis Umpan Balik">
+            <p className="text-sm">
+              Pilih kategori yang paling sesuai dengan umpan balik Anda:
+            </p>
+            <ul className="list-disc ml-6 mt-2 text-sm space-y-1">
+              <li><strong>Permintaan Fitur</strong>: Saran untuk fitur baru atau perbaikan</li>
+              <li><strong>Laporan Bug</strong>: Melaporkan masalah atau error dalam aplikasi</li>
+              <li><strong>Umpan Balik Umum</strong>: Pengalaman pengguna dan saran keseluruhan</li>
+            </ul>
+          </HelpStep>
+
+          <HelpStep number={2} title="Siapkan Informasi Detail">
+            <p className="text-sm">
+              Untuk laporan bug, siapkan informasi berikut:
+            </p>
+            <ul className="list-disc ml-6 mt-2 text-sm space-y-1">
+              <li>Langkah-langkah untuk mereproduksi masalah</li>
+              <li>Screenshot atau video jika memungkinkan</li>
+              <li>Pesan error yang muncul (jika ada)</li>
+              <li>Browser dan sistem operasi yang digunakan</li>
+            </ul>
+          </HelpStep>
+
+          <HelpStep number={3} title="Isi Formulir dengan Lengkap">
+            <p className="text-sm">
+              Berikan deskripsi yang jelas dan spesifik. Semakin detail informasi yang Anda 
+              berikan, semakin mudah bagi tim kami untuk memahami dan menindaklanjuti.
+            </p>
+          </HelpStep>
+
+          <HelpStep number={4} title="Kirim dan Tunggu Respons">
+            <p className="text-sm">
+              Setelah mengirim umpan balik, tim kami akan meninjau dan merespons dalam 1-2 hari kerja. 
+              Jika Anda menyertakan email, kami akan menghubungi Anda jika diperlukan.
+            </p>
+          </HelpStep>
+        </div>
+      )
+    },
     {
       id: 'overview',
       title: 'Jenis Umpan Balik',
@@ -136,27 +182,38 @@ export const Feedback = () => {
   const tips = [
     {
       type: 'tip' as const,
-      title: 'Umpan Balik Efektif',
-      content: 'Berikan detail spesifik dan langkah-langkah untuk mereproduksi masalah saat melaporkan bug.'
+      title: 'Umpan Balik Efektif untuk Bug',
+      content: 'Berikan detail spesifik dan langkah-langkah untuk mereproduksi masalah. Sertakan screenshot atau video jika memungkinkan untuk memperjelas masalah.'
     },
     {
       type: 'info' as const,
-      title: 'Waktu Respons',
-      content: 'Tim kami biasanya merespons umpan balik dalam 1-2 hari kerja.'
+      title: 'Waktu Respons Tim',
+      content: 'Tim kami biasanya merespons umpan balik dalam 1-2 hari kerja. Untuk masalah kritis, gunakan saluran dukungan prioritas.'
+    },
+    {
+      type: 'warning' as const,
+      title: 'Informasi Sensitif',
+      content: 'Jangan sertakan informasi pribadi atau data sensitif dalam umpan balik. Gunakan data contoh atau samaran jika diperlukan.'
+    },
+    {
+      type: 'tip' as const,
+      title: 'Follow-up Umpan Balik',
+      content: 'Jika menyertakan email, Anda akan mendapat notifikasi ketika umpan balik Anda ditindaklanjuti atau butuh klarifikasi tambahan.'
     }
   ];
 
   const relatedTopics = [
+    { title: 'FAQ - Pertanyaan Umum', href: '/help/faq' },
     { title: 'Memulai', href: '/help/getting-started' },
-    { title: 'FAQ', href: '/help/faq' },
-    { title: 'Hubungi Dukungan', href: '/help/contact' },
-    { title: 'Panduan Pengguna', href: '/help/user-guide' }
+    { title: 'Panduan Pengguna', href: '/help/user-guide' },
+    { title: 'Panduan File', href: '/help/file-guide' },
+    { title: 'Panduan Data', href: '/help/data-guide' }
   ];
 
   return (
     <HelpGuideTemplate
       title="Umpan Balik & Dukungan"
-      description="Bantu kami meningkatkan Statify dengan membagikan pemikiran, saran, atau melaporkan masalah Anda"
+      description="Bantu kami meningkatkan Statify dengan membagikan pengalaman, saran, atau melaporkan masalah yang Anda temui"
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

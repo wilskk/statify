@@ -30,12 +30,12 @@ import {
 
 // Lazy load regression modals - komponen yang jarang digunakan dan mungkin besar
 const ModalLinear = lazy(() =>
-  import("@/components/Modals/Regression/Linear/ModalLinear").then((mod) => ({
+  import("@/components/Modals/Analyze/Regression/Linear/ModalLinear").then((mod) => ({
     default: mod.default as React.ComponentType<BaseModalProps>,
   }))
 );
 const Statistics = lazy(() =>
-  import("@/components/Modals/Regression/Linear/Statistics").then((mod) => ({
+  import("@/components/Modals/Analyze/Regression/Linear/Statistics").then((mod) => ({
     // Note: Statistics requires additional props (e.g., showAlert). We cast via unknown to
     // satisfy the registry typing; if used directly as a modal, ensure required props are provided
     // or wrap with an adapter component.
@@ -43,26 +43,26 @@ const Statistics = lazy(() =>
   }))
 );
 const SaveLinear = lazy(() =>
-  import("@/components/Modals/Regression/Linear/SaveLinear").then((mod) => ({
+  import("@/components/Modals/Analyze/Regression/Linear/SaveLinear").then((mod) => ({
     default: mod.default as React.ComponentType<BaseModalProps>,
   }))
 );
 const OptionsLinear = lazy(() =>
-  import("@/components/Modals/Regression/Linear/OptionsLinear").then((mod) => ({
+  import("@/components/Modals/Analyze/Regression/Linear/OptionsLinear").then((mod) => ({
     // OptionsLinear props include additional fields (e.g., showAlert). Cast via unknown
     // to satisfy the registry typing; ensure required props are provided by the caller.
     default: mod.default as unknown as React.ComponentType<BaseModalProps>,
   }))
 );
 const PlotsLinear = lazy(() =>
-  import("@/components/Modals/Regression/Linear/PlotsLinear").then((mod) => ({
+  import("@/components/Modals/Analyze/Regression/Linear/PlotsLinear").then((mod) => ({
     default: mod.default as React.ComponentType<BaseModalProps>,
   }))
 );
 
 const ModalCurveEstimation = lazy(() =>
   import(
-    "@/components/Modals/Regression/CurveEstimation/ModalCurveEstimation"
+    "@/components/Modals/Analyze/Regression/CurveEstimation/ModalCurveEstimation"
   ).then((mod) => ({ default: mod.default as React.ComponentType<BaseModalProps> }))
 );
 
@@ -102,6 +102,12 @@ const UnitRootTestModal = lazy(() =>
 const BoxJenkinsModelModal = lazy(() =>
   import("@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel").then((mod) => ({
     default: mod.default as React.ComponentType<BaseModalProps>,
+  }))
+);
+const ModalBinaryLogistic = lazy(() =>
+  import("@/components/Modals/Analyze/Regression/BinaryLogistic/dialogs/BinaryLogisticMain").then((mod) => ({
+    // Pastikan Anda meng-export component sebagai 'BinaryLogisticMain' di file aslinya
+    default: mod.BinaryLogisticMain as React.ComponentType<BaseModalProps>,
   }))
 );
 
@@ -177,6 +183,7 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   [ModalType.OptionsLinear]: withSuspense(OptionsLinear),
   [ModalType.PlotsLinear]: withSuspense(PlotsLinear),
   [ModalType.ModalCurveEstimation]: withSuspense(ModalCurveEstimation),
+  [ModalType.ModalBinaryLogistic]: withSuspense(ModalBinaryLogistic),
 
   // Chart modals - lazy loaded
   [ModalType.ChartBuilderModal]: withSuspense(ChartBuilderModal),

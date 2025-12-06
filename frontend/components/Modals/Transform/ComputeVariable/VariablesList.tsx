@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { getVariableIcon } from "@/components/Common/iconHelper";
 
 interface VariablesListProps {

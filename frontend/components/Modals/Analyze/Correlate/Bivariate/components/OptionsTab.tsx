@@ -1,10 +1,11 @@
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { OptionsTabProps } from "../types";
+import type { OptionsTabProps } from "../types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Ruler, Shapes, BarChartHorizontal, FileQuestion, ArrowBigLeft, ArrowBigRight } from "lucide-react";
 import { Button } from "@/components/ui/button";

@@ -1,5 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-import {
+import type {
     CorrespondenceAnalysisType
 } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis-worker";
 
@@ -18,20 +18,20 @@ export async function analyzeCorrespondence({
     const WeightVariable = meta.weight ? [meta.weight] : [];
 
     const slicedDataForRow = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: RowVariable,
     });
 
     const slicedDataForCol = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: ColVariable,
     });
 
     const slicedDataForWeight = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
+        dataVariables,
+        variables,
         selectedVariables: WeightVariable,
     });
 

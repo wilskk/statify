@@ -1,4 +1,4 @@
-import { ModalType, BaseModalProps } from "@/types/modalTypes";
+import type { ModalType, BaseModalProps } from "@/types/modalTypes";
 
 // Import from Descriptive registry via index.ts
 import {

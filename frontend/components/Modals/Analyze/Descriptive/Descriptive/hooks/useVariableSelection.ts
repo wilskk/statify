@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Variable } from '@/types/Variable';
+import type { Variable, VariableType} from '@/types/Variable';
+import { spssDateTypes } from '@/types/Variable';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { 
+import type { 
   VariableSelectionProps,
   HighlightedVariableInfo 
 } from '../types';
@@ -13,6 +14,18 @@ export const useVariableSelection = ({
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [selectedVariables, setSelectedVariables] = useState<Variable[]>(initialVariables);
   const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariableInfo | null>(null);
+
+  // Normalize to core type buckets
+  const allowedNumericTypes = new Set<VariableType>([
+    'NUMERIC',
+    'COMMA',
+    'DOT',
+    'SCIENTIFIC',
+    'DOLLAR',
+    'RESTRICTED_NUMERIC',
+  ]);
+  const isNumericType = (t?: VariableType): boolean => !!t && allowedNumericTypes.has(t);
+  const isDateType = (t?: VariableType): boolean => !!t && spssDateTypes.has(t);
 
   useEffect(() => {
     useVariableStore.getState().loadVariables();
@@ -40,7 +53,13 @@ export const useVariableSelection = ({
 
     // Compute available variables (those not selected and having valid id & name)
     const selectedIds = new Set(stillExistingSelectedVars.map(v => v.id as number));
-    const newAvailableVariables = validGlobalVars.filter(v => !selectedIds.has(v.id as number));
+    const newAvailableVariables = validGlobalVars.filter(v => 
+      !selectedIds.has(v.id as number) &&
+      (
+        isNumericType(v.type) ||
+        (isDateType(v.type) && v.width === 10)
+      )
+    );
 
     setAvailableVariables(newAvailableVariables);
 
@@ -97,7 +116,16 @@ export const useVariableSelection = ({
 
   const resetVariableSelection = () => {
     setSelectedVariables([]);
-    setAvailableVariables(variables.filter(v => v.name !== "" && v.id !== undefined));
+    setAvailableVariables(
+      variables.filter(v => 
+        v.name !== "" && 
+        v.id !== undefined &&
+        (
+          isNumericType(v.type) ||
+          (isDateType(v.type) && v.width === 10)
+        )
+      )
+    );
     setHighlightedVariable(null);
   };
 
@@ -111,4 +139,4 @@ export const useVariableSelection = ({
     reorderVariables,
     resetVariableSelection
   };
-}; 
+};

@@ -1,6 +1,6 @@
 // factor-analysis-formatter.ts
 import {formatDisplayNumber} from "@/hooks/useFormatter";
-import {ResultJson, Table} from "@/types/Table";
+import type {ResultJson, Table} from "@/types/Table";
 
 export function transformFactorAnalysisResult(data: any): ResultJson {
     const resultJson: ResultJson = {
@@ -69,8 +69,7 @@ export function transformFactorAnalysisResult(data: any): ResultJson {
 
         // Significance values
         if (
-            data.correlation_matrix.sig_values &&
-            data.correlation_matrix.sig_values.length
+            data.correlation_matrix.sig_values?.length
         ) {
             const sigHeader = { header: "Sig. (1-tailed)", key: "sig_header" };
             table.columnHeaders[0] = sigHeader;
@@ -226,7 +225,7 @@ export function transformFactorAnalysisResult(data: any): ResultJson {
                     // Add 'a' superscript to diagonal elements (MSA values)
                     if (entry.variable === val.variable) {
                         rowData[`var_${colIndex}`] =
-                            formatDisplayNumber(value) + "ᵃ";
+                            `${formatDisplayNumber(value)  }ᵃ`;
                     } else {
                         rowData[`var_${colIndex}`] = formatDisplayNumber(value);
                     }
@@ -475,7 +474,7 @@ export function transformFactorAnalysisResult(data: any): ResultJson {
                     // Add 'a' superscript to diagonal elements
                     if (entry.variable === val.variable) {
                         rowData[`var_${colIndex}`] =
-                            formatDisplayNumber(val.value) + "ᵃ";
+                            `${formatDisplayNumber(val.value)  }ᵃ`;
                     } else {
                         rowData[`var_${colIndex}`] = formatDisplayNumber(
                             val.value
