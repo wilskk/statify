@@ -16,3 +16,9 @@ getrandom = { version = "0.2", features = ["js"] }
 # Matematika & Statistik
 nalgebra = "0.32"  # Untuk operasi matriks (Invers, Perkalian)
 statrs = "0.16"    # Untuk menghitung P-Value (Distribusi Chi-Square)
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+]

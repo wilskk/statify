@@ -9,6 +9,8 @@ pub struct FittedModel {
     pub final_log_likelihood: f64,
     pub iterations: usize,
     pub converged: bool,
+    pub residuals: DVector<f64>,
+    pub weights: DVector<f64>,
 }
 
 pub fn fit(
@@ -28,7 +30,8 @@ pub fn fit(
     let identity = DMatrix::identity(p, p);
 
     let mut predictions = DVector::from_element(n, 0.5);
-    let mut final_cov = DMatrix::identity(p, p);
+    let mut residuals = DVector::zeros(n);
+    let mut weights_diag = DVector::zeros(n);
     let mut converged = false;
     let mut final_iter = 0;
 
@@ -39,7 +42,7 @@ pub fn fit(
         let xb = x * &beta;
         let mu = xb.map(|z| {
             let prob = 1.0 / (1.0 + (-z).exp());
-            // Clamping kuat untuk menghindari log(0)
+            // Clipping untuk mencegah log(0)
             if prob < 1e-12 {
                 1e-12
             } else if prob > 1.0 - 1e-12 {
@@ -48,81 +51,95 @@ pub fn fit(
                 prob
             }
         });
-        predictions = mu.clone();
 
-        // 2. Hitung W (Diagonal Bobot)
+        predictions = mu.clone(); // Update predictions for later use
+
+        // 2. Hitung Matriks Bobot (W) dan Variabel Dependen yang Disesuaikan (z)
         let w_diag = mu.map(|pi| pi * (1.0 - pi));
+        weights_diag = w_diag.clone();
 
-        // 3. Gradient (Score Vector U) = X^T * (y - p)
-        let residuals = y - &mu;
+        // Residuals: (y - mu)
+        residuals = y - &mu;
+
+        // Working response: z = X*beta + (y - mu) / (mu*(1-mu))
+        // Tapi di IRLS standar sering pakai update step Newton-Raphson:
+        // beta_new = beta_old + (X'WX)^-1 X'(y-mu)
+
+        // Hitung Gradient (Score Vector): X' * (y - mu)
         let gradient = x.transpose() * &residuals;
 
-        // 4. Hessian (Information Matrix I) = X^T * W * X
+        // Hitung Hessian (Information Matrix): X' * W * X
+        // Optimasi: Kalikan setiap kolom X dengan akar bobot, lalu XtX
         let mut xt_w = x.transpose();
         for (col_index, mut col) in xt_w.column_iter_mut().enumerate() {
             col *= w_diag[col_index];
         }
-        let mut hessian = &xt_w * x;
+        let hessian = &xt_w * x;
 
-        // Ridge Regularization (mencegah singular matrix)
-        hessian += &identity * lambda;
+        // Tambahkan Ridge regularization
+        let hessian_reg = &hessian + (identity.scale(lambda));
 
-        // 5. Simpan Covariance Matrix (Invers Hessian)
-        if let Some(inv_hessian) = hessian.try_inverse() {
-            final_cov = inv_hessian.clone();
-
-            // Update Beta: beta = beta + H^-1 * U
-            let step = &final_cov * &gradient;
-            beta += &step;
-
-            // Cek Log Likelihood
-            let log_likelihood: f64 = y
-                .iter()
-                .zip(mu.iter())
-                .map(|(&yi, &mui)| yi * mui.ln() + (1.0 - yi) * (1.0 - mui).ln())
-                .sum();
-
-            if (log_likelihood - log_likelihood_prev).abs() < tol {
-                converged = true;
-                log_likelihood_prev = log_likelihood;
-                break;
+        // 3. Update Beta
+        // PERBAIKAN: Gunakan .clone() agar hessian_reg tidak hilang jika Cholesky gagal
+        match hessian_reg.clone().cholesky() {
+            Some(cholesky) => {
+                let delta = cholesky.solve(&gradient);
+                beta += delta;
             }
-            log_likelihood_prev = log_likelihood;
-        } else {
-            return Err("Matriks Singular: Terjadi Multikolinearitas Sempurna.".into());
+            None => {
+                // Fallback ke LU jika Cholesky gagal
+                match hessian_reg.lu().solve(&gradient) {
+                    Some(delta) => beta += delta,
+                    None => return Err("Gagal inversi Hessian (Singular Matrix)".into()),
+                }
+            }
         }
+
+        // 4. Cek Konvergensi (Log-Likelihood)
+        let xb_new = x * &beta;
+        let mu_new = xb_new.map(|z| 1.0 / (1.0 + (-z).exp()));
+        let log_likelihood: f64 = y
+            .iter()
+            .zip(mu_new.iter())
+            .map(|(&yi, &mui)| {
+                // Safety log
+                let mui_safe = if mui < 1e-12 {
+                    1e-12
+                } else if mui > 1.0 - 1e-12 {
+                    1.0 - 1e-12
+                } else {
+                    mui
+                };
+                yi * mui_safe.ln() + (1.0 - yi) * (1.0 - mui_safe).ln()
+            })
+            .sum();
+
+        if (log_likelihood - log_likelihood_prev).abs() < tol {
+            converged = true;
+            log_likelihood_prev = log_likelihood;
+            break;
+        }
+        log_likelihood_prev = log_likelihood;
     }
 
-    // --- FINAL PASS (PENTING) ---
-    // Hitung ulang Covariance Matrix dengan Beta Final agar S.E. akurat
-    let xb_final = x * &beta;
-    let mu_final = xb_final.map(|z| {
-        let prob = 1.0 / (1.0 + (-z).exp());
-        if prob < 1e-12 {
-            1e-12
-        } else if prob > 1.0 - 1e-12 {
-            1.0 - 1e-12
-        } else {
-            prob
-        }
-    });
-    let w_diag_final = mu_final.map(|pi| pi * (1.0 - pi));
-
+    // --- FINAL PASS ---
+    // Hitung Covariance Matrix (Inverse Hessian)
     let mut xt_w_final = x.transpose();
     for (col_index, mut col) in xt_w_final.column_iter_mut().enumerate() {
-        col *= w_diag_final[col_index];
+        col *= weights_diag[col_index];
     }
-    let mut hessian_final = &xt_w_final * x;
-    hessian_final += &identity * lambda; // Tetap pakai ridge
+    let hessian_final = &xt_w_final * x + (identity.scale(lambda));
 
-    if let Some(inv_hess_final) = hessian_final.try_inverse() {
-        final_cov = inv_hess_final;
-    }
+    let covariance_matrix = hessian_final
+        .try_inverse()
+        .unwrap_or_else(|| DMatrix::identity(p, p)); // Fallback jika gagal
 
     Ok(FittedModel {
         beta,
-        covariance_matrix: final_cov,
-        predictions: mu_final,
+        covariance_matrix,
+        predictions,
+        residuals,
+        weights: weights_diag,
         final_log_likelihood: log_likelihood_prev,
         iterations: final_iter,
         converged,
