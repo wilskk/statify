@@ -1,87 +1,130 @@
 use nalgebra::{DMatrix, DVector};
 use std::error::Error;
-use crate::utils::math::sigmoid;
 
-pub struct IrlsOutput {
+#[derive(Debug, Clone)]
+pub struct FittedModel {
     pub beta: DVector<f64>,
     pub covariance_matrix: DMatrix<f64>,
+    pub predictions: DVector<f64>,
     pub final_log_likelihood: f64,
     pub iterations: usize,
     pub converged: bool,
-    pub predictions: DVector<f64>,
 }
 
 pub fn fit(
     x: &DMatrix<f64>,
     y: &DVector<f64>,
     max_iter: usize,
-    tol: f64
-) -> Result<IrlsOutput, Box<dyn Error>> {
-    let n_samples = x.nrows();
-    let n_features = x.ncols();
-    
-    // 1. Inisialisasi Beta (biasanya 0)
-    let mut beta = DVector::zeros(n_features);
-    let mut log_likelihood_old = -f64::INFINITY;
-    
+    tol: f64,
+) -> Result<FittedModel, Box<dyn Error>> {
+    let n = x.nrows();
+    let p = x.ncols();
+
+    let mut beta = DVector::zeros(p);
+    let mut log_likelihood_prev = -f64::INFINITY;
+
+    // Ridge parameter kecil untuk stabilitas inversi matriks
+    let lambda = 1e-9;
+    let identity = DMatrix::identity(p, p);
+
+    let mut predictions = DVector::from_element(n, 0.5);
+    let mut final_cov = DMatrix::identity(p, p);
     let mut converged = false;
     let mut final_iter = 0;
-    let mut final_p = DVector::zeros(n_samples);
-    let mut cov_matrix = DMatrix::zeros(n_features, n_features);
 
     for iter in 0..max_iter {
-        // 2. Linear Predictor (XB) & Probabilities (p)
-        let xb = x * &beta;
-        let p: DVector<f64> = xb.map(sigmoid);
-        
-        // 3. Weight Matrix (W) diagonal
-        // W = p * (1 - p)
-        let w_diag: Vec<f64> = p.iter().map(|&pi| pi * (1.0 - pi)).collect();
-        // Cegah pembagian dengan nol / singularitas
-        let w_safe: Vec<f64> = w_diag.iter().map(|&wi| if wi < 1e-10 { 1e-10 } else { wi }).collect();
-        let w = DMatrix::from_diagonal(&DVector::from_vec(w_safe));
-
-        // 4. Gradient (Score Vector) => X^T * (y - p)
-        let gradient = x.transpose() * (y - &p);
-
-        // 5. Hessian (Information Matrix) => -X^T * W * X
-        // Karena kita butuh inverse dari negative hessian untuk update rule Newton-Raphson:
-        // beta_new = beta_old + (X^T W X)^-1 * (X^T(y-p))
-        let hessian = x.transpose() * &w * x;
-
-        // 6. Update Beta
-        // Menggunakan pseudo-inverse atau regular inverse dengan handling error
-        let hessian_inv = hessian.try_inverse().ok_or("Matriks Hessian singular, terjadi multikolinearitas sempurna.")?;
-        
-        let step = &hessian_inv * &gradient;
-        beta = &beta + step;
-
-        // 7. Cek Konvergensi (berdasarkan Log Likelihood)
-        let log_likelihood: f64 = y.iter().zip(p.iter())
-            .map(|(&yi, &pi)| {
-                let pi_safe = pi.clamp(1e-10, 1.0 - 1e-10); // Hindari log(0)
-                yi * pi_safe.ln() + (1.0 - yi) * (1.0 - pi_safe).ln()
-            }).sum();
-
-        if (log_likelihood - log_likelihood_old).abs() < tol {
-            converged = true;
-            final_iter = iter + 1;
-            final_p = p;
-            cov_matrix = hessian_inv; // Variance-Covariance Matrix adalah invers dari Fisher Information
-            break;
-        }
-        log_likelihood_old = log_likelihood;
         final_iter = iter + 1;
-        final_p = p;
-        cov_matrix = hessian_inv;
+
+        // 1. Hitung Prediksi (p)
+        let xb = x * &beta;
+        let mu = xb.map(|z| {
+            let prob = 1.0 / (1.0 + (-z).exp());
+            // Clamping kuat untuk menghindari log(0)
+            if prob < 1e-12 {
+                1e-12
+            } else if prob > 1.0 - 1e-12 {
+                1.0 - 1e-12
+            } else {
+                prob
+            }
+        });
+        predictions = mu.clone();
+
+        // 2. Hitung W (Diagonal Bobot)
+        let w_diag = mu.map(|pi| pi * (1.0 - pi));
+
+        // 3. Gradient (Score Vector U) = X^T * (y - p)
+        let residuals = y - &mu;
+        let gradient = x.transpose() * &residuals;
+
+        // 4. Hessian (Information Matrix I) = X^T * W * X
+        let mut xt_w = x.transpose();
+        for (col_index, mut col) in xt_w.column_iter_mut().enumerate() {
+            col *= w_diag[col_index];
+        }
+        let mut hessian = &xt_w * x;
+
+        // Ridge Regularization (mencegah singular matrix)
+        hessian += &identity * lambda;
+
+        // 5. Simpan Covariance Matrix (Invers Hessian)
+        if let Some(inv_hessian) = hessian.try_inverse() {
+            final_cov = inv_hessian.clone();
+
+            // Update Beta: beta = beta + H^-1 * U
+            let step = &final_cov * &gradient;
+            beta += &step;
+
+            // Cek Log Likelihood
+            let log_likelihood: f64 = y
+                .iter()
+                .zip(mu.iter())
+                .map(|(&yi, &mui)| yi * mui.ln() + (1.0 - yi) * (1.0 - mui).ln())
+                .sum();
+
+            if (log_likelihood - log_likelihood_prev).abs() < tol {
+                converged = true;
+                log_likelihood_prev = log_likelihood;
+                break;
+            }
+            log_likelihood_prev = log_likelihood;
+        } else {
+            return Err("Matriks Singular: Terjadi Multikolinearitas Sempurna.".into());
+        }
     }
 
-    Ok(IrlsOutput {
+    // --- FINAL PASS (PENTING) ---
+    // Hitung ulang Covariance Matrix dengan Beta Final agar S.E. akurat
+    let xb_final = x * &beta;
+    let mu_final = xb_final.map(|z| {
+        let prob = 1.0 / (1.0 + (-z).exp());
+        if prob < 1e-12 {
+            1e-12
+        } else if prob > 1.0 - 1e-12 {
+            1.0 - 1e-12
+        } else {
+            prob
+        }
+    });
+    let w_diag_final = mu_final.map(|pi| pi * (1.0 - pi));
+
+    let mut xt_w_final = x.transpose();
+    for (col_index, mut col) in xt_w_final.column_iter_mut().enumerate() {
+        col *= w_diag_final[col_index];
+    }
+    let mut hessian_final = &xt_w_final * x;
+    hessian_final += &identity * lambda; // Tetap pakai ridge
+
+    if let Some(inv_hess_final) = hessian_final.try_inverse() {
+        final_cov = inv_hess_final;
+    }
+
+    Ok(FittedModel {
         beta,
-        covariance_matrix: cov_matrix,
-        final_log_likelihood: log_likelihood_old,
+        covariance_matrix: final_cov,
+        predictions: mu_final,
+        final_log_likelihood: log_likelihood_prev,
         iterations: final_iter,
         converged,
-        predictions: final_p,
     })
 }

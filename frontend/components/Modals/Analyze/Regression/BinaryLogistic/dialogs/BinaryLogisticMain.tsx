@@ -178,28 +178,29 @@ export const BinaryLogisticMain = () => {
     // 1. Validasi Input UI
     if (!options.dependent || options.covariates.length === 0) {
       setErrorMsg(
-        "Please select a dependent variable and at least one covariate."
+        "Mohon pilih satu variabel dependen dan setidaknya satu kovariat."
       );
       return;
     }
 
     if (!data || data.length === 0) {
-      setErrorMsg("No data available.");
+      setErrorMsg("Dataset kosong atau tidak tersedia.");
       return;
     }
 
+    // Reset State
     setIsLoading(true);
     setErrorMsg(null);
 
     try {
       // 2. Inisialisasi Worker
-      // Pastikan path ini benar sesuai lokasi file di folder public/workers/...
+      // Menggunakan path yang sudah dipastikan benar
       const worker = new Worker(
         new URL(
           "/workers/Regression/binaryLogistic.worker.js",
           window.location.origin
         ),
-        { type: "module" } // PENTING: Wajib ada untuk support import di worker
+        { type: "module" }
       );
 
       // 3. Setup Listener Pesan dari Worker
@@ -207,86 +208,100 @@ export const BinaryLogisticMain = () => {
         const { type, payload } = event.data;
 
         if (type === "SUCCESS") {
-          // payload di sini adalah hasil perhitungan akhir dari Rust
-          // yang sudah di-enrich kembali oleh Worker.
-
-          // Format Hasil untuk Tampilan (DataTable / HTML)
-          const formattedResult = formatBinaryLogisticResult(
-            payload,
-            options.dependent!.name
-          );
-
-          // Logging ke System
-          const varNames = options.covariates.map((c) => c.name).join(" ");
-          const logId = await addLog({
-            log: `LOGISTIC REGRESSION VARIABLES ${
+          try {
+            // A. Format Hasil untuk Tampilan
+            const formattedResult = formatBinaryLogisticResult(
+              payload,
               options.dependent!.name
-            } /METHOD=ENTER ${varNames}`,
-          });
+            );
 
-          const analyticId = await addAnalytic(logId, {
-            title: "Binary Logistic Regression",
-            note: `Method: ${options.method}`,
-          });
+            // B. Simpan Log ke System
+            const varNames = options.covariates.map((c) => c.name).join(" ");
+            const logId = await addLog({
+              log: `LOGISTIC REGRESSION VARIABLES ${
+                options.dependent!.name
+              } /METHOD=${options.method.toUpperCase()} ${varNames}`,
+            });
 
-          await addStatistic(analyticId, {
-            title: "Logistic Regression Output",
-            output_data: JSON.stringify(formattedResult), // Simpan JSON structure
-            components: "Tables",
-            description:
-              "Variables in Equation, Model Summary, Classification Table.",
-          });
+            // C. Simpan Analytic Entry
+            const analyticId = await addAnalytic(logId, {
+              title: "Binary Logistic Regression",
+              note: `Method: ${options.method}`,
+            });
 
-          setIsLoading(false);
-          // Opsional: closeModal("BINARY_LOGISTIC");
-          worker.terminate(); // Matikan worker setelah selesai
+            // D. Simpan Output Statistik
+            await addStatistic(analyticId, {
+              title: "Logistic Regression Output",
+              output_data: JSON.stringify(formattedResult),
+              components: "Tables",
+              description:
+                "Variables in Equation, Model Summary, Classification Table.",
+            });
+
+            // Selesai
+            setIsLoading(false);
+            worker.terminate();
+          } catch (saveError: any) {
+            console.error("Error Saving Result:", saveError);
+            setErrorMsg("Gagal menyimpan hasil analisis.");
+            setIsLoading(false);
+            worker.terminate();
+          }
         } else if (type === "ERROR") {
-          // Tangani error yang dilempar secara eksplisit oleh Worker
+          // Tangani error logis dari Worker (misal: Matriks Singular)
           console.error("Worker Logical Error:", payload);
           setErrorMsg(
             typeof payload === "string"
               ? payload
-              : "Calculation error occurred."
+              : "Terjadi kesalahan perhitungan."
           );
           setIsLoading(false);
           worker.terminate();
         }
       };
 
-      // 4. Setup Error Handler (System Error / 404)
+      // 4. Setup Handler Error Sistem Worker (misal: File Not Found)
       worker.onerror = (event) => {
         event.preventDefault();
         console.error("Worker System Error:", event);
         setErrorMsg(
-          "Failed to initialize calculation module. Please check console."
+          "Gagal menjalankan modul kalkulasi. Pastikan file WASM tersedia."
         );
         setIsLoading(false);
         worker.terminate();
       };
 
-      // 5. Kirim Data Mentah ke Worker (ETL di Worker)
-      // Kita tidak lagi mapping data di sini. Kirim saja raw data.
-
-      const config = {
+      // 5. Konfigurasi Parameter (Sesuai State UI)
+      const analysisConfig = {
         maxIterations: optParams.maxIterations,
         includeConstant: optParams.includeConstant,
+        ciLevel: optParams.ciLevel,
         cutoff: optParams.classificationCutoff,
-        // ... parameter lain ...
+        method: options.method, // "Enter", dll.
+
+        // Parameter untuk Stepwise (Jika metode dipilih)
+        probEntry: optParams.probEntry,
+        probRemoval: optParams.probRemoval,
       };
 
+      // 6. KIRIM PESAN KE WORKER (PAYLOAD UTAMA)
+      // Kita menggunakan format berbasis ID agar sesuai dengan 'variableDetails'
       worker.postMessage({
+        action: "run_binary_logistic", // Penanda aksi
+
         dependentId: options.dependent.id,
         independentIds: [
           ...options.covariates.map((v) => v.id),
           ...options.factors.map((v) => v.id),
         ],
-        data: data, // KIRIM RAW DATA
-        variableDetails: variableDetails, // Kirim metadata (tipe data, label, dll)
-        config: config,
+
+        data: data, // Data mentah dari store
+        variableDetails: variableDetails, // Metadata penting untuk mapping kolom
+        config: analysisConfig, // Config yang sudah dibentuk di atas
       });
     } catch (err: any) {
       console.error("Main Thread Error:", err);
-      setErrorMsg("Failed to start analysis: " + err.message);
+      setErrorMsg("Gagal memulai analisis: " + err.message);
       setIsLoading(false);
     }
   };

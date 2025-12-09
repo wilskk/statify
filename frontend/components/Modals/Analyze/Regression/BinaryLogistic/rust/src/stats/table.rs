@@ -2,44 +2,68 @@ use crate::models::result::ClassificationTable;
 use nalgebra::DVector;
 
 pub fn calculate_classification_table(
-    probabilities: &DVector<f64>,
-    y_true: &DVector<f64>,
+    predicted_probs: &DVector<f64>,
+    observed_y: &DVector<f64>,
     cutoff: f64,
 ) -> ClassificationTable {
-    let mut tn = 0; // Pred 0, Obs 0
-    let mut fn_val = 0; // Pred 0, Obs 1
-    let mut fp = 0; // Pred 1, Obs 0
-    let mut tp = 0; // Pred 1, Obs 1
+    let mut obs_0_pred_0 = 0;
+    let mut obs_0_pred_1 = 0;
+    let mut obs_1_pred_0 = 0;
+    let mut obs_1_pred_1 = 0;
 
-    for (prob, &actual) in probabilities.iter().zip(y_true.iter()) {
-        let predicted = if *prob >= cutoff { 1.0 } else { 0.0 };
-        let actual_int = actual as i32;
-        let pred_int = predicted as i32;
+    for (pred_prob, obs) in predicted_probs.iter().zip(observed_y.iter()) {
+        let predicted_class = if *pred_prob >= cutoff { 1.0 } else { 0.0 };
 
-        match (pred_int, actual_int) {
-            (0, 0) => tn += 1,
-            (0, 1) => fn_val += 1,
-            (1, 0) => fp += 1,
-            (1, 1) => tp += 1,
-            _ => {}
+        // PERBAIKAN: Tambahkan 'f64' agar tipe data jelas
+        let is_obs_0 = (obs - 0.0f64).abs() < 1e-9;
+        let is_obs_1 = (obs - 1.0f64).abs() < 1e-9;
+        let is_pred_0 = (predicted_class - 0.0f64).abs() < 1e-9;
+
+        if is_obs_0 {
+            if is_pred_0 {
+                obs_0_pred_0 += 1;
+            } else {
+                obs_0_pred_1 += 1;
+            }
+        } else if is_obs_1 {
+            if is_pred_0 {
+                obs_1_pred_0 += 1;
+            } else {
+                obs_1_pred_1 += 1;
+            }
         }
     }
 
-    // Hitung Overall Percentage
-    let total = tn + fp + fn_val + tp;
-    let correct = tn + tp;
-    let overall = if total > 0 {
-        (correct as f64 / total as f64) * 100.0
+    let total_obs_0 = (obs_0_pred_0 + obs_0_pred_1) as f64;
+    let pct_0 = if total_obs_0 > 0.0 {
+        (obs_0_pred_0 as f64 / total_obs_0) * 100.0
     } else {
         0.0
     };
 
-    // Return struct TANPA percentage_correct_0/1
+    let total_obs_1 = (obs_1_pred_0 + obs_1_pred_1) as f64;
+    let pct_1 = if total_obs_1 > 0.0 {
+        (obs_1_pred_1 as f64 / total_obs_1) * 100.0
+    } else {
+        0.0
+    };
+
+    let total_all = total_obs_0 + total_obs_1;
+    let overall = if total_all > 0.0 {
+        ((obs_0_pred_0 + obs_1_pred_1) as f64 / total_all) * 100.0
+    } else {
+        0.0
+    };
+
     ClassificationTable {
-        predicted_0_observed_0: tn,
-        predicted_1_observed_0: fp, // Hati-hati tertukar: Pred 1 Obs 0 (False Positive)
-        predicted_0_observed_1: fn_val, // Pred 0 Obs 1 (False Negative)
-        predicted_1_observed_1: tp,
+        observed_0_predicted_0: obs_0_pred_0,
+        observed_0_predicted_1: obs_0_pred_1,
+        percentage_correct_0: pct_0,
+
+        observed_1_predicted_0: obs_1_pred_0,
+        observed_1_predicted_1: obs_1_pred_1,
+        percentage_correct_1: pct_1,
+
         overall_percentage: overall,
     }
 }

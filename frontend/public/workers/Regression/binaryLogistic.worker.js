@@ -1,20 +1,28 @@
 import init, { calculate_binary_logistic } from "./pkg/statify_logistic.js";
 
 self.onmessage = async (event) => {
+  // Kita kembalikan ke struktur input lama yang menggunakan ID
   const { dependentId, independentIds, data, variableDetails, config } =
     event.data;
+
+  // Cek action jika ada, atau langsung jalan jika format lama
+  if (event.data.action && event.data.action !== "run_binary_logistic") return;
 
   try {
     await init();
 
-    // --- 1. Helper: Ambil Value by ID ---
+    // =================================================================
+    // 1. DATA PREPARATION (LOGIKA LAMA ANDA - KARENA LEBIH ROBUST)
+    // =================================================================
+
+    // Helper: Ambil Value by ID (Ini kunci agar data terbaca benar)
     const getValue = (row, varId) => {
       const colIdx = variableDetails[varId]?.columnIndex;
       if (colIdx === undefined) return undefined;
       return row[colIdx];
     };
 
-    // --- 2. Filter Missing Values (Listwise) ---
+    // Filter Missing Values (Listwise Deletion)
     const allIds = [dependentId, ...independentIds];
     const cleanData = data.filter((row) => {
       return allIds.every((id) => {
@@ -23,22 +31,21 @@ self.onmessage = async (event) => {
           val !== null &&
           val !== undefined &&
           val !== "" &&
-          !Number.isNaN(Number(val))
+          // Cek NaN hanya jika valenya number
+          (typeof val === "string" ? true : !Number.isNaN(Number(val)))
         );
       });
     });
 
     if (cleanData.length === 0) {
-      throw new Error(
-        `Tidak ada data valid. Total baris mentah: ${data.length}. Cek missing values.`
-      );
+      throw new Error(`Tidak ada data valid setelah filter missing values.`);
     }
 
-    // --- 3. Persiapan Variabel Dependen (Y) ---
+    // Persiapan Y (Auto Encode 0/1)
     const rawY = cleanData.map((row) => getValue(row, dependentId));
     const { yVector, yMap } = processDependentVariable(rawY);
 
-    // --- 4. Persiapan Variabel Independen (X) ---
+    // Persiapan X (Handle Categorical / Dummy Coding)
     const { xMatrix, xFeatureNames } = processCovariates(
       cleanData,
       independentIds,
@@ -46,70 +53,111 @@ self.onmessage = async (event) => {
       getValue
     );
 
-    // --- 5. Konfigurasi Rust ---
+    // =================================================================
+    // 2. CONVERSION TO WASM FORMAT (FLATTENING)
+    // =================================================================
+    // Rust (nalgebra) butuh array 1 dimensi (flat), bukan array of arrays.
+
+    const rows = xMatrix.length;
+    const cols = xMatrix[0].length; // Jumlah kolom setelah dummy coding
+
+    const xFlat = new Float64Array(rows * cols);
+    const yFlat = new Float64Array(rows);
+
+    // Flatten X Matrix (Row-Major)
+    for (let i = 0; i < rows; i++) {
+      yFlat[i] = yVector[i]; // Isi Y sekalian
+      for (let j = 0; j < cols; j++) {
+        xFlat[i * cols + j] = xMatrix[i][j];
+      }
+    }
+
+    // =================================================================
+    // 3. EXECUTE RUST WASM
+    // =================================================================
+
+    // Mapping config React -> Rust Config (Snake Case)
     const rustConfig = {
       max_iterations: config.maxIterations || 20,
-      convergence_threshold: config.tol || 1e-6,
+      convergence_threshold: 1e-6,
       include_constant: config.includeConstant !== false,
-      confidence_level: 0.95,
-      cutoff: config.cutoff || 0.5, // Tambahkan cutoff
+      confidence_level: (config.ciLevel || 95) / 100.0,
+      cutoff: config.cutoff || 0.5,
+      method: config.method || "Enter", // Kirim metode
+      // Parameter Stepwise (jika ada)
+      p_entry: config.probEntry || 0.05,
+      p_removal: config.probRemoval || 0.1,
     };
 
-    // --- 6. Panggil WASM ---
-    // Pastikan xMatrix dikirim sebagai Array of Arrays
-    const result = calculate_binary_logistic(xMatrix, yVector, rustConfig);
+    // Panggil Fungsi Rust Baru
+    const result = calculate_binary_logistic(
+      xFlat, // Data X Flat
+      rows,
+      cols,
+      yFlat, // Data Y Flat
+      JSON.stringify(rustConfig)
+    );
 
-    // --- 7. Post-Processing (Mapping Label) ---
+    // =================================================================
+    // 4. POST PROCESSING (LABEL MAPPING)
+    // =================================================================
 
-    // A. Mapping untuk "Variables in Equation" (Block 1)
+    // Mapping Label Variables in Equation
     const variablesRaw = result.variables_in_equation || [];
-
     const enrichedVariables = variablesRaw.map((stat, index) => {
       let finalLabel = stat.label;
 
-      // Logic Mapping Nama Asli untuk Variabel yang SUDAH masuk model
-      if (rustConfig.include_constant) {
-        // Index 0 = Constant. Index 1 = Variabel Pertama
-        if (index > 0) {
-          finalLabel = xFeatureNames[index - 1] || finalLabel;
-        }
-      } else {
-        finalLabel = xFeatureNames[index] || finalLabel;
+      // Logika Index Rust:
+      // Jika Constant ada: Index 0 = Constant, Index 1 = Var 1
+      // Jika Constant tidak ada: Index 0 = Var 1
+
+      // Array xFeatureNames TIDAK punya Constant
+      let featureIndex = -1;
+
+      if (stat.label === "Constant") {
+        return stat;
       }
 
-      return {
-        ...stat,
-        label: finalLabel,
-      };
+      // Parse "Var X" dari Rust untuk dapat index aslinya jika perlu,
+      // Tapi biasanya urutan output Rust = urutan input kolom.
+      // Mari kita asumsikan urutannya linear.
+
+      if (rustConfig.include_constant) {
+        featureIndex = index - 1;
+      } else {
+        featureIndex = index;
+      }
+
+      if (featureIndex >= 0 && featureIndex < xFeatureNames.length) {
+        finalLabel = xFeatureNames[featureIndex];
+      }
+
+      return { ...stat, label: finalLabel };
     });
 
-    // B. (BARU) Mapping untuk "Variables NOT in Equation" (Block 0)
-    // Variabel ini adalah prediktor yang belum masuk, urutannya sama persis dengan xFeatureNames
+    // Mapping Label Block 0 Variables (Not in Equation)
+    // Urutan ini murni berdasarkan input kolom X
     const notInEqRaw = result.variables_not_in_equation || [];
-
     const enrichedNotInEq = notInEqRaw.map((stat, index) => {
       return {
         ...stat,
-        // Karena ini belum masuk model (dan Constant sudah ada di Block 0 terpisah),
-        // maka indexnya langsung mapping 1-on-1 dengan xFeatureNames
         label: xFeatureNames[index] || stat.label,
       };
     });
 
-    // Bentuk hasil akhir
     const finalResult = {
       ...result,
       variables_in_equation: enrichedVariables,
-      variables_not_in_equation: enrichedNotInEq, // <--- Tambahkan field ini
+      variables_not_in_equation: enrichedNotInEq,
       model_info: {
         y_encoding: yMap,
-        n_samples: cleanData.length,
+        n_samples: rows,
       },
     };
 
     self.postMessage({ type: "SUCCESS", payload: finalResult });
   } catch (error) {
-    console.error("Worker Calculation Error:", error);
+    console.error("Worker Error:", error);
     self.postMessage({
       type: "ERROR",
       payload: error.message || "Terjadi kesalahan perhitungan.",
@@ -117,12 +165,18 @@ self.onmessage = async (event) => {
   }
 };
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS (DARI KODE LAMA ANDA) ---
 
 function processDependentVariable(rawY) {
-  const uniqueVals = [...new Set(rawY)].sort();
+  const uniqueVals = [...new Set(rawY)]
+    .filter((v) => v !== undefined && v !== null && v !== "")
+    .sort();
   if (uniqueVals.length < 2)
-    throw new Error(`Variabel dependen harus memiliki minimal 2 nilai unik.`);
+    throw new Error(
+      `Variabel dependen 'Y' hanya memiliki ${
+        uniqueVals.length
+      } kategori valid: [${uniqueVals.join(", ")}]. Dibutuhkan minimal 2.`
+    );
 
   // Mapping: 0 = Nilai Pertama, 1 = Nilai Kedua
   const map = {
@@ -140,13 +194,15 @@ function processCovariates(data, ids, details, getValueFn) {
   // 1. Tentukan Schema (Mana Numeric, mana Kategori)
   const schema = ids.map((id) => {
     const detail = details[id];
-    // Cek tipe measure. Default ke 'scale' jika tidak ada info.
+    // Cek tipe measure.
     const isCategorical =
       detail?.measure === "nominal" || detail?.measure === "ordinal";
 
     if (isCategorical) {
       const rawValues = data.map((row) => getValueFn(row, id));
-      const categories = [...new Set(rawValues)].sort();
+      const categories = [...new Set(rawValues)]
+        .filter((v) => v !== null && v !== undefined && v !== "")
+        .sort();
 
       // Dummy Coding (Reference = Last)
       const refCategory = categories[categories.length - 1];
@@ -174,7 +230,7 @@ function processCovariates(data, ids, details, getValueFn) {
     }
   });
 
-  // 3. Buat Matrix
+  // 3. Buat Matrix (Array of Arrays)
   const xMatrix = data.map((row) => {
     let rowData = [];
     schema.forEach((col) => {
