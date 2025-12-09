@@ -1,11 +1,37 @@
 use serde::{Deserialize, Serialize};
 
-// Struct untuk Variabel di dalam Model (B, SE, Wald...)
-#[derive(Serialize, Deserialize)]
+// --- Model Summary ---
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ModelSummary {
+    pub log_likelihood: f64,
+    pub cox_snell_r_square: f64,
+    pub nagelkerke_r_square: f64,
+    // Field tambahan yang menyebabkan error "missing fields"
+    pub converged: bool,
+    pub iterations: usize,
+}
+
+// --- Classification Table ---
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ClassificationTable {
+    // Penamaan harus konsisten dengan yang dipanggil di stats/metrics.rs atau table.rs
+    // Error log meminta: observed_0_predicted_0
+    pub observed_0_predicted_0: i32, // True Negative
+    pub observed_0_predicted_1: i32, // False Positive
+    pub percentage_correct_0: f64,
+
+    pub observed_1_predicted_0: i32, // False Negative
+    pub observed_1_predicted_1: i32, // True Positive
+    pub percentage_correct_1: f64,
+
+    pub overall_percentage: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VariableRow {
     pub label: String,
     pub b: f64,
-    pub se: f64,
+    pub error: f64,
     pub wald: f64,
     pub df: i32,
     pub sig: f64,
@@ -14,43 +40,40 @@ pub struct VariableRow {
     pub upper_ci: f64,
 }
 
-// Struct untuk Variabel DI LUAR Model (Score Test, df, Sig)
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VariableNotInEquation {
     pub label: String,
-    pub score: f64, // Score statistic
+    pub score: f64,
     pub df: i32,
     pub sig: f64,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct ModelSummary {
-    pub log_likelihood: f64,
-    #[serde(rename = "cox_snell_r2")]
-    pub cox_snell_r_square: f64,
-    #[serde(rename = "nagelkerke_r2")]
-    pub nagelkerke_r_square: f64,
-    pub iterations: usize,
-    pub converged: bool,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ClassificationTable {
-    pub predicted_0_observed_0: i32,
-    pub predicted_1_observed_0: i32,
-    pub predicted_0_observed_1: i32,
-    pub predicted_1_observed_1: i32,
-    pub overall_percentage: f64,
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OmniTests {
     pub chi_square: f64,
     pub df: i32,
     pub sig: f64,
 }
 
-// Update Root Struct
+// Tambahkan struct ini karena enter.rs mencoba mengimportnya
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OmnibusResult {
+    pub chi_square: f64,
+    pub df: i32,
+    pub sig: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct StepHistory {
+    pub step: usize,
+    pub action: String,
+    pub variable: String,
+    pub score_statistic: f64,
+    pub improvement_chi_sq: f64,
+    pub model_log_likelihood: f64,
+    pub nagelkerke_r2: f64,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct LogisticResult {
     #[serde(rename = "model_summary")]
@@ -61,12 +84,14 @@ pub struct LogisticResult {
     #[serde(rename = "variables_in_equation")]
     pub variables: Vec<VariableRow>,
 
-    // Tambahan Baru untuk SPSS Block 0
     #[serde(rename = "variables_not_in_equation")]
     pub variables_not_in_equation: Vec<VariableNotInEquation>,
 
     #[serde(rename = "block_0_constant")]
-    pub block_0_constant: VariableRow, 
+    pub block_0_constant: VariableRow,
 
     pub omni_tests: OmniTests,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub step_history: Option<Vec<StepHistory>>,
 }
