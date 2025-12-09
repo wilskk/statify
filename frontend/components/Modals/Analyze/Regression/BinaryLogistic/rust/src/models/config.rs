@@ -2,12 +2,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum RegressionMethod {
+    #[serde(alias = "Enter")]
     Enter,
+    #[serde(alias = "Forward: Conditional", alias = "ForwardConditional")]
     ForwardConditional,
-    ForwardWald,
-    BackwardLR,
-    BackwardConditional,
-    BackwardWald,
 }
 
 impl Default for RegressionMethod {
@@ -16,34 +14,75 @@ impl Default for RegressionMethod {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LogisticConfig {
     // --- Data Configuration ---
+    #[serde(alias = "dependentIndex")]
+    pub dependent_index: usize,
+
+    #[serde(alias = "independentIndices")]
+    pub independent_indices: Vec<usize>,
+
+    #[serde(alias = "includeConstant", default = "default_true")]
     pub include_constant: bool,
+
+    #[serde(default = "default_cutoff")]
     pub cutoff: f64,
-    
+
     // --- Algorithm Settings ---
+    #[serde(alias = "maxIterations", default = "default_max_iter")]
     pub max_iterations: usize,
+
+    #[serde(alias = "convergenceThreshold", default = "default_tol")]
     pub convergence_threshold: f64,
+
+    #[serde(alias = "confidenceLevel", default = "default_confidence")]
     pub confidence_level: f64,
 
     // --- Method Selection ---
-    #[serde(default)] 
+    #[serde(default)]
     pub method: RegressionMethod,
 
-    // --- Stepwise Criteria (Persiapan) ---
-    #[serde(default = "default_p_entry")]
+    // --- Stepwise Criteria ---
+    #[serde(alias = "probEntry", alias = "pEntry", default = "default_p_entry")]
     pub p_entry: f64,
-    #[serde(default = "default_p_removal")]
+
+    #[serde(
+        alias = "probRemoval",
+        alias = "pRemoval",
+        default = "default_p_removal"
+    )]
     pub p_removal: f64,
 }
 
-fn default_p_entry() -> f64 { 0.05 }
-fn default_p_removal() -> f64 { 0.10 }
+// ... helper functions (default_true, dll) ...
+fn default_true() -> bool {
+    true
+}
+fn default_cutoff() -> f64 {
+    0.5
+}
+fn default_p_entry() -> f64 {
+    0.05
+}
+fn default_p_removal() -> f64 {
+    0.10
+}
+fn default_max_iter() -> usize {
+    20
+}
+fn default_tol() -> f64 {
+    1e-6
+}
+fn default_confidence() -> f64 {
+    0.95
+}
 
 impl Default for LogisticConfig {
     fn default() -> Self {
         Self {
+            dependent_index: 0,
+            independent_indices: Vec::new(),
             include_constant: true,
             cutoff: 0.5,
             max_iterations: 20,
