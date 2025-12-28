@@ -94,4 +94,6 @@ pub struct LogisticResult {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub step_history: Option<Vec<StepHistory>>,
+
+    pub method_used: String,
 }

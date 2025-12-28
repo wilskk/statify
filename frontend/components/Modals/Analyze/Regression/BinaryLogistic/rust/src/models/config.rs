@@ -6,6 +6,16 @@ pub enum RegressionMethod {
     Enter,
     #[serde(alias = "Forward: Conditional", alias = "ForwardConditional")]
     ForwardConditional,
+    #[serde(alias = "Forward: LR", alias = "ForwardLR")]
+    ForwardLR,
+    #[serde(alias = "Forward: Wald", alias = "ForwardWald")]
+    ForwardWald,
+    #[serde(alias = "Backward: Conditional", alias = "BackwardConditional")]
+    BackwardConditional,
+    // #[serde(alias = "Backward: LR", alias = "BackwardLR")]
+    // BackwardLR,
+    // #[serde(alias = "Backward: Wald", alias = "BackwardWald")]
+    // BackwardWald,
 }
 
 impl Default for RegressionMethod {

@@ -46,13 +46,30 @@ pub fn calculate_binary_logistic(
 
     // 4. Pilih Strategi
     let result_struct = match config.method {
-        RegressionMethod::Enter => strategies::enter::run(&x_matrix, &y_vector, &config)
-            .map_err(|e| api_error(&format!("Error di Metode Enter: {}", e)))?,
+        RegressionMethod::Enter => {
+            strategies::enter::run(&x_matrix, &y_vector, &config)
+            .map_err(|e| api_error(&format!("Error di Metode Enter: {}", e)))?
+        },
 
         RegressionMethod::ForwardConditional => {
             strategies::forward_conditional::run(&x_matrix, &y_vector, &config)
                 .map_err(|e| api_error(&format!("Error di Metode Forward Conditional: {:?}", e)))?
-        }
+        },
+
+        RegressionMethod::ForwardLR => {
+            strategies::forward_lr::run(&x_matrix, &y_vector, &config)
+                .map_err(|e| api_error(&format!("Error di Metode Forward LR: {:?}", e)))?
+        },
+
+        RegressionMethod::ForwardWald => {
+            strategies::forward_wald::run(&x_matrix, &y_vector, &config)
+                .map_err(|e| api_error(&format!("Error di Metode Forward Wald: {:?}", e)))?
+        },
+
+        RegressionMethod::BackwardConditional => {
+            strategies::backward_conditional::run(&x_matrix, &y_vector, &config)
+                .map_err(|e| api_error(&format!("Error di Metode Backward Conditional: {:?}", e)))?
+        },
 
         // Metode lain bisa di-handle error dulu
         _ => return Err(api_error("Metode ini belum diimplementasikan")),

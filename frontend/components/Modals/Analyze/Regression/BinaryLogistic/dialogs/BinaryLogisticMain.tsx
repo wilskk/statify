@@ -50,6 +50,7 @@ export const BinaryLogisticMain = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Variable Selection State
+  const { variables } = useVariableStore();
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] =
     useState<Variable | null>(null);
@@ -194,7 +195,6 @@ export const BinaryLogisticMain = () => {
 
     try {
       // 2. Inisialisasi Worker
-      // Menggunakan path yang sudah dipastikan benar
       const worker = new Worker(
         new URL(
           "/workers/Regression/binaryLogistic.worker.js",
@@ -209,13 +209,13 @@ export const BinaryLogisticMain = () => {
 
         if (type === "SUCCESS") {
           try {
-            // A. Format Hasil untuk Tampilan
+            // A. Format Hasil
             const formattedResult = formatBinaryLogisticResult(
               payload,
               options.dependent!.name
             );
 
-            // B. Simpan Log ke System
+            // B. Simpan Log
             const varNames = options.covariates.map((c) => c.name).join(" ");
             const logId = await addLog({
               log: `LOGISTIC REGRESSION VARIABLES ${
@@ -229,7 +229,7 @@ export const BinaryLogisticMain = () => {
               note: `Method: ${options.method}`,
             });
 
-            // D. Simpan Output Statistik
+            // D. Simpan Output
             await addStatistic(analyticId, {
               title: "Logistic Regression Output",
               output_data: JSON.stringify(formattedResult),
@@ -238,7 +238,6 @@ export const BinaryLogisticMain = () => {
                 "Variables in Equation, Model Summary, Classification Table.",
             });
 
-            // Selesai
             setIsLoading(false);
             worker.terminate();
           } catch (saveError: any) {
@@ -248,7 +247,6 @@ export const BinaryLogisticMain = () => {
             worker.terminate();
           }
         } else if (type === "ERROR") {
-          // Tangani error logis dari Worker (misal: Matriks Singular)
           console.error("Worker Logical Error:", payload);
           setErrorMsg(
             typeof payload === "string"
@@ -260,44 +258,86 @@ export const BinaryLogisticMain = () => {
         }
       };
 
-      // 4. Setup Handler Error Sistem Worker (misal: File Not Found)
       worker.onerror = (event) => {
         event.preventDefault();
         console.error("Worker System Error:", event);
-        setErrorMsg(
-          "Gagal menjalankan modul kalkulasi. Pastikan file WASM tersedia."
-        );
+        setErrorMsg("Gagal menjalankan modul kalkulasi (WASM Error).");
         setIsLoading(false);
         worker.terminate();
       };
 
-      // 5. Konfigurasi Parameter (Sesuai State UI)
-      const analysisConfig = {
-        maxIterations: optParams.maxIterations,
-        includeConstant: optParams.includeConstant,
-        ciLevel: optParams.ciLevel,
-        cutoff: optParams.classificationCutoff,
-        method: options.method, // "Enter", dll.
+      // --- 4. PERSIAPAN DATA INDEX ---
 
-        // Parameter untuk Stepwise (Jika metode dipilih)
-        probEntry: optParams.probEntry,
-        probRemoval: optParams.probRemoval,
+      // Cari Index Kolom Secara Manual (Karena Variable di store tidak punya properti .index)
+      const depIndex = variables.findIndex(
+        (v) => v.id === options.dependent!.id
+      );
+
+      const indepIndices = [
+        ...options.covariates.map((c) =>
+          variables.findIndex((v) => v.id === c.id)
+        ),
+        ...options.factors.map((f) =>
+          variables.findIndex((v) => v.id === f.id)
+        ),
+      ].filter((idx) => idx !== -1);
+
+      if (depIndex === -1 || indepIndices.length === 0) {
+        throw new Error("Gagal menemukan index variabel di dataset.");
+      }
+
+      // --- 5. KONFIGURASI JSON ---
+
+      // A. Buat Mapping untuk membersihkan nama metode
+      // UI menggunakan label panjang ("Forward: Conditional"), Rust butuh Enum bersih ("ForwardConditional")
+      const methodMapping: Record<string, string> = {
+        Enter: "Enter",
+        "Forward: Conditional": "ForwardConditional",
+        "Forward: Wald": "ForwardWald",
+        "Forward: LR": "ForwardLR",
+        "Backward: Conditional": "BackwardConditional",
+        "Backward: Wald": "BackwardWald",
+        "Backward: LR": "BackwardLR",
       };
 
-      // 6. KIRIM PESAN KE WORKER (PAYLOAD UTAMA)
-      // Kita menggunakan format berbasis ID agar sesuai dengan 'variableDetails'
-      worker.postMessage({
-        action: "run_binary_logistic", // Penanda aksi
+      // B. Susun Config
+      const analysisConfig = {
+        // Data Mapping (Snake Case)
+        dependent_index: depIndex,
+        independent_indices: indepIndices,
 
+        // Algorithm Settings
+        max_iterations: optParams.maxIterations,
+        include_constant: optParams.includeConstant,
+        convergence_threshold: 1e-6,
+        confidence_level: optParams.ciLevel,
+        cutoff: optParams.classificationCutoff,
+
+        // Method & Stepwise (GUNAKAN MAPPING DI SINI)
+        method: methodMapping[options.method] || "Enter",
+
+        p_entry: optParams.probEntry,
+        p_removal: optParams.probRemoval,
+
+        // Dimensi Data
+        rows: data.length,
+        cols: variables.length,
+      };
+
+      console.log("Config Cleaned for Rust:", JSON.stringify(analysisConfig));
+
+      // 6. Kirim Pesan
+      worker.postMessage({
+        action: "run_binary_logistic",
         dependentId: options.dependent.id,
         independentIds: [
           ...options.covariates.map((v) => v.id),
           ...options.factors.map((v) => v.id),
         ],
+        data: data,
+        variableDetails: variableDetails,
 
-        data: data, // Data mentah dari store
-        variableDetails: variableDetails, // Metadata penting untuk mapping kolom
-        config: analysisConfig, // Config yang sudah dibentuk di atas
+        config: JSON.stringify(analysisConfig), // Kirim JSON
       });
     } catch (err: any) {
       console.error("Main Thread Error:", err);

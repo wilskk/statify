@@ -181,5 +181,6 @@ pub fn run(
         block_0_constant,
         omni_tests,
         step_history: None,
+        method_used: "Enter".to_string(),
     })
 }
