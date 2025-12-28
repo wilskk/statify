@@ -97,8 +97,22 @@ export interface VariableNotInEquation {
   sig: number;
 }
 
+// Representasi Step History (PENTING: Tambahkan ini)
+export interface StepHistory {
+  step: number;
+  action: string;
+  variable: string;
+  score_statistic: number;
+  improvement_chi_sq: number;
+  model_log_likelihood: number;
+  nagelkerke_r2: number;
+  variables_in_equation?: VariableRow[];      
+  variables_not_in_equation?: VariableNotInEquation[];
+}
+
 // Struktur utama hasil analisis yang dikirim dari Worker
 export interface LogisticResult {
+  method_used?: string;
   model_summary: {
     log_likelihood: number;
     cox_snell_r_square: number;
@@ -132,7 +146,10 @@ export interface LogisticResult {
   model_info?: {
     y_encoding?: Record<string, number>;
     n_samples?: number;
+    step_number?: number;
   };
+
+  step_history?: StepHistory[];
 }
 
 // =========================================================================
