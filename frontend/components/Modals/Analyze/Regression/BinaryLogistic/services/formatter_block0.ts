@@ -1,14 +1,11 @@
-/**
- * formatter_block0.ts
- * Menangani output untuk "Block 0: Beginning Block".
- * Meliputi: Classification Table (Null Model), Vars in Equation, Vars not in Equation.
- */
+import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
+import { createSection, safeFixed, fmtSig, fmtPct } from "./formatter_utils";
 
-import { LogisticResult } from "../types/binary-logistic";
-import { safeFixed, fmtSig, fmtPct } from "./formatter_utils";
-
-export const formatBlock0 = (result: LogisticResult, dependentName: string) => {
-  const tables: any[] = [];
+export const formatBlock0 = (
+  result: LogisticResult,
+  dependentName: string
+): { sections: AnalysisSection[] } => {
+  const sections: AnalysisSection[] = [];
   const ct = result.classification_table;
 
   // ----------------------------------------------------------------------
@@ -42,10 +39,7 @@ export const formatBlock0 = (result: LogisticResult, dependentName: string) => {
   // ----------------------------------------------------------------------
   // 3. Table: Classification Table (Block 0)
   // ----------------------------------------------------------------------
-  tables.push({
-    title:
-      "Block 0: Beginning Block<br/>Classification Table<sup style='display:none'>a,b</sup>",
-    note: "a. Constant is included in the model.\nb. The cut value is .500",
+  const classificationData = {
     columnHeaders: [
       {
         header: "Observed",
@@ -89,7 +83,20 @@ export const formatBlock0 = (result: LogisticResult, dependentName: string) => {
         pct: fmtPct(b0_overall),
       },
     ],
-  });
+  };
+
+  sections.push(
+    createSection(
+      "block0_classification",
+      "Classification Table",
+      classificationData,
+      {
+        description:
+          "Klasifikasi awal (Null Model) sebelum variabel independen dimasukkan.",
+        note: "a. Constant is included in the model.\nb. The cut value is .500",
+      }
+    )
+  );
 
   // ----------------------------------------------------------------------
   // 4. Hitung Nilai Konstanta Awal (ln(n1/n0))
@@ -108,8 +115,7 @@ export const formatBlock0 = (result: LogisticResult, dependentName: string) => {
   // ----------------------------------------------------------------------
   // 5. Table: Variables in the Equation (Hanya Constant)
   // ----------------------------------------------------------------------
-  tables.push({
-    title: "Variables in the Equation",
+  const varsInData = {
     columnHeaders: [
       {
         header: "",
@@ -136,7 +142,13 @@ export const formatBlock0 = (result: LogisticResult, dependentName: string) => {
         expb: safeFixed(val_ExpB0),
       },
     ],
-  });
+  };
+
+  sections.push(
+    createSection("block0_vars_in", "Variables in the Equation", varsInData, {
+      description: "Koefisien untuk model awal (hanya Konstanta).",
+    })
+  );
 
   // ----------------------------------------------------------------------
   // 6. Table: Variables not in the Equation
@@ -154,8 +166,7 @@ export const formatBlock0 = (result: LogisticResult, dependentName: string) => {
       ? varsNotIn[0]?.sig
       : null;
 
-  tables.push({
-    title: "Variables not in the Equation",
+  const varsNotInData = {
     columnHeaders: [
       {
         header: "",
@@ -181,8 +192,21 @@ export const formatBlock0 = (result: LogisticResult, dependentName: string) => {
         df: totalDf.toString(),
         sig: fmtSig(overallSig),
       },
-    ] as any[],
-  });
+    ],
+  };
 
-  return tables;
+  sections.push(
+    createSection(
+      "block0_vars_not_in",
+      "Variables not in the Equation",
+      varsNotInData,
+      {
+        description:
+          "Uji Score untuk variabel kandidat yang belum dimasukkan ke model.",
+        note: "a. Residual Chi-Squares are computed based on the likelihood ratios.",
+      }
+    )
+  );
+
+  return { sections };
 };

@@ -1,8 +1,15 @@
-import { LogisticResult, StepHistory } from "../types/binary-logistic";
-import { safeFixed, fmtSig, fmtPct } from "./formatter_utils";
+import {
+  LogisticResult,
+  StepHistory,
+  AnalysisSection,
+} from "../types/binary-logistic";
+import { createSection, safeFixed, fmtSig, fmtPct } from "./formatter_utils";
 
-export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
-  const tables: any[] = [];
+export const formatBlock1 = (
+  result: LogisticResult,
+  dependentName: string
+): { sections: AnalysisSection[] } => {
+  const sections: AnalysisSection[] = [];
   const ct = result.classification_table;
 
   // ----------------------------------------------------------------------
@@ -51,10 +58,9 @@ export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
 
   if (shouldShowBlock1) {
     // ======================================================================
-    // TABLE 1: Omnibus Tests of Model Coefficients
+    // SECTION 1: Omnibus Tests of Model Coefficients
     // ======================================================================
-    tables.push({
-      title: `Block 1: Method = ${methodUsed}<br/>Omnibus Tests of Model Coefficients<sup style='display:none'>a,b</sup>`,
+    const omnibusData = {
       columnHeaders: [
         {
           header: "",
@@ -86,11 +92,23 @@ export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
           df: result.omni_tests?.df?.toString() ?? "0",
           sig: fmtSig(result.omni_tests?.sig),
         },
-      ] as any[],
-    });
+      ],
+    };
+
+    sections.push(
+      createSection(
+        "block1_omnibus",
+        `Omnibus Tests of Model Coefficients`,
+        omnibusData,
+        {
+          description:
+            "Pengujian signifikansi model secara keseluruhan (Chi-square).",
+        }
+      )
+    );
 
     // ======================================================================
-    // TABLE 2: Model Summary
+    // SECTION 2: Model Summary
     // ======================================================================
     let summaryRows: any[] = [];
 
@@ -114,8 +132,7 @@ export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
       ];
     }
 
-    tables.push({
-      title: "Model Summary",
+    const modelSummaryData = {
       columnHeaders: [
         { header: "Step", key: "rowHeader" },
         { header: "-2 Log likelihood", key: "ll" },
@@ -123,19 +140,25 @@ export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
         { header: "Nagelkerke R Square", key: "nagel" },
       ],
       rows: summaryRows,
-    });
+    };
+
+    sections.push(
+      createSection("block1_model_summary", "Model Summary", modelSummaryData, {
+        description:
+          "Statistik kebaikan model (Goodness of Fit) termasuk R Square semu.",
+        note: "a. Estimation terminated at iteration number...", // String statis sementara
+      })
+    );
 
     // ======================================================================
-    // TABLE 3: Classification Table (Final Step)
+    // SECTION 3: Classification Table (Final Step)
     // ======================================================================
     const obs0_pred0 = ct.observed_0_predicted_0 || 0;
     const obs0_pred1 = ct.observed_0_predicted_1 || 0;
     const obs1_pred0 = ct.observed_1_predicted_0 || 0;
     const obs1_pred1 = ct.observed_1_predicted_1 || 0;
 
-    tables.push({
-      title: "Classification Table<sup style='display:none'>a</sup>",
-      note: "a. The cut value is .500",
+    const classificationData = {
       columnHeaders: [
         {
           header: "Observed",
@@ -178,14 +201,25 @@ export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
           pred_1: "",
           pct: fmtPct(ct.overall_percentage),
         },
-      ] as any[],
-    });
+      ],
+    };
+
+    sections.push(
+      createSection(
+        "block1_classification",
+        "Classification Table",
+        classificationData,
+        {
+          description: `Tabel klasifikasi akurasi prediksi pada ${currentStepLabel}.`,
+          note: "a. The cut value is .500",
+        }
+      )
+    );
 
     // ======================================================================
-    // TABLE 4: Variables in the Equation
+    // SECTION 4: Variables in the Equation
     // ======================================================================
-    tables.push({
-      title: "Variables in the Equation",
+    const varsInData = {
       columnHeaders: [
         {
           header: "",
@@ -218,17 +252,23 @@ export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
         expb: safeFixed(row.exp_b),
         lo: safeFixed(row.lower_ci),
         up: safeFixed(row.upper_ci),
-      })) as any[],
-    });
+      })),
+    };
+
+    sections.push(
+      createSection("block1_vars_in", "Variables in the Equation", varsInData, {
+        description:
+          "Koefisien regresi logistik dan rasio odds (Exp(B)) untuk variabel dalam model.",
+      })
+    );
 
     // ======================================================================
-    // TABLE 5: Variables NOT in the Equation
+    // SECTION 5: Variables NOT in the Equation
     // ======================================================================
     const varsNotIn = result.variables_not_in_equation || [];
 
     if (varsNotIn.length > 0) {
-      tables.push({
-        title: "Variables not in the Equation",
+      const varsNotInData = {
         columnHeaders: [
           {
             header: "",
@@ -246,15 +286,26 @@ export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
           score: safeFixed(v.score),
           df: v.df.toString(),
           sig: fmtSig(v.sig),
-        })) as any[],
-      });
+        })),
+      };
+
+      sections.push(
+        createSection(
+          "block1_vars_not_in",
+          "Variables not in the Equation",
+          varsNotInData,
+          {
+            description:
+              "Uji statistik Score untuk variabel yang dikeluarkan atau belum dimasukkan.",
+          }
+        )
+      );
     }
   } else {
     // ======================================================================
     // KONDISI B: FORWARD STEPWISE TAPI TIDAK ADA VARIABEL MASUK
     // ======================================================================
-    tables.push({
-      title: `Block 1: Method = ${methodUsed}`,
+    const statusData = {
       columnHeaders: [
         {
           header: "",
@@ -267,9 +318,20 @@ export const formatBlock1 = (result: LogisticResult, dependentName: string) => {
           rowHeader: ["Result"],
           message_content: "No variables were entered into the equation.",
         },
-      ] as any[],
-    });
+      ],
+    };
+
+    sections.push(
+      createSection(
+        "block1_status",
+        `Block 1: Method = ${methodUsed}`,
+        statusData,
+        {
+          description: "Status eksekusi metode stepwise.",
+        }
+      )
+    );
   }
 
-  return tables;
+  return { sections };
 };
