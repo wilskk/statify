@@ -163,11 +163,23 @@ export interface ColumnHeader {
   children?: ColumnHeader[]; // <--- INI SOLUSI ERROR 'children does not exist'
 }
 
+export interface TableResultContent {
+  columnHeaders: ColumnHeader[];
+  rows: any[];
+  // Field opsional untuk styling spesifik tabel
+  style?: "standard" | "compact"; 
+}
+
+// Ini adalah struktur wrapper baru untuk setiap "Kartu" output
+export interface AnalysisSection {
+  id: string;              // ID Unik untuk key React
+  title: string;           // Judul Card (misal: "Model Summary")
+  description?: string;    // Deskripsi di bawah judul
+  type: "table" | "text" | "chart"; // Future-proofing
+  data: TableResultContent; // Data mentah tabel
+  note?: string;           // Footer note (misal: "a. Constant is included...")
+}
+
 export interface BinaryLogisticOutput {
-  tables: Array<{
-    title: string;
-    note?: string;
-    columnHeaders: Array<ColumnHeader>; // Gunakan interface recursive di atas
-    rows: Array<Record<string, any>>;
-  }>;
+  sections: AnalysisSection[];
 }

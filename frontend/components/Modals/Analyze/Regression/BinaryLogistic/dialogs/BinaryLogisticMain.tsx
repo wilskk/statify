@@ -60,9 +60,9 @@ export const BinaryLogisticMain = () => {
     factors: [],
     method: "Enter",
   });
+
   const variableDetails = useMemo(() => {
     return variablesFromStore.reduce((acc, v) => {
-      // Hanya masukkan ke map jika id-nya ada (tidak undefined)
       if (v.id !== undefined) {
         acc[v.id] = v;
       }
@@ -176,7 +176,6 @@ export const BinaryLogisticMain = () => {
 
   // --- LOGIKA UTAMA EKSEKUSI WORKER ---
   const handleAnalyze = async () => {
-    // 1. Validasi Input UI
     if (!options.dependent || options.covariates.length === 0) {
       setErrorMsg(
         "Mohon pilih satu variabel dependen dan setidaknya satu kovariat."
@@ -189,12 +188,10 @@ export const BinaryLogisticMain = () => {
       return;
     }
 
-    // Reset State
     setIsLoading(true);
     setErrorMsg(null);
 
     try {
-      // 2. Inisialisasi Worker
       const worker = new Worker(
         new URL(
           "/workers/Regression/binaryLogistic.worker.js",
@@ -203,7 +200,6 @@ export const BinaryLogisticMain = () => {
         { type: "module" }
       );
 
-      // 3. Setup Listener Pesan dari Worker
       worker.onmessage = async (event) => {
         const { type, payload } = event.data;
 
@@ -223,23 +219,86 @@ export const BinaryLogisticMain = () => {
               } /METHOD=${options.method.toUpperCase()} ${varNames}`,
             });
 
-            // C. Simpan Analytic Entry
+            // C. Simpan Analytic Entry (Parent)
             const analyticId = await addAnalytic(logId, {
               title: "Binary Logistic Regression",
               note: `Method: ${options.method}`,
             });
 
-            // D. Simpan Output
-            await addStatistic(analyticId, {
-              title: "Logistic Regression Output",
-              output_data: JSON.stringify(formattedResult),
-              components: "Tables",
-              description:
-                "Variables in Equation, Model Summary, Classification Table.",
-            });
+            // D. Simpan Output per Section
+            if (
+              formattedResult.sections &&
+              Array.isArray(formattedResult.sections)
+            ) {
+              for (const section of formattedResult.sections) {
+                // -----------------------------------------------------------
+                // 1. LOGIC CUSTOM COMPONENTS (HEADER GROUPING)
+                // -----------------------------------------------------------
+                // Di sini Anda bisa mengatur tabel mana masuk ke Header yang mana.
+                // Logika ini menggunakan section.id untuk menentukan grupnya.
+
+                let componentCategory = "Tables"; // Default fallback
+                const cleanTitle = section.title
+                  .replace(/<[^>]*>?/gm, " ")
+                  .trim();
+
+                if (
+                  section.id === "case_processing" ||
+                  section.id === "dep_encoding"
+                ) {
+                  // Gabungkan Case Processing & Encoding di bawah satu header
+                  componentCategory = "Case Processing Summary";
+                } else if (section.id.startsWith("block0")) {
+                  // Semua output Block 0 masuk ke header ini
+                  componentCategory = "Block 0: Beginning Block";
+                } else if (section.id.startsWith("block1")) {
+                  // Semua output Block 1 masuk ke header ini (Dinamis sesuai method)
+                  componentCategory = `Block 1: Method = ${options.method}`;
+                } else {
+                  // Jika tidak masuk kategori di atas, gunakan judul tabelnya sendiri
+                  // agar dia punya header eksklusif (lebih prominent)
+                  componentCategory = cleanTitle;
+                }
+
+                // -----------------------------------------------------------
+                // 2. DATA PREPARATION FOR RENDERER
+                // -----------------------------------------------------------
+                // Inject title & note ke dalam objek data agar Renderer bisa membacanya
+                const tableObjectForRenderer = {
+                  ...section.data,
+                  title: section.title, // Judul tabel (HTML allowed)
+                  note: section.note, // Note tabel
+                };
+
+                const payloadForRenderer = {
+                  tables: [tableObjectForRenderer],
+                };
+
+                // -----------------------------------------------------------
+                // 3. SIMPAN KE DATABASE (ADD STATISTIC)
+                // -----------------------------------------------------------
+                await addStatistic(analyticId, {
+                  title: section.title,
+                  description: section.description || "",
+
+                  // Property 'note' SUDAH DIHAPUS dari sini sesuai request
+
+                  output_data: JSON.stringify(payloadForRenderer),
+
+                  // Ini yang menentukan Header Besar di atas sekumpulan tabel
+                  components: componentCategory,
+                });
+              }
+            } else {
+              console.warn(
+                "Formatter did not return sections array:",
+                formattedResult
+              );
+            }
 
             setIsLoading(false);
             worker.terminate();
+            closeModal("BINARY_LOGISTIC");
           } catch (saveError: any) {
             console.error("Error Saving Result:", saveError);
             setErrorMsg("Gagal menyimpan hasil analisis.");
@@ -266,9 +325,7 @@ export const BinaryLogisticMain = () => {
         worker.terminate();
       };
 
-      // --- 4. PERSIAPAN DATA INDEX ---
-
-      // Cari Index Kolom Secara Manual (Karena Variable di store tidak punya properti .index)
+      // --- PERSIAPAN DATA INDEX & CONFIG ---
       const depIndex = variables.findIndex(
         (v) => v.id === options.dependent!.id
       );
@@ -286,10 +343,6 @@ export const BinaryLogisticMain = () => {
         throw new Error("Gagal menemukan index variabel di dataset.");
       }
 
-      // --- 5. KONFIGURASI JSON ---
-
-      // A. Buat Mapping untuk membersihkan nama metode
-      // UI menggunakan label panjang ("Forward: Conditional"), Rust butuh Enum bersih ("ForwardConditional")
       const methodMapping: Record<string, string> = {
         Enter: "Enter",
         "Forward: Conditional": "ForwardConditional",
@@ -300,33 +353,23 @@ export const BinaryLogisticMain = () => {
         "Backward: LR": "BackwardLR",
       };
 
-      // B. Susun Config
       const analysisConfig = {
-        // Data Mapping (Snake Case)
         dependent_index: depIndex,
         independent_indices: indepIndices,
-
-        // Algorithm Settings
         max_iterations: optParams.maxIterations,
         include_constant: optParams.includeConstant,
         convergence_threshold: 1e-6,
         confidence_level: optParams.ciLevel,
         cutoff: optParams.classificationCutoff,
-
-        // Method & Stepwise (GUNAKAN MAPPING DI SINI)
         method: methodMapping[options.method] || "Enter",
-
         p_entry: optParams.probEntry,
         p_removal: optParams.probRemoval,
-
-        // Dimensi Data
         rows: data.length,
         cols: variables.length,
       };
 
       console.log("Config Cleaned for Rust:", JSON.stringify(analysisConfig));
 
-      // 6. Kirim Pesan
       worker.postMessage({
         action: "run_binary_logistic",
         dependentId: options.dependent.id,
@@ -336,8 +379,7 @@ export const BinaryLogisticMain = () => {
         ],
         data: data,
         variableDetails: variableDetails,
-
-        config: JSON.stringify(analysisConfig), // Kirim JSON
+        config: JSON.stringify(analysisConfig),
       });
     } catch (err: any) {
       console.error("Main Thread Error:", err);

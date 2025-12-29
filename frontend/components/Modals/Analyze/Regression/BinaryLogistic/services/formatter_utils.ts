@@ -1,7 +1,24 @@
-/**
- * formatter_utils.ts
- * Shared utility functions for Binary Logistic Regression formatting.
- */
+import { AnalysisSection, TableResultContent } from "../types/binary-logistic";
+
+// Helper factory untuk membuat Section standard
+export const createSection = (
+  id: string,
+  title: string,
+  data: any, // Menggunakan any sementara karena struktur tabel handsontable kompleks
+  options?: {
+    description?: string;
+    note?: string;
+  }
+): AnalysisSection => {
+  return {
+    id,
+    title,
+    type: "table",
+    data: data as TableResultContent,
+    description: options?.description,
+    note: options?.note,
+  };
+};
 
 // Format angka desimal biasa (default 3 digit)
 // Menangani null, undefined, NaN, dan angka sangat kecil
