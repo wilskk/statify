@@ -18,6 +18,12 @@ pub struct BoxTidwellRow {
     pub is_significant: bool,     // Helper flag (p < 0.05)
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CorrelationRow {
+    pub variable: String,
+    pub values: Vec<f64>, // Nilai korelasi terhadap variabel lain urut index
+}
+
 // Wrapper untuk menampung semua hasil uji asumsi
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct AssumptionResult {
@@ -26,6 +32,9 @@ pub struct AssumptionResult {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub box_tidwell: Option<Vec<BoxTidwellRow>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_matrix: Option<Vec<CorrelationRow>>,
 }
 
 // --- Model Summary ---

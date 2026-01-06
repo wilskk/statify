@@ -104,6 +104,31 @@ pub fn calculate_vif(data_x: &[f64], rows: usize, cols: usize) -> Result<JsValue
     }
 }
 
+#[wasm_bindgen]
+pub fn calculate_correlation_matrix(
+    data_x: &[f64],
+    rows: usize,
+    cols: usize,
+) -> Result<JsValue, JsValue> {
+    if rows == 0 || cols == 0 {
+        return Err(api_error("Data kosong untuk Correlation Matrix."));
+    }
+
+    let x_matrix = DMatrix::from_row_slice(rows, cols, data_x);
+    // Nama variabel dummy sementara (akan di-mapping ulang di JS)
+    let dummy_labels: Vec<String> = (0..cols).map(|i| format!("Var_{}", i)).collect();
+
+    // Panggil logika perhitungan di stats::assumptions
+    match stats::assumptions::calculate_correlation_matrix(&x_matrix, &dummy_labels) {
+        Ok(corr_results) => {
+            let json = serde_json::to_string(&corr_results)
+                .map_err(|e| api_error(&format!("JSON Error: {}", e)))?;
+            Ok(JsValue::from_str(&json))
+        }
+        Err(e) => Err(api_error(&e)),
+    }
+}
+
 // ========================================================================
 // 3. LINEARITY (BOX-TIDWELL)
 // ========================================================================
