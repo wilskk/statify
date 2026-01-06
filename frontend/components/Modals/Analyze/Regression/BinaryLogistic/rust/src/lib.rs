@@ -4,10 +4,8 @@ pub mod strategies;
 pub mod utils;
 
 use models::config::{LogisticConfig, RegressionMethod};
-// Pastikan struct BoxTidwellRow dan VifRow di-export di result.rs dan di-pub di sini
-use models::result::{BoxTidwellRow, VifRow};
-use nalgebra::DMatrix;
-use statrs::distribution::{ChiSquared, ContinuousCDF};
+// PERBAIKAN: Menghapus unused imports (BoxTidwellRow, VifRow)
+use nalgebra::{DMatrix, DVector};
 use wasm_bindgen::prelude::*;
 
 // Helper untuk format error ke JS
@@ -49,49 +47,39 @@ pub fn calculate_binary_logistic(
 
     // C. Bentuk Matrix & Vector
     let x_matrix = DMatrix::from_row_slice(rows, cols, data_x);
-    let y_vector = DMatrix::from_row_slice(rows, 1, data_y);
+    let y_vector = DVector::from_column_slice(data_y);
 
     // D. Router Metode Regresi
-    // Panggil logika berdasarkan method yang dipilih (Enter, Forward, Backward)
     let result = match config.method {
-        RegressionMethod::Enter => {
-            strategies::enter::run(&x_matrix, &y_vector, &config)
-            .map_err(|e| api_error(&format!("Error di Metode Enter: {}", e)))?
-        },
+        RegressionMethod::Enter => strategies::enter::run(&x_matrix, &y_vector, &config)
+            .map_err(|e| api_error(&format!("Error di Metode Enter: {}", e)))?,
 
         RegressionMethod::ForwardConditional => {
             strategies::forward_conditional::run(&x_matrix, &y_vector, &config)
                 .map_err(|e| api_error(&format!("Error di Metode Forward Conditional: {:?}", e)))?
-        },
+        }
 
         RegressionMethod::ForwardLR => {
             strategies::forward_lr::run(&x_matrix, &y_vector, &config)
                 .map_err(|e| api_error(&format!("Error di Metode Forward LR: {:?}", e)))?
-        },
+        }
 
         RegressionMethod::ForwardWald => {
             strategies::forward_wald::run(&x_matrix, &y_vector, &config)
                 .map_err(|e| api_error(&format!("Error di Metode Forward Wald: {:?}", e)))?
-        },
+        }
 
         RegressionMethod::BackwardConditional => {
             strategies::backward_conditional::run(&x_matrix, &y_vector, &config)
                 .map_err(|e| api_error(&format!("Error di Metode Backward Conditional: {:?}", e)))?
-        },
-
-        // Metode lain bisa di-handle error dulu
-        _ => return Err(api_error("Metode ini belum diimplementasikan")),
+        }
     };
 
     // E. Return Hasil
-    match result {
-        Ok(res) => {
-            let json_output = serde_json::to_string(&res)
-                .map_err(|e| api_error(&format!("Gagal serialize output: {}", e)))?;
-            Ok(JsValue::from_str(&json_output))
-        }
-        Err(err_msg) => Err(api_error(&err_msg)),
-    }
+    let json_output = serde_json::to_string(&result)
+        .map_err(|e| api_error(&format!("Gagal serialize output: {}", e)))?;
+
+    Ok(JsValue::from_str(&json_output))
 }
 
 // ========================================================================
@@ -103,14 +91,9 @@ pub fn calculate_vif(data_x: &[f64], rows: usize, cols: usize) -> Result<JsValue
         return Err(api_error("Data kosong untuk VIF."));
     }
 
-    // Reconstruct Matrix
     let x_matrix = DMatrix::from_row_slice(rows, cols, data_x);
-
-    // Siapkan label dummy (karena worker JS yang akan mapping nama asli)
     let dummy_labels: Vec<String> = (0..cols).map(|i| format!("Var_{}", i)).collect();
 
-    // Panggil logika statistik VIF
-    // Pastikan stats::assumptions::calculate_vif tersedia di assumptions.rs
     match stats::assumptions::calculate_vif(&x_matrix, &dummy_labels) {
         Ok(vif_results) => {
             let json = serde_json::to_string(&vif_results)
@@ -126,8 +109,6 @@ pub fn calculate_vif(data_x: &[f64], rows: usize, cols: usize) -> Result<JsValue
 // ========================================================================
 #[derive(serde::Deserialize)]
 struct BoxTidwellConfig {
-    // Bisa tambahkan config khusus jika perlu, misal:
-    // include_constant: bool
     #[serde(default)]
     feature_names: Vec<String>,
 }
@@ -140,16 +121,14 @@ pub fn calculate_box_tidwell(
     data_y: &[f64],
     config_json: String,
 ) -> Result<JsValue, JsValue> {
-    // Parse config opsional (untuk nama fitur jika dikirim)
     let bt_config: BoxTidwellConfig =
         serde_json::from_str(&config_json).unwrap_or(BoxTidwellConfig {
             feature_names: (0..cols).map(|i| format!("Var_{}", i)).collect(),
         });
 
     let x_matrix = DMatrix::from_row_slice(rows, cols, data_x);
-    let y_vector = DMatrix::from_row_slice(rows, 1, data_y);
+    let y_vector = DVector::from_column_slice(data_y);
 
-    // Panggil logika statistik Box-Tidwell
     match stats::assumptions::calculate_box_tidwell(&x_matrix, &y_vector, &bt_config.feature_names)
     {
         Ok(bt_results) => {

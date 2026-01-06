@@ -346,7 +346,7 @@ fn format_result(
         omni_tests: OmniTests { chi_square: chi_sq_model, df: df_model, sig: omni_sig },
         step_history: Some(history),
         block_0_constant: block_0_row,
-        method_used: "Forward Wald".to_string(), // <--- Identitas penting untuk Formatter
+        method_used: "Forward Wald".to_string(), 
         assumption_tests: None,
     })
 }

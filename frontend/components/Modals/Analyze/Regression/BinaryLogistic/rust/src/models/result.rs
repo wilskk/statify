@@ -42,8 +42,6 @@ pub struct ModelSummary {
 // --- Classification Table ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClassificationTable {
-    // Penamaan harus konsisten dengan yang dipanggil di stats/metrics.rs atau table.rs
-    // Error log meminta: observed_0_predicted_0
     pub observed_0_predicted_0: i32, // True Negative
     pub observed_0_predicted_1: i32, // False Positive
     pub percentage_correct_0: f64,
