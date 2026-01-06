@@ -182,5 +182,6 @@ pub fn run(
         omni_tests,
         step_history: None,
         method_used: "Enter".to_string(),
+        assumption_tests: None,
     })
 }

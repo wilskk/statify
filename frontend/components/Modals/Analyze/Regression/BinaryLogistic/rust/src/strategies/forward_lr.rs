@@ -417,5 +417,6 @@ fn format_result(
         step_history: Some(history),
         block_0_constant: block_0_row,
         method_used: "Forward LR".to_string(),
+        assumption_tests: None,
     })
 }

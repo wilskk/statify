@@ -1,5 +1,42 @@
 use serde::{Deserialize, Serialize};
 
+// Struktur untuk satu baris hasil VIF
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VifRow {
+    pub variable: String,
+    pub tolerance: f64, // 1 / VIF
+    pub vif: f64,
+}
+
+// Struktur untuk satu baris hasil Box-Tidwell
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BoxTidwellRow {
+    pub variable: String,         // Nama variabel asli
+    pub interaction_term: String, // Nama interaksi (misal: Age * ln(Age))
+    pub b: f64,                   // Koefisien
+    pub sig: f64,                 // P-value (signifikansi)
+    pub is_significant: bool,     // Helper flag (p < 0.05)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CorrelationRow {
+    pub variable: String,
+    pub values: Vec<f64>, // Nilai korelasi terhadap variabel lain urut index
+}
+
+// Wrapper untuk menampung semua hasil uji asumsi
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct AssumptionResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vif: Option<Vec<VifRow>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub box_tidwell: Option<Vec<BoxTidwellRow>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_matrix: Option<Vec<CorrelationRow>>,
+}
+
 // --- Model Summary ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModelSummary {
@@ -14,8 +51,6 @@ pub struct ModelSummary {
 // --- Classification Table ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClassificationTable {
-    // Penamaan harus konsisten dengan yang dipanggil di stats/metrics.rs atau table.rs
-    // Error log meminta: observed_0_predicted_0
     pub observed_0_predicted_0: i32, // True Negative
     pub observed_0_predicted_1: i32, // False Positive
     pub percentage_correct_0: f64,
@@ -96,4 +131,7 @@ pub struct LogisticResult {
     pub step_history: Option<Vec<StepHistory>>,
 
     pub method_used: String,
+
+    #[serde(rename = "assumption_tests", skip_serializing_if = "Option::is_none")]
+    pub assumption_tests: Option<AssumptionResult>,
 }
