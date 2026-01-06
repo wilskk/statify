@@ -1,5 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct AssumptionConfig {
+    #[serde(default)]
+    pub multicollinearity: bool, // Untuk VIF
+    #[serde(default, alias = "boxTidwell")]
+    pub box_tidwell: bool, // Untuk Box-Tidwell
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum RegressionMethod {
     #[serde(alias = "Enter")]
@@ -63,6 +71,9 @@ pub struct LogisticConfig {
         default = "default_p_removal"
     )]
     pub p_removal: f64,
+
+    #[serde(default)]
+    pub assumptions: AssumptionConfig,
 }
 
 // ... helper functions (default_true, dll) ...
@@ -101,6 +112,7 @@ impl Default for LogisticConfig {
             method: RegressionMethod::Enter,
             p_entry: 0.05,
             p_removal: 0.10,
+            assumptions: AssumptionConfig::default(),
         }
     }
 }

@@ -347,5 +347,6 @@ fn format_result(
         step_history: Some(history),
         block_0_constant: block_0_row,
         method_used: "Forward Wald".to_string(), // <--- Identitas penting untuk Formatter
+        assumption_tests: None,
     })
 }

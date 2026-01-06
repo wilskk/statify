@@ -106,7 +106,7 @@ pub fn run(
 
         // Cek setiap variabel yang ada di model untuk dikeluarkan
         // Menggunakan metode CONDITIONAL: Bandingkan -2LL model saat ini vs model tanpa variabel tersebut
-        for (k, &original_idx) in included_indices.iter().enumerate() {
+        for (k, &_original_idx) in included_indices.iter().enumerate() {
             
             // 1. Buat subset variabel TANPA variabel ke-k
             let mut temp_indices = included_indices.clone();
@@ -332,5 +332,6 @@ fn format_result(
         step_history: Some(history),
         block_0_constant: block_0_row,
         method_used: "Backward Conditional".to_string(),
+        assumption_tests: None,
     })
 }
