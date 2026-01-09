@@ -23,10 +23,23 @@ pub fn calculate_binary_logistic(
     cols: usize,
     data_y: &[f64],
     config_json: String,
+    feature_names_json: String,
 ) -> Result<JsValue, JsValue> {
     // A. Parse Konfigurasi
     let config: LogisticConfig = serde_json::from_str(&config_json)
         .map_err(|e| api_error(&format!("Gagal parsing config JSON: {}", e)))?;
+
+    let feature_names: Vec<String> = serde_json::from_str(&feature_names_json)
+        .map_err(|e| api_error(&format!("Gagal parsing feature names: {}", e)))?;
+
+    // Validasi jumlah nama variabel match dengan cols
+    if feature_names.len() != cols {
+        return Err(api_error(&format!(
+            "Mismatch features: Matrix cols={}, Names provided={}",
+            cols,
+            feature_names.len()
+        )));
+    }
 
     // B. Validasi Dimensi Data
     if rows == 0 || cols == 0 {
@@ -51,26 +64,28 @@ pub fn calculate_binary_logistic(
 
     // D. Router Metode Regresi
     let result = match config.method {
-        RegressionMethod::Enter => strategies::enter::run(&x_matrix, &y_vector, &config)
-            .map_err(|e| api_error(&format!("Error di Metode Enter: {}", e)))?,
+        RegressionMethod::Enter => {
+            strategies::enter::run(&x_matrix, &y_vector, &config, &feature_names)
+                .map_err(|e| api_error(&format!("Error di Metode Enter: {}", e)))?
+        }
 
         RegressionMethod::ForwardConditional => {
-            strategies::forward_conditional::run(&x_matrix, &y_vector, &config)
+            strategies::forward_conditional::run(&x_matrix, &y_vector, &config, &feature_names)
                 .map_err(|e| api_error(&format!("Error di Metode Forward Conditional: {:?}", e)))?
         }
 
         RegressionMethod::ForwardLR => {
-            strategies::forward_lr::run(&x_matrix, &y_vector, &config)
+            strategies::forward_lr::run(&x_matrix, &y_vector, &config, &feature_names)
                 .map_err(|e| api_error(&format!("Error di Metode Forward LR: {:?}", e)))?
         }
 
         RegressionMethod::ForwardWald => {
-            strategies::forward_wald::run(&x_matrix, &y_vector, &config)
+            strategies::forward_wald::run(&x_matrix, &y_vector, &config, &feature_names)
                 .map_err(|e| api_error(&format!("Error di Metode Forward Wald: {:?}", e)))?
         }
 
         RegressionMethod::BackwardConditional => {
-            strategies::backward_conditional::run(&x_matrix, &y_vector, &config)
+            strategies::backward_conditional::run(&x_matrix, &y_vector, &config, &feature_names)
                 .map_err(|e| api_error(&format!("Error di Metode Backward Conditional: {:?}", e)))?
         }
     };
