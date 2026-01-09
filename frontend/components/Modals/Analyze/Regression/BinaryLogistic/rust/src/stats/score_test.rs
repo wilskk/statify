@@ -46,3 +46,75 @@ pub fn calculate_score_test(
 
     (score_stat, p_value)
 }
+
+// Menghitung apakah sekumpulan variabel X secara simultan signifikan dibandingkan Null Model
+pub fn calculate_global_score_test(
+    x: &DMatrix<f64>, // Matrix Covariates (TANPA kolom Intercept)
+    y: &DVector<f64>,
+    null_prob: f64, // Rata-rata Y (proporsi kasus positif)
+) -> (f64, i32, f64) {
+    // Returns: (ChiSquare, df, Sig)
+    let n = x.nrows();
+    let k = x.ncols(); // df = jumlah variabel
+
+    // 1. Hitung Residuals Null Model: (y - p_0)
+    // Residuals ini sama untuk semua baris jika p_0 konstan, tapi y beda (0/1)
+    let residuals = y.map(|yi| yi - null_prob);
+
+    // 2. Hitung Score Vector (U): X' * residuals
+    // Ini mengukur gradien log-likelihood di titik null
+    let u = x.transpose() * &residuals;
+
+    // 3. Hitung Information Matrix (I) di titik Null
+    // I = p(1-p) * (X'X - n * x_bar * x_bar')
+    // Ini adalah matriks scatter terpusat yang diskalakan dengan varians p
+
+    let w_val = null_prob * (1.0 - null_prob);
+
+    // a. Hitung rata-rata tiap kolom X
+    // Cara manual summing kolom agar efisien
+    let ones = DVector::from_element(n, 1.0);
+    let x_sums = x.transpose() * &ones; // Vector panjang k berisi sum tiap kolom
+
+    // b. Information Matrix (Centered)
+    // Rumus komputasi efisien: X'WX - (X'W1 * 1'WX) / sum(W)
+    // Karena W konstan, bisa disederhanakan:
+    // I = w * [ X'X - (1/n) * (sum_x * sum_x') ]
+
+    let xt_x = x.transpose() * x;
+    let correction = (&x_sums * x_sums.transpose()) / (n as f64);
+
+    let centered_info_matrix = (xt_x - correction) * w_val;
+
+    // 4. Hitung Score Statistic: U' * inv(I) * U
+    let score_stat = match centered_info_matrix.clone().cholesky() {
+        Some(chol) => {
+            let solution = chol.solve(&u);
+            u.dot(&solution) // U . (I^-1 . U)
+        }
+        None => {
+            // Jika Cholesky gagal, gunakan matriks asli (yang masih ada karena di-clone sebelumnya)
+            match centered_info_matrix.try_inverse() {
+                Some(inv) => {
+                    let term = &inv * &u;
+                    u.dot(&term)
+                }
+                None => 0.0,
+            }
+        }
+    };
+
+    // 5. Hitung P-Value
+    let sig = match ChiSquared::new(k as f64) {
+        Ok(dist) => {
+            if score_stat > 0.0 {
+                1.0 - dist.cdf(score_stat)
+            } else {
+                1.0
+            }
+        }
+        Err(_) => 1.0,
+    };
+
+    (score_stat, k as i32, sig)
+}

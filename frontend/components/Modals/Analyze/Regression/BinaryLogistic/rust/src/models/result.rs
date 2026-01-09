@@ -109,6 +109,13 @@ pub struct StepHistory {
     pub nagelkerke_r2: f64,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RemainderTest {
+    pub chi_square: f64,
+    pub df: i32,
+    pub sig: f64,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct LogisticResult {
     #[serde(rename = "model_summary")]
@@ -121,6 +128,9 @@ pub struct LogisticResult {
 
     #[serde(rename = "variables_not_in_equation")]
     pub variables_not_in_equation: Vec<VariableNotInEquation>,
+
+    #[serde(rename = "overall_remainder_test", skip_serializing_if = "Option::is_none")]
+    pub overall_remainder_test: Option<RemainderTest>,
 
     #[serde(rename = "block_0_constant")]
     pub block_0_constant: VariableRow,
