@@ -1,11 +1,11 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepHistory,
-    VariableNotInEquation, VariableRow,
+    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail,
+    StepHistory, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
-use crate::stats::score_test::calculate_score_test;
 use crate::stats::score_test;
+use crate::stats::score_test::calculate_score_test;
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -14,12 +14,16 @@ pub fn run(
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
     config: &LogisticConfig,
+    feature_names: &[String], // <-- ARGUMEN BARU
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
 
     let mut included_indices: Vec<usize> = Vec::new();
     let mut steps_history: Vec<StepHistory> = Vec::new();
+    // Vektor baru untuk menyimpan snapshot lengkap
+    let mut steps_details: Vec<StepDetail> = Vec::new();
+
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
 
     // --- STEP 0: NULL MODEL ---
@@ -34,24 +38,22 @@ pub fn run(
 
     let null_log_likelihood = current_model.final_log_likelihood;
 
-    let prob_null = current_model.predictions[0];
+    // --- CAPTURE STEP 0 (Block 0) ---
+    let step0_detail = calculate_step_snapshot(
+        0,
+        "Start".to_string(),
+        None,
+        &current_model,
+        x_matrix,
+        y_vector,
+        &included_indices,
+        null_log_likelihood,
+        feature_names, // Pass feature names
+    );
+    steps_details.push(step0_detail);
 
-    // Data Block 0 Constant
-    let b0_val = current_model.beta[0];
-    let b0_se = current_model.covariance_matrix[(0, 0)].sqrt();
-    let b0_wald = (b0_val / b0_se).powi(2);
-
-    let block_0_row = VariableRow {
-        label: "Constant".to_string(),
-        b: b0_val,
-        error: b0_se,
-        wald: b0_wald,
-        df: 1,
-        sig: 1.0 - chi_dist_1df.cdf(b0_wald),
-        exp_b: b0_val.exp(),
-        lower_ci: (b0_val - 1.96 * b0_se).exp(),
-        upper_ci: (b0_val + 1.96 * b0_se).exp(),
-    };
+    // Ambil data Block 0 Constant dari snapshot yang baru dibuat
+    let block_0_row = steps_details[0].variables_in_equation[0].clone();
 
     let mut step_count = 0;
 
@@ -108,7 +110,7 @@ pub fn run(
                 steps_history.push(StepHistory {
                     step: step_count,
                     action: "Entered".to_string(),
-                    variable: format!("Var_{}", idx_in + 1),
+                    variable: feature_names[idx_in].clone(), // GUNAKAN NAMA ASLI
                     score_statistic: best_score_stat,
                     improvement_chi_sq: best_score_stat,
                     model_log_likelihood: new_model.final_log_likelihood,
@@ -122,15 +124,26 @@ pub fn run(
                 included_indices = trial_indices;
                 current_model = new_model;
                 variable_added = true;
+
+                // --- CAPTURE STEP N (Entered) ---
+                let step_detail = calculate_step_snapshot(
+                    step_count,
+                    "Entered".to_string(),
+                    Some(feature_names[idx_in].clone()), // NAMA ASLI
+                    &current_model,
+                    x_matrix,
+                    y_vector,
+                    &included_indices,
+                    null_log_likelihood,
+                    feature_names,
+                );
+                steps_details.push(step_detail);
             }
         }
 
         // ---------------------------------------------------------
         // B. BACKWARD REMOVAL: Wald Test
         // ---------------------------------------------------------
-        // Cek variabel yang sudah ada (kecuali Intercept)
-        // Jika p-value Wald > p_removal, buang.
-
         if included_indices.len() > 0 {
             let mut worst_idx_loc = None;
             let mut max_p_val = -1.0;
@@ -176,9 +189,9 @@ pub fn run(
                     steps_history.push(StepHistory {
                         step: step_count,
                         action: "Removed".to_string(),
-                        variable: format!("Var_{}", removed_var_idx + 1),
+                        variable: feature_names[removed_var_idx].clone(), // NAMA ASLI
                         score_statistic: 0.0,
-                        improvement_chi_sq: wald_stat_removed, // Untuk Wald, kita catat Wald stat-nya
+                        improvement_chi_sq: wald_stat_removed,
                         model_log_likelihood: reduced_model.final_log_likelihood,
                         nagelkerke_r2: calculate_nagelkerke(
                             null_log_likelihood,
@@ -188,51 +201,60 @@ pub fn run(
                     });
 
                     current_model = reduced_model;
+
+                    // --- CAPTURE STEP N (Removed) ---
+                    let step_detail = calculate_step_snapshot(
+                        step_count,
+                        "Removed".to_string(),
+                        Some(feature_names[removed_var_idx].clone()), // NAMA ASLI
+                        &current_model,
+                        x_matrix,
+                        y_vector,
+                        &included_indices,
+                        null_log_likelihood,
+                        feature_names,
+                    );
+                    steps_details.push(step_detail);
                 }
             }
         }
 
-        // Break condition: Step ini tidak ada yang masuk dan tidak ada yang keluar
+        // Break condition
         let last_step_num = steps_history.last().map(|s| s.step).unwrap_or(0);
         if last_step_num < step_count {
             break;
         }
     }
 
-    // --- FINAL CALCULATION ---
-    let mut variables_not_in_equation_list: Vec<VariableNotInEquation> = Vec::new();
-    let current_x_final = build_design_matrix(x_matrix, &included_indices, n_samples);
+    // --- FINAL RESULT CONSTRUCTION ---
+    let final_step = steps_details.last().unwrap().clone();
 
-    for i in 0..n_total_vars {
-        if !included_indices.contains(&i) {
-            let candidate_col = x_matrix.column(i).into_owned();
-            let (stat, p_val) = calculate_score_test(
-                &current_model.residuals,
-                &current_model.weights,
-                &current_x_final,
-                &candidate_col,
-                &current_model.covariance_matrix,
-            );
-            variables_not_in_equation_list.push(VariableNotInEquation {
-                label: format!("Var_{}", i + 1),
-                score: stat,
-                df: 1,
-                sig: p_val,
-            });
-        }
-    }
+    // Omnibus Tests
+    let chi_sq_model = 2.0 * (current_model.final_log_likelihood - null_log_likelihood).abs();
+    let df_model = included_indices.len() as i32;
+    let omni_sig = if df_model > 0 {
+        1.0 - ChiSquared::new(df_model as f64).unwrap().cdf(chi_sq_model)
+    } else {
+        1.0
+    };
 
-    format_result(
-        current_model,
-        null_log_likelihood,
-        &included_indices,
-        y_vector,
-        steps_history,
-        block_0_row,
-        variables_not_in_equation_list,
-        x_matrix,
-        prob_null
-    )
+    Ok(LogisticResult {
+        summary: final_step.summary,
+        classification_table: final_step.classification_table,
+        variables: final_step.variables_in_equation,
+        variables_not_in_equation: final_step.variables_not_in_equation,
+        omni_tests: OmniTests {
+            chi_square: chi_sq_model,
+            df: df_model,
+            sig: omni_sig,
+        },
+        step_history: Some(steps_history),
+        steps_detail: Some(steps_details),
+        block_0_constant: block_0_row,
+        method_used: "Forward Wald".to_string(),
+        assumption_tests: None,
+        overall_remainder_test: final_step.remainder_test,
+    })
 }
 
 // --- HELPER FUNCTIONS ---
@@ -260,20 +282,23 @@ fn calculate_nagelkerke(null_ll: f64, model_ll: f64, n: usize) -> f64 {
     }
 }
 
-fn format_result(
-    model: FittedModel,
-    null_ll: f64,
-    included_indices: &[usize],
+// Helper function untuk snapshot
+fn calculate_step_snapshot(
+    step: usize,
+    action: String,
+    variable_changed: Option<String>,
+    model: &FittedModel,
+    full_x: &DMatrix<f64>,
     y_vector: &DVector<f64>,
-    history: Vec<StepHistory>,
-    block_0_row: VariableRow,
-    vars_not_in: Vec<VariableNotInEquation>,
-    x_matrix: &DMatrix<f64>,
-    prob_null: f64
-) -> Result<LogisticResult, JsValue> {
+    included_indices: &[usize],
+    null_ll: f64,
+    feature_names: &[String], // ARGUMEN BARU
+) -> StepDetail {
     let n = y_vector.len();
-    let chi_dist = ChiSquared::new(1.0).unwrap();
+    let n_total_vars = full_x.ncols();
+    let chi_dist_1df = ChiSquared::new(1.0).unwrap();
 
+    // 1. Model Summary
     let summary = ModelSummary {
         log_likelihood: model.final_log_likelihood,
         cox_snell_r_square: 0.0,
@@ -282,46 +307,7 @@ fn format_result(
         iterations: model.iterations,
     };
 
-    let mut variables_in = Vec::new();
-
-    // Intercept
-    let b_int = model.beta[0];
-    let se_int = model.covariance_matrix[(0, 0)].sqrt();
-    let wald_int = (b_int / se_int).powi(2);
-
-    variables_in.push(VariableRow {
-        label: "Constant".to_string(),
-        b: b_int,
-        error: se_int,
-        wald: wald_int,
-        df: 1,
-        sig: 1.0 - chi_dist.cdf(wald_int),
-        exp_b: b_int.exp(),
-        lower_ci: (b_int - 1.96 * se_int).exp(),
-        upper_ci: (b_int + 1.96 * se_int).exp(),
-    });
-
-    // Variables
-    for (k, &idx) in included_indices.iter().enumerate() {
-        let beta_idx = k + 1;
-        let b = model.beta[beta_idx];
-        let se = model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
-        let wald = (b / se).powi(2);
-
-        variables_in.push(VariableRow {
-            label: format!("Var_{}", idx + 1),
-            b,
-            error: se,
-            wald,
-            df: 1,
-            sig: 1.0 - chi_dist.cdf(wald),
-            exp_b: b.exp(),
-            lower_ci: (b - 1.96 * se).exp(),
-            upper_ci: (b + 1.96 * se).exp(),
-        });
-    }
-
-    // Classification Table
+    // 2. Classification Table
     let mut tn = 0;
     let mut fp = 0;
     let mut fn_ = 0;
@@ -336,7 +322,6 @@ fn format_result(
             (true, true) => tp += 1,
         }
     }
-
     let class_table = ClassificationTable {
         observed_0_predicted_0: tn,
         observed_0_predicted_1: fp,
@@ -355,37 +340,120 @@ fn format_result(
         overall_percentage: (tn + tp + fn_ + fp) as f64 / n as f64 * 100.0,
     };
 
-    // Omnibus Tests
-    let chi_sq_model = 2.0 * (model.final_log_likelihood - null_ll).abs();
-    let df_model = included_indices.len() as i32;
-    let omni_sig = if df_model > 0 {
-        1.0 - ChiSquared::new(df_model as f64).unwrap().cdf(chi_sq_model)
+    // 3. Variables In Equation
+    let mut variables_in = Vec::new();
+    let b_int = model.beta[0];
+    let se_int = model.covariance_matrix[(0, 0)].sqrt();
+    let wald_int = (b_int / se_int).powi(2);
+    variables_in.push(VariableRow {
+        label: "Constant".to_string(),
+        b: b_int,
+        error: se_int,
+        wald: wald_int,
+        df: 1,
+        sig: 1.0 - chi_dist_1df.cdf(wald_int),
+        exp_b: b_int.exp(),
+        lower_ci: (b_int - 1.96 * se_int).exp(),
+        upper_ci: (b_int + 1.96 * se_int).exp(),
+    });
+
+    for (k, &idx) in included_indices.iter().enumerate() {
+        let beta_idx = k + 1;
+        let b = model.beta[beta_idx];
+        let se = model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
+        let wald = (b / se).powi(2);
+
+        // GUNAKAN NAMA ASLI
+        let label = if idx < feature_names.len() {
+            feature_names[idx].clone()
+        } else {
+            format!("Var_{}", idx + 1)
+        };
+
+        variables_in.push(VariableRow {
+            label,
+            b,
+            error: se,
+            wald,
+            df: 1,
+            sig: 1.0 - chi_dist_1df.cdf(wald),
+            exp_b: b.exp(),
+            lower_ci: (b - 1.96 * se).exp(),
+            upper_ci: (b + 1.96 * se).exp(),
+        });
+    }
+
+    // 4. Variables Not In Equation
+    let mut variables_not_in = Vec::new();
+    let current_design_matrix = build_design_matrix(full_x, included_indices, n);
+
+    for i in 0..n_total_vars {
+        if !included_indices.contains(&i) {
+            let candidate_col = full_x.column(i).into_owned();
+            let (stat, p_val) = calculate_score_test(
+                &model.residuals,
+                &model.weights,
+                &current_design_matrix,
+                &candidate_col,
+                &model.covariance_matrix,
+            );
+
+            // GUNAKAN NAMA ASLI
+            let label = if i < feature_names.len() {
+                feature_names[i].clone()
+            } else {
+                format!("Var_{}", i + 1)
+            };
+
+            variables_not_in.push(VariableNotInEquation {
+                label,
+                score: stat,
+                df: 1,
+                sig: p_val,
+            });
+        }
+    }
+
+    // 5. Remainder Test
+    let remainder_test = if !variables_not_in.is_empty() {
+        // PERBAIKAN: Gunakan Global Score Test untuk Block 0 agar sama dengan SPSS
+        if included_indices.is_empty() {
+            let prob_null = model.predictions[0];
+            let (g_chi, g_df, g_sig) =
+                score_test::calculate_global_score_test(full_x, y_vector, prob_null);
+
+            Some(RemainderTest {
+                chi_square: g_chi,
+                df: g_df,
+                sig: g_sig,
+            })
+        } else {
+            // Untuk step selanjutnya, gunakan sum sebagai aproksimasi standar
+            let total_score: f64 = variables_not_in.iter().map(|v| v.score).sum();
+            let total_df = variables_not_in.len() as i32;
+            let total_sig = if total_df > 0 {
+                1.0 - ChiSquared::new(total_df as f64).unwrap().cdf(total_score)
+            } else {
+                1.0
+            };
+            Some(RemainderTest {
+                chi_square: total_score,
+                df: total_df,
+                sig: total_sig,
+            })
+        }
     } else {
-        1.0
+        None
     };
 
-    let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test(x_matrix, y_vector, prob_null);
-
-    let overall_test = RemainderTest {
-        chi_square: g_chi,
-        df: g_df,
-        sig: g_sig,
-    };
-
-    Ok(LogisticResult {
+    StepDetail {
+        step,
+        action,
+        variable_changed,
         summary,
         classification_table: class_table,
-        variables: variables_in,
-        variables_not_in_equation: vars_not_in,
-        omni_tests: OmniTests {
-            chi_square: chi_sq_model,
-            df: df_model,
-            sig: omni_sig,
-        },
-        step_history: Some(history),
-        block_0_constant: block_0_row,
-        method_used: "Forward Wald".to_string(),
-        assumption_tests: None,
-        overall_remainder_test: Some(overall_test),
-    })
+        variables_in_equation: variables_in,
+        variables_not_in_equation: variables_not_in,
+        remainder_test,
+    }
 }

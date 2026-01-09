@@ -90,7 +90,6 @@ pub struct OmniTests {
     pub sig: f64,
 }
 
-// Tambahkan struct ini karena enter.rs mencoba mengimportnya
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OmnibusResult {
     pub chi_square: f64,
@@ -107,6 +106,18 @@ pub struct StepHistory {
     pub improvement_chi_sq: f64,
     pub model_log_likelihood: f64,
     pub nagelkerke_r2: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct StepDetail {
+    pub step: usize,
+    pub action: String, // "Start", "Entered", "Removed"
+    pub variable_changed: Option<String>, 
+    pub summary: ModelSummary,
+    pub classification_table: ClassificationTable,
+    pub variables_in_equation: Vec<VariableRow>,
+    pub variables_not_in_equation: Vec<VariableNotInEquation>,
+    pub remainder_test: Option<RemainderTest>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -139,6 +150,9 @@ pub struct LogisticResult {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub step_history: Option<Vec<StepHistory>>,
+
+    #[serde(rename = "steps_detail", skip_serializing_if = "Option::is_none")]
+    pub steps_detail: Option<Vec<StepDetail>>,
 
     pub method_used: String,
 
