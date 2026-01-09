@@ -2,11 +2,12 @@
 
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelSummary, OmniTests, StepHistory,
+    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepHistory,
     VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
 use crate::stats::score_test::calculate_score_test;
+use crate::stats::score_test;
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -31,8 +32,10 @@ pub fn run(
         config.convergence_threshold,
     )
     .map_err(|e| JsValue::from_str(&format!("IRLS Null Model Error: {}", e)))?;
-    
+
     let null_log_likelihood = null_model.final_log_likelihood;
+
+    let prob_null = null_model.predictions[0];
 
     // Data untuk Block 0 (Constant)
     let b0_val = null_model.beta[0];
@@ -56,7 +59,7 @@ pub fn run(
     // ---------------------------------------------------------
     // Backward harus dimulai dengan semua variabel di dalam model.
     // Ini adalah langkah yang hilang di kode sebelumnya.
-    
+
     let mut included_indices: Vec<usize> = (0..n_total_vars).collect();
     let mut steps_history: Vec<StepHistory> = Vec::new();
 
@@ -76,7 +79,7 @@ pub fn run(
         action: "Entered".to_string(), // SPSS menganggap semua variabel "Entered" di awal
         variable: "All Variables".to_string(),
         score_statistic: 0.0,
-        improvement_chi_sq: 0.0, 
+        improvement_chi_sq: 0.0,
         model_log_likelihood: current_model.final_log_likelihood,
         nagelkerke_r2: calculate_nagelkerke(
             null_log_likelihood,
@@ -92,7 +95,7 @@ pub fn run(
     // ---------------------------------------------------------
     loop {
         step_count += 1;
-        
+
         // Safety break
         if step_count > n_total_vars * 2 {
             break;
@@ -107,7 +110,6 @@ pub fn run(
         // Cek setiap variabel yang ada di model untuk dikeluarkan
         // Menggunakan metode CONDITIONAL: Bandingkan -2LL model saat ini vs model tanpa variabel tersebut
         for (k, &_original_idx) in included_indices.iter().enumerate() {
-            
             // 1. Buat subset variabel TANPA variabel ke-k
             let mut temp_indices = included_indices.clone();
             temp_indices.remove(k);
@@ -126,8 +128,10 @@ pub fn run(
                 // Karena Current lebih kompleks, LL-nya lebih besar (kurang negatif).
                 // Maka -2LL Current lebih kecil dari -2LL Reduced.
                 // Selisih positif = (-2 * LL_reduced) - (-2 * LL_current)
-                let deviance_diff = 2.0 * (current_model.final_log_likelihood - reduced_model.final_log_likelihood).abs();
-                
+                let deviance_diff = 2.0
+                    * (current_model.final_log_likelihood - reduced_model.final_log_likelihood)
+                        .abs();
+
                 // 4. Hitung Sig. of Change
                 let p_val_remove = 1.0 - chi_dist_1df.cdf(deviance_diff);
 
@@ -144,7 +148,7 @@ pub fn run(
         // Eksekusi Penghapusan
         if let Some(loc) = worst_idx_loc {
             let removed_var_idx = included_indices[loc];
-            
+
             // Hapus dari daftar
             included_indices.remove(loc);
 
@@ -211,6 +215,8 @@ pub fn run(
         steps_history,
         block_0_row,
         variables_not_in_equation_list,
+        x_matrix, 
+        prob_null
     )
 }
 
@@ -227,10 +233,16 @@ fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize
 fn calculate_nagelkerke(null_ll: f64, model_ll: f64, n: usize) -> f64 {
     let l0 = (-2.0 * null_ll).exp();
     let l1 = (-2.0 * model_ll).exp();
-    if l0 <= 0.0 || l1 <= 0.0 { return 0.0; }
+    if l0 <= 0.0 || l1 <= 0.0 {
+        return 0.0;
+    }
     let cox_snell = 1.0 - (l0 / l1).powf(2.0 / n as f64);
     let max_r2 = 1.0 - l0.powf(2.0 / n as f64);
-    if max_r2 == 0.0 { 0.0 } else { cox_snell / max_r2 }
+    if max_r2 == 0.0 {
+        0.0
+    } else {
+        cox_snell / max_r2
+    }
 }
 
 fn format_result(
@@ -241,6 +253,8 @@ fn format_result(
     history: Vec<StepHistory>,
     block_0_row: VariableRow,
     vars_not_in: Vec<VariableNotInEquation>,
+    x_matrix: &DMatrix<f64>, 
+    prob_null: f64
 ) -> Result<LogisticResult, JsValue> {
     let n = y_vector.len();
     let chi_dist = ChiSquared::new(1.0).unwrap();
@@ -294,7 +308,10 @@ fn format_result(
     }
 
     // Classification Table
-    let mut tn = 0; let mut fp = 0; let mut fn_ = 0; let mut tp = 0;
+    let mut tn = 0;
+    let mut fp = 0;
+    let mut fn_ = 0;
+    let mut tp = 0;
     for (i, &pred) in model.predictions.iter().enumerate() {
         let actual = y_vector[i] > 0.5;
         let predicted = pred > 0.5;
@@ -309,10 +326,18 @@ fn format_result(
     let class_table = ClassificationTable {
         observed_0_predicted_0: tn,
         observed_0_predicted_1: fp,
-        percentage_correct_0: if (tn + fp) > 0 { tn as f64 / (tn + fp) as f64 * 100.0 } else { 0.0 },
+        percentage_correct_0: if (tn + fp) > 0 {
+            tn as f64 / (tn + fp) as f64 * 100.0
+        } else {
+            0.0
+        },
         observed_1_predicted_0: fn_,
         observed_1_predicted_1: tp,
-        percentage_correct_1: if (tp + fn_) > 0 { tp as f64 / (tp + fn_) as f64 * 100.0 } else { 0.0 },
+        percentage_correct_1: if (tp + fn_) > 0 {
+            tp as f64 / (tp + fn_) as f64 * 100.0
+        } else {
+            0.0
+        },
         overall_percentage: (tn + tp + fn_ + fp) as f64 / n as f64 * 100.0,
     };
 
@@ -321,17 +346,32 @@ fn format_result(
     let df_model = included_indices.len() as i32;
     let omni_sig = if df_model > 0 {
         1.0 - ChiSquared::new(df_model as f64).unwrap().cdf(chi_sq_model)
-    } else { 1.0 };
+    } else {
+        1.0
+    };
+
+    let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test(x_matrix, y_vector, prob_null);
+
+    let overall_test = RemainderTest {
+        chi_square: g_chi,
+        df: g_df,
+        sig: g_sig,
+    };
 
     Ok(LogisticResult {
         summary,
         classification_table: class_table,
         variables: variables_in,
         variables_not_in_equation: vars_not_in,
-        omni_tests: OmniTests { chi_square: chi_sq_model, df: df_model, sig: omni_sig },
+        omni_tests: OmniTests {
+            chi_square: chi_sq_model,
+            df: df_model,
+            sig: omni_sig,
+        },
         step_history: Some(history),
         block_0_constant: block_0_row,
         method_used: "Backward Conditional".to_string(),
         assumption_tests: None,
+        overall_remainder_test: Some(overall_test),
     })
 }

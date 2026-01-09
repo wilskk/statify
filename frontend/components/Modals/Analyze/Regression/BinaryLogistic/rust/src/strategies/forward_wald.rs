@@ -1,10 +1,11 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelSummary, OmniTests, StepHistory,
+    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepHistory,
     VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
 use crate::stats::score_test::calculate_score_test;
+use crate::stats::score_test;
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -32,6 +33,8 @@ pub fn run(
     .map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Model): {}", e)))?;
 
     let null_log_likelihood = current_model.final_log_likelihood;
+
+    let prob_null = current_model.predictions[0];
 
     // Data Block 0 Constant
     let b0_val = current_model.beta[0];
@@ -127,7 +130,7 @@ pub fn run(
         // ---------------------------------------------------------
         // Cek variabel yang sudah ada (kecuali Intercept)
         // Jika p-value Wald > p_removal, buang.
-        
+
         if included_indices.len() > 0 {
             let mut worst_idx_loc = None;
             let mut max_p_val = -1.0;
@@ -144,7 +147,7 @@ pub fn run(
                 let beta_idx = k + 1;
                 let b = current_model.beta[beta_idx];
                 let se = current_model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
-                
+
                 // Rumus Wald: (B / SE)^2
                 let wald = (b / se).powi(2);
                 let p_val_remove = 1.0 - chi_dist_1df.cdf(wald);
@@ -163,14 +166,14 @@ pub fn run(
 
                 // Re-fit model setelah penghapusan
                 let reduced_x = build_design_matrix(x_matrix, &included_indices, n_samples);
-                
+
                 if let Ok(reduced_model) = fit(
                     &reduced_x,
                     y_vector,
                     config.max_iterations,
                     config.convergence_threshold,
                 ) {
-                     steps_history.push(StepHistory {
+                    steps_history.push(StepHistory {
                         step: step_count,
                         action: "Removed".to_string(),
                         variable: format!("Var_{}", removed_var_idx + 1),
@@ -183,7 +186,7 @@ pub fn run(
                             n_samples,
                         ),
                     });
-                    
+
                     current_model = reduced_model;
                 }
             }
@@ -227,6 +230,8 @@ pub fn run(
         steps_history,
         block_0_row,
         variables_not_in_equation_list,
+        x_matrix,
+        prob_null
     )
 }
 
@@ -243,10 +248,16 @@ fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize
 fn calculate_nagelkerke(null_ll: f64, model_ll: f64, n: usize) -> f64 {
     let l0 = (-2.0 * null_ll).exp();
     let l1 = (-2.0 * model_ll).exp();
-    if l0 <= 0.0 || l1 <= 0.0 { return 0.0; }
+    if l0 <= 0.0 || l1 <= 0.0 {
+        return 0.0;
+    }
     let cox_snell = 1.0 - (l0 / l1).powf(2.0 / n as f64);
     let max_r2 = 1.0 - l0.powf(2.0 / n as f64);
-    if max_r2 == 0.0 { 0.0 } else { cox_snell / max_r2 }
+    if max_r2 == 0.0 {
+        0.0
+    } else {
+        cox_snell / max_r2
+    }
 }
 
 fn format_result(
@@ -257,6 +268,8 @@ fn format_result(
     history: Vec<StepHistory>,
     block_0_row: VariableRow,
     vars_not_in: Vec<VariableNotInEquation>,
+    x_matrix: &DMatrix<f64>,
+    prob_null: f64
 ) -> Result<LogisticResult, JsValue> {
     let n = y_vector.len();
     let chi_dist = ChiSquared::new(1.0).unwrap();
@@ -270,7 +283,7 @@ fn format_result(
     };
 
     let mut variables_in = Vec::new();
-    
+
     // Intercept
     let b_int = model.beta[0];
     let se_int = model.covariance_matrix[(0, 0)].sqrt();
@@ -309,7 +322,10 @@ fn format_result(
     }
 
     // Classification Table
-    let mut tn = 0; let mut fp = 0; let mut fn_ = 0; let mut tp = 0;
+    let mut tn = 0;
+    let mut fp = 0;
+    let mut fn_ = 0;
+    let mut tp = 0;
     for (i, &pred) in model.predictions.iter().enumerate() {
         let actual = y_vector[i] > 0.5;
         let predicted = pred > 0.5;
@@ -324,10 +340,18 @@ fn format_result(
     let class_table = ClassificationTable {
         observed_0_predicted_0: tn,
         observed_0_predicted_1: fp,
-        percentage_correct_0: if (tn + fp) > 0 { tn as f64 / (tn + fp) as f64 * 100.0 } else { 0.0 },
+        percentage_correct_0: if (tn + fp) > 0 {
+            tn as f64 / (tn + fp) as f64 * 100.0
+        } else {
+            0.0
+        },
         observed_1_predicted_0: fn_,
         observed_1_predicted_1: tp,
-        percentage_correct_1: if (tp + fn_) > 0 { tp as f64 / (tp + fn_) as f64 * 100.0 } else { 0.0 },
+        percentage_correct_1: if (tp + fn_) > 0 {
+            tp as f64 / (tp + fn_) as f64 * 100.0
+        } else {
+            0.0
+        },
         overall_percentage: (tn + tp + fn_ + fp) as f64 / n as f64 * 100.0,
     };
 
@@ -336,17 +360,32 @@ fn format_result(
     let df_model = included_indices.len() as i32;
     let omni_sig = if df_model > 0 {
         1.0 - ChiSquared::new(df_model as f64).unwrap().cdf(chi_sq_model)
-    } else { 1.0 };
+    } else {
+        1.0
+    };
+
+    let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test(x_matrix, y_vector, prob_null);
+
+    let overall_test = RemainderTest {
+        chi_square: g_chi,
+        df: g_df,
+        sig: g_sig,
+    };
 
     Ok(LogisticResult {
         summary,
         classification_table: class_table,
         variables: variables_in,
         variables_not_in_equation: vars_not_in,
-        omni_tests: OmniTests { chi_square: chi_sq_model, df: df_model, sig: omni_sig },
+        omni_tests: OmniTests {
+            chi_square: chi_sq_model,
+            df: df_model,
+            sig: omni_sig,
+        },
         step_history: Some(history),
         block_0_constant: block_0_row,
-        method_used: "Forward Wald".to_string(), 
+        method_used: "Forward Wald".to_string(),
         assumption_tests: None,
+        overall_remainder_test: Some(overall_test),
     })
 }

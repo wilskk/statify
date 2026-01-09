@@ -3,8 +3,10 @@ use statrs::distribution::{ChiSquared, ContinuousCDF};
 use std::error::Error;
 
 use crate::models::config::LogisticConfig;
-use crate::models::result::{LogisticResult, OmniTests, VariableNotInEquation, VariableRow};
-use crate::stats::{irls, metrics, table};
+use crate::models::result::{
+    LogisticResult, OmniTests, RemainderTest, VariableNotInEquation, VariableRow,
+};
+use crate::stats::{irls, metrics, score_test, table};
 
 pub fn run(
     x_raw: &DMatrix<f64>,
@@ -173,6 +175,14 @@ pub fn run(
         });
     }
 
+    let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test(x_raw, y_vector, prob_null);
+
+    let overall_test = RemainderTest {
+        chi_square: g_chi,
+        df: g_df,
+        sig: g_sig,
+    };
+
     Ok(LogisticResult {
         summary: model_summary,
         classification_table,
@@ -183,5 +193,6 @@ pub fn run(
         step_history: None,
         method_used: "Enter".to_string(),
         assumption_tests: None,
+        overall_remainder_test: Some(overall_test),
     })
 }

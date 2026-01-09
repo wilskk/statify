@@ -1,10 +1,11 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelSummary, OmniTests, StepHistory,
+    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepHistory,
     VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
 use crate::stats::score_test::calculate_score_test;
+use crate::stats::score_test;
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -33,6 +34,8 @@ pub fn run(
     .map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Model): {}", e)))?;
 
     let null_log_likelihood = current_model.final_log_likelihood;
+
+    let prob_null = current_model.predictions[0];
 
     // Siapkan Data Block 0 Constant
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
@@ -269,6 +272,8 @@ pub fn run(
         steps_history,
         block_0_row,
         variables_not_in_equation_list,
+        x_matrix,
+        prob_null
     )
 }
 
@@ -308,6 +313,8 @@ fn format_result(
     history: Vec<StepHistory>,
     block_0_row: VariableRow,
     vars_not_in: Vec<VariableNotInEquation>,
+    x_matrix: &DMatrix<f64>,
+    prob_null: f64,
 ) -> Result<LogisticResult, JsValue> {
     let n = y_vector.len();
     let chi_dist = ChiSquared::new(1.0).unwrap();
@@ -404,6 +411,14 @@ fn format_result(
         1.0
     };
 
+    let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test(x_matrix, y_vector, prob_null);
+
+    let overall_test = RemainderTest {
+        chi_square: g_chi,
+        df: g_df,
+        sig: g_sig,
+    };
+
     Ok(LogisticResult {
         summary,
         classification_table: class_table,
@@ -418,5 +433,6 @@ fn format_result(
         block_0_constant: block_0_row,
         method_used: "Forward LR".to_string(),
         assumption_tests: None,
+        overall_remainder_test: Some(overall_test),
     })
 }
