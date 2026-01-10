@@ -87,6 +87,16 @@ pub fn calculate_binary_logistic(
             strategies::backward_conditional::run(&x_matrix, &y_vector, &config, &feature_names)
                 .map_err(|e| api_error(&format!("Error di Metode Backward Conditional: {:?}", e)))?
         }
+
+        RegressionMethod::BackwardLR => {
+            strategies::backward_lr::run(&x_matrix, &y_vector, &config, &feature_names)
+                .map_err(|e| api_error(&format!("Error di Metode Backward LR: {:?}", e)))?
+        }
+
+        RegressionMethod::BackwardWald => {
+            strategies::backward_wald::run(&x_matrix, &y_vector, &config, &feature_names)
+                .map_err(|e| api_error(&format!("Error di Metode Backward Wald: {:?}", e)))?
+        }
     };
 
     // E. Return Hasil

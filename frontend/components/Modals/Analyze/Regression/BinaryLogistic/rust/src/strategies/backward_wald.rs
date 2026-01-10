@@ -1,7 +1,7 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelIfTermRemovedRow, ModelSummary, OmniTests,
-    RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow,
+    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail,
+    StepHistory, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
 use crate::stats::score_test::calculate_score_test;
@@ -20,7 +20,7 @@ pub fn run(
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
 
     // ========================================================================
-    // BLOCK 0: NULL MODEL (ANALYTICAL APPROACH for SPSS PRECISION)
+    // BLOCK 0: NULL MODEL (ANALYTICAL APPROACH)
     // ========================================================================
     let sum_y: f64 = y_vector.sum();
     let n_1 = sum_y;
@@ -32,19 +32,16 @@ pub fn run(
         ));
     }
 
-    // B0 = ln(n_1 / n_0)
+    // B0 & SE
     let b0_val = (n_1 / n_0).ln();
-    // SE = sqrt( 1/n1 + 1/n0 )
     let b0_se = (1.0 / n_1 + 1.0 / n_0).sqrt();
     let b0_wald = (b0_val / b0_se).powi(2);
     let b0_sig = 1.0 - chi_dist_1df.cdf(b0_wald);
 
-    // LL0 = n1 * ln(p) + n0 * ln(1-p)
+    // LL0
     let p_null = n_1 / (n_samples as f64);
     let null_log_likelihood = n_1 * p_null.ln() + n_0 * (1.0 - p_null).ln();
 
-    // Classification Table Block 0 (Majority Class)
-    let predicted_class_null = if n_1 > n_0 { 1.0 } else { 0.0 };
     let block_0_row = VariableRow {
         label: "Constant".to_string(),
         b: b0_val,
@@ -57,7 +54,7 @@ pub fn run(
         upper_ci: (b0_val + 1.96 * b0_se).exp(),
     };
 
-    // Variables Not in Equation Block 0 (Score Tests)
+    // Block 0: Variables Not in Equation (Score Tests)
     let null_residuals = y_vector.map(|y| y - p_null);
     let null_weight_scalar = p_null * (1.0 - p_null);
     let null_weights = DVector::from_element(n_samples, null_weight_scalar);
@@ -77,7 +74,6 @@ pub fn run(
             &candidate_col,
             &null_cov_matrix,
         );
-
         let label = if i < feature_names.len() {
             feature_names[i].clone()
         } else {
@@ -125,7 +121,7 @@ pub fn run(
     });
 
     // ========================================================================
-    // BLOCK 1: BACKWARD ELIMINATION
+    // BLOCK 1: BACKWARD WALD (START WITH FULL MODEL)
     // ========================================================================
 
     // --- STEP 1 (Start): FULL MODEL ---
@@ -143,14 +139,7 @@ pub fn run(
     )
     .map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
 
-    // Tracker untuk Step Chi-Square
-    // Kita butuh Model Chi-Square dari step sebelumnya untuk menghitung selisih.
-    // Model Chi-Square = (-2LL Null) - (-2LL Current) = 2 * (LL Current - LL Null)
-    // Untuk Step 1 (Full Model), previousnya adalah Null Model? Tidak, Step 1 adalah baseline backward.
-    // Di output SPSS Backward, Step 1 tidak menampilkan "Step" statistic yang negatif,
-    // karena Step 1 adalah "Entered All Variables".
-
-    // Namun untuk Step 2 dst, Prev Model adalah model sebelum variabel dibuang.
+    // Tracker Step Chi-Square (-2LL awal vs Null)
     let mut prev_model_chi_sq = 2.0 * (current_model.final_log_likelihood - null_log_likelihood);
 
     // Snapshot Step 1 (Full Model)
@@ -163,7 +152,7 @@ pub fn run(
         y_vector,
         &included_indices,
         null_log_likelihood,
-        0.0, // No step chi-sq for step 1 start
+        0.0,
         feature_names,
         config,
         n_samples,
@@ -172,52 +161,33 @@ pub fn run(
 
     let mut step_count = 1;
 
-    // --- LOOP ELIMINASI ---
+    // --- LOOP ELIMINASI (WALD CRITERION) ---
     loop {
         step_count += 1;
         let mut worst_idx_loc: Option<usize> = None;
         let mut max_p_val = -1.0;
-        let mut worst_change_val = 0.0;
+        let mut wald_statistic_of_worst = 0.0;
 
-        // 1. Cek Candidate Removal (Likelihood Ratio Test)
+        // 1. Cek Candidate Removal berdasarkan WALD STATISTIC dari model saat ini
         if included_indices.len() > 0 {
             for (loc, &_original_idx) in included_indices.iter().enumerate() {
-                let mut temp_indices = included_indices.clone();
-                temp_indices.remove(loc);
+                // Di matrix X, beta[0] adalah intercept.
+                // beta[1] adalah included_indices[0], beta[2] adalah included_indices[1], dst.
+                let beta_idx = loc + 1;
 
-                let reduced_ll;
-                if temp_indices.is_empty() {
-                    reduced_ll = null_log_likelihood;
-                } else {
-                    let reduced_x = build_design_matrix(x_matrix, &temp_indices, n_samples);
-                    if let Ok(temp_model) = fit(
-                        &reduced_x,
-                        y_vector,
-                        config.max_iterations,
-                        config.convergence_threshold,
-                    ) {
-                        reduced_ll = temp_model.final_log_likelihood;
-                    } else {
-                        continue;
-                    }
-                }
+                let b = current_model.beta[beta_idx];
+                let se = current_model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
 
-                // Change = -2LL(Reduced) - -2LL(Full/Current)
-                // -2LL Reduced > -2LL Full (Model makin buruk)
-                // Change = 2 * (Full_LL - Reduced_LL).abs()
-                // Ini untuk P-Value (harus positif untuk lookup ChiSq).
-                let change_abs = 2.0 * (current_model.final_log_likelihood - reduced_ll).abs();
+                // Wald Statistic = (B / SE)^2
+                let wald = (b / se).powi(2);
+                let p_val_remove = 1.0 - chi_dist_1df.cdf(wald);
 
-                let p_val_remove = if change_abs < 1e-9 {
-                    1.0
-                } else {
-                    1.0 - chi_dist_1df.cdf(change_abs)
-                };
-
+                // Cari variabel dengan P-Value terbesar (paling tidak signifikan)
+                // Syarat: P-value harus > p_removal agar dipertimbangkan untuk dibuang
                 if p_val_remove > max_p_val {
                     max_p_val = p_val_remove;
                     worst_idx_loc = Some(loc);
-                    worst_change_val = change_abs;
+                    wald_statistic_of_worst = wald;
                 }
             }
         }
@@ -231,6 +201,7 @@ pub fn run(
 
                 included_indices.remove(loc);
 
+                // Re-fit model TANPA variabel tersebut
                 let reduced_x = build_design_matrix(x_matrix, &included_indices, n_samples);
                 if let Ok(new_model) = fit(
                     &reduced_x,
@@ -238,19 +209,15 @@ pub fn run(
                     config.max_iterations,
                     config.convergence_threshold,
                 ) {
-                    // Update Model
                     current_model = new_model;
 
-                    // Hitung Statistik Step (Negative Chi-Square)
-                    // Step Chi = Model Chi Sq (New) - Model Chi Sq (Prev)
+                    // Hitung Statistik Step (Change in -2LL akibat penghapusan)
+                    // Meskipun kriterianya Wald, history tetap mencatat perubahan Chi-Square model
                     let current_model_chi_sq =
                         2.0 * (current_model.final_log_likelihood - null_log_likelihood);
                     let step_chi_sq_val = current_model_chi_sq - prev_model_chi_sq;
-
-                    // Update Prev Tracker untuk iterasi berikutnya
                     prev_model_chi_sq = current_model_chi_sq;
 
-                    // R-Squares
                     let (cox, nagel) = calculate_r_squares(
                         null_log_likelihood,
                         current_model.final_log_likelihood,
@@ -261,13 +228,13 @@ pub fn run(
                         step: step_count,
                         action: "Removed".to_string(),
                         variable: removed_var_name.clone(),
-                        score_statistic: 0.0,
-                        improvement_chi_sq: step_chi_sq_val, // Ini akan negatif
+                        score_statistic: 0.0,                // Tidak relevan
+                        improvement_chi_sq: step_chi_sq_val, // Real change in -2LL
                         model_log_likelihood: current_model.final_log_likelihood,
                         nagelkerke_r2: nagel,
                     });
 
-                    // Snapshot
+                    // Snapshot Step
                     let step_detail = calculate_step_snapshot(
                         step_count,
                         "Removed".to_string(),
@@ -277,7 +244,7 @@ pub fn run(
                         y_vector,
                         &included_indices,
                         null_log_likelihood,
-                        step_chi_sq_val, // Pass raw diff (negative)
+                        step_chi_sq_val,
                         feature_names,
                         config,
                         n_samples,
@@ -319,7 +286,7 @@ pub fn run(
         omni_tests: omni,
         step_history: Some(steps_history),
         steps_detail: Some(steps_details),
-        method_used: "Backward Conditional".to_string(),
+        method_used: "Backward Wald".to_string(),
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
     })
@@ -335,25 +302,18 @@ fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize
     DMatrix::from_columns(&columns)
 }
 
-// FIX: Helper yang mengembalikan Cox & Snell DAN Nagelkerke secara terpisah
 fn calculate_r_squares(null_ll: f64, model_ll: f64, n: usize) -> (f64, f64) {
-    // Cox & Snell = 1 - (L0/LM)^(2/n) = 1 - exp( (2/n) * (LL0 - LLM) )
     let ratio_exponent = (2.0 / n as f64) * (null_ll - model_ll);
     let cox_snell = 1.0 - ratio_exponent.exp();
-
-    // Max R2 = 1 - L0^(2/n) = 1 - exp( (2/n) * LL0 )
     let max_r2 = 1.0 - ((2.0 / n as f64) * null_ll).exp();
-
     let nagelkerke = if max_r2 > 1e-12 {
         cox_snell / max_r2
     } else {
         0.0
     };
-
     (cox_snell, nagelkerke)
 }
 
-// --- SNAPSHOT GENERATOR ---
 fn calculate_step_snapshot(
     step: usize,
     action: String,
@@ -363,7 +323,7 @@ fn calculate_step_snapshot(
     y_vector: &DVector<f64>,
     included_indices: &[usize],
     null_ll: f64,
-    step_chi_sq_val: f64, // Parameter baru: Nilai Chi-Square Langkah (bisa negatif)
+    step_chi_sq_val: f64,
     feature_names: &[String],
     config: &LogisticConfig,
     n_samples: usize,
@@ -371,7 +331,6 @@ fn calculate_step_snapshot(
     let n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
 
-    // 1. Model Summary (Fix: Gunakan helper baru)
     let (cox, nagel) = calculate_r_squares(null_ll, model.final_log_likelihood, n_samples);
     let summary = ModelSummary {
         log_likelihood: model.final_log_likelihood,
@@ -381,7 +340,6 @@ fn calculate_step_snapshot(
         iterations: model.iterations,
     };
 
-    // 2. Omnibus Tests (Block/Model vs Null) - Always Positive
     let chi_sq_model = 2.0 * (model.final_log_likelihood - null_ll).abs();
     let df_model = included_indices.len() as i32;
     let sig_model = if df_model > 0 {
@@ -395,9 +353,6 @@ fn calculate_step_snapshot(
         sig: sig_model,
     };
 
-    // 3. Step Omnibus (Change) - Can be Negative in Backward
-    // DF Step = 1 (karena membuang 1 variabel per step)
-    // Sig Step = P-value of the change (always based on abs value)
     let sig_step = if step_chi_sq_val.abs() > 1e-9 {
         1.0 - chi_dist_1df.cdf(step_chi_sq_val.abs())
     } else {
@@ -405,12 +360,9 @@ fn calculate_step_snapshot(
             0.0
         } else {
             1.0
-        } // Step 1 is full model, sig usually < .001 implies 0.0
+        }
     };
 
-    // Adjustment khusus Step 1 (Full Model):
-    // Di SPSS, Step 1 Backward punya Step ChiSq = Model ChiSq (Positif).
-    // Step 2 dst (Removal) punya Step ChiSq Negatif.
     let final_step_chi = if step == 1 {
         chi_sq_model
     } else {
@@ -425,19 +377,10 @@ fn calculate_step_snapshot(
         sig: final_step_sig,
     };
 
-    // 4. Model If Term Removed
-    let model_if_term_removed = calculate_model_if_term_removed(
-        model.final_log_likelihood,
-        full_x,
-        y_vector,
-        included_indices,
-        null_ll,
-        config,
-        feature_names,
-        n_samples,
-    );
+    // NOTE: Backward Wald tidak menampilkan "Model If Term Removed" karena
+    // kriterianya bukan Likelihood Ratio Change. Jadi kita set None.
+    let model_if_term_removed = None;
 
-    // 5. Classification Table
     let mut tn = 0;
     let mut fp = 0;
     let mut fn_ = 0;
@@ -471,7 +414,6 @@ fn calculate_step_snapshot(
         overall_percentage: (tn + tp + fn_ + fp) as f64 / n_samples as f64 * 100.0,
     };
 
-    // 6. Variables In Equation
     let mut variables_in = Vec::new();
     let b_int = model.beta[0];
     let se_int = model.covariance_matrix[(0, 0)].sqrt();
@@ -512,7 +454,6 @@ fn calculate_step_snapshot(
         });
     }
 
-    // 7. Variables Not In Equation
     let mut variables_not_in = Vec::new();
     let current_design_matrix = build_design_matrix(full_x, included_indices, n_samples);
 
@@ -552,78 +493,14 @@ fn calculate_step_snapshot(
         classification_table: class_table,
         variables_in_equation: variables_in,
         variables_not_in_equation: variables_not_in,
-        model_if_term_removed,
+        model_if_term_removed, // NONE
         remainder_test,
         omni_tests: Some(omni_tests_model),
         step_omni_tests: Some(omni_tests_step),
     }
 }
 
-// --- HELPER UNTUK MODEL IF TERM REMOVED ---
-fn calculate_model_if_term_removed(
-    current_model_ll: f64,
-    x_matrix: &DMatrix<f64>,
-    y_vector: &DVector<f64>,
-    included_indices: &[usize],
-    null_log_likelihood: f64,
-    config: &LogisticConfig,
-    feature_names: &[String],
-    n_samples: usize,
-) -> Option<Vec<ModelIfTermRemovedRow>> {
-    if included_indices.is_empty() {
-        return None;
-    }
-    let mut rows = Vec::new();
-    let chi_dist = ChiSquared::new(1.0).unwrap();
-
-    for (i, &idx_to_remove) in included_indices.iter().enumerate() {
-        let mut subset_indices = included_indices.to_vec();
-        subset_indices.remove(i);
-
-        let reduced_ll;
-        if subset_indices.is_empty() {
-            reduced_ll = null_log_likelihood;
-        } else {
-            let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples);
-            if let Ok(reduced_model) = fit(
-                &x_subset,
-                y_vector,
-                config.max_iterations,
-                config.convergence_threshold,
-            ) {
-                reduced_ll = reduced_model.final_log_likelihood;
-            } else {
-                continue;
-            }
-        }
-
-        let change_val = 2.0 * (current_model_ll - reduced_ll).abs();
-        let sig = if change_val < 1e-9 {
-            1.0
-        } else {
-            1.0 - chi_dist.cdf(change_val)
-        };
-
-        let label = if idx_to_remove < feature_names.len() {
-            feature_names[idx_to_remove].clone()
-        } else {
-            format!("Var_{}", idx_to_remove)
-        };
-
-        rows.push(ModelIfTermRemovedRow {
-            label,
-            model_log_likelihood: reduced_ll,
-            change_in_neg2ll: change_val,
-            df: 1,
-            sig_change: sig,
-        });
-    }
-    if rows.is_empty() {
-        None
-    } else {
-        Some(rows)
-    }
-}
+// ... helper calculate_model_if_term_removed dihapus ...
 
 fn calculate_overall_remainder_stats(
     full_x: &DMatrix<f64>,

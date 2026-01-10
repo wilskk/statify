@@ -263,6 +263,7 @@ pub fn run(
         variables: variables_rows,
         variables_not_in_equation: vars_not_in_eq_null,
         block_0_constant,
+        block_0_variables_not_in: None,
         omni_tests,
         step_history: None,
         steps_detail: Some(steps_details),
