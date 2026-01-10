@@ -265,6 +265,7 @@ pub fn run(
         step_history: Some(steps_history),
         steps_detail: Some(steps_details),
         block_0_constant: block_0_row,
+        block_0_variables_not_in: None,
         method_used: "Forward LR".to_string(),
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,

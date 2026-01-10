@@ -169,6 +169,9 @@ pub struct LogisticResult {
     #[serde(rename = "block_0_constant")]
     pub block_0_constant: VariableRow,
 
+    #[serde(rename = "block_0_variables_not_in", skip_serializing_if = "Option::is_none")]
+    pub block_0_variables_not_in: Option<Vec<VariableNotInEquation>>,
+
     pub omni_tests: OmniTests,
 
     #[serde(skip_serializing_if = "Option::is_none")]
