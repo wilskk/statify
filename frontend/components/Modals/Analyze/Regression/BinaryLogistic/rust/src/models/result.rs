@@ -43,7 +43,6 @@ pub struct ModelSummary {
     pub log_likelihood: f64,
     pub cox_snell_r_square: f64,
     pub nagelkerke_r_square: f64,
-    // Field tambahan yang menyebabkan error "missing fields"
     pub converged: bool,
     pub iterations: usize,
 }
@@ -83,6 +82,16 @@ pub struct VariableNotInEquation {
     pub sig: f64,
 }
 
+// --- BARU: Struktur untuk Model if Term Removed ---
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ModelIfTermRemovedRow {
+    pub label: String,
+    pub model_log_likelihood: f64, // LL model jika variabel ini dibuang
+    pub change_in_neg2ll: f64,     // Selisih -2LL
+    pub df: i32,
+    pub sig_change: f64, // Signifikansi perubahan
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OmniTests {
     pub chi_square: f64,
@@ -112,12 +121,23 @@ pub struct StepHistory {
 pub struct StepDetail {
     pub step: usize,
     pub action: String, // "Start", "Entered", "Removed"
-    pub variable_changed: Option<String>, 
+    pub variable_changed: Option<String>,
     pub summary: ModelSummary,
     pub classification_table: ClassificationTable,
     pub variables_in_equation: Vec<VariableRow>,
     pub variables_not_in_equation: Vec<VariableNotInEquation>,
+
+    // --- BARU: Field untuk Model if Term Removed ---
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_if_term_removed: Option<Vec<ModelIfTermRemovedRow>>,
+
     pub remainder_test: Option<RemainderTest>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub omni_tests: Option<OmniTests>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub step_omni_tests: Option<OmniTests>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -140,7 +160,10 @@ pub struct LogisticResult {
     #[serde(rename = "variables_not_in_equation")]
     pub variables_not_in_equation: Vec<VariableNotInEquation>,
 
-    #[serde(rename = "overall_remainder_test", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "overall_remainder_test",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub overall_remainder_test: Option<RemainderTest>,
 
     #[serde(rename = "block_0_constant")]
