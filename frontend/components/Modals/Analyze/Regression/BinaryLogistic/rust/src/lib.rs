@@ -4,7 +4,6 @@ pub mod strategies;
 pub mod utils;
 
 use models::config::{LogisticConfig, RegressionMethod};
-// PERBAIKAN: Menghapus unused imports (BoxTidwellRow, VifRow)
 use nalgebra::{DMatrix, DVector};
 use wasm_bindgen::prelude::*;
 

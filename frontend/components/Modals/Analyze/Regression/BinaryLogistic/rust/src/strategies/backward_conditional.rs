@@ -1,10 +1,9 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail,
-    StepHistory, VariableNotInEquation, VariableRow,
+    ClassificationTable, LogisticResult, ModelIfTermRemovedRow, ModelSummary, OmniTests,
+    RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
-use crate::stats::score_test; // Import modul score_test untuk global test jika diperlukan
 use crate::stats::score_test::calculate_score_test;
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
@@ -14,7 +13,7 @@ pub fn run(
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
     config: &LogisticConfig,
-    feature_names: &[String], // <-- ARGUMEN BARU
+    feature_names: &[String],
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
@@ -36,7 +35,7 @@ pub fn run(
     )
     .map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
 
-    // Perlu hitung null_ll hanya untuk R Square dan perbandingan
+    // Perlu hitung null_ll hanya untuk R Square dan perbandingan Omnibus
     let null_x = DMatrix::from_element(n_samples, 1, 1.0);
     let null_model = fit(
         &null_x,
@@ -47,8 +46,12 @@ pub fn run(
     .map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Calculation): {}", e)))?;
     let null_log_likelihood = null_model.final_log_likelihood;
 
+    // Tracking untuk Step Chi-Square (Backward dimulai dari Full Model)
+    let mut prev_log_likelihood = current_model.final_log_likelihood;
+    let mut prev_n_vars = included_indices.len();
+
     // --- CAPTURE STEP 0 (Variables Entered All) ---
-    // Di backward, step 0 adalah model penuh
+    // Di backward, step 0 adalah model penuh.
     let step0_detail = calculate_step_snapshot(
         0,
         "Start".to_string(), // Langkah awal Backward adalah Full Model
@@ -58,11 +61,14 @@ pub fn run(
         y_vector,
         &included_indices,
         null_log_likelihood,
-        feature_names, // Pass feature names
+        null_log_likelihood, // Compare vs Null/Self untuk initial step
+        0,                   // Compare vs 0 vars difference
+        feature_names,
+        config, // Pass config for re-fitting
     );
     steps_details.push(step0_detail);
 
-    // Untuk backward compatibility block 0 (Null Model), kita gunakan statistik dari null_model
+    // Untuk backward compatibility block 0 (Null Model constant), kita gunakan statistik dari null_model
     let b0_val = null_model.beta[0];
     let b0_se = null_model.covariance_matrix[(0, 0)].sqrt();
     let b0_wald = (b0_val / b0_se).powi(2);
@@ -90,7 +96,6 @@ pub fn run(
 
         // Cek variabel yang ada untuk dihapus (Conditional / Wald)
         if included_indices.len() > 0 {
-            // Kita bisa set min vars retained here jika perlu
             for (k, &_original_idx) in included_indices.iter().enumerate() {
                 let beta_idx = k + 1; // skip intercept
                 let b = current_model.beta[beta_idx];
@@ -109,6 +114,11 @@ pub fn run(
         // Jika ada kandidat untuk dihapus
         if let Some(loc) = worst_idx_loc {
             let removed_var_idx = included_indices[loc];
+
+            // Update tracker sebelum menghapus
+            prev_log_likelihood = current_model.final_log_likelihood;
+            prev_n_vars = included_indices.len();
+
             included_indices.remove(loc);
 
             // Re-fit model
@@ -123,7 +133,7 @@ pub fn run(
                 steps_history.push(StepHistory {
                     step: step_count,
                     action: "Removed".to_string(),
-                    variable: feature_names[removed_var_idx].clone(), // GUNAKAN NAMA ASLI
+                    variable: feature_names[removed_var_idx].clone(),
                     score_statistic: 0.0,
                     improvement_chi_sq: wald_stat_removed,
                     model_log_likelihood: reduced_model.final_log_likelihood,
@@ -140,13 +150,16 @@ pub fn run(
                 let step_detail = calculate_step_snapshot(
                     step_count,
                     "Removed".to_string(),
-                    Some(feature_names[removed_var_idx].clone()), // NAMA ASLI
+                    Some(feature_names[removed_var_idx].clone()),
                     &current_model,
                     x_matrix,
                     y_vector,
                     &included_indices,
                     null_log_likelihood,
+                    prev_log_likelihood,
+                    prev_n_vars,
                     feature_names,
+                    config,
                 );
                 steps_details.push(step_detail);
             } else {
@@ -160,6 +173,7 @@ pub fn run(
 
     let final_step = steps_details.last().unwrap().clone();
 
+    // Final Omnibus Tests
     let chi_sq_model = 2.0 * (current_model.final_log_likelihood - null_log_likelihood).abs();
     let df_model = included_indices.len() as i32;
     let omni_sig = if df_model > 0 {
@@ -198,17 +212,158 @@ fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize
 }
 
 fn calculate_nagelkerke(null_ll: f64, model_ll: f64, n: usize) -> f64 {
-    let l0 = (-2.0 * null_ll).exp();
-    let l1 = (-2.0 * model_ll).exp();
-    if l0 <= 0.0 || l1 <= 0.0 {
-        return 0.0;
-    }
-    let cox_snell = 1.0 - (l0 / l1).powf(2.0 / n as f64);
-    let max_r2 = 1.0 - l0.powf(2.0 / n as f64);
-    if max_r2 == 0.0 {
-        0.0
-    } else {
+    let diff = null_ll - model_ll;
+    let cox_snell = 1.0 - (diff * (2.0 / n as f64)).exp();
+    let max_r2 = 1.0 - (null_ll * (2.0 / n as f64)).exp();
+    if max_r2 > 1e-12 {
         cox_snell / max_r2
+    } else {
+        0.0
+    }
+}
+
+// --- HELPER UNTUK OVERALL STATISTICS (RESIDUAL CHI-SQUARE) ---
+fn calculate_overall_remainder_stats(
+    full_x: &DMatrix<f64>,
+    y_vector: &DVector<f64>,
+    included_indices: &[usize],
+    model: &FittedModel,
+) -> Option<RemainderTest> {
+    let n_total_vars = full_x.ncols();
+    // 1. Identifikasi variabel yang dikeluarkan (Excluded)
+    // Di Backward, excluded indices akan bertambah seiring waktu
+    let excluded_indices: Vec<usize> = (0..n_total_vars)
+        .filter(|i| !included_indices.contains(i))
+        .collect();
+
+    if excluded_indices.is_empty() {
+        return None;
+    }
+
+    // 2. Bangun Matriks X untuk Excluded Variables (X_out)
+    let mut x_out_cols = Vec::new();
+    for &idx in &excluded_indices {
+        x_out_cols.push(full_x.column(idx).into_owned());
+    }
+    let x_out = DMatrix::from_columns(&x_out_cols);
+
+    // 3. Bangun Matriks X untuk Included Variables (X_in)
+    // Ini harus PERSIS sama dengan matriks yang digunakan untuk fit model (termasuk intercept)
+    let x_in = build_design_matrix(full_x, included_indices, full_x.nrows());
+
+    // 4. Hitung Score Vector: U = X_out^T * (y - p)
+    // PERBAIKAN: Hitung manual raw residuals
+    let raw_residuals = y_vector - &model.predictions;
+    let u = x_out.transpose() * &raw_residuals;
+
+    // 5. Hitung Matriks Informasi
+    let mut x_out_weighted = x_out.clone();
+    for (row_idx, &weight) in model.weights.iter().enumerate() {
+        for col_idx in 0..x_out.ncols() {
+            x_out_weighted[(row_idx, col_idx)] *= weight;
+        }
+    }
+
+    let v_out = x_out.transpose() * &x_out_weighted; // X_out^T W X_out
+    let v_cross = x_out_weighted.transpose() * &x_in; // X_out^T W X_in
+
+    // 6. Variance Score yang Disesuaikan (Adjusted Variance)
+    let inv_info_in = &model.covariance_matrix;
+
+    let correction = &v_cross * inv_info_in * v_cross.transpose();
+    let adjusted_var = v_out - correction;
+
+    // 7. Hitung Statistik Score Global: S = U^T * Var(U)^-1 * U
+    let score_stat = match adjusted_var.cholesky() {
+        Some(chol) => {
+            let sol = chol.solve(&u);
+            u.dot(&sol)
+        }
+        None => 0.0,
+    };
+
+    let df = excluded_indices.len() as i32;
+    let sig = if score_stat > 0.0 && df > 0 {
+        1.0 - ChiSquared::new(df as f64).unwrap().cdf(score_stat)
+    } else {
+        1.0
+    };
+
+    Some(RemainderTest {
+        chi_square: score_stat,
+        df,
+        sig,
+    })
+}
+
+// --- HELPER UNTUK MODEL IF TERM REMOVED (Re-Fitting) ---
+fn calculate_model_if_term_removed(
+    current_model_ll: f64,
+    x_matrix: &DMatrix<f64>,
+    y_vector: &DVector<f64>,
+    included_indices: &[usize],
+    null_log_likelihood: f64, // <-- PASS NULL LL
+    config: &LogisticConfig,
+    feature_names: &[String],
+    n_samples: usize,
+) -> Option<Vec<ModelIfTermRemovedRow>> {
+    if included_indices.is_empty() {
+        return None;
+    }
+
+    let mut rows = Vec::new();
+    let chi_dist = ChiSquared::new(1.0).unwrap();
+
+    for (i, &idx_to_remove) in included_indices.iter().enumerate() {
+        let mut subset_indices = included_indices.to_vec();
+        subset_indices.remove(i);
+
+        let reduced_ll;
+
+        if subset_indices.is_empty() {
+            reduced_ll = null_log_likelihood;
+        } else {
+            let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples);
+            if let Ok(reduced_model) = fit(
+                &x_subset,
+                y_vector,
+                config.max_iterations,
+                config.convergence_threshold,
+            ) {
+                reduced_ll = reduced_model.final_log_likelihood;
+            } else {
+                continue;
+            }
+        }
+
+        let change_val = 2.0 * (current_model_ll - reduced_ll).abs();
+        let change_val_clean = if change_val < 1e-9 { 0.0 } else { change_val };
+
+        let sig = if change_val_clean > 0.0 {
+            1.0 - chi_dist.cdf(change_val_clean)
+        } else {
+            1.0
+        };
+
+        let label = if idx_to_remove < feature_names.len() {
+            feature_names[idx_to_remove].clone()
+        } else {
+            format!("Var_{}", idx_to_remove)
+        };
+
+        rows.push(ModelIfTermRemovedRow {
+            label,
+            model_log_likelihood: reduced_ll,
+            change_in_neg2ll: change_val_clean,
+            df: 1,
+            sig_change: sig,
+        });
+    }
+
+    if rows.is_empty() {
+        None
+    } else {
+        Some(rows)
     }
 }
 
@@ -221,20 +376,71 @@ fn calculate_step_snapshot(
     y_vector: &DVector<f64>,
     included_indices: &[usize],
     null_ll: f64,
-    feature_names: &[String], // ARGUMEN BARU
+    prev_ll: f64,
+    prev_n_vars: usize,
+    feature_names: &[String],
+    config: &LogisticConfig,
 ) -> StepDetail {
     let n = y_vector.len();
     let n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
 
+    // 1. Model Summary Statistics
+    let diff = null_ll - model.final_log_likelihood;
+    let cox_snell = 1.0 - (diff * (2.0 / n as f64)).exp();
+
     let summary = ModelSummary {
         log_likelihood: model.final_log_likelihood,
-        cox_snell_r_square: 0.0,
+        cox_snell_r_square: cox_snell,
         nagelkerke_r_square: calculate_nagelkerke(null_ll, model.final_log_likelihood, n),
         converged: model.converged,
         iterations: model.iterations,
     };
 
+    // 2. MODEL / BLOCK OMNIBUS (Vs Null)
+    let chi_sq_model = 2.0 * (model.final_log_likelihood - null_ll).abs();
+    let df_model = included_indices.len() as i32;
+    let sig_model = if df_model > 0 {
+        1.0 - ChiSquared::new(df_model as f64).unwrap().cdf(chi_sq_model)
+    } else {
+        1.0
+    };
+
+    let omni_tests_model = OmniTests {
+        chi_square: chi_sq_model,
+        df: df_model,
+        sig: sig_model,
+    };
+
+    // 3. STEP OMNIBUS (Vs Previous Step)
+    let chi_sq_step = 2.0 * (model.final_log_likelihood - prev_ll).abs();
+    let df_step = (included_indices.len() as i32 - prev_n_vars as i32).abs();
+
+    let sig_step = if df_step > 0 && chi_sq_step > 1e-9 {
+        1.0 - ChiSquared::new(df_step as f64).unwrap().cdf(chi_sq_step)
+    } else {
+        1.0
+    };
+
+    let omni_tests_step = OmniTests {
+        chi_square: chi_sq_step,
+        df: df_step,
+        sig: sig_step,
+    };
+
+    // --- 4. MODEL IF TERM REMOVED ---
+    let model_if_term_removed = calculate_model_if_term_removed(
+        model.final_log_likelihood,
+        full_x,
+        y_vector,
+        included_indices,
+        null_ll, // PASS NULL LL
+        config,
+        feature_names,
+        n,
+    );
+
+    // Classification Table
     let mut tn = 0;
     let mut fp = 0;
     let mut fn_ = 0;
@@ -267,6 +473,7 @@ fn calculate_step_snapshot(
         overall_percentage: (tn + tp + fn_ + fp) as f64 / n as f64 * 100.0,
     };
 
+    // Variables In Equation
     let mut variables_in = Vec::new();
     let b_int = model.beta[0];
     let se_int = model.covariance_matrix[(0, 0)].sqrt();
@@ -289,7 +496,6 @@ fn calculate_step_snapshot(
         let se = model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
         let wald = (b / se).powi(2);
 
-        // GUNAKAN NAMA ASLI
         let label = if idx < feature_names.len() {
             feature_names[idx].clone()
         } else {
@@ -309,6 +515,7 @@ fn calculate_step_snapshot(
         });
     }
 
+    // Variables Not In Equation
     let mut variables_not_in = Vec::new();
     let current_design_matrix = build_design_matrix(full_x, included_indices, n);
 
@@ -323,7 +530,6 @@ fn calculate_step_snapshot(
                 &model.covariance_matrix,
             );
 
-            // GUNAKAN NAMA ASLI
             let label = if i < feature_names.len() {
                 feature_names[i].clone()
             } else {
@@ -339,22 +545,9 @@ fn calculate_step_snapshot(
         }
     }
 
-    let remainder_test = if !variables_not_in.is_empty() {
-        let total_score: f64 = variables_not_in.iter().map(|v| v.score).sum();
-        let total_df = variables_not_in.len() as i32;
-        let total_sig = if total_df > 0 {
-            1.0 - ChiSquared::new(total_df as f64).unwrap().cdf(total_score)
-        } else {
-            1.0
-        };
-        Some(RemainderTest {
-            chi_square: total_score,
-            df: total_df,
-            sig: total_sig,
-        })
-    } else {
-        None
-    };
+    // --- FIX: Gunakan helper untuk Overall Statistics ---
+    let remainder_test =
+        calculate_overall_remainder_stats(full_x, y_vector, included_indices, model);
 
     StepDetail {
         step,
@@ -365,5 +558,8 @@ fn calculate_step_snapshot(
         variables_in_equation: variables_in,
         variables_not_in_equation: variables_not_in,
         remainder_test,
+        omni_tests: Some(omni_tests_model),
+        step_omni_tests: Some(omni_tests_step),
+        model_if_term_removed,
     }
 }
