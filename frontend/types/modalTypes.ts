@@ -87,6 +87,11 @@ export enum ModalType {
     Autocorrelation = "Autocorrelation",
     UnitRootTest = "UnitRootTest",
     BoxJenkinsModel = "BoxJenkinsModel",
+    ARCH ="ARCH",
+    GARCH = "GARCH",
+    ECM = "ECM",
+    ARDL = "ARDL",
+    
 
     // Descriptive statistics modals
     Descriptives = "Descriptives",
@@ -280,6 +285,10 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.Autocorrelation]: ModalCategory.TimeSeries,
     [ModalType.UnitRootTest]: ModalCategory.TimeSeries,
     [ModalType.BoxJenkinsModel]: ModalCategory.TimeSeries,
+    [ModalType.ARDL]: ModalCategory.TimeSeries,
+    [ModalType.ECM]: ModalCategory.TimeSeries,
+    [ModalType.ARCH]: ModalCategory.TimeSeries,
+    [ModalType.GARCH]: ModalCategory.TimeSeries,
 
     // Descriptive statistics modals
     [ModalType.Descriptives]: ModalCategory.Analyze,
