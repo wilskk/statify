@@ -1,4 +1,8 @@
-import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
+import {
+  LogisticResult,
+  AnalysisSection,
+  StepDetail,
+} from "../types/binary-logistic";
 import { createSection, safeFixed, fmtSig, fmtPct } from "./formatter_utils";
 
 export const formatBlock0 = (
@@ -6,39 +10,81 @@ export const formatBlock0 = (
   dependentName: string
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
-  const ct = result.classification_table;
 
-  // ----------------------------------------------------------------------
-  // 1. Re-kalkulasi Data Dasar (untuk independensi fungsi)
-  // ----------------------------------------------------------------------
-  const obs0_pred0 = ct.observed_0_predicted_0 || 0;
-  const obs0_pred1 = ct.observed_0_predicted_1 || 0;
-  const obs1_pred0 = ct.observed_1_predicted_0 || 0;
-  const obs1_pred1 = ct.observed_1_predicted_1 || 0;
+  const modelInfo = (result as any).model_info || {};
+  const variableNames = modelInfo.variables || [];
 
-  const count_0 = obs0_pred0 + obs0_pred1;
-  const count_1 = obs1_pred0 + obs1_pred1;
-  const totalN = count_0 + count_1;
+  // Helper Name: Mengembalikan nama asli variabel jika formatnya "Var_X"
+  const getRealVariableName = (label: string): string => {
+    if (label.startsWith("Var_") || label.startsWith("Var ")) {
+      const parts = label.split(/[ _]/);
+      const indexStr = parts[1];
+      const index = parseInt(indexStr, 10);
+      // Note: Rust index might be 0-based.
+      if (!isNaN(index) && variableNames[index]) {
+        return variableNames[index];
+      }
+    }
+    return label;
+  };
 
-  // ----------------------------------------------------------------------
-  // 2. Logika "Null Model" (Tebak Mayoritas)
-  // ----------------------------------------------------------------------
-  // Jika jumlah 0 >= jumlah 1, maka sistem akan memprediksi 0 untuk semua kasus.
-  const predict_0 = count_0 >= count_1;
+  // ======================================================================
+  // 1. HELPERS: LABEL DECODING
+  // ======================================================================
+  const yMap = modelInfo.y_encoding || {};
+  const labelLookup: Record<number, string> = Object.entries(yMap).reduce(
+    (acc, [key, val]) => {
+      acc[val as number] = key;
+      return acc;
+    },
+    {} as Record<number, string>
+  );
+  const getLabel = (val: number): string => {
+    return labelLookup[val] !== undefined ? labelLookup[val] : val.toString();
+  };
+  const label0 = getLabel(0);
+  const label1 = getLabel(1);
 
-  const b0_obs0_pred0 = predict_0 ? count_0 : 0;
-  const b0_obs0_pred1 = predict_0 ? 0 : count_0;
-  const b0_obs1_pred0 = predict_0 ? count_1 : 0;
-  const b0_obs1_pred1 = predict_0 ? 0 : count_1;
+  // ======================================================================
+  // 2. DATA PREPARATION (Classification Table - RECALCULATE FOR NULL MODEL)
+  // ======================================================================
+  // Kita hitung manual prediksi Null Model (Block 0) agar konsisten untuk semua metode.
+  // Null Model selalu memprediksi kategori mayoritas.
 
-  // Persentase akurasi
-  const b0_pct_0 = count_0 > 0 ? (b0_obs0_pred0 / count_0) * 100 : 0;
-  const b0_pct_1 = count_1 > 0 ? (b0_obs1_pred1 / count_1) * 100 : 0;
-  const b0_overall = ((b0_obs0_pred0 + b0_obs1_pred1) / totalN) * 100;
+  // Ambil total N dari data result yang tersedia
+  const ctRef = result.classification_table;
+  const totalObs0 =
+    (ctRef?.observed_0_predicted_0 || 0) + (ctRef?.observed_0_predicted_1 || 0);
+  const totalObs1 =
+    (ctRef?.observed_1_predicted_0 || 0) + (ctRef?.observed_1_predicted_1 || 0);
+  const totalN = totalObs0 + totalObs1;
 
-  // ----------------------------------------------------------------------
-  // 3. Table: Classification Table (Block 0)
-  // ----------------------------------------------------------------------
+  // Tentukan Prediksi Mayoritas
+  const predict1 = totalObs1 > totalObs0;
+
+  let obs0_pred0 = 0,
+    obs0_pred1 = 0,
+    obs1_pred0 = 0,
+    obs1_pred1 = 0;
+
+  if (predict1) {
+    // Jika Mayoritas 1, semua diprediksi 1
+    obs0_pred1 = totalObs0; // 0 salah diprediksi 1
+    obs1_pred1 = totalObs1; // 1 benar diprediksi 1
+  } else {
+    // Jika Mayoritas 0 (atau seimbang), semua diprediksi 0
+    obs0_pred0 = totalObs0; // 0 benar diprediksi 0
+    obs1_pred0 = totalObs1; // 1 salah diprediksi 0
+  }
+
+  const b0_pct_0 = totalObs0 > 0 ? (obs0_pred0 / totalObs0) * 100 : 0;
+  const b0_pct_1 = totalObs1 > 0 ? (obs1_pred1 / totalObs1) * 100 : 0;
+  const b0_overall =
+    totalN > 0 ? ((obs0_pred0 + obs1_pred1) / totalN) * 100 : 0;
+
+  // ======================================================================
+  // 3. TABLE: CLASSIFICATION TABLE
+  // ======================================================================
   const classificationData = {
     columnHeaders: [
       {
@@ -55,8 +101,8 @@ export const formatBlock0 = (
           {
             header: dependentName,
             children: [
-              { header: "0", key: "pred_0" },
-              { header: "1", key: "pred_1" },
+              { header: label0, key: "pred_0" },
+              { header: label1, key: "pred_1" },
             ],
           },
           { header: "Percentage Correct", key: "pct" },
@@ -65,15 +111,15 @@ export const formatBlock0 = (
     ],
     rows: [
       {
-        rowHeader: ["Step 0", dependentName, "0"],
-        pred_0: b0_obs0_pred0.toString(),
-        pred_1: b0_obs0_pred1.toString(),
+        rowHeader: ["Step 0", dependentName, label0],
+        pred_0: obs0_pred0.toString(),
+        pred_1: obs0_pred1.toString(),
         pct: fmtPct(b0_pct_0),
       },
       {
-        rowHeader: ["Step 0", dependentName, "1"],
-        pred_0: b0_obs1_pred0.toString(),
-        pred_1: b0_obs1_pred1.toString(),
+        rowHeader: ["Step 0", dependentName, label1],
+        pred_0: obs1_pred0.toString(),
+        pred_1: obs1_pred1.toString(),
         pct: fmtPct(b0_pct_1),
       },
       {
@@ -91,30 +137,31 @@ export const formatBlock0 = (
       "Classification Table",
       classificationData,
       {
-        description:
-          "Klasifikasi awal (Null Model) sebelum variabel independen dimasukkan.",
+        description: "Klasifikasi awal (Null Model).",
         note: "a. Constant is included in the model.\nb. The cut value is .500",
       }
     )
   );
 
-  // ----------------------------------------------------------------------
-  // 4. Hitung Nilai Konstanta Awal (ln(n1/n0))
-  // ----------------------------------------------------------------------
-  let b0_B = 0;
-  if (count_0 > 0 && count_1 > 0) {
-    b0_B = Math.log(count_1 / count_0);
+  // ======================================================================
+  // 4. TABLE: VARIABLES IN EQUATION (Constant Only)
+  // ======================================================================
+  // LOGIKA PRIORITY:
+  // 1. Cek field khusus `block_0_constant` (Metode Backward pakai ini).
+  // 2. Jika tidak ada, cek `steps_detail[0]` (Metode Enter/Forward pakai ini).
+
+  let constVar = (result as any).block_0_constant;
+
+  if (!constVar && result.steps_detail && result.steps_detail.length > 0) {
+    const step0Vars = result.steps_detail[0].variables_in_equation || [];
+    constVar = step0Vars.find((v: any) => v.label === "Constant");
   }
-  const b0_ExpB = Math.exp(b0_B);
 
-  const const0 = result.block_0_constant;
-  // Gunakan nilai dari Wasm jika ada, jika tidak gunakan hitungan JS manual
-  const val_B0 = const0?.b !== undefined ? const0.b : b0_B;
-  const val_ExpB0 = const0?.exp_b !== undefined ? const0.exp_b : b0_ExpB;
+  // Fallback safe object
+  if (!constVar) {
+    constVar = { b: 0, error: 0, wald: 0, df: 1, sig: 1, exp_b: 1 };
+  }
 
-  // ----------------------------------------------------------------------
-  // 5. Table: Variables in the Equation (Hanya Constant)
-  // ----------------------------------------------------------------------
   const varsInData = {
     columnHeaders: [
       {
@@ -134,12 +181,12 @@ export const formatBlock0 = (
     rows: [
       {
         rowHeader: ["Step 0", "Constant"],
-        b: safeFixed(val_B0),
-        se: safeFixed(const0?.error),
-        wald: safeFixed(const0?.wald),
+        b: safeFixed(constVar?.b),
+        se: safeFixed(constVar?.error),
+        wald: safeFixed(constVar?.wald),
         df: "1",
-        sig: fmtSig(const0?.sig),
-        expb: safeFixed(val_ExpB0),
+        sig: fmtSig(constVar?.sig),
+        expb: safeFixed(constVar?.exp_b),
       },
     ],
   };
@@ -150,21 +197,53 @@ export const formatBlock0 = (
     })
   );
 
-  // ----------------------------------------------------------------------
-  // 6. Table: Variables not in the Equation
-  // ----------------------------------------------------------------------
-  const varsNotIn = result.variables_not_in_equation || [];
-  const totalScore = varsNotIn.reduce((acc, curr) => acc + curr.score, 0);
-  const totalDf = varsNotIn.length;
+  // ======================================================================
+  // 5. TABLE: VARIABLES NOT IN EQUATION (Score Tests)
+  // ======================================================================
+  // LOGIKA PRIORITY:
+  // 1. Cek field khusus `block_0_variables_not_in` (Backward).
+  // 2. Jika tidak ada, cek `steps_detail[0].variables_not_in_equation` (Enter/Forward).
+  // 3. Fallback ke `variables_not_in_equation` global (root).
 
-  // Ambil overall sig dari Wasm, atau fallback ke item pertama jika cuma 1 var
-  const backendOverallSig = (result as any).overall_remainder_test?.sig;
-  const overallSig =
-    backendOverallSig !== undefined
-      ? backendOverallSig
-      : totalDf === 1
-      ? varsNotIn[0]?.sig
-      : null;
+  let varsNotIn = (result as any).block_0_variables_not_in;
+  let remainderTest = null;
+
+  if (!varsNotIn) {
+    if (result.steps_detail && result.steps_detail.length > 0) {
+      varsNotIn = result.steps_detail[0].variables_not_in_equation;
+      remainderTest = result.steps_detail[0].remainder_test;
+    }
+
+    if (!varsNotIn) {
+      // Sangat jarang, fallback terakhir
+      varsNotIn = result.variables_not_in_equation;
+    }
+  }
+
+  // Jika remainderTest belum diambil (misal dari steps_detail[0] diatas), coba ambil global
+  if (!remainderTest) {
+    remainderTest = (result as any).overall_remainder_test;
+  }
+
+  // Pastikan array
+  const varsNotInArray = varsNotIn ? [...varsNotIn] : [];
+
+  // --- LOGIKA FIX OVERALL STATISTICS ---
+  // Cek apakah di dalam list variabel sudah ada baris "Overall Statistics".
+  // (Backward method biasanya sudah menyertakannya dari Rust).
+  const hasOverall = varsNotInArray.some(
+    (v: any) => v.label === "Overall Statistics"
+  );
+
+  // Jika belum ada (biasanya pada Enter/Forward), dan kita punya datanya, tambahkan manual.
+  if (!hasOverall && remainderTest) {
+    varsNotInArray.push({
+      label: "Overall Statistics",
+      score: remainderTest.chi_square,
+      df: remainderTest.df,
+      sig: remainderTest.sig,
+    });
+  }
 
   const varsNotInData = {
     columnHeaders: [
@@ -179,20 +258,12 @@ export const formatBlock0 = (
       { header: "df", key: "df" },
       { header: "Sig.", key: "sig" },
     ],
-    rows: [
-      ...varsNotIn.map((v) => ({
-        rowHeader: ["Step 0", v.label],
-        score: safeFixed(v.score),
-        df: v.df.toString(),
-        sig: fmtSig(v.sig),
-      })),
-      {
-        rowHeader: ["Step 0", "Overall Statistics"],
-        score: safeFixed(totalScore),
-        df: totalDf.toString(),
-        sig: fmtSig(overallSig),
-      },
-    ],
+    rows: varsNotInArray.map((v: any) => ({
+      rowHeader: ["Step 0", getRealVariableName(v.label)],
+      score: safeFixed(v.score),
+      df: v.df.toString(),
+      sig: fmtSig(v.sig),
+    })),
   };
 
   sections.push(

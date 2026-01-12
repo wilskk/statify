@@ -6,6 +6,7 @@ import {
 import { formatSummaryTables } from "./formatter_summary";
 import { formatBlock0 } from "./formatter_block0";
 import { formatBlock1 } from "./formatter_block1";
+import { formatAssumptionTests } from "./formatter_assumptions";
 
 export const formatBinaryLogisticResult = (
   result: LogisticResult,
@@ -30,6 +31,11 @@ export const formatBinaryLogisticResult = (
   const block1Output = formatBlock1(result, dependentName);
   if (block1Output.sections) {
     allSections.push(...block1Output.sections);
+  }
+
+  const assumptionOutput = formatAssumptionTests(result);
+  if (assumptionOutput.sections) {
+      allSections.push(...assumptionOutput.sections);
   }
 
   // 5. Kembalikan format baru

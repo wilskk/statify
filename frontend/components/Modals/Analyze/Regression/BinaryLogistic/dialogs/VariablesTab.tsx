@@ -9,17 +9,14 @@ interface VariablesTabProps {
   availableVariables: Variable[];
   selectedDependent: Variable | null;
   selectedCovariates: Variable[];
-  selectedFactors: Variable[]; // [FIX] Tambahkan ini
   highlightedVariable: Variable | null;
   setHighlightedVariable: (v: Variable | null) => void;
 
   // Handlers
   onMoveToDependent: () => void;
   onMoveToCovariates: () => void;
-  onMoveToFactors: () => void; // [FIX] Tambahkan ini
   onRemoveDependent: () => void;
   onRemoveCovariate: (v: Variable) => void;
-  onRemoveFactor: (v: Variable) => void; // [FIX] Tambahkan ini
 
   // Method
   method: BinaryLogisticOptions["method"];
@@ -30,15 +27,12 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
   availableVariables,
   selectedDependent,
   selectedCovariates,
-  selectedFactors,
   highlightedVariable,
   setHighlightedVariable,
   onMoveToDependent,
   onMoveToCovariates,
-  onMoveToFactors,
   onRemoveDependent,
   onRemoveCovariate,
-  onRemoveFactor,
   method,
   onMethodChange,
 }) => {
@@ -113,7 +107,7 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
         {/* KOLOM KANAN: Target Boxes */}
         <div className="col-span-1 flex flex-col gap-4 min-h-0 h-full overflow-y-auto pr-2">
           {/* Dependent Variable */}
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2 flex-shrink-0">
             <Button
               variant="outline"
               size="icon"
@@ -148,8 +142,8 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
             </div>
           </div>
 
-          {/* Covariates (Block 1 of 1) */}
-          <div className="flex items-start gap-2">
+          {/* Covariates (Expands to fill remaining space) */}
+          <div className="flex items-start gap-2 flex-1 min-h-0">
             <Button
               variant="outline"
               size="icon"
@@ -159,50 +153,17 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
             >
               <ChevronRight size={16} />
             </Button>
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col h-full">
               <label className="font-semibold block mb-2 text-sm">
                 Covariates:
               </label>
-              <div className="border border-border rounded-md h-[120px] bg-background overflow-hidden">
+              <div className="border border-border rounded-md flex-1 bg-background overflow-hidden min-h-[100px]">
                 <ScrollArea className="h-full p-2">
                   {selectedCovariates.map((v) => (
                     <div
                       key={v.id}
                       className="flex items-center p-1.5 mb-1 rounded-md cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 border border-transparent text-sm transition-colors"
                       onClick={() => onRemoveCovariate(v)}
-                      title="Click to remove"
-                    >
-                      {getVariableIcon(v)}
-                      <span className="truncate">{getDisplayName(v)}</span>
-                    </div>
-                  ))}
-                </ScrollArea>
-              </div>
-            </div>
-          </div>
-
-          {/* Categorical Covariates (Factors) */}
-          <div className="flex items-start gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="mt-6 shrink-0 h-8 w-8"
-              onClick={onMoveToFactors}
-              disabled={!highlightedVariable}
-            >
-              <ChevronRight size={16} />
-            </Button>
-            <div className="flex-1 flex flex-col">
-              <label className="font-semibold block mb-2 text-sm">
-                Categorical Covariates:
-              </label>
-              <div className="border border-border rounded-md h-[120px] bg-background overflow-hidden">
-                <ScrollArea className="h-full p-2">
-                  {selectedFactors.map((v) => (
-                    <div
-                      key={v.id}
-                      className="flex items-center p-1.5 mb-1 rounded-md cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 border border-transparent text-sm transition-colors"
-                      onClick={() => onRemoveFactor(v)}
                       title="Click to remove"
                     >
                       {getVariableIcon(v)}

@@ -5,7 +5,7 @@ use std::error::Error;
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
     LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail, VariableNotInEquation,
-    VariableRow,
+    VariableRow, CategoricalCoding,
 };
 use crate::stats::{irls, score_test, table};
 
@@ -14,6 +14,7 @@ pub fn run(
     y_vector: &DVector<f64>,
     config: &LogisticConfig,
     feature_names: &[String],
+    codings: Option<Vec<CategoricalCoding>>,
 ) -> Result<LogisticResult, Box<dyn Error>> {
     let n_samples = x_raw.nrows();
     let n_features = x_raw.ncols();
@@ -270,5 +271,6 @@ pub fn run(
         method_used: "Enter".to_string(),
         assumption_tests: None,
         overall_remainder_test: Some(overall_test),
+        categorical_codings: codings,
     })
 }

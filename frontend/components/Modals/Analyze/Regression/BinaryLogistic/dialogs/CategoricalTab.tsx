@@ -15,7 +15,7 @@ import { BinaryLogisticCategoricalParams } from "../types/binary-logistic";
 
 interface CategoricalTabProps {
   covariates: Variable[];
-  factors: Variable[]; // [FIX] Tambahkan properti ini
+  factors: Variable[];
   params: BinaryLogisticCategoricalParams;
   onChange: (p: BinaryLogisticCategoricalParams) => void;
 }
@@ -35,8 +35,19 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
     }
   };
 
-  // Gabungkan factors dan covariates untuk ditampilkan (biasanya factors yang butuh kontras)
+  // Gabungkan factors dan covariates untuk ditampilkan
   const allVariables = [...factors, ...covariates];
+
+  // --- LOGIKA BARU: Cek apakah metode butuh referensi ---
+  // Metode yang TIDAK butuh referensi (Fixed logic based on order)
+  const methodsWithoutReference = [
+    "Difference",
+    "Helmert",
+    "Repeated",
+    "Polynomial",
+  ];
+
+  const isReferenceDisabled = methodsWithoutReference.includes(params.contrast);
 
   return (
     <div className="grid grid-cols-2 gap-6 py-4 h-full">
@@ -98,13 +109,20 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
           </Select>
         </div>
 
-        <div className="space-y-4 border p-4 rounded-md">
+        <div
+          className={`space-y-4 border p-4 rounded-md transition-opacity ${
+            isReferenceDisabled
+              ? "opacity-50 pointer-events-none"
+              : "opacity-100"
+          }`}
+        >
           <Label className="font-semibold">Reference Category</Label>
           <RadioGroup
             value={params.referenceCategory}
             onValueChange={(val: any) =>
               onChange({ ...params, referenceCategory: val })
             }
+            disabled={isReferenceDisabled} // Disable jika metode tidak butuh ref
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="Last" id="ref-last" />
@@ -115,6 +133,12 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
               <Label htmlFor="ref-first">First (lowest value)</Label>
             </div>
           </RadioGroup>
+          {isReferenceDisabled && (
+            <p className="text-[10px] text-muted-foreground italic">
+              *Reference category is not applicable for the selected contrast
+              method.
+            </p>
+          )}
         </div>
       </div>
     </div>
