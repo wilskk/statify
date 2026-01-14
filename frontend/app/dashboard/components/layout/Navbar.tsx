@@ -21,6 +21,7 @@ import DataMenu from "@/components/Modals/Data/DataMenu";
 import GeneralLinearModelMenu from "@/components/Modals/Analyze/general-linear-model/general-linear-model-menu";
 import ClassifyMenu from "@/components/Modals/Analyze/Classify/classify-menu";
 import DimensionReductionMenu from "@/components/Modals/Analyze/dimension-reduction/dimension-reduction-menu";
+import TimeSeriesMenu from "@/components/Modals/Analyze/TimeSeries/TimeSeriesMenu";
 import TransformMenu from "@/components/Modals/Transform/TransformMenu";
 
 const Navbar: React.FC = () => {

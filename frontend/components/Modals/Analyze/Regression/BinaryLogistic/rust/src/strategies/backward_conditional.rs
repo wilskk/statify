@@ -1,7 +1,7 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
     ClassificationTable, LogisticResult, ModelIfTermRemovedRow, ModelSummary, OmniTests,
-    RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow,
+    RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow, CategoricalCoding,
 };
 use crate::stats::irls::{fit, FittedModel};
 use crate::stats::score_test::calculate_score_test;
@@ -14,6 +14,7 @@ pub fn run(
     y_vector: &DVector<f64>,
     config: &LogisticConfig,
     feature_names: &[String],
+    codings: Option<Vec<CategoricalCoding>>
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
@@ -322,6 +323,7 @@ pub fn run(
         method_used: "Backward Conditional".to_string(),
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
+        categorical_codings: codings,
     })
 }
 

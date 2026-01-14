@@ -613,6 +613,26 @@ const HamburgerMenu: React.FC = () => {
                         >
                           Box-Jenkins Model
                         </DrawerMenuItem>
+                        <DrawerMenuItem
+                          onClick={() => openModal(ModalType.ARDL)}
+                        >
+                          Autoregressive Distributed Lag
+                        </DrawerMenuItem>
+                        <DrawerMenuItem
+                          onClick={() => openModal(ModalType.ECM)}
+                        >
+                          Error Correction Model
+                        </DrawerMenuItem>
+                        <DrawerMenuItem
+                          onClick={() => openModal(ModalType.ARCH)}
+                        >
+                          Autoregressive Conditional Heteroscedasticity
+                        </DrawerMenuItem>
+                        <DrawerMenuItem
+                          onClick={() => openModal(ModalType.GARCH)}
+                        >
+                          Generalized Autoregressive Conditional Heteroscedasticity
+                        </DrawerMenuItem>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>

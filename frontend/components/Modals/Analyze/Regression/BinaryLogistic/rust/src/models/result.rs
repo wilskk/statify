@@ -127,7 +127,7 @@ pub struct StepDetail {
     pub variables_in_equation: Vec<VariableRow>,
     pub variables_not_in_equation: Vec<VariableNotInEquation>,
 
-    // --- BARU: Field untuk Model if Term Removed ---
+    // Field untuk Model if Term Removed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_if_term_removed: Option<Vec<ModelIfTermRemovedRow>>,
 
@@ -145,6 +145,21 @@ pub struct RemainderTest {
     pub chi_square: f64,
     pub df: i32,
     pub sig: f64,
+}
+
+// --- BARU: Struktur untuk Output Categorical Variables Codings ---
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FrequencyCount {
+    pub category_label: String, // misal: "Male", "Female"
+    pub frequency: usize,
+    pub parameter_codings: Vec<f64>, // misal: [1.0] atau [0.0]
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CategoricalCoding {
+    pub variable_label: String, // misal: "Gender"
+    pub categories: Vec<FrequencyCount>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -169,7 +184,10 @@ pub struct LogisticResult {
     #[serde(rename = "block_0_constant")]
     pub block_0_constant: VariableRow,
 
-    #[serde(rename = "block_0_variables_not_in", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "block_0_variables_not_in",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub block_0_variables_not_in: Option<Vec<VariableNotInEquation>>,
 
     pub omni_tests: OmniTests,
@@ -184,4 +202,12 @@ pub struct LogisticResult {
 
     #[serde(rename = "assumption_tests", skip_serializing_if = "Option::is_none")]
     pub assumption_tests: Option<AssumptionResult>,
+
+    // --- BARU: Field untuk informasi Coding ---
+    // Kita gunakan Option agar backward compatible jika strategi belum mengisinya
+    #[serde(
+        rename = "categorical_codings",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub categorical_codings: Option<Vec<CategoricalCoding>>,
 }

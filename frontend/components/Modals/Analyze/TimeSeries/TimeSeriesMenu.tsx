@@ -1,10 +1,8 @@
-"use client";
-
 import React from "react";
 import {
-    MenubarMenu,
-    MenubarTrigger,
-    MenubarContent,
+    MenubarSub,
+    MenubarSubTrigger,
+    MenubarSubContent,
     MenubarItem,
     MenubarSeparator,
 } from "@/components/ui/menubar";
@@ -13,9 +11,9 @@ import { ModalType, useModal } from "@/hooks/useModal";
 const TimeSeriesMenu: React.FC = () => {
     const { openModal } = useModal();
     return (
-        <MenubarMenu>
-            <MenubarTrigger>Time Series</MenubarTrigger>
-            <MenubarContent>
+        <MenubarSub>
+            <MenubarSubTrigger>Time Series</MenubarSubTrigger>
+            <MenubarSubContent>
                 <MenubarItem onClick={() => openModal(ModalType.Smoothing)}>
                     Smoothing...
                 </MenubarItem>
@@ -33,8 +31,20 @@ const TimeSeriesMenu: React.FC = () => {
                 <MenubarItem onClick={() => openModal(ModalType.BoxJenkinsModel)}>
                     Box-Jenkins Model...
                 </MenubarItem>
-            </MenubarContent>
-        </MenubarMenu>
+                 <MenubarItem onClick={() => openModal(ModalType.ARDL)}>
+                    Autoregressive Distributed Lag...
+                </MenubarItem>
+                <MenubarItem onClick={() => openModal(ModalType.ECM)}>
+                    Error Correction Model...
+                </MenubarItem>
+                <MenubarItem onClick={() => openModal(ModalType.ARCH)}>
+                    Autoregressive Conditional Heteroscedasticity...
+                </MenubarItem>
+                <MenubarItem onClick={() => openModal(ModalType.GARCH)}>
+                    Generalized Autoregressive Conditional Heteroscedasticity...
+                </MenubarItem>
+            </MenubarSubContent>
+        </MenubarSub>
     );
 };
 
