@@ -273,6 +273,7 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
         categorical_codings: codings,
+        hosmer_lemeshow: None,
     })
 }
 
@@ -450,6 +451,7 @@ fn calculate_step_snapshot(
         remainder_test,
         omni_tests: Some(omni_tests_model),
         step_omni_tests: Some(omni_tests_step),
+        hosmer_lemeshow: None,
     }
 }
 

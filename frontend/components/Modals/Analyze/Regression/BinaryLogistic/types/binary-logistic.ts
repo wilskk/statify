@@ -17,6 +17,19 @@ export interface BinaryLogisticSaveParams {
   influenceDfBeta: boolean;
 }
 
+export const DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS: BinaryLogisticSaveParams = {
+  predictedProbabilities: false,
+  predictedGroup: false,
+  residualsUnstandardized: false,
+  residualsLogit: false,
+  residualsStudentized: false,
+  residualsStandardized: false,
+  residualsDeviance: false,
+  influenceCooks: false,
+  influenceLeverage: false,
+  influenceDfBeta: false,
+};
+
 export interface BinaryLogisticOptionsParams {
   classificationPlots: boolean;
   hosmerLemeshow: boolean;
@@ -35,6 +48,25 @@ export interface BinaryLogisticOptionsParams {
   includeConstant: boolean;
 }
 
+export const DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS: BinaryLogisticOptionsParams =
+  {
+    classificationPlots: false,
+    hosmerLemeshow: false,
+    casewiseListing: false,
+    casewiseType: "outliers",
+    casewiseOutliers: 2.0,
+    correlations: false,
+    iterationHistory: false,
+    ciForExpB: false,
+    ciLevel: 95,
+    displayAtEachStep: false,
+    probEntry: 0.05,
+    probRemoval: 0.1,
+    classificationCutoff: 0.5,
+    maxIterations: 20,
+    includeConstant: true,
+  };
+
 export interface BinaryLogisticCategoricalParams {
   covariates: string[];
   contrast:
@@ -48,10 +80,23 @@ export interface BinaryLogisticCategoricalParams {
   referenceCategory: "Last" | "First";
 }
 
+export const DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS: BinaryLogisticCategoricalParams =
+  {
+    covariates: [],
+    contrast: "Indicator",
+    referenceCategory: "Last",
+  };
+
 export interface BinaryLogisticAssumptionParams {
   multicollinearity: boolean;
   boxTidwell: boolean;
 }
+
+export const DEFAULT_BINARY_LOGISTIC_ASSUMPTION_PARAMS: BinaryLogisticAssumptionParams =
+  {
+    multicollinearity: false,
+    boxTidwell: false,
+  };
 
 // Main Options
 export interface BinaryLogisticOptions {
@@ -66,6 +111,12 @@ export interface BinaryLogisticOptions {
     | "Backward: Conditional"
     | "Backward: LR"
     | "Backward: Wald";
+
+  // Sub-configuration objects
+  optionParams: BinaryLogisticOptionsParams;
+  categoricalParams: BinaryLogisticCategoricalParams;
+  saveParams: BinaryLogisticSaveParams;
+  assumptionParams: BinaryLogisticAssumptionParams;
 }
 
 export const DEFAULT_BINARY_LOGISTIC_OPTIONS: BinaryLogisticOptions = {
@@ -73,6 +124,10 @@ export const DEFAULT_BINARY_LOGISTIC_OPTIONS: BinaryLogisticOptions = {
   covariates: [],
   factors: [],
   method: "Enter",
+  optionParams: DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS,
+  categoricalParams: DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS,
+  saveParams: DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS,
+  assumptionParams: DEFAULT_BINARY_LOGISTIC_ASSUMPTION_PARAMS,
 };
 
 // =========================================================================
@@ -185,6 +240,24 @@ export interface CategoricalCoding {
   categories: FrequencyCount[];
 }
 
+// --- BARU: Hosmer-Lemeshow Types ---
+export interface HosmerLemeshowGroup {
+  group: number;
+  size: number;
+  observed_1: number;
+  expected_1: number;
+  observed_0: number;
+  expected_0: number;
+  total_observed: number;
+}
+
+export interface HosmerLemeshowResult {
+  chi_square: number;
+  df: number;
+  sig: number;
+  contingency_table: HosmerLemeshowGroup[];
+}
+
 // Ini memetakan struct StepDetail dari Rust
 export interface StepDetail {
   step: number;
@@ -198,6 +271,9 @@ export interface StepDetail {
   omni_tests?: OmniTestsResult;
   step_omni_tests?: OmniTestsResult;
   model_if_term_removed?: ModelIfTermRemovedRow[];
+
+  // --- BARU: Field Hosmer Lemeshow per step ---
+  hosmer_lemeshow?: HosmerLemeshowResult;
 }
 
 // Struktur utama hasil analisis yang dikirim dari Worker
@@ -246,6 +322,9 @@ export interface LogisticResult {
   assumption_tests?: AssumptionResult;
 
   categorical_codings?: CategoricalCoding[];
+
+  // --- BARU: Field Hosmer Lemeshow Final Model ---
+  hosmer_lemeshow?: HosmerLemeshowResult;
 }
 
 // =========================================================================
@@ -256,7 +335,7 @@ export interface ColumnHeader {
   header: string;
   key?: string; // Optional karena parent header mungkin tidak punya key data langsung
   align?: "left" | "right" | "center";
-  children?: ColumnHeader[]; // <--- INI SOLUSI ERROR 'children does not exist'
+  children?: ColumnHeader[];
 }
 
 export interface TableResultContent {

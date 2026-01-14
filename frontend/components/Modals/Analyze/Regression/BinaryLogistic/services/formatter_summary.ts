@@ -1,8 +1,11 @@
 import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
 import { createSection } from "./formatter_utils";
+import { Variable } from "@/types/Variable";
 
 export const formatSummaryTables = (
-  result: LogisticResult
+  result: LogisticResult,
+  dependentVar?: Variable,
+  independentVars: Variable[] = [] // Parameter tambahan untuk variabel independen
 ): {
   sections: AnalysisSection[];
   totalN: number;
@@ -97,13 +100,33 @@ export const formatSummaryTables = (
   // ----------------------------------------------------------------------
   const encodingMap = modelInfo.y_encoding || {};
   const encodingRows = Object.entries(encodingMap)
-    .map(([originalLabel, internalValue]) => ({
-      originalLabel,
-      internalValue: Number(internalValue),
-    }))
+    .map(([originalKey, internalValue]) => {
+      let displayLabel = originalKey;
+
+      if (
+        dependentVar &&
+        dependentVar.values &&
+        Array.isArray(dependentVar.values) &&
+        dependentVar.values.length > 0
+      ) {
+        const found = dependentVar.values.find((vl) => {
+          // Bandingkan loose (string "0" == number 0)
+          return vl.value == originalKey;
+        });
+        if (found) {
+          displayLabel = found.label;
+        }
+      }
+
+      return {
+        originalKey,
+        displayLabel,
+        internalValue: Number(internalValue),
+      };
+    })
     .sort((a, b) => a.internalValue - b.internalValue)
     .map((item) => ({
-      rowHeader: [item.originalLabel],
+      rowHeader: [item.displayLabel],
       val: item.internalValue.toString(),
     }));
 
@@ -135,7 +158,7 @@ export const formatSummaryTables = (
   );
 
   // ----------------------------------------------------------------------
-  // 5. Section: Categorical Variables Codings (BARU)
+  // 5. Section: Categorical Variables Codings (PERBAIKAN LABEL)
   // ----------------------------------------------------------------------
   if (result.categorical_codings && result.categorical_codings.length > 0) {
     // Cari jumlah kolom parameter coding maksimal (k - 1)
@@ -174,13 +197,44 @@ export const formatSummaryTables = (
         rows: [] as any[],
       };
 
+      // Ambil map encoding dari Worker (jika ada) untuk membalikkan angka ke label asli
+      const xEncodings = (modelInfo as any).x_encodings || {};
+
       result.categorical_codings.forEach((coding) => {
+        // Cari kamus encoding spesifik untuk variabel ini dari worker
+        const varMap = xEncodings[coding.variable_label];
+        // Cari variabel di store (sebagai cadangan)
+        const matchingVar = independentVars.find(
+          (v) => v.name === coding.variable_label
+        );
+
         coding.categories.forEach((cat, idx) => {
+          let categoryDisplay = cat.category_label; // Default nilai dari Rust (mungkin angka "0.0")
+          if (varMap) {
+            const foundKey = Object.keys(varMap).find((originalLabel) => {
+              // Bandingkan nilai internal (toleransi string/number)
+              return varMap[originalLabel] == cat.category_label;
+            });
+            if (foundKey) {
+              categoryDisplay = foundKey;
+            }
+          }
+          else if (
+            matchingVar &&
+            matchingVar.values &&
+            Array.isArray(matchingVar.values)
+          ) {
+            const foundVal = matchingVar.values.find(
+              (vl) => vl.value == cat.category_label
+            );
+            if (foundVal) categoryDisplay = foundVal.label;
+          }
+
           const row: any = {
             // Tampilkan nama variabel hanya di baris pertama kategori
             rowHeader: [
               idx === 0 ? coding.variable_label : "",
-              cat.category_label,
+              categoryDisplay, // Menggunakan label yang sudah diperbaiki
             ],
             freq: cat.frequency.toString(),
           };
@@ -190,7 +244,7 @@ export const formatSummaryTables = (
             row[`param_${pIdx}`] = val.toFixed(3);
           });
 
-          // Isi sisa kolom dengan string kosong jika variabel ini punya parameter lebih sedikit
+          // Isi sisa kolom dengan string kosong
           for (let i = cat.parameter_codings.length; i < maxParamCols; i++) {
             row[`param_${i}`] = "";
           }

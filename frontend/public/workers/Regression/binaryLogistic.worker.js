@@ -57,7 +57,7 @@ self.onmessage = async (event) => {
     const nMissing = data.length - nIncluded;
 
     // --- PROSES X ---
-    const { xMatrix, xFeatureNames, categoricalConfigForRust } =
+    const { xMatrix, xFeatureNames, categoricalConfigForRust, xEncodings } =
       processCovariates(
         cleanData,
         independentIds,
@@ -90,10 +90,14 @@ self.onmessage = async (event) => {
         const yFlat = new Float64Array(rows);
         for (let i = 0; i < rows; i++) yFlat[i] = yVector[i];
 
+        // --- UPDATE PENTING DI SINI ---
+        // Menambahkan parameter opsi tambahan ke rustConfig
         const rustConfig = {
           dependent_index: 0,
           independent_indices: [],
           categoricalVariables: categoricalConfigForRust,
+
+          // Algoritma Core
           max_iterations: configObj.max_iterations || 20,
           convergence_threshold: 1e-6,
           include_constant: configObj.include_constant !== false,
@@ -102,6 +106,15 @@ self.onmessage = async (event) => {
           method: configObj.method || "Enter",
           p_entry: configObj.p_entry || 0.05,
           p_removal: configObj.p_removal || 0.1,
+
+          // Opsi Statistik & Plot (Pastikan diteruskan ke Rust!)
+          hosmer_lemeshow: configObj.hosmer_lemeshow || false,
+          classification_plots: configObj.classification_plots || false,
+          casewise_listing: configObj.casewise_listing || false,
+          casewise_outliers: configObj.casewise_outliers || 2.0,
+          iteration_history: configObj.iteration_history || false,
+          correlations: configObj.correlations || false,
+
           assumptions: configObj.assumptions || {},
         };
 
@@ -128,6 +141,7 @@ self.onmessage = async (event) => {
           method_used: rustConfig.method,
           model_info: {
             y_encoding: yMap,
+            x_encodings: xEncodings,
             n_samples: rows,
             n_missing: nMissing,
             variables: xFeatureNames,
@@ -216,13 +230,10 @@ function processDependentVariable(rawY) {
   return { yVector, yMap: map };
 }
 
-/**
- * processCovariates - Memproses Variabel X
- * UPDATE: Pemetaan Teks sederhana ke 0, 1, 2, 3...
- */
 function processCovariates(data, ids, details, configObj, getValueFn) {
   let xFeatureNames = [];
   let categoricalConfigForRust = [];
+  let xEncodings = {};
 
   const uiCatSettings = configObj.categoricalVariables || [];
   const getCatSetting = (id) => {
@@ -272,15 +283,23 @@ function processCovariates(data, ids, details, configObj, getValueFn) {
         (val) => !isNaN(Number(val)) && val !== ""
       );
 
-      // Assign Code (0, 1, 2, 3...)
+      // Assign Code
+      const varName = detail?.name || `Var_${id}`;
+      xEncodings[varName] = {}; // Init map untuk variabel ini
+
       sortedValues.forEach((val, index) => {
         if (isAllNumeric) {
-          // Jika aslinya angka, pakai angka itu (0 ya 0)
-          codeMap.set(String(val), Number(val));
+          // Jika angka, gunakan angka aslinya
+          const numVal = Number(val);
+          codeMap.set(String(val), numVal);
+          // Simpan ke encoding map (Original -> Internal)
+          xEncodings[varName][String(val)] = numVal;
         } else {
-          // Jika teks, pakai index mulai dari 0 (0, 1, 2, 3...)
-          // SEBELUMNYA: index + 1.0. SEKARANG: index + 0.0
-          codeMap.set(String(val), index + 0.0);
+          // Jika teks, gunakan index (0.0, 1.0, ...)
+          const internalVal = index + 0.0;
+          codeMap.set(String(val), internalVal);
+          // Simpan ke encoding map: "Male" -> 0
+          xEncodings[varName][String(val)] = internalVal;
         }
       });
     }
@@ -325,5 +344,6 @@ function processCovariates(data, ids, details, configObj, getValueFn) {
     });
   });
 
-  return { xMatrix, xFeatureNames, categoricalConfigForRust };
+  // KEMBALIKAN xEncodings
+  return { xMatrix, xFeatureNames, categoricalConfigForRust, xEncodings };
 }

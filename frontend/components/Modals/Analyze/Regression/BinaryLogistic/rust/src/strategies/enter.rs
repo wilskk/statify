@@ -4,10 +4,11 @@ use std::error::Error;
 
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail, VariableNotInEquation,
-    VariableRow, CategoricalCoding,
+    CategoricalCoding, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail,
+    VariableNotInEquation, VariableRow,
 };
-use crate::stats::{irls, score_test, table};
+// Tambahkan import hosmer_lemeshow
+use crate::stats::{hosmer_lemeshow, irls, score_test, table};
 
 pub fn run(
     x_raw: &DMatrix<f64>,
@@ -114,10 +115,10 @@ pub fn run(
             df: g_df,
             sig: g_sig,
         }),
-        // Fix: Tambahkan field omni_tests (None untuk Step 0)
         omni_tests: None,
         step_omni_tests: None,
         model_if_term_removed: None,
+        hosmer_lemeshow: None, // Step 0 usually doesn't have meaningful HL test
     });
 
     // ==========================================
@@ -138,16 +139,10 @@ pub fn run(
     // PENTING: Gunakan RAW Log Likelihood (Negatif)
     let full_log_likelihood = full_model.final_log_likelihood;
 
-    // --- PERBAIKAN: Hitung Pseudo R-Squares (Cox & Snell + Nagelkerke) dengan Benar ---
+    // --- Hitung Pseudo R-Squares ---
     let n = n_samples as f64;
-
-    // Hitung Cox & Snell
-    // (LL0 - LL1) akan bernilai negatif atau nol karena LL1 (Full) >= LL0 (Null)
     let likelihood_diff = null_log_likelihood - full_log_likelihood;
     let cox_snell = 1.0 - (likelihood_diff * (2.0 / n)).exp();
-
-    // Hitung Max Cox & Snell (untuk Nagelkerke)
-    // Max R2 = 1 - L0^(2/n) = 1 - exp(LL0 * 2/n)
     let max_cox_snell = 1.0 - (null_log_likelihood * (2.0 / n)).exp();
 
     let nagelkerke = if max_cox_snell > 1e-12 {
@@ -157,7 +152,7 @@ pub fn run(
     };
 
     let model_summary = ModelSummary {
-        log_likelihood: full_log_likelihood, // Formatter JS akan mengalikan ini dengan -2
+        log_likelihood: full_log_likelihood,
         cox_snell_r_square: cox_snell,
         nagelkerke_r_square: nagelkerke,
         converged: full_model.converged,
@@ -212,12 +207,9 @@ pub fn run(
         });
     }
 
-    // --- Hitung Omnibus Tests SEBELUM Snapshot ---
-    // Agar bisa dimasukkan ke dalam StepDetail Step 1
+    // --- Hitung Omnibus Tests ---
     let chi_sq_model = 2.0 * (full_log_likelihood - null_log_likelihood);
     let df_model = (x_full.ncols() as i32) - (x_null.ncols() as i32);
-
-    // Safety check untuk Chi-Square negatif (floating point error)
     let chi_sq_model = if chi_sq_model < 0.0 {
         0.0
     } else {
@@ -236,6 +228,17 @@ pub fn run(
         sig: sig_omni,
     };
 
+    // --- BARU: Hitung Hosmer-Lemeshow Jika Diminta ---
+    let hl_result = if config.hosmer_lemeshow {
+        // Default deciles = 10
+        match hosmer_lemeshow::calculate(y_vector, &full_model.predictions, 10) {
+            Ok(res) => Some(res),
+            Err(_) => None, // Jika gagal (misal sampel terlalu kecil), kembalikan None
+        }
+    } else {
+        None
+    };
+
     // Simpan Snapshot Step 1
     steps_details.push(StepDetail {
         step: 1,
@@ -246,10 +249,10 @@ pub fn run(
         variables_in_equation: variables_rows.clone(),
         variables_not_in_equation: Vec::new(),
         remainder_test: None,
-        // Fix: Masukkan omni_tests ke snapshot
         omni_tests: Some(omni_tests.clone()),
         step_omni_tests: Some(omni_tests.clone()),
         model_if_term_removed: None,
+        hosmer_lemeshow: hl_result.clone(), // Tambahkan ke step detail
     });
 
     let overall_test = RemainderTest {
@@ -272,5 +275,6 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: Some(overall_test),
         categorical_codings: codings,
+        hosmer_lemeshow: hl_result, 
     })
 }
