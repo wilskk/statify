@@ -1,10 +1,13 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail,
-    StepHistory, VariableNotInEquation, VariableRow, CategoricalCoding,
+    CategoricalCoding, ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest,
+    StepDetail, StepHistory, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
 use crate::stats::score_test::calculate_score_test;
+// --- TAMBAHAN IMPORT ---
+use crate::stats::hosmer_lemeshow;
+
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -291,7 +294,8 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
         categorical_codings: codings,
-        hosmer_lemeshow: None,
+        // --- MODIFIKASI: Ambil Hosmer Lemeshow dari Step Terakhir ---
+        hosmer_lemeshow: final_step.hosmer_lemeshow,
     })
 }
 
@@ -334,6 +338,7 @@ fn calculate_step_snapshot(
     let n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
 
+    // 1. Model Summary
     let (cox, nagel) = calculate_r_squares(null_ll, model.final_log_likelihood, n_samples);
     let summary = ModelSummary {
         log_likelihood: model.final_log_likelihood,
@@ -343,6 +348,7 @@ fn calculate_step_snapshot(
         iterations: model.iterations,
     };
 
+    // 2. Omnibus Tests (Block/Model vs Null)
     let chi_sq_model = 2.0 * (model.final_log_likelihood - null_ll).abs();
     let df_model = included_indices.len() as i32;
     let sig_model = if df_model > 0 {
@@ -356,6 +362,7 @@ fn calculate_step_snapshot(
         sig: sig_model,
     };
 
+    // 3. Step Omnibus
     let sig_step = if step_chi_sq_val.abs() > 1e-9 {
         1.0 - chi_dist_1df.cdf(step_chi_sq_val.abs())
     } else {
@@ -380,10 +387,10 @@ fn calculate_step_snapshot(
         sig: final_step_sig,
     };
 
-    // NOTE: Backward Wald tidak menampilkan "Model If Term Removed" karena
-    // kriterianya bukan Likelihood Ratio Change. Jadi kita set None.
+    // 4. Model If Term Removed (NONE for Wald)
     let model_if_term_removed = None;
 
+    // 5. Classification Table
     let mut tn = 0;
     let mut fp = 0;
     let mut fn_ = 0;
@@ -417,6 +424,7 @@ fn calculate_step_snapshot(
         overall_percentage: (tn + tp + fn_ + fp) as f64 / n_samples as f64 * 100.0,
     };
 
+    // 6. Variables In Equation
     let mut variables_in = Vec::new();
     let b_int = model.beta[0];
     let se_int = model.covariance_matrix[(0, 0)].sqrt();
@@ -457,6 +465,7 @@ fn calculate_step_snapshot(
         });
     }
 
+    // 7. Variables Not In Equation
     let mut variables_not_in = Vec::new();
     let current_design_matrix = build_design_matrix(full_x, included_indices, n_samples);
 
@@ -488,6 +497,16 @@ fn calculate_step_snapshot(
     let remainder_test =
         calculate_overall_remainder_stats(full_x, y_vector, included_indices, model);
 
+    // --- MODIFIKASI: HITUNG HOSMER-LEMESHOW ---
+    let hl_result = if config.hosmer_lemeshow && step > 0 {
+        match hosmer_lemeshow::calculate(y_vector, &model.predictions, 10) {
+            Ok(res) => Some(res),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
+
     StepDetail {
         step,
         action,
@@ -496,15 +515,14 @@ fn calculate_step_snapshot(
         classification_table: class_table,
         variables_in_equation: variables_in,
         variables_not_in_equation: variables_not_in,
-        model_if_term_removed, // NONE
+        model_if_term_removed,
         remainder_test,
         omni_tests: Some(omni_tests_model),
         step_omni_tests: Some(omni_tests_step),
-        hosmer_lemeshow: None,
+        // --- MASUKKAN HASIL HOSMER-LEMESHOW ---
+        hosmer_lemeshow: hl_result,
     }
 }
-
-// ... helper calculate_model_if_term_removed dihapus ...
 
 fn calculate_overall_remainder_stats(
     full_x: &DMatrix<f64>,

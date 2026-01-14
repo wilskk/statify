@@ -1,11 +1,13 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelIfTermRemovedRow, ModelSummary, OmniTests,
-    RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow, CategoricalCoding,
+    CategoricalCoding, ClassificationTable, LogisticResult, ModelIfTermRemovedRow, ModelSummary,
+    OmniTests, RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
-use crate::stats::score_test;
 use crate::stats::score_test::calculate_score_test;
+// --- TAMBAHAN IMPORT ---
+use crate::stats::hosmer_lemeshow;
+
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -16,7 +18,7 @@ pub fn run(
     y_vector: &DVector<f64>,
     config: &LogisticConfig,
     feature_names: &[String],
-    codings: Option<Vec<CategoricalCoding>>
+    codings: Option<Vec<CategoricalCoding>>,
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
@@ -271,7 +273,8 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
         categorical_codings: codings,
-        hosmer_lemeshow: None,
+        // --- MODIFIKASI: AMBIL HL DARI FINAL STEP ---
+        hosmer_lemeshow: final_step.hosmer_lemeshow,
     })
 }
 
@@ -634,6 +637,16 @@ fn calculate_step_snapshot(
     let remainder_test =
         calculate_overall_remainder_stats(full_x, y_vector, included_indices, model);
 
+    // --- MODIFIKASI: HITUNG HOSMER-LEMESHOW ---
+    let hl_result = if config.hosmer_lemeshow && step > 0 {
+        match hosmer_lemeshow::calculate(y_vector, &model.predictions, 10) {
+            Ok(res) => Some(res),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
+
     StepDetail {
         step,
         action,
@@ -646,6 +659,7 @@ fn calculate_step_snapshot(
         omni_tests: Some(omni_tests_model),
         step_omni_tests: Some(omni_tests_step),
         model_if_term_removed,
-        hosmer_lemeshow: None,
+        // --- MASUKKAN HASIL HOSMER-LEMESHOW ---
+        hosmer_lemeshow: hl_result,
     }
 }
