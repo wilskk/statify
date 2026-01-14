@@ -1,9 +1,11 @@
+import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
 import {
-  LogisticResult,
-  AnalysisSection,
-  StepDetail,
-} from "../types/binary-logistic";
-import { createSection, safeFixed, fmtSig, fmtPct } from "./formatter_utils";
+  createSection,
+  safeFixed,
+  fmtSig,
+  fmtPct,
+  generateClassificationDescription,
+} from "./formatter_utils";
 
 export const formatBlock0 = (
   result: LogisticResult,
@@ -131,13 +133,16 @@ export const formatBlock0 = (
     ],
   };
 
+  // Gunakan generator deskripsi dinamis
+  const classDesc = generateClassificationDescription(b0_overall);
+
   sections.push(
     createSection(
       "block0_classification",
       "Classification Table",
       classificationData,
       {
-        description: "Klasifikasi awal (Null Model).",
+        description: `Initial classification (Null Model). ${classDesc}`,
         note: "a. Constant is included in the model.\nb. The cut value is .500",
       }
     )
@@ -193,7 +198,8 @@ export const formatBlock0 = (
 
   sections.push(
     createSection("block0_vars_in", "Variables in the Equation", varsInData, {
-      description: "Koefisien untuk model awal (hanya Konstanta).",
+      description:
+        "Intercept (constant) for the null model containing no predictors.",
     })
   );
 
@@ -266,14 +272,27 @@ export const formatBlock0 = (
     })),
   };
 
+  // Generate deskripsi dinamis untuk "Variables not in equation"
+  let varsOutDesc = "Score tests for predictors not included in the model.";
+  if (remainderTest) {
+    const pVal = remainderTest.sig;
+    const isSig = pVal < 0.05;
+    const pText = pVal < 0.001 ? "< .001" : `= ${pVal.toFixed(3)}`;
+
+    if (isSig) {
+      varsOutDesc = `The overall residual Score statistic is statistically significant (p ${pText}), indicating that the addition of one or more predictors would significantly improve the model fit.`;
+    } else {
+      varsOutDesc = `The overall residual Score statistic is not statistically significant (p ${pText}), suggesting that adding predictors may not significantly improve the model.`;
+    }
+  }
+
   sections.push(
     createSection(
       "block0_vars_not_in",
       "Variables not in the Equation",
       varsNotInData,
       {
-        description:
-          "Uji Score untuk variabel kandidat yang belum dimasukkan ke model.",
+        description: varsOutDesc,
         note: "a. Residual Chi-Squares are computed based on the likelihood ratios.",
       }
     )

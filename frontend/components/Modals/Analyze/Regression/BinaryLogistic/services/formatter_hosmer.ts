@@ -1,8 +1,10 @@
+import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
 import {
-  LogisticResult,
-  AnalysisSection,
-} from "../types/binary-logistic";
-import { createSection, safeFixed, fmtSig } from "./formatter_utils";
+  createSection,
+  safeFixed,
+  fmtSig,
+  generateHosmerDescription,
+} from "./formatter_utils";
 
 export const formatHosmerLemeshow = (
   result: LogisticResult,
@@ -25,7 +27,7 @@ export const formatHosmerLemeshow = (
   // 2. Persiapan Label (Agar "Observed" sesuai label asli, misal "No/Yes")
   const modelInfo = (result as any).model_info || {};
   const yMap = modelInfo.y_encoding || {};
-  
+
   // Buat lookup table: value (0/1) -> Label Asli (misal "Tidak"/"Ya")
   const labelLookup: Record<number, string> = Object.entries(yMap).reduce(
     (acc, [key, val]) => {
@@ -45,6 +47,10 @@ export const formatHosmerLemeshow = (
   // ======================================================================
   // TABEL 1: Hosmer and Lemeshow Test (Summary)
   // ======================================================================
+
+  // Generate deskripsi dinamis (Fit vs Not Fit)
+  const hlDesc = generateHosmerDescription(hlResult.sig);
+
   const summaryData = {
     columnHeaders: [
       { header: "Step", key: "step" },
@@ -54,7 +60,7 @@ export const formatHosmerLemeshow = (
     ],
     rows: [
       {
-        rowHeader: [], 
+        rowHeader: [],
         step: "1", // SPSS selalu menampilkan ini di Step 1 untuk metode Enter
         chi: safeFixed(hlResult.chi_square),
         df: hlResult.df.toString(),
@@ -64,15 +70,10 @@ export const formatHosmerLemeshow = (
   };
 
   sections.push(
-    createSection(
-      "hosmer_summary",
-      "Hosmer and Lemeshow Test",
-      summaryData,
-      {
-        description: "Uji goodness-of-fit untuk menilai kelayakan model.",
-        note: "H0: Model sesuai dengan data (fit). Jika Sig > 0.05, model dianggap fit.",
-      }
-    )
+    createSection("hosmer_summary", "Hosmer and Lemeshow Test", summaryData, {
+      description: hlDesc,
+      note: "a. The Null Hypothesis states that the model fits the data. A significance value of less than .05 indicates a poor fit.",
+    })
   );
 
   // ======================================================================
@@ -118,7 +119,8 @@ export const formatHosmerLemeshow = (
       "Contingency Table for Hosmer and Lemeshow Test",
       contingencyData,
       {
-        description: "Detail observasi vs ekspektasi per kelompok desil.",
+        description:
+          "Comparison of observed and expected frequencies across probability deciles.",
       }
     )
   );

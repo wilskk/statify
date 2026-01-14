@@ -10,11 +10,11 @@ const getConcernLevel = (vif: number): string => {
 };
 
 // Helper untuk membuat deskripsi dinamis
-const generateDescription = (
+const generateAssumptionDescription = (
   vifData: any[],
   correlationMatrix: any
 ): string => {
-  let description = [];
+  let descriptionParts = [];
 
   // Analisis VIF
   const highVif = vifData.filter((r) => r.vif >= 5);
@@ -22,11 +22,11 @@ const generateDescription = (
     const vars = highVif
       .map((r) => `${r.variable} (VIF=${safeFixed(r.vif)})`)
       .join(", ");
-    description.push(
-      `Multicollinearity issues detected. The following variables have high VIF (>5): ${vars}.`
+    descriptionParts.push(
+      `Potential multicollinearity detected. The following variables have VIF values greater than 5: ${vars}. Values above 10 usually indicate serious multicollinearity.`
     );
   } else {
-    description.push(
+    descriptionParts.push(
       "No significant multicollinearity detected based on VIF values (all < 5)."
     );
   }
@@ -36,7 +36,6 @@ const generateDescription = (
     let highCorrCount = 0;
     // Cek triangle atas saja. Struktur data: { variable, values: [] }
     for (let i = 0; i < correlationMatrix.length; i++) {
-      // Pastikan values ada
       const rowVals = correlationMatrix[i].values;
       if (!rowVals) continue;
 
@@ -46,13 +45,13 @@ const generateDescription = (
       }
     }
     if (highCorrCount > 0) {
-      description.push(
-        `Additionally, strong correlations (> 0.8) were found between ${highCorrCount} pairs of variables, supporting the presence of multicollinearity.`
+      descriptionParts.push(
+        `Review of the correlation matrix shows ${highCorrCount} pair(s) of variables with strong correlations (|r| > 0.8), which supports the possibility of multicollinearity.`
       );
     }
   }
 
-  return description.join(" ");
+  return descriptionParts.join(" ");
 };
 
 export const formatAssumptionTests = (
@@ -69,7 +68,6 @@ export const formatAssumptionTests = (
     assumptions.correlation_matrix.length > 0
   ) {
     // Ambil daftar nama variabel langsung dari data correlation matrix
-    // Data dari worker: [{ variable: "X1", values: [...] }, ...]
     const predictors = assumptions.correlation_matrix.map(
       (row: any) => row.variable
     );
@@ -83,29 +81,24 @@ export const formatAssumptionTests = (
       })),
     ];
 
-    // Setup Rows (PERBAIKAN UTAMA DI SINI)
-    const corrRows = assumptions.correlation_matrix.map(
-      (rowObj: any, idx: number) => {
-        // rowObj adalah { variable: string, values: number[] }
+    // Setup Rows
+    const corrRows = assumptions.correlation_matrix.map((rowObj: any) => {
+      // rowObj adalah { variable: string, values: number[] }
+      const outputRow: any = {
+        rowHeader: [rowObj.variable], // Header kiri
+        row_var: rowObj.variable, // Key untuk kolom pertama
+      };
 
-        // Data output untuk Renderer
-        const outputRow: any = {
-          rowHeader: [rowObj.variable], // Header kiri
-          row_var: rowObj.variable, // Key untuk kolom pertama
-        };
+      const values = rowObj.values;
 
-        // Akses array angka melalui properti .values
-        const values = rowObj.values;
-
-        if (Array.isArray(values)) {
-          values.forEach((val: number, colIdx: number) => {
-            outputRow[`col_${colIdx}`] = safeFixed(val, 3);
-          });
-        }
-
-        return outputRow;
+      if (Array.isArray(values)) {
+        values.forEach((val: number, colIdx: number) => {
+          outputRow[`col_${colIdx}`] = safeFixed(val, 3);
+        });
       }
-    );
+
+      return outputRow;
+    });
 
     sections.push(
       createSection(
@@ -117,7 +110,7 @@ export const formatAssumptionTests = (
         },
         {
           description:
-            "Pearson correlation coefficients between predictor variables. Values close to 1 or -1 indicate strong multicollinearity.",
+            "Pearson correlation coefficients between predictor variables. Coefficients close to 1 or -1 indicate strong linear relationships, suggesting potential multicollinearity.",
         }
       )
     );
@@ -142,7 +135,7 @@ export const formatAssumptionTests = (
     };
 
     // Buat Deskripsi Dinamis
-    const dynamicDesc = generateDescription(
+    const dynamicDesc = generateAssumptionDescription(
       assumptions.vif,
       assumptions.correlation_matrix
     );
@@ -150,7 +143,7 @@ export const formatAssumptionTests = (
     sections.push(
       createSection(
         "assumption_vif",
-        "Variance Inflation Factors (VIF)",
+        "Collinearity Statistics (VIF)",
         vifData,
         {
           description: dynamicDesc,
@@ -170,25 +163,25 @@ export const formatAssumptionTests = (
           rowHeader: ["Low"],
           level: "Low",
           range: "< 2",
-          interp: "No significant multicollinearity",
+          interp: "No significant multicollinearity.",
         },
         {
           rowHeader: ["Moderate"],
           level: "Moderate",
           range: "2 - 5",
-          interp: "Moderate multicollinearity, may not require action",
+          interp: "Moderate multicollinearity; typically acceptable.",
         },
         {
           rowHeader: ["High"],
           level: "High",
           range: "5 - 10",
-          interp: "High multicollinearity, consider remedial measures",
+          interp: "High multicollinearity; verify coefficient stability.",
         },
         {
           rowHeader: ["Very High"],
           level: "Very High",
           range: "> 10",
-          interp: "Severe multicollinearity, remedial action recommended",
+          interp: "Severe multicollinearity; remedial action recommended.",
         },
       ],
     };
@@ -196,10 +189,11 @@ export const formatAssumptionTests = (
     sections.push(
       createSection(
         "assumption_vif_legend",
-        "VIF Concern Levels Legend",
+        "VIF Interpretation Guide",
         legendData,
         {
-          description: "Reference table for interpreting VIF values.",
+          description:
+            "General guidelines for interpreting Variance Inflation Factors.",
         }
       )
     );
@@ -213,7 +207,7 @@ export const formatAssumptionTests = (
         { header: "Interaction Term", key: "term" },
         { header: "Coeff (B)", key: "b" },
         { header: "Sig.", key: "sig" },
-        { header: "Conclusion", key: "res" },
+        { header: "Result", key: "res" },
       ],
       rows: assumptions.box_tidwell.map((row) => ({
         rowHeader: [row.variable],
@@ -222,8 +216,8 @@ export const formatAssumptionTests = (
         b: safeFixed(row.b),
         sig: fmtSig(row.sig),
         res: row.is_significant
-          ? "Non-Linear (Assumption Violated)"
-          : "Linear Assumption Met",
+          ? "Assumption Violated (Non-Linear)"
+          : "Assumption Met (Linear)",
       })),
     };
 
@@ -234,7 +228,7 @@ export const formatAssumptionTests = (
         btData,
         {
           description:
-            "Tests the linear relationship between continuous predictors and the logit. Significance < 0.05 indicates a violation of the linearity assumption.",
+            "Tests the linear relationship between continuous predictors and the logit of the outcome. A non-significant interaction term (Sig. > 0.05) indicates that the assumption of linearity is met.",
         }
       )
     );

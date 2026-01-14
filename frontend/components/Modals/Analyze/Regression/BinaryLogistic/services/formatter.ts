@@ -7,7 +7,7 @@ import { formatSummaryTables } from "./formatter_summary";
 import { formatBlock0 } from "./formatter_block0";
 import { formatBlock1 } from "./formatter_block1";
 import { formatAssumptionTests } from "./formatter_assumptions";
-import { formatHosmerLemeshow } from "./formatter_hosmer"; // Import baru
+import { formatHosmerLemeshow } from "./formatter_hosmer"; 
 import { Variable } from "@/types/Variable";
 
 export const formatBinaryLogisticResult = (
@@ -38,10 +38,6 @@ export const formatBinaryLogisticResult = (
   const block1Output = formatBlock1(result, dependentVariable.name);
 
   if (block1Output.sections) {
-    // TRIK INSERT POSISI (Agar mirip SPSS):
-    // SPSS urutan: Omnibus -> Summary -> Hosmer -> Classification -> Vars
-    // Kita coba sisipkan Hosmer setelah Model Summary jika memungkinkan.
-
     // Cari index Model Summary
     const summaryIndex = block1Output.sections.findIndex(
       (s) => s.id === "block1_summary"
