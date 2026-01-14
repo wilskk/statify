@@ -424,9 +424,9 @@ export const BinaryLogisticMain = () => {
                   componentCategory = "Dependent Variable Encoding";
                 } else if (section.id.includes("categorical_codings")) {
                   componentCategory = "Categorical Variables Codings";
-                } else if (section.id.startsWith("block0")) {
+                } else if (section.id.includes("block0")) {
                   componentCategory = "Block 0: Beginning Block";
-                } else if (section.id.startsWith("block1")) {
+                } else if (section.id.includes("block1") || section.id.includes("hosmer")) {
                   componentCategory = `Block 1: Method = ${options.method}`;
                 } else {
                   componentCategory = cleanTitle;

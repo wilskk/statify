@@ -4,7 +4,16 @@ import {
   VariableRow,
   StepDetail,
 } from "../types/binary-logistic";
-import { createSection, safeFixed, fmtSig, fmtPct } from "./formatter_utils";
+import {
+  createSection,
+  safeFixed,
+  fmtSig,
+  fmtPct,
+  generateOmnibusDescription,
+  generateModelSummaryDescription,
+  generateClassificationDescription,
+  generateVarsInEquationDescription,
+} from "./formatter_utils";
 
 export const formatBlock1 = (
   result: LogisticResult,
@@ -59,6 +68,12 @@ export const formatBlock1 = (
   if (!isStepwise) {
     // 1. Omnibus Tests
     const omni = result.omni_tests;
+    const omniDesc = generateOmnibusDescription(
+      omni?.chi_square || 0,
+      omni?.df || 1,
+      omni?.sig || 1
+    );
+
     const omnibusData = {
       columnHeaders: [
         {
@@ -99,12 +114,16 @@ export const formatBlock1 = (
         "block1_omnibus",
         "Omnibus Tests of Model Coefficients",
         omnibusData,
-        { description: "Pengujian signifikansi model keseluruhan." }
+        { description: omniDesc }
       )
     );
 
     // 2. Model Summary
     const summary = result.model_summary;
+    const summaryDesc = generateModelSummaryDescription(
+      summary?.nagelkerke_r_square
+    );
+
     const modelSummaryData = {
       columnHeaders: [
         { header: "Step", key: "step" },
@@ -125,12 +144,18 @@ export const formatBlock1 = (
 
     sections.push(
       createSection("block1_summary", "Model Summary", modelSummaryData, {
-        description: "Ringkasan statistik model.",
+        description: summaryDesc,
+        note:
+          "a. Estimation terminated at iteration number " +
+          (summary?.iterations || "?") +
+          " because parameter estimates changed by less than .001.",
       })
     );
 
     // 3. Classification Table
     const ct = result.classification_table;
+    const classDesc = generateClassificationDescription(ct?.overall_percentage);
+
     const classificationData = {
       columnHeaders: [
         {
@@ -182,12 +207,24 @@ export const formatBlock1 = (
         "block1_classification",
         "Classification Table",
         classificationData,
-        { description: "Tabel klasifikasi prediksi model." }
+        {
+          description: classDesc,
+          note: "a. The cut value is .500",
+        }
       )
     );
 
     // 4. Variables in the Equation
     const varsIn = result.variables_in_equation || [];
+
+    // Prepare data for dynamic description
+    const simpleVars = varsIn.map((v) => ({
+      label: getRealVariableName(v.label),
+      sig: v.sig,
+      exp_b: v.exp_b,
+    }));
+    const varsDesc = generateVarsInEquationDescription(simpleVars);
+
     const varsInData = {
       columnHeaders: [
         {
@@ -226,7 +263,7 @@ export const formatBlock1 = (
 
     sections.push(
       createSection("block1_vars_in", "Variables in the Equation", varsInData, {
-        description: "Koefisien variabel dalam model.",
+        description: varsDesc,
       })
     );
   } else {
@@ -243,6 +280,9 @@ export const formatBlock1 = (
     const block1Steps = isBackward
       ? steps // Ambil semua untuk Backward (termasuk Step 0/Start)
       : steps.filter((s) => s.step > 0); // Skip start untuk Forward
+
+    // --- Prepare Last Step for Descriptions ---
+    const lastStep = block1Steps[block1Steps.length - 1];
 
     // Accumulators
     const omnibusRows: any[] = [];
@@ -371,7 +411,6 @@ export const formatBlock1 = (
       }
 
       // 6. Model If Term Removed (Critical for Backward)
-      // Table ini hanya valid jika ada variabel yang *bisa* dibuang (selain intercept)
       if (
         stepDetail.model_if_term_removed &&
         stepDetail.model_if_term_removed.length > 0
@@ -379,7 +418,7 @@ export const formatBlock1 = (
         stepDetail.model_if_term_removed.forEach((item) => {
           modelIfTermRemovedRows.push({
             rowHeader: [currentStepLabel, getRealVariableName(item.label)],
-            model_ll: safeFixed(item.model_log_likelihood), 
+            model_ll: safeFixed(item.model_log_likelihood),
             change: safeFixed(item.change_in_neg2ll),
             df: item.df.toString(),
             sig: fmtSig(item.sig_change),
@@ -391,6 +430,12 @@ export const formatBlock1 = (
     // --- RENDER SECTIONS FOR STEPWISE ---
     if (block1Steps.length > 0) {
       if (omnibusRows.length > 0) {
+        // Dynamic description based on last step
+        const omni = lastStep?.omni_tests;
+        const omniDesc = omni
+          ? generateOmnibusDescription(omni.chi_square, omni.df, omni.sig)
+          : "Omnibus tests of model coefficients.";
+
         sections.push(
           createSection(
             "block1_omnibus",
@@ -410,12 +455,19 @@ export const formatBlock1 = (
               ],
               rows: omnibusRows,
             },
-            { description: "Pengujian signifikansi model per langkah." }
+            {
+              description: `History of model fit significance. Final step: ${omniDesc}`,
+            }
           )
         );
       }
 
       if (summaryRows.length > 0) {
+        const summary = lastStep?.summary;
+        const sumDesc = summary
+          ? generateModelSummaryDescription(summary.nagelkerke_r_square)
+          : "";
+
         sections.push(
           createSection(
             "block1_summary",
@@ -429,12 +481,19 @@ export const formatBlock1 = (
               ],
               rows: summaryRows,
             },
-            { description: "Ringkasan statistik model." }
+            {
+              description: `Model summary statistics for each step. Final step: ${sumDesc}`,
+            }
           )
         );
       }
 
       if (classificationRows.length > 0) {
+        const ct = lastStep?.classification_table;
+        const classDesc = ct
+          ? generateClassificationDescription(ct.overall_percentage)
+          : "";
+
         sections.push(
           createSection(
             "block1_classification",
@@ -465,12 +524,23 @@ export const formatBlock1 = (
               ],
               rows: classificationRows,
             },
-            { description: "Tabel klasifikasi untuk setiap langkah." }
+            {
+              description: `Classification results at each step. Final step: ${classDesc}`,
+              note: "a. The cut value is .500",
+            }
           )
         );
       }
 
       if (varsInRows.length > 0) {
+        const vars = lastStep?.variables_in_equation || [];
+        const simpleVars = vars.map((v) => ({
+          label: getRealVariableName(v.label),
+          sig: v.sig,
+          exp_b: v.exp_b,
+        }));
+        const varsDesc = generateVarsInEquationDescription(simpleVars);
+
         sections.push(
           createSection(
             "block1_vars_in",
@@ -500,12 +570,13 @@ export const formatBlock1 = (
               ],
               rows: varsInRows,
             },
-            { description: "Koefisien variabel yang masuk ke model." }
+            {
+              description: `Coefficients for variables included in the model at each step. Final step: ${varsDesc}`,
+            }
           )
         );
       }
 
-      // TABEL KHUSUS BACKWARD: Model if Term Removed
       if (modelIfTermRemovedRows.length > 0) {
         sections.push(
           createSection(
@@ -527,7 +598,10 @@ export const formatBlock1 = (
               ],
               rows: modelIfTermRemovedRows,
             },
-            { description: "Uji signifikansi penghapusan variabel." }
+            {
+              description:
+                "Tests for removal of variables at each step (Backward Elimination).",
+            }
           )
         );
       }
@@ -552,7 +626,10 @@ export const formatBlock1 = (
               ],
               rows: varsOutRows,
             },
-            { description: "Variabel kandidat yang belum masuk ke model." }
+            {
+              description:
+                "Score tests for predictors not included in the model at each step.",
+            }
           )
         );
       }

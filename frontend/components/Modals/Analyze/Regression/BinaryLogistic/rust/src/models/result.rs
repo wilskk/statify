@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap; // Tambahan import
 
 // Struktur untuk satu baris hasil VIF
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -186,8 +187,23 @@ pub struct CategoricalCoding {
     pub categories: Vec<FrequencyCount>,
 }
 
+// --- Struktur Metadata Model (BARU) ---
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ModelInfo {
+    pub variables: Vec<String>,
+    pub n_total: usize,
+    pub n_missing: usize,
+    pub n_selected: usize,
+    pub y_encoding: HashMap<String, i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub x_encodings: Option<HashMap<String, HashMap<String, f64>>>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct LogisticResult {
+    // Tambahkan field ini agar formatters di frontend bisa mengakses metadata
+    pub model_info: ModelInfo,
+
     #[serde(rename = "model_summary")]
     pub summary: ModelSummary,
 
