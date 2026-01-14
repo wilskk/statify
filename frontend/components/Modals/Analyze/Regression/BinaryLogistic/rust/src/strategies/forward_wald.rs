@@ -276,6 +276,7 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
         categorical_codings: codings,
+        hosmer_lemeshow: None,
     })
 }
 
@@ -565,5 +566,6 @@ fn calculate_step_snapshot(
         step_omni_tests: Some(omni_tests_step), // INCREMENTAL (STEP)
         // FIX: Wald method tidak menggunakan Model if Term Removed
         model_if_term_removed: None,
+        hosmer_lemeshow: None,
     }
 }

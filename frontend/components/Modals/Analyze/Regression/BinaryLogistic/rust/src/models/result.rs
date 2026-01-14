@@ -37,6 +37,26 @@ pub struct AssumptionResult {
     pub correlation_matrix: Option<Vec<CorrelationRow>>,
 }
 
+// --- BARU: Hosmer-Lemeshow Structures ---
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HosmerLemeshowGroup {
+    pub group: usize,
+    pub size: usize,
+    pub observed_1: usize, // Event terjadi (Y=1)
+    pub expected_1: f64,   // Sum of predicted prob
+    pub observed_0: usize, // Event tidak terjadi (Y=0)
+    pub expected_0: f64,   // Sum of (1 - predicted prob)
+    pub total_observed: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HosmerLemeshowResult {
+    pub chi_square: f64,
+    pub df: usize,
+    pub sig: f64,
+    pub contingency_table: Vec<HosmerLemeshowGroup>,
+}
+
 // --- Model Summary ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModelSummary {
@@ -82,7 +102,7 @@ pub struct VariableNotInEquation {
     pub sig: f64,
 }
 
-// --- BARU: Struktur untuk Model if Term Removed ---
+// --- Struktur untuk Model if Term Removed ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModelIfTermRemovedRow {
     pub label: String,
@@ -138,6 +158,10 @@ pub struct StepDetail {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub step_omni_tests: Option<OmniTests>,
+
+    // --- BARU: Hosmer Lemeshow per Step ---
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hosmer_lemeshow: Option<HosmerLemeshowResult>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -147,7 +171,7 @@ pub struct RemainderTest {
     pub sig: f64,
 }
 
-// --- BARU: Struktur untuk Output Categorical Variables Codings ---
+// --- Struktur untuk Output Categorical Variables Codings ---
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FrequencyCount {
@@ -203,11 +227,14 @@ pub struct LogisticResult {
     #[serde(rename = "assumption_tests", skip_serializing_if = "Option::is_none")]
     pub assumption_tests: Option<AssumptionResult>,
 
-    // --- BARU: Field untuk informasi Coding ---
-    // Kita gunakan Option agar backward compatible jika strategi belum mengisinya
+    // --- Field untuk informasi Coding ---
     #[serde(
         rename = "categorical_codings",
         skip_serializing_if = "Option::is_none"
     )]
     pub categorical_codings: Option<Vec<CategoricalCoding>>,
+
+    // --- BARU: Hosmer Lemeshow Final Model ---
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hosmer_lemeshow: Option<HosmerLemeshowResult>,
 }

@@ -39,6 +39,11 @@ import {
   BinaryLogisticOptionsParams,
   BinaryLogisticAssumptionParams,
   LogisticResult,
+  DEFAULT_BINARY_LOGISTIC_OPTIONS,
+  DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS,
+  DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS,
+  DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS,
+  DEFAULT_BINARY_LOGISTIC_ASSUMPTION_PARAMS,
 } from "../types/binary-logistic";
 
 export const BinaryLogisticMain = () => {
@@ -58,12 +63,11 @@ export const BinaryLogisticMain = () => {
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] =
     useState<Variable | null>(null);
-  const [options, setOptions] = useState<BinaryLogisticOptions>({
-    dependent: null,
-    covariates: [],
-    factors: [],
-    method: "Enter",
-  });
+
+  // Main Options State
+  const [options, setOptions] = useState<BinaryLogisticOptions>(
+    DEFAULT_BINARY_LOGISTIC_OPTIONS
+  );
 
   const variableDetails = useMemo(() => {
     return variablesFromStore.reduce((acc, v) => {
@@ -75,47 +79,22 @@ export const BinaryLogisticMain = () => {
   }, [variablesFromStore]);
 
   // Sub-Dialog Params State
-  const [catParams, setCatParams] = useState<BinaryLogisticCategoricalParams>({
-    covariates: [],
-    contrast: "Indicator",
-    referenceCategory: "Last",
-  });
-  const [saveParams, setSaveParams] = useState<BinaryLogisticSaveParams>({
-    predictedProbabilities: false,
-    predictedGroup: false,
-    residualsUnstandardized: false,
-    residualsLogit: false,
-    residualsStudentized: false,
-    residualsStandardized: false,
-    residualsDeviance: false,
-    influenceCooks: false,
-    influenceLeverage: false,
-    influenceDfBeta: false,
-  });
+  const [catParams, setCatParams] = useState<BinaryLogisticCategoricalParams>(
+    DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS
+  );
 
-  const [optParams, setOptParams] = useState<BinaryLogisticOptionsParams>({
-    classificationPlots: false,
-    hosmerLemeshow: false,
-    casewiseListing: false,
-    casewiseType: "outliers",
-    casewiseOutliers: 2.0,
-    correlations: false,
-    iterationHistory: false,
-    ciForExpB: false,
-    ciLevel: 95,
-    displayAtEachStep: false,
-    probEntry: 0.05,
-    probRemoval: 0.1,
-    classificationCutoff: 0.5,
-    maxIterations: 20,
-    includeConstant: true,
-  });
+  const [saveParams, setSaveParams] = useState<BinaryLogisticSaveParams>(
+    DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS
+  );
+
+  const [optParams, setOptParams] = useState<BinaryLogisticOptionsParams>(
+    DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS
+  );
 
   const [assumptionParams, setAssumptionParams] =
-    useState<BinaryLogisticAssumptionParams>({
-      multicollinearity: false,
-      boxTidwell: false,
-    });
+    useState<BinaryLogisticAssumptionParams>(
+      DEFAULT_BINARY_LOGISTIC_ASSUMPTION_PARAMS
+    );
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -142,12 +121,30 @@ export const BinaryLogisticMain = () => {
     }
   };
 
+  // --- MODIFIKASI: Auto-detect Nominal/Ordinal variables ---
   const handleMoveToCovariates = () => {
     if (highlightedVariable) {
+      // 1. Tambahkan ke daftar Covariates
       setOptions((prev) => ({
         ...prev,
         covariates: [...prev.covariates, highlightedVariable],
       }));
+
+      // 2. Cek apakah tipe datanya Nominal atau Ordinal (case-insensitive check)
+      const measure = highlightedVariable.measure?.toLowerCase();
+      if (measure === "nominal" || measure === "ordinal") {
+        setCatParams((prev) => {
+          // Pastikan tidak duplikat
+          if (!prev.covariates.includes(highlightedVariable.name)) {
+            return {
+              ...prev,
+              covariates: [...prev.covariates, highlightedVariable.name],
+            };
+          }
+          return prev;
+        });
+      }
+
       setHighlightedVariable(null);
     }
   };
@@ -369,11 +366,15 @@ export const BinaryLogisticMain = () => {
           try {
             console.log("[Main] Starting Formatting Process...");
 
-            // A. Format Hasil
-            // Ini akan memanggil formatter.ts -> yang memanggil formatter_summary, block0, block1, assumption, dll.
+            const allIndependentVars = [
+              ...options.covariates,
+              ...options.factors,
+            ];
+
             const formattedResult = formatBinaryLogisticResult(
               payload,
-              options.dependent!.name
+              options.dependent!,
+              allIndependentVars
             );
 
             console.log("[Main] Formatting Complete:", formattedResult);
@@ -417,17 +418,16 @@ export const BinaryLogisticMain = () => {
                   .replace(/<[^>]*>?/gm, " ")
                   .trim();
 
-                if (
-                  section.id.includes("case_processing") ||
-                  section.id.includes("encoding")
-                ) {
+                if (section.id.includes("case_processing")) {
                   componentCategory = "Case Processing Summary";
+                } else if (section.id.includes("encoding")) {
+                  componentCategory = "Dependent Variable Encoding";
+                } else if (section.id.includes("categorical_codings")) {
+                  componentCategory = "Categorical Variables Codings";
                 } else if (section.id.startsWith("block0")) {
                   componentCategory = "Block 0: Beginning Block";
                 } else if (section.id.startsWith("block1")) {
                   componentCategory = `Block 1: Method = ${options.method}`;
-                } else if (section.id.includes("categorical_codings")) {
-                  componentCategory = "Categorical Variables Codings";
                 } else {
                   componentCategory = cleanTitle;
                 }
@@ -540,14 +540,27 @@ export const BinaryLogisticMain = () => {
       const analysisConfig = {
         dependent_index: depIndex,
         independent_indices: indepIndices,
+
+        // --- Option Params ---
         max_iterations: optParams.maxIterations,
         include_constant: optParams.includeConstant,
-        convergence_threshold: 1e-6,
+        convergence_threshold: 1e-6, // Fixed value for now
         confidence_level: optParams.ciLevel,
         cutoff: optParams.classificationCutoff,
+
+        // --- Algoritma Method Params ---
         method: methodMapping[options.method] || "Enter",
         p_entry: optParams.probEntry,
         p_removal: optParams.probRemoval,
+
+        // --- Additional Output Options sent to Worker ---
+        classification_plots: optParams.classificationPlots,
+        hosmer_lemeshow: optParams.hosmerLemeshow,
+        casewise_listing: optParams.casewiseListing,
+        casewise_outliers: optParams.casewiseOutliers,
+        iteration_history: optParams.iterationHistory,
+        correlations: optParams.correlations,
+
         rows: data.length,
         cols: variables.length,
 
@@ -710,12 +723,11 @@ export const BinaryLogisticMain = () => {
           <Button
             variant="outline"
             onClick={() => {
-              setOptions({
-                dependent: null,
-                covariates: [],
-                factors: [],
-                method: "Enter",
-              });
+              setOptions(DEFAULT_BINARY_LOGISTIC_OPTIONS);
+              setCatParams(DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS);
+              setSaveParams(DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS);
+              setOptParams(DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS);
+              setAssumptionParams(DEFAULT_BINARY_LOGISTIC_ASSUMPTION_PARAMS);
               setHighlightedVariable(null);
             }}
             disabled={isLoading}

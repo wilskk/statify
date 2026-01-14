@@ -4,3 +4,4 @@ pub mod table;
 pub mod score_test;
 pub mod assumptions;
 pub mod design_matrix;
+pub mod hosmer_lemeshow;
