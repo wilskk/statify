@@ -1,11 +1,13 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail,
-    StepHistory, VariableNotInEquation, VariableRow, CategoricalCoding,
+    CategoricalCoding, ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest,
+    StepDetail, StepHistory, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
-use crate::stats::score_test;
 use crate::stats::score_test::calculate_score_test;
+// --- TAMBAHAN IMPORT ---
+use crate::stats::hosmer_lemeshow;
+
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -15,7 +17,7 @@ pub fn run(
     y_vector: &DVector<f64>,
     config: &LogisticConfig,
     feature_names: &[String],
-    codings: Option<Vec<CategoricalCoding>>
+    codings: Option<Vec<CategoricalCoding>>,
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
@@ -56,6 +58,7 @@ pub fn run(
         prev_log_likelihood, // Prev = Null untuk Step 0
         prev_n_vars,
         feature_names,
+        config, // Pass config
     );
     steps_details.push(step0_detail);
 
@@ -149,6 +152,7 @@ pub fn run(
                     prev_log_likelihood,
                     prev_n_vars,
                     feature_names,
+                    config,
                 );
                 steps_details.push(step_detail);
             }
@@ -233,6 +237,7 @@ pub fn run(
                         prev_log_likelihood,
                         prev_n_vars,
                         feature_names,
+                        config,
                     );
                     steps_details.push(step_detail);
                 }
@@ -276,7 +281,8 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
         categorical_codings: codings,
-        hosmer_lemeshow: None,
+        // --- MODIFIKASI: AMBIL HL DARI FINAL STEP ---
+        hosmer_lemeshow: final_step.hosmer_lemeshow,
     })
 }
 
@@ -386,6 +392,7 @@ fn calculate_step_snapshot(
     prev_ll: f64,       // ARGUMEN BARU
     prev_n_vars: usize, // ARGUMEN BARU
     feature_names: &[String],
+    config: &LogisticConfig, // PASS CONFIG
 ) -> StepDetail {
     let n = y_vector.len();
     let n_total_vars = full_x.ncols();
@@ -549,9 +556,18 @@ fn calculate_step_snapshot(
     }
 
     // 7. Remainder Test (Overall Statistics)
-    // FIX: Gunakan helper untuk perhitungan matriks simultan
     let remainder_test =
         calculate_overall_remainder_stats(full_x, y_vector, included_indices, model);
+
+    // --- MODIFIKASI: HITUNG HOSMER-LEMESHOW ---
+    let hl_result = if config.hosmer_lemeshow && step > 0 {
+        match hosmer_lemeshow::calculate(y_vector, &model.predictions, 10) {
+            Ok(res) => Some(res),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
 
     StepDetail {
         step,
@@ -562,10 +578,10 @@ fn calculate_step_snapshot(
         variables_in_equation: variables_in,
         variables_not_in_equation: variables_not_in,
         remainder_test,
-        omni_tests: Some(omni_tests_model),     // KUMULATIF
-        step_omni_tests: Some(omni_tests_step), // INCREMENTAL (STEP)
-        // FIX: Wald method tidak menggunakan Model if Term Removed
+        omni_tests: Some(omni_tests_model),     
+        step_omni_tests: Some(omni_tests_step),
         model_if_term_removed: None,
-        hosmer_lemeshow: None,
+        // --- MASUKKAN HOSMER LEMESHOW ---
+        hosmer_lemeshow: hl_result,
     }
 }

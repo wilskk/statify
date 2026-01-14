@@ -1,10 +1,13 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelIfTermRemovedRow, ModelSummary, OmniTests,
-    RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow, CategoricalCoding,
+    CategoricalCoding, ClassificationTable, LogisticResult, ModelIfTermRemovedRow, ModelSummary,
+    OmniTests, RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, FittedModel};
 use crate::stats::score_test::calculate_score_test;
+// --- TAMBAHAN IMPORT ---
+use crate::stats::hosmer_lemeshow;
+
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -14,7 +17,7 @@ pub fn run(
     y_vector: &DVector<f64>,
     config: &LogisticConfig,
     feature_names: &[String],
-    codings: Option<Vec<CategoricalCoding>>
+    codings: Option<Vec<CategoricalCoding>>,
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
@@ -45,7 +48,7 @@ pub fn run(
     let null_log_likelihood = n_1 * p_null.ln() + n_0 * (1.0 - p_null).ln();
 
     // Classification Table Block 0 (Majority Class)
-    let predicted_class_null = if n_1 > n_0 { 1.0 } else { 0.0 };
+    let _predicted_class_null = if n_1 > n_0 { 1.0 } else { 0.0 };
     let block_0_row = VariableRow {
         label: "Constant".to_string(),
         b: b0_val,
@@ -145,13 +148,6 @@ pub fn run(
     .map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
 
     // Tracker untuk Step Chi-Square
-    // Kita butuh Model Chi-Square dari step sebelumnya untuk menghitung selisih.
-    // Model Chi-Square = (-2LL Null) - (-2LL Current) = 2 * (LL Current - LL Null)
-    // Untuk Step 1 (Full Model), previousnya adalah Null Model? Tidak, Step 1 adalah baseline backward.
-    // Di output SPSS Backward, Step 1 tidak menampilkan "Step" statistic yang negatif,
-    // karena Step 1 adalah "Entered All Variables".
-
-    // Namun untuk Step 2 dst, Prev Model adalah model sebelum variabel dibuang.
     let mut prev_model_chi_sq = 2.0 * (current_model.final_log_likelihood - null_log_likelihood);
 
     // Snapshot Step 1 (Full Model)
@@ -203,10 +199,7 @@ pub fn run(
                     }
                 }
 
-                // Change = -2LL(Reduced) - -2LL(Full/Current)
-                // -2LL Reduced > -2LL Full (Model makin buruk)
                 // Change = 2 * (Full_LL - Reduced_LL).abs()
-                // Ini untuk P-Value (harus positif untuk lookup ChiSq).
                 let change_abs = 2.0 * (current_model.final_log_likelihood - reduced_ll).abs();
 
                 let p_val_remove = if change_abs < 1e-9 {
@@ -242,8 +235,7 @@ pub fn run(
                     // Update Model
                     current_model = new_model;
 
-                    // Hitung Statistik Step (Negative Chi-Square)
-                    // Step Chi = Model Chi Sq (New) - Model Chi Sq (Prev)
+                    // Hitung Statistik Step
                     let current_model_chi_sq =
                         2.0 * (current_model.final_log_likelihood - null_log_likelihood);
                     let step_chi_sq_val = current_model_chi_sq - prev_model_chi_sq;
@@ -324,7 +316,8 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
         categorical_codings: codings,
-        hosmer_lemeshow: None,
+        // --- MODIFIKASI: Ambil Hosmer Lemeshow dari Step Terakhir ---
+        hosmer_lemeshow: final_step.hosmer_lemeshow,
     })
 }
 
@@ -338,21 +331,15 @@ fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize
     DMatrix::from_columns(&columns)
 }
 
-// FIX: Helper yang mengembalikan Cox & Snell DAN Nagelkerke secara terpisah
 fn calculate_r_squares(null_ll: f64, model_ll: f64, n: usize) -> (f64, f64) {
-    // Cox & Snell = 1 - (L0/LM)^(2/n) = 1 - exp( (2/n) * (LL0 - LLM) )
     let ratio_exponent = (2.0 / n as f64) * (null_ll - model_ll);
     let cox_snell = 1.0 - ratio_exponent.exp();
-
-    // Max R2 = 1 - L0^(2/n) = 1 - exp( (2/n) * LL0 )
     let max_r2 = 1.0 - ((2.0 / n as f64) * null_ll).exp();
-
     let nagelkerke = if max_r2 > 1e-12 {
         cox_snell / max_r2
     } else {
         0.0
     };
-
     (cox_snell, nagelkerke)
 }
 
@@ -366,7 +353,7 @@ fn calculate_step_snapshot(
     y_vector: &DVector<f64>,
     included_indices: &[usize],
     null_ll: f64,
-    step_chi_sq_val: f64, // Parameter baru: Nilai Chi-Square Langkah (bisa negatif)
+    step_chi_sq_val: f64,
     feature_names: &[String],
     config: &LogisticConfig,
     n_samples: usize,
@@ -374,7 +361,7 @@ fn calculate_step_snapshot(
     let n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
 
-    // 1. Model Summary (Fix: Gunakan helper baru)
+    // 1. Model Summary
     let (cox, nagel) = calculate_r_squares(null_ll, model.final_log_likelihood, n_samples);
     let summary = ModelSummary {
         log_likelihood: model.final_log_likelihood,
@@ -384,7 +371,7 @@ fn calculate_step_snapshot(
         iterations: model.iterations,
     };
 
-    // 2. Omnibus Tests (Block/Model vs Null) - Always Positive
+    // 2. Omnibus Tests (Block/Model vs Null)
     let chi_sq_model = 2.0 * (model.final_log_likelihood - null_ll).abs();
     let df_model = included_indices.len() as i32;
     let sig_model = if df_model > 0 {
@@ -398,9 +385,7 @@ fn calculate_step_snapshot(
         sig: sig_model,
     };
 
-    // 3. Step Omnibus (Change) - Can be Negative in Backward
-    // DF Step = 1 (karena membuang 1 variabel per step)
-    // Sig Step = P-value of the change (always based on abs value)
+    // 3. Step Omnibus
     let sig_step = if step_chi_sq_val.abs() > 1e-9 {
         1.0 - chi_dist_1df.cdf(step_chi_sq_val.abs())
     } else {
@@ -408,12 +393,9 @@ fn calculate_step_snapshot(
             0.0
         } else {
             1.0
-        } // Step 1 is full model, sig usually < .001 implies 0.0
+        }
     };
 
-    // Adjustment khusus Step 1 (Full Model):
-    // Di SPSS, Step 1 Backward punya Step ChiSq = Model ChiSq (Positif).
-    // Step 2 dst (Removal) punya Step ChiSq Negatif.
     let final_step_chi = if step == 1 {
         chi_sq_model
     } else {
@@ -547,6 +529,16 @@ fn calculate_step_snapshot(
     let remainder_test =
         calculate_overall_remainder_stats(full_x, y_vector, included_indices, model);
 
+    // --- MODIFIKASI: HITUNG HOSMER-LEMESHOW ---
+    let hl_result = if config.hosmer_lemeshow && step > 0 {
+        match hosmer_lemeshow::calculate(y_vector, &model.predictions, 10) {
+            Ok(res) => Some(res),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
+
     StepDetail {
         step,
         action,
@@ -559,7 +551,8 @@ fn calculate_step_snapshot(
         remainder_test,
         omni_tests: Some(omni_tests_model),
         step_omni_tests: Some(omni_tests_step),
-        hosmer_lemeshow: None,
+        // --- MASUKKAN HASIL HOSMER-LEMESHOW ---
+        hosmer_lemeshow: hl_result,
     }
 }
 
