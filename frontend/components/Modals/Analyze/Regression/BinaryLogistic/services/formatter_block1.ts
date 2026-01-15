@@ -1,65 +1,79 @@
 import {
   LogisticResult,
-  StepHistory,
   AnalysisSection,
+  VariableRow,
+  StepDetail,
 } from "../types/binary-logistic";
-import { createSection, safeFixed, fmtSig, fmtPct } from "./formatter_utils";
+import {
+  createSection,
+  safeFixed,
+  fmtSig,
+  fmtPct,
+  generateOmnibusDescription,
+  generateModelSummaryDescription,
+  generateClassificationDescription,
+  generateVarsInEquationDescription,
+} from "./formatter_utils";
 
 export const formatBlock1 = (
   result: LogisticResult,
   dependentName: string
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
-  const ct = result.classification_table;
-
-  // ----------------------------------------------------------------------
-  // 1. Logic Check & Metadata
-  // ----------------------------------------------------------------------
-
-  // Ambil list variabel yang masuk ke model
-  const predictors = result.variables_in_equation || [];
-
-  // FIX: Cek apakah ada prediktor SELAIN Constant.
-  // Jika length > 0 tapi isinya cuma Constant, berarti belum ada variabel X yang masuk.
-  const realPredictors = predictors.filter((p) => p.label !== "Constant");
-  const hasRealPredictors = realPredictors.length > 0;
-
-  // Cek metode yang digunakan
-  const methodUsed = (result as any).method_used || "Enter";
-
-  // Deteksi Group Metode
-  const isBackward = methodUsed.includes("Backward");
-  const isForward =
-    methodUsed.includes("Forward") || methodUsed.includes("Stepwise");
-  const isEnter = !isBackward && !isForward; // Asumsi default Enter
-
-  // Tentukan Nomor Langkah Terakhir (Final Step)
-  const history = result.step_history || [];
-  // Jika history kosong (karena dicukupkan worker atau metode Enter), default ke 1 atau 0
-  const finalStepNum =
-    history.length > 0
-      ? history[history.length - 1].step
-      : hasRealPredictors
-      ? 1
-      : 0;
-  const currentStepLabel = `Step ${finalStepNum}`;
+  const modelInfo = (result as any).model_info || {};
 
   // ======================================================================
-  // LOGIKA UTAMA TAMPILKAN BLOCK 1
+  // 1. HELPERS & SETUP
   // ======================================================================
-  /*
-    Kapan Block 1 Muncul?
-    1. Metode ENTER: Selalu muncul.
-    2. Metode BACKWARD: Selalu muncul (karena start dari semua variabel).
-    3. Metode FORWARD: Hanya muncul jika ada variabel 'Real' yang masuk.
-  */
-  const shouldShowBlock1 =
-    isEnter || isBackward || (isForward && hasRealPredictors);
+  const yMap = modelInfo.y_encoding || {};
+  const labelLookup: Record<number, string> = Object.entries(yMap).reduce(
+    (acc, [key, val]) => {
+      acc[val as number] = key;
+      return acc;
+    },
+    {} as Record<number, string>
+  );
 
-  if (shouldShowBlock1) {
-    // ======================================================================
-    // SECTION 1: Omnibus Tests of Model Coefficients
-    // ======================================================================
+  const getLabel = (val: number): string => {
+    return labelLookup[val] !== undefined ? labelLookup[val] : val.toString();
+  };
+
+  const label0 = getLabel(0);
+  const label1 = getLabel(1);
+
+  const method = result.method_used || "Enter";
+  const isStepwise =
+    method.toLowerCase().includes("forward") ||
+    method.toLowerCase().includes("backward") ||
+    method.toLowerCase().includes("stepwise");
+
+  // Helper untuk mendapatkan nama variabel asli dari label generic
+  const variableNames = modelInfo.variables || [];
+  const getRealVariableName = (label: string): string => {
+    if (label.startsWith("Var_") || label.startsWith("Var ")) {
+      const parts = label.split(/[ _]/);
+      const indexStr = parts[1];
+      const index = parseInt(indexStr, 10); // 0-based index from rust logic often matches
+      // Note: Rust logic might return Var_0, Var_1. Frontend features are 0-indexed.
+      if (!isNaN(index) && variableNames[index]) {
+        return variableNames[index];
+      }
+    }
+    return label;
+  };
+
+  // ======================================================================
+  // LOGIKA A: METODE ENTER (Tampilan Standar / Single Step)
+  // ======================================================================
+  if (!isStepwise) {
+    // 1. Omnibus Tests
+    const omni = result.omni_tests;
+    const omniDesc = generateOmnibusDescription(
+      omni?.chi_square || 0,
+      omni?.df || 1,
+      omni?.sig || 1
+    );
+
     const omnibusData = {
       columnHeaders: [
         {
@@ -75,22 +89,22 @@ export const formatBlock1 = (
       ],
       rows: [
         {
-          rowHeader: [currentStepLabel, "Step"],
-          chi: safeFixed(result.omni_tests?.chi_square),
-          df: result.omni_tests?.df?.toString() ?? "0",
-          sig: fmtSig(result.omni_tests?.sig),
+          rowHeader: ["Step 1", "Step"],
+          chi: safeFixed(omni?.chi_square),
+          df: omni?.df?.toString() ?? "1",
+          sig: fmtSig(omni?.sig),
         },
         {
-          rowHeader: [currentStepLabel, "Block"],
-          chi: safeFixed(result.omni_tests?.chi_square),
-          df: result.omni_tests?.df?.toString() ?? "0",
-          sig: fmtSig(result.omni_tests?.sig),
+          rowHeader: ["Step 1", "Block"],
+          chi: safeFixed(omni?.chi_square),
+          df: omni?.df?.toString() ?? "1",
+          sig: fmtSig(omni?.sig),
         },
         {
-          rowHeader: [currentStepLabel, "Model"],
-          chi: safeFixed(result.omni_tests?.chi_square),
-          df: result.omni_tests?.df?.toString() ?? "0",
-          sig: fmtSig(result.omni_tests?.sig),
+          rowHeader: ["Step 1", "Model"],
+          chi: safeFixed(omni?.chi_square),
+          df: omni?.df?.toString() ?? "1",
+          sig: fmtSig(omni?.sig),
         },
       ],
     };
@@ -98,65 +112,49 @@ export const formatBlock1 = (
     sections.push(
       createSection(
         "block1_omnibus",
-        `Omnibus Tests of Model Coefficients`,
+        "Omnibus Tests of Model Coefficients",
         omnibusData,
-        {
-          description:
-            "Pengujian signifikansi model secara keseluruhan (Chi-square).",
-        }
+        { description: omniDesc }
       )
     );
 
-    // ======================================================================
-    // SECTION 2: Model Summary
-    // ======================================================================
-    let summaryRows: any[] = [];
-
-    if (history.length > 0) {
-      // Jika ada history (Backward/Stepwise yang sukses), tampilkan baris per langkah
-      summaryRows = history.map((h: StepHistory) => ({
-        rowHeader: [h.step.toString()],
-        ll: safeFixed(h.model_log_likelihood),
-        cox: safeFixed(0), // Placeholder (Rust library mungkin belum return ini di history)
-        nagel: safeFixed(h.nagelkerke_r2),
-      }));
-    } else {
-      // Jika Metode Enter atau Forward Step 1 (tanpa history array)
-      summaryRows = [
-        {
-          rowHeader: ["1"],
-          ll: safeFixed(result.model_summary?.log_likelihood),
-          cox: safeFixed(result.model_summary?.cox_snell_r_square),
-          nagel: safeFixed(result.model_summary?.nagelkerke_r_square),
-        },
-      ];
-    }
+    // 2. Model Summary
+    const summary = result.model_summary;
+    const summaryDesc = generateModelSummaryDescription(
+      summary?.nagelkerke_r_square
+    );
 
     const modelSummaryData = {
       columnHeaders: [
-        { header: "Step", key: "rowHeader" },
+        { header: "Step", key: "step" },
         { header: "-2 Log likelihood", key: "ll" },
         { header: "Cox & Snell R Square", key: "cox" },
         { header: "Nagelkerke R Square", key: "nagel" },
       ],
-      rows: summaryRows,
+      rows: [
+        {
+          rowHeader: [],
+          step: "1",
+          ll: safeFixed(-2 * (summary?.log_likelihood || 0)), // Ensure -2LL
+          cox: safeFixed(summary?.cox_snell_r_square),
+          nagel: safeFixed(summary?.nagelkerke_r_square),
+        },
+      ],
     };
 
     sections.push(
-      createSection("block1_model_summary", "Model Summary", modelSummaryData, {
-        description:
-          "Statistik kebaikan model (Goodness of Fit) termasuk R Square semu.",
-        note: "a. Estimation terminated at iteration number...", // String statis sementara
+      createSection("block1_summary", "Model Summary", modelSummaryData, {
+        description: summaryDesc,
+        note:
+          "a. Estimation terminated at iteration number " +
+          (summary?.iterations || "?") +
+          " because parameter estimates changed by less than .001.",
       })
     );
 
-    // ======================================================================
-    // SECTION 3: Classification Table (Final Step)
-    // ======================================================================
-    const obs0_pred0 = ct.observed_0_predicted_0 || 0;
-    const obs0_pred1 = ct.observed_0_predicted_1 || 0;
-    const obs1_pred0 = ct.observed_1_predicted_0 || 0;
-    const obs1_pred1 = ct.observed_1_predicted_1 || 0;
+    // 3. Classification Table
+    const ct = result.classification_table;
+    const classDesc = generateClassificationDescription(ct?.overall_percentage);
 
     const classificationData = {
       columnHeaders: [
@@ -174,8 +172,8 @@ export const formatBlock1 = (
             {
               header: dependentName,
               children: [
-                { header: "0", key: "pred_0" },
-                { header: "1", key: "pred_1" },
+                { header: label0, key: "pred_0" },
+                { header: label1, key: "pred_1" },
               ],
             },
             { header: "Percentage Correct", key: "pct" },
@@ -184,22 +182,22 @@ export const formatBlock1 = (
       ],
       rows: [
         {
-          rowHeader: [currentStepLabel, dependentName, "0"],
-          pred_0: obs0_pred0.toString(),
-          pred_1: obs0_pred1.toString(),
-          pct: fmtPct(ct.percentage_correct_0),
+          rowHeader: ["Step 1", dependentName, label0],
+          pred_0: ct?.observed_0_predicted_0?.toString() || "0",
+          pred_1: ct?.observed_0_predicted_1?.toString() || "0",
+          pct: fmtPct(ct?.percentage_correct_0),
         },
         {
-          rowHeader: [currentStepLabel, dependentName, "1"],
-          pred_0: obs1_pred0.toString(),
-          pred_1: obs1_pred1.toString(),
-          pct: fmtPct(ct.percentage_correct_1),
+          rowHeader: ["Step 1", dependentName, label1],
+          pred_0: ct?.observed_1_predicted_0?.toString() || "0",
+          pred_1: ct?.observed_1_predicted_1?.toString() || "0",
+          pct: fmtPct(ct?.percentage_correct_1),
         },
         {
-          rowHeader: [currentStepLabel, "Overall Percentage", ""],
+          rowHeader: ["Step 1", "Overall Percentage", ""],
           pred_0: "",
           pred_1: "",
-          pct: fmtPct(ct.overall_percentage),
+          pct: fmtPct(ct?.overall_percentage),
         },
       ],
     };
@@ -210,15 +208,23 @@ export const formatBlock1 = (
         "Classification Table",
         classificationData,
         {
-          description: `Tabel klasifikasi akurasi prediksi pada ${currentStepLabel}.`,
+          description: classDesc,
           note: "a. The cut value is .500",
         }
       )
     );
 
-    // ======================================================================
-    // SECTION 4: Variables in the Equation
-    // ======================================================================
+    // 4. Variables in the Equation
+    const varsIn = result.variables_in_equation || [];
+
+    // Prepare data for dynamic description
+    const simpleVars = varsIn.map((v) => ({
+      label: getRealVariableName(v.label),
+      sig: v.sig,
+      exp_b: v.exp_b,
+    }));
+    const varsDesc = generateVarsInEquationDescription(simpleVars);
+
     const varsInData = {
       columnHeaders: [
         {
@@ -242,8 +248,8 @@ export const formatBlock1 = (
           ],
         },
       ],
-      rows: predictors.map((row) => ({
-        rowHeader: [currentStepLabel, row.label],
+      rows: varsIn.map((row: VariableRow) => ({
+        rowHeader: ["Step 1", getRealVariableName(row.label)],
         b: safeFixed(row.b),
         se: safeFixed(row.error),
         wald: safeFixed(row.wald),
@@ -257,80 +263,401 @@ export const formatBlock1 = (
 
     sections.push(
       createSection("block1_vars_in", "Variables in the Equation", varsInData, {
-        description:
-          "Koefisien regresi logistik dan rasio odds (Exp(B)) untuk variabel dalam model.",
+        description: varsDesc,
       })
     );
-
+  } else {
     // ======================================================================
-    // SECTION 5: Variables NOT in the Equation
+    // LOGIKA B: METODE STEPWISE (Backward / Forward)
     // ======================================================================
-    const varsNotIn = result.variables_not_in_equation || [];
 
-    if (varsNotIn.length > 0) {
-      const varsNotInData = {
-        columnHeaders: [
-          {
-            header: "",
-            children: [
-              { header: "", key: "rh1" },
-              { header: "", key: "rh2" },
-            ],
-          },
-          { header: "Score", key: "score" },
-          { header: "df", key: "df" },
-          { header: "Sig.", key: "sig" },
-        ],
-        rows: varsNotIn.map((v) => ({
-          rowHeader: [currentStepLabel, v.label],
-          score: safeFixed(v.score),
-          df: v.df.toString(),
-          sig: fmtSig(v.sig),
-        })),
-      };
+    const steps = result.steps_detail || [];
 
+    // NOTE: Untuk Backward, Step 0 (Start) itu penting karena itu Full Model.
+    // Untuk Forward, Step 0 biasanya sama dengan Block 0 (Null), jadi sering di-skip di Block 1.
+    // Kita filter Step 0 hanya jika metodenya Forward. Jika Backward, kita ambil semua.
+    const isBackward = method.toLowerCase().includes("backward");
+    const block1Steps = isBackward
+      ? steps // Ambil semua untuk Backward (termasuk Step 0/Start)
+      : steps.filter((s) => s.step > 0); // Skip start untuk Forward
+
+    // --- Prepare Last Step for Descriptions ---
+    const lastStep = block1Steps[block1Steps.length - 1];
+
+    // Accumulators
+    const omnibusRows: any[] = [];
+    const summaryRows: any[] = [];
+    const classificationRows: any[] = [];
+    const varsInRows: any[] = [];
+    const varsOutRows: any[] = [];
+    const modelIfTermRemovedRows: any[] = [];
+
+    block1Steps.forEach((stepDetail: StepDetail) => {
+      // Adjustment: Jika Backward, Step 0 ditampilkan sebagai "Step 0" atau "Step 1" tergantung selera.
+      // Biasanya di SPSS Backward dimulai dari Step 1 (Entered All).
+      // Kita pakai step number dari backend Rust.
+      const currentStepNum = stepDetail.step;
+      const currentStepLabel = `Step ${currentStepNum}`;
+
+      const currentLL = stepDetail.summary.log_likelihood;
+
+      // Hitung Step Chi Square (Current vs Prev)
+      // Perlu handling khusus untuk Step pertama
+      let stepChi = 0;
+      let dfStep = 1;
+      let stepSig = "";
+
+      if (stepDetail.step_omni_tests) {
+        stepChi = stepDetail.step_omni_tests.chi_square;
+        dfStep = stepDetail.step_omni_tests.df;
+        stepSig = fmtSig(stepDetail.step_omni_tests.sig);
+      }
+
+      const omniModel = stepDetail.omni_tests;
+      const blockChi = omniModel ? omniModel.chi_square : 0;
+      const blockDf = omniModel ? omniModel.df : 1;
+      const blockSig = omniModel ? fmtSig(omniModel.sig) : "";
+
+      // 1. Omnibus Rows
+      omnibusRows.push(
+        {
+          rowHeader: [currentStepLabel, "Step"],
+          chi: safeFixed(stepChi),
+          df: dfStep.toString(),
+          sig: stepSig,
+        },
+        {
+          rowHeader: [currentStepLabel, "Block"],
+          chi: safeFixed(blockChi),
+          df: blockDf.toString(),
+          sig: blockSig,
+        },
+        {
+          rowHeader: [currentStepLabel, "Model"],
+          chi: safeFixed(blockChi),
+          df: blockDf.toString(),
+          sig: blockSig,
+        }
+      );
+
+      // 2. Summary Rows
+      summaryRows.push({
+        rowHeader: [currentStepNum.toString()],
+        // Rust mengirim LL negatif, SPSS menampilkan -2LL (positif)
+        ll: safeFixed(Math.abs(-2 * currentLL)),
+        cox: safeFixed(stepDetail.summary.cox_snell_r_square),
+        nagel: safeFixed(stepDetail.summary.nagelkerke_r_square),
+      });
+
+      // 3. Classification Rows
+      const ct = stepDetail.classification_table;
+      classificationRows.push(
+        {
+          rowHeader: [currentStepLabel, dependentName, label0],
+          pred_0: ct.observed_0_predicted_0.toString(),
+          pred_1: ct.observed_0_predicted_1.toString(),
+          pct: fmtPct(ct.percentage_correct_0),
+        },
+        {
+          rowHeader: [currentStepLabel, dependentName, label1],
+          pred_0: ct.observed_1_predicted_0.toString(),
+          pred_1: ct.observed_1_predicted_1.toString(),
+          pct: fmtPct(ct.percentage_correct_1),
+        },
+        {
+          rowHeader: [currentStepLabel, "Overall Percentage", ""],
+          pred_0: "",
+          pred_1: "",
+          pct: fmtPct(ct.overall_percentage),
+        }
+      );
+
+      // 4. Variables In Rows
+      stepDetail.variables_in_equation.forEach((row: VariableRow) => {
+        varsInRows.push({
+          rowHeader: [currentStepLabel, getRealVariableName(row.label)],
+          b: safeFixed(row.b),
+          se: safeFixed(row.error),
+          wald: safeFixed(row.wald),
+          df: row.df.toString(),
+          sig: fmtSig(row.sig),
+          expb: safeFixed(row.exp_b),
+          lo: safeFixed(row.lower_ci),
+          up: safeFixed(row.upper_ci),
+        });
+      });
+
+      // 5. Variables Out Rows
+      const varsNotIn = stepDetail.variables_not_in_equation;
+      if (varsNotIn && varsNotIn.length > 0) {
+        varsNotIn.forEach((v) => {
+          varsOutRows.push({
+            rowHeader: [currentStepLabel, getRealVariableName(v.label)],
+            score: safeFixed(v.score),
+            df: v.df.toString(),
+            sig: fmtSig(v.sig),
+          });
+        });
+
+        // Add Overall Statistics for this step if available
+        if (stepDetail.remainder_test) {
+          varsOutRows.push({
+            rowHeader: [currentStepLabel, "Overall Statistics"],
+            score: safeFixed(stepDetail.remainder_test.chi_square),
+            df: stepDetail.remainder_test.df.toString(),
+            sig: fmtSig(stepDetail.remainder_test.sig),
+          });
+        }
+      }
+
+      // 6. Model If Term Removed (Critical for Backward)
+      if (
+        stepDetail.model_if_term_removed &&
+        stepDetail.model_if_term_removed.length > 0
+      ) {
+        stepDetail.model_if_term_removed.forEach((item) => {
+          modelIfTermRemovedRows.push({
+            rowHeader: [currentStepLabel, getRealVariableName(item.label)],
+            model_ll: safeFixed(item.model_log_likelihood),
+            change: safeFixed(item.change_in_neg2ll),
+            df: item.df.toString(),
+            sig: fmtSig(item.sig_change),
+          });
+        });
+      }
+    });
+
+    // --- RENDER SECTIONS FOR STEPWISE ---
+    if (block1Steps.length > 0) {
+      if (omnibusRows.length > 0) {
+        // Dynamic description based on last step
+        const omni = lastStep?.omni_tests;
+        const omniDesc = omni
+          ? generateOmnibusDescription(omni.chi_square, omni.df, omni.sig)
+          : "Omnibus tests of model coefficients.";
+
+        sections.push(
+          createSection(
+            "block1_omnibus",
+            "Omnibus Tests of Model Coefficients",
+            {
+              columnHeaders: [
+                {
+                  header: "",
+                  children: [
+                    { header: "", key: "rh1" },
+                    { header: "", key: "rh2" },
+                  ],
+                },
+                { header: "Chi-square", key: "chi" },
+                { header: "df", key: "df" },
+                { header: "Sig.", key: "sig" },
+              ],
+              rows: omnibusRows,
+            },
+            {
+              description: `History of model fit significance. Final step: ${omniDesc}`,
+            }
+          )
+        );
+      }
+
+      if (summaryRows.length > 0) {
+        const summary = lastStep?.summary;
+        const sumDesc = summary
+          ? generateModelSummaryDescription(summary.nagelkerke_r_square)
+          : "";
+
+        sections.push(
+          createSection(
+            "block1_summary",
+            "Model Summary",
+            {
+              columnHeaders: [
+                { header: "Step", key: "rowHeader" },
+                { header: "-2 Log likelihood", key: "ll" },
+                { header: "Cox & Snell R Square", key: "cox" },
+                { header: "Nagelkerke R Square", key: "nagel" },
+              ],
+              rows: summaryRows,
+            },
+            {
+              description: `Model summary statistics for each step. Final step: ${sumDesc}`,
+            }
+          )
+        );
+      }
+
+      if (classificationRows.length > 0) {
+        const ct = lastStep?.classification_table;
+        const classDesc = ct
+          ? generateClassificationDescription(ct.overall_percentage)
+          : "";
+
+        sections.push(
+          createSection(
+            "block1_classification",
+            "Classification Table",
+            {
+              columnHeaders: [
+                {
+                  header: "Observed",
+                  children: [
+                    { header: "", key: "rh1" },
+                    { header: "", key: "rh2" },
+                    { header: "", key: "rh3" },
+                  ],
+                },
+                {
+                  header: "Predicted",
+                  children: [
+                    {
+                      header: dependentName,
+                      children: [
+                        { header: label0, key: "pred_0" },
+                        { header: label1, key: "pred_1" },
+                      ],
+                    },
+                    { header: "Percentage Correct", key: "pct" },
+                  ],
+                },
+              ],
+              rows: classificationRows,
+            },
+            {
+              description: `Classification results at each step. Final step: ${classDesc}`,
+              note: "a. The cut value is .500",
+            }
+          )
+        );
+      }
+
+      if (varsInRows.length > 0) {
+        const vars = lastStep?.variables_in_equation || [];
+        const simpleVars = vars.map((v) => ({
+          label: getRealVariableName(v.label),
+          sig: v.sig,
+          exp_b: v.exp_b,
+        }));
+        const varsDesc = generateVarsInEquationDescription(simpleVars);
+
+        sections.push(
+          createSection(
+            "block1_vars_in",
+            "Variables in the Equation",
+            {
+              columnHeaders: [
+                {
+                  header: "",
+                  children: [
+                    { header: "", key: "rh1" },
+                    { header: "", key: "rh2" },
+                  ],
+                },
+                { header: "B", key: "b" },
+                { header: "S.E.", key: "se" },
+                { header: "Wald", key: "wald" },
+                { header: "df", key: "df" },
+                { header: "Sig.", key: "sig" },
+                { header: "Exp(B)", key: "expb" },
+                {
+                  header: "95% C.I.for EXP(B)",
+                  children: [
+                    { header: "Lower", key: "lo" },
+                    { header: "Upper", key: "up" },
+                  ],
+                },
+              ],
+              rows: varsInRows,
+            },
+            {
+              description: `Coefficients for variables included in the model at each step. Final step: ${varsDesc}`,
+            }
+          )
+        );
+      }
+
+      if (modelIfTermRemovedRows.length > 0) {
+        sections.push(
+          createSection(
+            "block1_model_if_removed",
+            "Model if Term Removed",
+            {
+              columnHeaders: [
+                {
+                  header: "Variable",
+                  children: [
+                    { header: "", key: "rh1" },
+                    { header: "", key: "rh2" },
+                  ],
+                },
+                { header: "Model Log Likelihood", key: "model_ll" },
+                { header: "Change in -2 Log Likelihood", key: "change" },
+                { header: "df", key: "df" },
+                { header: "Sig. of the Change", key: "sig" },
+              ],
+              rows: modelIfTermRemovedRows,
+            },
+            {
+              description:
+                "Tests for removal of variables at each step (Backward Elimination).",
+            }
+          )
+        );
+      }
+
+      if (varsOutRows.length > 0) {
+        sections.push(
+          createSection(
+            "block1_vars_not_in",
+            "Variables not in the Equation",
+            {
+              columnHeaders: [
+                {
+                  header: "",
+                  children: [
+                    { header: "", key: "rh1" },
+                    { header: "", key: "rh2" },
+                  ],
+                },
+                { header: "Score", key: "score" },
+                { header: "df", key: "df" },
+                { header: "Sig.", key: "sig" },
+              ],
+              rows: varsOutRows,
+            },
+            {
+              description:
+                "Score tests for predictors not included in the model at each step.",
+            }
+          )
+        );
+      }
+    } else {
+      // Fallback
       sections.push(
         createSection(
-          "block1_vars_not_in",
-          "Variables not in the Equation",
-          varsNotInData,
+          "block1_status",
+          "Block 1: Analysis Status",
           {
-            description:
-              "Uji statistik Score untuk variabel yang dikeluarkan atau belum dimasukkan.",
-          }
+            columnHeaders: [
+              {
+                header: "",
+                children: [{ header: "", key: "rh1" }],
+              },
+              { header: "Message", key: "msg" },
+            ],
+            rows: [
+              {
+                rowHeader: ["Result"],
+                msg: "No variables entered or removed.",
+              },
+            ],
+          },
+          {}
         )
       );
     }
-  } else {
-    // ======================================================================
-    // KONDISI B: FORWARD STEPWISE TAPI TIDAK ADA VARIABEL MASUK
-    // ======================================================================
-    const statusData = {
-      columnHeaders: [
-        {
-          header: "",
-          children: [{ header: "", key: "rh1" }],
-        },
-        { header: "Model Status Information", key: "message_content" },
-      ],
-      rows: [
-        {
-          rowHeader: ["Result"],
-          message_content: "No variables were entered into the equation.",
-        },
-      ],
-    };
-
-    sections.push(
-      createSection(
-        "block1_status",
-        `Block 1: Method = ${methodUsed}`,
-        statusData,
-        {
-          description: "Status eksekusi metode stepwise.",
-        }
-      )
-    );
   }
 
   return { sections };

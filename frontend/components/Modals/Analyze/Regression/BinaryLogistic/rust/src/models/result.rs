@@ -1,4 +1,62 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap; // Tambahan import
+
+// Struktur untuk satu baris hasil VIF
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VifRow {
+    pub variable: String,
+    pub tolerance: f64, // 1 / VIF
+    pub vif: f64,
+}
+
+// Struktur untuk satu baris hasil Box-Tidwell
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BoxTidwellRow {
+    pub variable: String,         // Nama variabel asli
+    pub interaction_term: String, // Nama interaksi (misal: Age * ln(Age))
+    pub b: f64,                   // Koefisien
+    pub sig: f64,                 // P-value (signifikansi)
+    pub is_significant: bool,     // Helper flag (p < 0.05)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CorrelationRow {
+    pub variable: String,
+    pub values: Vec<f64>, // Nilai korelasi terhadap variabel lain urut index
+}
+
+// Wrapper untuk menampung semua hasil uji asumsi
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct AssumptionResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vif: Option<Vec<VifRow>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub box_tidwell: Option<Vec<BoxTidwellRow>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_matrix: Option<Vec<CorrelationRow>>,
+}
+
+// --- BARU: Hosmer-Lemeshow Structures ---
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HosmerLemeshowGroup {
+    pub group: usize,
+    pub size: usize,
+    pub observed_1: usize, // Event terjadi (Y=1)
+    pub expected_1: f64,   // Sum of predicted prob
+    pub observed_0: usize, // Event tidak terjadi (Y=0)
+    pub expected_0: f64,   // Sum of (1 - predicted prob)
+    pub total_observed: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HosmerLemeshowResult {
+    pub chi_square: f64,
+    pub df: usize,
+    pub sig: f64,
+    pub contingency_table: Vec<HosmerLemeshowGroup>,
+}
 
 // --- Model Summary ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -6,7 +64,6 @@ pub struct ModelSummary {
     pub log_likelihood: f64,
     pub cox_snell_r_square: f64,
     pub nagelkerke_r_square: f64,
-    // Field tambahan yang menyebabkan error "missing fields"
     pub converged: bool,
     pub iterations: usize,
 }
@@ -14,8 +71,6 @@ pub struct ModelSummary {
 // --- Classification Table ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClassificationTable {
-    // Penamaan harus konsisten dengan yang dipanggil di stats/metrics.rs atau table.rs
-    // Error log meminta: observed_0_predicted_0
     pub observed_0_predicted_0: i32, // True Negative
     pub observed_0_predicted_1: i32, // False Positive
     pub percentage_correct_0: f64,
@@ -48,6 +103,16 @@ pub struct VariableNotInEquation {
     pub sig: f64,
 }
 
+// --- Struktur untuk Model if Term Removed ---
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ModelIfTermRemovedRow {
+    pub label: String,
+    pub model_log_likelihood: f64, // LL model jika variabel ini dibuang
+    pub change_in_neg2ll: f64,     // Selisih -2LL
+    pub df: i32,
+    pub sig_change: f64, // Signifikansi perubahan
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OmniTests {
     pub chi_square: f64,
@@ -55,7 +120,6 @@ pub struct OmniTests {
     pub sig: f64,
 }
 
-// Tambahkan struct ini karena enter.rs mencoba mengimportnya
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OmnibusResult {
     pub chi_square: f64,
@@ -74,8 +138,72 @@ pub struct StepHistory {
     pub nagelkerke_r2: f64,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct StepDetail {
+    pub step: usize,
+    pub action: String, // "Start", "Entered", "Removed"
+    pub variable_changed: Option<String>,
+    pub summary: ModelSummary,
+    pub classification_table: ClassificationTable,
+    pub variables_in_equation: Vec<VariableRow>,
+    pub variables_not_in_equation: Vec<VariableNotInEquation>,
+
+    // Field untuk Model if Term Removed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_if_term_removed: Option<Vec<ModelIfTermRemovedRow>>,
+
+    pub remainder_test: Option<RemainderTest>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub omni_tests: Option<OmniTests>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub step_omni_tests: Option<OmniTests>,
+
+    // --- BARU: Hosmer Lemeshow per Step ---
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hosmer_lemeshow: Option<HosmerLemeshowResult>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RemainderTest {
+    pub chi_square: f64,
+    pub df: i32,
+    pub sig: f64,
+}
+
+// --- Struktur untuk Output Categorical Variables Codings ---
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FrequencyCount {
+    pub category_label: String, // misal: "Male", "Female"
+    pub frequency: usize,
+    pub parameter_codings: Vec<f64>, // misal: [1.0] atau [0.0]
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CategoricalCoding {
+    pub variable_label: String, // misal: "Gender"
+    pub categories: Vec<FrequencyCount>,
+}
+
+// --- Struktur Metadata Model (BARU) ---
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ModelInfo {
+    pub variables: Vec<String>,
+    pub n_total: usize,
+    pub n_missing: usize,
+    pub n_selected: usize,
+    pub y_encoding: HashMap<String, i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub x_encodings: Option<HashMap<String, HashMap<String, f64>>>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct LogisticResult {
+    // Tambahkan field ini agar formatters di frontend bisa mengakses metadata
+    pub model_info: ModelInfo,
+
     #[serde(rename = "model_summary")]
     pub summary: ModelSummary,
 
@@ -87,13 +215,42 @@ pub struct LogisticResult {
     #[serde(rename = "variables_not_in_equation")]
     pub variables_not_in_equation: Vec<VariableNotInEquation>,
 
+    #[serde(
+        rename = "overall_remainder_test",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub overall_remainder_test: Option<RemainderTest>,
+
     #[serde(rename = "block_0_constant")]
     pub block_0_constant: VariableRow,
+
+    #[serde(
+        rename = "block_0_variables_not_in",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub block_0_variables_not_in: Option<Vec<VariableNotInEquation>>,
 
     pub omni_tests: OmniTests,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub step_history: Option<Vec<StepHistory>>,
 
+    #[serde(rename = "steps_detail", skip_serializing_if = "Option::is_none")]
+    pub steps_detail: Option<Vec<StepDetail>>,
+
     pub method_used: String,
+
+    #[serde(rename = "assumption_tests", skip_serializing_if = "Option::is_none")]
+    pub assumption_tests: Option<AssumptionResult>,
+
+    // --- Field untuk informasi Coding ---
+    #[serde(
+        rename = "categorical_codings",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub categorical_codings: Option<Vec<CategoricalCoding>>,
+
+    // --- BARU: Hosmer Lemeshow Final Model ---
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hosmer_lemeshow: Option<HosmerLemeshowResult>,
 }

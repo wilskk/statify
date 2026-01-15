@@ -21,6 +21,7 @@ import DataMenu from "@/components/Modals/Data/DataMenu";
 import GeneralLinearModelMenu from "@/components/Modals/Analyze/general-linear-model/general-linear-model-menu";
 import ClassifyMenu from "@/components/Modals/Analyze/Classify/classify-menu";
 import DimensionReductionMenu from "@/components/Modals/Analyze/dimension-reduction/dimension-reduction-menu";
+import TimeSeriesMenu from "@/components/Modals/Analyze/TimeSeries/TimeSeriesMenu";
 import TransformMenu from "@/components/Modals/Transform/TransformMenu";
 
 const Navbar: React.FC = () => {
@@ -61,15 +62,15 @@ const Navbar: React.FC = () => {
                   </MenubarItem>
                 </MenubarSubContent>
               </MenubarSub>
-                <MenubarSub>
-                    <MenubarSubTrigger>Compare Means</MenubarSubTrigger>
-                    <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.OneWayANOVA)}>One-Way ANOVA...</MenubarItem>
-                    </MenubarSubContent>
-                </MenubarSub>
+              <MenubarSub>
+                <MenubarSubTrigger>Compare Means</MenubarSubTrigger>
+                <MenubarSubContent>
+                  <MenubarItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.OneWayANOVA)}>One-Way ANOVA...</MenubarItem>
+                </MenubarSubContent>
+              </MenubarSub>
               <MenubarSub>
                 <GeneralLinearModelMenu />
               </MenubarSub>
@@ -79,15 +80,15 @@ const Navbar: React.FC = () => {
               <MenubarSub>
                 <DimensionReductionMenu />
               </MenubarSub>
-                <MenubarSub>
-                    <MenubarSubTrigger>Correlate</MenubarSubTrigger>
-                    <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.Bivariate)}>Bivariate...</MenubarItem>
-                        <MenubarItem disabled>Partial...</MenubarItem>
-                        <MenubarItem disabled>Distances...</MenubarItem>
-                        <MenubarItem disabled>Canonical Correlation...</MenubarItem>
-                    </MenubarSubContent>
-                </MenubarSub>
+              <MenubarSub>
+                <MenubarSubTrigger>Correlate</MenubarSubTrigger>
+                <MenubarSubContent>
+                  <MenubarItem onClick={() => openModal(ModalType.Bivariate)}>Bivariate...</MenubarItem>
+                  <MenubarItem disabled>Partial...</MenubarItem>
+                  <MenubarItem disabled>Distances...</MenubarItem>
+                  <MenubarItem disabled>Canonical Correlation...</MenubarItem>
+                </MenubarSubContent>
+              </MenubarSub>
               <MenubarSub>
                 <MenubarSubTrigger>Regression</MenubarSubTrigger>
                 <MenubarSubContent>
@@ -102,27 +103,30 @@ const Navbar: React.FC = () => {
                   <MenubarItem onClick={() => openModal(ModalType.ModalBinaryLogistic)}>
                     Binary Logistic...
                   </MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.ModalMultinomialLogistic)}>
+                    Multinomial Logistic...
+                  </MenubarItem>
                 </MenubarSubContent>
               </MenubarSub>
-                <MenubarSub>
-                    <MenubarSubTrigger>Nonparametric Tests</MenubarSubTrigger>
+              <MenubarSub>
+                <MenubarSubTrigger>Nonparametric Tests</MenubarSubTrigger>
+                <MenubarSubContent>
+                  <MenubarItem disabled>One Sample...</MenubarItem>
+                  <MenubarItem disabled>Independent Samples...</MenubarItem>
+                  <MenubarItem disabled>Related Samples...</MenubarItem>
+                  <MenubarSub>
+                    <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem disabled>One Sample...</MenubarItem>
-                        <MenubarItem disabled>Independent Samples...</MenubarItem>
-                        <MenubarItem disabled>Related Samples...</MenubarItem>
-                        <MenubarSub>
-                            <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
-                            <MenubarSubContent>
-                                <MenubarItem onClick={() => openModal(ModalType.ChiSquare)}>Chi-square...</MenubarItem>
-                                <MenubarItem onClick={() => openModal(ModalType.Runs)}>Runs...</MenubarItem>
-                                <MenubarItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>2 Independent Samples...</MenubarItem>
-                                <MenubarItem onClick={() => openModal(ModalType.KIndependentSamples)}>K Independent Samples...</MenubarItem>
-                                <MenubarItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>2 Related Samples...</MenubarItem>
-                                <MenubarItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</MenubarItem>
-                            </MenubarSubContent>
-                        </MenubarSub>
+                      <MenubarItem onClick={() => openModal(ModalType.ChiSquare)}>Chi-square...</MenubarItem>
+                      <MenubarItem onClick={() => openModal(ModalType.Runs)}>Runs...</MenubarItem>
+                      <MenubarItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>2 Independent Samples...</MenubarItem>
+                      <MenubarItem onClick={() => openModal(ModalType.KIndependentSamples)}>K Independent Samples...</MenubarItem>
+                      <MenubarItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>2 Related Samples...</MenubarItem>
+                      <MenubarItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</MenubarItem>
                     </MenubarSubContent>
-                </MenubarSub>
+                  </MenubarSub>
+                </MenubarSubContent>
+              </MenubarSub>
               <MenubarSub>
                 <MenubarSubTrigger>Time Series</MenubarSubTrigger>
                 <MenubarSubContent>
