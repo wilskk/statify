@@ -29,7 +29,7 @@ const ClassifyMenu: React.FC = () => {
                     K-Means Cluster
                 </MenubarItem>
                 <MenubarItem
-                    disabled={true}
+                    // disabled={true}
                     onClick={() =>
                         openModal(ModalType.ModalHierarchicalCluster)
                     }
@@ -57,7 +57,7 @@ const ClassifyMenu: React.FC = () => {
                 </MenubarItem>
                 <MenubarSeparator />
                 <MenubarItem
-                    disabled={true}
+                    // disabled={true}
                     onClick={() => openModal(ModalType.ModalNearestNeighbor)}
                 >
                     Nearest Neighbor
