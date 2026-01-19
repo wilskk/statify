@@ -62,6 +62,9 @@ export const formatBlock1 = (
     method.toLowerCase().includes("backward") ||
     method.toLowerCase().includes("stepwise");
 
+  // Cek apakah include_constant dari model_info
+  const includeConstant = modelInfo.include_constant !== false;
+
   // Helper untuk mendapatkan nama variabel asli dari label generic
   const variableNames = modelInfo.variables || [];
   const getRealVariableName = (label: string): string => {
@@ -224,7 +227,9 @@ export const formatBlock1 = (
         classificationData,
         {
           description: classDesc,
-          note: `a. The cut value is ${cutoff.toFixed(3)}`,
+          note: includeConstant 
+            ? `a. Constant is included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`
+            : `a. Constant is not included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`,
         }
       )
     );
@@ -579,7 +584,9 @@ export const formatBlock1 = (
             },
             {
               description: `Classification results at each step. Final step: ${classDesc}`,
-              note: `a. The cut value is ${cutoff.toFixed(3)}`,
+              note: includeConstant 
+                ? `a. Constant is included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`
+                : `a. Constant is not included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`,
             }
           )
         );
