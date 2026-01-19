@@ -57,6 +57,7 @@ export enum ModalType {
     ComputeVariable = "ComputeVariable",
     RecodeSameVariables = "RecodeSameVariables",
     RecodeDifferentVariables = "RecodeDifferentVariables",
+    RankCases = "RankCases",
 
     // Regression modals - Analisis regresi dan model terkait
     ModalAutomaticLinearModeling = "ModalAutomaticLinearModeling",
@@ -250,6 +251,7 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.ComputeVariable]: ModalCategory.Transform,
     [ModalType.RecodeSameVariables]: ModalCategory.Transform,
     [ModalType.RecodeDifferentVariables]: ModalCategory.Transform,
+    [ModalType.RankCases]: ModalCategory.Transform,
 
     // Regression modals
     [ModalType.ModalAutomaticLinearModeling]: ModalCategory.Regression,
