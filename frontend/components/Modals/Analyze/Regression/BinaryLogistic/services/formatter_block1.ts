@@ -15,12 +15,27 @@ import {
   generateVarsInEquationDescription,
 } from "./formatter_utils";
 
+/**
+ * Options for formatting Block 1
+ */
+interface Block1FormatOptions {
+  displayAtLastStep?: boolean;
+  ciForExpB?: boolean;      // Whether to show CI columns for Exp(B)
+  ciLevel?: number;         // Confidence level percentage (e.g., 95)
+  cutoff?: number;          // Classification cutoff value
+}
+
 export const formatBlock1 = (
   result: LogisticResult,
-  dependentName: string
+  dependentName: string,
+  options?: Block1FormatOptions
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
   const modelInfo = (result as any).model_info || {};
+  const displayAtLastStep = options?.displayAtLastStep ?? false;
+  const ciForExpB = options?.ciForExpB ?? false;
+  const ciLevel = options?.ciLevel ?? 95;
+  const cutoff = options?.cutoff ?? 0.5;
 
   // ======================================================================
   // 1. HELPERS & SETUP
@@ -209,7 +224,7 @@ export const formatBlock1 = (
         classificationData,
         {
           description: classDesc,
-          note: "a. The cut value is .500",
+          note: `a. The cut value is ${cutoff.toFixed(3)}`,
         }
       )
     );
@@ -225,30 +240,37 @@ export const formatBlock1 = (
     }));
     const varsDesc = generateVarsInEquationDescription(simpleVars);
 
-    const varsInData = {
-      columnHeaders: [
-        {
-          header: "",
-          children: [
-            { header: "", key: "rh1" },
-            { header: "", key: "rh2" },
-          ],
-        },
-        { header: "B", key: "b" },
-        { header: "S.E.", key: "se" },
-        { header: "Wald", key: "wald" },
-        { header: "df", key: "df" },
-        { header: "Sig.", key: "sig" },
-        { header: "Exp(B)", key: "expb" },
-        {
-          header: "95% C.I.for EXP(B)",
-          children: [
-            { header: "Lower", key: "lo" },
-            { header: "Upper", key: "up" },
-          ],
-        },
-      ],
-      rows: varsIn.map((row: VariableRow) => ({
+    // Build column headers conditionally based on ciForExpB
+    const varsInColumnHeaders: any[] = [
+      {
+        header: "",
+        children: [
+          { header: "", key: "rh1" },
+          { header: "", key: "rh2" },
+        ],
+      },
+      { header: "B", key: "b" },
+      { header: "S.E.", key: "se" },
+      { header: "Wald", key: "wald" },
+      { header: "df", key: "df" },
+      { header: "Sig.", key: "sig" },
+      { header: "Exp(B)", key: "expb" },
+    ];
+
+    // Only add CI columns if ciForExpB is true
+    if (ciForExpB) {
+      varsInColumnHeaders.push({
+        header: `${ciLevel}% C.I.for EXP(B)`,
+        children: [
+          { header: "Lower", key: "lo" },
+          { header: "Upper", key: "up" },
+        ],
+      });
+    }
+
+    // Build rows - include CI values only if needed
+    const varsInRows = varsIn.map((row: VariableRow) => {
+      const baseRow: any = {
         rowHeader: ["Step 1", getRealVariableName(row.label)],
         b: safeFixed(row.b),
         se: safeFixed(row.error),
@@ -256,9 +278,19 @@ export const formatBlock1 = (
         df: row.df ? row.df.toString() : "1",
         sig: fmtSig(row.sig),
         expb: safeFixed(row.exp_b),
-        lo: safeFixed(row.lower_ci),
-        up: safeFixed(row.upper_ci),
-      })),
+      };
+
+      if (ciForExpB) {
+        baseRow.lo = safeFixed(row.lower_ci);
+        baseRow.up = safeFixed(row.upper_ci);
+      }
+
+      return baseRow;
+    });
+
+    const varsInData = {
+      columnHeaders: varsInColumnHeaders,
+      rows: varsInRows,
     };
 
     sections.push(
@@ -275,11 +307,27 @@ export const formatBlock1 = (
 
     // NOTE: Untuk Backward, Step 0 (Start) itu penting karena itu Full Model.
     // Untuk Forward, Step 0 biasanya sama dengan Block 0 (Null), jadi sering di-skip di Block 1.
-    // Kita filter Step 0 hanya jika metodenya Forward. Jika Backward, kita ambil semua.
+    // However, user feedback indicates Step 0 is not needed for Backward in this specific view.
     const isBackward = method.toLowerCase().includes("backward");
-    const block1Steps = isBackward
-      ? steps // Ambil semua untuk Backward (termasuk Step 0/Start)
-      : steps.filter((s) => s.step > 0); // Skip start untuk Forward
+    let block1Steps = steps.filter((s) => s.step > 0); // Skip start/step 0 for both Forward and Backward as per request
+
+    // --- BARU: Jika displayAtLastStep, filter sesuai metode ---
+    if (displayAtLastStep && block1Steps.length > 0) {
+      if (isBackward) {
+        // Untuk Backward: tampilkan Step 1 dan Step terakhir (SPSS behavior)
+        const firstStep = block1Steps.find((s) => s.step === 1);
+        const lastStep = block1Steps[block1Steps.length - 1];
+        
+        if (firstStep && lastStep && firstStep.step !== lastStep.step) {
+          block1Steps = [firstStep, lastStep];
+        } else if (lastStep) {
+          block1Steps = [lastStep];
+        }
+      } else {
+        // Untuk Forward: hanya tampilkan step terakhir
+        block1Steps = [block1Steps[block1Steps.length - 1]];
+      }
+    }
 
     // --- Prepare Last Step for Descriptions ---
     const lastStep = block1Steps[block1Steps.length - 1];
@@ -374,7 +422,7 @@ export const formatBlock1 = (
 
       // 4. Variables In Rows
       stepDetail.variables_in_equation.forEach((row: VariableRow) => {
-        varsInRows.push({
+        const rowData: any = {
           rowHeader: [currentStepLabel, getRealVariableName(row.label)],
           b: safeFixed(row.b),
           se: safeFixed(row.error),
@@ -382,9 +430,14 @@ export const formatBlock1 = (
           df: row.df.toString(),
           sig: fmtSig(row.sig),
           expb: safeFixed(row.exp_b),
-          lo: safeFixed(row.lower_ci),
-          up: safeFixed(row.upper_ci),
-        });
+        };
+
+        if (ciForExpB) {
+          rowData.lo = safeFixed(row.lower_ci);
+          rowData.up = safeFixed(row.upper_ci);
+        }
+
+        varsInRows.push(rowData);
       });
 
       // 5. Variables Out Rows
@@ -526,7 +579,7 @@ export const formatBlock1 = (
             },
             {
               description: `Classification results at each step. Final step: ${classDesc}`,
-              note: "a. The cut value is .500",
+              note: `a. The cut value is ${cutoff.toFixed(3)}`,
             }
           )
         );
@@ -541,33 +594,40 @@ export const formatBlock1 = (
         }));
         const varsDesc = generateVarsInEquationDescription(simpleVars);
 
+        // Build column headers conditionally based on ciForExpB
+        const stepwiseVarsInHeaders: any[] = [
+          {
+            header: "",
+            children: [
+              { header: "", key: "rh1" },
+              { header: "", key: "rh2" },
+            ],
+          },
+          { header: "B", key: "b" },
+          { header: "S.E.", key: "se" },
+          { header: "Wald", key: "wald" },
+          { header: "df", key: "df" },
+          { header: "Sig.", key: "sig" },
+          { header: "Exp(B)", key: "expb" },
+        ];
+
+        // Only add CI columns if ciForExpB is true
+        if (ciForExpB) {
+          stepwiseVarsInHeaders.push({
+            header: `${ciLevel}% C.I.for EXP(B)`,
+            children: [
+              { header: "Lower", key: "lo" },
+              { header: "Upper", key: "up" },
+            ],
+          });
+        }
+
         sections.push(
           createSection(
             "block1_vars_in",
             "Variables in the Equation",
             {
-              columnHeaders: [
-                {
-                  header: "",
-                  children: [
-                    { header: "", key: "rh1" },
-                    { header: "", key: "rh2" },
-                  ],
-                },
-                { header: "B", key: "b" },
-                { header: "S.E.", key: "se" },
-                { header: "Wald", key: "wald" },
-                { header: "df", key: "df" },
-                { header: "Sig.", key: "sig" },
-                { header: "Exp(B)", key: "expb" },
-                {
-                  header: "95% C.I.for EXP(B)",
-                  children: [
-                    { header: "Lower", key: "lo" },
-                    { header: "Upper", key: "up" },
-                  ],
-                },
-              ],
+              columnHeaders: stepwiseVarsInHeaders,
               rows: varsInRows,
             },
             {

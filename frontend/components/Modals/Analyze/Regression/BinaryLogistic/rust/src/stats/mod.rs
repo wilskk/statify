@@ -5,3 +5,6 @@ pub mod score_test;
 pub mod assumptions;
 pub mod design_matrix;
 pub mod hosmer_lemeshow;
+pub mod casewise;
+pub mod correlation_of_estimates;
+pub mod classification_plot;

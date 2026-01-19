@@ -47,6 +47,9 @@ interface ChartData {
       };
     };
     chartColor?: string[];
+    // Classification Plot specific options
+    cutoff?: number;
+    groups?: string[];
   };
   chartMetadata: {
     axisInfo: {
@@ -1535,6 +1538,26 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.axisLabels,
                 chartConfig?.axisScaleOptions,
                 chartConfig?.chartColor
+              );
+              break;
+            case "Classification Plot":
+              chartNode = chartUtils.createClassificationPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Classification Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.chartColor,
+                {
+                  cutoff: chartConfig?.cutoff ?? 0.5,
+                  groups: chartConfig?.groups,
+                }
               );
               break;
             default:

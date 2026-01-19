@@ -139,6 +139,9 @@ pub struct LogisticConfig {
     #[serde(default, alias = "casewiseListing")]
     pub casewise_listing: bool,
 
+    #[serde(default = "default_casewise_type", alias = "casewiseType")]
+    pub casewise_type: String, // "outliers" or "all"
+
     #[serde(default = "default_casewise_outliers", alias = "casewiseOutliers")]
     pub casewise_outliers: f64,
 
@@ -147,6 +150,10 @@ pub struct LogisticConfig {
 
     #[serde(default)]
     pub correlations: bool,
+
+    // --- Display Options ---
+    #[serde(default, alias = "displayAtLastStep")]
+    pub display_at_last_step: bool,
 
     // --- Assumptions ---
     #[serde(default)]
@@ -179,6 +186,10 @@ fn default_confidence() -> f64 {
 fn default_casewise_outliers() -> f64 {
     2.0
 }
+// Helper untuk casewise type
+fn default_casewise_type() -> String {
+    "outliers".to_string()
+}
 
 impl Default for LogisticConfig {
     fn default() -> Self {
@@ -199,9 +210,13 @@ impl Default for LogisticConfig {
             classification_plots: false,
             hosmer_lemeshow: false,
             casewise_listing: false,
+            casewise_type: "outliers".to_string(),
             casewise_outliers: 2.0,
             iteration_history: false,
             correlations: false,
+
+            // Display options
+            display_at_last_step: false,
 
             assumptions: AssumptionConfig::default(),
         }

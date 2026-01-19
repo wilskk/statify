@@ -4,7 +4,6 @@ pub mod strategies;
 pub mod utils;
 
 use models::config::{LogisticConfig, RegressionMethod};
-use models::result::CategoricalCoding;
 use nalgebra::{DMatrix, DVector};
 use wasm_bindgen::prelude::*;
 
