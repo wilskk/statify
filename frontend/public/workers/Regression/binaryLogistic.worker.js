@@ -150,6 +150,7 @@ self.onmessage = async (event) => {
             n_samples: rows,
             n_missing: nMissing,
             variables: xFeatureNames,
+            include_constant: rustConfig.include_constant,
             step_number:
               result.step_history && result.step_history.length > 0
                 ? result.step_history[result.step_history.length - 1].step

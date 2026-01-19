@@ -145,6 +145,20 @@ export const formatBlock0 = (
   // Gunakan generator deskripsi dinamis
   const classDesc = generateClassificationDescription(b0_overall);
 
+  // Cek apakah include_constant dari model_info
+  const includeConstant = modelInfo.include_constant !== false;
+
+  const block0ConstVar = (result as any).block_0_constant as any;
+  const hasConstantInBlock0 =
+    includeConstant && (
+      block0ConstVar?.label === "Constant" ||
+      (result.steps_detail &&
+        result.steps_detail.length > 0 &&
+        (result.steps_detail[0].variables_in_equation || []).some(
+          (v: any) => v.label === "Constant"
+        ))
+    );
+
   sections.push(
     createSection(
       "block0_classification",
@@ -152,7 +166,9 @@ export const formatBlock0 = (
       classificationData,
       {
         description: `Initial classification (Null Model). ${classDesc}`,
-        note: `a. Constant is included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`,
+        note: hasConstantInBlock0
+          ? `a. Constant is included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`
+          : `a. Constant is not included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`,
       }
     )
   );
@@ -161,56 +177,63 @@ export const formatBlock0 = (
   // 4. TABLE: VARIABLES IN EQUATION (Constant Only)
   // ======================================================================
   // LOGIKA PRIORITY:
-  // 1. Cek field khusus `block_0_constant` (Metode Backward pakai ini).
-  // 2. Jika tidak ada, cek `steps_detail[0]` (Metode Enter/Forward pakai ini).
+  // 1. Jika include_constant = false, tidak tampilkan tabel ini.
+  // 2. Cek field khusus `block_0_constant` (Metode Backward pakai ini).
+  // 3. Jika tidak ada, cek `steps_detail[0]` (Metode Enter/Forward pakai ini).
 
-  let constVar = (result as any).block_0_constant;
+  if (includeConstant) {
+    let constVar = (result as any).block_0_constant;
 
-  if (!constVar && result.steps_detail && result.steps_detail.length > 0) {
-    const step0Vars = result.steps_detail[0].variables_in_equation || [];
-    constVar = step0Vars.find((v: any) => v.label === "Constant");
+    if (!constVar && result.steps_detail && result.steps_detail.length > 0) {
+      const step0Vars = result.steps_detail[0].variables_in_equation || [];
+      constVar = step0Vars.find((v: any) => v.label === "Constant");
+    }
+
+    const hasConstant = constVar?.label === "Constant";
+
+    // Fallback safe object
+    if (!constVar) {
+      constVar = { b: 0, error: 0, wald: 0, df: 1, sig: 1, exp_b: 1 };
+    }
+
+    const varsInData = {
+      columnHeaders: [
+        {
+          header: "",
+          children: [
+            { header: "", key: "rh1" },
+            { header: "", key: "rh2" },
+          ],
+        },
+        { header: "B", key: "b" },
+        { header: "S.E.", key: "se" },
+        { header: "Wald", key: "wald" },
+        { header: "df", key: "df" },
+        { header: "Sig.", key: "sig" },
+        { header: "Exp(B)", key: "expb" },
+      ],
+      rows: [
+        {
+          rowHeader: ["Step 0", "Constant"],
+          b: safeFixed(constVar?.b),
+          se: safeFixed(constVar?.error),
+          wald: safeFixed(constVar?.wald),
+          df: "1",
+          sig: fmtSig(constVar?.sig),
+          expb: safeFixed(constVar?.exp_b),
+        },
+      ],
+    };
+
+    if (hasConstant) {
+      sections.push(
+        createSection("block0_vars_in", "Variables in the Equation", varsInData, {
+          description:
+            "Intercept (constant) for the null model containing no predictors.",
+        })
+      );
+    }
   }
-
-  // Fallback safe object
-  if (!constVar) {
-    constVar = { b: 0, error: 0, wald: 0, df: 1, sig: 1, exp_b: 1 };
-  }
-
-  const varsInData = {
-    columnHeaders: [
-      {
-        header: "",
-        children: [
-          { header: "", key: "rh1" },
-          { header: "", key: "rh2" },
-        ],
-      },
-      { header: "B", key: "b" },
-      { header: "S.E.", key: "se" },
-      { header: "Wald", key: "wald" },
-      { header: "df", key: "df" },
-      { header: "Sig.", key: "sig" },
-      { header: "Exp(B)", key: "expb" },
-    ],
-    rows: [
-      {
-        rowHeader: ["Step 0", "Constant"],
-        b: safeFixed(constVar?.b),
-        se: safeFixed(constVar?.error),
-        wald: safeFixed(constVar?.wald),
-        df: "1",
-        sig: fmtSig(constVar?.sig),
-        expb: safeFixed(constVar?.exp_b),
-      },
-    ],
-  };
-
-  sections.push(
-    createSection("block0_vars_in", "Variables in the Equation", varsInData, {
-      description:
-        "Intercept (constant) for the null model containing no predictors.",
-    })
-  );
 
   // ======================================================================
   // 5. TABLE: VARIABLES NOT IN EQUATION (Score Tests)

@@ -60,7 +60,10 @@ const formatBlock0IterationHistory = (
     return null;
   }
 
-  const varNames = iterHistory.variable_names || ["Constant"];
+  const varNames = iterHistory.variable_names && iterHistory.variable_names.length > 0
+    ? iterHistory.variable_names
+    : [];
+  const hasConstant = varNames.includes("Constant");
 
   // Build column headers
   // "Iteration" dengan colSpan 2 untuk mencakup kolom Step dan nomor iterasi
@@ -131,7 +134,9 @@ const formatBlock0IterationHistory = (
     },
     {
       description,
-      note: `a. Constant is included in the model.\nb. Initial -2 Log Likelihood: ${safeFixed(iterHistory.initial_neg2ll, 3)}`,
+      note: hasConstant
+        ? `a. Constant is included in the model.\nb. Initial -2 Log Likelihood: ${safeFixed(iterHistory.initial_neg2ll, 3)}`
+        : `a. Constant is not included in the model.\nb. Initial -2 Log Likelihood: ${safeFixed(iterHistory.initial_neg2ll, 3)}`,
     }
   );
 };
@@ -155,7 +160,10 @@ const formatBlock1EnterIterationHistory = (
     return null;
   }
 
-  const varNames = iterHistory.variable_names || ["Constant"];
+  const varNames = iterHistory.variable_names && iterHistory.variable_names.length > 0
+    ? iterHistory.variable_names
+    : [];
+  const hasConstant = varNames.includes("Constant");
 
   // Build column headers - "Iteration" dengan colSpan 2
   // Placeholder column (rh2) diperlukan untuk data binding meski header kosong
@@ -218,7 +226,9 @@ const formatBlock1EnterIterationHistory = (
     },
     {
       description,
-      note: `a. Method: Enter\nb. Constant is included in the model.\nc. Initial -2 Log Likelihood: ${safeFixed(iterHistory.initial_neg2ll, 3)}`,
+      note: hasConstant
+        ? `a. Method: Enter\nb. Constant is included in the model.\nc. Initial -2 Log Likelihood: ${safeFixed(iterHistory.initial_neg2ll, 3)}`
+        : `a. Method: Enter\nb. Constant is not included in the model.\nc. Initial -2 Log Likelihood: ${safeFixed(iterHistory.initial_neg2ll, 3)}`,
     }
   );
 };
@@ -256,6 +266,7 @@ const formatBlock1StepwiseIterationHistory = (
   stepsWithHistory.forEach(({ history }) => {
     history.variable_names.forEach((name) => allVarNames.add(name));
   });
+  const hasConstant = Array.from(allVarNames).includes("Constant");
   const sortedVarNames = Array.from(allVarNames);
 
   // Build column headers - "Iteration" dengan colSpan 2
@@ -332,7 +343,9 @@ const formatBlock1StepwiseIterationHistory = (
     },
     {
       description,
-      note: `a. Method: ${method}\nb. Constant is included in the model.\nc. Initial -2 Log Likelihood: ${safeFixed(stepsWithHistory[0].history.initial_neg2ll, 3)}`,
+      note: hasConstant
+        ? `a. Method: ${method}\nb. Constant is included in the model.\nc. Initial -2 Log Likelihood: ${safeFixed(stepsWithHistory[0].history.initial_neg2ll, 3)}`
+        : `a. Method: ${method}\nb. Constant is not included in the model.\nc. Initial -2 Log Likelihood: ${safeFixed(stepsWithHistory[0].history.initial_neg2ll, 3)}`,
     }
   );
 };

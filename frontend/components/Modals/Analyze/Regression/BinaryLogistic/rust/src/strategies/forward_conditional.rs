@@ -31,35 +31,57 @@ pub fn run(
     let mut steps_details: Vec<StepDetail> = Vec::new();
 
     // --- STEP 0: NULL MODEL ---
-    let null_x = DMatrix::from_element(n_samples, 1, 1.0);
-    
-    // Use fit_with_history if iteration_history is enabled
-    let (mut current_model, null_iter_history) = if config.iteration_history {
-        let result = fit_with_history(
-            &null_x,
-            y_vector,
-            config.max_iterations,
-            config.convergence_threshold,
-        ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Model): {}", e)))?;
-        (result.model, Some(result.iteration_history))
+    let (mut current_model, null_iter_history, null_log_likelihood) = if config.include_constant {
+        // Standard: Fit intercept-only model
+        let null_x = DMatrix::from_element(n_samples, 1, 1.0);
+        
+        // Use fit_with_history if iteration_history is enabled
+        let (model, history) = if config.iteration_history {
+            let result = fit_with_history(
+                &null_x,
+                y_vector,
+                config.max_iterations,
+                config.convergence_threshold,
+            ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Model): {}", e)))?;
+            (result.model, Some(result.iteration_history))
+        } else {
+            let result = fit(
+                &null_x,
+                y_vector,
+                config.max_iterations,
+                config.convergence_threshold,
+            ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Model): {}", e)))?;
+            (result, None)
+        };
+        
+        let null_ll = model.final_log_likelihood;
+        (model, history, null_ll)
     } else {
-        let result = fit(
-            &null_x,
-            y_vector,
-            config.max_iterations,
-            config.convergence_threshold,
-        ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Model): {}", e)))?;
-        (result, None)
+        // No constant: Use baseline model with predictions = 0.5
+        // LL = sum(y*log(0.5) + (1-y)*log(0.5)) = n*log(0.5)
+        let n = n_samples as f64;
+        let baseline_ll = n * 0.5_f64.ln();  // -n * ln(2)
+        
+        // Create dummy model for null baseline
+        let dummy_model = FittedModel {
+            beta: DVector::from_element(0, 0.0),
+            covariance_matrix: DMatrix::from_element(0, 0, 0.0),
+            predictions: DVector::from_element(n_samples, 0.5),
+            residuals: y_vector - DVector::from_element(n_samples, 0.5),
+            weights: DVector::from_element(n_samples, 0.25),  // p*(1-p) = 0.25
+            final_log_likelihood: baseline_ll,
+            iterations: 0,
+            converged: true,
+        };
+        (dummy_model, None, baseline_ll)
     };
-
-    let null_log_likelihood = current_model.final_log_likelihood;
 
     // Tracking untuk Step Chi-Square
     let mut prev_log_likelihood = null_log_likelihood;
     let mut prev_n_vars = 0;
 
     // Build iteration history block for Block 0
-    let block_0_iter_history: Option<IterationHistoryBlock> = if config.iteration_history {
+    let block_0_iter_history: Option<IterationHistoryBlock> = if config.iteration_history && config.include_constant {
         null_iter_history.as_ref().map(|history| {
             IterationHistoryBlock {
                 block: 0,
@@ -97,7 +119,23 @@ pub fn run(
     );
     steps_details.push(step0_detail);
 
-    let block_0_row = steps_details[0].variables_in_equation[0].clone();
+    // Ambil data Block 0 Constant dari snapshot yang baru dibuat (dengan pengecekan)
+    let block_0_row = if config.include_constant && !steps_details[0].variables_in_equation.is_empty() {
+        steps_details[0].variables_in_equation[0].clone()
+    } else {
+        // Dummy row untuk kasus tanpa constant
+        VariableRow {
+            label: "(No Constant)".to_string(),
+            b: 0.0,
+            error: 0.0,
+            wald: 0.0,
+            df: 0,
+            sig: 1.0,
+            exp_b: 1.0,
+            lower_ci: 1.0,
+            upper_ci: 1.0,
+        }
+    };
     let mut step_count = 0;
 
     // --- STEPWISE LOOP ---
@@ -112,7 +150,7 @@ pub fn run(
         let mut min_p_value = 1.0;
 
         // A. FORWARD ENTRY
-        let current_x_for_score = build_design_matrix(x_matrix, &included_indices, n_samples);
+        let current_x_for_score = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
 
         for i in 0..n_total_vars {
             if !included_indices.contains(&i) {
@@ -141,7 +179,7 @@ pub fn run(
             let mut trial_indices = included_indices.clone();
             trial_indices.push(idx_in);
 
-            let trial_x = build_design_matrix(x_matrix, &trial_indices, n_samples);
+            let trial_x = build_design_matrix(x_matrix, &trial_indices, n_samples, config.include_constant);
 
             // Use fit_with_history if iteration_history is enabled
             let fit_result = if config.iteration_history {
@@ -186,7 +224,10 @@ pub fn run(
                 // Build iteration history block for this step
                 let step_history_block: Option<IterationHistoryBlock> = if config.iteration_history {
                     step_iter_history.as_ref().map(|history| {
-                        let mut var_names: Vec<String> = vec!["Constant".to_string()];
+                        let mut var_names: Vec<String> = Vec::new();
+                        if config.include_constant {
+                            var_names.push("Constant".to_string());
+                        }
                         for &idx in &included_indices {
                             let label = if idx < feature_names.len() {
                                 feature_names[idx].clone()
@@ -237,9 +278,10 @@ pub fn run(
             let chi_dist_1df = ChiSquared::new(1.0).unwrap();
             let mut worst_idx_loc = None;
             let mut max_p_val = 0.0;
+            let beta_offset = if config.include_constant { 1 } else { 0 };
 
             for (k, &original_idx) in included_indices.iter().enumerate() {
-                let beta_idx = k + 1;
+                let beta_idx = k + beta_offset;
                 let b = current_model.beta[beta_idx];
                 let se = current_model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
                 let wald = (b / se).powi(2);
@@ -261,7 +303,7 @@ pub fn run(
 
                 included_indices.remove(loc);
 
-                let reduced_x = build_design_matrix(x_matrix, &included_indices, n_samples);
+                let reduced_x = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
 
                 // Use fit_with_history if iteration_history is enabled
                 let mut removal_iter_history: Option<Vec<IterationRecord>> = None;
@@ -305,7 +347,10 @@ pub fn run(
                     // Build iteration history block for removal step
                     let removal_history_block: Option<IterationHistoryBlock> = if config.iteration_history {
                         removal_iter_history.as_ref().map(|history| {
-                            let mut var_names: Vec<String> = vec!["Constant".to_string()];
+                            let mut var_names: Vec<String> = Vec::new();
+                            if config.include_constant {
+                                var_names.push("Constant".to_string());
+                            }
                             for &idx in &included_indices {
                                 let label = if idx < feature_names.len() {
                                     feature_names[idx].clone()
@@ -367,7 +412,7 @@ pub fn run(
 
     // --- BARU: Hitung Casewise Listing Jika Diminta ---
     let casewise_result = if config.casewise_listing && !included_indices.is_empty() {
-        let final_x = build_design_matrix(x_matrix, &included_indices, n_samples);
+        let final_x = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
         let y_label_0 = "0";
         let y_label_1 = "1";
         
@@ -454,12 +499,19 @@ pub fn run(
     })
 }
 
-fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize) -> DMatrix<f64> {
-    let mut columns = vec![DVector::from_element(rows, 1.0)];
+fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize, include_constant: bool) -> DMatrix<f64> {
+    let mut columns = Vec::new();
+    if include_constant {
+        columns.push(DVector::from_element(rows, 1.0));
+    }
     for &idx in indices {
         columns.push(original_x.column(idx).into_owned());
     }
-    DMatrix::from_columns(&columns)
+    if columns.is_empty() {
+        DMatrix::zeros(rows, 0)
+    } else {
+        DMatrix::from_columns(&columns)
+    }
 }
 
 fn calculate_nagelkerke(null_ll: f64, model_ll: f64, n: usize) -> f64 {
@@ -479,6 +531,7 @@ fn calculate_overall_remainder_stats(
     y_vector: &DVector<f64>, // Digunakan untuk hitung manual residuals
     included_indices: &[usize],
     model: &FittedModel,
+    include_constant: bool,
 ) -> Option<RemainderTest> {
     let n_total_vars = full_x.ncols();
     // 1. Identifikasi variabel yang belum masuk (Excluded)
@@ -499,7 +552,7 @@ fn calculate_overall_remainder_stats(
     let x_out = DMatrix::from_columns(&x_out_cols);
 
     // 3. Bangun Matriks X untuk Included Variables (X_in)
-    let x_in = build_design_matrix(full_x, included_indices, full_x.nrows());
+    let x_in = build_design_matrix(full_x, included_indices, full_x.nrows(), include_constant);
 
     // 4. Hitung Score Vector: U = X_out^T * (y - p)
     // PERBAIKAN: Hitung manual raw residuals (y - p)
@@ -522,8 +575,14 @@ fn calculate_overall_remainder_stats(
     // inv_info_in = (X_in^T W X_in)^-1 (Covariance Matrix dari model)
     let inv_info_in = &model.covariance_matrix;
 
-    let correction = &v_cross * inv_info_in * v_cross.transpose();
-    let adjusted_var = v_out - correction;
+    // Handle case when x_in has no columns (no constant and no included variables)
+    let adjusted_var = if x_in.ncols() > 0 && inv_info_in.ncols() > 0 {
+        let correction = &v_cross * inv_info_in * v_cross.transpose();
+        v_out - correction
+    } else {
+        // No correction needed when there are no included variables
+        v_out
+    };
 
     // 7. Hitung Statistik Score Global: S = U^T * Var(U)^-1 * U
     let score_stat = match adjusted_var.cholesky() {
@@ -574,7 +633,7 @@ fn calculate_model_if_term_removed(
         if subset_indices.is_empty() {
             reduced_ll = null_log_likelihood;
         } else {
-            let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples);
+            let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
             if let Ok(reduced_model) = fit(
                 &x_subset,
                 y_vector,
@@ -721,23 +780,27 @@ fn calculate_step_snapshot(
     };
 
     let mut variables_in = Vec::new();
-    let b_int = model.beta[0];
-    let se_int = model.covariance_matrix[(0, 0)].sqrt();
-    let wald_int = (b_int / se_int).powi(2);
-    variables_in.push(VariableRow {
-        label: "Constant".to_string(),
-        b: b_int,
-        error: se_int,
-        wald: wald_int,
-        df: 1,
-        sig: 1.0 - chi_dist_1df.cdf(wald_int),
-        exp_b: b_int.exp(),
-        lower_ci: (b_int - z_score * se_int).exp(),
-        upper_ci: (b_int + z_score * se_int).exp(),
-    });
+    let beta_offset = if config.include_constant { 1 } else { 0 };
+    
+    if config.include_constant {
+        let b_int = model.beta[0];
+        let se_int = model.covariance_matrix[(0, 0)].sqrt();
+        let wald_int = (b_int / se_int).powi(2);
+        variables_in.push(VariableRow {
+            label: "Constant".to_string(),
+            b: b_int,
+            error: se_int,
+            wald: wald_int,
+            df: 1,
+            sig: 1.0 - chi_dist_1df.cdf(wald_int),
+            exp_b: b_int.exp(),
+            lower_ci: (b_int - z_score * se_int).exp(),
+            upper_ci: (b_int + z_score * se_int).exp(),
+        });
+    }
 
     for (k, &idx) in included_indices.iter().enumerate() {
-        let beta_idx = k + 1;
+        let beta_idx = k + beta_offset;
         let b = model.beta[beta_idx];
         let se = model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
         let wald = (b / se).powi(2);
@@ -760,7 +823,7 @@ fn calculate_step_snapshot(
     }
 
     let mut variables_not_in = Vec::new();
-    let current_design_matrix = build_design_matrix(full_x, included_indices, n);
+    let current_design_matrix = build_design_matrix(full_x, included_indices, n, config.include_constant);
     for i in 0..n_total_vars {
         if !included_indices.contains(&i) {
             let candidate_col = full_x.column(i).into_owned();
@@ -786,7 +849,7 @@ fn calculate_step_snapshot(
     }
 
     let remainder_test =
-        calculate_overall_remainder_stats(full_x, y_vector, included_indices, model);
+        calculate_overall_remainder_stats(full_x, y_vector, included_indices, model, config.include_constant);
 
     // --- MODIFIKASI: HITUNG HOSMER-LEMESHOW ---
     let hl_result = if config.hosmer_lemeshow && step > 0 {
@@ -800,7 +863,10 @@ fn calculate_step_snapshot(
 
     // --- BARU: HITUNG CORRELATION OF ESTIMATES ---
     let corr_estimates_result: Option<Vec<CorrelationOfEstimatesRow>> = if config.correlations && step > 0 {
-        let mut var_names_for_corr: Vec<String> = vec!["Constant".to_string()];
+        let mut var_names_for_corr: Vec<String> = Vec::new();
+        if config.include_constant {
+            var_names_for_corr.push("Constant".to_string());
+        }
         for &idx in included_indices {
             let label = if idx < feature_names.len() {
                 feature_names[idx].clone()

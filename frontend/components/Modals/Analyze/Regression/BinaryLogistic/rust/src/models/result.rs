@@ -313,6 +313,14 @@ pub struct ModelInfo {
     pub y_encoding: HashMap<String, i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub x_encodings: Option<HashMap<String, HashMap<String, f64>>>,
+    // Flag untuk menandai apakah constant (intercept) disertakan dalam model
+    #[serde(default = "default_include_constant")]
+    pub include_constant: bool,
+}
+
+// Helper function untuk default value saat deserialize
+fn default_include_constant() -> bool {
+    true
 }
 
 #[derive(Serialize, Deserialize)]
