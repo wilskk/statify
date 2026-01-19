@@ -1,12 +1,16 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    CategoricalCoding, ClassificationTable, LogisticResult, ModelSummary, OmniTests, RemainderTest,
-    StepDetail, StepHistory, VariableNotInEquation, VariableRow,
+    CategoricalCoding, ClassificationTable, CorrelationOfEstimatesRow, IterationHistoryBlock,
+    IterationHistoryRow, LogisticResult, ModelInfo, ModelSummary, OmniTests, RemainderTest,
+    StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
-use crate::stats::irls::{fit, FittedModel};
+use crate::stats::irls::{fit, fit_with_history, FittedModel, IterationRecord};
 use crate::stats::score_test::calculate_score_test;
 // --- TAMBAHAN IMPORT ---
 use crate::stats::hosmer_lemeshow;
+use crate::stats::casewise;
+use crate::stats::correlation_of_estimates;
+use crate::stats::classification_plot;
 
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
@@ -22,6 +26,7 @@ pub fn run(
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
+    let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
     // ========================================================================
     // BLOCK 0: NULL MODEL (ANALYTICAL APPROACH)
@@ -54,8 +59,8 @@ pub fn run(
         df: 1,
         sig: b0_sig,
         exp_b: b0_val.exp(),
-        lower_ci: (b0_val - 1.96 * b0_se).exp(),
-        upper_ci: (b0_val + 1.96 * b0_se).exp(),
+        lower_ci: (b0_val - z_score * b0_se).exp(),
+        upper_ci: (b0_val + z_score * b0_se).exp(),
     };
 
     // Block 0: Variables Not in Equation (Score Tests)
@@ -125,6 +130,41 @@ pub fn run(
     });
 
     // ========================================================================
+    // BLOCK 0: STEP 0 (NULL MODEL) - untuk Iteration History
+    // ========================================================================
+    let null_x = DMatrix::from_element(n_samples, 1, 1.0);
+    let null_model_for_step0: FittedModel;
+    let block_0_iter_history: Option<IterationHistoryBlock>;
+
+    if config.iteration_history {
+        let result = fit_with_history(
+            &null_x,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Model): {}", e)))?;
+        
+        block_0_iter_history = Some(IterationHistoryBlock {
+            block: 0,
+            step: 0,
+            variable_names: vec!["Constant".to_string()],
+            rows: result.iteration_history.iter().map(|rec| IterationHistoryRow {
+                iteration: rec.iteration,
+                neg2_log_likelihood: rec.neg2_log_likelihood,
+                coefficients: rec.coefficients.clone(),
+            }).collect(),
+            initial_neg2ll: Some(-2.0 * null_log_likelihood),
+            converged: result.model.converged,
+            final_iteration: result.model.iterations,
+        });
+        null_model_for_step0 = result.model;
+    } else {
+        // Use analytical model for step0
+        null_model_for_step0 = dummy_null_model_struct.clone();
+        block_0_iter_history = None;
+    }
+
+    // ========================================================================
     // BLOCK 1: BACKWARD WALD (START WITH FULL MODEL)
     // ========================================================================
 
@@ -133,18 +173,79 @@ pub fn run(
     let mut steps_history: Vec<StepHistory> = Vec::new();
     let mut steps_details: Vec<StepDetail> = Vec::new();
 
+    // Step 0 Detail (Null Model / Block 0)
+    let empty_indices: Vec<usize> = Vec::new();
+    let step0_detail = calculate_step_snapshot(
+        0,
+        "Start".to_string(),
+        None,
+        &null_model_for_step0,
+        x_matrix,
+        y_vector,
+        &empty_indices,
+        null_log_likelihood,
+        0.0,
+        feature_names,
+        config,
+        n_samples,
+        block_0_iter_history,
+    );
+    steps_details.push(step0_detail);
+
     // Fit Full Model
     let full_x = build_design_matrix(x_matrix, &included_indices, n_samples);
-    let mut current_model = fit(
-        &full_x,
-        y_vector,
-        config.max_iterations,
-        config.convergence_threshold,
-    )
-    .map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
+    
+    // Use fit_with_history if iteration_history is enabled
+    let (mut current_model, full_iter_history) = if config.iteration_history {
+        let result = fit_with_history(
+            &full_x,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
+        (result.model, Some(result.iteration_history))
+    } else {
+        let result = fit(
+            &full_x,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
+        (result, None)
+    };
 
     // Tracker Step Chi-Square (-2LL awal vs Null)
     let mut prev_model_chi_sq = 2.0 * (current_model.final_log_likelihood - null_log_likelihood);
+    
+    // Build iteration history block for Block 1 Step 1 (Full Model)
+    let step1_iter_history: Option<IterationHistoryBlock> = if config.iteration_history {
+        full_iter_history.as_ref().map(|history| {
+            let mut var_names: Vec<String> = vec!["Constant".to_string()];
+            for &idx in &included_indices {
+                let label = if idx < feature_names.len() {
+                    feature_names[idx].clone()
+                } else {
+                    format!("Var_{}", idx + 1)
+                };
+                var_names.push(label);
+            }
+            IterationHistoryBlock {
+                block: 1,
+                step: 1,
+                variable_names: var_names,
+                rows: history.iter().map(|rec| IterationHistoryRow {
+                    iteration: rec.iteration,
+                    neg2_log_likelihood: rec.neg2_log_likelihood,
+                    coefficients: rec.coefficients.clone(),
+                }).collect(),
+                initial_neg2ll: Some(-2.0 * current_model.final_log_likelihood),
+                converged: current_model.converged,
+                final_iteration: current_model.iterations,
+            }
+        })
+    } else {
+        None
+    };
 
     // Snapshot Step 1 (Full Model)
     let step1_detail = calculate_step_snapshot(
@@ -160,6 +261,7 @@ pub fn run(
         feature_names,
         config,
         n_samples,
+        step1_iter_history, // BARU: Iteration history
     );
     steps_details.push(step1_detail);
 
@@ -207,12 +309,27 @@ pub fn run(
 
                 // Re-fit model TANPA variabel tersebut
                 let reduced_x = build_design_matrix(x_matrix, &included_indices, n_samples);
-                if let Ok(new_model) = fit(
-                    &reduced_x,
-                    y_vector,
-                    config.max_iterations,
-                    config.convergence_threshold,
-                ) {
+                
+                // Use fit_with_history if iteration_history is enabled
+                let mut removal_iter_history: Option<Vec<IterationRecord>> = None;
+                let fit_result = if config.iteration_history {
+                    match fit_with_history(
+                        &reduced_x,
+                        y_vector,
+                        config.max_iterations,
+                        config.convergence_threshold,
+                    ) {
+                        Ok(result) => {
+                            removal_iter_history = Some(result.iteration_history);
+                            Ok(result.model)
+                        }
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    fit(&reduced_x, y_vector, config.max_iterations, config.convergence_threshold)
+                };
+                
+                if let Ok(new_model) = fit_result {
                     current_model = new_model;
 
                     // Hitung Statistik Step (Change in -2LL akibat penghapusan)
@@ -238,6 +355,36 @@ pub fn run(
                         nagelkerke_r2: nagel,
                     });
 
+                    // Build iteration history block for removal step
+                    let removal_history_block: Option<IterationHistoryBlock> = if config.iteration_history {
+                        removal_iter_history.as_ref().map(|history| {
+                            let mut var_names: Vec<String> = vec!["Constant".to_string()];
+                            for &idx in &included_indices {
+                                let label = if idx < feature_names.len() {
+                                    feature_names[idx].clone()
+                                } else {
+                                    format!("Var_{}", idx + 1)
+                                };
+                                var_names.push(label);
+                            }
+                            IterationHistoryBlock {
+                                block: 1,
+                                step: step_count,
+                                variable_names: var_names,
+                                rows: history.iter().map(|rec| IterationHistoryRow {
+                                    iteration: rec.iteration,
+                                    neg2_log_likelihood: rec.neg2_log_likelihood,
+                                    coefficients: rec.coefficients.clone(),
+                                }).collect(),
+                                initial_neg2ll: Some(-2.0 * current_model.final_log_likelihood),
+                                converged: current_model.converged,
+                                final_iteration: current_model.iterations,
+                            }
+                        })
+                    } else {
+                        None
+                    };
+
                     // Snapshot Step
                     let step_detail = calculate_step_snapshot(
                         step_count,
@@ -252,6 +399,7 @@ pub fn run(
                         feature_names,
                         config,
                         n_samples,
+                        removal_history_block, // BARU: Iteration history
                     );
                     steps_details.push(step_detail);
                     variable_removed = true;
@@ -280,7 +428,62 @@ pub fn run(
         sig: omni_sig,
     };
 
+    // --- BARU: Hitung Casewise Listing Jika Diminta ---
+    let casewise_result = if config.casewise_listing && !included_indices.is_empty() {
+        let final_x = build_design_matrix(x_matrix, &included_indices, n_samples);
+        let y_label_0 = "0";
+        let y_label_1 = "1";
+        
+        Some(casewise::calculate_casewise_list(
+            &final_x,
+            y_vector,
+            &current_model,
+            config,
+            y_label_0,
+            y_label_1,
+        ))
+    } else {
+        None
+    };
+
+    // --- BARU: Ambil Correlation of Estimates dari final step ---
+    let corr_estimates_final = final_step.correlation_of_estimates.clone();
+
+    // --- BARU: Generate Step Summary (SPSS Style) ---
+    let step_summary: Vec<StepSummaryRow> = steps_details.iter()
+        .filter(|s| s.step > 0) // Skip Step 0 untuk backward juga (full model awal)
+        .map(|s| {
+            let improvement_chi = s.step_omni_tests.as_ref().map(|o| o.chi_square).unwrap_or(0.0);
+            let improvement_df = s.step_omni_tests.as_ref().map(|o| o.df).unwrap_or(1);
+            let improvement_sig = s.step_omni_tests.as_ref().map(|o| o.sig).unwrap_or(1.0);
+            
+            let model_chi = s.omni_tests.as_ref().map(|o| o.chi_square).unwrap_or(0.0);
+            let model_df = s.omni_tests.as_ref().map(|o| o.df).unwrap_or(1);
+            let model_sig = s.omni_tests.as_ref().map(|o| o.sig).unwrap_or(1.0);
+            
+            let var_action = match s.action.as_str() {
+                "Entered" => format!("IN: {}", s.variable_changed.clone().unwrap_or_default()),
+                "Removed" => format!("OUT: {}", s.variable_changed.clone().unwrap_or_default()),
+                "Start" => "All Variables Entered".to_string(),
+                _ => s.variable_changed.clone().unwrap_or_default(),
+            };
+            
+            StepSummaryRow {
+                step: s.step,
+                improvement_chi_square: improvement_chi,
+                improvement_df,
+                improvement_sig,
+                model_chi_square: model_chi,
+                model_df,
+                model_sig,
+                correct_pct: s.classification_table.overall_percentage,
+                variable_action: var_action,
+            }
+        })
+        .collect();
+
     Ok(LogisticResult {
+        model_info: ModelInfo::default(),
         summary: final_step.summary,
         classification_table: final_step.classification_table,
         variables: final_step.variables_in_equation,
@@ -296,6 +499,22 @@ pub fn run(
         categorical_codings: codings,
         // --- MODIFIKASI: Ambil Hosmer Lemeshow dari Step Terakhir ---
         hosmer_lemeshow: final_step.hosmer_lemeshow,
+        casewise_list: casewise_result,
+        classification_plot_data: if config.classification_plots && !included_indices.is_empty() {
+            Some(classification_plot::calculate_classification_plot(
+                y_vector,
+                &current_model.predictions,
+                config.cutoff,
+                "FALSE",
+                "TRUE",
+            ))
+        } else {
+            None
+        },
+        // --- BARU: Correlation of Estimates ---
+        correlation_of_estimates: corr_estimates_final,
+        // --- BARU: Step Summary ---
+        step_summary: if step_summary.is_empty() { None } else { Some(step_summary) },
     })
 }
 
@@ -334,9 +553,11 @@ fn calculate_step_snapshot(
     feature_names: &[String],
     config: &LogisticConfig,
     n_samples: usize,
+    iteration_history: Option<IterationHistoryBlock>, // BARU: Iteration history
 ) -> StepDetail {
     let n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
+    let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
     // 1. Model Summary
     let (cox, nagel) = calculate_r_squares(null_ll, model.final_log_likelihood, n_samples);
@@ -421,7 +642,7 @@ fn calculate_step_snapshot(
         } else {
             0.0
         },
-        overall_percentage: (tn + tp + fn_ + fp) as f64 / n_samples as f64 * 100.0,
+        overall_percentage: (tn + tp) as f64 / n_samples as f64 * 100.0,
     };
 
     // 6. Variables In Equation
@@ -437,8 +658,8 @@ fn calculate_step_snapshot(
         df: 1,
         sig: 1.0 - chi_dist_1df.cdf(wald_int),
         exp_b: b_int.exp(),
-        lower_ci: (b_int - 1.96 * se_int).exp(),
-        upper_ci: (b_int + 1.96 * se_int).exp(),
+        lower_ci: (b_int - z_score * se_int).exp(),
+        upper_ci: (b_int + z_score * se_int).exp(),
     });
 
     for (k, &idx) in included_indices.iter().enumerate() {
@@ -460,8 +681,8 @@ fn calculate_step_snapshot(
             df: 1,
             sig: 1.0 - chi_dist_1df.cdf(wald),
             exp_b: b.exp(),
-            lower_ci: (b - 1.96 * se).exp(),
-            upper_ci: (b + 1.96 * se).exp(),
+            lower_ci: (b - z_score * se).exp(),
+            upper_ci: (b + z_score * se).exp(),
         });
     }
 
@@ -507,6 +728,41 @@ fn calculate_step_snapshot(
         None
     };
 
+    // --- BARU: HITUNG CORRELATION OF ESTIMATES ---
+    let corr_estimates_result: Option<Vec<CorrelationOfEstimatesRow>> = if config.correlations && step > 0 {
+        let mut var_names_for_corr: Vec<String> = vec!["Constant".to_string()];
+        for &idx in included_indices {
+            let label = if idx < feature_names.len() {
+                feature_names[idx].clone()
+            } else {
+                format!("Var_{}", idx + 1)
+            };
+            var_names_for_corr.push(label);
+        }
+        
+        Some(correlation_of_estimates::calculate_correlation_of_estimates(
+            &model.covariance_matrix,
+            &var_names_for_corr,
+        ))
+    } else {
+        None
+    };
+
+    // --- BARU: HITUNG CLASSIFICATION PLOT DATA ---
+    let classification_plot_result = if config.classification_plots && step > 0 {
+        let y_label_0 = "FALSE";
+        let y_label_1 = "TRUE";
+        Some(classification_plot::calculate_classification_plot(
+            y_vector,
+            &model.predictions,
+            config.cutoff,
+            y_label_0,
+            y_label_1,
+        ))
+    } else {
+        None
+    };
+
     StepDetail {
         step,
         action,
@@ -521,6 +777,12 @@ fn calculate_step_snapshot(
         step_omni_tests: Some(omni_tests_step),
         // --- MASUKKAN HASIL HOSMER-LEMESHOW ---
         hosmer_lemeshow: hl_result,
+        // --- BARU: CORRELATION OF ESTIMATES ---
+        correlation_of_estimates: corr_estimates_result,
+        // --- BARU: ITERATION HISTORY ---
+        iteration_history,
+        // --- BARU: CLASSIFICATION PLOT DATA ---
+        classification_plot_data: classification_plot_result,
     }
 }
 

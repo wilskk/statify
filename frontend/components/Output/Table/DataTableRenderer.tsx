@@ -6,6 +6,12 @@ interface ColumnHeader {
   header: string;
   key?: string;
   children?: ColumnHeader[];
+  // Explicit colSpan - jika diset, akan override perhitungan dari children
+  colSpan?: number;
+  // isPlaceholder - jika true, kolom ini tidak akan di-render sebagai header
+  // (sudah di-cover oleh colSpan dari kolom sebelumnya)
+  // tapi tetap digunakan untuk data binding via key
+  isPlaceholder?: boolean;
 }
 
 interface TableRowData {
@@ -64,7 +70,10 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
     const levels: ColumnHeader[][] = Array.from({ length: maxLevel }, () => []);
     const traverse = (cols: ColumnHeader[], level: number) => {
       cols.forEach((col) => {
-        levels[level].push(col);
+        // Skip placeholder columns - they are covered by colSpan from previous column
+        if (!col.isPlaceholder) {
+          levels[level].push(col);
+        }
         if (col.children && col.children.length > 0) {
           traverse(col.children, level + 1);
         }
@@ -82,7 +91,8 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
     return (
       <tr key={`col-header-${level}`}>
         {cols.map((col, idx) => {
-          const colSpan = getLeafColumnCount(col);
+          // Gunakan explicit colSpan jika ada, otherwise hitung dari children
+          const colSpan = col.colSpan ?? getLeafColumnCount(col);
           const hasChildren = col.children && col.children.length > 0;
           const rowSpan = hasChildren ? 1 : maxLevel - level;
           return (

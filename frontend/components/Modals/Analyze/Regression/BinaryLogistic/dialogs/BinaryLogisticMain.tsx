@@ -371,10 +371,17 @@ export const BinaryLogisticMain = () => {
               ...options.factors,
             ];
 
+            // Pass display options to formatter
             const formattedResult = formatBinaryLogisticResult(
               payload,
               options.dependent!,
-              allIndependentVars
+              allIndependentVars,
+              { 
+                displayAtLastStep: !optParams.displayAtEachStep,
+                ciForExpB: optParams.ciForExpB,
+                ciLevel: optParams.ciLevel,
+                cutoff: optParams.classificationCutoff,
+              }
             );
 
             console.log("[Main] Formatting Complete:", formattedResult);
@@ -435,15 +442,29 @@ export const BinaryLogisticMain = () => {
                 // -----------------------------------------------------------
                 // DATA PREPARATION FOR RENDERER
                 // -----------------------------------------------------------
-                const tableObjectForRenderer = {
-                  ...section.data,
-                  title: section.title,
-                  note: section.note,
-                };
+                let payloadForRenderer: any;
 
-                const payloadForRenderer = {
-                  tables: [tableObjectForRenderer],
-                };
+                // Handle chart sections differently
+                if (section.type === "chart" && section.chartData) {
+                  // For chart sections, use the chart data format
+                  payloadForRenderer = {
+                    charts: section.chartData.charts,
+                    description: section.description,
+                    note: section.note,
+                    title: section.title,
+                  };
+                } else {
+                  // For table sections, use the table format
+                  const tableObjectForRenderer = {
+                    ...section.data,
+                    title: section.title,
+                    note: section.note,
+                  };
+
+                  payloadForRenderer = {
+                    tables: [tableObjectForRenderer],
+                  };
+                }
 
                 // -----------------------------------------------------------
                 // SIMPAN KE DATABASE
@@ -557,9 +578,13 @@ export const BinaryLogisticMain = () => {
         classification_plots: optParams.classificationPlots,
         hosmer_lemeshow: optParams.hosmerLemeshow,
         casewise_listing: optParams.casewiseListing,
+        casewise_type: optParams.casewiseType, // BARU: "outliers" atau "all"
         casewise_outliers: optParams.casewiseOutliers,
         iteration_history: optParams.iterationHistory,
         correlations: optParams.correlations,
+
+        // Display option - BARU: untuk menentukan at each step vs at last step
+        display_at_last_step: !optParams.displayAtEachStep,
 
         rows: data.length,
         cols: variables.length,

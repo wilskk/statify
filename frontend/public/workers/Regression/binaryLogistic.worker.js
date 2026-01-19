@@ -101,7 +101,8 @@ self.onmessage = async (event) => {
           max_iterations: configObj.max_iterations || 20,
           convergence_threshold: 1e-6,
           include_constant: configObj.include_constant !== false,
-          confidence_level: configObj.confidence_level || 0.95,
+          // confidence_level: value like 95 or 0.95. Rust handles both.
+          confidence_level: configObj.confidence_level || 95,
           cutoff: configObj.cutoff || 0.5,
           method: configObj.method || "Enter",
           p_entry: configObj.p_entry || 0.05,
@@ -111,9 +112,13 @@ self.onmessage = async (event) => {
           hosmer_lemeshow: configObj.hosmer_lemeshow || false,
           classification_plots: configObj.classification_plots || false,
           casewise_listing: configObj.casewise_listing || false,
+          casewise_type: configObj.casewise_type || "outliers", // BARU: "outliers" atau "all"
           casewise_outliers: configObj.casewise_outliers || 2.0,
           iteration_history: configObj.iteration_history || false,
           correlations: configObj.correlations || false,
+
+          // Display options
+          display_at_last_step: configObj.display_at_last_step || false,
 
           assumptions: configObj.assumptions || {},
         };

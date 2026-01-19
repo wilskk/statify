@@ -7,11 +7,20 @@ import {
   generateClassificationDescription,
 } from "./formatter_utils";
 
+/**
+ * Options for formatting Block 0
+ */
+interface Block0FormatOptions {
+  cutoff?: number;  // Classification cutoff value
+}
+
 export const formatBlock0 = (
   result: LogisticResult,
-  dependentName: string
+  dependentName: string,
+  options?: Block0FormatOptions
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
+  const cutoff = options?.cutoff ?? 0.5;
 
   const modelInfo = (result as any).model_info || {};
   const variableNames = modelInfo.variables || [];
@@ -143,7 +152,7 @@ export const formatBlock0 = (
       classificationData,
       {
         description: `Initial classification (Null Model). ${classDesc}`,
-        note: "a. Constant is included in the model.\nb. The cut value is .500",
+        note: `a. Constant is included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`,
       }
     )
   );

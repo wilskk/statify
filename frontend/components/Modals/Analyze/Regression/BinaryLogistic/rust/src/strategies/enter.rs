@@ -4,11 +4,12 @@ use std::error::Error;
 
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    CategoricalCoding, LogisticResult, ModelSummary, OmniTests, RemainderTest, StepDetail,
+    CategoricalCoding, CorrelationOfEstimatesRow, IterationHistoryBlock, IterationHistoryRow,
+    LogisticResult, ModelInfo, ModelSummary, OmniTests, RemainderTest, StepDetail,
     VariableNotInEquation, VariableRow,
 };
-// Tambahkan import hosmer_lemeshow
-use crate::stats::{hosmer_lemeshow, irls, score_test, table};
+// Tambahkan import hosmer_lemeshow, casewise, correlation_of_estimates, dan classification_plot
+use crate::stats::{casewise, classification_plot, correlation_of_estimates, hosmer_lemeshow, irls, score_test, table};
 
 pub fn run(
     x_raw: &DMatrix<f64>,
@@ -26,15 +27,32 @@ pub fn run(
     // BLOCK 0: NULL MODEL (Hanya Constant) - STEP 0
     // ==========================================
     let x_null = DMatrix::from_element(n_samples, 1, 1.0);
-    let null_model = irls::fit(
-        &x_null,
-        y_vector,
-        config.max_iterations,
-        config.convergence_threshold,
-    )?;
+    
+    // Use fit_with_history if iteration_history is enabled
+    let (null_model, null_iteration_history) = if config.iteration_history {
+        let result = irls::fit_with_history(
+            &x_null,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        )?;
+        (result.model, Some(result.iteration_history))
+    } else {
+        let result = irls::fit(
+            &x_null,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        )?;
+        (result, None)
+    };
 
     // PENTING: Gunakan RAW Log Likelihood (Negatif)
     let null_log_likelihood = null_model.final_log_likelihood;
+    let null_log_likelihood = null_model.final_log_likelihood;
+
+    // Calculate z-score from confidence level
+    let z_score_block0 = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
     // --- 1. Constant Statistics (Null Model) ---
     let se_const0 = null_model.covariance_matrix[(0, 0)].sqrt();
@@ -49,8 +67,8 @@ pub fn run(
         df: 1,
         sig: sig_const0,
         exp_b: null_model.beta[0].exp(),
-        lower_ci: (null_model.beta[0] - 1.96 * se_const0).exp(),
-        upper_ci: (null_model.beta[0] + 1.96 * se_const0).exp(),
+        lower_ci: (null_model.beta[0] - z_score_block0 * se_const0).exp(),
+        upper_ci: (null_model.beta[0] + z_score_block0 * se_const0).exp(),
     };
 
     // --- 2. Classification Table (Null Model) ---
@@ -95,6 +113,27 @@ pub fn run(
     // Global Score Test for Step 0
     let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test(x_raw, y_vector, prob_null);
 
+    // Build iteration history block for Block 0 (null model)
+    let block_0_iter_history: Option<IterationHistoryBlock> = if config.iteration_history {
+        null_iteration_history.as_ref().map(|history| {
+            IterationHistoryBlock {
+                block: 0,
+                step: 0,
+                variable_names: vec!["Constant".to_string()],
+                rows: history.iter().map(|rec| IterationHistoryRow {
+                    iteration: rec.iteration,
+                    neg2_log_likelihood: rec.neg2_log_likelihood,
+                    coefficients: rec.coefficients.clone(),
+                }).collect(),
+                initial_neg2ll: Some(-2.0 * null_log_likelihood),
+                converged: null_model.converged,
+                final_iteration: null_model.iterations,
+            }
+        })
+    } else {
+        None
+    };
+
     // Simpan Snapshot Step 0
     steps_details.push(StepDetail {
         step: 0,
@@ -119,6 +158,9 @@ pub fn run(
         step_omni_tests: None,
         model_if_term_removed: None,
         hosmer_lemeshow: None, // Step 0 usually doesn't have meaningful HL test
+        correlation_of_estimates: None, // Step 0 (null model) tidak punya correlation matrix relevan
+        iteration_history: block_0_iter_history, // BARU: Iteration History untuk Block 0
+        classification_plot_data: None, // Step 0 tidak punya classification plot
     });
 
     // ==========================================
@@ -129,12 +171,24 @@ pub fn run(
         x_full = x_full.insert_column(0, 1.0);
     }
 
-    let full_model = irls::fit(
-        &x_full,
-        y_vector,
-        config.max_iterations,
-        config.convergence_threshold,
-    )?;
+    // Use fit_with_history if iteration_history is enabled
+    let (full_model, full_iteration_history) = if config.iteration_history {
+        let result = irls::fit_with_history(
+            &x_full,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        )?;
+        (result.model, Some(result.iteration_history))
+    } else {
+        let result = irls::fit(
+            &x_full,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        )?;
+        (result, None)
+    };
 
     // PENTING: Gunakan RAW Log Likelihood (Negatif)
     let full_log_likelihood = full_model.final_log_likelihood;
@@ -164,7 +218,8 @@ pub fn run(
 
     // Variables in Equation (Full)
     let mut variables_rows = Vec::new();
-    let z_score = 1.96;
+    // Calculate z-score from confidence level (use helper function)
+    let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
     let chi_dist_1df = ChiSquared::new(1.0)?;
 
     for (i, &beta) in full_model.beta.iter().enumerate() {
@@ -239,6 +294,88 @@ pub fn run(
         None
     };
 
+    // --- BARU: Hitung Casewise Listing Jika Diminta ---
+    let casewise_result = if config.casewise_listing {
+        // Untuk label Y, kita perlu tahu label asli dari encoding
+        // Default ke "0" dan "1" jika tidak ada info
+        let y_label_0 = "0";
+        let y_label_1 = "1";
+        
+        Some(casewise::calculate_casewise_list(
+            &x_full,
+            y_vector,
+            &full_model,
+            config,
+            y_label_0,
+            y_label_1,
+        ))
+    } else {
+        None
+    };
+
+    // --- BARU: Hitung Classification Plot Data Jika Diminta ---
+    let classification_plot_result = if config.classification_plots {
+        // Untuk label Y, kita perlu tahu label asli dari encoding
+        // Default ke "FALSE" dan "TRUE" jika tidak ada info
+        let y_label_0 = "FALSE";
+        let y_label_1 = "TRUE";
+        
+        Some(classification_plot::calculate_classification_plot(
+            y_vector,
+            &full_model.predictions,
+            config.cutoff,
+            y_label_0,
+            y_label_1,
+        ))
+    } else {
+        None
+    };
+
+    // --- BARU: Hitung Correlation of Estimates Jika Diminta ---
+    let corr_estimates_result: Option<Vec<CorrelationOfEstimatesRow>> = if config.correlations {
+        // Build variable names for correlation matrix (including Constant)
+        let mut var_names_for_corr: Vec<String> = Vec::new();
+        if config.include_constant {
+            var_names_for_corr.push("Constant".to_string());
+        }
+        var_names_for_corr.extend(feature_names.iter().cloned());
+        
+        Some(correlation_of_estimates::calculate_correlation_of_estimates(
+            &full_model.covariance_matrix,
+            &var_names_for_corr,
+        ))
+    } else {
+        None
+    };
+
+    // --- BARU: Build Iteration History Block for Block 1 ---
+    let block_1_iter_history: Option<IterationHistoryBlock> = if config.iteration_history {
+        // Build variable names for Block 1 (Constant + all covariates)
+        let mut var_names: Vec<String> = Vec::new();
+        if config.include_constant {
+            var_names.push("Constant".to_string());
+        }
+        var_names.extend(feature_names.iter().cloned());
+
+        full_iteration_history.as_ref().map(|history| {
+            IterationHistoryBlock {
+                block: 1,
+                step: 1,
+                variable_names: var_names,
+                rows: history.iter().map(|rec| IterationHistoryRow {
+                    iteration: rec.iteration,
+                    neg2_log_likelihood: rec.neg2_log_likelihood,
+                    coefficients: rec.coefficients.clone(),
+                }).collect(),
+                initial_neg2ll: Some(-2.0 * full_log_likelihood),
+                converged: full_model.converged,
+                final_iteration: full_model.iterations,
+            }
+        })
+    } else {
+        None
+    };
+
     // Simpan Snapshot Step 1
     steps_details.push(StepDetail {
         step: 1,
@@ -253,6 +390,9 @@ pub fn run(
         step_omni_tests: Some(omni_tests.clone()),
         model_if_term_removed: None,
         hosmer_lemeshow: hl_result.clone(), // Tambahkan ke step detail
+        correlation_of_estimates: corr_estimates_result.clone(), // BARU: Correlation of Estimates
+        iteration_history: block_1_iter_history, // BARU: Iteration History untuk Block 1
+        classification_plot_data: classification_plot_result.clone(), // Classification Plot untuk Step 1
     });
 
     let overall_test = RemainderTest {
@@ -262,6 +402,7 @@ pub fn run(
     };
 
     Ok(LogisticResult {
+        model_info: ModelInfo::default(),
         summary: model_summary,
         classification_table,
         variables: variables_rows,
@@ -275,6 +416,10 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: Some(overall_test),
         categorical_codings: codings,
-        hosmer_lemeshow: hl_result, 
+        hosmer_lemeshow: hl_result,
+        casewise_list: casewise_result,
+        classification_plot_data: classification_plot_result, // BARU: Classification Plot Data
+        correlation_of_estimates: corr_estimates_result, // BARU: Correlation of Estimates
+        step_summary: None, // Enter tidak memerlukan step summary
     })
 }
