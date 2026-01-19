@@ -621,17 +621,8 @@ export const BinaryLogisticMain = () => {
   // --- RENDER ---
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="px-6 py-4 flex-shrink-0">
-        <h2 className="text-lg font-semibold tracking-tight">
-          Binary Logistic Regression
-        </h2>
-      </div>
 
-      <div className="px-6 py-2">
-        <Separator className="my-2" />
-      </div>
-
-      <div className="flex-grow px-6 overflow-y-auto min-h-0">
+      <div className="flex-grow px-6 py-3 overflow-y-auto min-h-0">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
