@@ -120,6 +120,7 @@ export enum ModalType {
     // Classify modals
     ModalTwoStepCluster = "ModalTwoStepCluster",
     ModalKMeansCluster = "ModalKMeansCluster",
+    ModalKMedoidsCluster = "ModalKMedoidsCluster",
     ModalHierarchicalCluster = "ModalHierarchicalCluster",
     ModalClusterSilhouettes = "ModalClusterSilhouettes",
     ModalTree = "ModalTree",
@@ -317,6 +318,7 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     // Classify modals
     [ModalType.ModalTwoStepCluster]: ModalCategory.Analyze,
     [ModalType.ModalKMeansCluster]: ModalCategory.Analyze,
+    [ModalType.ModalKMedoidsCluster]: ModalCategory.Analyze,
     [ModalType.ModalHierarchicalCluster]: ModalCategory.Analyze,
     [ModalType.ModalClusterSilhouettes]: ModalCategory.Analyze,
     [ModalType.ModalTree]: ModalCategory.Analyze,
@@ -512,6 +514,8 @@ export function getModalTitle(type: ModalType): string {
             return "Two-Step Cluster";
         case ModalType.ModalKMeansCluster:
             return "K-Means Cluster";
+        case ModalType.ModalKMedoidsCluster:
+            return "K-Medoids Cluster";
         case ModalType.ModalHierarchicalCluster:
             return "Hierarchical Cluster";
         case ModalType.ModalClusterSilhouettes:

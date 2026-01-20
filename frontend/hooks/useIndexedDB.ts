@@ -15,6 +15,7 @@ type AnalysisType =
     // Clustering & Classification
     | "TwoStepCluster"
     | "KMeansCluster"
+    | "KMedoidsCluster"
     | "HierarchicalCluster"
     | "ClusterSilhouettes"
     // Predictive Models & Evaluation

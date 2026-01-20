@@ -29,6 +29,12 @@ const ClassifyMenu: React.FC = () => {
                     K-Means Cluster
                 </MenubarItem>
                 <MenubarItem
+                    onClick={() => openModal(ModalType.ModalKMedoidsCluster)}
+                >
+                    K-Medoids Cluster
+                </MenubarItem>
+                <MenubarItem
+                    disabled={true}
                     // disabled={true}
                     onClick={() =>
                         openModal(ModalType.ModalHierarchicalCluster)
@@ -39,7 +45,7 @@ const ClassifyMenu: React.FC = () => {
                 <MenubarItem
                     disabled={true}
                     onClick={() => openModal(ModalType.ModalClusterSilhouettes)}
-                >
+                >   
                     Cluster Silhouettes
                 </MenubarItem>
                 <MenubarSeparator />
