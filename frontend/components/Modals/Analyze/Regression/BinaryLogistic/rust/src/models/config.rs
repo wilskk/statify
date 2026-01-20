@@ -158,6 +158,37 @@ pub struct LogisticConfig {
     // --- Assumptions ---
     #[serde(default)]
     pub assumptions: AssumptionConfig,
+
+    // --- BARU: Save Options (Tab Save di UI) ---
+    #[serde(default, alias = "savePredictedProbabilities")]
+    pub save_predicted_probabilities: bool,
+
+    #[serde(default, alias = "savePredictedGroup")]
+    pub save_predicted_group: bool,
+
+    #[serde(default, alias = "saveResidualsUnstandardized")]
+    pub save_residuals_unstandardized: bool,
+
+    #[serde(default, alias = "saveResidualsLogit")]
+    pub save_residuals_logit: bool,
+
+    #[serde(default, alias = "saveResidualsStudentized")]
+    pub save_residuals_studentized: bool,
+
+    #[serde(default, alias = "saveResidualsStandardized")]
+    pub save_residuals_standardized: bool,
+
+    #[serde(default, alias = "saveResidualsDeviance")]
+    pub save_residuals_deviance: bool,
+
+    #[serde(default, alias = "saveInfluenceCooks")]
+    pub save_influence_cooks: bool,
+
+    #[serde(default, alias = "saveInfluenceLeverage")]
+    pub save_influence_leverage: bool,
+
+    #[serde(default, alias = "saveInfluenceDfBeta")]
+    pub save_influence_dfbeta: bool,
 }
 
 // ... helper functions ...
@@ -219,6 +250,18 @@ impl Default for LogisticConfig {
             display_at_last_step: false,
 
             assumptions: AssumptionConfig::default(),
+
+            // Save options (default false)
+            save_predicted_probabilities: false,
+            save_predicted_group: false,
+            save_residuals_unstandardized: false,
+            save_residuals_logit: false,
+            save_residuals_studentized: false,
+            save_residuals_standardized: false,
+            save_residuals_deviance: false,
+            save_influence_cooks: false,
+            save_influence_leverage: false,
+            save_influence_dfbeta: false,
         }
     }
 }

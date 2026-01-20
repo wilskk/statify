@@ -105,6 +105,75 @@ pub struct CasewiseRow {
     pub dfbeta: Option<Vec<f64>>,     // DfBeta per variable
 }
 
+// --- BARU: Saved Predictions untuk Tab Save ---
+/// Struktur untuk menyimpan hasil prediksi per kasus yang akan di-save ke dataset
+/// Ini adalah output dari opsi "Save" di UI SPSS
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SavedPredictionRow {
+    pub case_index: usize,            // Index kasus (0-indexed untuk mapping ke data)
+    
+    // Predicted Values
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub predicted_probability: Option<f64>,  // PRE_1: P(Y=1)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub predicted_group: Option<f64>,        // PGR_1: Predicted group (0 atau 1)
+    
+    // Residuals
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_unstandardized: Option<f64>,   // RES_1: Y - P
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_logit: Option<f64>,            // LRE_1: Logit residual
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_studentized: Option<f64>,      // SRE_1: Studentized residual
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_standardized: Option<f64>,     // ZRE_1: Standardized (Pearson) residual
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_deviance: Option<f64>,         // DEV_1: Deviance residual
+    
+    // Influence Statistics
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub influence_cooks: Option<f64>,        // COO_1: Cook's distance
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub influence_leverage: Option<f64>,     // LEV_1: Leverage (hat value)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub influence_dfbeta: Option<Vec<f64>>,  // DFB0_1, DFB1_1, ...: DfBeta per variable
+}
+
+/// Wrapper untuk semua saved predictions dengan metadata
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SavedPredictions {
+    pub rows: Vec<SavedPredictionRow>,
+    
+    // Metadata untuk naming variabel baru
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variable_names: Option<SavedVariableNames>,
+}
+
+/// Nama variabel yang akan ditambahkan ke dataset (mengikuti konvensi SPSS)
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SavedVariableNames {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub predicted_probability: Option<String>,  // PRE_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub predicted_group: Option<String>,        // PGR_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_unstandardized: Option<String>,   // RES_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_logit: Option<String>,            // LRE_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_studentized: Option<String>,      // SRE_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_standardized: Option<String>,     // ZRE_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resid_deviance: Option<String>,         // DEV_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub influence_cooks: Option<String>,        // COO_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub influence_leverage: Option<String>,     // LEV_1
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub influence_dfbeta: Option<Vec<String>>,  // DFB0_1, DFB1_1, ...
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HosmerLemeshowResult {
     pub chi_square: f64,
@@ -393,4 +462,8 @@ pub struct LogisticResult {
     // --- BARU: Correlation of Estimates (Final Model) ---
     #[serde(rename = "correlation_of_estimates", skip_serializing_if = "Option::is_none")]
     pub correlation_of_estimates: Option<Vec<CorrelationOfEstimatesRow>>,
+
+    // --- BARU: Saved Predictions (Tab Save di UI) ---
+    #[serde(rename = "saved_predictions", skip_serializing_if = "Option::is_none")]
+    pub saved_predictions: Option<SavedPredictions>,
 }

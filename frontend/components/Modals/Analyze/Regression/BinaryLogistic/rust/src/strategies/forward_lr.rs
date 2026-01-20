@@ -11,6 +11,7 @@ use crate::stats::hosmer_lemeshow;
 use crate::stats::casewise;
 use crate::stats::correlation_of_estimates;
 use crate::stats::classification_plot;
+use crate::stats::saved_predictions;
 
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
@@ -472,6 +473,19 @@ pub fn run(
         None
     };
 
+    // --- BARU: Calculate Saved Predictions Jika Ada Opsi Save yang Diaktifkan ---
+    let saved_predictions_result = if !included_indices.is_empty() {
+        let final_x = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
+        saved_predictions::calculate_saved_predictions(
+            &final_x,
+            y_vector,
+            &current_model,
+            config,
+        )
+    } else {
+        None
+    };
+
     // --- BARU: Ambil Correlation of Estimates dari final step ---
     let corr_estimates_final = final_step.correlation_of_estimates.clone();
 
@@ -530,6 +544,8 @@ pub fn run(
         correlation_of_estimates: corr_estimates_final,
         // --- BARU: Step Summary ---
         step_summary: if step_summary.is_empty() { None } else { Some(step_summary) },
+        // --- BARU: Saved Predictions ---
+        saved_predictions: saved_predictions_result,
     })
 }
 

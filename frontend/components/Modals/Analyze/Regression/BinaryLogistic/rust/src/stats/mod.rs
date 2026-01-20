@@ -8,3 +8,4 @@ pub mod hosmer_lemeshow;
 pub mod casewise;
 pub mod correlation_of_estimates;
 pub mod classification_plot;
+pub mod saved_predictions;
