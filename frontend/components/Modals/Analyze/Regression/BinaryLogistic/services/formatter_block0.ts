@@ -1,15 +1,26 @@
+import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
 import {
-  LogisticResult,
-  AnalysisSection,
-  StepDetail,
-} from "../types/binary-logistic";
-import { createSection, safeFixed, fmtSig, fmtPct } from "./formatter_utils";
+  createSection,
+  safeFixed,
+  fmtSig,
+  fmtPct,
+  generateClassificationDescription,
+} from "./formatter_utils";
+
+/**
+ * Options for formatting Block 0
+ */
+interface Block0FormatOptions {
+  cutoff?: number;  // Classification cutoff value
+}
 
 export const formatBlock0 = (
   result: LogisticResult,
-  dependentName: string
+  dependentName: string,
+  options?: Block0FormatOptions
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
+  const cutoff = options?.cutoff ?? 0.5;
 
   const modelInfo = (result as any).model_info || {};
   const variableNames = modelInfo.variables || [];
@@ -131,14 +142,33 @@ export const formatBlock0 = (
     ],
   };
 
+  // Gunakan generator deskripsi dinamis
+  const classDesc = generateClassificationDescription(b0_overall);
+
+  // Cek apakah include_constant dari model_info
+  const includeConstant = modelInfo.include_constant !== false;
+
+  const block0ConstVar = (result as any).block_0_constant as any;
+  const hasConstantInBlock0 =
+    includeConstant && (
+      block0ConstVar?.label === "Constant" ||
+      (result.steps_detail &&
+        result.steps_detail.length > 0 &&
+        (result.steps_detail[0].variables_in_equation || []).some(
+          (v: any) => v.label === "Constant"
+        ))
+    );
+
   sections.push(
     createSection(
       "block0_classification",
       "Classification Table",
       classificationData,
       {
-        description: "Klasifikasi awal (Null Model).",
-        note: "a. Constant is included in the model.\nb. The cut value is .500",
+        description: `Initial classification (Null Model). ${classDesc}`,
+        note: hasConstantInBlock0
+          ? `a. Constant is included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`
+          : `a. Constant is not included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`,
       }
     )
   );
@@ -147,55 +177,63 @@ export const formatBlock0 = (
   // 4. TABLE: VARIABLES IN EQUATION (Constant Only)
   // ======================================================================
   // LOGIKA PRIORITY:
-  // 1. Cek field khusus `block_0_constant` (Metode Backward pakai ini).
-  // 2. Jika tidak ada, cek `steps_detail[0]` (Metode Enter/Forward pakai ini).
+  // 1. Jika include_constant = false, tidak tampilkan tabel ini.
+  // 2. Cek field khusus `block_0_constant` (Metode Backward pakai ini).
+  // 3. Jika tidak ada, cek `steps_detail[0]` (Metode Enter/Forward pakai ini).
 
-  let constVar = (result as any).block_0_constant;
+  if (includeConstant) {
+    let constVar = (result as any).block_0_constant;
 
-  if (!constVar && result.steps_detail && result.steps_detail.length > 0) {
-    const step0Vars = result.steps_detail[0].variables_in_equation || [];
-    constVar = step0Vars.find((v: any) => v.label === "Constant");
+    if (!constVar && result.steps_detail && result.steps_detail.length > 0) {
+      const step0Vars = result.steps_detail[0].variables_in_equation || [];
+      constVar = step0Vars.find((v: any) => v.label === "Constant");
+    }
+
+    const hasConstant = constVar?.label === "Constant";
+
+    // Fallback safe object
+    if (!constVar) {
+      constVar = { b: 0, error: 0, wald: 0, df: 1, sig: 1, exp_b: 1 };
+    }
+
+    const varsInData = {
+      columnHeaders: [
+        {
+          header: "",
+          children: [
+            { header: "", key: "rh1" },
+            { header: "", key: "rh2" },
+          ],
+        },
+        { header: "B", key: "b" },
+        { header: "S.E.", key: "se" },
+        { header: "Wald", key: "wald" },
+        { header: "df", key: "df" },
+        { header: "Sig.", key: "sig" },
+        { header: "Exp(B)", key: "expb" },
+      ],
+      rows: [
+        {
+          rowHeader: ["Step 0", "Constant"],
+          b: safeFixed(constVar?.b),
+          se: safeFixed(constVar?.error),
+          wald: safeFixed(constVar?.wald),
+          df: "1",
+          sig: fmtSig(constVar?.sig),
+          expb: safeFixed(constVar?.exp_b),
+        },
+      ],
+    };
+
+    if (hasConstant) {
+      sections.push(
+        createSection("block0_vars_in", "Variables in the Equation", varsInData, {
+          description:
+            "Intercept (constant) for the null model containing no predictors.",
+        })
+      );
+    }
   }
-
-  // Fallback safe object
-  if (!constVar) {
-    constVar = { b: 0, error: 0, wald: 0, df: 1, sig: 1, exp_b: 1 };
-  }
-
-  const varsInData = {
-    columnHeaders: [
-      {
-        header: "",
-        children: [
-          { header: "", key: "rh1" },
-          { header: "", key: "rh2" },
-        ],
-      },
-      { header: "B", key: "b" },
-      { header: "S.E.", key: "se" },
-      { header: "Wald", key: "wald" },
-      { header: "df", key: "df" },
-      { header: "Sig.", key: "sig" },
-      { header: "Exp(B)", key: "expb" },
-    ],
-    rows: [
-      {
-        rowHeader: ["Step 0", "Constant"],
-        b: safeFixed(constVar?.b),
-        se: safeFixed(constVar?.error),
-        wald: safeFixed(constVar?.wald),
-        df: "1",
-        sig: fmtSig(constVar?.sig),
-        expb: safeFixed(constVar?.exp_b),
-      },
-    ],
-  };
-
-  sections.push(
-    createSection("block0_vars_in", "Variables in the Equation", varsInData, {
-      description: "Koefisien untuk model awal (hanya Konstanta).",
-    })
-  );
 
   // ======================================================================
   // 5. TABLE: VARIABLES NOT IN EQUATION (Score Tests)
@@ -266,14 +304,27 @@ export const formatBlock0 = (
     })),
   };
 
+  // Generate deskripsi dinamis untuk "Variables not in equation"
+  let varsOutDesc = "Score tests for predictors not included in the model.";
+  if (remainderTest) {
+    const pVal = remainderTest.sig;
+    const isSig = pVal < 0.05;
+    const pText = pVal < 0.001 ? "< .001" : `= ${pVal.toFixed(3)}`;
+
+    if (isSig) {
+      varsOutDesc = `The overall residual Score statistic is statistically significant (p ${pText}), indicating that the addition of one or more predictors would significantly improve the model fit.`;
+    } else {
+      varsOutDesc = `The overall residual Score statistic is not statistically significant (p ${pText}), suggesting that adding predictors may not significantly improve the model.`;
+    }
+  }
+
   sections.push(
     createSection(
       "block0_vars_not_in",
       "Variables not in the Equation",
       varsNotInData,
       {
-        description:
-          "Uji Score untuk variabel kandidat yang belum dimasukkan ke model.",
+        description: varsOutDesc,
         note: "a. Residual Chi-Squares are computed based on the likelihood ratios.",
       }
     )

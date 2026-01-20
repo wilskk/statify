@@ -1,10 +1,17 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    ClassificationTable, LogisticResult, ModelIfTermRemovedRow, ModelSummary, OmniTests,
-    RemainderTest, StepDetail, StepHistory, VariableNotInEquation, VariableRow, CategoricalCoding,
+    CategoricalCoding, ClassificationTable, CorrelationOfEstimatesRow, IterationHistoryBlock,
+    IterationHistoryRow, LogisticResult, ModelIfTermRemovedRow, ModelInfo, ModelSummary, OmniTests, RemainderTest,
+    StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
-use crate::stats::irls::{fit, FittedModel};
+use crate::stats::irls::{fit, fit_with_history, FittedModel, IterationRecord};
 use crate::stats::score_test::calculate_score_test;
+// --- TAMBAHAN IMPORT ---
+use crate::stats::hosmer_lemeshow;
+use crate::stats::casewise;
+use crate::stats::correlation_of_estimates;
+use crate::stats::classification_plot;
+
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
 use wasm_bindgen::JsValue;
@@ -14,11 +21,12 @@ pub fn run(
     y_vector: &DVector<f64>,
     config: &LogisticConfig,
     feature_names: &[String],
-    codings: Option<Vec<CategoricalCoding>>
+    codings: Option<Vec<CategoricalCoding>>,
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
+    let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
     // ========================================================================
     // BLOCK 0: NULL MODEL (ANALYTICAL APPROACH for SPSS PRECISION)
@@ -45,7 +53,7 @@ pub fn run(
     let null_log_likelihood = n_1 * p_null.ln() + n_0 * (1.0 - p_null).ln();
 
     // Classification Table Block 0 (Majority Class)
-    let predicted_class_null = if n_1 > n_0 { 1.0 } else { 0.0 };
+    let _predicted_class_null = if n_1 > n_0 { 1.0 } else { 0.0 };
     let block_0_row = VariableRow {
         label: "Constant".to_string(),
         b: b0_val,
@@ -54,8 +62,8 @@ pub fn run(
         df: 1,
         sig: b0_sig,
         exp_b: b0_val.exp(),
-        lower_ci: (b0_val - 1.96 * b0_se).exp(),
-        upper_ci: (b0_val + 1.96 * b0_se).exp(),
+        lower_ci: (b0_val - z_score * b0_se).exp(),
+        upper_ci: (b0_val + z_score * b0_se).exp(),
     };
 
     // Variables Not in Equation Block 0 (Score Tests)
@@ -109,6 +117,7 @@ pub fn run(
         y_vector,
         &empty_indices,
         &dummy_null_model_struct,
+        config.include_constant,
     ) {
         overall_score_stat = test.chi_square;
     }
@@ -126,6 +135,41 @@ pub fn run(
     });
 
     // ========================================================================
+    // BLOCK 0: STEP 0 (NULL MODEL) - untuk Iteration History
+    // ========================================================================
+    let null_x = DMatrix::from_element(n_samples, 1, 1.0);
+    let null_model_for_step0: FittedModel;
+    let block_0_iter_history: Option<IterationHistoryBlock>;
+
+    if config.iteration_history && config.include_constant {
+        let result = fit_with_history(
+            &null_x,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Null Model): {}", e)))?;
+        
+        block_0_iter_history = Some(IterationHistoryBlock {
+            block: 0,
+            step: 0,
+            variable_names: vec!["Constant".to_string()],
+            rows: result.iteration_history.iter().map(|rec| IterationHistoryRow {
+                iteration: rec.iteration,
+                neg2_log_likelihood: rec.neg2_log_likelihood,
+                coefficients: rec.coefficients.clone(),
+            }).collect(),
+            initial_neg2ll: Some(-2.0 * null_log_likelihood),
+            converged: result.model.converged,
+            final_iteration: result.model.iterations,
+        });
+        null_model_for_step0 = result.model;
+    } else {
+        // Use analytical model for step0
+        null_model_for_step0 = dummy_null_model_struct.clone();
+        block_0_iter_history = None;
+    }
+
+    // ========================================================================
     // BLOCK 1: BACKWARD ELIMINATION
     // ========================================================================
 
@@ -134,25 +178,83 @@ pub fn run(
     let mut steps_history: Vec<StepHistory> = Vec::new();
     let mut steps_details: Vec<StepDetail> = Vec::new();
 
-    // Fit Full Model
-    let full_x = build_design_matrix(x_matrix, &included_indices, n_samples);
-    let mut current_model = fit(
-        &full_x,
+    // Step 0 Detail (Null Model / Block 0)
+    let empty_indices: Vec<usize> = Vec::new();
+    let step0_detail = calculate_step_snapshot(
+        0,
+        "Start".to_string(),
+        None,
+        &null_model_for_step0,
+        x_matrix,
         y_vector,
-        config.max_iterations,
-        config.convergence_threshold,
-    )
-    .map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
+        &empty_indices,
+        null_log_likelihood,
+        0.0,
+        feature_names,
+        config,
+        n_samples,
+        block_0_iter_history,
+    );
+    steps_details.push(step0_detail);
+
+    // Fit Full Model
+    let full_x = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
+    
+    // Use fit_with_history if iteration_history is enabled
+    let (mut current_model, full_iter_history) = if config.iteration_history {
+        let result = fit_with_history(
+            &full_x,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
+        (result.model, Some(result.iteration_history))
+    } else {
+        let result = fit(
+            &full_x,
+            y_vector,
+            config.max_iterations,
+            config.convergence_threshold,
+        ).map_err(|e| JsValue::from_str(&format!("IRLS Error (Full Model): {}", e)))?;
+        (result, None)
+    };
 
     // Tracker untuk Step Chi-Square
-    // Kita butuh Model Chi-Square dari step sebelumnya untuk menghitung selisih.
-    // Model Chi-Square = (-2LL Null) - (-2LL Current) = 2 * (LL Current - LL Null)
-    // Untuk Step 1 (Full Model), previousnya adalah Null Model? Tidak, Step 1 adalah baseline backward.
-    // Di output SPSS Backward, Step 1 tidak menampilkan "Step" statistic yang negatif,
-    // karena Step 1 adalah "Entered All Variables".
-
-    // Namun untuk Step 2 dst, Prev Model adalah model sebelum variabel dibuang.
     let mut prev_model_chi_sq = 2.0 * (current_model.final_log_likelihood - null_log_likelihood);
+
+    // Build iteration history block for Step 1 (Full Model)
+    let step1_iter_history: Option<IterationHistoryBlock> = if config.iteration_history {
+        full_iter_history.as_ref().map(|history| {
+            let mut var_names: Vec<String> = Vec::new();
+            // Tambahkan Constant hanya jika include_constant = true
+            if config.include_constant {
+                var_names.push("Constant".to_string());
+            }
+            for &idx in &included_indices {
+                let label = if idx < feature_names.len() {
+                    feature_names[idx].clone()
+                } else {
+                    format!("Var_{}", idx + 1)
+                };
+                var_names.push(label);
+            }
+            IterationHistoryBlock {
+                block: 1,
+                step: 1,
+                variable_names: var_names,
+                rows: history.iter().map(|rec| IterationHistoryRow {
+                    iteration: rec.iteration,
+                    neg2_log_likelihood: rec.neg2_log_likelihood,
+                    coefficients: rec.coefficients.clone(),
+                }).collect(),
+                initial_neg2ll: Some(-2.0 * current_model.final_log_likelihood),
+                converged: current_model.converged,
+                final_iteration: current_model.iterations,
+            }
+        })
+    } else {
+        None
+    };
 
     // Snapshot Step 1 (Full Model)
     let step1_detail = calculate_step_snapshot(
@@ -168,6 +270,7 @@ pub fn run(
         feature_names,
         config,
         n_samples,
+        step1_iter_history, // BARU: Iteration history
     );
     steps_details.push(step1_detail);
 
@@ -190,7 +293,7 @@ pub fn run(
                 if temp_indices.is_empty() {
                     reduced_ll = null_log_likelihood;
                 } else {
-                    let reduced_x = build_design_matrix(x_matrix, &temp_indices, n_samples);
+                    let reduced_x = build_design_matrix(x_matrix, &temp_indices, n_samples, config.include_constant);
                     if let Ok(temp_model) = fit(
                         &reduced_x,
                         y_vector,
@@ -203,10 +306,7 @@ pub fn run(
                     }
                 }
 
-                // Change = -2LL(Reduced) - -2LL(Full/Current)
-                // -2LL Reduced > -2LL Full (Model makin buruk)
                 // Change = 2 * (Full_LL - Reduced_LL).abs()
-                // Ini untuk P-Value (harus positif untuk lookup ChiSq).
                 let change_abs = 2.0 * (current_model.final_log_likelihood - reduced_ll).abs();
 
                 let p_val_remove = if change_abs < 1e-9 {
@@ -232,18 +332,32 @@ pub fn run(
 
                 included_indices.remove(loc);
 
-                let reduced_x = build_design_matrix(x_matrix, &included_indices, n_samples);
-                if let Ok(new_model) = fit(
-                    &reduced_x,
-                    y_vector,
-                    config.max_iterations,
-                    config.convergence_threshold,
-                ) {
+                let reduced_x = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
+                
+                // Use fit_with_history if iteration_history is enabled
+                let mut step_iter_history: Option<Vec<IterationRecord>> = None;
+                let fit_result = if config.iteration_history {
+                    match fit_with_history(
+                        &reduced_x,
+                        y_vector,
+                        config.max_iterations,
+                        config.convergence_threshold,
+                    ) {
+                        Ok(result) => {
+                            step_iter_history = Some(result.iteration_history);
+                            Ok(result.model)
+                        }
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    fit(&reduced_x, y_vector, config.max_iterations, config.convergence_threshold)
+                };
+                
+                if let Ok(new_model) = fit_result {
                     // Update Model
                     current_model = new_model;
 
-                    // Hitung Statistik Step (Negative Chi-Square)
-                    // Step Chi = Model Chi Sq (New) - Model Chi Sq (Prev)
+                    // Hitung Statistik Step
                     let current_model_chi_sq =
                         2.0 * (current_model.final_log_likelihood - null_log_likelihood);
                     let step_chi_sq_val = current_model_chi_sq - prev_model_chi_sq;
@@ -268,6 +382,40 @@ pub fn run(
                         nagelkerke_r2: nagel,
                     });
 
+                    // Build iteration history block for this removal step
+                    let step_history_block: Option<IterationHistoryBlock> = if config.iteration_history {
+                        step_iter_history.as_ref().map(|history| {
+                            let mut var_names: Vec<String> = Vec::new();
+                            // Tambahkan Constant hanya jika include_constant = true
+                            if config.include_constant {
+                                var_names.push("Constant".to_string());
+                            }
+                            for &idx in &included_indices {
+                                let label = if idx < feature_names.len() {
+                                    feature_names[idx].clone()
+                                } else {
+                                    format!("Var_{}", idx + 1)
+                                };
+                                var_names.push(label);
+                            }
+                            IterationHistoryBlock {
+                                block: 1,
+                                step: step_count,
+                                variable_names: var_names,
+                                rows: history.iter().map(|rec| IterationHistoryRow {
+                                    iteration: rec.iteration,
+                                    neg2_log_likelihood: rec.neg2_log_likelihood,
+                                    coefficients: rec.coefficients.clone(),
+                                }).collect(),
+                                initial_neg2ll: Some(-2.0 * current_model.final_log_likelihood),
+                                converged: current_model.converged,
+                                final_iteration: current_model.iterations,
+                            }
+                        })
+                    } else {
+                        None
+                    };
+
                     // Snapshot
                     let step_detail = calculate_step_snapshot(
                         step_count,
@@ -282,6 +430,7 @@ pub fn run(
                         feature_names,
                         config,
                         n_samples,
+                        step_history_block, // BARU: Iteration history
                     );
                     steps_details.push(step_detail);
                     variable_removed = true;
@@ -310,7 +459,62 @@ pub fn run(
         sig: omni_sig,
     };
 
+    // --- BARU: Hitung Casewise Listing Jika Diminta ---
+    let casewise_result = if config.casewise_listing && !included_indices.is_empty() {
+        let final_x = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
+        let y_label_0 = "0";
+        let y_label_1 = "1";
+        
+        Some(casewise::calculate_casewise_list(
+            &final_x,
+            y_vector,
+            &current_model,
+            config,
+            y_label_0,
+            y_label_1,
+        ))
+    } else {
+        None
+    };
+
+    // --- BARU: Ambil Correlation of Estimates dari final step ---
+    let corr_estimates_final = final_step.correlation_of_estimates.clone();
+
+    // --- BARU: Generate Step Summary (SPSS Style) ---
+    let step_summary: Vec<StepSummaryRow> = steps_details.iter()
+        .filter(|s| s.step > 0) // Skip Step 0 untuk backward juga
+        .map(|s| {
+            let improvement_chi = s.step_omni_tests.as_ref().map(|o| o.chi_square).unwrap_or(0.0);
+            let improvement_df = s.step_omni_tests.as_ref().map(|o| o.df).unwrap_or(1);
+            let improvement_sig = s.step_omni_tests.as_ref().map(|o| o.sig).unwrap_or(1.0);
+            
+            let model_chi = s.omni_tests.as_ref().map(|o| o.chi_square).unwrap_or(0.0);
+            let model_df = s.omni_tests.as_ref().map(|o| o.df).unwrap_or(1);
+            let model_sig = s.omni_tests.as_ref().map(|o| o.sig).unwrap_or(1.0);
+            
+            let var_action = match s.action.as_str() {
+                "Entered" => format!("IN: {}", s.variable_changed.clone().unwrap_or_default()),
+                "Removed" => format!("OUT: {}", s.variable_changed.clone().unwrap_or_default()),
+                "Start" => "All Variables Entered".to_string(),
+                _ => s.variable_changed.clone().unwrap_or_default(),
+            };
+            
+            StepSummaryRow {
+                step: s.step,
+                improvement_chi_square: improvement_chi,
+                improvement_df,
+                improvement_sig,
+                model_chi_square: model_chi,
+                model_df,
+                model_sig,
+                correct_pct: s.classification_table.overall_percentage,
+                variable_action: var_action,
+            }
+        })
+        .collect();
+
     Ok(LogisticResult {
+        model_info: ModelInfo::default(),
         summary: final_step.summary,
         classification_table: final_step.classification_table,
         variables: final_step.variables_in_equation,
@@ -324,34 +528,58 @@ pub fn run(
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
         categorical_codings: codings,
+        // --- MODIFIKASI: Ambil Hosmer Lemeshow dari Step Terakhir ---
+        hosmer_lemeshow: final_step.hosmer_lemeshow,
+        casewise_list: casewise_result,
+        classification_plot_data: if config.classification_plots && !included_indices.is_empty() {
+            Some(classification_plot::calculate_classification_plot(
+                y_vector,
+                &current_model.predictions,
+                config.cutoff,
+                "FALSE",
+                "TRUE",
+            ))
+        } else {
+            None
+        },
+        // --- BARU: Correlation of Estimates ---
+        correlation_of_estimates: corr_estimates_final,
+        // --- BARU: Step Summary ---
+        step_summary: if step_summary.is_empty() { None } else { Some(step_summary) },
     })
 }
 
 // --- HELPER FUNCTIONS ---
 
-fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize) -> DMatrix<f64> {
-    let mut columns = vec![DVector::from_element(rows, 1.0)];
+fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize, include_constant: bool) -> DMatrix<f64> {
+    let mut columns: Vec<DVector<f64>> = Vec::new();
+    
+    // Tambahkan kolom intercept hanya jika include_constant = true
+    if include_constant {
+        columns.push(DVector::from_element(rows, 1.0));
+    }
+    
     for &idx in indices {
         columns.push(original_x.column(idx).into_owned());
     }
+    
+    // Jika tidak ada kolom sama sekali (tanpa constant dan tanpa variabel), kembalikan matriks kosong
+    if columns.is_empty() {
+        return DMatrix::zeros(rows, 0);
+    }
+    
     DMatrix::from_columns(&columns)
 }
 
-// FIX: Helper yang mengembalikan Cox & Snell DAN Nagelkerke secara terpisah
 fn calculate_r_squares(null_ll: f64, model_ll: f64, n: usize) -> (f64, f64) {
-    // Cox & Snell = 1 - (L0/LM)^(2/n) = 1 - exp( (2/n) * (LL0 - LLM) )
     let ratio_exponent = (2.0 / n as f64) * (null_ll - model_ll);
     let cox_snell = 1.0 - ratio_exponent.exp();
-
-    // Max R2 = 1 - L0^(2/n) = 1 - exp( (2/n) * LL0 )
     let max_r2 = 1.0 - ((2.0 / n as f64) * null_ll).exp();
-
     let nagelkerke = if max_r2 > 1e-12 {
         cox_snell / max_r2
     } else {
         0.0
     };
-
     (cox_snell, nagelkerke)
 }
 
@@ -365,15 +593,17 @@ fn calculate_step_snapshot(
     y_vector: &DVector<f64>,
     included_indices: &[usize],
     null_ll: f64,
-    step_chi_sq_val: f64, // Parameter baru: Nilai Chi-Square Langkah (bisa negatif)
+    step_chi_sq_val: f64,
     feature_names: &[String],
     config: &LogisticConfig,
     n_samples: usize,
+    iteration_history: Option<IterationHistoryBlock>, // BARU: Iteration history
 ) -> StepDetail {
     let n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
+    let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
-    // 1. Model Summary (Fix: Gunakan helper baru)
+    // 1. Model Summary
     let (cox, nagel) = calculate_r_squares(null_ll, model.final_log_likelihood, n_samples);
     let summary = ModelSummary {
         log_likelihood: model.final_log_likelihood,
@@ -383,7 +613,7 @@ fn calculate_step_snapshot(
         iterations: model.iterations,
     };
 
-    // 2. Omnibus Tests (Block/Model vs Null) - Always Positive
+    // 2. Omnibus Tests (Block/Model vs Null)
     let chi_sq_model = 2.0 * (model.final_log_likelihood - null_ll).abs();
     let df_model = included_indices.len() as i32;
     let sig_model = if df_model > 0 {
@@ -397,9 +627,7 @@ fn calculate_step_snapshot(
         sig: sig_model,
     };
 
-    // 3. Step Omnibus (Change) - Can be Negative in Backward
-    // DF Step = 1 (karena membuang 1 variabel per step)
-    // Sig Step = P-value of the change (always based on abs value)
+    // 3. Step Omnibus
     let sig_step = if step_chi_sq_val.abs() > 1e-9 {
         1.0 - chi_dist_1df.cdf(step_chi_sq_val.abs())
     } else {
@@ -407,12 +635,9 @@ fn calculate_step_snapshot(
             0.0
         } else {
             1.0
-        } // Step 1 is full model, sig usually < .001 implies 0.0
+        }
     };
 
-    // Adjustment khusus Step 1 (Full Model):
-    // Di SPSS, Step 1 Backward punya Step ChiSq = Model ChiSq (Positif).
-    // Step 2 dst (Removal) punya Step ChiSq Negatif.
     let final_step_chi = if step == 1 {
         chi_sq_model
     } else {
@@ -470,31 +695,38 @@ fn calculate_step_snapshot(
         } else {
             0.0
         },
-        overall_percentage: (tn + tp + fn_ + fp) as f64 / n_samples as f64 * 100.0,
+        overall_percentage: (tn + tp) as f64 / n_samples as f64 * 100.0,
     };
 
     // 6. Variables In Equation
     let mut variables_in = Vec::new();
-    let b_int = model.beta[0];
-    let se_int = model.covariance_matrix[(0, 0)].sqrt();
-    let wald_int = (b_int / se_int).powi(2);
-    variables_in.push(VariableRow {
-        label: "Constant".to_string(),
-        b: b_int,
-        error: se_int,
-        wald: wald_int,
-        df: 1,
-        sig: 1.0 - chi_dist_1df.cdf(wald_int),
-        exp_b: b_int.exp(),
-        lower_ci: (b_int - 1.96 * se_int).exp(),
-        upper_ci: (b_int + 1.96 * se_int).exp(),
-    });
+    
+    // Tambahkan Constant hanya jika include_constant = true
+    if config.include_constant {
+        let b_int = model.beta[0];
+        let se_int = model.covariance_matrix[(0, 0)].sqrt();
+        let wald_int = if se_int > 1e-12 { (b_int / se_int).powi(2) } else { 0.0 };
+        variables_in.push(VariableRow {
+            label: "Constant".to_string(),
+            b: b_int,
+            error: se_int,
+            wald: wald_int,
+            df: 1,
+            sig: 1.0 - chi_dist_1df.cdf(wald_int),
+            exp_b: b_int.exp(),
+            lower_ci: (b_int - z_score * se_int).exp(),
+            upper_ci: (b_int + z_score * se_int).exp(),
+        });
+    }
 
+    // Offset untuk beta index tergantung apakah ada constant
+    let beta_offset = if config.include_constant { 1 } else { 0 };
+    
     for (k, &idx) in included_indices.iter().enumerate() {
-        let beta_idx = k + 1;
+        let beta_idx = k + beta_offset;
         let b = model.beta[beta_idx];
         let se = model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
-        let wald = (b / se).powi(2);
+        let wald = if se > 1e-12 { (b / se).powi(2) } else { 0.0 };
         let label = if idx < feature_names.len() {
             feature_names[idx].clone()
         } else {
@@ -509,14 +741,14 @@ fn calculate_step_snapshot(
             df: 1,
             sig: 1.0 - chi_dist_1df.cdf(wald),
             exp_b: b.exp(),
-            lower_ci: (b - 1.96 * se).exp(),
-            upper_ci: (b + 1.96 * se).exp(),
+            lower_ci: (b - z_score * se).exp(),
+            upper_ci: (b + z_score * se).exp(),
         });
     }
 
     // 7. Variables Not In Equation
     let mut variables_not_in = Vec::new();
-    let current_design_matrix = build_design_matrix(full_x, included_indices, n_samples);
+    let current_design_matrix = build_design_matrix(full_x, included_indices, n_samples, config.include_constant);
 
     for i in 0..n_total_vars {
         if !included_indices.contains(&i) {
@@ -544,7 +776,58 @@ fn calculate_step_snapshot(
     }
 
     let remainder_test =
-        calculate_overall_remainder_stats(full_x, y_vector, included_indices, model);
+        calculate_overall_remainder_stats(full_x, y_vector, included_indices, model, config.include_constant);
+
+    // --- MODIFIKASI: HITUNG HOSMER-LEMESHOW ---
+    let hl_result = if config.hosmer_lemeshow && step > 0 {
+        match hosmer_lemeshow::calculate(y_vector, &model.predictions, 10) {
+            Ok(res) => Some(res),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
+
+    // --- BARU: HITUNG CORRELATION OF ESTIMATES ---
+    let corr_estimates_result: Option<Vec<CorrelationOfEstimatesRow>> = if config.correlations && step > 0 {
+        let mut var_names_for_corr: Vec<String> = Vec::new();
+        
+        // Tambahkan Constant hanya jika include_constant = true
+        if config.include_constant {
+            var_names_for_corr.push("Constant".to_string());
+        }
+        
+        for &idx in included_indices {
+            let label = if idx < feature_names.len() {
+                feature_names[idx].clone()
+            } else {
+                format!("Var_{}", idx + 1)
+            };
+            var_names_for_corr.push(label);
+        }
+        
+        Some(correlation_of_estimates::calculate_correlation_of_estimates(
+            &model.covariance_matrix,
+            &var_names_for_corr,
+        ))
+    } else {
+        None
+    };
+
+    // --- BARU: HITUNG CLASSIFICATION PLOT DATA ---
+    let classification_plot_result = if config.classification_plots && step > 0 {
+        let y_label_0 = "FALSE";
+        let y_label_1 = "TRUE";
+        Some(classification_plot::calculate_classification_plot(
+            y_vector,
+            &model.predictions,
+            config.cutoff,
+            y_label_0,
+            y_label_1,
+        ))
+    } else {
+        None
+    };
 
     StepDetail {
         step,
@@ -558,6 +841,14 @@ fn calculate_step_snapshot(
         remainder_test,
         omni_tests: Some(omni_tests_model),
         step_omni_tests: Some(omni_tests_step),
+        // --- MASUKKAN HASIL HOSMER-LEMESHOW ---
+        hosmer_lemeshow: hl_result,
+        // --- BARU: CORRELATION OF ESTIMATES ---
+        correlation_of_estimates: corr_estimates_result,
+        // --- BARU: ITERATION HISTORY ---
+        iteration_history,
+        // --- BARU: CLASSIFICATION PLOT DATA ---
+        classification_plot_data: classification_plot_result,
     }
 }
 
@@ -586,7 +877,7 @@ fn calculate_model_if_term_removed(
         if subset_indices.is_empty() {
             reduced_ll = null_log_likelihood;
         } else {
-            let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples);
+            let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
             if let Ok(reduced_model) = fit(
                 &x_subset,
                 y_vector,
@@ -632,6 +923,7 @@ fn calculate_overall_remainder_stats(
     y_vector: &DVector<f64>,
     included_indices: &[usize],
     model: &FittedModel,
+    include_constant: bool,
 ) -> Option<RemainderTest> {
     let n_total_vars = full_x.ncols();
     let excluded_indices: Vec<usize> = (0..n_total_vars)
@@ -651,11 +943,7 @@ fn calculate_overall_remainder_stats(
     let raw_residuals = y_vector - &model.predictions;
     let u = x_out.transpose() * &raw_residuals;
 
-    let x_in = if included_indices.is_empty() {
-        DMatrix::from_element(full_x.nrows(), 1, 1.0)
-    } else {
-        build_design_matrix(full_x, included_indices, full_x.nrows())
-    };
+    let x_in = build_design_matrix(full_x, included_indices, full_x.nrows(), include_constant);
 
     let mut x_out_weighted = x_out.clone();
     for (row_idx, &weight) in model.weights.iter().enumerate() {
@@ -667,8 +955,15 @@ fn calculate_overall_remainder_stats(
     let v_out = x_out.transpose() * &x_out_weighted;
     let v_cross = x_out_weighted.transpose() * &x_in;
     let inv_info_in = &model.covariance_matrix;
-    let correction = &v_cross * inv_info_in * v_cross.transpose();
-    let adjusted_var = v_out - correction;
+    
+    // Handle case when x_in has no columns (no constant and no included variables)
+    let adjusted_var = if x_in.ncols() > 0 && inv_info_in.ncols() > 0 {
+        let correction = &v_cross * inv_info_in * v_cross.transpose();
+        v_out - correction
+    } else {
+        // No correction needed when there are no included variables
+        v_out
+    };
 
     let score_stat = match adjusted_var.cholesky() {
         Some(chol) => {

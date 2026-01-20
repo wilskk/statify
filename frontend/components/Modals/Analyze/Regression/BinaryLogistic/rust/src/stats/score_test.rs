@@ -21,12 +21,17 @@ pub fn calculate_score_test(
     let weighted_candidate = candidate_col.component_mul(weights);
     let term1 = candidate_col.dot(&weighted_candidate);
 
-    // b. z'WX
-    let z_w_x = weighted_candidate.transpose() * current_x;
+    // b. Jika current_x kosong (tidak ada variabel dalam model), term2 = 0
+    let term2 = if current_x.ncols() > 0 && inv_cov_matrix.ncols() > 0 {
+        // z'WX
+        let z_w_x = weighted_candidate.transpose() * current_x;
 
-    // c. Bagian kanan: (z'WX) * CovMatrix * (X'Wz)
-    let term2_mat = &z_w_x * inv_cov_matrix * z_w_x.transpose();
-    let term2 = term2_mat[(0, 0)];
+        // Bagian kanan: (z'WX) * CovMatrix * (X'Wz)
+        let term2_mat = &z_w_x * inv_cov_matrix * z_w_x.transpose();
+        term2_mat[(0, 0)]
+    } else {
+        0.0
+    };
 
     let variance = term1 - term2;
 

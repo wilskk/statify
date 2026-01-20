@@ -1,8 +1,11 @@
 import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
-import { createSection } from "./formatter_utils";
+import { createSection, fmtPct } from "./formatter_utils";
+import { Variable } from "@/types/Variable";
 
 export const formatSummaryTables = (
-  result: LogisticResult
+  result: LogisticResult,
+  dependentVar?: Variable,
+  independentVars: Variable[] = []
 ): {
   sections: AnalysisSection[];
   totalN: number;
@@ -30,9 +33,10 @@ export const formatSummaryTables = (
   const nMissing = modelInfo.n_missing || 0;
   const nTotal = nIncluded + nMissing;
 
-  const fmtPct = (val: number, base: number) => {
-    if (base === 0) return ".0";
-    return ((val / base) * 100).toFixed(1);
+  // Helper local untuk menghitung persentase lalu memformatnya
+  const calcPct = (numerator: number, denominator: number): string => {
+    const val = denominator === 0 ? 0 : (numerator / denominator) * 100;
+    return fmtPct(val);
   };
 
   // ----------------------------------------------------------------------
@@ -54,17 +58,17 @@ export const formatSummaryTables = (
       {
         rowHeader: ["Selected Cases", "Included in Analysis"],
         n: nIncluded.toString(),
-        percent: fmtPct(nIncluded, nTotal),
+        percent: calcPct(nIncluded, nTotal),
       },
       {
         rowHeader: ["Selected Cases", "Missing Cases"],
         n: nMissing.toString(),
-        percent: fmtPct(nMissing, nTotal),
+        percent: calcPct(nMissing, nTotal),
       },
       {
         rowHeader: ["Selected Cases", "Total"],
         n: nTotal.toString(),
-        percent: fmtPct(nTotal, nTotal),
+        percent: calcPct(nTotal, nTotal),
       },
       {
         rowHeader: ["Unselected Cases", null],
@@ -74,10 +78,13 @@ export const formatSummaryTables = (
       {
         rowHeader: ["Total", null],
         n: nTotal.toString(),
-        percent: fmtPct(nTotal, nTotal),
+        percent: calcPct(nTotal, nTotal),
       },
     ],
   };
+
+  const validPct = calcPct(nIncluded, nTotal);
+  const caseDesc = `The analysis included ${nIncluded} cases (${validPct}%), while ${nMissing} cases were excluded due to missing values.`;
 
   sections.push(
     createSection(
@@ -85,8 +92,7 @@ export const formatSummaryTables = (
       "Case Processing Summary",
       caseProcessingData,
       {
-        description:
-          "Ringkasan jumlah sampel yang dianalisis dan missing values.",
+        description: caseDesc,
         note: "a. If weight is in effect, see classification table for the total number of cases.",
       }
     )
@@ -97,13 +103,33 @@ export const formatSummaryTables = (
   // ----------------------------------------------------------------------
   const encodingMap = modelInfo.y_encoding || {};
   const encodingRows = Object.entries(encodingMap)
-    .map(([originalLabel, internalValue]) => ({
-      originalLabel,
-      internalValue: Number(internalValue),
-    }))
+    .map(([originalKey, internalValue]) => {
+      let displayLabel = originalKey;
+
+      if (
+        dependentVar &&
+        dependentVar.values &&
+        Array.isArray(dependentVar.values) &&
+        dependentVar.values.length > 0
+      ) {
+        const found = dependentVar.values.find((vl) => {
+          // Bandingkan loose (string "0" == number 0)
+          return vl.value == originalKey;
+        });
+        if (found) {
+          displayLabel = found.label;
+        }
+      }
+
+      return {
+        originalKey,
+        displayLabel,
+        internalValue: Number(internalValue),
+      };
+    })
     .sort((a, b) => a.internalValue - b.internalValue)
     .map((item) => ({
-      rowHeader: [item.originalLabel],
+      rowHeader: [item.displayLabel],
       val: item.internalValue.toString(),
     }));
 
@@ -129,13 +155,13 @@ export const formatSummaryTables = (
       encodingData,
       {
         description:
-          "Mapping nilai asli variabel dependen ke nilai internal (0/1).",
+          "The mapping between the original dependent variable values and the internal values (0 and 1) used in the analysis.",
       }
     )
   );
 
   // ----------------------------------------------------------------------
-  // 5. Section: Categorical Variables Codings (BARU)
+  // 5. Section: Categorical Variables Codings
   // ----------------------------------------------------------------------
   if (result.categorical_codings && result.categorical_codings.length > 0) {
     // Cari jumlah kolom parameter coding maksimal (k - 1)
@@ -174,13 +200,43 @@ export const formatSummaryTables = (
         rows: [] as any[],
       };
 
+      // Ambil map encoding dari Worker (jika ada) untuk membalikkan angka ke label asli
+      const xEncodings = (modelInfo as any).x_encodings || {};
+
       result.categorical_codings.forEach((coding) => {
+        // Cari kamus encoding spesifik untuk variabel ini dari worker
+        const varMap = xEncodings[coding.variable_label];
+        // Cari variabel di store (sebagai cadangan)
+        const matchingVar = independentVars.find(
+          (v) => v.name === coding.variable_label
+        );
+
         coding.categories.forEach((cat, idx) => {
+          let categoryDisplay = cat.category_label;
+          if (varMap) {
+            const foundKey = Object.keys(varMap).find((originalLabel) => {
+              // Bandingkan nilai internal (toleransi string/number)
+              return varMap[originalLabel] == cat.category_label;
+            });
+            if (foundKey) {
+              categoryDisplay = foundKey;
+            }
+          } else if (
+            matchingVar &&
+            matchingVar.values &&
+            Array.isArray(matchingVar.values)
+          ) {
+            const foundVal = matchingVar.values.find(
+              (vl) => vl.value == cat.category_label
+            );
+            if (foundVal) categoryDisplay = foundVal.label;
+          }
+
           const row: any = {
             // Tampilkan nama variabel hanya di baris pertama kategori
             rowHeader: [
               idx === 0 ? coding.variable_label : "",
-              cat.category_label,
+              categoryDisplay,
             ],
             freq: cat.frequency.toString(),
           };
@@ -190,7 +246,7 @@ export const formatSummaryTables = (
             row[`param_${pIdx}`] = val.toFixed(3);
           });
 
-          // Isi sisa kolom dengan string kosong jika variabel ini punya parameter lebih sedikit
+          // Isi sisa kolom dengan string kosong
           for (let i = cat.parameter_codings.length; i < maxParamCols; i++) {
             row[`param_${i}`] = "";
           }
@@ -206,7 +262,7 @@ export const formatSummaryTables = (
           catData,
           {
             description:
-              "Frekuensi dan skema pengkodean parameter untuk variabel kategorik.",
+              "Frequencies and parameter coding for categorical predictor variables.",
           }
         )
       );

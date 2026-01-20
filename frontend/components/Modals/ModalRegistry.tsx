@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from "react";
-import type { BaseModalProps} from "@/types/modalTypes";
+import type { BaseModalProps } from "@/types/modalTypes";
 import { ModalType } from "@/types/modalTypes";
 
 // Import modal registries
@@ -111,6 +111,12 @@ const ModalBinaryLogistic = lazy(() =>
   }))
 );
 
+const ModalMultinomialLogistic = lazy(() =>
+  import("@/components/Modals/Analyze/Regression/MultinomialLogistic/dialogs/MultinomialLogisticMain").then((mod) => ({
+    // Pastikan Anda meng-export component sebagai 'MultinomialLogisticMain' di file aslinya
+    default: mod.MultinomialLogisticMain as React.ComponentType<BaseModalProps>,
+  }))
+);
 /**
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
  */
@@ -145,9 +151,8 @@ function withSuspense(
     </Suspense>
   );
 
-  WrappedComponent.displayName = `withSuspense(${
-    Component.displayName ?? Component.name ?? "Component"
-  })`;
+  WrappedComponent.displayName = `withSuspense(${Component.displayName ?? Component.name ?? "Component"
+    })`;
   return WrappedComponent;
 }
 
@@ -184,6 +189,7 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   [ModalType.PlotsLinear]: withSuspense(PlotsLinear),
   [ModalType.ModalCurveEstimation]: withSuspense(ModalCurveEstimation),
   [ModalType.ModalBinaryLogistic]: withSuspense(ModalBinaryLogistic),
+  [ModalType.ModalMultinomialLogistic]: withSuspense(ModalMultinomialLogistic),
 
   // Chart modals - lazy loaded
   [ModalType.ChartBuilderModal]: withSuspense(ChartBuilderModal),

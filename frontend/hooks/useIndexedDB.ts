@@ -31,6 +31,10 @@ type AnalysisType =
     | "Autocorrelation"
     | "UnitRootTest"
     | "BoxJenkinsModel"
+    | "GARCH"
+    | "ARCH"
+    | "ECM"
+    | "ARDL"
     // Descriptive Statistics
     | "Frequencies"
     | "Descriptive"

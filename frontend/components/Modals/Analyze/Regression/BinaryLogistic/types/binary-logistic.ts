@@ -17,6 +17,19 @@ export interface BinaryLogisticSaveParams {
   influenceDfBeta: boolean;
 }
 
+export const DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS: BinaryLogisticSaveParams = {
+  predictedProbabilities: false,
+  predictedGroup: false,
+  residualsUnstandardized: false,
+  residualsLogit: false,
+  residualsStudentized: false,
+  residualsStandardized: false,
+  residualsDeviance: false,
+  influenceCooks: false,
+  influenceLeverage: false,
+  influenceDfBeta: false,
+};
+
 export interface BinaryLogisticOptionsParams {
   classificationPlots: boolean;
   hosmerLemeshow: boolean;
@@ -35,6 +48,25 @@ export interface BinaryLogisticOptionsParams {
   includeConstant: boolean;
 }
 
+export const DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS: BinaryLogisticOptionsParams =
+  {
+    classificationPlots: false,
+    hosmerLemeshow: false,
+    casewiseListing: false,
+    casewiseType: "outliers",
+    casewiseOutliers: 2.0,
+    correlations: false,
+    iterationHistory: false,
+    ciForExpB: false,
+    ciLevel: 95,
+    displayAtEachStep: true, // Default: At each step (same as SPSS)
+    probEntry: 0.05,
+    probRemoval: 0.1,
+    classificationCutoff: 0.5,
+    maxIterations: 20,
+    includeConstant: true,
+  };
+
 export interface BinaryLogisticCategoricalParams {
   covariates: string[];
   contrast:
@@ -48,10 +80,23 @@ export interface BinaryLogisticCategoricalParams {
   referenceCategory: "Last" | "First";
 }
 
+export const DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS: BinaryLogisticCategoricalParams =
+  {
+    covariates: [],
+    contrast: "Indicator",
+    referenceCategory: "Last",
+  };
+
 export interface BinaryLogisticAssumptionParams {
   multicollinearity: boolean;
   boxTidwell: boolean;
 }
+
+export const DEFAULT_BINARY_LOGISTIC_ASSUMPTION_PARAMS: BinaryLogisticAssumptionParams =
+  {
+    multicollinearity: false,
+    boxTidwell: false,
+  };
 
 // Main Options
 export interface BinaryLogisticOptions {
@@ -66,6 +111,12 @@ export interface BinaryLogisticOptions {
     | "Backward: Conditional"
     | "Backward: LR"
     | "Backward: Wald";
+
+  // Sub-configuration objects
+  optionParams: BinaryLogisticOptionsParams;
+  categoricalParams: BinaryLogisticCategoricalParams;
+  saveParams: BinaryLogisticSaveParams;
+  assumptionParams: BinaryLogisticAssumptionParams;
 }
 
 export const DEFAULT_BINARY_LOGISTIC_OPTIONS: BinaryLogisticOptions = {
@@ -73,6 +124,10 @@ export const DEFAULT_BINARY_LOGISTIC_OPTIONS: BinaryLogisticOptions = {
   covariates: [],
   factors: [],
   method: "Enter",
+  optionParams: DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS,
+  categoricalParams: DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS,
+  saveParams: DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS,
+  assumptionParams: DEFAULT_BINARY_LOGISTIC_ASSUMPTION_PARAMS,
 };
 
 // =========================================================================
@@ -185,6 +240,41 @@ export interface CategoricalCoding {
   categories: FrequencyCount[];
 }
 
+// --- BARU: Hosmer-Lemeshow Types ---
+export interface HosmerLemeshowGroup {
+  group: number;
+  size: number;
+  observed_1: number;
+  expected_1: number;
+  observed_0: number;
+  expected_0: number;
+  total_observed: number;
+}
+
+export interface HosmerLemeshowResult {
+  chi_square: number;
+  df: number;
+  sig: number;
+  contingency_table: HosmerLemeshowGroup[];
+}
+
+// --- BARU: Iteration History Types (SPSS Style) ---
+export interface IterationHistoryRow {
+  iteration: number;
+  neg2_log_likelihood: number;
+  coefficients: number[];
+}
+
+export interface IterationHistoryBlock {
+  block: number;
+  step: number;
+  variable_names: string[];
+  rows: IterationHistoryRow[];
+  initial_neg2ll?: number;
+  converged: boolean;
+  final_iteration: number;
+}
+
 // Ini memetakan struct StepDetail dari Rust
 export interface StepDetail {
   step: number;
@@ -198,6 +288,82 @@ export interface StepDetail {
   omni_tests?: OmniTestsResult;
   step_omni_tests?: OmniTestsResult;
   model_if_term_removed?: ModelIfTermRemovedRow[];
+
+  // --- BARU: Field Hosmer Lemeshow per step ---
+  hosmer_lemeshow?: HosmerLemeshowResult;
+
+  // --- BARU: Field Correlation of Estimates per step ---
+  correlation_of_estimates?: CorrelationOfEstimatesRow[];
+
+  // --- BARU: Field Iteration History per step ---
+  iteration_history?: IterationHistoryBlock;
+
+  // --- BARU: Field Classification Plot Data per step ---
+  classification_plot_data?: ClassificationPlotData;
+}
+
+// --- BARU: Correlation of Estimates Types ---
+export interface CorrelationOfEstimatesRow {
+  variable: string;    // Nama variabel (termasuk Constant)
+  values: number[];    // Nilai korelasi terhadap variabel lain (urut)
+}
+
+// --- BARU: Casewise Listing Types ---
+export interface CasewiseRow {
+  case_number: number;          // Nomor kasus (1-indexed)
+  selected: string;             // Status seleksi ("S" untuk selected)
+  observed: number;             // Nilai observasi aktual (0 atau 1)
+  observed_label: string;       // Label kategori aktual
+  predicted: number;            // Nilai prediksi (0 atau 1)
+  predicted_label: string;      // Label kategori prediksi  
+  predicted_group: string;      // Grup prediksi (**=incorrect)
+  predicted_probability: number; // Probabilitas P(Y=1)
+  resid_zresid: number;         // Residual Standardized (ZResid)
+  
+  // Opsional - SPSS menyediakan banyak jenis residual
+  resid_raw?: number;           // Residual Unstandardized
+  resid_logit?: number;         // Residual Logit
+  resid_studentized?: number;   // Residual Studentized
+  resid_deviance?: number;      // Residual Deviance
+  
+  // Influence statistics
+  leverage?: number;            // Leverage (hat value)
+  cooks_distance?: number;      // Cook's Distance
+  dfbeta?: number[];            // DfBeta per variable
+}
+
+// --- BARU: Step Summary Types (SPSS Style) ---
+export interface StepSummaryRow {
+  step: number;
+  // Improvement statistics
+  improvement_chi_square: number;
+  improvement_df: number;
+  improvement_sig: number;
+  // Model statistics  
+  model_chi_square: number;
+  model_df: number;
+  model_sig: number;
+  // Classification
+  correct_pct: number;
+  // Variable action
+  variable_action: string;  // e.g., "IN: age", "OUT: trestbps"
+}
+
+// --- BARU: Classification Plot Types ---
+export interface ClassificationPlotPoint {
+  case_number: number;          // Case number (1-indexed)
+  predicted_probability: number; // Predicted probability P(Y=1)
+  observed_group: number;       // Observed group: 0 or 1
+  observed_label: string;       // Label for observed group (e.g., "F" or "T")
+}
+
+export interface ClassificationPlotData {
+  data_points: ClassificationPlotPoint[];  // All case data
+  cutoff: number;                           // Classification cutoff (default 0.5)
+  label_0: string;                          // Label for group 0 (e.g., "FALSE")
+  label_1: string;                          // Label for group 1 (e.g., "TRUE")
+  n_group_0: number;                        // Total cases in group 0
+  n_group_1: number;                        // Total cases in group 1
 }
 
 // Struktur utama hasil analisis yang dikirim dari Worker
@@ -246,6 +412,21 @@ export interface LogisticResult {
   assumption_tests?: AssumptionResult;
 
   categorical_codings?: CategoricalCoding[];
+
+  // --- BARU: Field Hosmer Lemeshow Final Model ---
+  hosmer_lemeshow?: HosmerLemeshowResult;
+
+  // --- BARU: Casewise Listing of Residuals ---
+  casewise_list?: CasewiseRow[];
+
+  // --- BARU: Classification Plot Data ---
+  classification_plot_data?: ClassificationPlotData;
+
+  // --- BARU: Correlation of Estimates (Final Model) ---
+  correlation_of_estimates?: CorrelationOfEstimatesRow[];
+
+  // --- BARU: Step Summary (SPSS Style - for stepwise methods) ---
+  step_summary?: StepSummaryRow[];
 }
 
 // =========================================================================
@@ -256,7 +437,7 @@ export interface ColumnHeader {
   header: string;
   key?: string; // Optional karena parent header mungkin tidak punya key data langsung
   align?: "left" | "right" | "center";
-  children?: ColumnHeader[]; // <--- INI SOLUSI ERROR 'children does not exist'
+  children?: ColumnHeader[];
 }
 
 export interface TableResultContent {
@@ -274,6 +455,7 @@ export interface AnalysisSection {
   type: "table" | "text" | "chart"; // Future-proofing
   data: TableResultContent; // Data mentah tabel
   note?: string; // Footer note (misal: "a. Constant is included...")
+  chartData?: any; // Chart data for GeneralChartContainer (when type is "chart")
 }
 
 export interface BinaryLogisticOutput {

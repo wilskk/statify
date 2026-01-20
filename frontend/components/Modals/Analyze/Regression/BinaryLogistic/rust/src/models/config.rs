@@ -8,7 +8,7 @@ pub struct AssumptionConfig {
     pub box_tidwell: bool, // Untuk Box-Tidwell
 }
 
-// --- BARU: Enum untuk Metode Kontras ---
+// --- Enum untuk Metode Kontras ---
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum ContrastMethod {
     #[serde(alias = "Indicator")]
@@ -33,7 +33,7 @@ impl Default for ContrastMethod {
     }
 }
 
-// --- BARU: Enum untuk Kategori Referensi ---
+// --- Enum untuk Kategori Referensi ---
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum ReferenceCategory {
     #[serde(alias = "First")]
@@ -48,11 +48,11 @@ impl Default for ReferenceCategory {
     }
 }
 
-// --- BARU: Konfigurasi per Variabel Kategorik ---
+// --- Konfigurasi per Variabel Kategorik ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoricalVarConfig {
     #[serde(alias = "columnIndex")]
-    pub column_index: usize, // Index kolom pada data mentah (sebelum di-expand jadi dummy)
+    pub column_index: usize, // Index kolom pada data mentah
 
     #[serde(default)]
     pub method: ContrastMethod,
@@ -94,7 +94,7 @@ pub struct LogisticConfig {
     #[serde(alias = "independentIndices")]
     pub independent_indices: Vec<usize>,
 
-    // --- BARU: Daftar Variabel Kategorik ---
+    // --- Daftar Variabel Kategorik ---
     #[serde(alias = "categoricalVariables", default)]
     pub categorical_variables: Vec<CategoricalVarConfig>,
 
@@ -129,6 +129,33 @@ pub struct LogisticConfig {
     )]
     pub p_removal: f64,
 
+    // --- BARU: Output Options ---
+    #[serde(default, alias = "classificationPlots")]
+    pub classification_plots: bool,
+
+    #[serde(default, alias = "hosmerLemeshow")]
+    pub hosmer_lemeshow: bool,
+
+    #[serde(default, alias = "casewiseListing")]
+    pub casewise_listing: bool,
+
+    #[serde(default = "default_casewise_type", alias = "casewiseType")]
+    pub casewise_type: String, // "outliers" or "all"
+
+    #[serde(default = "default_casewise_outliers", alias = "casewiseOutliers")]
+    pub casewise_outliers: f64,
+
+    #[serde(default, alias = "iterationHistory")]
+    pub iteration_history: bool,
+
+    #[serde(default)]
+    pub correlations: bool,
+
+    // --- Display Options ---
+    #[serde(default, alias = "displayAtLastStep")]
+    pub display_at_last_step: bool,
+
+    // --- Assumptions ---
     #[serde(default)]
     pub assumptions: AssumptionConfig,
 }
@@ -155,13 +182,21 @@ fn default_tol() -> f64 {
 fn default_confidence() -> f64 {
     0.95
 }
+// Helper baru untuk casewise outliers
+fn default_casewise_outliers() -> f64 {
+    2.0
+}
+// Helper untuk casewise type
+fn default_casewise_type() -> String {
+    "outliers".to_string()
+}
 
 impl Default for LogisticConfig {
     fn default() -> Self {
         Self {
             dependent_index: 0,
             independent_indices: Vec::new(),
-            categorical_variables: Vec::new(), // Default kosong
+            categorical_variables: Vec::new(),
             include_constant: true,
             cutoff: 0.5,
             max_iterations: 20,
@@ -170,6 +205,19 @@ impl Default for LogisticConfig {
             method: RegressionMethod::Enter,
             p_entry: 0.05,
             p_removal: 0.10,
+
+            // Default untuk field baru
+            classification_plots: false,
+            hosmer_lemeshow: false,
+            casewise_listing: false,
+            casewise_type: "outliers".to_string(),
+            casewise_outliers: 2.0,
+            iteration_history: false,
+            correlations: false,
+
+            // Display options
+            display_at_last_step: false,
+
             assumptions: AssumptionConfig::default(),
         }
     }
