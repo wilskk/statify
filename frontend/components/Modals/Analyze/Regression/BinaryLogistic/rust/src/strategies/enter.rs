@@ -8,8 +8,8 @@ use crate::models::result::{
     LogisticResult, ModelInfo, ModelSummary, OmniTests, RemainderTest, StepDetail,
     VariableNotInEquation, VariableRow,
 };
-// Tambahkan import hosmer_lemeshow, casewise, correlation_of_estimates, dan classification_plot
-use crate::stats::{casewise, classification_plot, correlation_of_estimates, hosmer_lemeshow, irls, score_test, table};
+// Tambahkan import hosmer_lemeshow, casewise, correlation_of_estimates, classification_plot, dan saved_predictions
+use crate::stats::{casewise, classification_plot, correlation_of_estimates, hosmer_lemeshow, irls, saved_predictions, score_test, table};
 
 pub fn run(
     x_raw: &DMatrix<f64>,
@@ -377,6 +377,14 @@ pub fn run(
     };
 
     // Simpan Snapshot Step 1
+    // --- BARU: Calculate Saved Predictions Jika Ada Opsi Save yang Diaktifkan ---
+    let saved_predictions_result = saved_predictions::calculate_saved_predictions(
+        &x_full,
+        y_vector,
+        &full_model,
+        config,
+    );
+
     steps_details.push(StepDetail {
         step: 1,
         action: "Entered".to_string(),
@@ -421,5 +429,6 @@ pub fn run(
         classification_plot_data: classification_plot_result, // BARU: Classification Plot Data
         correlation_of_estimates: corr_estimates_result, // BARU: Correlation of Estimates
         step_summary: None, // Enter tidak memerlukan step summary
+        saved_predictions: saved_predictions_result, // BARU: Saved Predictions
     })
 }
