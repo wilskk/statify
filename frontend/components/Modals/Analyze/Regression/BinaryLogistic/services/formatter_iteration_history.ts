@@ -24,6 +24,13 @@ import {
 } from "../types/binary-logistic";
 import { createSection, safeFixed } from "./formatter_utils";
 
+/**
+ * Options for formatting Iteration History tables
+ */
+interface IterationHistoryFormatOptions {
+  displayAtLastStep?: boolean;
+}
+
 // Helper to generate description for iteration history
 const generateIterationDescription = (
   block: number,
@@ -239,12 +246,13 @@ const formatBlock1EnterIterationHistory = (
  */
 const formatBlock1StepwiseIterationHistory = (
   result: LogisticResult,
-  method: string
+  method: string,
+  displayAtLastStep: boolean = false
 ): AnalysisSection | null => {
   const stepsDetail = result.steps_detail || [];
 
   // Collect all steps with iteration history (Block 1, step > 0)
-  const stepsWithHistory: { step: number; history: IterationHistoryBlock }[] =
+  let stepsWithHistory: { step: number; history: IterationHistoryBlock }[] =
     [];
 
   for (const stepDetail of stepsDetail) {
@@ -258,6 +266,30 @@ const formatBlock1StepwiseIterationHistory = (
 
   if (stepsWithHistory.length === 0) {
     return null;
+  }
+
+  // ======================================================================
+  // FILTER BERDASARKAN displayAtLastStep
+  // Forward: hanya step terakhir
+  // Backward: step 1 dan step terakhir
+  // ======================================================================
+  const isBackward = method.toLowerCase().includes("backward");
+
+  if (displayAtLastStep && stepsWithHistory.length > 1) {
+    const firstStep = stepsWithHistory[0];
+    const lastStep = stepsWithHistory[stepsWithHistory.length - 1];
+
+    if (isBackward) {
+      // Backward: tampilkan step 1 dan step terakhir
+      if (firstStep.step === lastStep.step) {
+        stepsWithHistory = [firstStep]; // Jika hanya satu step
+      } else {
+        stepsWithHistory = [firstStep, lastStep];
+      }
+    } else {
+      // Forward: hanya tampilkan step terakhir
+      stepsWithHistory = [lastStep];
+    }
   }
 
   // Get all unique variable names across all steps
@@ -356,9 +388,11 @@ const formatBlock1StepwiseIterationHistory = (
  */
 export const formatIterationHistory = (
   result: LogisticResult,
-  dependentName: string
+  dependentName: string,
+  options?: IterationHistoryFormatOptions
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
+  const displayAtLastStep = options?.displayAtLastStep ?? false;
 
   const stepsDetail = result.steps_detail || [];
   if (stepsDetail.length === 0) {
@@ -398,7 +432,7 @@ export const formatIterationHistory = (
     }
   } else {
     // Stepwise methods - multiple steps combined
-    const block1Section = formatBlock1StepwiseIterationHistory(result, method);
+    const block1Section = formatBlock1StepwiseIterationHistory(result, method, displayAtLastStep);
     if (block1Section) {
       sections.push(block1Section);
     }

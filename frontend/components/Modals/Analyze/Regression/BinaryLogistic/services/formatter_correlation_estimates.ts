@@ -25,6 +25,13 @@ import { createSection, safeFixed } from "./formatter_utils";
  *         trestbps   -.661   -.149    1.000
  */
 
+/**
+ * Options for formatting Correlation of Estimates tables
+ */
+interface CorrelationFormatOptions {
+  displayAtLastStep?: boolean;
+}
+
 // Helper to generate description based on correlation patterns
 const generateCorrDescription = (
   corrData: CorrelationOfEstimatesRow[]
@@ -65,9 +72,11 @@ const generateCorrDescription = (
  */
 export const formatCorrelationOfEstimates = (
   result: LogisticResult,
-  dependentName: string
+  dependentName: string,
+  options?: CorrelationFormatOptions
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
+  const displayAtLastStep = options?.displayAtLastStep ?? false;
 
   const method = result.method_used || "Enter";
   const isStepwise =
@@ -96,7 +105,7 @@ export const formatCorrelationOfEstimates = (
     }
   } else {
     // For stepwise methods, build SPSS-style combined table
-    const combinedSection = buildStepwiseCombinedCorrelationTable(result);
+    const combinedSection = buildStepwiseCombinedCorrelationTable(result, displayAtLastStep);
     if (combinedSection) {
       sections.push(combinedSection);
     }
@@ -172,7 +181,8 @@ const buildEnterCorrelationTable = (
  * All steps in one table with Step as row header
  */
 const buildStepwiseCombinedCorrelationTable = (
-  result: LogisticResult
+  result: LogisticResult,
+  displayAtLastStep: boolean = false
 ): AnalysisSection | null => {
   if (!result.steps_detail || result.steps_detail.length === 0) {
     return null;
@@ -184,7 +194,7 @@ const buildStepwiseCombinedCorrelationTable = (
   // Filter steps that have correlation data
   // For Backward: include all steps (including step 0 if it has data)
   // For Forward: only include steps > 0
-  const stepsWithCorr = result.steps_detail.filter((step) => {
+  let stepsWithCorr = result.steps_detail.filter((step) => {
     if (!step.correlation_of_estimates || step.correlation_of_estimates.length === 0) {
       return false;
     }
@@ -196,6 +206,28 @@ const buildStepwiseCombinedCorrelationTable = (
 
   if (stepsWithCorr.length === 0) {
     return null;
+  }
+
+  // ======================================================================
+  // FILTER BERDASARKAN displayAtLastStep
+  // Forward: hanya step terakhir
+  // Backward: step 1 dan step terakhir
+  // ======================================================================
+  if (displayAtLastStep && stepsWithCorr.length > 1) {
+    const firstStep = stepsWithCorr[0];
+    const lastStep = stepsWithCorr[stepsWithCorr.length - 1];
+
+    if (isBackward) {
+      // Backward: tampilkan step 1 dan step terakhir
+      if (firstStep.step === lastStep.step) {
+        stepsWithCorr = [firstStep]; // Jika hanya satu step
+      } else {
+        stepsWithCorr = [firstStep, lastStep];
+      }
+    } else {
+      // Forward: hanya tampilkan step terakhir
+      stepsWithCorr = [lastStep];
+    }
   }
 
   // Collect all unique variable names across all steps (for column headers)

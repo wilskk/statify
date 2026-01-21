@@ -32,6 +32,7 @@ import { formatAssumptionTests } from "../services/formatter_assumptions";
 
 // Types
 import { Variable } from "@/types/Variable";
+import type { CellUpdate } from "@/stores/useDataStore";
 import {
   BinaryLogisticOptions,
   BinaryLogisticCategoricalParams,
@@ -39,6 +40,7 @@ import {
   BinaryLogisticOptionsParams,
   BinaryLogisticAssumptionParams,
   LogisticResult,
+  SavedPredictions,
   DEFAULT_BINARY_LOGISTIC_OPTIONS,
   DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS,
   DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS,
@@ -237,6 +239,307 @@ export const BinaryLogisticMain = () => {
         config: JSON.stringify(analysisConfig),
       });
     });
+  };
+
+  // --- HELPER: Save Predictions to Dataset ---
+  /**
+   * Saves the computed predictions, residuals, and influence statistics
+   * as new variables to the dataset (following SPSS naming conventions)
+   * 
+   * Variable names are incremental: PRE_1, PRE_2, PRE_3, etc.
+   * If PRE_1 exists, next one will be PRE_2, and so on.
+   * 
+   * @param savedPredictions - The predictions data from Rust
+   * @param yEncoding - Mapping of original label to 0/1 (e.g., {"Male": 0, "Female": 1})
+   */
+  const savePredictionsToDataset = async (
+    savedPredictions: SavedPredictions,
+    yEncoding?: Record<string, number>
+  ) => {
+    if (!savedPredictions?.rows?.length) {
+      console.log("[Main] No saved predictions to process");
+      return;
+    }
+
+    const { addVariable } = useVariableStore.getState();
+    const storeVariables = useVariableStore.getState().variables;
+    const variableNames = savedPredictions.variable_names;
+    const rows = savedPredictions.rows;
+    
+    // Create a mutable copy of variable names for tracking newly added variables
+    // This is needed because Zustand state is immutable
+    const existingVarNames = new Set(storeVariables.map(v => v.name.toUpperCase()));
+    
+    // Build reverse mapping: 0/1 -> original label (e.g., {0: "Male", 1: "Female"})
+    const reverseYEncoding: Record<number, string> = {};
+    if (yEncoding) {
+      Object.entries(yEncoding).forEach(([label, value]) => {
+        reverseYEncoding[value] = label;
+      });
+    }
+
+    // Get current number of variables to determine column indices
+    let nextColumnIndex = storeVariables.length;
+
+    /**
+     * Helper: Generate unique incremental variable name
+     * Given a prefix like "RES", finds the next available number
+     * e.g., if RES_1 and RES_2 exist, returns "RES_3"
+     */
+    const getIncrementalVarName = (prefix: string): string => {
+      let counter = 1;
+      while (existingVarNames.has(`${prefix}_${counter}`.toUpperCase())) {
+        counter++;
+      }
+      return `${prefix}_${counter}`;
+    };
+
+    // Helper to add a new variable and its data
+    // Uses incremental naming: if prefix is provided, generates unique name
+    const addSavedVariable = async (
+      varNameFromRust: string | undefined,
+      label: string,
+      getValue: (row: (typeof rows)[0]) => number | undefined
+    ) => {
+      if (!varNameFromRust) return;
+
+      const values = rows.map((row) => getValue(row));
+      // Skip if all values are undefined
+      if (values.every((v) => v === undefined)) return;
+
+      // Extract prefix from Rust variable name (e.g., "RES_1" -> "RES")
+      const prefix = varNameFromRust.replace(/_\d+$/, '');
+      // Generate unique incremental name
+      const varName = getIncrementalVarName(prefix);
+
+      const newVariable: Partial<Variable> = {
+        columnIndex: nextColumnIndex,
+        name: varName,
+        type: "NUMERIC",
+        width: 8,
+        decimals: 5,
+        label: label,
+        values: [],
+        missing: null,
+        columns: 200,
+        align: "right",
+        measure: "scale",
+        role: "none", // Computed variables should not be used as input
+      };
+
+      // Add the variable
+      await addVariable(newVariable);
+      
+      // Track new variable name for subsequent incremental naming
+      existingVarNames.add(varName.toUpperCase());
+
+      // Prepare cell updates
+      const bulkUpdates: CellUpdate[] = [];
+      values.forEach((value, rowIndex) => {
+        if (value !== undefined && !isNaN(value)) {
+          bulkUpdates.push({
+            row: rowIndex,
+            col: nextColumnIndex,
+            value: value,
+          });
+        }
+      });
+
+      // Save the values
+      if (bulkUpdates.length > 0) {
+        await useDataStore.getState().updateCells(bulkUpdates);
+      }
+
+      nextColumnIndex++;
+      
+      // Return the actual name used (for logging)
+      return varName;
+    };
+
+    // Helper khusus untuk predicted group dengan label asli
+    const addPredictedGroupVariable = async () => {
+      const varNameFromRust = variableNames?.predicted_group;
+      if (!varNameFromRust) return;
+
+      const values = rows.map((row) => {
+        if (row.predicted_group === undefined) return undefined;
+        // Convert 0/1 back to original label if mapping exists
+        if (Object.keys(reverseYEncoding).length > 0) {
+          return reverseYEncoding[row.predicted_group] ?? row.predicted_group;
+        }
+        return row.predicted_group;
+      });
+
+      // Skip if all values are undefined
+      if (values.every((v) => v === undefined)) return;
+
+      // Generate unique incremental name for PGR
+      const varName = getIncrementalVarName("PGR");
+
+      // Determine if values are strings (original labels) or numbers
+      const hasStringLabels = Object.keys(reverseYEncoding).length > 0;
+
+      const newVariable: Partial<Variable> = {
+        columnIndex: nextColumnIndex,
+        name: varName,
+        type: hasStringLabels ? "STRING" : "NUMERIC",
+        width: hasStringLabels ? 50 : 8,
+        decimals: hasStringLabels ? 0 : 0,
+        label: "Predicted group membership",
+        values: [],
+        missing: null,
+        columns: 200,
+        align: hasStringLabels ? "left" : "right",
+        measure: "nominal",
+        role: "none",
+      };
+
+      // Add the variable
+      await addVariable(newVariable);
+      
+      // Track new variable name for subsequent incremental naming
+      existingVarNames.add(varName.toUpperCase());
+
+      // Prepare cell updates
+      const bulkUpdates: CellUpdate[] = [];
+      values.forEach((value, rowIndex) => {
+        if (value !== undefined) {
+          bulkUpdates.push({
+            row: rowIndex,
+            col: nextColumnIndex,
+            value: value,
+          });
+        }
+      });
+
+      // Save the values
+      if (bulkUpdates.length > 0) {
+        await useDataStore.getState().updateCells(bulkUpdates);
+      }
+
+      nextColumnIndex++;
+    };
+
+    // --- Process Predicted Values ---
+    await addSavedVariable(
+      variableNames?.predicted_probability,
+      "Predicted probability",
+      (row) => row.predicted_probability
+    );
+
+    // Predicted Group dengan label asli
+    await addPredictedGroupVariable();
+
+    // --- Process Residuals ---
+    await addSavedVariable(
+      variableNames?.resid_unstandardized,
+      "Unstandardized residual",
+      (row) => row.resid_unstandardized
+    );
+
+    await addSavedVariable(
+      variableNames?.resid_logit,
+      "Logit residual",
+      (row) => row.resid_logit
+    );
+
+    await addSavedVariable(
+      variableNames?.resid_studentized,
+      "Studentized residual",
+      (row) => row.resid_studentized
+    );
+
+    await addSavedVariable(
+      variableNames?.resid_standardized,
+      "Standardized residual",
+      (row) => row.resid_standardized
+    );
+
+    await addSavedVariable(
+      variableNames?.resid_deviance,
+      "Deviance residual",
+      (row) => row.resid_deviance
+    );
+
+    // --- Process Influence Statistics ---
+    await addSavedVariable(
+      variableNames?.influence_cooks,
+      "Cook's distance",
+      (row) => row.influence_cooks
+    );
+
+    await addSavedVariable(
+      variableNames?.influence_leverage,
+      "Leverage value",
+      (row) => row.influence_leverage
+    );
+
+    // --- Process DfBeta (one variable per coefficient) ---
+    // DfBeta uses special naming: DFB0_1, DFB1_1, etc. for each coefficient
+    // We need to find the next available suffix for all DfBeta variables
+    if (variableNames?.influence_dfbeta?.length) {
+      // Find the next available DfBeta suffix
+      // DfBeta variables are named DFB{coefIndex}_{runNumber}
+      // e.g., DFB0_1, DFB1_1 (first run), DFB0_2, DFB1_2 (second run)
+      let dfbetaSuffix = 1;
+      
+      // Find a suffix where none of the DfBeta names exist
+      while (true) {
+        const anyExists = variableNames.influence_dfbeta.some((_, idx) => 
+          existingVarNames.has(`DFB${idx}_${dfbetaSuffix}`.toUpperCase())
+        );
+        if (!anyExists) break;
+        dfbetaSuffix++;
+      }
+      
+      for (let i = 0; i < variableNames.influence_dfbeta.length; i++) {
+        const varName = `DFB${i}_${dfbetaSuffix}`;
+        const label = i === 0 ? "DfBeta for constant" : `DfBeta for B${i}`;
+        
+        const values = rows.map((row) => row.influence_dfbeta?.[i]);
+        if (values.every((v) => v === undefined)) continue;
+
+        const newVariable: Partial<Variable> = {
+          columnIndex: nextColumnIndex,
+          name: varName,
+          type: "NUMERIC",
+          width: 8,
+          decimals: 5,
+          label: label,
+          values: [],
+          missing: null,
+          columns: 200,
+          align: "right",
+          measure: "scale",
+          role: "none",
+        };
+
+        await addVariable(newVariable);
+        existingVarNames.add(varName.toUpperCase());
+
+        const bulkUpdates: CellUpdate[] = [];
+        values.forEach((value, rowIndex) => {
+          if (value !== undefined && !isNaN(value)) {
+            bulkUpdates.push({
+              row: rowIndex,
+              col: nextColumnIndex,
+              value: value,
+            });
+          }
+        });
+
+        if (bulkUpdates.length > 0) {
+          await useDataStore.getState().updateCells(bulkUpdates);
+        }
+
+        nextColumnIndex++;
+      }
+    }
+
+    // Save all data changes to database
+    await useDataStore.getState().saveData();
+
+    console.log("[Main] Saved predictions added to dataset successfully");
   };
 
   // --- ASSUMPTION HANDLERS (UPDATED TO USE FORMATTER) ---
@@ -478,6 +781,14 @@ export const BinaryLogisticMain = () => {
               }
             }
 
+            // E. Simpan Saved Predictions ke Dataset (jika ada)
+            if (payload.saved_predictions) {
+              console.log("[Main] Processing Saved Predictions...");
+              // Pass y_encoding from model_info to convert 0/1 back to original labels
+              const yEncoding = payload.model_info?.y_encoding;
+              await savePredictionsToDataset(payload.saved_predictions, yEncoding);
+            }
+
             console.log("[Main] All Saved. Closing Modal.");
             setIsLoading(false);
             worker.terminate();
@@ -585,6 +896,18 @@ export const BinaryLogisticMain = () => {
 
         // Display option - BARU: untuk menentukan at each step vs at last step
         display_at_last_step: !optParams.displayAtEachStep,
+
+        // --- BARU: Save Options (Tab Save di UI) ---
+        save_predicted_probabilities: saveParams.predictedProbabilities,
+        save_predicted_group: saveParams.predictedGroup,
+        save_residuals_unstandardized: saveParams.residualsUnstandardized,
+        save_residuals_logit: saveParams.residualsLogit,
+        save_residuals_studentized: saveParams.residualsStudentized,
+        save_residuals_standardized: saveParams.residualsStandardized,
+        save_residuals_deviance: saveParams.residualsDeviance,
+        save_influence_cooks: saveParams.influenceCooks,
+        save_influence_leverage: saveParams.influenceLeverage,
+        save_influence_dfbeta: saveParams.influenceDfBeta,
 
         rows: data.length,
         cols: variables.length,
