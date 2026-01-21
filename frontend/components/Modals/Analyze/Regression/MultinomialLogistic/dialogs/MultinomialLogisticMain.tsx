@@ -16,6 +16,7 @@ import { Loader2, HelpCircle, RotateCcw } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useModalStore } from "@/stores/useModalStore";
 import { useDataStore } from "@/stores/useDataStore";
+import { useResultStore } from "@/stores/useResultStore";
 
 // Komponen Tab (Pastikan Anda membuat file-file ini di folder yang sama)
 import { VariablesTab } from "./VariablesTab";
@@ -31,6 +32,9 @@ export const MultinomialLogisticMain = () => {
     const { closeModal } = useModalStore();
     const variables = useVariableStore((state) => state.variables);
     const [isLoading, setIsLoading] = useState(false);
+    const { data } = useDataStore();
+    const addResult = useResultStore((state) => state.addResult);
+
 
     // State untuk opsi Multinomial Logistic (Sesuai SPSS)
     const [options, setOptions] = useState({
@@ -62,16 +66,98 @@ export const MultinomialLogisticMain = () => {
     });
 
     const handleAnalyze = async () => {
+        // 1. Gunakan 'data' dari store dan pastikan tidak kosong
+        if (!options.dependent || !data || data.length === 0) return;
         setIsLoading(true);
+
         try {
-            // Logika pemanggilan WASM Worker akan diletakkan di sini
-            console.log("Analyzing with options:", options);
-            // Simulasi proses
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            closeModal("MULTINOMIAL_LOGISTIC");
-        } catch (error) {
-            console.error("Analysis failed:", error);
-        } finally {
+            // [EDIT: Algoritma pengambilan data mengikuti Binary Logistic]
+            console.log("Struktur Baris Data:", data[0]);
+            console.log("ID Variabel Dependen:", options.dependent.id);
+            console.log("Nama Variabel Dependen:", options.dependent.name);
+            const dependentName = options.dependent.name;
+            const factorNames = options.factors.map(v => v.name);
+            const covariateNames = options.covariates.map(v => v.name);
+
+            const allSelectedNames = [dependentName, ...factorNames, ...covariateNames];
+
+            // 2. Listwise Deletion menggunakan .name
+            const validData = data.filter((row: any) => {
+                return allSelectedNames.every(name => {
+                    const val = row[name];
+                    return val !== null && val !== undefined && String(val).trim() !== "";
+                });
+            });
+
+            console.log("Debug Data Access:", {
+                sampleRow: data[0],
+                lookingFor: allSelectedNames,
+                foundCount: validData.length
+            });
+
+            if (validData.length === 0) {
+                throw new Error("Tidak ada data valid. Pastikan nama variabel sesuai dengan header di tabel data.");
+            }
+
+            // 3. Formatting data (Hanya memproses angka jika memungkinkan)
+            const formattedData = {
+                // Jika variabel dependen adalah kategori string, biarkan tetap string/diubah di Rust
+                dependent: validData.map((row: any) => {
+                    const val = row[dependentName];
+                    return isNaN(parseFloat(val)) ? val : parseFloat(val);
+                }),
+                // Independent dipisah antara factor (kategori) dan covariate (numerik)
+                independent: [
+                    ...factorNames.map(name => validData.map((row: any) => row[name])),
+                    ...covariateNames.map(name => validData.map((row: any) => parseFloat(row[name])))
+                ],
+                weights: null
+            };
+
+            // 4. Inisialisasi Worker (Sesuai Binary Logistic)
+            const worker = new Worker(
+                new URL("/workers/Regression/multinomialLogistic.worker.js", window.location.origin),
+                { type: "module" }
+            );
+
+            worker.postMessage({
+                data: formattedData,
+                options: {
+                    reference_category: options.referenceCategory,
+                    confidence_interval: options.statistics.confidenceInterval / 100,
+                    iterations: options.criteria.iterations,
+                    convergence: options.criteria.convergence,
+                    singularity: options.criteria.singularity,
+                    include_intercept: true
+                }
+            });
+
+            worker.onmessage = (e) => {
+                const { type, payload, error } = e.data;
+                if (type === "SUCCESS") {
+                    addResult({
+                        id: Date.now().toString(),
+                        type: 'MULTINOMIAL_LOGISTIC',
+                        label: `Multinomial Logistic: ${options.dependent!.name}`,
+                        data: payload,
+                    });
+                    closeModal("MULTINOMIAL_LOGISTIC");
+                    worker.terminate();
+                } else {
+                    alert(`Analysis Error: ${error}`);
+                    setIsLoading(false);
+                    worker.terminate();
+                }
+            };
+
+            worker.onerror = (err) => {
+                console.error("Worker Execution Error:", err);
+                setIsLoading(false);
+                worker.terminate();
+            };
+
+        } catch (error: any) {
+            alert(error.message);
             setIsLoading(false);
         }
     };
@@ -182,21 +268,32 @@ export const MultinomialLogisticMain = () => {
                     <div className="flex items-center gap-3">
                         <Button
                             size="sm"
-                            onClick={() => { }}
+                            // [EDIT: Panggil fungsi handleAnalyze di sini]
+                            onClick={handleAnalyze}
+                            // Tombol mati jika loading atau variabel dependen belum dipilih
                             disabled={isLoading || !options.dependent}
                             className="min-w-[80px]"
                         >
-                            {isLoading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : "OK"}
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                "OK"
+                            )}
                         </Button>
+
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => { }}
+                            onClick={resetOptions} // Gunakan fungsi reset yang sudah kita buat sebelumnya
                             disabled={isLoading}
                         >
                             <RotateCcw className="mr-2 h-3 w-3" />
                             Reset
                         </Button>
+
                         <Button
                             variant="outline"
                             size="sm"
