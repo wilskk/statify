@@ -13,14 +13,16 @@ import {
 import type { Variable } from "@/types/Variable";
 import { cn } from "@/lib/utils";
 
+interface MultinomialOptions {
+    dependent: Variable | null;
+    factors: Variable[];
+    covariates: Variable[];
+}
+
 interface VariablesTabProps {
     variables: Variable[];
-    options: {
-        dependent: Variable | null;
-        factors: Variable[];
-        covariates: Variable[];
-    };
-    setOptions: React.Dispatch<React.SetStateAction<any>>;
+    options: MultinomialOptions;
+    setOptions: React.Dispatch<React.SetStateAction<MultinomialOptions>>;
 }
 
 export const VariablesTab: React.FC<VariablesTabProps> = ({
@@ -50,20 +52,26 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
 
     const moveToFactors = () => {
         if (!selectedVar) return;
-        setOptions((prev: any) => ({ ...prev, factors: [...prev.factors, selectedVar] }));
+        setOptions((prev) => {
+            if (prev.factors.some((f) => f.id === selectedVar.id)) return prev;
+            return { ...prev, factors: [...prev.factors, selectedVar] };
+        });
         setSelectedVar(null);
     };
 
     const moveToCovariates = () => {
         if (!selectedVar) return;
-        setOptions((prev: any) => ({ ...prev, covariates: [...prev.covariates, selectedVar] }));
+        setOptions((prev) => {
+            if (prev.covariates.some((c) => c.id === selectedVar.id)) return prev;
+            return { ...prev, covariates: [...prev.covariates, selectedVar] };
+        });
         setSelectedVar(null);
     };
 
     const removeFromList = (id: string, key: "factors" | "covariates" | "dependent") => {
         setOptions((prev: any) => ({
             ...prev,
-            [key]: key === "dependent" ? null : prev[key].filter((v: Variable) => v.id !== id),
+            [key]: key === "dependent" ? null : prev[key].filter((v: Variable) => String(v.id) !== id),
         }));
     };
 
@@ -121,7 +129,7 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                     <div className="p-1.5 flex-1">
                         {options.dependent && (
                             <div
-                                onDoubleClick={() => removeFromList(options.dependent!.id, "dependent")}
+                                onDoubleClick={() => removeFromList(String(options.dependent!.id), "dependent")}
                                 className="flex items-center gap-2 px-2 py-1 bg-primary/10 rounded-sm text-xs border border-primary/20"
                             >
                                 {getVariableIcon(options.dependent.measure || "")}
@@ -147,7 +155,7 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                             {options.factors.map((f) => (
                                 <div
                                     key={f.id}
-                                    onDoubleClick={() => removeFromList(f.id, "factors")}
+                                    onDoubleClick={() => removeFromList(String(f.id), "factors")}
                                     className="flex items-center gap-2 px-2 py-0.5 hover:bg-accent rounded-sm text-xs cursor-default"
                                 >
                                     {getVariableIcon(f.measure || "")}
@@ -174,7 +182,7 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                             {options.covariates.map((c) => (
                                 <div
                                     key={c.id}
-                                    onDoubleClick={() => removeFromList(c.id, "covariates")}
+                                    onDoubleClick={() => removeFromList(String(c.id), "covariates")}
                                     className="flex items-center gap-2 px-2 py-0.5 hover:bg-accent rounded-sm text-xs cursor-default"
                                 >
                                     {getVariableIcon(c.measure || "")}
