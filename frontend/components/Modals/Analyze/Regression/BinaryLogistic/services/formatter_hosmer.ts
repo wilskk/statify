@@ -10,10 +10,19 @@ import {
   generateHosmerDescription,
 } from "./formatter_utils";
 
+/**
+ * Options for formatting Hosmer-Lemeshow tables
+ */
+interface HosmerFormatOptions {
+  displayAtLastStep?: boolean;
+}
+
 export const formatHosmerLemeshow = (
   result: LogisticResult,
-  dependentName: string
+  dependentName: string,
+  options?: HosmerFormatOptions
 ): { sections: AnalysisSection[] } => {
+  const displayAtLastStep = options?.displayAtLastStep ?? false;
   const sections: AnalysisSection[] = [];
 
   // Persiapan Label (Agar "Observed" sesuai label asli, misal "No/Yes")
@@ -139,7 +148,7 @@ export const formatHosmerLemeshow = (
   // ======================================================================
 
   // Kumpulkan semua step yang memiliki Hosmer-Lemeshow data
-  const stepsWithHL: { step: number; hl: HosmerLemeshowResult }[] = [];
+  let stepsWithHL: { step: number; hl: HosmerLemeshowResult }[] = [];
 
   if (result.steps_detail && result.steps_detail.length > 0) {
     result.steps_detail.forEach((stepDetail) => {
@@ -156,6 +165,30 @@ export const formatHosmerLemeshow = (
   // Jika tidak ada step dengan Hosmer-Lemeshow, return kosong
   if (stepsWithHL.length === 0) {
     return { sections: [] };
+  }
+
+  // ======================================================================
+  // FILTER BERDASARKAN displayAtLastStep
+  // Forward: hanya step terakhir
+  // Backward: step 1 dan step terakhir
+  // ======================================================================
+  const isBackward = method.toLowerCase().includes("backward");
+
+  if (displayAtLastStep && stepsWithHL.length > 1) {
+    const firstStep = stepsWithHL[0];
+    const lastStep = stepsWithHL[stepsWithHL.length - 1];
+
+    if (isBackward) {
+      // Backward: tampilkan step 1 dan step terakhir
+      if (firstStep.step === lastStep.step) {
+        stepsWithHL = [firstStep]; // Jika hanya satu step
+      } else {
+        stepsWithHL = [firstStep, lastStep];
+      }
+    } else {
+      // Forward: hanya tampilkan step terakhir
+      stepsWithHL = [lastStep];
+    }
   }
 
   // ======================================================================

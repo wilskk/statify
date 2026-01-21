@@ -50,7 +50,7 @@ export const formatBinaryLogisticResult = (
   // 2. Iteration History (SPSS shows this before Block 0)
   // Check if iteration history is available and format it
   if (hasIterationHistory(result)) {
-    const iterHistoryOutput = formatIterationHistory(result, dependentVariable.name);
+    const iterHistoryOutput = formatIterationHistory(result, dependentVariable.name, { displayAtLastStep });
     if (iterHistoryOutput.sections && iterHistoryOutput.sections.length > 0) {
       // Find Block 0 iteration history and add it before Block 0 stats
       const block0IterHistory = iterHistoryOutput.sections.find(
@@ -70,7 +70,7 @@ export const formatBinaryLogisticResult = (
 
   // 4. Block 1 Iteration History (before Block 1 stats)
   if (hasIterationHistory(result)) {
-    const iterHistoryOutput = formatIterationHistory(result, dependentVariable.name);
+    const iterHistoryOutput = formatIterationHistory(result, dependentVariable.name, { displayAtLastStep });
     if (iterHistoryOutput.sections && iterHistoryOutput.sections.length > 0) {
       const block1IterHistory = iterHistoryOutput.sections.find(
         (s) => s.id === "block1_iteration_history"
@@ -97,12 +97,13 @@ export const formatBinaryLogisticResult = (
     );
 
     // Generate Hosmer Tables
-    const hosmerOutput = formatHosmerLemeshow(result, dependentVariable.name);
+    const hosmerOutput = formatHosmerLemeshow(result, dependentVariable.name, { displayAtLastStep });
 
     // Generate Correlation of Estimates Tables
     const corrEstOutput = formatCorrelationOfEstimates(
       result,
-      dependentVariable.name
+      dependentVariable.name,
+      { displayAtLastStep }
     );
 
     if (summaryIndex !== -1 && hosmerOutput.sections.length > 0) {

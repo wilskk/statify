@@ -120,6 +120,18 @@ self.onmessage = async (event) => {
           // Display options
           display_at_last_step: configObj.display_at_last_step || false,
 
+          // --- BARU: Save Options (Tab Save di UI) ---
+          save_predicted_probabilities: configObj.save_predicted_probabilities || false,
+          save_predicted_group: configObj.save_predicted_group || false,
+          save_residuals_unstandardized: configObj.save_residuals_unstandardized || false,
+          save_residuals_logit: configObj.save_residuals_logit || false,
+          save_residuals_studentized: configObj.save_residuals_studentized || false,
+          save_residuals_standardized: configObj.save_residuals_standardized || false,
+          save_residuals_deviance: configObj.save_residuals_deviance || false,
+          save_influence_cooks: configObj.save_influence_cooks || false,
+          save_influence_leverage: configObj.save_influence_leverage || false,
+          save_influence_dfbeta: configObj.save_influence_dfbeta || false,
+
           assumptions: configObj.assumptions || {},
         };
 

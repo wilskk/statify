@@ -366,6 +366,47 @@ export interface ClassificationPlotData {
   n_group_1: number;                        // Total cases in group 1
 }
 
+// --- BARU: Saved Predictions Types (untuk Tab Save) ---
+export interface SavedPredictionRow {
+  case_index: number;                        // Index kasus (0-indexed untuk mapping ke data)
+  
+  // Predicted Values
+  predicted_probability?: number;            // PRE_1: P(Y=1)
+  predicted_group?: number;                  // PGR_1: Predicted group (0 atau 1)
+  
+  // Residuals
+  resid_unstandardized?: number;             // RES_1: Y - P
+  resid_logit?: number;                      // LRE_1: Logit residual
+  resid_studentized?: number;                // SRE_1: Studentized residual
+  resid_standardized?: number;               // ZRE_1: Standardized (Pearson) residual
+  resid_deviance?: number;                   // DEV_1: Deviance residual
+  
+  // Influence Statistics
+  influence_cooks?: number;                  // COO_1: Cook's distance
+  influence_leverage?: number;               // LEV_1: Leverage (hat value)
+  influence_dfbeta?: number[];               // DFB0_1, DFB1_1, ...: DfBeta per variable
+}
+
+// Nama variabel yang akan ditambahkan ke dataset (mengikuti konvensi SPSS)
+export interface SavedVariableNames {
+  predicted_probability?: string;            // PRE_1
+  predicted_group?: string;                  // PGR_1
+  resid_unstandardized?: string;             // RES_1
+  resid_logit?: string;                      // LRE_1
+  resid_studentized?: string;                // SRE_1
+  resid_standardized?: string;               // ZRE_1
+  resid_deviance?: string;                   // DEV_1
+  influence_cooks?: string;                  // COO_1
+  influence_leverage?: string;               // LEV_1
+  influence_dfbeta?: string[];               // DFB0_1, DFB1_1, ...
+}
+
+// Wrapper untuk semua saved predictions dengan metadata
+export interface SavedPredictions {
+  rows: SavedPredictionRow[];
+  variable_names?: SavedVariableNames;
+}
+
 // Struktur utama hasil analisis yang dikirim dari Worker
 export interface LogisticResult {
   method_used?: string;
@@ -427,6 +468,9 @@ export interface LogisticResult {
 
   // --- BARU: Step Summary (SPSS Style - for stepwise methods) ---
   step_summary?: StepSummaryRow[];
+
+  // --- BARU: Saved Predictions (Tab Save output) ---
+  saved_predictions?: SavedPredictions;
 }
 
 // =========================================================================
