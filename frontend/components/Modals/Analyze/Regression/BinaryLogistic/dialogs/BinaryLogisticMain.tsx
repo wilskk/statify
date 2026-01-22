@@ -12,12 +12,20 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, HelpCircle } from "lucide-react";
+import { toast } from "sonner";
 
 // Stores & Hooks
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useModalStore } from "@/stores/useModalStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
+
+// Tour Guide
+import type { TabControlProps } from "@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide";
+import { useTourGuide } from "@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide";
+import { baseTourSteps } from "../hooks/tourConfig";
+import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { AnimatePresence } from "framer-motion";
 
 // Components
 import { VariablesTab } from "./VariablesTab";
@@ -59,6 +67,18 @@ export const BinaryLogisticMain = () => {
   const [activeTab, setActiveTab] = useState("variables");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // --- Help Tour ---
+  const tabControl = useMemo<TabControlProps>(
+    () => ({
+      setActiveTab: (tab: string) => setActiveTab(tab),
+      currentActiveTab: activeTab,
+    }),
+    [activeTab]
+  );
+
+  const { tourActive, currentStep, tourSteps, currentTargetElement, startTour, nextStep, prevStep, endTour } =
+    useTourGuide(baseTourSteps, "dialog", tabControl);
 
   // Variable Selection State
   const { variables } = useVariableStore();
@@ -118,6 +138,25 @@ export const BinaryLogisticMain = () => {
   // --- HANDLERS ---
   const handleMoveToDependent = () => {
     if (highlightedVariable) {
+      // Validasi: Cek apakah variabel adalah binary (hanya 2 nilai unik)
+      const colIndex = highlightedVariable.columnIndex;
+      if (colIndex !== undefined && data.length > 0) {
+        // Ambil semua nilai dari kolom tersebut, filter missing values
+        const columnValues = data
+          .map((row) => row[colIndex])
+          .filter((val) => val !== null && val !== undefined && val !== "");
+        
+        const uniqueValues = Array.from(new Set(columnValues));
+        
+        if (uniqueValues.length !== 2) {
+          toast.error(
+            `Variable "${highlightedVariable.label || highlightedVariable.name}" has ${uniqueValues.length} unique value(s). Dependent variable must have exactly 2 unique values (binary outcome).`
+          );
+          return;
+        }
+      }
+      
+      // Set dependent
       setOptions((prev) => ({ ...prev, dependent: highlightedVariable }));
       setHighlightedVariable(null);
     }
@@ -944,6 +983,21 @@ export const BinaryLogisticMain = () => {
   // --- RENDER ---
   return (
     <div className="flex flex-col h-full bg-background">
+      {/* Feature Tour elements */}
+      <AnimatePresence>
+        {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+          <TourPopup
+            step={tourSteps[currentStep]}
+            currentStep={currentStep}
+            totalSteps={tourSteps.length}
+            onNext={nextStep}
+            onPrev={prevStep}
+            onClose={endTour}
+            targetElement={currentTargetElement}
+          />
+        )}
+      </AnimatePresence>
+      <ActiveElementHighlight active={tourActive} />
 
       <div className="flex-grow px-6 py-3 overflow-y-auto min-h-0">
         <Tabs
@@ -952,11 +1006,11 @@ export const BinaryLogisticMain = () => {
           className="w-full h-full flex flex-col"
         >
           <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
-            <TabsTrigger value="variables">Variables</TabsTrigger>
-            <TabsTrigger value="categorical">Categorical</TabsTrigger>
-            <TabsTrigger value="save">Save</TabsTrigger>
-            <TabsTrigger value="options">Options</TabsTrigger>
-            <TabsTrigger value="assumption">Assumption</TabsTrigger>
+            <TabsTrigger value="variables" id="binary-logistic-variables-tab-trigger">Variables</TabsTrigger>
+            <TabsTrigger value="categorical" id="binary-logistic-categorical-tab-trigger">Categorical</TabsTrigger>
+            <TabsTrigger value="save" id="binary-logistic-save-tab-trigger">Save</TabsTrigger>
+            <TabsTrigger value="options" id="binary-logistic-options-tab-trigger">Options</TabsTrigger>
+            <TabsTrigger value="assumption" id="binary-logistic-assumption-tab-trigger">Assumption</TabsTrigger>
           </TabsList>
 
           <div className="flex-grow min-h-0 overflow-hidden">
@@ -1031,15 +1085,18 @@ export const BinaryLogisticMain = () => {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  data-testid="binary-logistic-help-button"
                   variant="ghost"
                   size="icon"
+                  onClick={startTour}
+                  aria-label="Start feature tour"
                   className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
                 >
                   <HelpCircle className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">
-                <p className="text-xs">Help</p>
+                <p className="text-xs">Start feature tour</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -1048,7 +1105,7 @@ export const BinaryLogisticMain = () => {
         <div className="flex items-center space-x-4">
           <Button
             onClick={handleAnalyze}
-            disabled={isLoading || !options.dependent}
+            disabled={isLoading || !options.dependent || options.covariates.length === 0}
           >
             {isLoading ? (
               <>

@@ -79,14 +79,14 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
         <div className="col-span-1 flex flex-col h-full min-h-0">
           <label className="font-semibold block mb-2 text-sm">Variables:</label>
           <div className="border border-border rounded-md flex-1 bg-background overflow-hidden">
-            <ScrollArea className="h-full p-2">
+            <ScrollArea className="h-full p-2 pr-3">
               {availableVariables.map((variable) => (
                 <div
                   key={variable.id}
                   className={`flex items-center p-1.5 mb-1 cursor-pointer border rounded-md text-sm transition-colors ${
                     highlightedVariable?.name === variable.name
-                      ? "bg-accent text-accent-foreground border-primary/50"
-                      : "border-transparent hover:bg-accent/50"
+                      ? "bg-primary/10 text-primary border-primary"
+                      : "border-muted-foreground/30 hover:bg-primary/10 hover:text-primary hover:border-primary/50"
                   }`}
                   onClick={() =>
                     setHighlightedVariable(
@@ -95,6 +95,7 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                         : variable
                     )
                   }
+                  title="Click to select"
                 >
                   {getVariableIcon(variable)}
                   <span className="truncate">{getDisplayName(variable)}</span>
@@ -123,12 +124,14 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                 Dependent:
               </label>
               <div
-                className="border border-border rounded-md min-h-[40px] p-2 bg-background cursor-pointer hover:border-destructive/50 transition-colors"
-                onClick={onRemoveDependent}
-                title="Click to remove"
+                className="border border-border rounded-md min-h-[40px] p-2 bg-background transition-colors"
               >
                 {selectedDependent ? (
-                  <div className="flex items-center text-sm">
+                  <div 
+                    className="flex items-center text-sm border border-muted-foreground/30 rounded-md p-1.5 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-colors cursor-pointer"
+                    onClick={onRemoveDependent}
+                    title="Click to remove"
+                  >
                     {getVariableIcon(selectedDependent)}
                     <span className="truncate">
                       {getDisplayName(selectedDependent)}
@@ -176,7 +179,7 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                 {selectedCovariates.map((v) => (
                   <div
                     key={v.id}
-                    className="flex items-center p-1.5 mb-1 rounded-md cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 border border-transparent text-sm transition-colors"
+                    className="flex items-center p-1.5 mb-1 rounded-md cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 border border-muted-foreground/30 text-sm transition-colors"
                     onClick={() => onRemoveCovariate(v)}
                     title="Click to remove"
                   >
