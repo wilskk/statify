@@ -137,9 +137,6 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
                   <SelectItem value="Deviation">Deviation</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground">
-                Determines how the categorical variable levels are compared.
-              </p>
             </div>
 
             <div
