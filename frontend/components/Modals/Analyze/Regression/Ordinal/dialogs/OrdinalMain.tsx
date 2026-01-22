@@ -1,0 +1,193 @@
+"use client";
+
+import React, { useState, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, HelpCircle } from "lucide-react";
+
+// Stores & Hooks
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useModalStore } from "@/stores/useModalStore";
+
+// Components
+import { VariablesTab } from "./VariablesTab";
+import { LocationTab } from "./LocationTab";
+import { ScaleTab } from "./ScaleTab";
+import { OptionsTab } from "./OptionsTab";
+import { OutputTab } from "./OutputTab";
+
+// Types
+import {
+  OrdinalOptions,
+  OrdinalLocationParams,
+  OrdinalScaleParams,
+  OrdinalOptionsParams,
+  OrdinalOutputParams,
+} from "../types/ordinal";
+
+const OrdinalMain: React.FC = () => {
+  const { closeModal } = useModalStore();
+  const variablesFromStore = useVariableStore((state) => state.variables);
+
+  // --- STATE ---
+  const [activeTab, setActiveTab] = useState("variables");
+  const [isLoading, setIsLoading] = useState(false); // Tetap digunakan untuk UI loading
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // State untuk variabel yang dipilih
+  const [options, setOptions] = useState<OrdinalOptions>({
+    dependent: null,
+    factors: [],
+    covariates: [],
+  });
+
+  // State untuk setiap tab
+  const [locationParams, setLocationParams] = useState<OrdinalLocationParams>({ locationModel: [] });
+  const [scaleParams, setScaleParams] = useState<OrdinalScaleParams>({ scaleModel: [] });
+  const [optParams, setOptParams] = useState<OrdinalOptionsParams>({
+    maxIterations: 100,
+    maxStepHalving: 5,
+    logLikelihoodConvergence: 0,
+    parameterConvergence: 0.000001,
+    confidenceInterval: 95,
+    delta: 0,
+    singularityTolerance: 0.00000001,
+    linkFunction: "Logit",
+  });
+  const [outputParams, setOutputParams] = useState<OrdinalOutputParams>({
+    display: {
+      goodnessOfFit: true,
+      summaryStatistics: true,
+      parameterEstimates: true,
+      asymptoticCorrelation: false,
+      cellInformation: false,
+      testOfParallelLines: true,
+      iterationHistory: false,
+      iterationHistoryStep: 1,
+    },
+    savedVariables: {
+      predictedCategory: false,
+      predictedProbability: false,
+      actualProbability: false,
+    },
+    printLogLikelihood: "Including",
+  });
+
+  // Menghitung variabel yang tersedia (belum dipilih)
+  const availableVariables = useMemo(() => {
+    const selectedIds = new Set([
+      options.dependent?.id,
+      ...options.factors.map((v) => v.id),
+      ...options.covariates.map((v) => v.id),
+    ]);
+    return variablesFromStore.filter((v) => !selectedIds.has(v.id));
+  }, [variablesFromStore, options]);
+
+  // --- HANDLERS ---
+  // Fungsi ini akan diisi nanti, untuk sekarang hanya UI
+  const handleAnalyze = () => {
+    if (!options.dependent) {
+      setErrorMsg("Mohon pilih satu variabel dependen.");
+      return;
+    }
+    setIsLoading(true);
+    console.log("Ordinal Regression Analyze Clicked");
+    console.log("Options:", options);
+    console.log("Location Params:", locationParams);
+    console.log("Scale Params:", scaleParams);
+    console.log("Options Params:", optParams);
+    console.log("Output Params:", outputParams);
+
+    // Simulasi loading
+    setTimeout(() => {
+      setIsLoading(false);
+      alert("Fitur analisis belum diimplementasikan. Ini hanya UI.");
+      // close top modal
+      // closeModal(); // uncomment jika ingin modal otomatis tutup
+    }, 1500);
+  };
+
+  // --- RENDER ---
+  return (
+    <div className="flex flex-col h-full bg-background">
+      <div className="px-6 py-4 flex-shrink-0">
+        <h2 className="text-lg font-semibold tracking-tight">
+          Ordinal Regression
+        </h2>
+      </div>
+      <Separator />
+      <div className="flex-grow px-6 overflow-y-auto min-h-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+          <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+            <TabsTrigger value="variables">Variables</TabsTrigger>
+            <TabsTrigger value="location">Location</TabsTrigger>
+            <TabsTrigger value="scale">Scale</TabsTrigger>
+            <TabsTrigger value="options">Options</TabsTrigger>
+            <TabsTrigger value="output">Output</TabsTrigger>
+          </TabsList>
+          <div className="flex-grow min-h-0 overflow-hidden">
+            <TabsContent value="variables" className="h-full mt-0">
+              <VariablesTab
+                availableVariables={availableVariables}
+                selectedDependent={options.dependent}
+                selectedFactors={options.factors}
+                selectedCovariates={options.covariates}
+                onOptionsChange={setOptions}
+              />
+            </TabsContent>
+            <TabsContent value="location" className="h-full mt-0">
+              <LocationTab
+                factors={options.factors}
+                covariates={options.covariates}
+                params={locationParams}
+                onChange={setLocationParams}
+              />
+            </TabsContent>
+            <TabsContent value="scale" className="h-full mt-0">
+              <ScaleTab
+                factors={options.factors}
+                covariates={options.covariates}
+                params={scaleParams}
+                onChange={setScaleParams}
+              />
+            </TabsContent>
+            <TabsContent value="options" className="h-full mt-0">
+              <OptionsTab params={optParams} onChange={(p) => setOptParams(prev => ({ ...prev, ...p }))} />
+            </TabsContent>
+            <TabsContent value="output" className="h-full mt-0">
+              <OutputTab params={outputParams} onChange={(p) => setOutputParams(prev => ({ ...prev, ...p }))} />
+            </TabsContent>
+          </div>
+        </Tabs>
+        {errorMsg && (
+          <div className="mt-4">
+            <Alert variant="destructive">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{errorMsg}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+      </div>
+      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+        <Button variant="ghost" size="icon">
+          <HelpCircle className="h-4 w-4" />
+        </Button>
+        <div className="flex items-center space-x-4">
+          <Button onClick={handleAnalyze} disabled={isLoading || !options.dependent}>
+            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> OK</> : "OK"}
+          </Button>
+          <Button variant="outline" onClick={() => setOptions({ dependent: null, factors: [], covariates: [] })} disabled={isLoading}>
+            Reset
+          </Button>
+          <Button variant="outline" onClick={() => closeModal()} disabled={isLoading}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default OrdinalMain;

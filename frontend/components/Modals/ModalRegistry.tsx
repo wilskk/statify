@@ -105,7 +105,7 @@ const BoxJenkinsModelModal = lazy(() =>
   }))
 );
 const ModalOrdinal = lazy(() =>
-  import("@/components/Modals/Analyze/Regression/Ordinal/ModalOrdinal").then((mod) => ({
+  import("@/components/Modals/Analyze/Regression/Ordinal/dialogs/OrdinalMain").then((mod) => ({
     default: mod.default as React.ComponentType<BaseModalProps>,
   }))
 );
