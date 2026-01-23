@@ -34,9 +34,11 @@
 //!    - Sum of squares equals the deviance statistic
 //!
 //! 5. **Studentized Residual (SRE_1)**
-//!    - Formula: `r_student = r_pearson / sqrt(1 - h_i)`
+//!    - Formula: `r_student = r_pearson * sqrt(1 - h_i)` (SPSS convention)
 //!    - Where h_i is the leverage (hat value)
-//!    - Adjusts for influence of each observation
+//!    - SPSS multiplies by sqrt(1-h) instead of dividing
+//!    - This reduces the residual for high-leverage points
+//!    - Reference: SPSS Regression Algorithms documentation
 //!
 //! ### Influence Statistics
 //! - **Cook's distance (COO_1)**: Measures overall influence on all coefficients
@@ -45,7 +47,7 @@
 
 use crate::models::config::LogisticConfig;
 use crate::models::result::{SavedPredictionRow, SavedPredictions, SavedVariableNames};
-use crate::stats::irls::FittedModel;
+use crate::stats::irls::{FittedModel, FittingWarnings};
 use nalgebra::{DMatrix, DVector};
 
 /// Calculate saved predictions based on config options
@@ -183,12 +185,15 @@ pub fn calculate_saved_predictions(
                 row.influence_leverage = Some(h_i);
             }
 
-            // Studentized Residual: Pearson / sqrt(1 - h)
+            // Studentized Residual (SPSS formula): Pearson * sqrt(1 - h)
+            // SPSS documentation: Studentized residual = Pearson residual * sqrt(1 - leverage)
+            // This REDUCES the residual for high-leverage points
+            // Reference: SPSS Regression Algorithms documentation
             if config.save_residuals_studentized {
                 let stud_resid = if h_i < 1.0 - 1e-12 {
-                    std_resid / (1.0 - h_i).sqrt()
+                    std_resid * (1.0 - h_i).sqrt()
                 } else {
-                    std_resid
+                    std_resid // If leverage ≈ 1, just use standardized residual
                 };
                 row.resid_studentized = Some(stud_resid);
             }
@@ -394,6 +399,29 @@ mod tests {
     use super::*;
     use nalgebra::{DMatrix, DVector};
 
+    /// Helper function to create a FittedModel for tests
+    fn create_test_model(
+        beta: DVector<f64>,
+        predictions: DVector<f64>,
+        cov: DMatrix<f64>,
+    ) -> FittedModel {
+        let n = predictions.len();
+        let residuals = DVector::from_element(n, 0.0); // Placeholder
+        let weights = predictions.map(|p| p * (1.0 - p));
+        
+        FittedModel {
+            beta,
+            predictions,
+            final_log_likelihood: -5.0,
+            covariance_matrix: cov,
+            converged: true,
+            iterations: 5,
+            residuals,
+            weights,
+            warnings: FittingWarnings::default(),
+        }
+    }
+
     #[test]
     fn test_calculate_saved_predictions_probabilities() {
         // Simple test case
@@ -409,14 +437,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_predicted_probabilities = true;
@@ -448,14 +469,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let config = LogisticConfig::default(); // All save options are false
 
@@ -476,14 +490,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_residuals_unstandardized = true;
@@ -507,14 +514,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_residuals_standardized = true;
@@ -541,14 +541,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_residuals_logit = true;
@@ -577,14 +570,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_residuals_deviance = true;
@@ -614,14 +600,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_residuals_studentized = true;
@@ -661,14 +640,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_residuals_unstandardized = true;
@@ -716,14 +688,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-1.0, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.5, -0.1, -0.1, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_influence_leverage = true;
@@ -758,14 +723,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-1.0, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.5, -0.1, -0.1, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_influence_cooks = true;
@@ -812,14 +770,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-1.0, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.5, -0.1, -0.1, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_influence_dfbeta = true;
@@ -866,14 +817,7 @@ mod tests {
         let beta = DVector::from_vec(vec![-1.0, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.5, -0.1, -0.1, 0.1]);
         
-        let model = FittedModel {
-            beta,
-            predictions,
-            final_log_likelihood: -5.0,
-            covariance_matrix: cov,
-            converged: true,
-            iterations: 5,
-        };
+        let model = create_test_model(beta, predictions, cov);
 
         let mut config = LogisticConfig::default();
         config.save_influence_dfbeta = true;
@@ -923,6 +867,10 @@ mod tests {
             -0.05, -0.02, 0.08,
         ]);
         
+        let n = predictions.len();
+        let residuals = DVector::from_element(n, 0.0);
+        let weights = predictions.map(|p| p * (1.0 - p));
+        
         let model = FittedModel {
             beta,
             predictions,
@@ -930,6 +878,9 @@ mod tests {
             covariance_matrix: cov,
             converged: true,
             iterations: 7,
+            residuals,
+            weights,
+            warnings: FittingWarnings::default(),
         };
 
         let mut config = LogisticConfig::default();
@@ -981,6 +932,10 @@ mod tests {
         let beta = DVector::from_vec(vec![-2.0, 0.5]);
         let cov = DMatrix::from_row_slice(2, 2, &[0.5, -0.1, -0.1, 0.15]);
         
+        let n = predictions.len();
+        let residuals = DVector::from_element(n, 0.0);
+        let weights = predictions.map(|p| p * (1.0 - p));
+        
         let model = FittedModel {
             beta,
             predictions,
@@ -988,6 +943,9 @@ mod tests {
             covariance_matrix: cov,
             converged: true,
             iterations: 6,
+            residuals,
+            weights,
+            warnings: FittingWarnings::default(),
         };
 
         let mut config = LogisticConfig::default();

@@ -263,34 +263,30 @@ pub fn build(
             }
 
             // === 4. Set Nama Kolom Dummy ===
+            // SPSS Convention: Gunakan indeks parameter 1-indexed, bukan nilai kategori.
+            // Contoh: sex dengan 2 kategori (Female, Male) dan reference=Last (Male)
+            // -> 1 dummy column dengan nama sex(1), bukan sex(0) atau sex(Female)
+            // Ini merujuk ke "Parameter coding column (1)" di tabel Categorical Variables Codings
             for j in 0..n_dummies {
                 let name = match method {
                     ContrastMethod::Indicator
                     | ContrastMethod::Simple
                     | ContrastMethod::Deviation => {
-                        let target_cat_idx = if cat_config.reference == ReferenceCategory::First {
-                            j + 1
-                        } else {
-                            j
-                        };
-                        let label = categories
-                            .get(target_cat_idx)
-                            .map(|s| s.as_str())
-                            .unwrap_or("?");
-                        format!("{}({})", col_name, label)
+                        // SPSS uses 1-indexed parameter column number: (1), (2), etc.
+                        // NOT the category value or label
+                        format!("{}({})", col_name, j + 1)
                     }
                     ContrastMethod::Difference => {
-                        let label = categories.get(j + 1).map(|s| s.as_str()).unwrap_or("?");
-                        format!("{}(Diff: {})", col_name, label)
+                        // SPSS: Difference contrast juga menggunakan indeks 1-indexed
+                        format!("{}({})", col_name, j + 1)
                     }
                     ContrastMethod::Helmert => {
-                        let label = categories.get(j).map(|s| s.as_str()).unwrap_or("?");
-                        format!("{}(Helmert: {})", col_name, label)
+                        // SPSS: Helmert contrast juga menggunakan indeks 1-indexed
+                        format!("{}({})", col_name, j + 1)
                     }
                     ContrastMethod::Repeated => {
-                        let l1 = categories.get(j).map(|s| s.as_str()).unwrap_or("?");
-                        let l2 = categories.get(j + 1).map(|s| s.as_str()).unwrap_or("?");
-                        format!("{}({} vs {})", col_name, l1, l2)
+                        // SPSS: Repeated contrast juga menggunakan indeks 1-indexed
+                        format!("{}({})", col_name, j + 1)
                     }
                     ContrastMethod::Polynomial => {
                         let types = vec!["Linear", "Quadratic", "Cubic", "4th", "5th"];

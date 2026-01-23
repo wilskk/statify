@@ -1,10 +1,10 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    CategoricalCoding, ClassificationTable, CorrelationOfEstimatesRow, IterationHistoryBlock,
-    IterationHistoryRow, LogisticResult, ModelInfo, ModelSummary, OmniTests, RemainderTest,
+    CategoricalCoding, ClassificationTable, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
+    IterationHistoryBlock, IterationHistoryRow, LogisticResult, ModelInfo, ModelSummary, OmniTests, RemainderTest,
     StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
-use crate::stats::irls::{fit, fit_with_history, FittedModel, IterationRecord};
+use crate::stats::irls::{fit, fit_with_history, FittedModel, FittingWarnings, IterationRecord};
 use crate::stats::score_test::calculate_score_test;
 // --- TAMBAHAN IMPORT ---
 use crate::stats::hosmer_lemeshow;
@@ -107,6 +107,7 @@ pub fn run(
         residuals: null_residuals.clone(),
         weights: null_weights.clone(),
         predictions: DVector::from_element(n_samples, p_null),
+        warnings: FittingWarnings::default(),
     };
     let empty_indices: Vec<usize> = Vec::new();
     if let Some(test) = calculate_overall_remainder_stats(
@@ -539,6 +540,25 @@ pub fn run(
             )
         } else {
             None
+        },
+        // --- BARU: Fitting Warnings dari IRLS ---
+        fitting_warnings: {
+            let w = &current_model.warnings;
+            if w.possible_separation || w.quasi_separation || w.step_halving_used 
+               || w.ridge_increased || w.near_singular_hessian || !w.messages.is_empty() {
+                Some(ResultFittingWarnings {
+                    possible_separation: w.possible_separation,
+                    quasi_separation: w.quasi_separation,
+                    step_halving_used: w.step_halving_used,
+                    step_halving_count: w.step_halving_count,
+                    ridge_increased: w.ridge_increased,
+                    final_lambda: w.final_lambda,
+                    near_singular_hessian: w.near_singular_hessian,
+                    messages: w.messages.clone(),
+                })
+            } else {
+                None
+            }
         },
     })
 }
