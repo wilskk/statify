@@ -7,8 +7,12 @@ use nalgebra::{DMatrix, DVector};
 /// Similar to SPSS's Casewise Listing of Residuals
 /// 
 /// Returns a vector of CasewiseRow, filtered based on config settings:
-/// - If casewise_type == "outliers": only cases where |ZResid| > casewise_outliers
+/// - If casewise_type == "outliers": only cases where |SResid| > casewise_outliers
 /// - If casewise_type == "all": all cases
+/// 
+/// SPSS uses the Studentized Residual (SResid) for filtering, not the Standardized
+/// Residual (ZResid). The SPSS formula for SResid is: ZResid * sqrt(1 - h)
+/// where h is the leverage (hat value).
 pub fn calculate_casewise_list(
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
@@ -26,9 +30,8 @@ pub fn calculate_casewise_list(
     let mut casewise_list: Vec<CasewiseRow> = Vec::new();
     
     // Pre-calculate leverage (hat values) for all observations
-    // h_ii = x_i' * (X'WX)^-1 * W * x_i
-    // Simplified: using covariance matrix already computed
-    let leverages = calculate_leverages(x_matrix, &model.weights, &model.covariance_matrix);
+    // We compute (X'WX)^-1 directly here to ensure correct leverage calculation
+    let leverages = calculate_leverages_correct(x_matrix, &model.predictions);
     
     for i in 0..n {
         let y_obs = y_vector[i];
@@ -48,18 +51,21 @@ pub fn calculate_casewise_list(
         let std_dev = if variance > 1e-12 { variance.sqrt() } else { 1e-6 };
         
         // 3. Standardized Residual (ZResid): (y - p) / sqrt(p * (1-p))
+        // This is the Pearson residual
         let resid_zresid = resid_raw / std_dev;
         
         // 4. Leverage (hat value)
         let leverage = leverages[i];
         
-        // 5. Studentized Residual: (y - p) / sqrt(p*(1-p)*(1-h))
-        let denom_student = if (1.0 - leverage) > 1e-12 {
-            (variance * (1.0 - leverage)).sqrt()
+        // 5. Studentized Residual (SPSS formula): ZResid * sqrt(1 - h)
+        // SPSS documentation: Studentized residual = Pearson residual * sqrt(1 - leverage)
+        // This REDUCES the residual for high-leverage points (unlike OLS which divides)
+        // Reference: SPSS Regression Algorithms documentation
+        let resid_studentized = if (1.0 - leverage) > 1e-12 {
+            resid_zresid * (1.0 - leverage).sqrt()
         } else {
-            1e-6
+            resid_zresid // If leverage ≈ 1, just use ZResid
         };
-        let resid_studentized = resid_raw / denom_student;
         
         // 6. Logit Residual: residual / (p * (1-p))
         let resid_logit = if variance > 1e-12 {
@@ -87,7 +93,9 @@ pub fn calculate_casewise_list(
         };
         
         // --- Apply Filter ---
-        let include_case = show_all || resid_zresid.abs() > outlier_threshold;
+        // SPSS filters by Studentized Residual (SResid), not ZResid
+        // "Cases with studentized residuals greater than [threshold] are listed"
+        let include_case = show_all || resid_studentized.abs() > outlier_threshold;
         
         if include_case {
             // Determine labels
@@ -120,34 +128,72 @@ pub fn calculate_casewise_list(
         }
     }
     
-    // Sort by absolute ZResid descending (like SPSS)
+    // Sort by absolute Studentized Residual (SResid) descending (like SPSS)
     casewise_list.sort_by(|a, b| {
-        b.resid_zresid.abs().partial_cmp(&a.resid_zresid.abs()).unwrap_or(std::cmp::Ordering::Equal)
+        let a_sresid = a.resid_studentized.unwrap_or(0.0).abs();
+        let b_sresid = b.resid_studentized.unwrap_or(0.0).abs();
+        b_sresid.partial_cmp(&a_sresid).unwrap_or(std::cmp::Ordering::Equal)
     });
     
     casewise_list
 }
 
-/// Calculate leverage (hat) values for each observation
-/// h_ii = w_ii * x_i' * (X'WX)^-1 * x_i
-fn calculate_leverages(
+/// Calculate leverage (hat) values for each observation using the correct formula
+/// 
+/// The Hat matrix in weighted least squares (which logistic regression uses via IRLS) is:
+/// H = W^{1/2} X (X'WX)^{-1} X' W^{1/2}
+/// 
+/// And the diagonal elements (leverage values) are:
+/// h_ii = w_i * x_i' * (X'WX)^{-1} * x_i
+/// 
+/// where w_i = p_i * (1 - p_i) is the weight for observation i
+/// 
+/// Reference: Hosmer & Lemeshow (2000), Pregibon (1981)
+fn calculate_leverages_correct(
     x_matrix: &DMatrix<f64>,
-    weights: &DVector<f64>,
-    cov_matrix: &DMatrix<f64>,
+    predictions: &DVector<f64>,
 ) -> Vec<f64> {
     let n = x_matrix.nrows();
+    let p = x_matrix.ncols();
+    
+    // Step 1: Compute weights W = diag(p * (1-p))
+    let weights: Vec<f64> = predictions.iter()
+        .map(|&pi| {
+            let w = pi * (1.0 - pi);
+            if w < 1e-10 { 1e-10 } else { w }
+        })
+        .collect();
+    
+    // Step 2: Compute X'WX
+    let mut xt_wx = DMatrix::zeros(p, p);
+    for i in 0..n {
+        let x_i = x_matrix.row(i).transpose();
+        let w_i = weights[i];
+        for j in 0..p {
+            for k in 0..p {
+                xt_wx[(j, k)] += w_i * x_i[j] * x_i[k];
+            }
+        }
+    }
+    
+    // Step 3: Compute (X'WX)^{-1}
+    let xt_wx_inv = match xt_wx.clone().try_inverse() {
+        Some(inv) => inv,
+        None => {
+            let svd = xt_wx.svd(true, true);
+            svd.pseudo_inverse(1e-10).unwrap_or_else(|_| DMatrix::identity(p, p))
+        }
+    };
+    
+    // Step 4: Compute leverage for each observation
+    // h_ii = w_i * x_i' * (X'WX)^{-1} * x_i
     let mut leverages = Vec::with_capacity(n);
     
     for i in 0..n {
         let x_i = x_matrix.row(i).transpose();
         let w_i = weights[i];
-        
-        // h_ii = w_i * x_i' * Cov * x_i
-        // Where Cov = (X'WX)^-1
-        let temp = cov_matrix * &x_i;
+        let temp = &xt_wx_inv * &x_i;
         let h_ii = w_i * x_i.dot(&temp);
-        
-        // Clamp to [0, 1] range
         leverages.push(h_ii.max(0.0).min(1.0));
     }
     
@@ -161,24 +207,19 @@ mod tests {
     
     #[test]
     fn test_leverage_calculation() {
-        // Simple test with 3 observations, 2 variables
         let x = DMatrix::from_row_slice(3, 2, &[
             1.0, 1.0,
             1.0, 2.0,
             1.0, 3.0,
         ]);
-        let weights = DVector::from_vec(vec![0.25, 0.25, 0.25]);
-        let cov = DMatrix::from_row_slice(2, 2, &[
-            1.0, 0.0,
-            0.0, 1.0,
-        ]);
+        let predictions = DVector::from_vec(vec![0.5, 0.5, 0.5]);
         
-        let leverages = calculate_leverages(&x, &weights, &cov);
+        let leverages = calculate_leverages_correct(&x, &predictions);
         
         assert_eq!(leverages.len(), 3);
-        // All leverages should be positive
         for h in &leverages {
             assert!(*h >= 0.0);
+            assert!(*h <= 1.0);
         }
     }
 }

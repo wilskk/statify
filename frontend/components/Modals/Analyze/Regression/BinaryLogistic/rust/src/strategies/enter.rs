@@ -4,7 +4,7 @@ use std::error::Error;
 
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    CategoricalCoding, CorrelationOfEstimatesRow, IterationHistoryBlock, IterationHistoryRow,
+    CategoricalCoding, CorrelationOfEstimatesRow, FittingWarnings, IterationHistoryBlock, IterationHistoryRow,
     LogisticResult, ModelInfo, ModelSummary, OmniTests, RemainderTest, StepDetail,
     VariableNotInEquation, VariableRow,
 };
@@ -409,6 +409,27 @@ pub fn run(
         sig: g_sig,
     };
 
+    // --- BARU: Convert irls::FittingWarnings ke result::FittingWarnings ---
+    let fitting_warnings_result: Option<FittingWarnings> = {
+        let w = &full_model.warnings;
+        // Hanya include jika ada warning yang non-trivial
+        if w.possible_separation || w.quasi_separation || w.step_halving_used 
+           || w.ridge_increased || w.near_singular_hessian || !w.messages.is_empty() {
+            Some(FittingWarnings {
+                possible_separation: w.possible_separation,
+                quasi_separation: w.quasi_separation,
+                step_halving_used: w.step_halving_used,
+                step_halving_count: w.step_halving_count,
+                ridge_increased: w.ridge_increased,
+                final_lambda: w.final_lambda,
+                near_singular_hessian: w.near_singular_hessian,
+                messages: w.messages.clone(),
+            })
+        } else {
+            None
+        }
+    };
+
     Ok(LogisticResult {
         model_info: ModelInfo::default(),
         summary: model_summary,
@@ -430,5 +451,6 @@ pub fn run(
         correlation_of_estimates: corr_estimates_result, // BARU: Correlation of Estimates
         step_summary: None, // Enter tidak memerlukan step summary
         saved_predictions: saved_predictions_result, // BARU: Saved Predictions
+        fitting_warnings: fitting_warnings_result, // BARU: Fitting Warnings dari IRLS
     })
 }

@@ -1,6 +1,40 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap; // Tambahan import
 
+// ============================================================================
+// FITTING WARNINGS - Peringatan dari proses IRLS fitting
+// ============================================================================
+
+/// Flags untuk warning yang terdeteksi selama fitting
+/// Digunakan untuk melaporkan masalah potensial ke user
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct FittingWarnings {
+    /// True jika terdeteksi kemungkinan complete separation
+    #[serde(default)]
+    pub possible_separation: bool,
+    /// True jika terdeteksi quasi-complete separation
+    #[serde(default)]
+    pub quasi_separation: bool,
+    /// True jika ada step-halving yang digunakan
+    #[serde(default)]
+    pub step_halving_used: bool,
+    /// Jumlah total step-halving iterations
+    #[serde(default)]
+    pub step_halving_count: usize,
+    /// True jika ridge parameter harus ditingkatkan
+    #[serde(default)]
+    pub ridge_increased: bool,
+    /// Final ridge parameter yang digunakan
+    #[serde(default)]
+    pub final_lambda: f64,
+    /// True jika matrix hampir singular
+    #[serde(default)]
+    pub near_singular_hessian: bool,
+    /// Pesan warning untuk user
+    #[serde(default)]
+    pub messages: Vec<String>,
+}
+
 // Struktur untuk satu baris hasil VIF
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VifRow {
@@ -466,4 +500,8 @@ pub struct LogisticResult {
     // --- BARU: Saved Predictions (Tab Save di UI) ---
     #[serde(rename = "saved_predictions", skip_serializing_if = "Option::is_none")]
     pub saved_predictions: Option<SavedPredictions>,
+
+    // --- BARU: Fitting Warnings (dari IRLS robust solver) ---
+    #[serde(rename = "fitting_warnings", skip_serializing_if = "Option::is_none")]
+    pub fitting_warnings: Option<FittingWarnings>,
 }
