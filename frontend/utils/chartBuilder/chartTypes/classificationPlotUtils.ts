@@ -15,8 +15,12 @@
 import * as d3 from "d3";
 import { ChartTitleOptions, addChartTitle } from "./chartUtils";
 import { calculateResponsiveMargin } from "../responsiveMarginUtils";
-import { addAxisLabels, addLegend, calculateLegendPosition, createStandardSVG } from "../chartUtils";
-import { defaultChartColors } from "../defaultStyles/defaultColors";
+import {
+  addAxisLabels,
+  addLegend,
+  calculateLegendPosition,
+  createStandardSVG,
+} from "../chartUtils";
 
 export interface ClassificationPlotDataPoint {
   category: string;
@@ -53,7 +57,7 @@ export const createClassificationPlot = (
   titleOptions?: ChartTitleOptions,
   axisLabels?: AxisLabels,
   chartColors?: string[],
-  config?: ClassificationPlotConfig
+  config?: ClassificationPlotConfig,
 ) => {
   // Validate data
   if (!data || data.length === 0) {
@@ -62,22 +66,26 @@ export const createClassificationPlot = (
   }
 
   // Extract group names from first data point
-  const groups = config?.groups || Object.keys(data[0]).filter((k) => k !== "category");
+  const groups =
+    config?.groups || Object.keys(data[0]).filter((k) => k !== "category");
   const cutoff = config?.cutoff ?? 0.5;
 
   // Use provided colors or defaults
-  const colors = chartColors && chartColors.length >= groups.length
-    ? chartColors
-    : ["#4A90D9", "#E74C3C"]; // Default: Blue for group 0, Red for group 1
+  // Updated: Red (#E74C3C) for group 0, Blue (#4A90D9) for group 1
+  const colors =
+    chartColors && chartColors.length >= groups.length
+      ? chartColors
+      : ["#E74C3C", "#4A90D9"];
 
   // Calculate canvas context for measurements
   const ctx = document.createElement("canvas").getContext("2d")!;
   ctx.font = "10px sans-serif";
 
   // Calculate max Y value
-  const maxY = d3.max(data, (d) => {
-    return groups.reduce((sum, g) => sum + (Number(d[g]) || 0), 0);
-  }) || 0;
+  const maxY =
+    d3.max(data, (d) => {
+      return groups.reduce((sum, g) => sum + (Number(d[g]) || 0), 0);
+    }) || 0;
 
   // Calculate margins
   const margin = calculateResponsiveMargin({
@@ -89,6 +97,10 @@ export const createClassificationPlot = (
     hasLegend: true,
     legendPosition: "right",
   });
+
+  // ADJUSTED MARGIN: to bring components closer
+  const extraBottomPadding = 5;
+  margin.bottom += extraBottomPadding;
 
   // Create SVG
   const svg = createStandardSVG({
@@ -153,8 +165,7 @@ export const createClassificationPlot = (
     .attr("stroke-width", 0.5);
 
   // Draw cutoff line
-  const cutoffX =
-    margin.left + (cutoff * (width - margin.left - margin.right));
+  const cutoffX = margin.left + cutoff * (width - margin.left - margin.right);
 
   svg
     .append("line")
@@ -203,22 +214,41 @@ export const createClassificationPlot = (
       .attr("fill", "hsl(var(--foreground))")
       .style("font-size", "10px");
 
-    // Add axis labels
-    if (axisLabels) {
+    // --- MANUAL AXIS LABEL POSITIONING ---
+    // 1. Render Y Label (using helper)
+    if (axisLabels?.y) {
       addAxisLabels({
         svg,
         width,
         height,
         marginTop: margin.top,
         marginRight: margin.right,
-        marginBottom: margin.bottom,
+        marginBottom: margin.bottom, // Use full margin for Y centering
         marginLeft: margin.left,
         axisLabels: {
-          x: axisLabels.x,
-          y: axisLabels.y,
+          y: axisLabels.y, // Only pass Y
         },
         chartType: "vertical",
       });
+    }
+
+    // 2. Render X Label MANUALLY
+    // Position: Just below the axis ticks
+    // Adjusted y offset to 30 (closer to ticks)
+    if (axisLabels?.x) {
+      // Strip newline chars if they exist from previous formatter
+      const cleanXLabel = axisLabels.x.replace(/\n/g, "");
+
+      svg
+        .append("text")
+        .attr("class", "x-axis-label")
+        .attr("text-anchor", "middle")
+        .attr("x", margin.left + (width - margin.left - margin.right) / 2)
+        .attr("y", height - margin.bottom + 30) // Adjusted: 30px below axis
+        .attr("fill", "hsl(var(--foreground))")
+        .attr("font-size", "12px")
+        .attr("font-weight", "500")
+        .text(cleanXLabel);
     }
   }
 
@@ -274,17 +304,19 @@ export const createClassificationPlot = (
       .text(group);
   });
 
-  // Add note at bottom
+  // --- MANUAL NOTE POSITIONING ---
+  // Position: At the ABSOLUTE BOTTOM of the chart container area
+  // With margin.bottom reduced to 45px + base, this will sit closer to the X label
   if (config?.cutoff !== undefined) {
     svg
       .append("text")
       .attr("x", width / 2)
-      .attr("y", height - 5)
+      .attr("y", height - 5) // Very close to bottom edge
       .attr("text-anchor", "middle")
       .attr("fill", "hsl(var(--muted-foreground))")
       .attr("font-size", "9px")
       .text(
-        `Predicted Probability is of Membership for ${groups[1] || "TRUE"}. Each bar segment represents case counts.`
+        `Predicted Probability is of Membership for ${groups[1] || "TRUE"}. Each bar segment represents case counts.`,
       );
   }
 
@@ -303,7 +335,7 @@ export const createOverlappingClassificationPlot = (
   titleOptions?: ChartTitleOptions,
   axisLabels?: AxisLabels,
   chartColors?: string[],
-  config?: ClassificationPlotConfig
+  config?: ClassificationPlotConfig,
 ) => {
   // Validate data
   if (!data || data.length === 0) {
@@ -312,22 +344,26 @@ export const createOverlappingClassificationPlot = (
   }
 
   // Extract group names
-  const groups = config?.groups || Object.keys(data[0]).filter((k) => k !== "category");
+  const groups =
+    config?.groups || Object.keys(data[0]).filter((k) => k !== "category");
   const cutoff = config?.cutoff ?? 0.5;
 
   // Use provided colors or defaults with opacity
-  const colors = chartColors && chartColors.length >= groups.length
-    ? chartColors
-    : ["#4A90D9", "#E74C3C"];
+  // Updated: Red (#E74C3C) for group 0, Blue (#4A90D9) for group 1
+  const colors =
+    chartColors && chartColors.length >= groups.length
+      ? chartColors
+      : ["#E74C3C", "#4A90D9"];
 
   // Calculate canvas context for measurements
   const ctx = document.createElement("canvas").getContext("2d")!;
   ctx.font = "10px sans-serif";
 
   // Calculate max Y value (individual, not stacked)
-  const maxY = d3.max(data, (d) => {
-    return d3.max(groups, (g) => Number(d[g]) || 0);
-  }) || 0;
+  const maxY =
+    d3.max(data, (d) => {
+      return d3.max(groups, (g) => Number(d[g]) || 0);
+    }) || 0;
 
   // Calculate margins
   const margin = calculateResponsiveMargin({
@@ -339,6 +375,10 @@ export const createOverlappingClassificationPlot = (
     hasLegend: true,
     legendPosition: "right",
   });
+
+  // ADJUSTED MARGIN: Reduced from 80 to 45
+  const extraBottomPadding = 45;
+  margin.bottom += extraBottomPadding;
 
   // Create SVG
   const svg = createStandardSVG({
@@ -385,7 +425,10 @@ export const createOverlappingClassificationPlot = (
       .attr("x", (d) => (xScale(d.category) || 0) + groupIndex * barWidth)
       .attr("y", (d) => yScale(Number(d[group]) || 0))
       .attr("width", barWidth - 2)
-      .attr("height", (d) => height - margin.bottom - yScale(Number(d[group]) || 0))
+      .attr(
+        "height",
+        (d) => height - margin.bottom - yScale(Number(d[group]) || 0),
+      )
       .attr("fill", colors[groupIndex % colors.length])
       .attr("opacity", 0.8)
       .attr("stroke", colors[groupIndex % colors.length])
@@ -393,8 +436,7 @@ export const createOverlappingClassificationPlot = (
   });
 
   // Draw cutoff line
-  const cutoffX =
-    margin.left + (cutoff * (width - margin.left - margin.right));
+  const cutoffX = margin.left + cutoff * (width - margin.left - margin.right);
 
   svg
     .append("line")
@@ -442,7 +484,8 @@ export const createOverlappingClassificationPlot = (
       .attr("fill", "hsl(var(--foreground))")
       .style("font-size", "10px");
 
-    if (axisLabels) {
+    // --- MANUAL AXIS LABEL POSITIONING ---
+    if (axisLabels?.y) {
       addAxisLabels({
         svg,
         width,
@@ -451,12 +494,23 @@ export const createOverlappingClassificationPlot = (
         marginRight: margin.right,
         marginBottom: margin.bottom,
         marginLeft: margin.left,
-        axisLabels: {
-          x: axisLabels.x,
-          y: axisLabels.y,
-        },
+        axisLabels: { y: axisLabels.y },
         chartType: "vertical",
       });
+    }
+
+    if (axisLabels?.x) {
+      const cleanXLabel = axisLabels.x.replace(/\n/g, "");
+      svg
+        .append("text")
+        .attr("class", "x-axis-label")
+        .attr("text-anchor", "middle")
+        .attr("x", margin.left + (width - margin.left - margin.right) / 2)
+        .attr("y", height - margin.bottom + 30) // Adjusted: 30px
+        .attr("fill", "hsl(var(--foreground))")
+        .attr("font-size", "12px")
+        .attr("font-weight", "500")
+        .text(cleanXLabel);
     }
   }
 
@@ -508,6 +562,20 @@ export const createOverlappingClassificationPlot = (
       .attr("fill", "hsl(var(--foreground))")
       .text(group);
   });
+
+  // Note: Position absolute bottom
+  if (config?.cutoff !== undefined) {
+    svg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 5) // Very close to bottom edge
+      .attr("text-anchor", "middle")
+      .attr("fill", "hsl(var(--muted-foreground))")
+      .attr("font-size", "9px")
+      .text(
+        `Predicted Probability is of Membership for ${groups[1] || "TRUE"}. Each bar segment represents case counts.`,
+      );
+  }
 
   return svg.node();
 };

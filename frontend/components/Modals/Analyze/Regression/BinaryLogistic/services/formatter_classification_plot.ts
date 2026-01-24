@@ -10,8 +10,7 @@
  * - Two groups are shown with different colors
  *
  * This replaces the old SPSS ASCII-art style classification plot with a modern chart.
- * 
- * For stepwise methods (Forward/Backward), classification plots are generated per step.
+ * * For stepwise methods (Forward/Backward), classification plots are generated per step.
  * The displayAtLastStep option controls whether to show all steps or only the last step.
  */
 
@@ -36,12 +35,12 @@ const NUM_BINS = 10;
  * Interface for chart data point (for stacked/grouped histogram)
  */
 interface ClassificationPlotChartData {
-  bin: string;            // Bin label (e.g., "0.0-0.1")
-  binCenter: number;      // Center of bin for positioning
-  group0Count: number;    // Count for observed group 0 (FALSE)
-  group1Count: number;    // Count for observed group 1 (TRUE)
-  group0Label: string;    // Label for group 0
-  group1Label: string;    // Label for group 1
+  bin: string; // Bin label (e.g., "0.0-0.1")
+  binCenter: number; // Center of bin for positioning
+  group0Count: number; // Count for observed group 0 (FALSE)
+  group1Count: number; // Count for observed group 1 (TRUE)
+  group0Label: string; // Label for group 0
+  group1Label: string; // Label for group 1
 }
 
 /**
@@ -61,7 +60,7 @@ const generateBinLabels = (): string[] => {
  * Bin data points into histogram buckets
  */
 const binDataPoints = (
-  plotData: ClassificationPlotData
+  plotData: ClassificationPlotData,
 ): ClassificationPlotChartData[] => {
   const binWidth = 1.0 / NUM_BINS;
   const bins: ClassificationPlotChartData[] = [];
@@ -117,24 +116,25 @@ const generateDescription = (plotData: ClassificationPlotData): string => {
   const overallCorrect = correctGroup0 + correctGroup1;
   const overallPct = ((overallCorrect / totalN) * 100).toFixed(1);
 
-  return `Classification plot showing the distribution of predicted probabilities for ${totalN} cases. ` +
+  return (
+    `Classification plot showing the distribution of predicted probabilities for ${totalN} cases. ` +
     `The vertical line at ${plotData.cutoff.toFixed(2)} represents the classification cutoff. ` +
     `Cases to the left are predicted as ${plotData.label_0}, cases to the right as ${plotData.label_1}. ` +
-    `Overall correct classification: ${overallPct}%.`;
+    `Overall correct classification: ${overallPct}%.`
+  );
 };
 
 /**
  * Format Classification Plot for visualization
  *
  * Returns chart data in format compatible with GeneralChartContainer
- * 
- * For Enter method: Uses result.classification_plot_data
+ * * For Enter method: Uses result.classification_plot_data
  * For Stepwise methods: Uses classification_plot_data from each step in steps_detail
  */
 export const formatClassificationPlot = (
   result: LogisticResult,
   dependentName: string,
-  options?: ClassificationPlotOptions
+  options?: ClassificationPlotOptions,
 ): { sections: AnalysisSection[]; chartData: any } => {
   const sections: AnalysisSection[] = [];
   const allCharts: any[] = [];
@@ -148,7 +148,7 @@ export const formatClassificationPlot = (
       acc[val as number] = key;
       return acc;
     },
-    {} as Record<number, string>
+    {} as Record<number, string>,
   );
 
   const method = result.method_used || "Enter";
@@ -165,7 +165,7 @@ export const formatClassificationPlot = (
       result.classification_plot_data,
       labelLookup,
       undefined, // No step number for Enter
-      method
+      method,
     );
     if (section) sections.push(section);
     if (chart) allCharts.push(chart);
@@ -180,7 +180,7 @@ export const formatClassificationPlot = (
       (step) =>
         step.classification_plot_data &&
         step.classification_plot_data.data_points &&
-        step.classification_plot_data.data_points.length > 0
+        step.classification_plot_data.data_points.length > 0,
     );
 
     // Apply displayAtLastStep filter
@@ -189,7 +189,7 @@ export const formatClassificationPlot = (
         // For Backward: show Step 1 and last step (SPSS behavior)
         const firstStep = stepsWithPlot.find((s) => s.step === 1);
         const lastStep = stepsWithPlot[stepsWithPlot.length - 1];
-        
+
         if (firstStep && lastStep && firstStep.step !== lastStep.step) {
           stepsWithPlot = [firstStep, lastStep];
         } else if (lastStep) {
@@ -208,7 +208,7 @@ export const formatClassificationPlot = (
           stepDetail.classification_plot_data,
           labelLookup,
           stepDetail.step,
-          method
+          method,
         );
         if (section) sections.push(section);
         if (chart) allCharts.push(chart);
@@ -236,7 +236,7 @@ const formatSingleClassificationPlot = (
   plotData: ClassificationPlotData,
   labelLookup: Record<number, string>,
   stepNumber?: number,
-  method?: string
+  method?: string,
 ): { section: AnalysisSection | null; chart: any | null } => {
   if (!plotData || !plotData.data_points || plotData.data_points.length === 0) {
     return { section: null, chart: null };
@@ -274,10 +274,12 @@ const formatSingleClassificationPlot = (
       useAxis: true,
       useLegend: true,
       axisLabels: {
-        x: "Predicted Probability",
+        // Added newline \n to create spacing between axis label and subtitle/text below
+        x: "Predicted Probability\n",
         y: "Frequency",
       },
-      chartColor: ["#4A90D9", "#E74C3C"], // Blue for group 0, Red for group 1
+      // Updated colors: Red (#E74C3C) for group 0 (False), Blue (#4A90D9) for group 1 (True)
+      chartColor: ["#E74C3C", "#4A90D9"],
       cutoff: plotData.cutoff, // Pass cutoff for vertical line rendering
       groups: [actualLabel0, actualLabel1],
     },
@@ -289,7 +291,8 @@ const formatSingleClassificationPlot = (
         y: "Frequency",
       },
       title: `Observed Groups and Predicted Probabilities${stepTitle}`,
-      subtitle: `Predicted Probability is of Membership for ${actualLabel1}`,
+      // Updated subtitle to include the full text and context
+      subtitle: `Predicted Probability is of Membership for ${actualLabel1}. Each bar segment represents case counts.`,
       description: generateDescription(enhancedPlotData),
       notes: `The Cut Value is ${plotData.cutoff.toFixed(2)}. Symbols: ${actualLabel0.charAt(0)} - ${actualLabel0}, ${actualLabel1.charAt(0)} - ${actualLabel1}`,
     },
@@ -333,7 +336,7 @@ export const hasClassificationPlot = (result: LogisticResult): boolean => {
         step.classification_plot_data !== undefined &&
         step.classification_plot_data !== null &&
         step.classification_plot_data.data_points &&
-        step.classification_plot_data.data_points.length > 0
+        step.classification_plot_data.data_points.length > 0,
     );
   }
 
