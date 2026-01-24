@@ -135,9 +135,6 @@ self.onmessage = async (event) => {
           assumptions: configObj.assumptions || {},
         };
 
-        // DEBUG: Log include_constant value
-        console.log("[BinaryLogistic Worker] include_constant:", rustConfig.include_constant);
-
         const resultJson = await calculate_binary_logistic(
           xFlat,
           rows,
