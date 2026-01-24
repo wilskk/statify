@@ -34,7 +34,6 @@ const ClassifyMenu: React.FC = () => {
                     K-Medoids Cluster
                 </MenubarItem>
                 <MenubarItem
-                    disabled={true}
                     // disabled={true}
                     onClick={() =>
                         openModal(ModalType.ModalHierarchicalCluster)

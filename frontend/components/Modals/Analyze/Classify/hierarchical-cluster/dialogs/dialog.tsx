@@ -289,7 +289,7 @@ export const HierClusDialog = ({
           className="min-h-[350px] rounded-lg border md:min-w-[200px]"
         >
           <ResizablePanel defaultSize={75}>
-            <div id="kmeans-available-variables" className="p-2 h-full">
+            <div id="hierclus-available-variables" className="p-2 h-full">
               <VariableListManager
                 availableVariables={availableVars}
                 targetLists={targetListsConfig}
@@ -307,7 +307,7 @@ export const HierClusDialog = ({
           <ResizablePanel defaultSize={25}>
             <div className="flex flex-col h-full w-full items-center justify-start gap-1 p-2">
               <Button
-                className="w-full"
+                className="w-full truncate"
                 type="button"
                 variant="outline"
                 onClick={openDialog(setIsStatisticsOpen)}
@@ -315,7 +315,7 @@ export const HierClusDialog = ({
                 Statistics
               </Button>
               <Button
-                className="w-full"
+                className="w-full truncate"
                 type="button"
                 variant="outline"
                 onClick={openDialog(setIsPlotsOpen)}
@@ -323,7 +323,7 @@ export const HierClusDialog = ({
                 Plots
               </Button>
               <Button
-                className="w-full"
+                className="w-full truncate"
                 type="button"
                 variant="outline"
                 onClick={openDialog(setIsMethodOpen)}
@@ -331,7 +331,7 @@ export const HierClusDialog = ({
                 Method
               </Button>
               <Button
-                className="w-full"
+                className="w-full truncate"
                 type="button"
                 variant="outline"
                 onClick={openDialog(setIsSaveOpen)}
