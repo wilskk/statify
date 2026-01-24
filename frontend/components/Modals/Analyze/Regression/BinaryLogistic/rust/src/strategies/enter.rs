@@ -10,6 +10,7 @@ use crate::models::result::{
 };
 // Tambahkan import hosmer_lemeshow, casewise, correlation_of_estimates, classification_plot, dan saved_predictions
 use crate::stats::{casewise, classification_plot, correlation_of_estimates, hosmer_lemeshow, irls, saved_predictions, score_test, table};
+use crate::stats::irls::FittingWarnings as IrlsFittingWarnings;
 
 pub fn run(
     x_raw: &DMatrix<f64>,
@@ -24,51 +25,110 @@ pub fn run(
     let mut steps_details: Vec<StepDetail> = Vec::new();
 
     // ==========================================
-    // BLOCK 0: NULL MODEL (Hanya Constant) - STEP 0
+    // BLOCK 0: NULL MODEL - STEP 0
     // ==========================================
-    let x_null = DMatrix::from_element(n_samples, 1, 1.0);
+    // PERBAIKAN: Penanganan berbeda untuk include_constant = true vs false
+    // - Jika include_constant = true: Null model = intercept-only model
+    // - Jika include_constant = false: Null model = "empty model" dengan prediksi P(Y=1) = 0.5
+    //   Ini sesuai dengan standar SPSS/SAS untuk model tanpa intercept
     
-    // Use fit_with_history if iteration_history is enabled
-    let (null_model, null_iteration_history) = if config.iteration_history {
-        let result = irls::fit_with_history(
-            &x_null,
-            y_vector,
-            config.max_iterations,
-            config.convergence_threshold,
-        )?;
-        (result.model, Some(result.iteration_history))
+    let (null_model, null_iteration_history, null_log_likelihood) = if config.include_constant {
+        // Standard case: fit intercept-only model
+        let x_null = DMatrix::from_element(n_samples, 1, 1.0);
+        
+        // Use fit_with_history if iteration_history is enabled
+        if config.iteration_history {
+            let result = irls::fit_with_history(
+                &x_null,
+                y_vector,
+                config.max_iterations,
+                config.convergence_threshold,
+            )?;
+            let ll = result.model.final_log_likelihood;
+            (result.model, Some(result.iteration_history), ll)
+        } else {
+            let result = irls::fit(
+                &x_null,
+                y_vector,
+                config.max_iterations,
+                config.convergence_threshold,
+            )?;
+            let ll = result.final_log_likelihood;
+            (result, None, ll)
+        }
     } else {
-        let result = irls::fit(
-            &x_null,
-            y_vector,
-            config.max_iterations,
-            config.convergence_threshold,
-        )?;
-        (result, None)
+        // No constant case: Calculate baseline LL analytically
+        // Null model log-likelihood = n * ln(0.5) + n * ln(0.5) = -n * ln(2)
+        // This represents predicting P(Y=1) = 0.5 for all cases
+        let n = n_samples as f64;
+        let null_ll = n * 0.5_f64.ln() + n * 0.5_f64.ln(); // = -n * ln(2)
+        
+        // Create "empty" model with predictions = 0.5 for all observations
+        let predictions = DVector::from_element(n_samples, 0.5);
+        let residuals = y_vector - &predictions;
+        let weights = DVector::from_element(n_samples, 0.25); // 0.5 * (1 - 0.5)
+        
+        let dummy_model = irls::FittedModel {
+            beta: DVector::zeros(0),
+            covariance_matrix: DMatrix::zeros(0, 0),
+            final_log_likelihood: null_ll,
+            iterations: 0,
+            converged: true,
+            residuals,
+            weights,
+            predictions,
+            warnings: IrlsFittingWarnings::default(),
+        };
+        
+        (dummy_model, None, null_ll)
     };
-
-    // PENTING: Gunakan RAW Log Likelihood (Negatif)
-    let null_log_likelihood = null_model.final_log_likelihood;
-    let null_log_likelihood = null_model.final_log_likelihood;
 
     // Calculate z-score from confidence level
     let z_score_block0 = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
     // --- 1. Constant Statistics (Null Model) ---
-    let se_const0 = null_model.covariance_matrix[(0, 0)].sqrt();
-    let wald_const0 = (null_model.beta[0] / se_const0).powi(2);
-    let sig_const0 = 1.0 - ChiSquared::new(1.0)?.cdf(wald_const0);
+    // PERBAIKAN: Hanya hitung constant statistics jika include_constant = true
+    let block_0_constant = if config.include_constant && null_model.beta.len() > 0 {
+        let se_const0 = if null_model.covariance_matrix.nrows() > 0 {
+            null_model.covariance_matrix[(0, 0)].sqrt()
+        } else {
+            0.0
+        };
+        let wald_const0 = if se_const0 > 1e-12 {
+            (null_model.beta[0] / se_const0).powi(2)
+        } else {
+            0.0
+        };
+        let sig_const0 = if wald_const0 > 0.0 {
+            1.0 - ChiSquared::new(1.0).unwrap_or_else(|_| ChiSquared::new(1.0).unwrap()).cdf(wald_const0)
+        } else {
+            1.0
+        };
 
-    let block_0_constant = VariableRow {
-        label: "Constant".to_string(),
-        b: null_model.beta[0],
-        error: se_const0,
-        wald: wald_const0,
-        df: 1,
-        sig: sig_const0,
-        exp_b: null_model.beta[0].exp(),
-        lower_ci: (null_model.beta[0] - z_score_block0 * se_const0).exp(),
-        upper_ci: (null_model.beta[0] + z_score_block0 * se_const0).exp(),
+        VariableRow {
+            label: "Constant".to_string(),
+            b: null_model.beta[0],
+            error: se_const0,
+            wald: wald_const0,
+            df: 1,
+            sig: sig_const0,
+            exp_b: null_model.beta[0].exp(),
+            lower_ci: (null_model.beta[0] - z_score_block0 * se_const0).exp(),
+            upper_ci: (null_model.beta[0] + z_score_block0 * se_const0).exp(),
+        }
+    } else {
+        // Placeholder untuk kasus tanpa constant - tidak akan ditampilkan di output
+        VariableRow {
+            label: "".to_string(),
+            b: 0.0,
+            error: 0.0,
+            wald: 0.0,
+            df: 0,
+            sig: 1.0,
+            exp_b: 1.0,
+            lower_ci: 1.0,
+            upper_ci: 1.0,
+        }
     };
 
     // --- 2. Classification Table (Null Model) ---
@@ -76,25 +136,25 @@ pub fn run(
         table::calculate_classification_table(&null_model.predictions, y_vector, config.cutoff);
 
     // --- 3. SCORE TEST (Variables Not in Equation - Block 0) ---
+    // PERBAIKAN: Gunakan fungsi score test yang menangani include_constant dengan benar
     let mut vars_not_in_eq_null = Vec::new();
-    let residuals_null = y_vector - &null_model.predictions;
-    let prob_null = null_model.predictions[0];
-    let variance_null = prob_null * (1.0 - prob_null);
+    let prob_null = if null_model.predictions.len() > 0 {
+        null_model.predictions[0]
+    } else {
+        0.5 // Default untuk model kosong
+    };
 
     for i in 0..n_features {
         let col = x_raw.column(i);
         let col_vec: DVector<f64> = col.into();
-        let center_col = &col_vec.add_scalar(-col_vec.mean());
-
-        let u: f64 = center_col.dot(&residuals_null);
-        let info: f64 = center_col.iter().map(|v| v * v * variance_null).sum();
-
-        let score_stat = if info > 1e-12 { (u * u) / info } else { 0.0 };
-        let sig_val = if score_stat > 0.0 {
-            1.0 - ChiSquared::new(1.0)?.cdf(score_stat)
-        } else {
-            1.0
-        };
+        
+        // Gunakan fungsi score test yang baru dengan parameter include_constant
+        let (score_stat, _, sig_val) = score_test::calculate_single_score_test(
+            &col_vec,
+            y_vector,
+            prob_null,
+            config.include_constant,
+        );
 
         let label = if i < feature_names.len() {
             feature_names[i].clone()
@@ -111,10 +171,17 @@ pub fn run(
     }
 
     // Global Score Test for Step 0
-    let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test(x_raw, y_vector, prob_null);
+    // PERBAIKAN: Gunakan versi yang menangani include_constant
+    let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test_with_constant(
+        x_raw, 
+        y_vector, 
+        prob_null,
+        config.include_constant,
+    );
 
     // Build iteration history block for Block 0 (null model)
-    let block_0_iter_history: Option<IterationHistoryBlock> = if config.iteration_history {
+    // PERBAIKAN: Hanya tampilkan iteration history jika include_constant = true
+    let block_0_iter_history: Option<IterationHistoryBlock> = if config.iteration_history && config.include_constant {
         null_iteration_history.as_ref().map(|history| {
             IterationHistoryBlock {
                 block: 0,
@@ -134,7 +201,16 @@ pub fn run(
         None
     };
 
+    // Variables in Equation untuk Block 0
+    // PERBAIKAN: Hanya sertakan constant jika include_constant = true
+    let block_0_vars_in_equation = if config.include_constant && block_0_constant.label == "Constant" {
+        vec![block_0_constant.clone()]
+    } else {
+        Vec::new()
+    };
+
     // Simpan Snapshot Step 0
+    // PERBAIKAN: Gunakan block_0_vars_in_equation yang sudah difilter
     steps_details.push(StepDetail {
         step: 0,
         action: "Start".to_string(),
@@ -147,7 +223,7 @@ pub fn run(
             iterations: null_model.iterations,
         },
         classification_table: class_table_null,
-        variables_in_equation: vec![block_0_constant.clone()],
+        variables_in_equation: block_0_vars_in_equation, // PERBAIKAN: Gunakan filtered list
         variables_not_in_equation: vars_not_in_eq_null.clone(),
         remainder_test: Some(RemainderTest {
             chi_square: g_chi,
@@ -159,7 +235,7 @@ pub fn run(
         model_if_term_removed: None,
         hosmer_lemeshow: None, // Step 0 usually doesn't have meaningful HL test
         correlation_of_estimates: None, // Step 0 (null model) tidak punya correlation matrix relevan
-        iteration_history: block_0_iter_history, // BARU: Iteration History untuk Block 0
+        iteration_history: block_0_iter_history, // Iteration History untuk Block 0
         classification_plot_data: None, // Step 0 tidak punya classification plot
     });
 
@@ -194,6 +270,9 @@ pub fn run(
     let full_log_likelihood = full_model.final_log_likelihood;
 
     // --- Hitung Pseudo R-Squares ---
+    // PERBAIKAN: Gunakan baseline yang tepat untuk perhitungan R-squares
+    // Ketika include_constant = false, kita tetap menggunakan null_log_likelihood 
+    // yang sudah dihitung dengan benar di atas (either from null model or -n*ln(2))
     let n = n_samples as f64;
     let likelihood_diff = null_log_likelihood - full_log_likelihood;
     let cox_snell = 1.0 - (likelihood_diff * (2.0 / n)).exp();
@@ -263,8 +342,21 @@ pub fn run(
     }
 
     // --- Hitung Omnibus Tests ---
+    // PERBAIKAN: Perhitungan df yang benar untuk kedua kasus:
+    // - Jika include_constant = true: df = k (jumlah kovariat, karena null model punya 1 parameter)
+    // - Jika include_constant = false: df = k (jumlah kovariat, karena null model tidak punya parameter)
+    // 
+    // Chi-square = 2 * (LL_full - LL_null)
+    // Note: LL sudah negatif, jadi full_log_likelihood - null_log_likelihood akan positif
+    // jika model full lebih baik dari null model
     let chi_sq_model = 2.0 * (full_log_likelihood - null_log_likelihood);
-    let df_model = (x_full.ncols() as i32) - (x_null.ncols() as i32);
+    
+    // df_model = jumlah parameter di full model - jumlah parameter di null model
+    // Full model: include_constant ? (k + 1) : k, dimana k = jumlah kovariat
+    // Null model: include_constant ? 1 : 0
+    // Jadi: df = k dalam kedua kasus
+    let df_model = n_features as i32;
+    
     let chi_sq_model = if chi_sq_model < 0.0 {
         0.0
     } else {
@@ -357,6 +449,10 @@ pub fn run(
         }
         var_names.extend(feature_names.iter().cloned());
 
+        // PERBAIKAN: Initial -2LL untuk Block 1 adalah -2LL dari null model (Block 0)
+        // Ini adalah starting point sebelum kovariat ditambahkan
+        let block_1_initial_neg2ll = -2.0 * null_log_likelihood;
+
         full_iteration_history.as_ref().map(|history| {
             IterationHistoryBlock {
                 block: 1,
@@ -367,7 +463,7 @@ pub fn run(
                     neg2_log_likelihood: rec.neg2_log_likelihood,
                     coefficients: rec.coefficients.clone(),
                 }).collect(),
-                initial_neg2ll: Some(-2.0 * full_log_likelihood),
+                initial_neg2ll: Some(block_1_initial_neg2ll),
                 converged: full_model.converged,
                 final_iteration: full_model.iterations,
             }
@@ -430,8 +526,19 @@ pub fn run(
         }
     };
 
+    // PERBAIKAN: Buat ModelInfo dengan include_constant yang benar
+    let model_info = ModelInfo {
+        variables: feature_names.to_vec(),
+        n_total: n_samples,
+        n_missing: 0, // Will be overwritten by worker.js
+        n_selected: n_samples,
+        y_encoding: std::collections::HashMap::new(), // Will be overwritten by worker.js
+        x_encodings: None, // Will be overwritten by worker.js
+        include_constant: config.include_constant,
+    };
+
     Ok(LogisticResult {
-        model_info: ModelInfo::default(),
+        model_info,
         summary: model_summary,
         classification_table,
         variables: variables_rows,
@@ -447,10 +554,10 @@ pub fn run(
         categorical_codings: codings,
         hosmer_lemeshow: hl_result,
         casewise_list: casewise_result,
-        classification_plot_data: classification_plot_result, // BARU: Classification Plot Data
-        correlation_of_estimates: corr_estimates_result, // BARU: Correlation of Estimates
+        classification_plot_data: classification_plot_result, // Classification Plot Data
+        correlation_of_estimates: corr_estimates_result, // Correlation of Estimates
         step_summary: None, // Enter tidak memerlukan step summary
-        saved_predictions: saved_predictions_result, // BARU: Saved Predictions
-        fitting_warnings: fitting_warnings_result, // BARU: Fitting Warnings dari IRLS
+        saved_predictions: saved_predictions_result, // Saved Predictions
+        fitting_warnings: fitting_warnings_result, // Fitting Warnings dari IRLS
     })
 }

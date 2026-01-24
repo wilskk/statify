@@ -38,6 +38,9 @@ import { AssumptionChecksTab } from "./AssumptionChecksTab";
 import { formatBinaryLogisticResult } from "../services/formatter";
 import { formatAssumptionTests } from "../services/formatter_assumptions";
 
+// Syntax Generator
+import { generateLogisticRegressionSyntax } from "../services/syntaxGenerator";
+
 // Types
 import { Variable } from "@/types/Variable";
 import type { CellUpdate } from "@/stores/useDataStore";
@@ -288,6 +291,8 @@ export const BinaryLogisticMain = () => {
    * Variable names are incremental: PRE_1, PRE_2, PRE_3, etc.
    * If PRE_1 exists, next one will be PRE_2, and so on.
    * 
+   * REFACTORED: Uses batch addVariables for reliability
+   * 
    * @param savedPredictions - The predictions data from Rust
    * @param yEncoding - Mapping of original label to 0/1 (e.g., {"Male": 0, "Female": 1})
    */
@@ -300,13 +305,12 @@ export const BinaryLogisticMain = () => {
       return;
     }
 
-    const { addVariable } = useVariableStore.getState();
+    const { addVariables } = useVariableStore.getState();
     const storeVariables = useVariableStore.getState().variables;
     const variableNames = savedPredictions.variable_names;
     const rows = savedPredictions.rows;
     
-    // Create a mutable copy of variable names for tracking newly added variables
-    // This is needed because Zustand state is immutable
+    // Track existing variable names for uniqueness
     const existingVarNames = new Set(storeVariables.map(v => v.name.toUpperCase()));
     
     // Build reverse mapping: 0/1 -> original label (e.g., {0: "Male", 1: "Female"})
@@ -317,29 +321,36 @@ export const BinaryLogisticMain = () => {
       });
     }
 
-    // Get current number of variables to determine column indices
+    // Starting column index for new variables
     let nextColumnIndex = storeVariables.length;
+
+    // Collect all variables and updates to add in batch
+    const variablesToAdd: Partial<Variable>[] = [];
+    const allCellUpdates: CellUpdate[] = [];
 
     /**
      * Helper: Generate unique incremental variable name
      * Given a prefix like "RES", finds the next available number
-     * e.g., if RES_1 and RES_2 exist, returns "RES_3"
      */
     const getIncrementalVarName = (prefix: string): string => {
       let counter = 1;
       while (existingVarNames.has(`${prefix}_${counter}`.toUpperCase())) {
         counter++;
       }
-      return `${prefix}_${counter}`;
+      const name = `${prefix}_${counter}`;
+      // Mark as used for subsequent calls
+      existingVarNames.add(name.toUpperCase());
+      return name;
     };
 
-    // Helper to add a new variable and its data
-    // Uses incremental naming: if prefix is provided, generates unique name
-    const addSavedVariable = async (
+    /**
+     * Helper: Queue a numeric variable for batch addition
+     */
+    const queueNumericVariable = (
       varNameFromRust: string | undefined,
       label: string,
       getValue: (row: (typeof rows)[0]) => number | undefined
-    ) => {
+    ): void => {
       if (!varNameFromRust) return;
 
       const values = rows.map((row) => getValue(row));
@@ -348,7 +359,6 @@ export const BinaryLogisticMain = () => {
 
       // Extract prefix from Rust variable name (e.g., "RES_1" -> "RES")
       const prefix = varNameFromRust.replace(/_\d+$/, '');
-      // Generate unique incremental name
       const varName = getIncrementalVarName(prefix);
 
       const newVariable: Partial<Variable> = {
@@ -363,20 +373,15 @@ export const BinaryLogisticMain = () => {
         columns: 200,
         align: "right",
         measure: "scale",
-        role: "none", // Computed variables should not be used as input
+        role: "none",
       };
 
-      // Add the variable
-      await addVariable(newVariable);
-      
-      // Track new variable name for subsequent incremental naming
-      existingVarNames.add(varName.toUpperCase());
+      variablesToAdd.push(newVariable);
 
-      // Prepare cell updates
-      const bulkUpdates: CellUpdate[] = [];
+      // Prepare cell updates for this variable
       values.forEach((value, rowIndex) => {
         if (value !== undefined && !isNaN(value)) {
-          bulkUpdates.push({
+          allCellUpdates.push({
             row: rowIndex,
             col: nextColumnIndex,
             value: value,
@@ -384,19 +389,13 @@ export const BinaryLogisticMain = () => {
         }
       });
 
-      // Save the values
-      if (bulkUpdates.length > 0) {
-        await useDataStore.getState().updateCells(bulkUpdates);
-      }
-
       nextColumnIndex++;
-      
-      // Return the actual name used (for logging)
-      return varName;
     };
 
-    // Helper khusus untuk predicted group dengan label asli
-    const addPredictedGroupVariable = async () => {
+    /**
+     * Helper: Queue predicted group variable (may be string type)
+     */
+    const queuePredictedGroupVariable = (): void => {
       const varNameFromRust = variableNames?.predicted_group;
       if (!varNameFromRust) return;
 
@@ -409,13 +408,9 @@ export const BinaryLogisticMain = () => {
         return row.predicted_group;
       });
 
-      // Skip if all values are undefined
       if (values.every((v) => v === undefined)) return;
 
-      // Generate unique incremental name for PGR
       const varName = getIncrementalVarName("PGR");
-
-      // Determine if values are strings (original labels) or numbers
       const hasStringLabels = Object.keys(reverseYEncoding).length > 0;
 
       const newVariable: Partial<Variable> = {
@@ -423,7 +418,7 @@ export const BinaryLogisticMain = () => {
         name: varName,
         type: hasStringLabels ? "STRING" : "NUMERIC",
         width: hasStringLabels ? 50 : 8,
-        decimals: hasStringLabels ? 0 : 0,
+        decimals: 0,
         label: "Predicted group membership",
         values: [],
         missing: null,
@@ -433,17 +428,11 @@ export const BinaryLogisticMain = () => {
         role: "none",
       };
 
-      // Add the variable
-      await addVariable(newVariable);
-      
-      // Track new variable name for subsequent incremental naming
-      existingVarNames.add(varName.toUpperCase());
+      variablesToAdd.push(newVariable);
 
-      // Prepare cell updates
-      const bulkUpdates: CellUpdate[] = [];
       values.forEach((value, rowIndex) => {
         if (value !== undefined) {
-          bulkUpdates.push({
+          allCellUpdates.push({
             row: rowIndex,
             col: nextColumnIndex,
             value: value,
@@ -451,78 +440,17 @@ export const BinaryLogisticMain = () => {
         }
       });
 
-      // Save the values
-      if (bulkUpdates.length > 0) {
-        await useDataStore.getState().updateCells(bulkUpdates);
-      }
-
       nextColumnIndex++;
     };
 
-    // --- Process Predicted Values ---
-    await addSavedVariable(
-      variableNames?.predicted_probability,
-      "Predicted probability",
-      (row) => row.predicted_probability
-    );
+    /**
+     * Helper: Queue DfBeta variables (multiple variables, one per coefficient)
+     */
+    const queueDfBetaVariables = (): void => {
+      if (!variableNames?.influence_dfbeta?.length) return;
 
-    // Predicted Group dengan label asli
-    await addPredictedGroupVariable();
-
-    // --- Process Residuals ---
-    await addSavedVariable(
-      variableNames?.resid_unstandardized,
-      "Unstandardized residual",
-      (row) => row.resid_unstandardized
-    );
-
-    await addSavedVariable(
-      variableNames?.resid_logit,
-      "Logit residual",
-      (row) => row.resid_logit
-    );
-
-    await addSavedVariable(
-      variableNames?.resid_studentized,
-      "Studentized residual",
-      (row) => row.resid_studentized
-    );
-
-    await addSavedVariable(
-      variableNames?.resid_standardized,
-      "Standardized residual",
-      (row) => row.resid_standardized
-    );
-
-    await addSavedVariable(
-      variableNames?.resid_deviance,
-      "Deviance residual",
-      (row) => row.resid_deviance
-    );
-
-    // --- Process Influence Statistics ---
-    await addSavedVariable(
-      variableNames?.influence_cooks,
-      "Cook's distance",
-      (row) => row.influence_cooks
-    );
-
-    await addSavedVariable(
-      variableNames?.influence_leverage,
-      "Leverage value",
-      (row) => row.influence_leverage
-    );
-
-    // --- Process DfBeta (one variable per coefficient) ---
-    // DfBeta uses special naming: DFB0_1, DFB1_1, etc. for each coefficient
-    // We need to find the next available suffix for all DfBeta variables
-    if (variableNames?.influence_dfbeta?.length) {
       // Find the next available DfBeta suffix
-      // DfBeta variables are named DFB{coefIndex}_{runNumber}
-      // e.g., DFB0_1, DFB1_1 (first run), DFB0_2, DFB1_2 (second run)
       let dfbetaSuffix = 1;
-      
-      // Find a suffix where none of the DfBeta names exist
       while (true) {
         const anyExists = variableNames.influence_dfbeta.some((_, idx) => 
           existingVarNames.has(`DFB${idx}_${dfbetaSuffix}`.toUpperCase())
@@ -530,13 +458,15 @@ export const BinaryLogisticMain = () => {
         if (!anyExists) break;
         dfbetaSuffix++;
       }
-      
+
       for (let i = 0; i < variableNames.influence_dfbeta.length; i++) {
         const varName = `DFB${i}_${dfbetaSuffix}`;
         const label = i === 0 ? "DfBeta for constant" : `DfBeta for B${i}`;
         
         const values = rows.map((row) => row.influence_dfbeta?.[i]);
         if (values.every((v) => v === undefined)) continue;
+
+        existingVarNames.add(varName.toUpperCase());
 
         const newVariable: Partial<Variable> = {
           columnIndex: nextColumnIndex,
@@ -553,13 +483,11 @@ export const BinaryLogisticMain = () => {
           role: "none",
         };
 
-        await addVariable(newVariable);
-        existingVarNames.add(varName.toUpperCase());
+        variablesToAdd.push(newVariable);
 
-        const bulkUpdates: CellUpdate[] = [];
         values.forEach((value, rowIndex) => {
           if (value !== undefined && !isNaN(value)) {
-            bulkUpdates.push({
+            allCellUpdates.push({
               row: rowIndex,
               col: nextColumnIndex,
               value: value,
@@ -567,18 +495,84 @@ export const BinaryLogisticMain = () => {
           }
         });
 
-        if (bulkUpdates.length > 0) {
-          await useDataStore.getState().updateCells(bulkUpdates);
-        }
-
         nextColumnIndex++;
       }
+    };
+
+    // --- Queue all variables in order ---
+    
+    // Predicted Values
+    queueNumericVariable(
+      variableNames?.predicted_probability,
+      "Predicted probability",
+      (row) => row.predicted_probability
+    );
+    queuePredictedGroupVariable();
+
+    // Residuals
+    queueNumericVariable(
+      variableNames?.resid_unstandardized,
+      "Unstandardized residual",
+      (row) => row.resid_unstandardized
+    );
+    queueNumericVariable(
+      variableNames?.resid_logit,
+      "Logit residual",
+      (row) => row.resid_logit
+    );
+    queueNumericVariable(
+      variableNames?.resid_studentized,
+      "Studentized residual",
+      (row) => row.resid_studentized
+    );
+    queueNumericVariable(
+      variableNames?.resid_standardized,
+      "Standardized residual",
+      (row) => row.resid_standardized
+    );
+    queueNumericVariable(
+      variableNames?.resid_deviance,
+      "Deviance residual",
+      (row) => row.resid_deviance
+    );
+
+    // Influence Statistics
+    queueNumericVariable(
+      variableNames?.influence_cooks,
+      "Cook's distance",
+      (row) => row.influence_cooks
+    );
+    queueNumericVariable(
+      variableNames?.influence_leverage,
+      "Leverage value",
+      (row) => row.influence_leverage
+    );
+    queueDfBetaVariables();
+
+    // --- Execute batch addition ---
+    if (variablesToAdd.length > 0) {
+      console.log(`[Main] Adding ${variablesToAdd.length} saved prediction variables...`);
+      try {
+        // Step 1: Add variables WITHOUT updates (empty columns)
+        // This avoids index conflicts during splice operations
+        await addVariables(variablesToAdd, []);
+        
+        // Step 2: After variables are added, apply cell updates separately
+        // The column indices should now be valid in the new structure
+        if (allCellUpdates.length > 0) {
+          console.log(`[Main] Applying ${allCellUpdates.length} cell updates...`);
+          await useDataStore.getState().updateCells(allCellUpdates);
+          await useDataStore.getState().saveData();
+        }
+        
+        console.log("[Main] Saved predictions added to dataset successfully");
+      } catch (error) {
+        console.error("[Main] Error adding saved predictions:", error);
+        throw error;
+      }
+    } else {
+      console.log("[Main] No saved predictions to add");
     }
-
-    // Save all data changes to database
-    await useDataStore.getState().saveData();
-
-    console.log("[Main] Saved predictions added to dataset successfully");
   };
 
   // --- ASSUMPTION HANDLERS (UPDATED TO USE FORMATTER) ---
@@ -723,6 +717,7 @@ export const BinaryLogisticMain = () => {
                 ciForExpB: optParams.ciForExpB,
                 ciLevel: optParams.ciLevel,
                 cutoff: optParams.classificationCutoff,
+                casewiseOutliers: optParams.casewiseOutliers,
               }
             );
 
@@ -735,12 +730,19 @@ export const BinaryLogisticMain = () => {
               console.warn("[Main] Warning: Formatter returned 0 sections!");
             }
 
-            // B. Simpan Log
-            const varNames = options.covariates.map((c) => c.name).join(" ");
+            // B. Simpan Log dengan syntax lengkap SPSS-like
+            const syntaxLog = generateLogisticRegressionSyntax({
+              dependent: options.dependent!,
+              covariates: options.covariates,
+              factors: options.factors,
+              method: options.method,
+              categoricalParams: catParams,
+              saveParams: saveParams,
+              optionParams: optParams,
+            });
+            
             const logId = await addLog({
-              log: `LOGISTIC REGRESSION VARIABLES ${
-                options.dependent!.name
-              } /METHOD=${options.method.toUpperCase()} ${varNames}`,
+              log: syntaxLog,
             });
 
             // C. Simpan Analytic Entry (Parent)
@@ -859,22 +861,92 @@ export const BinaryLogisticMain = () => {
       };
 
       // --- PERSIAPAN DATA INDEX & CONFIG ---
-      const depIndex = variables.findIndex(
-        (v) => v.id === options.dependent!.id
-      );
-
+      // Refresh variables from store to ensure we have the latest state
+      const currentVariables = useVariableStore.getState().variables;
+      
+      /**
+       * Helper: Find actual variable in store with fallback strategies
+       * Returns the ACTUAL variable from currentVariables (with correct ID)
+       * 
+       * 1. Try to find by ID (exact match)
+       * 2. Fallback to columnIndex if ID not found
+       * 3. Fallback to name if columnIndex not found
+       * 
+       * This handles cases where dataset was reloaded and IDs changed
+       */
+      const findActualVariable = (targetVar: Variable): Variable | null => {
+        // Strategy 1: Find by ID
+        let found = currentVariables.find((v) => v.id === targetVar.id);
+        if (found) return found;
+        
+        // Strategy 2: Find by columnIndex (more reliable after reload)
+        if (targetVar.columnIndex !== undefined) {
+          found = currentVariables.find((v) => v.columnIndex === targetVar.columnIndex);
+          if (found) {
+            console.log(`[Main] Variable "${targetVar.name}" found by columnIndex (${targetVar.columnIndex}), new ID: ${found.id}`);
+            return found;
+          }
+        }
+        
+        // Strategy 3: Find by name (last resort)
+        found = currentVariables.find((v) => v.name === targetVar.name);
+        if (found) {
+          console.log(`[Main] Variable "${targetVar.name}" found by name, new ID: ${found.id}`);
+          return found;
+        }
+        
+        return null;
+      };
+      
+      // Find actual variables in store (with correct IDs)
+      const actualDependent = findActualVariable(options.dependent!);
+      const actualCovariates = options.covariates
+        .map(c => findActualVariable(c))
+        .filter((v): v is Variable => v !== null);
+      const actualFactors = options.factors
+        .map(f => findActualVariable(f))
+        .filter((v): v is Variable => v !== null);
+      
+      // Get indices in currentVariables array
+      const depIndex = actualDependent 
+        ? currentVariables.findIndex(v => v.id === actualDependent.id) 
+        : -1;
       const indepIndices = [
-        ...options.covariates.map((c) =>
-          variables.findIndex((v) => v.id === c.id)
-        ),
-        ...options.factors.map((f) =>
-          variables.findIndex((v) => v.id === f.id)
-        ),
+        ...actualCovariates.map(c => currentVariables.findIndex(v => v.id === c.id)),
+        ...actualFactors.map(f => currentVariables.findIndex(v => v.id === f.id)),
       ].filter((idx) => idx !== -1);
+      
+      // Debug logging
+      console.log("[Main] Variables in store:", currentVariables.length);
+      console.log("[Main] Dependent variable:", options.dependent?.name, "oldID:", options.dependent?.id, "newID:", actualDependent?.id);
+      console.log("[Main] Dependent index found:", depIndex);
+      console.log("[Main] Actual covariates:", actualCovariates.map(c => ({ name: c.name, id: c.id })));
+      console.log("[Main] Independent indices:", indepIndices);
 
-      if (depIndex === -1 || indepIndices.length === 0) {
-        throw new Error("Gagal menemukan index variabel di dataset.");
+      if (!actualDependent || depIndex === -1) {
+        const storeIds = currentVariables.map(v => v.id);
+        console.error("[Main] Variable IDs in store:", storeIds);
+        console.error("[Main] Looking for dependent ID:", options.dependent?.id);
+        throw new Error(
+          `Variabel dependen "${options.dependent?.name}" tidak ditemukan di dataset. ` +
+          `Silakan pilih ulang variabel dari daftar yang tersedia.`
+        );
       }
+      
+      if (indepIndices.length === 0) {
+        throw new Error(
+          `Tidak ada variabel independen yang ditemukan di dataset. ` +
+          `Covariates yang dipilih: ${options.covariates.map(c => c.name).join(", ")}`
+        );
+      }
+      
+      // Build variableDetails with CURRENT IDs from store
+      const currentVariableDetails: Record<number, Variable> = {};
+      currentVariables.forEach(v => {
+        if (v.id !== undefined) {
+          currentVariableDetails[v.id] = v;
+        }
+      });
 
       const methodMapping: Record<string, string> = {
         Enter: "Enter",
@@ -888,7 +960,8 @@ export const BinaryLogisticMain = () => {
 
       // --- PERUBAHAN: Mapping Konfigurasi Kategorik ---
       // Mengubah state UI (catParams) menjadi format config untuk Rust
-      const categoricalConfig = options.covariates
+      // Use ACTUAL variables with correct IDs
+      const categoricalConfig = actualCovariates
         .filter((v) => catParams.covariates.includes(v.name))
         .map((v) => ({
           id: v.id,
@@ -897,7 +970,7 @@ export const BinaryLogisticMain = () => {
         }));
 
       // Tambahkan factors otomatis
-      options.factors.forEach((f) => {
+      actualFactors.forEach((f) => {
         if (!categoricalConfig.find((c) => c.id === f.id)) {
           categoricalConfig.push({
             id: f.id,
@@ -962,15 +1035,16 @@ export const BinaryLogisticMain = () => {
 
       console.log("Config Cleaned for Rust:", JSON.stringify(analysisConfig));
 
+      // Use ACTUAL IDs from currentVariables (not the potentially stale IDs from options)
       worker.postMessage({
         action: "run_binary_logistic",
-        dependentId: options.dependent.id,
+        dependentId: actualDependent.id,
         independentIds: [
-          ...options.covariates.map((v) => v.id),
-          ...options.factors.map((v) => v.id),
+          ...actualCovariates.map((v) => v.id),
+          ...actualFactors.map((v) => v.id),
         ],
         data: data,
-        variableDetails: variableDetails,
+        variableDetails: currentVariableDetails, // Use refreshed variableDetails
         config: JSON.stringify(analysisConfig),
       });
     } catch (err: any) {

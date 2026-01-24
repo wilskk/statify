@@ -57,35 +57,60 @@ export const formatBlock0 = (
   const label1 = getLabel(1);
 
   // ======================================================================
-  // 2. DATA PREPARATION (Classification Table - RECALCULATE FOR NULL MODEL)
+  // 2. DATA PREPARATION (Classification Table - USE DATA FROM RUST)
   // ======================================================================
-  // Kita hitung manual prediksi Null Model (Block 0) agar konsisten untuk semua metode.
-  // Null Model selalu memprediksi kategori mayoritas.
+  // PERBAIKAN: Gunakan classification table dari steps_detail[0] (Block 0)
+  // yang sudah dihitung dengan benar oleh Rust, bukan menghitung ulang di sini.
+  // Ini penting untuk kasus include_constant = false dimana null model
+  // memprediksi P = 0.5 untuk semua kasus (bukan prediksi mayoritas).
 
-  // Ambil total N dari data result yang tersedia
-  const ctRef = result.classification_table;
+  // Cek apakah include_constant dari model_info
+  const includeConstant = modelInfo.include_constant !== false;
+
+  // Ambil classification table dari Block 0 (Step 0) jika tersedia
+  const block0Step = result.steps_detail?.find(s => s.step === 0);
+  const block0ClassTable = block0Step?.classification_table;
+
+  // Fallback: jika tidak ada steps_detail, gunakan result.classification_table
+  const ctRef = block0ClassTable || result.classification_table;
+
+  // Hitung total observed dari data yang tersedia
   const totalObs0 =
     (ctRef?.observed_0_predicted_0 || 0) + (ctRef?.observed_0_predicted_1 || 0);
   const totalObs1 =
     (ctRef?.observed_1_predicted_0 || 0) + (ctRef?.observed_1_predicted_1 || 0);
   const totalN = totalObs0 + totalObs1;
 
-  // Tentukan Prediksi Mayoritas
-  const predict1 = totalObs1 > totalObs0;
-
   let obs0_pred0 = 0,
     obs0_pred1 = 0,
     obs1_pred0 = 0,
     obs1_pred1 = 0;
 
-  if (predict1) {
-    // Jika Mayoritas 1, semua diprediksi 1
-    obs0_pred1 = totalObs0; // 0 salah diprediksi 1
-    obs1_pred1 = totalObs1; // 1 benar diprediksi 1
+  // Jika ada classification table dari Rust (Block 0), gunakan langsung
+  if (block0ClassTable) {
+    obs0_pred0 = block0ClassTable.observed_0_predicted_0;
+    obs0_pred1 = block0ClassTable.observed_0_predicted_1;
+    obs1_pred0 = block0ClassTable.observed_1_predicted_0;
+    obs1_pred1 = block0ClassTable.observed_1_predicted_1;
   } else {
-    // Jika Mayoritas 0 (atau seimbang), semua diprediksi 0
-    obs0_pred0 = totalObs0; // 0 benar diprediksi 0
-    obs1_pred0 = totalObs1; // 1 salah diprediksi 0
+    // Fallback: hitung berdasarkan logika (untuk backward compatibility)
+    // Untuk kasus include_constant = false, null model memprediksi P = 0.5
+    // Dengan cutoff 0.5, semua diprediksi sebagai 1 (TRUE) karena 0.5 >= 0.5
+    if (!includeConstant) {
+      // Null model tanpa constant: P = 0.5, semua diprediksi 1
+      obs0_pred1 = totalObs0; // 0 salah diprediksi 1
+      obs1_pred1 = totalObs1; // 1 benar diprediksi 1
+    } else {
+      // Null model dengan constant: prediksi mayoritas
+      const predict1 = totalObs1 > totalObs0;
+      if (predict1) {
+        obs0_pred1 = totalObs0;
+        obs1_pred1 = totalObs1;
+      } else {
+        obs0_pred0 = totalObs0;
+        obs1_pred0 = totalObs1;
+      }
+    }
   }
 
   const b0_pct_0 = totalObs0 > 0 ? (obs0_pred0 / totalObs0) * 100 : 0;
@@ -144,9 +169,6 @@ export const formatBlock0 = (
 
   // Gunakan generator deskripsi dinamis
   const classDesc = generateClassificationDescription(b0_overall);
-
-  // Cek apakah include_constant dari model_info
-  const includeConstant = modelInfo.include_constant !== false;
 
   const block0ConstVar = (result as any).block_0_constant as any;
   const hasConstantInBlock0 =
