@@ -369,8 +369,11 @@ pub fn fit(
         // 8. Cek Separation
         detect_separation(&beta, &predictions, &mut warnings);
 
-        // 9. Cek Konvergensi
-        if (ll_new - log_likelihood_prev).abs() < tol && iter > 0 {
+        // 9. Cek Konvergensi (SPSS style: -2LL ATAU parameter change)
+        // Konvergensi jika SALAH SATU kriteria terpenuhi
+        let param_change = delta.iter().map(|d| d.abs()).fold(0.0_f64, f64::max);
+        let ll_change = (ll_new - log_likelihood_prev).abs();
+        if (param_change < tol || ll_change < 0.0005) && iter > 0 {
             converged = true;
             log_likelihood_prev = ll_new;
             break;
@@ -461,8 +464,6 @@ pub fn fit_with_history(
     // Vector untuk menyimpan iteration history
     let mut iteration_history: Vec<IterationRecord> = Vec::new();
 
-    // SPSS-style: Tidak mencatat initial state (iteration 0)
-    // SPSS memulai iteration history dari iterasi 1 (setelah update pertama)
     // Initial log-likelihood dihitung untuk keperluan internal saja
     let initial_mu = compute_predictions(x, &beta);
     let _initial_ll = calculate_log_likelihood_safe(y, &initial_mu);
@@ -527,16 +528,17 @@ pub fn fit_with_history(
         });
 
         // 9. Cek Konvergensi SETELAH mencatat iterasi
-        // SPSS berhenti ketika:
-        // - Parameter change < threshold (default 0.001), ATAU
-        // - -2LL change < threshold (indikasi model sudah stabil)
+        // SPSS berhenti ketika SALAH SATU kriteria terpenuhi:
+        // - Parameter change < threshold (default 0.001) untuk SEMUA parameter
+        // - -2LL change < threshold (model sudah stabil)
+        // PENTING: Gunakan strictly less than dengan threshold sedikit lebih ketat untuk -2LL
         let (neg2ll_converged, param_converged) = if iteration_history.len() > 1 {
             let prev_record = &iteration_history[iteration_history.len() - 2];
             
-            // Cek -2LL change (tambahan untuk match SPSS behavior)
-            // Jika -2LL sudah stabil dalam presisi 3 desimal, anggap konvergen
+            // Cek -2LL change - gunakan threshold lebih ketat (< 0.0005)
+            // untuk menghindari false positive ketika change = 0.001
             let neg2ll_change = (neg2ll_new - prev_record.neg2_log_likelihood).abs();
-            let neg2ll_conv = neg2ll_change < 0.001;
+            let neg2ll_conv = neg2ll_change < 0.0005;
             
             // Cek parameter change (max absolute change across all coefficients)
             let param_change = beta.iter()
@@ -550,14 +552,15 @@ pub fn fit_with_history(
             (false, false)
         };
 
-        // Konvergensi jika -2LL ATAU parameter sudah tidak berubah signifikan
+        // Konvergensi jika SALAH SATU kriteria terpenuhi (-2LL ATAU parameter change)
         // iter > 0 untuk memastikan minimal 2 iterasi tercatat
         if (neg2ll_converged || param_converged) && iter > 0 {
             converged = true;
             log_likelihood_prev = ll_new;
-            // Iterasi sudah dicatat di atas, sekarang break
             break;
         }
+
+        log_likelihood_prev = ll_new;
 
         // 10. Update residuals dan weights setelah step
         residuals = y - &predictions;

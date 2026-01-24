@@ -44,13 +44,8 @@ export const formatSummaryTables = (
   // ----------------------------------------------------------------------
   const caseProcessingData = {
     columnHeaders: [
-      {
-        header: "Unweighted Cases",
-        children: [
-          { header: "", key: "rh1" },
-          { header: "", key: "rh2" },
-        ],
-      },
+      { header: "Unweighted Cases", key: "rh1", colSpan: 2, rowSpan: 2 },
+      { header: "", key: "rh2", isPlaceholder: true },
       { header: "N", key: "n", align: "right" as const },
       { header: "Percent", key: "percent", align: "right" as const },
     ],
@@ -233,11 +228,8 @@ export const formatSummaryTables = (
           }
 
           const row: any = {
-            // Tampilkan nama variabel hanya di baris pertama kategori
-            rowHeader: [
-              idx === 0 ? coding.variable_label : "",
-              categoryDisplay,
-            ],
+            // Tampilkan nama variabel di setiap baris - renderer akan otomatis merge dengan rowSpan
+            rowHeader: [coding.variable_label, categoryDisplay],
             freq: cat.frequency.toString(),
           };
 

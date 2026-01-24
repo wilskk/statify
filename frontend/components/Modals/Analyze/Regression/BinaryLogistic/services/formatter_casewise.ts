@@ -15,10 +15,15 @@ import { createSection, safeFixed } from "./formatter_utils";
  * - Predicted Probability
  * - Predicted Group
  * - Temporary Variables: Resid, ZResid, SResid
+ * 
+ * SPSS Note:
+ * - a: S = Selected, U = Unselected cases, and ** = Misclassified cases.
+ * - b: Cases with studentized residuals greater than [threshold] are listed.
  */
 export const formatCasewiseListing = (
   result: LogisticResult,
-  dependentName: string
+  dependentName: string,
+  outlierThreshold: number = 2.0 // Default threshold for outlier detection
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
 
@@ -73,13 +78,39 @@ export const formatCasewiseListing = (
   ).length;
   const totalOutliers = enhancedCasewise.length;
   
+  // Calculate statistics for description
+  const sresidValues = enhancedCasewise
+    .map((r) => r.resid_studentized)
+    .filter((v): v is number => v !== undefined && v !== null);
+  
+  const maxSResid = sresidValues.length > 0 ? Math.max(...sresidValues.map(Math.abs)) : 0;
+  const avgSResid = sresidValues.length > 0 
+    ? sresidValues.reduce((a, b) => a + Math.abs(b), 0) / sresidValues.length 
+    : 0;
+
   let description = "";
   if (totalOutliers === 0) {
-    description = "No cases with studentized residuals greater than the specified threshold were found.";
-  } else if (misclassifiedCount > 0) {
-    description = `${totalOutliers} case(s) listed with extreme studentized residuals. ${misclassifiedCount} case(s) are misclassified (marked with **).`;
+    description = `No cases with studentized residuals greater than ${safeFixed(outlierThreshold, 1)} were found. This suggests the model fits the data well without significant outliers.`;
   } else {
-    description = `${totalOutliers} case(s) listed with extreme studentized residuals. All listed cases are correctly classified.`;
+    // Build informative description
+    const parts: string[] = [];
+    
+    parts.push(`${totalOutliers} case(s) identified with studentized residuals exceeding ±${safeFixed(outlierThreshold, 1)}.`);
+    
+    if (misclassifiedCount > 0) {
+      const pctMisclass = ((misclassifiedCount / totalOutliers) * 100).toFixed(1);
+      parts.push(`${misclassifiedCount} case(s) (${pctMisclass}%) are misclassified (marked with **).`);
+    } else {
+      parts.push("All listed cases are correctly classified despite having extreme residuals.");
+    }
+    
+    if (maxSResid > 3) {
+      parts.push(`Maximum |SResid| = ${safeFixed(maxSResid, 3)}, indicating potentially influential outliers that warrant further investigation.`);
+    } else {
+      parts.push(`Maximum |SResid| = ${safeFixed(maxSResid, 3)}.`);
+    }
+    
+    description = parts.join(" ");
   }
 
   // Build column headers - SPSS style with nested headers
@@ -112,6 +143,12 @@ export const formatCasewiseListing = (
     sresid: row.resid_studentized !== undefined ? safeFixed(row.resid_studentized, 3) : "-",
   }));
 
+  // SPSS-style footnotes
+  const footnotes = [
+    "a. S = Selected, U = Unselected cases, and ** = Misclassified cases.",
+    `b. Cases with studentized residuals greater than ${safeFixed(outlierThreshold, 3)} are listed.`
+  ];
+
   const casewiseSection = createSection(
     "casewise_listing",
     "Casewise List",
@@ -119,6 +156,10 @@ export const formatCasewiseListing = (
       columnHeaders: columnHeaders,
       rows: rows,
     },
+    {
+      description: description,
+      note: footnotes.join("\n"),
+    }
   );
 
   sections.push(casewiseSection);

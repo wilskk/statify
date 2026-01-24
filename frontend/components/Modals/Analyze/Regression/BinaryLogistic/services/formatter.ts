@@ -23,6 +23,7 @@ interface FormatOptions {
   ciForExpB?: boolean;      // Whether to show CI columns for Exp(B)
   ciLevel?: number;         // Confidence level percentage (e.g., 95)
   cutoff?: number;          // Classification cutoff value (e.g., 0.5)
+  casewiseOutliers?: number; // Threshold for casewise outlier detection (default 2.0)
 }
 
 export const formatBinaryLogisticResult = (
@@ -36,6 +37,7 @@ export const formatBinaryLogisticResult = (
   const ciForExpB = options?.ciForExpB ?? false;
   const ciLevel = options?.ciLevel ?? 95;
   const cutoff = options?.cutoff ?? 0.5;
+  const casewiseOutliers = options?.casewiseOutliers ?? 2.0;
 
   // 1. Case Processing & Encoding
   const summaryOutput = formatSummaryTables(
@@ -180,7 +182,7 @@ export const formatBinaryLogisticResult = (
   }
 
   // 4. Casewise Listing of Residuals (setelah Block 1)
-  const casewiseOutput = formatCasewiseListing(result, dependentVariable.name);
+  const casewiseOutput = formatCasewiseListing(result, dependentVariable.name, casewiseOutliers);
   if (casewiseOutput.sections && casewiseOutput.sections.length > 0) {
     allSections.push(...casewiseOutput.sections);
   }
