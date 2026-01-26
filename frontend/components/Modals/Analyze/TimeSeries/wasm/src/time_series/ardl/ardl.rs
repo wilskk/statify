@@ -9,6 +9,12 @@ pub struct ARDL {
     pub(crate) q: Vec<usize>,     // DL orders for each X (stored as Vec but passed as flat)
     
     pub(crate) coefficients: Vec<f64>,
+    pub(crate) standard_errors: Vec<f64>,
+    pub(crate) t_statistics: Vec<f64>,
+    pub(crate) p_values: Vec<f64>,
+    pub(crate) residuals: Vec<f64>,
+    pub(crate) fitted_values: Vec<f64>,
+    
     pub(crate) long_run_coef: Vec<f64>,
     pub(crate) bounds_f_stat: f64,
     pub(crate) r_squared: f64,
@@ -48,6 +54,11 @@ impl ARDL {
             p,
             q: q_flat,
             coefficients: Vec::new(),
+            standard_errors: Vec::new(),
+            t_statistics: Vec::new(),
+            p_values: Vec::new(),
+            residuals: Vec::new(),
+            fitted_values: Vec::new(),
             long_run_coef: Vec::new(),
             bounds_f_stat: 0.0,
             r_squared: 0.0,
@@ -64,6 +75,11 @@ impl ARDL {
     
     // Getters
     pub fn get_coefficients(&self) -> Vec<f64> { self.coefficients.clone() }
+    pub fn get_standard_errors(&self) -> Vec<f64> { self.standard_errors.clone() }
+    pub fn get_t_statistics(&self) -> Vec<f64> { self.t_statistics.clone() }
+    pub fn get_p_values(&self) -> Vec<f64> { self.p_values.clone() }
+    pub fn get_residuals(&self) -> Vec<f64> { self.residuals.clone() }
+    pub fn get_fitted_values(&self) -> Vec<f64> { self.fitted_values.clone() }
     pub fn get_long_run_coef(&self) -> Vec<f64> { self.long_run_coef.clone() }
     pub fn get_bounds_f_stat(&self) -> f64 { self.bounds_f_stat }
     pub fn get_r_squared(&self) -> f64 { self.r_squared }

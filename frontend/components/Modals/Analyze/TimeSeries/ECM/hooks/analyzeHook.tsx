@@ -2,24 +2,8 @@ import { useState } from "react";
 import type { Variable } from "@/types/Variable";
 import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
-
-let wasmModule: any = null;
-let ECM: any = null;
-
-const initWasm = async () => {
-    if (!wasmModule) {
-        try {
-            const module = await import("@/public/workers/TimeSeries/timeseries.js");
-            await module.default();
-            ECM = module.ECM;
-            wasmModule = module;
-            console.log("ECM WASM module loaded successfully");
-        } catch (error) {
-            console.error("Failed to load ECM WASM module:", error);
-            throw new Error("Failed to initialize ECM module");
-        }
-    }
-};
+import { ChartService } from "@/services/chart/ChartService";
+import { useResultStore } from "@/stores/useResultStore";
 
 export const useAnalyzeHook = (
     dependentVariable: Variable[],
@@ -32,6 +16,7 @@ export const useAnalyzeHook = (
 ) => {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [isCalculating, setIsCalculating] = useState(false);
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     const handleAnalyzes = async () => {
         if (dependentVariable.length === 0 || independentVariable.length === 0) {
@@ -43,7 +28,6 @@ export const useAnalyzeHook = (
         setErrorMsg(null);
 
         try {
-            await initWasm();
 
             // Extract Y (dependent) data
             const yVar = dependentVariable[0];
@@ -74,56 +58,123 @@ export const useAnalyzeHook = (
             }
 
             console.log(`Running ECM with ${yData.length} observations`);
-            console.log(`Max lag ADF: ${maxLagADF}, Max lag ECM: ${maxLagECM}`);
+            
+            // Use Web Worker
+            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
+            
+            worker.onmessage = async (e) => {
+                const { status, result, error } = e.data;
+                
+                if (status === "success") {
+                    console.log("ECM Results:", result);
+                    
+                    const isCointegrated = result.cointegration.isCointegrated;
+                    
+                    toast.success("ECM estimation completed!");
+                    
+                    try {
+                        const tables = [];
+                        
+                        // Cointegration Test Table
+                        tables.push({
+                            title: "Cointegration Test (ADF)",
+                            columnHeaders: [
+                                { header: "Statistic", key: "col" },
+                                { header: "Value", key: "val" }
+                            ],
+                            rows: [
+                                { col: "ADF Statistic", val: result.cointegration.adfStat },
+                                { col: "Result", val: isCointegrated ? "Cointegrated" : "Not Cointegrated" }
+                            ]
+                        });
 
-            // Create ECM model
-            const ecm = new ECM(
-                new Float64Array(yData), 
-                new Float64Array(xData),
-                maxLagADF,
-                maxLagECM
-            );
+                        // Long Run Table
+                        tables.push({
+                            title: "Long Run Relationship (Y = β₀ + β₁X)",
+                            columnHeaders: [
+                                { header: "Parameter", key: "param" },
+                                { header: "Coefficient", key: "val" }
+                            ],
+                            rows: [
+                                { param: "Intercept (β₀)", val: result.longRun.beta0 },
+                                { param: "Slope (β₁)", val: result.longRun.beta1 }
+                            ]
+                        });
 
-            // Estimate ECM
-            ecm.estimate_ecm();
+                        const charts = [];
+                        
+                         // Prepare chart data (Residuals)
+                        if (result.longRun && result.longRun.residuals) {
+                            const resData = result.longRun.residuals.map((val: number, i: number) => ({
+                                index: i + 1,
+                                residual: val
+                            }));
 
-            // Get results
-            const beta0 = ecm.get_long_run_beta0();
-            const beta1 = ecm.get_long_run_beta1();
-            const adfStat = ecm.get_adf_statistic();
-            const isCointegrated = ecm.get_is_cointegrated();
+                            const residualsChart = ChartService.createChartJSON({
+                                chartType: "Line Chart",
+                                chartData: resData,
+                                chartVariables: { x: ["index"], y: ["residual"] },
+                                chartMetadata: { title: "Equilibrium Error (Residuals)", subtitle: "Long Run" },
+                                chartConfig: { axisLabels: { x: "Time", y: "Residual" } }
+                            });
+                            charts.push(residualsChart);
+                        }
 
-            const results = {
-                longRunBeta0: beta0.toFixed(4),
-                longRunBeta1: beta1.toFixed(4),
-                adfStatistic: adfStat.toFixed(4),
-                isCointegrated,
-                observations: yData.length,
+                        // Dispatch
+                        const logMsg = `ECM: ${yVar.name} vs ${xVar.name}`;
+                        const logId = await addLog({ log: logMsg });
+                        const analyticId = await addAnalytic(logId, { title: "ECM Analysis", note: "Error Correction Model" });
+
+                        await addStatistic(analyticId, {
+                            title: "ECM Output",
+                            output_data: JSON.stringify({ tables, charts }),
+                            components: "EcmAnalysis",
+                            description: "Cointegration and Error Correction results"
+                        });
+                        
+                        setTimeout(() => {
+                            onClose();
+                            worker.terminate();
+                        }, 1500);
+
+                    } catch (err) {
+                        console.error("Processing Error", err);
+                        setErrorMsg("Failed to process results.");
+                    } finally {
+                        worker.terminate();
+                        setIsCalculating(false);
+                    }
+
+                } else {
+                    setErrorMsg(error || "Unknown worker error");
+                    toast.error(`Estimation Failed: ${error}`);
+                    worker.terminate();
+                    setIsCalculating(false);
+                }
             };
-
-            console.log("ECM Results:", results);
-
-            const message = isCointegrated 
-                ? `Cointegration detected! β₀=${beta0.toFixed(2)}, β₁=${beta1.toFixed(2)}`
-                : `No cointegration found (ADF=${adfStat.toFixed(2)})`;
-
-            toast.success("ECM estimation completed!", {
-                description: message,
+            
+            worker.onerror = (err) => {
+                console.error("Worker connection error:", err);
+                setErrorMsg("Failed to connect to worker");
+                setIsCalculating(false);
+                worker.terminate();
+            };
+            
+            worker.postMessage({
+                type: "ECM",
+                payload: {
+                    y: yData,
+                    x: xData,
+                    max_lag_adf: maxLagADF,
+                    max_lag_ecm: maxLagECM
+                }
             });
-
-            // Free memory
-            ecm.free();
-
-            setTimeout(() => {
-                onClose();
-            }, 2000);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
             setErrorMsg(errorMessage);
             toast.error(`ECM Estimation Failed: ${errorMessage}`);
             console.error("ECM estimation error:", error);
-        } finally {
             setIsCalculating(false);
         }
     };

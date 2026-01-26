@@ -4,12 +4,16 @@ import type React from 'react';
 import LinearityTest from './LinearityTest';
 import HomoscedasticityTest from './HomoscedasticityTest';
 import MulticollinearityTest from './MulticollinearityTest';
+import GarchAnalysis from './GarchAnalysis';
+import EcmAnalysis from './EcmAnalysis';
+import ArdlAnalysis from './ArdlAnalysis';
 
 // Define the StatisticsComponentsRegistry interface
 interface StatisticsComponentsRegistry {
   [key: string]: React.ComponentType<any>;
 }
 
+// Create a registry of statistics components mapped by name
 // Create a registry of statistics components mapped by name
 export const StatisticsComponents: StatisticsComponentsRegistry = {
   // Add LinearityTest component
@@ -21,6 +25,14 @@ export const StatisticsComponents: StatisticsComponentsRegistry = {
   // Add MulticollinearityTest component
   MulticollinearityTest,
 
+  // Add GarchAnalysis component
+  GarchAnalysis,
+
+  // Add EcmAnalysis component
+  EcmAnalysis,
+
+  // Add ArdlAnalysis component
+  ArdlAnalysis,
 };
 
 // Function to get a component by name

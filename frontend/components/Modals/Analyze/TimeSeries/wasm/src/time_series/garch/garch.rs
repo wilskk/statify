@@ -40,6 +40,7 @@ impl GARCH {
     pub fn get_aic(&self) -> f64 { self.aic }
     pub fn get_bic(&self) -> f64 { self.bic }
     pub fn get_log_likelihood(&self) -> f64 { self.log_likelihood }
+    pub fn get_residuals(&self) -> Vec<f64> { self.data.clone() } // For GARCH on returns, residuals are effectively the input data (assuming zero mean)
     // Setters
     pub fn set_omega(&mut self, omega: f64) { self.omega = omega; }
     pub fn set_alpha(&mut self, alpha: Vec<f64>) { self.alpha = alpha; }

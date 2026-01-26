@@ -47,6 +47,7 @@ impl ECM {
     pub fn is_cointegrated(&self) -> bool { self.is_cointegrated }
     pub fn get_is_cointegrated(&self) -> bool { self.is_cointegrated }  // Alias for consistency
     pub fn get_ecm_coefficients(&self) -> Vec<f64> { self.ecm_coefficients.clone() }
+    pub fn get_ecm_residuals(&self) -> Vec<f64> { self.ecm_residuals.clone() }
     pub fn get_r_squared(&self) -> f64 { self.r_squared }
     
     // Setters

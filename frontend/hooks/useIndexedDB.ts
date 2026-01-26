@@ -35,6 +35,7 @@ type AnalysisType =
     | "ARCH"
     | "ECM"
     | "ARDL"
+    | "HeteroskedasticityModels"
     // Descriptive Statistics
     | "Frequencies"
     | "Descriptive"
