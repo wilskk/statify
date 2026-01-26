@@ -9,10 +9,10 @@ const getConcernLevel = (vif: number): string => {
   return "Very High";
 };
 
-// Helper untuk membuat deskripsi dinamis
+// Helper untuk membuat deskripsi dinamis VIF & Korelasi
 const generateAssumptionDescription = (
   vifData: any[],
-  correlationMatrix: any
+  correlationMatrix: any,
 ): string => {
   let descriptionParts = [];
 
@@ -23,11 +23,11 @@ const generateAssumptionDescription = (
       .map((r) => `${r.variable} (VIF=${safeFixed(r.vif)})`)
       .join(", ");
     descriptionParts.push(
-      `Potential multicollinearity detected. The following variables have VIF values greater than 5: ${vars}. Values above 10 usually indicate serious multicollinearity.`
+      `Potential multicollinearity detected. The following variables have VIF values greater than 5: ${vars}. Values above 10 usually indicate serious multicollinearity.`,
     );
   } else {
     descriptionParts.push(
-      "No significant multicollinearity detected based on VIF values (all < 5)."
+      "No significant multicollinearity detected based on VIF values (all < 5).",
     );
   }
 
@@ -46,7 +46,7 @@ const generateAssumptionDescription = (
     }
     if (highCorrCount > 0) {
       descriptionParts.push(
-        `Review of the correlation matrix shows ${highCorrCount} pair(s) of variables with strong correlations (|r| > 0.8), which supports the possibility of multicollinearity.`
+        `Review of the correlation matrix shows ${highCorrCount} pair(s) of variables with strong correlations (|r| > 0.8), which supports the possibility of multicollinearity.`,
       );
     }
   }
@@ -54,8 +54,24 @@ const generateAssumptionDescription = (
   return descriptionParts.join(" ");
 };
 
+// Helper untuk membuat deskripsi dinamis Box-Tidwell
+const generateBoxTidwellDescription = (boxTidwellData: any[]): string => {
+  if (!boxTidwellData || boxTidwellData.length === 0) return "";
+
+  // Cari variabel yang interaksinya signifikan (p < 0.05)
+  // Signifikan berarti HUBUNGANNYA TIDAK LINEAR (Asumsi Dilanggar)
+  const violatedVars = boxTidwellData.filter((row) => row.is_significant);
+
+  if (violatedVars.length > 0) {
+    const varNames = violatedVars.map((v) => v.variable).join(", ");
+    return `Linearity assumption likely violated. The Box-Tidwell test indicates non-linear relationships for the following variable(s): ${varNames} (Sig. < 0.05). You may need to transform these variables or treat them as categorical.`;
+  } else {
+    return "Linearity assumption met. None of the interaction terms were statistically significant (Sig. > 0.05), indicating a linear relationship between the continuous predictors and the logit of the outcome.";
+  }
+};
+
 export const formatAssumptionTests = (
-  result: LogisticResult
+  result: LogisticResult,
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
   const assumptions = result.assumption_tests;
@@ -69,7 +85,7 @@ export const formatAssumptionTests = (
   ) {
     // Ambil daftar nama variabel langsung dari data correlation matrix
     const predictors = assumptions.correlation_matrix.map(
-      (row: any) => row.variable
+      (row: any) => row.variable,
     );
 
     // Setup Column Headers: Variable Name sebagai kolom
@@ -111,8 +127,8 @@ export const formatAssumptionTests = (
         {
           description:
             "Pearson correlation coefficients between predictor variables. Coefficients close to 1 or -1 indicate strong linear relationships, suggesting potential multicollinearity.",
-        }
-      )
+        },
+      ),
     );
   }
 
@@ -134,10 +150,10 @@ export const formatAssumptionTests = (
       })),
     };
 
-    // Buat Deskripsi Dinamis
+    // Buat Deskripsi Dinamis VIF
     const dynamicDesc = generateAssumptionDescription(
       assumptions.vif,
-      assumptions.correlation_matrix
+      assumptions.correlation_matrix,
     );
 
     sections.push(
@@ -147,8 +163,8 @@ export const formatAssumptionTests = (
         vifData,
         {
           description: dynamicDesc,
-        }
-      )
+        },
+      ),
     );
 
     // --- 3. Legend VIF ---
@@ -194,8 +210,8 @@ export const formatAssumptionTests = (
         {
           description:
             "General guidelines for interpreting Variance Inflation Factors.",
-        }
-      )
+        },
+      ),
     );
   }
 
@@ -221,16 +237,20 @@ export const formatAssumptionTests = (
       })),
     };
 
+    // Buat Deskripsi Dinamis Box-Tidwell
+    const btDescription = generateBoxTidwellDescription(
+      assumptions.box_tidwell,
+    );
+
     sections.push(
       createSection(
         "assumption_box_tidwell",
         "Linearity of the Logit (Box-Tidwell Test)",
         btData,
         {
-          description:
-            "Tests the linear relationship between continuous predictors and the logit of the outcome. A non-significant interaction term (Sig. > 0.05) indicates that the assumption of linearity is met.",
-        }
-      )
+          description: btDescription,
+        },
+      ),
     );
   }
 
