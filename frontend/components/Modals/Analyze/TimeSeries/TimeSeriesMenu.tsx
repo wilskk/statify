@@ -37,11 +37,12 @@ const TimeSeriesMenu: React.FC = () => {
                 <MenubarItem onClick={() => openModal(ModalType.ECM)}>
                     Error Correction Model...
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.ARCH)}>
-                    Autoregressive Conditional Heteroscedasticity...
+                <MenubarSeparator />
+                <MenubarItem onClick={() => openModal(ModalType.HomoscedasticityTest)}>
+                    Homoscedasticity Test (ARCH-LM)...
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.GARCH)}>
-                    Generalized Autoregressive Conditional Heteroscedasticity...
+                <MenubarItem onClick={() => openModal(ModalType.HeteroskedasticityModels)}>
+                    Heteroskedasticity Models (ARCH/GARCH)...
                 </MenubarItem>
             </MenubarSubContent>
         </MenubarSub>

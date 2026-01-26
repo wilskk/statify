@@ -1,5 +1,5 @@
 {
-  "name": "wasm",
+  "name": "timeseries",
   "type": "module",
   "description": "Project Rust-WASM untuk analisis statistik menggunakan statrs dan wasm-bindgen.",
   "version": "0.1.0",
@@ -9,12 +9,12 @@
     "url": "https://github.com/username/wasm-project"
   },
   "files": [
-    "wasm_bg.wasm",
-    "wasm.js",
-    "wasm.d.ts"
+    "timeseries_bg.wasm",
+    "timeseries.js",
+    "timeseries.d.ts"
   ],
-  "main": "wasm.js",
-  "types": "wasm.d.ts",
+  "main": "timeseries.js",
+  "types": "timeseries.d.ts",
   "sideEffects": [
     "./snippets/*"
   ]

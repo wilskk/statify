@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import type { Variable } from "@/types/Variable";
 import type { DataRow } from "@/types/Data";
@@ -9,12 +10,14 @@ export const useAnalyzeHook = (
     selectedVariables: Variable[],
     data: DataRow[],
     selectedPeriod: any,
+    pOrder: number,
     qOrder: number,
+    modelType: string, // "GARCH", "EGARCH", "TGARCH", "ARCH"
     onClose: () => void
 ) => {
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [isCalculating, setIsCalculating] = useState(false);
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     const handleAnalyzes = async () => {
         if (selectedVariables.length === 0) {
@@ -26,7 +29,7 @@ export const useAnalyzeHook = (
         setErrorMsg(null);
 
         try {
-
+            // Extract data for selected variable
             const variable = selectedVariables[0];
             const returns: number[] = [];
 
@@ -41,18 +44,18 @@ export const useAnalyzeHook = (
                 throw new Error("Insufficient data points (minimum 10 required)");
             }
 
-            console.log(`Running ARCH(${qOrder}) with ${returns.length} observations`);
-            
+            console.log(`Running ${modelType}(${pOrder},${qOrder}) with ${returns.length} observations`);
+
             // Use Web Worker
             const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
-            
+
             worker.onmessage = async (e) => {
                 const { status, result, error } = e.data;
                 
                 if (status === "success") {
-                    console.log("ARCH Results:", result);
+                    console.log(`${modelType} Results:`, result);
                     
-                    toast.success(`ARCH(${qOrder}) estimation completed!`);
+                    toast.success(`${modelType} estimation completed!`);
                     
                     try {
                         // 1. Prepare Tables
@@ -78,6 +81,19 @@ export const useAnalyzeHook = (
                                 result.coefficients.alpha.forEach((val: any, idx: number) => {
                                     rows.push({
                                         rowHeader: [`Alpha (${idx + 1})`],
+                                        coefficient: val,
+                                        stdError: "-",
+                                        tStat: "-",
+                                        pValue: "-"
+                                    });
+                                });
+                            }
+
+                            // Beta terms (not for ARCH)
+                            if (Array.isArray(result.coefficients.beta)) {
+                                result.coefficients.beta.forEach((val: any, idx: number) => {
+                                    rows.push({
+                                        rowHeader: [`Beta (${idx + 1})`],
                                         coefficient: val,
                                         stdError: "-",
                                         tStat: "-",
@@ -134,7 +150,7 @@ export const useAnalyzeHook = (
                             },
                             chartMetadata: {
                                 title: "Conditional Variance",
-                                subtitle: `ARCH(${qOrder}) Process`
+                                subtitle: `${modelType} Process`
                             },
                             chartConfig: {
                                 axisLabels: { x: "Time", y: "Variance" }
@@ -152,7 +168,7 @@ export const useAnalyzeHook = (
                             },
                             chartMetadata: {
                                 title: "Residuals",
-                                subtitle: `ARCH(${qOrder}) Process`
+                                subtitle: `${modelType} Process`
                             },
                             chartConfig: {
                                 axisLabels: { x: "Time", y: "Residual" }
@@ -161,15 +177,15 @@ export const useAnalyzeHook = (
                         charts.push(residualsChart);
 
                         // 3. Dispatch Results directly to Output Output
-                        const logMsg = `ARCH(${qOrder}) Estimation on ${variable.name}`;
+                        const logMsg = `${modelType} Estimation on ${variable.name}`;
                         const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: `ARCH Results`, note: `q=${qOrder}` });
+                        const analyticId = await addAnalytic(logId, { title: `${modelType} Results`, note: `p=${pOrder}, q=${qOrder}` });
 
                         await addStatistic(analyticId, {
-                            title: `ARCH Estimation Output`,
+                            title: `${modelType} Estimation Output`,
                             output_data: JSON.stringify({ tables, charts }),
-                            components: "GarchAnalysis",
-                            description: `Estimation results for ARCH model`
+                            components: "GarchAnalysis", // Reuse GarchAnalysis as the display structure is identical
+                            description: `Estimation results for ${modelType} model`
                         });
 
                         // Close modal on success
@@ -190,19 +206,20 @@ export const useAnalyzeHook = (
                     setIsCalculating(false);
                 }
             };
-            
+
             worker.onerror = (err) => {
                 console.error("Worker connection error:", err);
                 setErrorMsg("Failed to connect to worker");
                 setIsCalculating(false);
                 worker.terminate();
             };
-            
+
+            // Send payload to worker
             worker.postMessage({
-                type: "ARCH",
+                type: modelType, 
                 payload: {
                     data: returns,
-                    p: 0,
+                    p: pOrder,
                     q: qOrder
                 }
             });
@@ -210,8 +227,8 @@ export const useAnalyzeHook = (
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
             setErrorMsg(errorMessage);
-            toast.error(`ARCH Estimation Failed: ${errorMessage}`);
-            console.error("ARCH estimation error:", error);
+            toast.error(`Analysis Failed: ${errorMessage}`);
+            console.error("Analysis error:", error);
             setIsCalculating(false);
         }
     };

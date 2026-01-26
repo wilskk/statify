@@ -91,6 +91,8 @@ export enum ModalType {
     GARCH = "GARCH",
     ECM = "ECM",
     ARDL = "ARDL",
+    HomoscedasticityTest = "HomoscedasticityTest",
+    HeteroskedasticityModels = "HeteroskedasticityModels",
     
 
     // Descriptive statistics modals
@@ -290,6 +292,8 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.ECM]: ModalCategory.TimeSeries,
     [ModalType.ARCH]: ModalCategory.TimeSeries,
     [ModalType.GARCH]: ModalCategory.TimeSeries,
+    [ModalType.HomoscedasticityTest]: ModalCategory.TimeSeries,
+    [ModalType.HeteroskedasticityModels]: ModalCategory.TimeSeries,
 
     // Descriptive statistics modals
     [ModalType.Descriptives]: ModalCategory.Analyze,
@@ -498,6 +502,12 @@ export function getModalTitle(type: ModalType): string {
             return "Two Related Samples Tests";
         case ModalType.KRelatedSamples:
             return "K Related Samples Tests";
+
+        // Time Series
+        case ModalType.HomoscedasticityTest:
+            return "Homoscedasticity Test (ARCH-LM)";
+        case ModalType.HeteroskedasticityModels:
+            return "Heteroskedasticity Models";
 
         // General Linear Model modals
         case ModalType.ModalUnivariate:

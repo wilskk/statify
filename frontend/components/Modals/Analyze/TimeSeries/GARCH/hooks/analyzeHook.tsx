@@ -2,25 +2,11 @@ import { useState } from "react";
 import type { Variable } from "@/types/Variable";
 import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
+import { ChartService } from "@/services/chart/ChartService";
+import { useResultStore } from "@/stores/useResultStore";
 
 // Import WASM module
-let wasmModule: any = null;
-let GARCH: any = null;
 
-const initWasm = async () => {
-    if (!wasmModule) {
-        try {
-            const module = await import("@/public/workers/TimeSeries/timeseries.js");
-            await module.default(); // Initialize WASM
-            GARCH = module.GARCH;
-            wasmModule = module;
-            console.log("GARCH WASM module loaded successfully");
-        } catch (error) {
-            console.error("Failed to load GARCH WASM module:", error);
-            throw new Error("Failed to initialize GARCH module");
-        }
-    }
-};
 
 export const useAnalyzeHook = (
     selectedVariables: Variable[],
@@ -31,6 +17,7 @@ export const useAnalyzeHook = (
     modelType: string,
     onClose: () => void
 ) => {
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [isCalculating, setIsCalculating] = useState(false);
 
@@ -44,9 +31,6 @@ export const useAnalyzeHook = (
         setErrorMsg(null);
 
         try {
-            // Initialize WASM if not already done
-            await initWasm();
-
             // Extract data for selected variable
             const variable = selectedVariables[0];
             const returns: number[] = [];
@@ -64,51 +48,190 @@ export const useAnalyzeHook = (
 
             console.log(`Running ${modelType}(${pOrder},${qOrder}) with ${returns.length} observations`);
 
-            // Create GARCH model
-            const garch = new GARCH(new Float64Array(returns), pOrder, qOrder);
+            // Use Web Worker
+            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
 
-            //  Estimate model
-            garch.estimate();
+            worker.onmessage = async (e) => {
+                const { status, result, error } = e.data;
+                
+                if (status === "success") {
+                    console.log(`${modelType} Results:`, result);
+                    
+                    toast.success(`${modelType} estimation completed!`);
+                    
+                    try {
+                        // 1. Prepare Tables
+                        const tables = [];
+                        
+                        // Parameter Table
+                        if (result.coefficients) {
+                            const rows = [];
+                            
+                            // Omega
+                            if (result.coefficients.omega !== undefined) {
+                                rows.push({
+                                    rowHeader: ["Omega (ω)"],
+                                    coefficient: result.coefficients.omega,
+                                    stdError: "-", // Not available yet
+                                    tStat: "-",
+                                    pValue: "-" 
+                                });
+                            }
 
-            // Get results
-            const variance = garch.get_variance();
-            const aic = garch.get_aic();
-            const bic = garch.get_bic();
-            const logLikelihood = garch.get_log_likelihood();
+                            // Alpha terms
+                            if (Array.isArray(result.coefficients.alpha)) {
+                                result.coefficients.alpha.forEach((val: any, idx: number) => {
+                                    rows.push({
+                                        rowHeader: [`Alpha (${idx + 1})`],
+                                        coefficient: val,
+                                        stdError: "-",
+                                        tStat: "-",
+                                        pValue: "-"
+                                    });
+                                });
+                            }
 
-            // Display results
-            const results = {
-                model: `${modelType}(${pOrder},${qOrder})`,
-                observations: returns.length,
-                logLikelihood: logLikelihood.toFixed(4),
-                aic: aic.toFixed(4),
-                bic: bic.toFixed(4),
-                variance: variance.slice(0, 10).map((v: number) => v.toFixed(6)),
+                            // Beta terms
+                            if (Array.isArray(result.coefficients.beta)) {
+                                result.coefficients.beta.forEach((val: any, idx: number) => {
+                                    rows.push({
+                                        rowHeader: [`Beta (${idx + 1})`],
+                                        coefficient: val,
+                                        stdError: "-",
+                                        tStat: "-",
+                                        pValue: "-"
+                                    });
+                                });
+                            }
+
+                            tables.push({
+                                title: "Variance Equation",
+                                columnHeaders: [
+                                    { header: "Parameter", key: "rowHeader" },
+                                    { header: "Coefficient", key: "coefficient" },
+                                    { header: "Std. Error", key: "stdError" },
+                                    { header: "t-Statistic", key: "tStat" },
+                                    { header: "Prob.", key: "pValue" }
+                                ],
+                                rows: rows,
+                            });
+                        }
+
+                        // Diagnostics Table
+                        if (result.diagnostics) {
+                             tables.push({
+                                title: "Diagnostics",
+                                columnHeaders: [
+                                    { header: "Statistic", key: "rowHeader" },
+                                    { header: "Value", key: "value" }
+                                ],
+                                rows: [
+                                    { rowHeader: ["AIC"], value: result.diagnostics.aic },
+                                    { rowHeader: ["BIC"], value: result.diagnostics.bic },
+                                    { rowHeader: ["Log Likelihood"], value: result.diagnostics.logLikelihood }
+                                ]
+                            });
+                        }
+
+                        // 2. Prepare Charts
+                        const charts = [];
+                        // Worker sends 'variance' instead of 'conditional_variance'
+                        const varianceData = result.variance || [];
+                        const periods = Array.from({ length: varianceData.length }, (_, i) => ({
+                            index: i + 1,
+                            variance: varianceData[i],
+                            residual: result.residuals ? result.residuals[i] : 0
+                        }));
+
+                        // Conditional Variance Chart
+                        const varianceChart = ChartService.createChartJSON({
+                            chartType: "Line Chart",
+                            chartData: periods,
+                            chartVariables: {
+                                x: ["index"],
+                                y: ["variance"]
+                            },
+                            chartMetadata: {
+                                title: "Conditional Variance",
+                                subtitle: `${modelType} Process`
+                            },
+                            chartConfig: {
+                                axisLabels: { x: "Time", y: "Variance" }
+                            }
+                        });
+                        charts.push(varianceChart);
+
+                         // Residuals Chart
+                        const residualsChart = ChartService.createChartJSON({
+                            chartType: "Line Chart",
+                            chartData: periods,
+                            chartVariables: {
+                                x: ["index"],
+                                y: ["residual"]
+                            },
+                            chartMetadata: {
+                                title: "Residuals",
+                                subtitle: `${modelType} Process`
+                            },
+                            chartConfig: {
+                                axisLabels: { x: "Time", y: "Residual" }
+                            }
+                        });
+                        charts.push(residualsChart);
+
+                        // 3. Dispatch Results directly to Output Output
+                        const logMsg = `${modelType} Estimation on ${variable.name}`;
+                        const logId = await addLog({ log: logMsg });
+                        const analyticId = await addAnalytic(logId, { title: `${modelType} Results`, note: `p=${pOrder}, q=${qOrder}` });
+
+                        await addStatistic(analyticId, {
+                            title: `${modelType} Estimation Output`,
+                            output_data: JSON.stringify({ tables, charts }),
+                            components: "GarchAnalysis",
+                            description: `Estimation results for ${modelType} model`
+                        });
+
+                        // Close modal on success
+                        onClose();
+
+                    } catch (err) {
+                        console.error("Error processing results:", err);
+                        setErrorMsg("Error processing results for display.");
+                    } finally {
+                         worker.terminate();
+                         setIsCalculating(false);
+                    }
+
+                } else {
+                    setErrorMsg(error || "Unknown worker error");
+                    toast.error(`Estimation Failed: ${error}`);
+                    worker.terminate();
+                    setIsCalculating(false);
+                }
             };
 
-            console.log("GARCH Results:", results);
+            worker.onerror = (err) => {
+                console.error("Worker connection error:", err);
+                setErrorMsg("Failed to connect to worker");
+                setIsCalculating(false);
+                worker.terminate();
+            };
 
-            toast.success(`${modelType} estimation completed!`, {
-                description: `AIC: ${aic.toFixed(2)}, BIC: ${bic.toFixed(2)}`,
+            // Send payload to worker
+            worker.postMessage({
+                type: modelType, // "GARCH" or "ARCH"
+                payload: {
+                    data: returns,
+                    p: pOrder,
+                    q: qOrder
+                }
             });
-
-            // TODO: Store results in state/store for display in results tab
-            // For now, just showing toast
-
-            // Free memory
-            garch.free();
-
-            // Close modal after successful calculation
-            setTimeout(() => {
-                onClose();
-            }, 1500);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
             setErrorMsg(errorMessage);
-            toast.error(`GARCH Estimation Failed: ${errorMessage}`);
-            console.error("GARCH estimation error:", error);
-        } finally {
+            toast.error(`Analysis Failed: ${errorMessage}`);
+            console.error("Analysis error:", error);
             setIsCalculating(false);
         }
     };

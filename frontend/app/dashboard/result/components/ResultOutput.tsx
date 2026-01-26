@@ -16,6 +16,7 @@ const TiptapEditor = dynamic(
 );
 import { Edit, ChevronDown, ChevronUp } from "lucide-react";
 import TextRenderer from "@/components/Output/text/text-renderer";
+import { getStatisticsComponent } from "@/components/Output/Statistics";
 
 const ResultOutput: React.FC = () => {
   const { logs, updateStatistic } = useResultStore();
@@ -167,6 +168,16 @@ const ResultOutput: React.FC = () => {
                               data-testid={`result-output-${analytic.id}-${stat.id}`}
                             >
                               {(() => {
+                                // Check if there is a specific component for this statistic
+                                const SpecificComponent = getStatisticsComponent(stat.components);
+                                if (SpecificComponent) {
+                                  return (
+                                    <div data-testid={`result-component-${stat.id}`}>
+                                      <SpecificComponent data={stat.output_data} />
+                                    </div>
+                                  );
+                                }
+
                                 let parsedData;
                                 try {
                                   parsedData =
