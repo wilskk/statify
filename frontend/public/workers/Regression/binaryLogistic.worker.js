@@ -3,7 +3,7 @@ import init, {
   calculate_vif,
   calculate_box_tidwell,
   calculate_correlation_matrix,
-} from "./pkg/statify_logistic.js";
+} from "./Binary/pkg/statify_logistic.js";
 
 self.onmessage = async (event) => {
   const { action, data, config, dependentId, independentIds, variableDetails } =

@@ -299,16 +299,21 @@ const formatSingleClassificationPlot = (
   };
 
   // Create section entry with chart data
+  // Note digabungkan ke description (note di awal, interpretasi di akhir)
+  // Gunakan <br><br> untuk memisahkan note dan interpretasi (HTML untuk TiptapEditor)
+  const noteText = `Cut value is ${plotData.cutoff.toFixed(2)}. ${actualLabel0.charAt(0)} = ${actualLabel0}, ${actualLabel1.charAt(0)} = ${actualLabel1}. N = ${plotData.n_group_0 + plotData.n_group_1}.`;
+  const interpretationText = generateDescription(enhancedPlotData);
+  const mergedDescription = [noteText, interpretationText].filter(Boolean).join("<br><br>");
+
   const section: AnalysisSection = {
     id: `classification_plot${stepSuffix}`,
     title: `Classification Plot${stepTitle}`,
-    description: generateDescription(enhancedPlotData),
+    description: mergedDescription,
     type: "chart",
     data: {
       columnHeaders: [],
       rows: [],
     },
-    note: `Cut value is ${plotData.cutoff.toFixed(2)}. ${actualLabel0.charAt(0)} = ${actualLabel0}, ${actualLabel1.charAt(0)} = ${actualLabel1}. N = ${plotData.n_group_0 + plotData.n_group_1}.`,
     chartData: { charts: [chart] }, // Include chart data in section
   };
 

@@ -1,5 +1,39 @@
 import { AnalysisSection, TableResultContent } from "../types/binary-logistic";
 
+/**
+ * Helper untuk menggabungkan note dan description
+ * Note (technical/methodological info) menjadi bagian awal
+ * Description (interpretasi) menjadi bagian akhir
+ * 
+ * Format output (HTML untuk TiptapEditor):
+ * "a. [Note line 1]<br>
+ *  b. [Note line 2]<br><br>
+ *  [Description/Interpretation]"
+ * 
+ * Notes:
+ * - Setiap poin (a., b., c., dll) dipisahkan dengan <br>
+ * - Ada double <br> antara note dan interpretasi
+ */
+const mergeNoteAndDescription = (
+  note?: string,
+  description?: string
+): string | undefined => {
+  const parts: string[] = [];
+  
+  if (note && note.trim()) {
+    // Konversi \n menjadi <br> untuk HTML rendering
+    const formattedNote = note.trim().replace(/\n/g, "<br>");
+    parts.push(formattedNote);
+  }
+  
+  if (description && description.trim()) {
+    parts.push(description.trim());
+  }
+  
+  // Gabungkan dengan <br><br> agar ada spasi antara note dan interpretasi
+  return parts.length > 0 ? parts.join("<br><br>") : undefined;
+};
+
 // Helper factory untuk membuat Section standard
 export const createSection = (
   id: string,
@@ -10,13 +44,16 @@ export const createSection = (
     note?: string;
   }
 ): AnalysisSection => {
+  // Gabungkan note ke dalam description (note di awal, interpretation di akhir)
+  const mergedDescription = mergeNoteAndDescription(options?.note, options?.description);
+  
   return {
     id,
     title,
     type: "table",
     data: data as TableResultContent,
-    description: options?.description,
-    note: options?.note,
+    description: mergedDescription,
+    // Note tidak lagi di-export sebagai field terpisah karena sudah digabung ke description
   };
 };
 

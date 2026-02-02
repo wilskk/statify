@@ -495,10 +495,9 @@ export interface TableResultContent {
 export interface AnalysisSection {
   id: string; // ID Unik untuk key React
   title: string; // Judul Card (misal: "Model Summary")
-  description?: string; // Deskripsi di bawah judul
+  description?: string; // Deskripsi di bawah judul (termasuk note + interpretasi)
   type: "table" | "text" | "chart"; // Future-proofing
   data: TableResultContent; // Data mentah tabel
-  note?: string; // Footer note (misal: "a. Constant is included...")
   chartData?: any; // Chart data for GeneralChartContainer (when type is "chart")
 }
 
