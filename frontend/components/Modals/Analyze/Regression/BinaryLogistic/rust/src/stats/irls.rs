@@ -391,32 +391,72 @@ pub fn fit(
     }
 
     // --- FINAL PASS: Hitung Covariance Matrix ---
+    // PENTING: Untuk final covariance matrix, gunakan PURE Fisher Information Matrix
+    // TANPA ridge regularization. Ridge hanya digunakan selama iterasi untuk stabilitas,
+    // tidak untuk perhitungan final standard errors (sesuai SPSS/SAS convention).
     let mut xt_w_final = x.transpose();
     for (col_index, mut col) in xt_w_final.column_iter_mut().enumerate() {
         col *= weights_diag[col_index];
     }
-    let hessian_final = &xt_w_final * x + identity.scale(current_lambda);
+    let hessian_pure = &xt_w_final * x; // Pure Hessian tanpa ridge
+    let hessian_regularized = &hessian_pure + identity.scale(current_lambda);
 
-    // Robust inverse untuk covariance matrix
-    let covariance_matrix = if let Some(inv) = hessian_final.clone().try_inverse() {
+    // Coba inverse pure Hessian terlebih dahulu (SPSS standard)
+    // Fallback ke regularized hanya jika pure Hessian singular
+    let covariance_matrix = if let Some(inv) = hessian_pure.clone().try_inverse() {
         if inv.iter().any(|x| x.is_nan() || x.is_infinite()) {
-            // Fallback ke pseudo-inverse via SVD
-            let svd = hessian_final.clone().svd(true, true);
-            svd.pseudo_inverse(1e-10).unwrap_or_else(|_| DMatrix::identity(p, p))
+            // Pure inverse gagal, coba regularized
+            if let Some(inv_reg) = hessian_regularized.clone().try_inverse() {
+                if !inv_reg.iter().any(|x| x.is_nan() || x.is_infinite()) {
+                    warnings.messages.push(
+                        "Note: Small regularization applied to compute covariance matrix.".to_string()
+                    );
+                    inv_reg
+                } else {
+                    // Fallback ke pseudo-inverse via SVD
+                    let svd = hessian_pure.clone().svd(true, true);
+                    svd.pseudo_inverse(1e-10).unwrap_or_else(|_| DMatrix::identity(p, p))
+                }
+            } else {
+                let svd = hessian_pure.clone().svd(true, true);
+                svd.pseudo_inverse(1e-10).unwrap_or_else(|_| DMatrix::identity(p, p))
+            }
         } else {
             inv
         }
     } else {
-        // SVD pseudo-inverse sebagai fallback
-        let svd = hessian_final.svd(true, true);
-        match svd.pseudo_inverse(1e-10) {
-            Ok(pinv) => pinv,
-            Err(_) => {
+        // Pure Hessian singular, coba regularized dulu
+        if let Some(inv_reg) = hessian_regularized.clone().try_inverse() {
+            if !inv_reg.iter().any(|x| x.is_nan() || x.is_infinite()) {
                 warnings.messages.push(
-                    "Warning: Could not compute covariance matrix. \
-                     Standard errors may be unreliable.".to_string()
+                    "Note: Small regularization applied to compute covariance matrix.".to_string()
                 );
-                DMatrix::identity(p, p)
+                inv_reg
+            } else {
+                let svd = hessian_pure.svd(true, true);
+                match svd.pseudo_inverse(1e-10) {
+                    Ok(pinv) => pinv,
+                    Err(_) => {
+                        warnings.messages.push(
+                            "Warning: Could not compute covariance matrix. \
+                             Standard errors may be unreliable.".to_string()
+                        );
+                        DMatrix::identity(p, p)
+                    }
+                }
+            }
+        } else {
+            // SVD pseudo-inverse sebagai fallback terakhir
+            let svd = hessian_pure.svd(true, true);
+            match svd.pseudo_inverse(1e-10) {
+                Ok(pinv) => pinv,
+                Err(_) => {
+                    warnings.messages.push(
+                        "Warning: Could not compute covariance matrix. \
+                         Standard errors may be unreliable.".to_string()
+                    );
+                    DMatrix::identity(p, p)
+                }
             }
         }
     };
@@ -586,32 +626,72 @@ pub fn fit_with_history(
     }
 
     // --- FINAL PASS: Hitung Covariance Matrix ---
+    // PENTING: Untuk final covariance matrix, gunakan PURE Fisher Information Matrix
+    // TANPA ridge regularization. Ridge hanya digunakan selama iterasi untuk stabilitas,
+    // tidak untuk perhitungan final standard errors (sesuai SPSS/SAS convention).
     let mut xt_w_final = x.transpose();
     for (col_index, mut col) in xt_w_final.column_iter_mut().enumerate() {
         col *= weights_diag[col_index];
     }
-    let hessian_final = &xt_w_final * x + identity.scale(current_lambda);
+    let hessian_pure = &xt_w_final * x; // Pure Hessian tanpa ridge
+    let hessian_regularized = &hessian_pure + identity.scale(current_lambda);
 
-    // Robust inverse untuk covariance matrix
-    let covariance_matrix = if let Some(inv) = hessian_final.clone().try_inverse() {
+    // Coba inverse pure Hessian terlebih dahulu (SPSS standard)
+    // Fallback ke regularized hanya jika pure Hessian singular
+    let covariance_matrix = if let Some(inv) = hessian_pure.clone().try_inverse() {
         if inv.iter().any(|x| x.is_nan() || x.is_infinite()) {
-            // Fallback ke pseudo-inverse via SVD
-            let svd = hessian_final.clone().svd(true, true);
-            svd.pseudo_inverse(1e-10).unwrap_or_else(|_| DMatrix::identity(p, p))
+            // Pure inverse gagal, coba regularized
+            if let Some(inv_reg) = hessian_regularized.clone().try_inverse() {
+                if !inv_reg.iter().any(|x| x.is_nan() || x.is_infinite()) {
+                    warnings.messages.push(
+                        "Note: Small regularization applied to compute covariance matrix.".to_string()
+                    );
+                    inv_reg
+                } else {
+                    // Fallback ke pseudo-inverse via SVD
+                    let svd = hessian_pure.clone().svd(true, true);
+                    svd.pseudo_inverse(1e-10).unwrap_or_else(|_| DMatrix::identity(p, p))
+                }
+            } else {
+                let svd = hessian_pure.clone().svd(true, true);
+                svd.pseudo_inverse(1e-10).unwrap_or_else(|_| DMatrix::identity(p, p))
+            }
         } else {
             inv
         }
     } else {
-        // SVD pseudo-inverse sebagai fallback
-        let svd = hessian_final.svd(true, true);
-        match svd.pseudo_inverse(1e-10) {
-            Ok(pinv) => pinv,
-            Err(_) => {
+        // Pure Hessian singular, coba regularized dulu
+        if let Some(inv_reg) = hessian_regularized.clone().try_inverse() {
+            if !inv_reg.iter().any(|x| x.is_nan() || x.is_infinite()) {
                 warnings.messages.push(
-                    "Warning: Could not compute covariance matrix. \
-                     Standard errors may be unreliable.".to_string()
+                    "Note: Small regularization applied to compute covariance matrix.".to_string()
                 );
-                DMatrix::identity(p, p)
+                inv_reg
+            } else {
+                let svd = hessian_pure.svd(true, true);
+                match svd.pseudo_inverse(1e-10) {
+                    Ok(pinv) => pinv,
+                    Err(_) => {
+                        warnings.messages.push(
+                            "Warning: Could not compute covariance matrix. \
+                             Standard errors may be unreliable.".to_string()
+                        );
+                        DMatrix::identity(p, p)
+                    }
+                }
+            }
+        } else {
+            // SVD pseudo-inverse sebagai fallback terakhir
+            let svd = hessian_pure.svd(true, true);
+            match svd.pseudo_inverse(1e-10) {
+                Ok(pinv) => pinv,
+                Err(_) => {
+                    warnings.messages.push(
+                        "Warning: Could not compute covariance matrix. \
+                         Standard errors may be unreliable.".to_string()
+                    );
+                    DMatrix::identity(p, p)
+                }
             }
         }
     };

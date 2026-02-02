@@ -34,16 +34,31 @@
 //!    - Sum of squares equals the deviance statistic
 //!
 //! 5. **Studentized Residual (SRE_1)**
-//!    - Formula: `r_student = r_pearson * sqrt(1 - h_i)` (SPSS convention)
+//!    - Formula: `r_student = r_pearson / sqrt(1 - h_i)`
 //!    - Where h_i is the leverage (hat value)
-//!    - SPSS multiplies by sqrt(1-h) instead of dividing
-//!    - This reduces the residual for high-leverage points
-//!    - Reference: SPSS Regression Algorithms documentation
+//!    - Dividing by sqrt(1-h) INCREASES residual for high-leverage points
+//!    - Makes residuals comparable across different leverage levels
+//!    - Reference: Hosmer & Lemeshow (2000), Pregibon (1981)
 //!
 //! ### Influence Statistics
-//! - **Cook's distance (COO_1)**: Measures overall influence on all coefficients
-//! - **Leverage (LEV_1)**: Diagonal of hat matrix, measures remoteness in X-space
-//! - **DfBeta (DFB0_1, DFB1_1, ...)**: Change in each coefficient if case deleted
+//! 
+//! 6. **Cook's Distance (COO_1)**
+//!    - Formula: `D_i = (r_std^2 * h_i) / (1 - h_i)^2`
+//!    - Measures overall influence on all coefficients
+//!    - r_std = Pearson residual, h = leverage
+//!    - **Note**: Unlike Linear Regression, Logistic does NOT divide by k
+//!    - Reference: Hosmer & Lemeshow (2000), SPSS Algorithms
+//!
+//! 7. **Leverage (LEV_1)**
+//!    - Formula: `h_i = w_i * x_i' * (X'WX)^{-1} * x_i`
+//!    - Diagonal of hat matrix, measures remoteness in X-space
+//!    - w_i = p_i * (1 - p_i)
+//!
+//! 8. **DfBeta (DFB0_1, DFB1_1, ...)**
+//!    - Formula: `DFBETA_j = [Cov(β) * x_i * r_i] / (1 - h_i)`
+//!    - Change in coefficient j if case i is deleted
+//!    - Uses one-step Newton approximation (Pregibon, 1981)
+//!    - NOTE: Does NOT multiply by w_i since Cov(β) already incorporates weights
 
 use crate::models::config::LogisticConfig;
 use crate::models::result::{SavedPredictionRow, SavedPredictions, SavedVariableNames};
@@ -185,25 +200,52 @@ pub fn calculate_saved_predictions(
                 row.influence_leverage = Some(h_i);
             }
 
-            // Studentized Residual (SPSS formula): Pearson * sqrt(1 - h)
-            // SPSS documentation: Studentized residual = Pearson residual * sqrt(1 - leverage)
-            // This REDUCES the residual for high-leverage points
-            // Reference: SPSS Regression Algorithms documentation
+            // Studentized Residual for Logistic Regression
+            // 
+            // Formula: r_student = r_pearson / sqrt(1 - h_i)
+            //
+            // This INCREASES the residual for high-leverage points, making it
+            // comparable across observations with different leverages.
+            //
+            // The formula divides by sqrt(1-h) to adjust for the fact that
+            // high-leverage points have more influence on their own fitted values.
+            //
+            // References:
+            // - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression
+            // - SPSS Regression Algorithms documentation
+            // - Pregibon, D. (1981). Logistic Regression Diagnostics
             if config.save_residuals_studentized {
                 let stud_resid = if h_i < 1.0 - 1e-12 {
-                    std_resid * (1.0 - h_i).sqrt()
+                    std_resid / (1.0 - h_i).sqrt()  // DIVIDE, not multiply
                 } else {
                     std_resid // If leverage ≈ 1, just use standardized residual
                 };
                 row.resid_studentized = Some(stud_resid);
             }
 
-            // Cook's Distance: (std_resid^2 * h_i) / (k * (1-h_i)^2)
-            // Simplified for logistic: Pearson^2 * h / ((1-h) * k)
+            // Cook's Distance for Logistic Regression
+            // 
+            // **IMPORTANT**: Unlike Linear Regression, Logistic Regression Cook's D 
+            // does NOT divide by k (number of parameters).
+            //
+            // Formula (SPSS-compatible): D_i = (r_std^2 * h_i) / (1 - h_i)^2
+            // 
+            // Where:
+            // - r_std = Pearson (standardized) residual = (Y - P) / sqrt(P * (1-P))
+            // - h_i = leverage (hat value)
+            //
+            // References:
+            // - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression, 2nd Ed.
+            // - SPSS Algorithms documentation for Binary Logistic Regression
+            // - Pregibon, D. (1981) uses this form without the 1/k divisor
+            //
+            // Note: Linear Regression divides by k, but Logistic Regression does NOT.
+            // This matches SPSS output exactly.
             if config.save_influence_cooks {
-                let k = n_params as f64;
-                let cooks = if h_i < 1.0 - 1e-12 && k > 0.0 {
-                    (std_resid.powi(2) * h_i) / (k * (1.0 - h_i))
+                let one_minus_h = 1.0 - h_i;
+                let cooks = if one_minus_h > 1e-12 {
+                    // SPSS formula: r^2 * h / (1-h)^2  (NO division by k)
+                    (std_resid.powi(2) * h_i) / one_minus_h.powi(2)
                 } else {
                     0.0
                 };
@@ -285,31 +327,36 @@ fn calculate_leverage(x_matrix: &DMatrix<f64>, predictions: &DVector<f64>) -> Ve
 /// Calculate DfBeta for a single case
 /// 
 /// DfBeta measures the change in each regression coefficient when observation i is deleted.
-/// Uses the one-step Newton approximation which is computationally efficient:
+/// Uses the one-step Newton approximation (Pregibon, 1981).
 /// 
-/// **Formula**: DfBeta_j = [(X'WX)^{-1} * x_i * w_i * r_i] / (1 - h_i)
+/// **Formula (SPSS-compatible)**:
+/// 
+/// DFBETA_j = [Cov(β) * x_i * r_i] / (1 - h_i)
 /// 
 /// Where:
-/// - (X'WX)^{-1} ≈ covariance_matrix (Fisher information inverse)
-/// - x_i = predictor vector for observation i
-/// - w_i = p_i * (1 - p_i) = variance weight
-/// - r_i = y_i - p_i = raw residual
+/// - Cov(β) = (X'WX)^{-1} = covariance_matrix (already computed during IRLS)
+/// - x_i = predictor vector for observation i  
+/// - r_i = y_i - p_i = raw residual (NOT weighted)
 /// - h_i = leverage (hat value) for observation i
 /// 
-/// Reference: Pregibon, D. (1981). Logistic Regression Diagnostics. The Annals of Statistics.
+/// **Important Note**: 
+/// We do NOT multiply by w_i = p(1-p) here because:
+/// 1. The covariance matrix (X'WX)^{-1} already incorporates the weight structure
+/// 2. This matches SPSS output exactly
+/// 
+/// Reference: 
+/// - Pregibon, D. (1981). Logistic Regression Diagnostics. The Annals of Statistics.
+/// - SPSS Regression Algorithms documentation
 fn calculate_dfbeta_for_case(
     x_matrix: &DMatrix<f64>,
     case_idx: usize,
     raw_resid: f64,
-    p_clamped: f64,
+    _p_clamped: f64,  // Kept for API compatibility, but not used
     leverage: f64,
     covariance_matrix: &DMatrix<f64>,
 ) -> Vec<f64> {
     let x_i = x_matrix.row(case_idx).transpose();
     let n_params = x_matrix.ncols();
-    
-    // Weight for this observation: w_i = p(1-p)
-    let w_i = p_clamped * (1.0 - p_clamped);
     
     // Leverage adjustment factor: 1 / (1 - h_i)
     // This accounts for the influence of observation i on its own prediction
@@ -319,15 +366,17 @@ fn calculate_dfbeta_for_case(
         1.0  // Avoid division by zero for very high leverage points
     };
     
-    // DfBeta_j = Σ_k [Cov(j,k) * x_ik] * w_i * r_i * leverage_adj
-    // This is equivalent to: (X'WX)^{-1} * x_i * w_i * r_i / (1 - h_i)
+    // DfBeta_j = [Σ_k Cov(j,k) * x_ik] * r_i / (1 - h_i)
+    // This is: Cov(β) * x_i * r_i / (1 - h_i)
+    // NOTE: No w_i multiplication - covariance matrix already accounts for weights
     let mut dfbeta = Vec::with_capacity(n_params);
     for j in 0..n_params {
         let mut dfb_j = 0.0;
         for k in 0..n_params {
             dfb_j += covariance_matrix[(j, k)] * x_i[k];
         }
-        dfb_j *= w_i * raw_resid * leverage_adj;
+        // Multiply by raw residual and leverage adjustment only
+        dfb_j *= raw_resid * leverage_adj;
         dfbeta.push(dfb_j);
     }
     

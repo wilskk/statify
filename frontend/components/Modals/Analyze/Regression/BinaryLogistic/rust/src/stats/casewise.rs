@@ -57,12 +57,17 @@ pub fn calculate_casewise_list(
         // 4. Leverage (hat value)
         let leverage = leverages[i];
         
-        // 5. Studentized Residual (SPSS formula): ZResid * sqrt(1 - h)
-        // SPSS documentation: Studentized residual = Pearson residual * sqrt(1 - leverage)
-        // This REDUCES the residual for high-leverage points (unlike OLS which divides)
-        // Reference: SPSS Regression Algorithms documentation
+        // 5. Studentized Residual (Correct formula based on Pregibon 1981)
+        // Formula: r_student = r_pearson / sqrt(1 - h)
+        //
+        // This DIVIDES by sqrt(1-h), which INCREASES the residual for high-leverage 
+        // points. This is the theoretically correct formula from:
+        // - Pregibon, D. (1981). Logistic Regression Diagnostics. The Annals of Statistics.
+        // - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression.
+        //
+        // Note: This uses WEIGHTED leverage h = w_i * x_i'(X'WX)^{-1}x_i
         let resid_studentized = if (1.0 - leverage) > 1e-12 {
-            resid_zresid * (1.0 - leverage).sqrt()
+            resid_zresid / (1.0 - leverage).sqrt()  // DIVIDE, not multiply
         } else {
             resid_zresid // If leverage ≈ 1, just use ZResid
         };
@@ -84,10 +89,17 @@ pub fn calculate_casewise_list(
             -((-2.0 * log_term).max(0.0)).sqrt()
         };
         
-        // 8. Cook's Distance (approximation)
-        // D_i ≈ (studentized^2 * h) / (p * (1 - h))
-        let cooks = if p > 0 && (1.0 - leverage) > 1e-12 {
-            (resid_studentized.powi(2) * leverage) / ((p as f64) * (1.0 - leverage))
+        // 8. Cook's Distance for Logistic Regression (Pregibon 1981, Hosmer & Lemeshow 2000)
+        // Formula: D_i = (r_pearson^2 * h) / (1 - h)^2
+        //
+        // IMPORTANT: Unlike Linear Regression, Logistic Regression does NOT divide by p.
+        // We use the Pearson residual (resid_zresid), not the studentized residual.
+        //
+        // Reference:
+        // - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression, 2nd Ed.
+        // - Pregibon, D. (1981). Logistic Regression Diagnostics.
+        let cooks = if (1.0 - leverage) > 1e-12 {
+            (resid_zresid.powi(2) * leverage) / (1.0 - leverage).powi(2)
         } else {
             0.0
         };

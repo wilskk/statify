@@ -604,7 +604,6 @@ export const BinaryLogisticMain = () => {
           const tableDataWithTitle = {
             ...section.data,
             title: section.title,
-            note: section.note,
           };
           await addStatistic(analyticId, {
             title: section.title,
@@ -652,7 +651,6 @@ export const BinaryLogisticMain = () => {
         const tableDataWithTitle = {
           ...section.data,
           title: section.title,
-          note: section.note,
         };
         await addStatistic(analyticId, {
           title: section.title,
@@ -794,7 +792,6 @@ export const BinaryLogisticMain = () => {
                   payloadForRenderer = {
                     charts: section.chartData.charts,
                     description: section.description,
-                    note: section.note,
                     title: section.title,
                   };
                 } else {
@@ -802,7 +799,6 @@ export const BinaryLogisticMain = () => {
                   const tableObjectForRenderer = {
                     ...section.data,
                     title: section.title,
-                    note: section.note,
                   };
 
                   payloadForRenderer = {
