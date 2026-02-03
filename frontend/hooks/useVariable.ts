@@ -57,6 +57,13 @@ export function getSlicedData({
         variables,
         selectedVariables: names,
     });
+    
+    // Debug logging
+    console.log("[getSlicedData] Input - dataVariables rows:", dataVariables?.length);
+    console.log("[getSlicedData] Input - variables:", variables?.map(v => ({ name: v.name, columnIndex: v.columnIndex })));
+    console.log("[getSlicedData] Input - selectedVariables:", names);
+    console.log("[getSlicedData] Calculated maxIndex:", maxIndex);
+    
     const newSlicedData: Record<string, string | number | null>[][] = [];
 
     names.forEach((varName) => {
@@ -79,6 +86,8 @@ export function getSlicedData({
                         ? null
                         : stringValue
                     : num;
+            } else {
+                console.warn(`[getSlicedData] Variable "${varName}" not found in variables array!`);
             }
 
             slicedDataForVar.push(rowObj);
@@ -87,6 +96,7 @@ export function getSlicedData({
         newSlicedData.push(slicedDataForVar);
     });
 
+    console.log("[getSlicedData] Output - newSlicedData:", newSlicedData);
     return newSlicedData;
 }
 
