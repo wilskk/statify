@@ -26,7 +26,7 @@ export const TourCard: React.FC<CardComponentProps> = ({
     // Ensure card is not positioned outside its container
     const checkPosition = () => {
       const rect = card.getBoundingClientRect();
-      const parentContainer = card.closest(".resize-content") || document.body;
+      const parentContainer = card.closest(".resize-content") ?? document.body;
       const parentRect = parentContainer.getBoundingClientRect();
       
       // Check horizontal overflow
@@ -45,7 +45,7 @@ export const TourCard: React.FC<CardComponentProps> = ({
     
     // Also listen for panel resize
     const resizeObserver = new ResizeObserver(checkPosition);
-    const parentContainer = card.closest(".resize-content") || document.body;
+    const parentContainer = card.closest(".resize-content") ?? document.body;
     resizeObserver.observe(parentContainer);
     
     return () => {

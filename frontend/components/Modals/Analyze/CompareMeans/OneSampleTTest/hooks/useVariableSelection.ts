@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
+<<<<<<< HEAD
 import { Variable } from '@/types/Variable';
 import {
+=======
+import type { Variable } from '@/types/Variable';
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   VariableSelectionProps,
   HighlightedVariable
 } from '../types';

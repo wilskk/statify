@@ -4,17 +4,26 @@ WORKDIR /app/frontend
 
 # Declare build arguments
 ARG NEXT_PUBLIC_BACKEND_URL
+ARG NPM_REGISTRY=https://registry.npmjs.org/
 
 # Set environment variables from build arguments
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
-ENV NODE_ENV=development
 
 # Install system packages required to compile native dependencies (e.g., canvas)
 RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev pixman-dev libpng-dev
 
 # Copy frontend package.json dan install dependencies
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm config set registry $NPM_REGISTRY && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-factor 2 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set audit false && \
+    npm config set fund false
+RUN npm install --omit=dev --no-audit --no-fund
+# Minimal dev deps required for building Next.js + Tailwind in CI, without fetching the full devDependencies set
+RUN npm install -D --no-save typescript @types/node @types/react @types/react-dom tailwindcss postcss autoprefixer --no-audit --no-fund
 
 # Copy frontend code
 COPY ./ ./
@@ -37,6 +46,7 @@ ENV NODE_ENV=production
 
 # Pass env variables to runtime
 ARG NEXT_PUBLIC_BACKEND_URL
+ARG NPM_REGISTRY=https://registry.npmjs.org/
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 
 # Runtime may only need lightweight libraries; remove heavy build deps
@@ -47,7 +57,14 @@ RUN apk add --no-cache cairo pango libjpeg-turbo giflib pixman libpng
 COPY package.json package-lock.json* ./
 
 # Install ONLY runtime dependencies for a slimmer image
-RUN npm install --omit=dev
+RUN npm config set registry $NPM_REGISTRY && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-factor 2 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set audit false && \
+    npm config set fund false && \
+    npm install --omit=dev --no-audit --no-fund
 
 # Copy next.config.js dan other necessary files
 COPY next.config.js ./

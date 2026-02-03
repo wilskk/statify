@@ -47,6 +47,9 @@ interface ChartData {
       };
     };
     chartColor?: string[];
+    // Classification Plot specific options
+    cutoff?: number;
+    groups?: string[];
   };
   chartMetadata: {
     axisInfo: {
@@ -103,16 +106,9 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
 
   // Parse data jika berbentuk string
   const parsedData = useMemo(
-    () => {
-      try {
-        return typeof data === "string" ? JSON.parse(data) : data;
-      } catch (error) {
-        console.error("Failed to parse chart data:", error);
-        return { charts: [] };
-      }
-    },
+    () => (typeof data === "string" ? JSON.parse(data) : data),
     [data]
-  );
+    );
   console.log("parsedData", parsedData);
   // Helper function to convert string axisScaleOptions to number
   const convertAxisScaleOptions = (options?: {
@@ -783,7 +779,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   };
 
   useEffect(() => {
-    if (parsedData && parsedData.charts && Array.isArray(parsedData.charts)) {
+    if (parsedData?.charts && Array.isArray(parsedData.charts)) {
       const nodes = parsedData.charts.map(
         (chartData: ChartData, index: number) => {
           const {
@@ -1510,14 +1506,14 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.chartColor
               );
               break;
-            case "Normal QQ Plot":
+            case "Q-Q Plot":
               chartNode = chartUtils.createNormalQQPlot(
                 chartDataPoints,
                 width,
                 height,
                 useAxis,
                 {
-                  title: chartMetadata?.title || "Normal QQ Plot",
+                  title: chartMetadata?.title || "Q-Q Plot",
                   subtitle: chartMetadata?.subtitle,
                   titleFontSize: chartMetadata?.titleFontSize || 16,
                   subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
@@ -1542,6 +1538,26 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.axisLabels,
                 chartConfig?.axisScaleOptions,
                 chartConfig?.chartColor
+              );
+              break;
+            case "Classification Plot":
+              chartNode = chartUtils.createClassificationPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Classification Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.chartColor,
+                {
+                  cutoff: chartConfig?.cutoff ?? 0.5,
+                  groups: chartConfig?.groups,
+                }
               );
               break;
             default:
@@ -1584,10 +1600,10 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
         >
           <div
             className={
-              "absolute top-2 right-2 flex gap-2 z-10 transition-opacity chart-actions " +
-              (actionsHidden[id]
+              `absolute top-2 right-2 flex gap-2 z-10 transition-opacity chart-actions ${ 
+              actionsHidden[id]
                 ? "opacity-0"
-                : "opacity-0 group-hover:opacity-100 pointer-events-auto")
+                : "opacity-0 group-hover:opacity-100 pointer-events-auto"}`
             }
             onMouseEnter={() => {
               if (actionTimers.current[id])

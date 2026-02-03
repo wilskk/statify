@@ -17,11 +17,14 @@ export type DataStoreError = {
     originalError?: any;
 };
 
+<<<<<<< HEAD
 export interface ColumnData {
     variable_name: string;
     values: (string | number | null)[];
 }
 
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 export interface DataStoreState {
     data: DataRow[];
     isLoading: boolean;
@@ -59,11 +62,17 @@ export interface DataStoreState {
 
     ensureColumns: (targetColIndex: number) => Promise<void>;
     checkAndSave: () => Promise<void>;
+<<<<<<< HEAD
 
     addVariableColumns: (newColumns: ColumnData[]) => Promise<{ startColumnIndex: number; endColumnIndex: number }>;
 }
 
 const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateCells' | 'setData' | 'saveData' | 'addRow' | 'addRows' | 'deleteRow' | 'deleteRows' | 'sortData' | 'getVariableData' | 'validateVariableData' | 'ensureColumns' | 'checkAndSave' | 'addVariableColumns'> = {
+=======
+}
+
+const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateCells' | 'setData' | 'saveData' | 'addRow' | 'addRows' | 'deleteRow' | 'deleteRows' | 'sortData' | 'getVariableData' | 'validateVariableData' | 'ensureColumns' | 'checkAndSave'> = {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     data: [],
     isLoading: false,
     error: null,
@@ -434,6 +443,7 @@ export const useDataStore = create<DataStoreState>()(
                         }
                     }
                 },
+<<<<<<< HEAD
 
                 addVariableColumns: async (newColumns) => {
                     if (!newColumns || newColumns.length === 0) {
@@ -487,3 +497,9 @@ export const useDataStore = create<DataStoreState>()(
     )
 );
 
+=======
+            };
+        })
+    )
+);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

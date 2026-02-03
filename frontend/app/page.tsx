@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 'use client';
 
 import {
@@ -43,3 +44,11 @@ function CTASection() {
         </section>
     );
 }
+=======
+// app/page.tsx
+import { redirect } from 'next/navigation';
+
+export default function Home() {
+    redirect('/landing');
+}
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

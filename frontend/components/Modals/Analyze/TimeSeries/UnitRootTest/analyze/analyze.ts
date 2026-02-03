@@ -33,6 +33,7 @@ export async function handleUnitRootTest(
             throw new Error("Invalid equation");
         }
         
+<<<<<<< HEAD
         let adf_statistic = await unitroot.calculate_test_stat();
         let test = await get_t();
         // let test2 = await get_gamma_0_tab1();
@@ -48,6 +49,23 @@ export async function handleUnitRootTest(
         let t: number[] = [];
         let difference: number[] = [];
         let x: number[] = [];
+=======
+        const adf_statistic = await unitroot.calculate_test_stat();
+        const test = await get_t();
+        // let test2 = await get_gamma_0_tab1();
+        const critical_value = Array.from(await unitroot.calculate_critical_value());
+        const adf_pvalue = await unitroot.calculate_pvalue() as number;
+        const coeficient = Array.from(await unitroot.get_b_vec());
+        const standard_error = Array.from(await unitroot.get_se_vec());
+        const coef_pvalue = Array.from(await unitroot.get_p_value_vec());
+        const coef_statistic = Array.from(await unitroot.get_test_stat_vec());
+        const sel_crit = Array.from(await unitroot.get_sel_crit());
+
+        // Testing
+        const t: number[] = [];
+        const difference: number[] = [];
+        const x: number[] = [];
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         for (let i = 0; i < data.length - 1; i++) {
             t.push(i+1.0);
             difference.push(data[i+1] - data[i]);
@@ -55,7 +73,11 @@ export async function handleUnitRootTest(
         }
 
         // Description Table
+<<<<<<< HEAD
         let descriptionJSON = JSON.stringify({
+=======
+        const descriptionJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [
                 {
                     title: `Description Table`,
@@ -103,7 +125,11 @@ export async function handleUnitRootTest(
             ],
         });
 
+<<<<<<< HEAD
         let adfJSON = JSON.stringify({
+=======
+        const adfJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [{
                 title: `${methodName} Test Statistic`,
                 columnHeaders: [{header: ""}, {header: ""}, {header: "t-statistic"}, {header: "p-value"}],
@@ -127,7 +153,11 @@ export async function handleUnitRootTest(
             }]
         });
 
+<<<<<<< HEAD
         let coefName = [];
+=======
+        const coefName = [];
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         if (equation === "no_trend" || equation === "with_trend") {
             coefName.push("Constant");
             if (method === "augmented-dickey-fuller") {
@@ -147,7 +177,11 @@ export async function handleUnitRootTest(
             }
             coefName.push(`${dataHeader}`)
         }
+<<<<<<< HEAD
         let coefStruct: Record<string, any> = {}; // Menggunakan objek kosong
+=======
+        const coefStruct: Record<string, any> = {}; // Menggunakan objek kosong
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         // Mengecek panjang seluruh data apakah sama
         if ((coefName.length + coeficient.length + standard_error.length + coef_pvalue.length + coef_statistic.length) % coeficient.length == 0) {
             for (let i = 0; i < coeficient.length; i++) {
@@ -162,7 +196,11 @@ export async function handleUnitRootTest(
         } else {
             throw new Error("Data length is not equal");
         }
+<<<<<<< HEAD
         let coefJSON = JSON.stringify({
+=======
+        const coefJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [{
                 title: "Coefficients Test",
                 columnHeaders: [{header: ""}, {header: "coeficient"}, {header: "standard error"}, {header: "t-statistic"}, {header: "p-value"}],
@@ -176,7 +214,11 @@ export async function handleUnitRootTest(
             }]
         });
 
+<<<<<<< HEAD
         let sel_critName = equation ===  `no_constant` ? 
+=======
+        const sel_critName = equation ===  `no_constant` ? 
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         [
             `R-Squared`, `Adj. R-Squared`, `S.E. of Regression`,`Sum Squared Resid`,
             `Log Likelihood`, `Mean Dependent Var`, `S.D. Dependent Var`,
@@ -188,7 +230,11 @@ export async function handleUnitRootTest(
             `Log Likelihood`, `F-Statistic`, `Prob(F-Stat)`, `Mean Dependent Var`, `S.D. Dependent Var`,
             `Akaike Info Crit`, `Schwarz Criterion`, `Hannan-Quinn`, `Durbin-Watson`
         ];
+<<<<<<< HEAD
         let sel_critStruct: Record<string, any> = {}; // Menggunakan objek kosong
+=======
+        const sel_critStruct: Record<string, any> = {}; // Menggunakan objek kosong
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         // Mengecek panjang seluruh data apakah sama
         if (sel_critName.length === sel_crit.length) {
             for (let i = 0; i < sel_crit.length; i++) {
@@ -200,7 +246,11 @@ export async function handleUnitRootTest(
         } else {
             throw new Error("Data length is not equal");
         }
+<<<<<<< HEAD
         let sel_critJSON = JSON.stringify({
+=======
+        const sel_critJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [{
                 title: "Selection Criterion",
                 columnHeaders: [{header: ""}, {header: "value"}],
@@ -213,8 +263,13 @@ export async function handleUnitRootTest(
         
         return ["success", descriptionJSON, [...critical_value, adf_statistic, ...coeficient, ...standard_error, adf_pvalue], adfJSON, coefJSON, sel_critJSON, methodName];
     } catch (error) {
+<<<<<<< HEAD
         let errorMessage = error as Error;
         let errorJSON = JSON.stringify({
+=======
+        const errorMessage = error as Error;
+        const errorJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [
                 {
                     title: `Error Table`,

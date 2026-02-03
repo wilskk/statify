@@ -1,5 +1,9 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     MultivariateAnalysisType
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate-worker";
 
@@ -16,26 +20,46 @@ export async function analyzeMultivariate({
         : [];
 
     const slicedDataForDependent = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: DependentVariables,
     });
 
     const slicedDataForFixFactor = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: FixFactorVariables,
     });
 
     const slicedDataForCovariate = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: CovariateVariables,
     });
 
     const slicedDataForWlsWeight = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: WlsWeightVariable,
     });
 

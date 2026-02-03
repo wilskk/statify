@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { ChartOptions, FrequencyTable } from "../types";
+=======
+import type { ChartOptions, FrequencyTable } from "../types";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { useResultStore } from "@/stores/useResultStore";
 import { ChartService } from "@/services/chart/ChartService";
 import { DataProcessingService } from "@/services/chart/DataProcessingService";
@@ -52,7 +56,11 @@ export const processAndAddCharts = async (
 
     for (const varName in frequencyTables) {
         const table = frequencyTables[varName];
+<<<<<<< HEAD
         if (!table || !table.rows || table.rows.length === 0) continue;
+=======
+        if (!table?.rows || table.rows.length === 0) continue;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
         const chartData = {
             labels: table.rows.map(row => row.label),

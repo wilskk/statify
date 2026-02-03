@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
@@ -281,4 +282,273 @@ export const KNNSave = ({
             </Dialog>
         </>
     );
+=======
+import React, { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import type {
+  KNNSaveProps,
+  KNNSaveType,
+} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
+import type { CheckedState } from "@radix-ui/react-checkbox";
+import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+
+export const KNNSave = ({
+  isSaveOpen,
+  setIsSaveOpen,
+  updateFormData,
+  data,
+}: KNNSaveProps) => {
+  const [saveState, setSaveState] = useState<KNNSaveType>({ ...data });
+  const [isContinueDisabled, setIsContinueDisabled] = useState(false);
+
+  useEffect(() => {
+    if (isSaveOpen) {
+      setSaveState({ ...data });
+    }
+  }, [isSaveOpen, data]);
+
+  const handleChange = (
+    field: keyof KNNSaveType,
+    value: CheckedState | number | boolean | string | null,
+  ) => {
+    setSaveState((prevState) => ({
+      ...prevState,
+      [field]: value,
+    }));
+  };
+
+  const handleSavedGrp = (value: string) => {
+    setSaveState((prevState) => ({
+      ...prevState,
+      AutoName: value === "AutoName",
+      CustomName: value === "CustomName",
+    }));
+  };
+
+  const handleContinue = () => {
+    Object.entries(saveState).forEach(([key, value]) => {
+      updateFormData(key as keyof KNNSaveType, value);
+    });
+    setIsSaveOpen(false);
+  };
+  if (!isSaveOpen) return null;
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col items-start gap-2 p-4">
+          <ResizablePanelGroup
+            direction="vertical"
+            className="min-h-[250px] rounded-lg border md:min-w-[200px]"
+          >
+            <ResizablePanel defaultSize={100}>
+              <RadioGroup
+                value={saveState.AutoName ? "AutoName" : "CustomName"}
+                onValueChange={handleSavedGrp}
+              >
+                <div className="flex flex-col gap-2 p-2">
+                  <Label className="font-bold">Names of Saved Variables</Label>
+                  <div className="flex flex-row gap-2">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="AutoName" id="AutoName" />
+                      <Label htmlFor="AutoName">
+                        Automatically generate unique names
+                      </Label>
+                    </div>
+                  </div>
+                  <div className="pl-6">
+                    <p className="text-sm text-justify">
+                      Select this option if you want to add a new set of saved
+                      variables to your dataset each time you run a model.
+                    </p>
+                  </div>
+                  <div className="flex flex-row gap-1">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="CustomName" id="CustomName" />
+                      <Label htmlFor="CustomName">Use custom names</Label>
+                    </div>
+                  </div>
+                  <div className="pl-6">
+                    <p className="text-sm text-justify">
+                      Specify names for the variables. If you select this
+                      option, any existing variables with the same name or root
+                      name are replaced each time you run a model.
+                    </p>
+                  </div>
+                </div>
+              </RadioGroup>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
+        <div className="flex flex-col gap-2 p-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px] text-center">Save</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Variable Name</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="text-center">
+                  <Checkbox
+                    id="HasTargetVar"
+                    checked={saveState.HasTargetVar}
+                    onCheckedChange={(checked) =>
+                      handleChange("HasTargetVar", checked)
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <label
+                    htmlFor="HasTargetVar"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Predicted Value or Category
+                  </label>
+                </TableCell>
+                <TableCell>KNN_PredictedValue</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-center">
+                  <Checkbox
+                    id="IsCateTargetVar"
+                    checked={saveState.IsCateTargetVar}
+                    disabled={true}
+                    onCheckedChange={(checked) =>
+                      handleChange("IsCateTargetVar", checked)
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <label
+                    htmlFor="IsCateTargetVar"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Predicted Probability (Category Target)
+                  </label>
+                </TableCell>
+                <TableCell>KNN_Probablity</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-center">
+                  <Checkbox
+                    id="RandomAssignToPartition"
+                    checked={saveState.RandomAssignToPartition}
+                    onCheckedChange={(checked) =>
+                      handleChange("RandomAssignToPartition", checked)
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <label
+                    htmlFor="RandomAssignToPartition"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Training/Holdout Partition Variable
+                  </label>
+                </TableCell>
+                <TableCell>KNN_Partition</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="text-center">
+                  <Checkbox
+                    id="RandomAssignToFold"
+                    checked={saveState.RandomAssignToFold}
+                    disabled={true}
+                    onCheckedChange={(checked) =>
+                      handleChange("RandomAssignToFold", checked)
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <label
+                    htmlFor="RandomAssignToFold"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Cross-Validation Fold Variable
+                  </label>
+                </TableCell>
+                <TableCell>KNN_Fold</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <div className="flex flex-row items-center gap-2">
+            <Label className="w-[275px]" htmlFor="MaxCatsToSave">
+              Maximum Number of Categories to Save:
+            </Label>
+            <Input
+              id="MaxCatsToSave"
+              type="text"
+              className="w-[75px]"
+              placeholder=""
+              value={saveState.MaxCatsToSave ?? ""}
+              onChange={(e) => handleChange("MaxCatsToSave", e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+        <div>
+          {/* <TooltipProvider>
+                                                                                                     <Tooltip>
+                                                                                                       <TooltipTrigger asChild>
+                                                                                                         <Button
+                                                                                                           variant="ghost"
+                                                                                                           size="icon"
+                                                                                                           onClick={startTour}
+                                                                                                           className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                                                                                         >
+                                                                                                           <HelpCircle className="h-4 w-4" />
+                                                                                                         </Button>
+                                                                                                       </TooltipTrigger>
+                                                                                                       <TooltipContent side="top">
+                                                                                                         <p className="text-xs">Start feature tour</p>
+                                                                                                       </TooltipContent>
+                                                                                                     </Tooltip>
+                                                                                                   </TooltipProvider> */}
+        </div>
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsSaveOpen(false)}
+            className="mr-2"
+          >
+            Cancel
+          </Button>
+          <Button
+            id="knn-save-continue-button"
+            disabled={isContinueDisabled}
+            type="button"
+            onClick={handleContinue}
+          >
+            Continue
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 };

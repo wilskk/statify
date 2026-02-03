@@ -5,10 +5,13 @@ import { Card } from "@/components/ui/card";
 import dynamic from "next/dynamic";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
+<<<<<<< HEAD
 import { ScreePlot } from "@/components/Modals/Analyze/dimension-reduction/factor/charts/ScreePlot";
 import FactorLoadingChart from "@/components/Modals/Analyze/dimension-reduction/factor/charts/FactorLoadingChart";
 
 
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const TiptapEditor = dynamic(
   () => import("@/components/Output/Editor/TiptapEditor"),
   {
@@ -20,6 +23,10 @@ const TiptapEditor = dynamic(
 );
 import { Edit, ChevronDown, ChevronUp } from "lucide-react";
 import TextRenderer from "@/components/Output/text/text-renderer";
+<<<<<<< HEAD
+=======
+import { getStatisticsComponent } from "@/components/Output/Statistics";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 const ResultOutput: React.FC = () => {
   const { logs, updateStatistic } = useResultStore();
@@ -126,8 +133,12 @@ const ResultOutput: React.FC = () => {
               data-testid={`result-log-${log.id}`}
             >
               <div className="text-sm font-medium text-muted-foreground px-1" data-testid={`log-header-${log.id}`}>
+<<<<<<< HEAD
                 <span className="font-semibold">Log {log.id}:</span>
                 <pre className="mt-1 whitespace-pre-wrap font-mono text-xs bg-muted/30 p-2 rounded-md overflow-x-auto">{log.log}</pre>
+=======
+                Log {log.id}: {log.log}
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
               </div>
               {log.analytics?.map((analytic) => (
                 <Card
@@ -172,6 +183,19 @@ const ResultOutput: React.FC = () => {
                               data-testid={`result-output-${analytic.id}-${stat.id}`}
                             >
                               {(() => {
+<<<<<<< HEAD
+=======
+                                // Check if there is a specific component for this statistic
+                                const SpecificComponent = getStatisticsComponent(stat.components);
+                                if (SpecificComponent) {
+                                  return (
+                                    <div data-testid={`result-component-${stat.id}`}>
+                                      <SpecificComponent data={stat.output_data} />
+                                    </div>
+                                  );
+                                }
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                 let parsedData;
                                 try {
                                   parsedData =
@@ -190,6 +214,7 @@ const ResultOutput: React.FC = () => {
                                   );
                                 }
 
+<<<<<<< HEAD
                                 // --- START MODIFICATION ---
                                 // Pengecekan untuk Loading Plot Plotly
                                 if (parsedData.type === "PLOTLY_LOADING_PLOT") {
@@ -201,6 +226,9 @@ const ResultOutput: React.FC = () => {
                                 } 
                                 // --- END MODIFICATION ---
                                 else if (parsedData.tables) {
+=======
+                                if (parsedData.tables) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                   const isExpandedTable = expandedTables[statId] ?? false;
 
                                   // Determine if the rendered table is "long" enough to warrant a toggle (simple heuristic)
@@ -213,7 +241,11 @@ const ResultOutput: React.FC = () => {
                                       <div
                                         className={`${
                                           !isExpandedTable && isLongTable
+<<<<<<< HEAD
                                             ? "max-h-[500px] overflow-hidden"
+=======
+                                            ? "max-h-[500px] overflow-y-hidden"
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                             : ""
                                         } overflow-x-auto pb-2`}
                                         data-testid={`result-table-${stat.id}`}
@@ -250,12 +282,15 @@ const ResultOutput: React.FC = () => {
                                       />
                                     </div>
                                   );
+<<<<<<< HEAD
                                 } else if (parsedData.component_numbers && parsedData.eigenvalues) {
                                   return (
                                     <div data-testid={`result-scree-plot-${stat.id}`} className="flex justify-center">
                                       <ScreePlot data={parsedData} />
                                     </div>
                                   );
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                 } else if (parsedData.text) {
                                   return (
                                     <div data-testid={`result-text-${stat.id}`}>
@@ -346,4 +381,8 @@ const ResultOutput: React.FC = () => {
   );
 };
 
+<<<<<<< HEAD
 export default ResultOutput;
+=======
+export default ResultOutput;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

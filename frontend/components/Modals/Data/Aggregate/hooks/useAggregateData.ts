@@ -3,7 +3,10 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useModalStore } from "@/stores/useModalStore";
 import type { Variable, VariableType} from "@/types/Variable";
+<<<<<<< HEAD
 import { VariableMeasure } from "@/types/Variable";
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import type { AggregatedVariable } from "../types";
 import {
     createVariableName,
@@ -14,7 +17,11 @@ import {
 
 export const useAggregateData = () => {
     const { variables } = useVariableStore();
+<<<<<<< HEAD
     const { data, updateCells } = useDataStore();
+=======
+    const { data } = useDataStore();
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     const { setStatisticProgress } = useModalStore();
 
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
@@ -629,4 +636,8 @@ export const useAggregateData = () => {
         handleConfirm,
         onAvailableOrBreakHighlighted,
     };
+<<<<<<< HEAD
 }; 
+=======
+};
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

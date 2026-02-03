@@ -1,6 +1,10 @@
 // hierarchical-clustering-formatter.ts
 import {formatDisplayNumber} from "@/hooks/useFormatter";
+<<<<<<< HEAD
 import {ResultJson, Table} from "@/types/Table";
+=======
+import type {ResultJson, Table} from "@/types/Table";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export function transformHierClusResult(data: any): ResultJson {
     const resultJson: ResultJson = {
@@ -86,8 +90,12 @@ export function transformHierClusResult(data: any): ResultJson {
 
     // 2. Proximity Matrix
     if (
+<<<<<<< HEAD
         data.proximity_matrix &&
         data.proximity_matrix.distances &&
+=======
+        data.proximity_matrix?.distances &&
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         data.proximity_matrix.distances.length > 0
     ) {
         // Extract unique case names to build header while preserving original order
@@ -159,7 +167,11 @@ export function transformHierClusResult(data: any): ResultJson {
     }
 
     // 3. Agglomeration Schedule
+<<<<<<< HEAD
     if (data.agglomeration_schedule && data.agglomeration_schedule.stages) {
+=======
+    if (data.agglomeration_schedule?.stages) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const table: Table = {
             key: "agglomeration_schedule",
             title: "Agglomeration Schedule",
@@ -275,7 +287,11 @@ export function transformHierClusResult(data: any): ResultJson {
     }
 
     // 6. Dendrogram data (if available)
+<<<<<<< HEAD
     if (data.dendrogram && data.dendrogram.nodes) {
+=======
+    if (data.dendrogram?.nodes) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const table: Table = {
             key: "dendrogram_data",
             title: "Dendrogram Data",

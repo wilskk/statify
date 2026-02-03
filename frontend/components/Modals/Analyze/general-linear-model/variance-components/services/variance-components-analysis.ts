@@ -1,5 +1,9 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     VarianceCompsAnalysisType
 } from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components-worker";
 
@@ -17,32 +21,57 @@ export async function analyzeVarianceComps({
         : [];
 
     const slicedDataForDependent = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: DependentVariables,
     });
 
     const slicedDataForFixFactor = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: FixFactorVariables,
     });
 
     const slicedDataForRandomFactor = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: RandomFactorVariables,
     });
 
     const slicedDataForCovariate = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: CovariateVariables,
     });
 
     const slicedDataForWlsWeight = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: WlsWeightVariable,
     });
 

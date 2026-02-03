@@ -1,11 +1,19 @@
 import { formatDisplayNumber, formatSig } from "@/hooks/useFormatter";
+<<<<<<< HEAD
 import { ResultJson, Row, Table } from "@/types/Table";
+=======
+import type { ResultJson, Row, Table } from "@/types/Table";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export function formatPart2(data: any, resultJson: ResultJson) {
     // 6. General Estimable Function table
     if (
+<<<<<<< HEAD
         data.general_estimable_function &&
         data.general_estimable_function.estimable_function
+=======
+        data.general_estimable_function?.estimable_function
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     ) {
         const gef = data.general_estimable_function;
         const estimable = gef.estimable_function;
@@ -81,7 +89,11 @@ export function formatPart2(data: any, resultJson: ResultJson) {
     }
 
     // Hypothesis L-Matrices
+<<<<<<< HEAD
     if (data.hypothesis_l_matrices && data.hypothesis_l_matrices.matrices) {
+=======
+    if (data.hypothesis_l_matrices?.matrices) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         data.hypothesis_l_matrices.matrices.forEach((termMatrix: any) => {
             if (
                 !termMatrix.parameter_names ||
@@ -225,8 +237,12 @@ export function formatPart2(data: any, resultJson: ResultJson) {
         });
 
         const depVarName =
+<<<<<<< HEAD
             (data.tests_of_between_subjects_effects &&
                 data.tests_of_between_subjects_effects.dependent_variable) ||
+=======
+            (data.tests_of_between_subjects_effects?.dependent_variable) ||
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             (data.descriptive_statistics &&
                 Object.values(data.descriptive_statistics).length > 0 &&
                 (Object.values(data.descriptive_statistics)[0] as any)
@@ -264,7 +280,11 @@ export function formatPart2(data: any, resultJson: ResultJson) {
         const table: Table = {
             key: "lack_of_fit_tests",
             title: `Lack of Fit Tests`,
+<<<<<<< HEAD
             columnHeaders: columnHeaders,
+=======
+            columnHeaders,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             rows: [],
             note: lof.note,
             interpretation: lof.interpretation,
@@ -350,7 +370,11 @@ export function formatPart2(data: any, resultJson: ResultJson) {
     }
 
     // 9. Spread vs. Level Plots (data for chart)
+<<<<<<< HEAD
     if (data.spread_vs_level_plots && data.spread_vs_level_plots.points) {
+=======
+    if (data.spread_vs_level_plots?.points) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const plots = data.spread_vs_level_plots;
 
         const table: Table = {

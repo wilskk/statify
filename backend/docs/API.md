@@ -16,7 +16,11 @@ Dokumentasi ini menjelaskan seluruh endpoint backend, format request/response, e
 
 - Pendahuluan
 - Keamanan & Batasan
+<<<<<<< HEAD
 - Konfigurasi Runtime (ENV)
+=======
+- Konfigurasi Statis (constants.ts)
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 - Daftar Endpoint
   - Health Check
   - SAV Router Health
@@ -45,6 +49,7 @@ Dokumentasi ini menjelaskan seluruh endpoint backend, format request/response, e
   - Header standar yang dikirim (dari `express-rate-limit`): `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`
 - Helmet diaktifkan untuk header keamanan dasar.
 
+<<<<<<< HEAD
 ## Konfigurasi Runtime (ENV)
 
 - `PORT` (number): default `5000`
@@ -54,6 +59,21 @@ Dokumentasi ini menjelaskan seluruh endpoint backend, format request/response, e
   - Production build (npm run build/start atau Docker): `dist/temp`
  - `DEBUG_SAV` (opsional): jika diset ke nilai truthy (`1`, `true`, `yes`, `on`, tidak peka huruf besar/kecil), backend akan menampilkan log debug selama proses `/api/sav/create` (lihat `server/controllers/savController.ts`). Default non-aktif.
  - `RATE_LIMIT_ENABLED` (opsional): toggle rate limiting global pada prefix `/api`. Truthy: `1`, `true`, `yes`, `on` (case-insensitive). Default aktif. Untuk menonaktifkan saat load testing, set ke `0` atau `false`.
+=======
+## Konfigurasi Statis (constants.ts)
+
+Backend menggunakan konfigurasi statis di `server/config/constants.ts` (tidak membaca environment variables):
+
+- `PORT`: default `5000`
+- `MAX_UPLOAD_SIZE_MB`: default `10`
+- `getTempDir()`: mengembalikan direktori sementara `path.join(os.tmpdir(), 'statify')`
+- `DEBUG_SAV`: default `false` (aktifkan untuk log debug proses pembuatan SAV)
+- `RATE_LIMIT_ENABLED`: default `false` (aktifkan untuk membatasi prefix `/api`)
+- `RATE_LIMIT_WINDOW_MS`: default `15 menit`
+- `RATE_LIMIT_MAX`: default `100`
+
+Untuk mengubah konfigurasi, edit file `server/config/constants.ts`, lalu rebuild dan redeploy aplikasi (atau rebuild Docker image). Lihat juga `backend/docs/CONFIG.md` untuk referensi lengkap konfigurasi.
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 ## Daftar Endpoint
 
@@ -261,7 +281,11 @@ const blob = await createRes.blob();
   - **Kunci**: header `X-User-Id` (jika ada), jika tidak IP request (lihat `keyGenerator` di `server/app.ts`).
   - **Header respons**: `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`.
   - **Saat terlampaui**: status `429 Too Many Requests` dengan header di atas.
+<<<<<<< HEAD
   - **Nonaktifkan sementara (load testing)**: set env `RATE_LIMIT_ENABLED=0` atau `false` sebelum menjalankan server.
+=======
+  - **Aktif/Nonaktifkan**: ubah nilai `RATE_LIMIT_ENABLED` di `server/config/constants.ts`, kemudian rebuild dan jalankan ulang server.
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
  ## Skema Data (Ringkas)
 
@@ -412,24 +436,39 @@ const blob = await createRes.blob();
  - Coverage (opsional): `npm test -- --coverage` atau `npx jest --coverage`
  - Lint: `npm run lint`
  - Perbaiki otomatis: `npm run lint:fix`
+<<<<<<< HEAD
  - Catatan: `TEMP_DIR` dapat diatur saat testing untuk direktori sementara khusus.
+=======
+ - Catatan: Direktori sementara berasal dari OS temp (`getTempDir()`), tidak dikonfigurasi via environment variables.
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 ## Deployment (Docker)
  
  - Build image (dari direktori `backend/`):
    ```bash
+<<<<<<< HEAD
    docker build -f Dockerfile.backend -t statify-backend:latest \
      --build-arg NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000 .
+=======
+   docker build -f Dockerfile.backend -t statify-backend:latest .
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
    ```
  - Jalankan container:
    ```bash
    docker run -p 5000:5000 \
+<<<<<<< HEAD
      -e PORT=5000 -e MAX_UPLOAD_SIZE_MB=10 -e TEMP_DIR=/app/backend/temp \
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
      --name statify-backend statify-backend:latest
    ```
  - Healthcheck: `curl http://localhost:5000/` → `Backend is running!`
  - CORS: origin diatur di `server/config/constants.ts` (hard-coded). Untuk kustomisasi, ubah file tersebut dan rebuild image.
+<<<<<<< HEAD
  - Catatan: `Dockerfile.backend` menerima `NEXT_PUBLIC_FRONTEND_URL` (ditulis ke `.env`), namun backend saat ini hanya membaca `PORT`, `MAX_UPLOAD_SIZE_MB`, `TEMP_DIR` dari environment.
+=======
+ - Catatan: Backend tidak membaca environment variables untuk konfigurasi runtime. Setelah mengubah `constants.ts`, rebuild image terlebih dahulu.
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
  
  ---
   

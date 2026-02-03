@@ -5,14 +5,7 @@ const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
-    distDir: '.next',
-    allowedDevOrigins: [
-        'localhost',
-        '127.0.0.1',
-        '*.fly.dev',
-        '*.builder.codes',
-        'c350229c13f84ae7a41cd6c2bbf50f24-c1cbf6f7ad97404492f69e772.projects.builder.codes',
-    ],
+    distDir: process.env.NODE_ENV === 'production' ? '.next' : '.next-dev',
     webpack: (config, { isServer }) => {
         if (!isServer) {
             config.module.rules.push({
@@ -71,4 +64,8 @@ const nextConfig = {
     },
 }
 
+<<<<<<< HEAD
 module.exports = nextConfig
+=======
+module.exports = nextConfig
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

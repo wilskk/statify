@@ -1,5 +1,9 @@
 import {useEffect, useMemo, useState} from "react";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     CorrespondenceContainerProps,
     CorrespondenceMainType,
     CorrespondenceType,
@@ -120,9 +124,15 @@ export const CorrespondenceContainer = ({
 
             await analyzeCorrespondence({
                 configData: newFormData,
+<<<<<<< HEAD
                 dataVariables: dataVariables,
                 variables: variables,
                 meta: meta,
+=======
+                dataVariables,
+                variables,
+                meta,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             });
         } catch (error) {
             console.error(error);

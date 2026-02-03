@@ -2,7 +2,11 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     TwoStepClusterOptionsProps,
     TwoStepClusterOptionsType,
 } from "@/components/Modals/Analyze/Classify/two-step-cluster/types/two-step-cluster";
@@ -10,7 +14,11 @@ import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/component
 import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";
 import {Checkbox} from "@/components/ui/checkbox";
+<<<<<<< HEAD
 import {CheckedState} from "@radix-ui/react-checkbox";
+=======
+import type {CheckedState} from "@radix-ui/react-checkbox";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {Accordion, AccordionContent, AccordionItem, AccordionTrigger,} from "@/components/ui/accordion";
 import {Badge} from "@/components/ui/badge";
 import {ScrollArea} from "@/components/ui/scroll-area";

@@ -11,8 +11,9 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 
 import * as d3 from "d3";
-import { ChartType } from "@/components/Modals/Graphs/ChartTypes";
-import { chartVariableConfig, AllowedDataTypes } from "./ChartVariableConfig";
+import type { ChartType } from "@/components/Modals/Graphs/ChartTypes";
+import type { AllowedDataTypes } from "./ChartVariableConfig";
+import { chartVariableConfig } from "./ChartVariableConfig";
 import clsx from "clsx";
 import { ChartService, DataProcessingService } from "@/services/chart";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
@@ -432,9 +433,9 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           }
 
           const chartJSON = ChartService.createChartJSON({
-            chartType: chartType,
+            chartType,
             chartData: processedResult.data,
-            chartVariables: chartVariables,
+            chartVariables,
             chartMetadata: {
               title: chartTitle || `${chartType}`,
               subtitle:
@@ -456,11 +457,11 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
               statistic: selectedStatistic,
               // Hanya tambahkan showNormalCurve untuk Histogram
               ...(chartType === "Histogram" && {
-                showNormalCurve: showNormalCurve,
+                showNormalCurve,
               }),
               // Hanya tambahkan fitFunctions untuk Scatter Plot With Multiple Fit Line
               ...(chartType === "Scatter Plot With Multiple Fit Line" && {
-                fitFunctions: fitFunctions,
+                fitFunctions,
               }),
               axisLabels: {
                 x: xAxisLabel || bottomVariables[0],
@@ -1505,15 +1506,15 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
         let leftLabel, rightLabel;
 
         if (chartType === "Vertical Bar & Line Chart") {
-          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Bar)";
-          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Line)";
+          leftLabel = yLeftAxisLabel || `${config.axisConfig.y  } (Bar)`;
+          rightLabel = yRightAxisLabel || `${config.axisConfig.y  } (Line)`;
         } else if (chartType === "Dual Axes Scatter Plot") {
-          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Y1)";
-          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Y2)";
+          leftLabel = yLeftAxisLabel || `${config.axisConfig.y  } (Y1)`;
+          rightLabel = yRightAxisLabel || `${config.axisConfig.y  } (Y2)`;
         } else {
           // Fallback for other dual axis charts
-          leftLabel = yLeftAxisLabel || config.axisConfig.y + " (Left)";
-          rightLabel = yRightAxisLabel || config.axisConfig.y + " (Right)";
+          leftLabel = yLeftAxisLabel || `${config.axisConfig.y  } (Left)`;
+          rightLabel = yRightAxisLabel || `${config.axisConfig.y  } (Right)`;
         }
 
         const dualAxisConfig = {
@@ -3760,13 +3761,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                     (() => {
                       const maxWidth = 100;
                       let totalWidth = 0;
-                      let displayedVars = [];
+                      const displayedVars = [];
                       const spaceBetween = 4;
                       let hiddenCount = 0;
                       const estimateButtonWidth = (text: string) =>
                         Math.max(40, text.length * 8);
                       for (let i = 0; i < sideVariables.length; i++) {
-                        let btnWidth = estimateButtonWidth(sideVariables[i]);
+                        const btnWidth = estimateButtonWidth(sideVariables[i]);
                         if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
                           displayedVars.push(sideVariables[i]);
                           totalWidth += btnWidth + spaceBetween;
@@ -3828,13 +3829,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                     (() => {
                       const maxWidth = 100;
                       let totalWidth = 0;
-                      let displayedVars = [];
+                      const displayedVars = [];
                       const spaceBetween = 4;
                       let hiddenCount = 0;
                       const estimateButtonWidth = (text: string) =>
                         Math.max(40, text.length * 8);
                       for (let i = 0; i < side2Variables.length; i++) {
-                        let btnWidth = estimateButtonWidth(side2Variables[i]);
+                        const btnWidth = estimateButtonWidth(side2Variables[i]);
                         if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
                           displayedVars.push(side2Variables[i]);
                           totalWidth += btnWidth + spaceBetween;
@@ -3913,13 +3914,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                     (() => {
                       const maxWidth = 100;
                       let totalWidth = 0;
-                      let displayedVars = [];
+                      const displayedVars = [];
                       const spaceBetween = 4;
                       let hiddenCount = 0;
                       const estimateButtonWidth = (text: string) =>
                         Math.max(40, text.length * 8);
                       for (let i = 0; i < bottomVariables.length; i++) {
-                        let btnWidth = estimateButtonWidth(bottomVariables[i]);
+                        const btnWidth = estimateButtonWidth(bottomVariables[i]);
                         if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
                           displayedVars.push(bottomVariables[i]);
                           totalWidth += btnWidth + spaceBetween;
@@ -3988,13 +3989,13 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                     (() => {
                       const maxWidth = 100;
                       let totalWidth = 0;
-                      let displayedVars = [];
+                      const displayedVars = [];
                       const spaceBetween = 4;
                       let hiddenCount = 0;
                       const estimateButtonWidth = (text: string) =>
                         Math.max(40, text.length * 8);
                       for (let i = 0; i < bottom2Variables.length; i++) {
-                        let btnWidth = estimateButtonWidth(bottom2Variables[i]);
+                        const btnWidth = estimateButtonWidth(bottom2Variables[i]);
                         if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
                           displayedVars.push(bottom2Variables[i]);
                           totalWidth += btnWidth + spaceBetween;
@@ -4247,7 +4248,7 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
           >
             <div
               className="bg-white rounded-lg shadow w-full h-full flex items-center justify-center overflow-hidden rounded-lg p-2"
-              style={{ width: width, height: height }}
+              style={{ width, height }}
             >
               <div
                 id="chart-container"
@@ -4257,8 +4258,8 @@ const ChartPreview = forwardRef<ChartPreviewRef, ChartPreviewProps>(
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: width,
-                  height: height,
+                  width,
+                  height,
                   maxWidth: "100%",
                   maxHeight: "100%",
                 }}

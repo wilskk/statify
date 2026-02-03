@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import {ModalType} from "@/hooks/useModal";
+import type React from "react";
+import type {ModalType} from "@/hooks/useModal";
 
 export const modalStyles = {
     dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",

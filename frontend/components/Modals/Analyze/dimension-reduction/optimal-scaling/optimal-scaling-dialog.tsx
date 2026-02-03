@@ -5,7 +5,11 @@ import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
 import {ModalType, useModal} from "@/hooks/useModal";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     OptScaDefineMainType,
     OptScaDefineProps,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/types/optimal-scaling-define";

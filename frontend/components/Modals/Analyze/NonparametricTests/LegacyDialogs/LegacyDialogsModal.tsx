@@ -1,6 +1,12 @@
 "use client"
+<<<<<<< HEAD
 import React, { FC } from "react";
 import { ModalType } from "@/hooks/useModal";
+=======
+import type { FC } from "react";
+import React from "react";
+import type { ModalType } from "@/hooks/useModal";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import ChiSquare from "@/components/Modals/Analyze/NonparametricTests/LegacyDialogs/ChiSquare";
 import Runs from "@/components/Modals/Analyze/NonparametricTests/LegacyDialogs/Runs";
 import TwoIndependentSamples from "@/components/Modals/Analyze/NonparametricTests/LegacyDialogs/TwoIndependentSamples";

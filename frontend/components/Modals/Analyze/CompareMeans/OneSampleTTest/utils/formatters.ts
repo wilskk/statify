@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
     OneSampleTTestTable,
     TableColumnHeader,
@@ -5,6 +6,16 @@ import {
     OneSampleTest,
     OneSampleTTestResult,
     OneSampleStatistics,
+=======
+import type {
+    OneSampleTTestTable,
+    OneSampleTest,
+    OneSampleTTestResult,
+    OneSampleStatistics} from '../types';
+import {
+    TableColumnHeader,
+    TableRow
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 } from '../types';
 import { Variable } from '@/types/Variable';
 
@@ -73,7 +84,11 @@ export function formatOneSampleTestTable (
         };
     }
     
+<<<<<<< HEAD
     const testValueLabel = 'Test Value = ' + testValue;
+=======
+    const testValueLabel = `Test Value = ${  testValue}`;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     const table: OneSampleTTestTable = {
         title: 'One-Sample Test',
@@ -103,7 +118,11 @@ export function formatOneSampleTestTable (
 
     // Process each result
     results.forEach((result) => {
+<<<<<<< HEAD
         if (result.metadata && result.metadata.hasInsufficientData) {
+=======
+        if (result.metadata?.hasInsufficientData) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             return;
         }
 

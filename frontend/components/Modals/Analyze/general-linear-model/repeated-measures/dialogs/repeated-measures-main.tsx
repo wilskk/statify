@@ -1,5 +1,9 @@
 import {useEffect, useMemo, useState} from "react";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     RepeatedMeasuresContainerProps,
     RepeatedMeasuresMainType,
     RepeatedMeasuresType,
@@ -178,8 +182,13 @@ export const RepeatedMeasuresContainer = ({
 
             await analyzeRepeatedMeasures({
                 configData: newFormData,
+<<<<<<< HEAD
                 dataVariables: dataVariables,
                 variables: variables,
+=======
+                dataVariables,
+                variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             });
         } catch (error) {
             console.error(error);

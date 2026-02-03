@@ -1,9 +1,18 @@
 "use client";
+<<<<<<< HEAD
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatisticsTabProps } from "./types";
+=======
+import type { FC } from "react";
+import React from "react";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { StatisticsTabProps } from "./types";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
@@ -64,8 +73,13 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             </div>
 
             <div id="explore-additional-stats-section" data-testid="explore-additional-stats-section" className="p-4 border rounded-md space-y-2 relative">
+<<<<<<< HEAD
                 {/* M-estimators Checkbox - COMMENTED OUT */}
                 {/* <div className="flex items-center space-x-2">
+=======
+                {/* M-estimators Checkbox */}
+                <div className="flex items-center space-x-2">
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     <Checkbox
                         id="mEstimators"
                         checked={showMEstimators}
@@ -75,7 +89,11 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <Label htmlFor="mEstimators" className="text-sm font-medium cursor-pointer">
                         M-estimators
                     </Label>
+<<<<<<< HEAD
                 </div> */}
+=======
+                </div>
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
                 {/* Outliers Checkbox */}
                 <div className="flex items-center space-x-2">
@@ -91,8 +109,13 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     </Label>
                 </div>
 
+<<<<<<< HEAD
                 {/* Percentiles Checkbox - COMMENTED OUT */}
                 {/* <div className="flex items-center space-x-2">
+=======
+                {/* Percentiles Checkbox */}
+                <div className="flex items-center space-x-2">
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     <Checkbox
                         id="percentiles"
                         checked={showPercentiles}
@@ -102,7 +125,11 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     <Label htmlFor="percentiles" className="text-sm font-medium cursor-pointer">
                         Percentiles
                     </Label>
+<<<<<<< HEAD
                 </div> */}
+=======
+                </div>
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 <ActiveElementHighlight active={tourActive && currentStep === additionalStatsStep} />
             </div>
         </div>

@@ -1,6 +1,10 @@
 // clustering-formatter.ts
 import {ensureEnoughHeaders, formatDisplayNumber} from "@/hooks/useFormatter";
+<<<<<<< HEAD
 import {ResultJson, Table} from "@/types/Table";
+=======
+import type {ResultJson, Table} from "@/types/Table";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // Define interfaces for Centroid structure
 interface CentroidData {

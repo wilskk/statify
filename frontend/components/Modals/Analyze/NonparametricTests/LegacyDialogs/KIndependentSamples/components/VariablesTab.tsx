@@ -1,9 +1,20 @@
+<<<<<<< HEAD
 import React, { FC, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { Variable } from "@/types/Variable";
 import { VariablesTabProps } from "../types";
+=======
+import type { FC} from "react";
+import React, { useCallback } from "react";
+import { Label } from "@/components/ui/label";
+import type { TargetListConfig } from '@/components/Common/VariableListManager';
+import VariableListManager from '@/components/Common/VariableListManager';
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import type { Variable } from "@/types/Variable";
+import type { VariablesTabProps } from "../types";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Input } from "@/components/ui/input";
 
 const VariablesTab: FC<VariablesTabProps> = ({

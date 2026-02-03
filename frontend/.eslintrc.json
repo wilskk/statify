@@ -6,17 +6,9 @@
     "projectService": true
   },
   "ignorePatterns": [
-    "components/Modals/Regression/**/*",
-    "public/workers/Regression/**/*",
-    "components/Modals/Graphs/**/*",
-    "components/Modals/Transform/**/*",
-    "components/Output/Chart/**/*",
-    "services/chart/**/*",
-    "utils/chartBuilder/**/*",
-    "types/Chart.ts",
-    "public/workers/ChartBuilder/**/*",
-    "components/Modals/Analyze/**/*",
-    "!components/Modals/Analyze/Descriptive/**/*"
+    "public/workers/**/*",
+    "**/__tests__/**/*",
+    "**/*.{spec,test}.[jt]s?(x)"
   ],
   "extends": [
     "next/core-web-vitals",
@@ -25,8 +17,8 @@
     "plugin:jest-dom/recommended"
   ],
   "rules": {
-    "react-hooks/exhaustive-deps": "off",
-    "@typescript-eslint/no-explicit-any": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "react/no-unescaped-entities": "off",
     "@typescript-eslint/no-var-requires": "off",
@@ -34,16 +26,16 @@
     "prefer-const": "warn",
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "no-debugger": "error",
-    "@typescript-eslint/consistent-type-imports": "off",
+    "@typescript-eslint/consistent-type-imports": "warn",
     "@typescript-eslint/no-inferrable-types": "off",
     "@typescript-eslint/no-empty-function": "off",
-    "@typescript-eslint/prefer-nullish-coalescing": "off",
-    "@typescript-eslint/prefer-optional-chain": "off",
-    "@typescript-eslint/no-non-null-assertion": "off",
-    "eqeqeq": "off",
+    "@typescript-eslint/prefer-nullish-coalescing": "warn",
+    "@typescript-eslint/prefer-optional-chain": "warn",
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "eqeqeq": "warn",
     "no-var": "error",
-    "object-shorthand": "off",
-    "prefer-template": "off"
+    "object-shorthand": "warn",
+    "prefer-template": "warn"
   },
   "overrides": [
     {

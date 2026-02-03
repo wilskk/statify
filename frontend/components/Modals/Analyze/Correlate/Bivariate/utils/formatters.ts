@@ -1,6 +1,13 @@
+<<<<<<< HEAD
 import {
     BivariateResults,
     BivariateTable,
+=======
+import type {
+    BivariateResults,
+    BivariateTable} from '../types';
+import {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     TableColumnHeader,
     TableRow,
     Correlation,
@@ -33,7 +40,11 @@ export function formatCorrelationTable(
     testVariables: any[],
     correlationType: string[]
 ): BivariateTable {
+<<<<<<< HEAD
     if (!results || !results.correlation || results.correlation.length === 0) {
+=======
+    if (!results?.correlation || results.correlation.length === 0) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         return {
             title: "Correlation",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -137,7 +148,11 @@ export function formatCorrelationTable(
                     const key2 = `${colVar.name}-${rowVar.name}`;
                     const result = correlationMap.get(key1) || correlationMap.get(key2);
 
+<<<<<<< HEAD
                     if (result && result.pearsonCorrelation) {
+=======
+                    if (result?.pearsonCorrelation) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         const pearson = result.pearsonCorrelation;
 
                         // Diagonal case (same variable)
@@ -246,7 +261,11 @@ export function formatCorrelationTable(
                     const key2 = `${colVar.name}-${rowVar.name}`;
                     const result = correlationMap.get(key1) || correlationMap.get(key2);
 
+<<<<<<< HEAD
                     if (result && result.kendallsTauBCorrelation) {
+=======
+                    if (result?.kendallsTauBCorrelation) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         const kendall = result.kendallsTauBCorrelation;
 
                         // Diagonal case (same variable)
@@ -340,7 +359,11 @@ export function formatCorrelationTable(
                     const key2 = `${colVar.name}-${rowVar.name}`;
                     const result = correlationMap.get(key1) || correlationMap.get(key2);
 
+<<<<<<< HEAD
                     if (result && result.spearmanCorrelation) {
+=======
+                    if (result?.spearmanCorrelation) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         const spearman = result.spearmanCorrelation;
 
                         // Diagonal case (same variable)
@@ -399,7 +422,11 @@ export function formatPartialCorrelationTable(
     },
     testVariables: any[],
 ): BivariateTable {
+<<<<<<< HEAD
     if (!results || !results.partialCorrelation || results.partialCorrelation.length === 0) {
+=======
+    if (!results?.partialCorrelation || results.partialCorrelation.length === 0) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         return {
             title: "Partial Correlation",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -518,7 +545,11 @@ export function formatPartialCorrelationTable(
                     const key2 = `${colVar.name}-${rowVar.name}`;
                     const result = resultMap.get(key1) || resultMap.get(key2);
                     
+<<<<<<< HEAD
                     if (result && result.partialCorrelation) {
+=======
+                    if (result?.partialCorrelation) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         const partialCorr = result.partialCorrelation;
                         
                         corrRow[`var_${j}`] = formatCorrelationValue(partialCorr.Correlation, partialCorr.PValue, options);
@@ -550,7 +581,11 @@ export function formatPartialCorrelationTable(
 export function formatDescriptiveStatisticsTable(
     results: BivariateResults, 
 ): BivariateTable {
+<<<<<<< HEAD
     if (!results || !results.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
+=======
+    if (!results?.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         return {
             title: "No Data",
             columnHeaders: [{ header: "No Data", key: "noData" }],

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
     IndependentSamplesTTestTable,
     TableColumnHeader,
@@ -5,6 +6,16 @@ import {
     GroupStatistics,
     IndependentSamplesTest,
     IndependentSamplesTTestResult,
+=======
+import type {
+    IndependentSamplesTTestTable,
+    GroupStatistics,
+    IndependentSamplesTest,
+    IndependentSamplesTTestResult} from '../types';
+import {
+    TableColumnHeader,
+    TableRow
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 } from '../types';
 
 /**

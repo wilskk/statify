@@ -1,8 +1,16 @@
 import { useState } from 'react';
+<<<<<<< HEAD
 import { 
   DescriptiveStatisticsOptions, 
   DisplayOrderType, 
   StatisticsSettingsProps, 
+=======
+import type { 
+  DescriptiveStatisticsOptions, 
+  DisplayOrderType, 
+  StatisticsSettingsProps} from '../types';
+import { 
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   StatisticsSettingsResult 
 } from '../types';
 

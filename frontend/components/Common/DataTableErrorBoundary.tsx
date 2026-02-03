@@ -126,7 +126,11 @@ export class DataTableErrorBoundary extends Component<Props, State> {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle data-testid="data-table-error-title">Data Table Error</AlertTitle>
             <AlertDescription className="mt-2" data-testid="data-table-error-description">
+<<<<<<< HEAD
               {this.state.error?.message || 'An unexpected error occurred while processing table data.'}
+=======
+              {this.state.error?.message ?? 'An unexpected error occurred while processing table data.'}
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
               <br />
               <span className="text-xs text-muted-foreground mt-1 block" data-testid="data-table-error-details">
                 Error ID: {this.state.errorId} | Attempts: {this.state.retryCount}/{this.maxRetries}
@@ -169,13 +173,21 @@ export class DataTableErrorBoundary extends Component<Props, State> {
 export const withDataTableErrorBoundary = <P extends object>(
   Component: React.ComponentType<P>
 ) => {
+<<<<<<< HEAD
   const WrappedComponent = React.forwardRef<any, P>((props, ref) => (
+=======
+  const WrappedComponent = React.forwardRef<unknown, P>((props, ref) => (
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     <DataTableErrorBoundary>
       <Component {...(props as P)} ref={ref} />
     </DataTableErrorBoundary>
   ));
   
+<<<<<<< HEAD
   WrappedComponent.displayName = `withDataTableErrorBoundary(${Component.displayName || Component.name})`;
+=======
+  WrappedComponent.displayName = `withDataTableErrorBoundary(${Component.displayName ?? Component.name})`;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   
   return WrappedComponent;
 };

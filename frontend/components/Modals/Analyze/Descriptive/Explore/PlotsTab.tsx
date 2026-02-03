@@ -1,9 +1,18 @@
 "use client";
+<<<<<<< HEAD
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PlotsTabProps } from "./types";
+=======
+import type { FC } from "react";
+import React from "react";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { PlotsTabProps } from "./types";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 const PlotsTab: FC<PlotsTabProps> = ({
     boxplotType,

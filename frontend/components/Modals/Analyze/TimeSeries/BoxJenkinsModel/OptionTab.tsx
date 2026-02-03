@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import React, { FC } from "react";
+=======
+import type { FC } from "react";
+import React from "react";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 

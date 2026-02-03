@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/tabs";
 import { useModal } from "@/hooks/useModal";
 import type { AggregateDataProps, TourStep, HorizontalPosition } from "./types";
-import { PopupPosition } from "./types"; // AggregatedVariable is used by the hook
 import { ErrorDialog } from "./dialogs/ErrorDialog";
 import { FunctionDialog } from "./dialogs/FunctionDialog";
 import { NameLabelDialog } from "./dialogs/NameLabelDialog";
@@ -505,7 +504,6 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
                         setIsAlreadySorted={setIsAlreadySorted}
                         sortBeforeAggregating={sortBeforeAggregating}
                         setSortBeforeAggregating={setSortBeforeAggregating}
-                        containerType={containerType}
                         tourActive={tourActive}
                         currentStep={currentStep}
                         tourSteps={tourSteps}

@@ -17,8 +17,8 @@ export interface Table {
 export interface ColumnHeader {
     header: string;
     key?: string;
-    width?: string;
     children?: ColumnHeader[];
+    width?: string | number;
 }
 
 export interface Row {

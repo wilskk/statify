@@ -1,5 +1,8 @@
 import fs from 'fs';
+<<<<<<< HEAD
 import path from 'path';
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import request from 'supertest';
 
 // Mock sav-writer to avoid real file generation and to create a dummy file for download
@@ -18,6 +21,7 @@ jest.mock('sav-writer', () => ({
 import { app } from '../../app';
 
 describe('POST /api/sav/create (integration)', () => {
+<<<<<<< HEAD
   const tempDir = path.join(__dirname, '..', '..', '..', 'temp_test_integration');
 
   beforeAll(() => {
@@ -36,6 +40,8 @@ describe('POST /api/sav/create (integration)', () => {
     }
     delete process.env.TEMP_DIR;
   });
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
   it('should validate payload and return a downloaded .sav file, then remove temp file', async () => {
     const payload = {

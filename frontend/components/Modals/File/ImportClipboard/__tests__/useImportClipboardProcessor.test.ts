@@ -13,6 +13,7 @@ jest.mock('../importClipboard.utils', () => ({
   excelStyleTextToColumns: jest.fn(),
 }));
 
+<<<<<<< HEAD
 const mockedUseDataStore = useDataStore as jest.Mocked<typeof useDataStore>;
 const mockedUseVariableStore = useVariableStore as jest.Mocked<typeof useVariableStore>;
 
@@ -21,6 +22,15 @@ const mockedExcelStyleParser = utils.excelStyleTextToColumns as jest.Mock;
 
 (useDataStore as unknown as jest.Mock).mockReturnValue({ });
 (useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteAll: mockOverwriteAll });
+=======
+
+
+const _mockOverwriteAll = jest.fn();
+const _mockedExcelStyleParser = utils.excelStyleTextToColumns as jest.Mock;
+
+(useDataStore as unknown as jest.Mock).mockReturnValue({ });
+(useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteAll: _mockOverwriteAll });
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 describe('useImportClipboardProcessor', () => {
   const mockSetData = jest.fn();
@@ -28,11 +38,18 @@ describe('useImportClipboardProcessor', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useDataStore as unknown as jest.Mock).mockReturnValue({ setData: mockSetData });
+<<<<<<< HEAD
     (useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteAll: mockOverwriteAll });
   });
 
   const sampleText = 'ID,Name\n1,Alice\n2,Bob';
   const parsedData = [['ID', 'Name'], ['1', 'Alice'], ['2', 'Bob']];
+=======
+    (useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteAll: _mockOverwriteAll });
+  });
+
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
   const defaultOptions: ClipboardProcessingOptions = {
     delimiter: 'tab',
@@ -45,14 +62,23 @@ describe('useImportClipboardProcessor', () => {
   it('should process tab-separated data correctly without headers', async () => {
     const { result } = renderHook(() => useImportClipboardProcessor());
     const text = 'val1\t100\nval2\t200';
+<<<<<<< HEAD
     mockedExcelStyleParser.mockReturnValue([['val1', '100'], ['val2', '200']]);
+=======
+    _mockedExcelStyleParser.mockReturnValue([['val1', '100'], ['val2', '200']]);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     await act(async () => {
       await result.current.processClipboardData(text, defaultOptions);
     });
 
+<<<<<<< HEAD
     expect(mockOverwriteAll).toHaveBeenCalledTimes(1);
     const [variables, data] = mockOverwriteAll.mock.calls[0];
+=======
+    expect(_mockOverwriteAll).toHaveBeenCalledTimes(1);
+    const [variables, data] = _mockOverwriteAll.mock.calls[0];
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     expect(variables).toHaveLength(2);
     expect(variables[0].name).toBe('VAR001');
@@ -65,7 +91,11 @@ describe('useImportClipboardProcessor', () => {
   it('should process comma-separated data with a header row', async () => {
     const { result } = renderHook(() => useImportClipboardProcessor());
     const text = 'Name,Age\nAlice,30\nBob,25';
+<<<<<<< HEAD
     mockedExcelStyleParser.mockReturnValue([['Name', 'Age'], ['Alice', '30'], ['Bob', '25']]);
+=======
+    _mockedExcelStyleParser.mockReturnValue([['Name', 'Age'], ['Alice', '30'], ['Bob', '25']]);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     const options: ClipboardProcessingOptions = {
       ...defaultOptions,
       delimiter: 'comma',
@@ -76,7 +106,11 @@ describe('useImportClipboardProcessor', () => {
       await result.current.processClipboardData(text, options);
     });
 
+<<<<<<< HEAD
     const [variables, data] = mockOverwriteAll.mock.calls[0];
+=======
+    const [variables, data] = _mockOverwriteAll.mock.calls[0];
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     expect(variables).toHaveLength(2);
     expect(variables[0].name).toBe('Name');
@@ -95,7 +129,11 @@ describe('useImportClipboardProcessor', () => {
     const { result } = renderHook(() => useImportClipboardProcessor());
     // This text only contains whitespace, which will be skipped
     const text = '\n  \n\t\n ';
+<<<<<<< HEAD
     mockedExcelStyleParser.mockReturnValue([]);
+=======
+    _mockedExcelStyleParser.mockReturnValue([]);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     await expect(result.current.processClipboardData(text, defaultOptions)).rejects.toThrow('No valid data found in the pasted text');
   });
   
@@ -113,10 +151,18 @@ describe('useImportClipboardProcessor', () => {
       await result.current.processClipboardData(text, options);
     });
 
+<<<<<<< HEAD
     const [variables, data] = mockOverwriteAll.mock.calls[0];
+=======
+    const [variables, data] = _mockOverwriteAll.mock.calls[0];
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     expect(variables).toHaveLength(2);
     expect(variables[0].name).toBe('pre-processed');
     expect(variables[1].name).toBe('data');
     expect(data).toEqual([['row1', '123']]);
   });
+<<<<<<< HEAD
 }); 
+=======
+});
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

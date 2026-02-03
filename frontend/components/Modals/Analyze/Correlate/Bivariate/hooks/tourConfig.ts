@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import { TABS, TourStep } from '../types';
+=======
+import type { TourStep } from '../types';
+import { TABS } from '../types';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const baseTourSteps: TourStep[] = [
     {

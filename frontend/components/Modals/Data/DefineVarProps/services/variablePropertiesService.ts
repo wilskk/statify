@@ -1,6 +1,10 @@
 import type { Variable, MissingValuesSpec } from "@/types/Variable";
+<<<<<<< HEAD
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
+=======
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 /**
  * Checks if a value is considered missing based on a variable's missing value specification.
@@ -115,8 +119,16 @@ export const saveVariableProperties = async (
     });
 
     for (const modifiedVariable of updatesToApply) {
+<<<<<<< HEAD
         const { tempId, values, missing, name, label, type, width, decimals, role, measure, ...rest } = modifiedVariable;
         const updatePayload: Partial<Variable> = { values, missing, name, label, type, width, decimals, role, measure };
         await updateMultipleFields(modifiedVariable.columnIndex, updatePayload);
     }
 }; 
+=======
+        const { values, missing, name, label, type, width, decimals, role, measure } = modifiedVariable;
+        const updatePayload: Partial<Variable> = { values, missing, name, label, type, width, decimals, role, measure };
+        await updateMultipleFields(modifiedVariable.columnIndex, updatePayload);
+    }
+};
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

@@ -1,4 +1,11 @@
+<<<<<<< HEAD
 
+=======
+/**
+ * Order of regression models used for output sorting.
+ * @type {string[]}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const MODEL_ORDER = [
   "Linear",
   "Logarithmic",
@@ -13,12 +20,29 @@ const MODEL_ORDER = [
   "Logistic"
 ];
 
+<<<<<<< HEAD
 // Function to calculate mean
+=======
+/**
+ * Calculate the arithmetic mean of a numeric array.
+ * @param {number[]} arr - Input values.
+ * @returns {number} Mean value.
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const mean = (arr) => {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 };
 
+<<<<<<< HEAD
 // Linear regression calculation
+=======
+/**
+ * Ordinary least squares simple linear regression.
+ * @param {number[]} x - Predictor values.
+ * @param {number[]} y - Response values.
+ * @returns {{b0:number,b1:number,r2:number,f:number,df1:number,df2:number,sig:number,predict:(val:number)=>number}}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const linearRegression = (x, y) => {
   const n = x.length;
   const xMean = mean(x);
@@ -38,7 +62,16 @@ const linearRegression = (x, y) => {
   return { b0, b1, r2, f, df1, df2, sig, predict: (val) => b0 + b1 * val };
 };
 
+<<<<<<< HEAD
 // Inverse matrix calculation using Gauss-Jordan elimination
+=======
+/**
+ * Invert a square matrix using Gauss-Jordan elimination.
+ * @param {number[][]} M - Square matrix.
+ * @returns {number[][]} Inverted matrix.
+ * @throws {Error} If the matrix is singular.
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const inverseMatrixGaussJordan = (M) => {
   const n = M.length;
   let A = M.map((row, i) => [...row, ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))]);
@@ -65,12 +98,29 @@ const inverseMatrixGaussJordan = (M) => {
   return A.map(row => row.slice(n));
 };
 
+<<<<<<< HEAD
 // Matrix transpose operation
+=======
+/**
+ * Transpose a matrix.
+ * @param {number[][]} matrix - Input matrix (m x n).
+ * @returns {number[][]} Transposed matrix (n x m).
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const transposeMatrix = (matrix) => {
   return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
 };
 
+<<<<<<< HEAD
 // Matrix multiplication
+=======
+/**
+ * Multiply two matrices A (m x p) and B (p x n).
+ * @param {number[][]} A - Left matrix.
+ * @param {number[][]} B - Right matrix.
+ * @returns {number[][]} Product matrix (m x n).
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const multiplyMatrices = (A, B) => {
   const result = [];
   for (let i = 0; i < A.length; i++) {
@@ -86,7 +136,17 @@ const multiplyMatrices = (A, B) => {
   return result;
 };
 
+<<<<<<< HEAD
 // Multiple linear regression
+=======
+/**
+ * Ordinary least squares multiple linear regression.
+ * X is expected to include an intercept term (first column of 1s).
+ * @param {number[][]} X - Design matrix with intercept.
+ * @param {number[]} Y - Response vector.
+ * @returns {{coefficients:number[],r2:number,f:number,df1:number,df2:number,sig:number,predict:(xArr:number[])=>number}}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const multipleLinearRegression = (X, Y) => {
   const n = Y.length;
   const k = X[0].length - 1;
@@ -116,33 +176,90 @@ const multipleLinearRegression = (X, Y) => {
   };
 };
 
+<<<<<<< HEAD
 // Model-specific regression functions
+=======
+/**
+ * Linear model: y = b0 + b1 x
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {ReturnType<typeof linearRegression>}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryLinear = (X, Y) => {
   return linearRegression(X, Y);
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Logarithmic model: y = b0 + b1 ln(x)
+ * Returns null if any x <= 0.
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {ReturnType<typeof linearRegression>|null}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryLogarithmic = (X, Y) => {
   if (X.some(x => x <= 0)) return null;
   const Xlog = X.map(x => Math.log(x));
   return linearRegression(Xlog, Y);
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Inverse model: y = b0 + b1 (1/x)
+ * Returns null if any x = 0.
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {ReturnType<typeof linearRegression>|null}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryInverse = (X, Y) => {
   if (X.some(x => x === 0)) return null;
   const Xinv = X.map(x => 1 / x);
   return linearRegression(Xinv, Y);
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Quadratic model: y = b0 + b1 x + b2 x^2
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {ReturnType<typeof multipleLinearRegression>}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryQuadratic = (X, Y) => {
   const Xmat = X.map(x => [1, x, x ** 2]);
   return multipleLinearRegression(Xmat, Y);
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Cubic model: y = b0 + b1 x + b2 x^2 + b3 x^3
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {ReturnType<typeof multipleLinearRegression>}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryCubic = (X, Y) => {
   const Xmat = X.map(x => [1, x, x ** 2, x ** 3]);
   return multipleLinearRegression(Xmat, Y);
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Power model: y = b0 x^{b1}
+ * Uses ln transforms; returns null if any x <= 0 or y <= 0.
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {(ReturnType<typeof linearRegression> & {b0:number})|null}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryPower = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.x > 0 && d.y > 0);
   if (filtered.length < X.length) return null;
@@ -152,6 +269,16 @@ const tryPower = (X, Y) => {
   return { ...result, b0: Math.exp(result.b0) };
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Compound model: y = b0 b1^{x}
+ * Uses ln(y) ~ a + b x; returns null if any y <= 0.
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {(ReturnType<typeof linearRegression> & {b0:number,b1:number})|null}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryCompound = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.y > 0);
   if (filtered.length < X.length) return null;
@@ -161,6 +288,16 @@ const tryCompound = (X, Y) => {
   return { ...result, b0: Math.exp(result.b0), b1: Math.exp(result.b1) };
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * S-curve model: ln(y) = b0 + b1 (1/x)
+ * Requires y > 0 and x != 0.
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {ReturnType<typeof linearRegression>|null}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const trySCurve = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.y > 0 && d.x !== 0);
   if (filtered.length < X.length) return null;
@@ -169,6 +306,16 @@ const trySCurve = (X, Y) => {
   return linearRegression(invX, lnY);
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Growth model: ln(y) = b0 + b1 x
+ * Requires y > 0.
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {ReturnType<typeof linearRegression>|null}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryGrowth = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.y > 0);
   if (filtered.length < X.length) return null;
@@ -177,6 +324,16 @@ const tryGrowth = (X, Y) => {
   return linearRegression(Xpos, lnY);
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Exponential model: y = b0 e^{b1 x}
+ * Uses ln transform; requires y > 0.
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @returns {(ReturnType<typeof linearRegression> & {b0:number})|null}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryExponential = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.y > 0);
   if (filtered.length < X.length) return null;
@@ -186,6 +343,7 @@ const tryExponential = (X, Y) => {
   return { ...result, b0: Math.exp(result.b0) };
 };
 
+<<<<<<< HEAD
 // ---------------------------------------------------------------------------
 // Helper: fit logistic model for a specific upper bound "c" (u)
 // Returns an object compatible with the original tryLogistic output.
@@ -202,6 +360,25 @@ const fitLogisticWithC = (X, Y, c) => {
     .filter(d => d.y > 0 && d.y < c);
 
   // Guard-clauses for insufficient data
+=======
+/**
+ * Fit logistic model for a specific upper bound c.
+ * Model: y = 1 / (1/c + b0 * b1^x)
+ * @param {number[]} X - Predictor values.
+ * @param {number[]} Y - Response values.
+ * @param {number} c - Upper bound (> max(Y)).
+ * @returns {{b0:number,b1:number,c:number,r2:number,f:number,df1:number,df2:number,sig:number,isEstimated:boolean}}
+ */
+const fitLogisticWithC = (X, Y, c) => {
+  const yMax = Math.max(...Y);
+  if (c <= yMax) {
+    c = yMax * 1.001;
+  }
+
+  const validData = X.map((x, i) => ({ x, y: Y[i] }))
+    .filter(d => d.y > 0 && d.y < c);
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   if (validData.length < 3 || validData.length < X.length * 0.2) {
     return {
       b0: 0,
@@ -216,7 +393,10 @@ const fitLogisticWithC = (X, Y, c) => {
     };
   }
 
+<<<<<<< HEAD
   // Transform data: ln(1/y - 1/c) = ln(b0) + x * ln(b1)
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   const transformedY = [];
   const filteredX = [];
   for (let i = 0; i < validData.length; i++) {
@@ -241,7 +421,10 @@ const fitLogisticWithC = (X, Y, c) => {
     };
   }
 
+<<<<<<< HEAD
   // Linear regression on transformed data
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   const linReg = linearRegression(filteredX, transformedY);
   if (!linReg) {
     return {
@@ -257,11 +440,17 @@ const fitLogisticWithC = (X, Y, c) => {
     };
   }
 
+<<<<<<< HEAD
   // Convert back to logistic parameters
   const b0_logistic = Math.exp(linReg.b0);
   const b1_logistic = Math.exp(linReg.b1);
 
   // Predictions for R² computation
+=======
+  const b0_logistic = Math.exp(linReg.b0);
+  const b1_logistic = Math.exp(linReg.b1);
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   const yPred = validData.map(d => {
     const denom = (1 / c) + b0_logistic * Math.pow(b1_logistic, d.x);
     return denom === 0 || !isFinite(denom) ? c : 1 / denom;
@@ -276,7 +465,11 @@ const fitLogisticWithC = (X, Y, c) => {
   if (ssTot > 0) {
     r2 = 1 - ssRes / ssTot;
   } else if (ssRes === 0) {
+<<<<<<< HEAD
     r2 = 1; // perfect fit for constant data
+=======
+    r2 = 1;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   }
 
   return {
@@ -292,25 +485,51 @@ const fitLogisticWithC = (X, Y, c) => {
   };
 };
 
+<<<<<<< HEAD
 // Improved Logistic function with automatic adjustment
+=======
+/**
+ * Logistic model with automatic upper-bound handling.
+ * If upperBound is invalid/missing or <= max(Y), a default of 1.02 * max(Y) is used.
+ * @param {number[]} X
+ * @param {number[]} Y
+ * @param {number|string|undefined} upperBound - User-specified upper bound.
+ * @returns {ReturnType<typeof fitLogisticWithC>}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const tryLogistic = (X, Y, upperBound) => {
   console.log("Logistic regression started with upperBound:", upperBound);
 
   const yMax = Math.max(...Y);
 
+<<<<<<< HEAD
   // Determine the upper bound "c".
   let c = parseFloat(upperBound);
   if (!upperBound || isNaN(c) || c <= yMax) {
     // SPSS hides the requirement by automatically choosing a value slightly
     // above the maximum observed Y. Empirically, 1.02 × max(Y) matches the
     // default behaviour documented for CURVEFIT.
+=======
+  let c = parseFloat(upperBound);
+  if (!upperBound || isNaN(c) || c <= yMax) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     c = yMax * 1.02;
   }
 
   return fitLogisticWithC(X, Y, c);
 };
 
+<<<<<<< HEAD
 // Functions for F-distribution CDF calculation
+=======
+/**
+ * Continued fraction approximation for the incomplete beta function.
+ * @param {number} a
+ * @param {number} b
+ * @param {number} x
+ * @returns {number}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const betacf = (a, b, x) => {
   const MAX_ITER = 100;
   const EPS = 3.0e-7;
@@ -340,6 +559,16 @@ const betacf = (a, b, x) => {
   return az;
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Regularized incomplete beta function I_x(a, b).
+ * @param {number} a
+ * @param {number} b
+ * @param {number} x - In [0, 1].
+ * @returns {number}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const betai = (a, b, x) => {
   if (x < 0 || x > 1) throw new Error("Bad x in betai");
   if (x === 0 || x === 1) return x;
@@ -351,6 +580,14 @@ const betai = (a, b, x) => {
   }
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * Natural log gamma function via Lanczos approximation.
+ * @param {number} x
+ * @returns {number}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const gammaln = (x) => {
   const cof = [
     76.18009172947146, -86.50532032941677,
@@ -367,11 +604,22 @@ const gammaln = (x) => {
   return -tmp + Math.log(2.5066282746310005 * ser / x);
 };
 
+<<<<<<< HEAD
+=======
+/**
+ * CDF of the F-distribution using the incomplete beta function.
+ * @param {number} f - F statistic.
+ * @param {number} df1 - Numerator degrees of freedom.
+ * @param {number} df2 - Denominator degrees of freedom.
+ * @returns {number}
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const fCDF = (f, df1, df2) => {
   const x = (df1 * f) / (df1 * f + df2);
   return betai(df1 / 2, df2 / 2, x);
 };
 
+<<<<<<< HEAD
 const generateRegressionSummary = (models, X, Y, options = {}) => {
   // Sort the models based on the defined MODEL_ORDER
   const sortedModels = models.sort((a, b) => {
@@ -381,6 +629,23 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
     if (indexA === -1 && indexB === -1) return 0; // Keep original order if both unknown
     if (indexA === -1) return 1; // Put unknown models at the end
     if (indexB === -1) return -1; // Put unknown models at the end
+=======
+/**
+ * Build summary tables for selected curve estimation models.
+ * @param {string[]} models - Model names to evaluate.
+ * @param {number[]} X - Predictor values.
+ * @param {number[]} Y - Response values.
+ * @param {{upperBound?: number|string}} [options] - Optional parameters.
+ * @returns {{tables: Array<{title:string,columnHeaders:Array<object>,rows:Array<object>}>}}
+ */
+const generateRegressionSummary = (models, X, Y, options = {}) => {
+  const sortedModels = models.sort((a, b) => {
+    const indexA = MODEL_ORDER.indexOf(a);
+    const indexB = MODEL_ORDER.indexOf(b);
+    if (indexA === -1 && indexB === -1) return 0;
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     return indexA - indexB;
   });
 
@@ -397,7 +662,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           "F_raw": lin.f,
           "df1": lin.df1,
           "df2": lin.df2,
+<<<<<<< HEAD
           "Sig.": lin.sig.toFixed(3),
+=======
+          "p-value": lin.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           "Sig_raw": lin.sig,
           "Constant": lin.b0.toFixed(3),
           "Constant_raw": lin.b0,
@@ -421,7 +690,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": log.f,
             "df1": log.df1,
             "df2": log.df2,
+<<<<<<< HEAD
             "Sig.": log.sig.toFixed(3),
+=======
+             "p-value": log.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": log.sig,
             "Constant": log.b0.toFixed(3),
             "Constant_raw": log.b0,
@@ -441,7 +714,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": null,
             "df1": "",
             "df2": "",
+<<<<<<< HEAD
             "Sig.": "",
+=======
+             "p-value": "",
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": null,
             "Constant": "",
             "Constant_raw": null,
@@ -466,7 +743,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": inv.f,
             "df1": inv.df1,
             "df2": inv.df2,
+<<<<<<< HEAD
             "Sig.": inv.sig.toFixed(3),
+=======
+             "p-value": inv.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": inv.sig,
             "Constant": inv.b0.toFixed(3),
             "Constant_raw": inv.b0,
@@ -486,7 +767,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": null,
             "df1": "",
             "df2": "",
+<<<<<<< HEAD
             "Sig.": "",
+=======
+             "p-value": "",
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": null,
             "Constant": "",
             "Constant_raw": null,
@@ -510,7 +795,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           "F_raw": quad.f,
           "df1": quad.df1,
           "df2": quad.df2,
+<<<<<<< HEAD
           "Sig.": quad.sig.toFixed(3),
+=======
+          "p-value": quad.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           "Sig_raw": quad.sig,
           "Constant": quad.coefficients[0].toFixed(3),
           "Constant_raw": quad.coefficients[0],
@@ -533,7 +822,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           "F_raw": cubic.f,
           "df1": cubic.df1,
           "df2": cubic.df2,
+<<<<<<< HEAD
           "Sig.": cubic.sig.toFixed(3),
+=======
+          "p-value": cubic.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           "Sig_raw": cubic.sig,
           "Constant": cubic.coefficients[0].toFixed(3),
           "Constant_raw": cubic.coefficients[0],
@@ -557,7 +850,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": compound.f,
             "df1": compound.df1,
             "df2": compound.df2,
+<<<<<<< HEAD
             "Sig.": compound.sig.toFixed(3),
+=======
+             "p-value": compound.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": compound.sig,
             "Constant": compound.b0.toFixed(3),
             "Constant_raw": compound.b0,
@@ -577,7 +874,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": null,
             "df1": "",
             "df2": "",
+<<<<<<< HEAD
             "Sig.": "",
+=======
+             "p-value": "",
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": null,
             "Constant": "",
             "Constant_raw": null,
@@ -602,7 +903,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": power.f,
             "df1": power.df1,
             "df2": power.df2,
+<<<<<<< HEAD
             "Sig.": power.sig.toFixed(3),
+=======
+             "p-value": power.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": power.sig,
             "Constant": power.b0.toFixed(3),
             "Constant_raw": power.b0,
@@ -622,7 +927,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": null,
             "df1": "",
             "df2": "",
+<<<<<<< HEAD
             "Sig.": "",
+=======
+             "p-value": "",
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": null,
             "Constant": "",
             "Constant_raw": null,
@@ -647,7 +956,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": sCurve.f,
             "df1": sCurve.df1,
             "df2": sCurve.df2,
+<<<<<<< HEAD
             "Sig.": sCurve.sig.toFixed(3),
+=======
+             "p-value": sCurve.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": sCurve.sig,
             "Constant": sCurve.b0.toFixed(3),
             "Constant_raw": sCurve.b0,
@@ -667,7 +980,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": null,
             "df1": "",
             "df2": "",
+<<<<<<< HEAD
             "Sig.": "",
+=======
+             "p-value": "",
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": null,
             "Constant": "",
             "Constant_raw": null,
@@ -692,7 +1009,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": growth.f,
             "df1": growth.df1,
             "df2": growth.df2,
+<<<<<<< HEAD
             "Sig.": growth.sig.toFixed(3),
+=======
+             "p-value": growth.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": growth.sig,
             "Constant": growth.b0.toFixed(3),
             "Constant_raw": growth.b0,
@@ -712,7 +1033,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": null,
             "df1": "",
             "df2": "",
+<<<<<<< HEAD
             "Sig.": "",
+=======
+             "p-value": "",
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": null,
             "Constant": "",
             "Constant_raw": null,
@@ -737,7 +1062,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": exponential.f,
             "df1": exponential.df1,
             "df2": exponential.df2,
+<<<<<<< HEAD
             "Sig.": exponential.sig.toFixed(3),
+=======
+             "p-value": exponential.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": exponential.sig,
             "Constant": exponential.b0.toFixed(3),
             "Constant_raw": exponential.b0,
@@ -757,7 +1086,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
             "F_raw": null,
             "df1": "",
             "df2": "",
+<<<<<<< HEAD
             "Sig.": "",
+=======
+             "p-value": "",
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             "Sig_raw": null,
             "Constant": "",
             "Constant_raw": null,
@@ -772,6 +1105,7 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
         break;
 
       case 'Logistic': {
+<<<<<<< HEAD
         // Run logistic fit
         const logistic = tryLogistic(X, Y, options.upperBound);
 
@@ -781,6 +1115,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
         let statsSource = logistic;
         if (!options.upperBound) {
           // fall back to Growth model stats
+=======
+        const logistic = tryLogistic(X, Y, options.upperBound);
+        let statsSource = logistic;
+        if (!options.upperBound) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           const growthStats = tryGrowth(X, Y);
           if (growthStats) {
             statsSource = { ...statsSource, ...growthStats };
@@ -795,7 +1134,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           "F_raw": logistic.isEstimated ? 0 : statsSource.f,
           "df1": statsSource.df1,
           "df2": statsSource.df2,
+<<<<<<< HEAD
           "Sig.": logistic.isEstimated ? "1.000" : statsSource.sig.toFixed(3),
+=======
+          "p-value": logistic.isEstimated ? "1.000" : statsSource.sig.toFixed(3),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           "Sig_raw": logistic.isEstimated ? 1 : statsSource.sig,
           "Constant": logistic.b0.toFixed(3),
           "Constant_raw": logistic.b0,
@@ -818,7 +1161,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
           "F_raw": null,
           "df1": "",
           "df2": "",
+<<<<<<< HEAD
           "Sig.": "",
+=======
+          "p-value": "",
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           "Sig_raw": null,
           "Constant": "",
           "Constant_raw": null,
@@ -847,7 +1194,11 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
               { header: "F" },
               { header: "df1" },
               { header: "df2" },
+<<<<<<< HEAD
               { header: "Sig." }
+=======
+              { header: "p-value" }
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             ]
           },
           {
@@ -866,7 +1217,24 @@ const generateRegressionSummary = (models, X, Y, options = {}) => {
   };
 };
 
+<<<<<<< HEAD
 // Event listener for messages from main thread
+=======
+/**
+ * Handle worker messages.
+ *
+ * Supported action: 'runRegression'
+ * - data: {
+ *     models: string[],
+ *     X: number[],
+ *     Y: number[],
+ *     dependentName: string,
+ *     independentNames: string[],
+ *     upperBound?: number|string
+ *   }
+ * Responds with action 'regressionResults' containing regression output and metadata.
+ */
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 self.addEventListener('message', (event) => {
   try {
     const { action, data } = event.data;
@@ -881,10 +1249,15 @@ self.addEventListener('message', (event) => {
           upperBound: upperBound
         });
 
+<<<<<<< HEAD
         // Generate regression summary with options
         const result = generateRegressionSummary(models, X, Y, { upperBound });
 
         // Add metadata about the regression
+=======
+        const result = generateRegressionSummary(models, X, Y, { upperBound });
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const response = {
           success: true,
           result: result,

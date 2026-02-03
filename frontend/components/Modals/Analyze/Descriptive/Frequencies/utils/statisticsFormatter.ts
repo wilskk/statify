@@ -1,5 +1,9 @@
 import type { DescriptiveStatistics, FrequenciesResult } from '../types';
 import { spssDateTypes } from '@/types/Variable';
+<<<<<<< HEAD
+=======
+import { spssSecondsToDateString } from '@/lib/spssDateConverter';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // Konstanta untuk precision yang konsisten
 const STATS_DECIMAL_PLACES = 2;
@@ -9,6 +13,53 @@ const isDateVariable = (variable: any): boolean => {
     return variable?.type && spssDateTypes.has(variable.type);
 };
 
+<<<<<<< HEAD
+=======
+// Helper to format SPSS seconds or string dates to dd-mm-yyyy
+const formatDateValue = (value: any): string => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        const s = spssSecondsToDateString(value);
+        return s ?? '';
+    }
+    if (typeof value === 'string') return value;
+    return '';
+};
+
+// Effective measurement: map 'unknown' as per rules: numeric->scale, string->nominal, date->scale
+type EffectiveMeasure = 'nominal' | 'ordinal' | 'scale';
+const getEffectiveMeasure = (variable: any): EffectiveMeasure => {
+    const measure = variable?.measure;
+    if (!measure || measure === 'unknown') {
+        if (isDateVariable(variable)) return 'scale';
+        if (variable?.type === 'STRING') return 'nominal';
+        return 'scale';
+    }
+    return measure as EffectiveMeasure;
+};
+
+// Determine if a stat is allowed for a variable by measurement (date-specific handling stays below)
+const allowsStatByMeasure = (variable: any, key: string): boolean => {
+    const m = getEffectiveMeasure(variable);
+    if (key === 'Mode') return true; // always allowed
+    if (key === 'Median') return m === 'ordinal' || m === 'scale';
+    if (key === 'Mean' || key === 'SEMean') return m !== 'nominal'; // ordinal allowed with caution
+    if (key === 'Sum') return m === 'scale';
+    if (key === 'Range' || key === 'Minimum' || key === 'Maximum') return m === 'ordinal' || m === 'scale';
+    if (
+        key === 'StdDev' || key === 'Variance' || key === 'Skewness' || key === 'Kurtosis' ||
+        key === 'SESkewness' || key === 'SEKurtosis'
+    ) {
+        return m !== 'nominal'; // ordinal allowed with caution
+    }
+    if (key === 'Percentiles') return m === 'ordinal' || m === 'scale';
+    return true;
+};
+
+// Identify cautionary stats for ordinal variables
+const isOrdinalCautionStat = (key: string): boolean =>
+    key === 'Mean' || key === 'SEMean' || key === 'StdDev' || key === 'Variance' || key === 'Skewness' || key === 'SESkewness' || key === 'Kurtosis' || key === 'SEKurtosis';
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 /**
  * Formats the raw statistics data into a table structure for display.
  * @param results - Array of analysis results from the worker.
@@ -37,6 +88,10 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     ];
 
     const rows: any[] = [];
+<<<<<<< HEAD
+=======
+    let ordinalCautionUsed = false;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     // N Row
     rows.push({
@@ -64,12 +119,38 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         const row: any = { rowHeader: [config.name] };
         variableNames.forEach(name => {
             const variable = statsResults.find(r => r.variable.name === name)?.variable;
+<<<<<<< HEAD
             if (isDateVariable(variable)) {
                 // For date variables, don't show numerical statistics like Mean, Median, SE Mean
                 row[name] = '';
             } else {
                 const value = (statsMap.get(name) as any)?.[config.key];
                 row[name] = typeof value === 'number' ? value.toFixed(config.precision) : value ?? '';
+=======
+            // Primary value from stats
+            let value: any = (statsMap.get(name) as any)?.[config.key];
+            // Fallback: if Median missing, use Percentiles['50']
+            if ((value === undefined || value === null) && config.key === 'Median') {
+                const p = statsMap.get(name)?.Percentiles as any;
+                value = p?.[50] ?? p?.['50'];
+            }
+            const allowedByMeasure = allowsStatByMeasure(variable, config.key);
+            if (!allowedByMeasure) {
+                row[name] = '';
+            } else if (isDateVariable(variable)) {
+                // For dates, only Median is shown here
+                if (config.key === 'Median') {
+                    row[name] = formatDateValue(value);
+                } else {
+                    row[name] = '';
+                }
+            } else {
+                // Non-date, allowed by measure
+                if (isOrdinalCautionStat(config.key) && getEffectiveMeasure(variable) === 'ordinal' && value !== undefined && value !== null) {
+                    ordinalCautionUsed = true;
+                }
+                row[name] = typeof value === 'number' ? value.toFixed(config.precision) : (value ?? '');
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             }
         });
         rows.push(row);
@@ -81,12 +162,21 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         const variable = statsResults.find(r => r.variable.name === name)?.variable;
         const modes = statsMap.get(name)?.Mode;
         if (modes && Array.isArray(modes) && modes.length > 0) {
+<<<<<<< HEAD
             if (isDateVariable(variable)) {
                 // For date variables, show mode without decimal formatting
                 modeRow[name] = modes[0] + (modes.length > 1 ? '<sup>a</sup>' : '');
             } else {
                 // For numeric variables, format with decimals; otherwise, show as-is (string/value-label)
                 const first = modes[0] as unknown;
+=======
+            const first = modes[0] as unknown;
+            if (isDateVariable(variable)) {
+                // For date variables, format numeric seconds to dd-mm-yyyy; pass through strings
+                modeRow[name] = formatDateValue(first) + (modes.length > 1 ? '<sup>a</sup>' : '');
+            } else {
+                // For numeric variables, format with decimals; otherwise, show as-is (string/value-label)
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 modeRow[name] = (typeof first === 'number'
                     ? first.toFixed(STATS_DECIMAL_PLACES)
                     : String(first)) + (modes.length > 1 ? '<sup>a</sup>' : '');
@@ -115,11 +205,25 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
         const row: any = { rowHeader: [config.name] };
         variableNames.forEach(name => {
             const variable = statsResults.find(r => r.variable.name === name)?.variable;
+<<<<<<< HEAD
             if (isDateVariable(variable)) {
                 // For date variables, don't show numerical statistics
                 row[name] = '';
             } else {
                 const value = (statsMap.get(name) as any)?.[config.key];
+=======
+            const allowedByMeasure = allowsStatByMeasure(variable, config.key);
+            if (!allowedByMeasure) {
+                row[name] = '';
+            } else if (isDateVariable(variable)) {
+                // For date variables, don't show these numerical statistics
+                row[name] = '';
+            } else {
+                const value = (statsMap.get(name) as any)?.[config.key];
+                if (isOrdinalCautionStat(config.key) && getEffectiveMeasure(variable) === 'ordinal' && value !== undefined && value !== null) {
+                    ordinalCautionUsed = true;
+                }
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 row[name] = typeof value === 'number' ? value.toFixed(config.precision) : value ?? '';
             }
         });
@@ -140,11 +244,23 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
             const childRow: any = { rowHeader: [null, level.toString()] };
             variableNames.forEach(name => {
                 const variable = statsResults.find(r => r.variable.name === name)?.variable;
+<<<<<<< HEAD
                 if (isDateVariable(variable)) {
                     // For date variables, don't show percentiles as they are not meaningful
                     childRow[name] = '.';
                 } else {
                     const value = statsMap.get(name)?.Percentiles?.[level];
+=======
+                const value = statsMap.get(name)?.Percentiles?.[level];
+                const allowedByMeasure = allowsStatByMeasure(variable, 'Percentiles');
+                if (!allowedByMeasure) {
+                    childRow[name] = '.';
+                } else if (isDateVariable(variable)) {
+                    // Show date percentiles (25, 50, 75) as dd-mm-yyyy
+                    const formatted = formatDateValue(value);
+                    childRow[name] = formatted || '.';
+                } else {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     childRow[name] = typeof value === 'number' ? value.toFixed(STATS_DECIMAL_PLACES) : '.';
                 }
             });
@@ -157,6 +273,12 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
     }
 
     const hasMultipleModes = statsResults.some(r => r.stats && Array.isArray(r.stats.Mode) && r.stats.Mode.length > 1);
+<<<<<<< HEAD
+=======
+    const footerParts: string[] = [];
+    if (hasMultipleModes) footerParts.push('<sup>a</sup>. Multiple modes exist. The smallest value is shown.');
+    if (ordinalCautionUsed) footerParts.push('<sup>b</sup>. Ordinal variables: numeric statistics are computed on coded values and should be interpreted with caution.');
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     return {
         tables: [
@@ -164,7 +286,11 @@ export const formatStatisticsTable = (results: FrequenciesResult[]): any => {
                 title: 'Statistics',
                 columnHeaders: columnHeaders.map(h => ({ header: h.header, key: h.key })), // Match desired output
                 rows,
+<<<<<<< HEAD
                 ...(hasMultipleModes && { footer: '<sup>a</sup>. Multiple modes exist. The smallest value is shown.' }),
+=======
+                ...(footerParts.length > 0 && { footer: footerParts.join(' ') }),
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             },
         ],
     };

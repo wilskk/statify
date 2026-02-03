@@ -26,7 +26,11 @@ export const generateExcelWorkbook = (
         dataSheetData.push(variables.map(v => v.name));
     }
     data.forEach(row => {
+<<<<<<< HEAD
         const dataRow = variables.map((variable, index) => row[variable.columnIndex] ?? (options.includeDataLabels ? "SYSMIS" : ""));
+=======
+        const dataRow = variables.map((variable, _index) => row[variable.columnIndex] ?? (options.includeDataLabels ? "SYSMIS" : ""));
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         dataSheetData.push(dataRow);
     });
 
@@ -74,4 +78,8 @@ export const generateExcelWorkbook = (
     }
 
     return wb;
+<<<<<<< HEAD
 }; 
+=======
+};
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

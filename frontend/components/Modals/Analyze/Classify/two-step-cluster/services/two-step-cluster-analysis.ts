@@ -1,5 +1,9 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     TwoStepClusterAnalysisType
 } from "@/components/Modals/Analyze/Classify/two-step-cluster/types/two-step-cluste-worker";
 
@@ -12,14 +16,24 @@ export async function analyzeTwoStepCluster({
     const ContinousVariables = configData.main.ContinousVar || [];
 
     const slicedDataForCategorical = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: CategoricalVariables,
     });
 
     const slicedDataForContinous = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: ContinousVariables,
     });
 

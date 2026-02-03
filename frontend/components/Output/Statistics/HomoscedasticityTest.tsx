@@ -8,6 +8,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+<<<<<<< HEAD
+=======
+import GeneralChartContainer from '@/components/Output/Chart/GeneralChartContainer';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X, AlertCircle } from 'lucide-react';
 
@@ -31,7 +35,11 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
   try {
     // Parse the JSON data
     const parsedData = JSON.parse(data);
+<<<<<<< HEAD
     const { title, description, isHomoscedastic, tests, residualStats, visualizations: _visualizations } = parsedData;
+=======
+    const { title, description, isHomoscedastic, tests, residualStats, visualizations } = parsedData;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     if (!tests) {
       return (
@@ -142,6 +150,46 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
           </Card>
         )}
 
+<<<<<<< HEAD
+=======
+        {visualizations?.homoscedasticityScatter && Array.isArray(visualizations.homoscedasticityScatter) && visualizations.homoscedasticityScatter.length > 0 && (
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="font-semibold mb-2">Homoscedasticity Scatter Plot (ZPRED vs Studentized Residual)</h3>
+              {(() => {
+                // Build chart JSON for scatter plot using ChartService-compatible structure
+                const chartJSON = {
+                  charts: [
+                    {
+                      chartType: 'Scatter Plot',
+                      chartMetadata: {
+                        axisInfo: { x: 'ZPRED', y: 'SRESID' },
+                        description: 'Standardized predicted values vs studentized residuals',
+                        title: 'Homoscedasticity Scatter Plot',
+                        subtitle: 'ZPRED (X) vs SRESID (Y)'
+                      },
+                      chartData: visualizations.homoscedasticityScatter.map((d: any) => ({ x: d.x, y: d.y })),
+                      chartConfig: {
+                        width: 800,
+                        height: 500,
+                        useAxis: true,
+                        axisLabels: { x: 'Standardized Predicted Values (ZPRED)', y: 'Studentized Residuals' },
+                      }
+                    }
+                  ]
+                };
+
+                return (
+                  <div className="mt-4">
+                    <GeneralChartContainer data={JSON.stringify(chartJSON)} />
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         <div className="text-sm mt-4">
           <p><strong>Interpretation:</strong></p>
           <ul className="list-disc list-inside space-y-1 mt-2">

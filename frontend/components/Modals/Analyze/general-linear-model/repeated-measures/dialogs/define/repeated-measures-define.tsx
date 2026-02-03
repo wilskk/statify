@@ -3,7 +3,11 @@ import {
     RepeatedMeasureDefineDefault
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/constants/repeated-measures-define-default";
 import {useModal} from "@/hooks/useModal";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     RepeatedMeasureDefineData,
     RepeatedMeasureDefineType,
     RepeatedMeasuresDefineContainerProps,

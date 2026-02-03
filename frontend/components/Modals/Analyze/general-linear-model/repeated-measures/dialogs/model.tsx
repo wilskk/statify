@@ -2,7 +2,11 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     RepeatedMeasuresModelProps,
     RepeatedMeasuresModelType,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures";
@@ -16,7 +20,11 @@ import {
     SUMSQUARESMETHOD,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";
+<<<<<<< HEAD
 import {CheckedState} from "@radix-ui/react-checkbox";
+=======
+import type {CheckedState} from "@radix-ui/react-checkbox";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {Badge} from "@/components/ui/badge";
 
 export const RepeatedMeasuresModel = ({
@@ -149,7 +157,11 @@ export const RepeatedMeasuresModel = ({
             }
             // Jika tidak, tambahkan spasi dan variabel
             else {
+<<<<<<< HEAD
                 setCurrentBuildTerm((prev) => prev + " " + selectedVariable);
+=======
+                setCurrentBuildTerm((prev) => `${prev  } ${  selectedVariable}`);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             }
         }
     };
@@ -171,7 +183,11 @@ export const RepeatedMeasuresModel = ({
             !currentBuildTerm.endsWith(" * ") &&
             !currentBuildTerm.endsWith("(")
         ) {
+<<<<<<< HEAD
             setCurrentBuildTerm((prev) => prev + " * ");
+=======
+            setCurrentBuildTerm((prev) => `${prev  } * `);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         }
     };
 
@@ -202,9 +218,15 @@ export const RepeatedMeasuresModel = ({
 
                 // Sisipkan "({variable})" sebelum kurung tutup terakhir
                 newTerm =
+<<<<<<< HEAD
                     newTerm.substring(0, lastClosingIndex) +
                     "({variable})" +
                     newTerm.substring(lastClosingIndex);
+=======
+                    `${newTerm.substring(0, lastClosingIndex) 
+                    }({variable})${ 
+                    newTerm.substring(lastClosingIndex)}`;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             } else {
                 // Kasus: term tidak berakhir dengan ")" - seperti "Age"
                 // Kita ingin mengubahnya menjadi "Age({variable})"

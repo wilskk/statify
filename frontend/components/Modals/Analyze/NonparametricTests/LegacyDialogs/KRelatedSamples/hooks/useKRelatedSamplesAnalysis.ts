@@ -3,11 +3,21 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
+<<<<<<< HEAD
 import {
     KRelatedSamplesAnalysisProps,
     KRelatedSamplesResults,
     KRelatedSamplesResult
 } from '../types';
+=======
+import type {
+    KRelatedSamplesAnalysisProps,
+    KRelatedSamplesResult
+} from '../types';
+import {
+    KRelatedSamplesResults
+} from '../types';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 import {
     formatRanksTable,

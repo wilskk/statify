@@ -11,11 +11,19 @@ import {
     CONFIGURATIONMETHOD,
     NORMALIZATIONMETHOD,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/constants/optimal-sca-method";
+<<<<<<< HEAD
 import {
     OptScaCatpcaOptionsProps,
     OptScaCatpcaOptionsType,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/types/optimal-scaling-captca";
 import {CheckedState} from "@radix-ui/react-checkbox";
+=======
+import type {
+    OptScaCatpcaOptionsProps,
+    OptScaCatpcaOptionsType,
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/types/optimal-scaling-captca";
+import type {CheckedState} from "@radix-ui/react-checkbox";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {useEffect, useState} from "react";
 
 export const OptScaCatpcaOptions = ({

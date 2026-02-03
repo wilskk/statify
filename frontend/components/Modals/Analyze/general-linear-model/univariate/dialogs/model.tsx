@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     UnivariateModelProps,
     UnivariateModelType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
@@ -32,7 +36,11 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+<<<<<<< HEAD
 import { CheckedState } from "@radix-ui/react-checkbox";
+=======
+import type { CheckedState } from "@radix-ui/react-checkbox";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -233,8 +241,12 @@ export const UnivariateModel = ({
                             const mainFactor = match[1];
                             const nestedTerm = match[2];
                             if (
+<<<<<<< HEAD
                                 !covariates ||
                                 !covariates.includes(mainFactor)
+=======
+                                !covariates?.includes(mainFactor)
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                             ) {
                                 factors.add(mainFactor);
                             }
@@ -244,7 +256,11 @@ export const UnivariateModel = ({
                             );
                         } else {
                             // It's a simple term
+<<<<<<< HEAD
                             if (!covariates || !covariates.includes(part)) {
+=======
+                            if (!covariates?.includes(part)) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                 factors.add(part.trim());
                             }
                         }
@@ -262,7 +278,11 @@ export const UnivariateModel = ({
             }
             // Jika tidak, tambahkan spasi dan variabel
             else {
+<<<<<<< HEAD
                 setCurrentBuildTerm((prev) => prev + " " + selectedVariable);
+=======
+                setCurrentBuildTerm((prev) => `${prev  } ${  selectedVariable}`);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             }
         }
     };
@@ -284,7 +304,11 @@ export const UnivariateModel = ({
             !currentBuildTerm.endsWith("*") &&
             !currentBuildTerm.endsWith("(")
         ) {
+<<<<<<< HEAD
             setCurrentBuildTerm((prev) => prev + "*");
+=======
+            setCurrentBuildTerm((prev) => `${prev  }*`);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         }
     };
 
@@ -315,9 +339,15 @@ export const UnivariateModel = ({
 
                 // Sisipkan "({variable})" sebelum kurung tutup terakhir
                 newTerm =
+<<<<<<< HEAD
                     newTerm.substring(0, lastClosingIndex) +
                     "({variable})" +
                     newTerm.substring(lastClosingIndex);
+=======
+                    `${newTerm.substring(0, lastClosingIndex) 
+                    }({variable})${ 
+                    newTerm.substring(lastClosingIndex)}`;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             } else {
                 // Kasus: term tidak berakhir dengan ")" - seperti "Age"
                 // Kita ingin mengubahnya menjadi "Age({variable})"

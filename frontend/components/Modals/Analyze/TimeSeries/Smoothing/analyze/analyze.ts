@@ -101,10 +101,17 @@ Promise<[string, string, number[], string, string]> {
                 smoothingLength++;
             }
         }
+<<<<<<< HEAD
         let smoothingArray = Array.from(smoothingValue);
         let smoothingRound = smoothingArray.map(value => Number(parseFloat(value.toString()).toFixed(3)));
         let dateArray = await generateDate(typeDate, startHour, startDay, startMonth, startYear, smoothingArray.length);
         let descriptionJSON = JSON.stringify({
+=======
+        const smoothingArray = Array.from(smoothingValue);
+        const smoothingRound = smoothingArray.map(value => Number(parseFloat(value.toString()).toFixed(3)));
+        const dateArray = await generateDate(typeDate, startHour, startDay, startMonth, startYear, smoothingArray.length);
+        const descriptionJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [
                 {
                     title: `Description Table`,
@@ -141,7 +148,11 @@ Promise<[string, string, number[], string, string]> {
         });
 
         // Smoothing Graph
+<<<<<<< HEAD
         let structuredSmoothing: any[] = [];
+=======
+        const structuredSmoothing: any[] = [];
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         // Validasi panjang array
         if (data.length === smoothingArray.length) {
             for (let i = 0; i < smoothingArray.length; i++) {
@@ -162,7 +173,11 @@ Promise<[string, string, number[], string, string]> {
         } else {
             throw new Error("Panjang array tidak sama!");
         }
+<<<<<<< HEAD
         let graphicJSON = JSON.stringify({
+=======
+        const graphicJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             charts: [
                 {
                     chartType: "Multiple Line Chart",
@@ -187,8 +202,13 @@ Promise<[string, string, number[], string, string]> {
             ]
         });
 
+<<<<<<< HEAD
         let evalValue = await smoothing.smoothing_evaluation(smoothingValue) as Record<string, number>;
         let evalJSON = JSON.stringify({
+=======
+        const evalValue = await smoothing.smoothing_evaluation(smoothingValue) as Record<string, number>;
+        const evalJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [
                 {
                     title: `Smoothing Evaluation Results`,
@@ -203,8 +223,13 @@ Promise<[string, string, number[], string, string]> {
 
         return ["success", descriptionJSON, smoothingRound, graphicJSON, evalJSON];
     } catch (error) {
+<<<<<<< HEAD
         let errorMessage = error as Error;
         let errorJSON = JSON.stringify({
+=======
+        const errorMessage = error as Error;
+        const errorJSON = JSON.stringify({
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [
                 {
                     title: `Error Table`,

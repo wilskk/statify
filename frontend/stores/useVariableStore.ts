@@ -168,7 +168,10 @@ interface VariableStoreState {
     // Single-item operations
     addVariable: (variableData?: Partial<Variable>) => Promise<void>;
     addVariables: (variablesData: Partial<Variable>[], updates: CellUpdate[]) => Promise<void>;
+<<<<<<< HEAD
     registerVariableMetadata: (variablesData: Partial<Variable>[]) => Promise<void>;
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     updateVariable: <K extends keyof Variable>(identifier: number | string, field: K, value: Variable[K]) => Promise<void>;
     updateMultipleFields: (identifier: number | string, changes: Partial<Variable>) => Promise<void>;
     deleteVariable: (columnIndex: number) => Promise<void>;
@@ -292,6 +295,7 @@ export const useVariableStore = create<VariableStoreState>()(
                 try {
                     // Save any pending changes first to avoid data loss
                     await useDataStore.getState().checkAndSave();
+<<<<<<< HEAD
 
                     const finalNewVars: Variable[] = [];
                     const combinedVars = [...get().variables]; // Start with current variables for uniqueness checks
@@ -299,12 +303,22 @@ export const useVariableStore = create<VariableStoreState>()(
                     // Sort by column index to process them in order
                     const sortedVariablesData = [...variablesData].sort((a, b) => a.columnIndex! - b.columnIndex!);
 
+=======
+            
+                    const finalNewVars: Variable[] = [];
+                    const combinedVars = [...get().variables]; // Start with current variables for uniqueness checks
+            
+                    // Sort by column index to process them in order
+                    const sortedVariablesData = [...variablesData].sort((a, b) => a.columnIndex! - b.columnIndex!);
+            
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     for (const varData of sortedVariablesData) {
                         const idx = varData.columnIndex!;
                         // Use the combined array which grows with each new variable
                         const defaultVar = createDefaultVariable(idx, combinedVars);
                         const inferred = varData.type ? inferDefaultValues(varData.type) : {};
                         const baseVar: Variable = { ...defaultVar, ...inferred, ...varData, columnIndex: idx };
+<<<<<<< HEAD
 
                         const nameRes = processVariableName(baseVar.name, combinedVars);
                         const finalName = nameRes.processedName ?? baseVar.name;
@@ -318,6 +332,21 @@ export const useVariableStore = create<VariableStoreState>()(
                     const dataStore = useDataStore.getState();
                     let currentData = [...dataStore.data];
 
+=======
+                        
+                        const nameRes = processVariableName(baseVar.name, combinedVars);
+                        const finalName = nameRes.processedName ?? baseVar.name;
+                        const finalVar: Variable = { ...baseVar, name: finalName, ...enforceMeasureConstraint({ ...baseVar, name: finalName }, null) };
+                        
+                        finalNewVars.push(finalVar);
+                        combinedVars.push(finalVar); // Add to temp array for the next iteration's uniqueness check
+                    }
+                    
+                    // Update data state immediately to show the column insertions
+                    const dataStore = useDataStore.getState();
+                    let currentData = [...dataStore.data];
+                    
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // Process columns in reverse order to maintain correct indices
                     const reverseSortedVars = [...finalNewVars].sort((a, b) => b.columnIndex - a.columnIndex);
                     for (const newVar of reverseSortedVars) {
@@ -327,14 +356,22 @@ export const useVariableStore = create<VariableStoreState>()(
                             return newRow;
                         });
                     }
+<<<<<<< HEAD
 
                     // Update the data store state immediately
                     dataStore.setData(currentData);
 
+=======
+                    
+                    // Update the data store state immediately
+                    dataStore.setData(currentData);
+                    
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // Apply the pending updates to the new data structure
                     if (updates && updates.length > 0) {
                         await dataStore.updateCells(updates);
                     }
+<<<<<<< HEAD
 
                     // Create variables in database
                     await sheetService.addMultipleColumns(finalNewVars);
@@ -343,6 +380,16 @@ export const useVariableStore = create<VariableStoreState>()(
                     const variables = await variableService.getAllVariables();
                     updateStateAfterSuccess(set, variables);
 
+=======
+                    
+                    // Create variables in database
+                    await sheetService.addMultipleColumns(finalNewVars);
+                    
+                    // Reload variables to get the new structure from database
+                    const variables = await variableService.getAllVariables();
+                    updateStateAfterSuccess(set, variables);
+                    
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // Save the data changes to database
                     await dataStore.saveData();
                 } catch (error: any) {
@@ -350,6 +397,7 @@ export const useVariableStore = create<VariableStoreState>()(
                 }
             },
 
+<<<<<<< HEAD
             /**
              * Register variable metadata WITHOUT manipulating the data structure.
              * Use this when data has already been injected via addVariableColumns.
@@ -393,6 +441,8 @@ export const useVariableStore = create<VariableStoreState>()(
                 }
             },
 
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             addVariable: async (variableData?) => {
                 set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
@@ -550,4 +600,8 @@ export const useVariableStore = create<VariableStoreState>()(
             },
         }))
     )
+<<<<<<< HEAD
 );
+=======
+);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

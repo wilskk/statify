@@ -47,6 +47,7 @@ export function formatDisplayNumber(
     return num.toFixed(4).replace(/\.?0+$/, "");
 }
 
+<<<<<<< HEAD
 export function formatCorrelationValue(
     num: number | undefined | null
 ): string | null {
@@ -60,6 +61,8 @@ export function formatCorrelationValue(
     return num.toFixed(3);
 }
 
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 // Helper function to ensure columnHeaders are sufficient for all rows
 export function ensureEnoughHeaders(table: Table): Table {
     if (!table.rows || table.rows.length === 0) return table;

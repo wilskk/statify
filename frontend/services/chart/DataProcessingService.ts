@@ -880,6 +880,18 @@ export class DataProcessingService {
           value: getVariableName(chartVariables.y, 0),
         };
 
+      case "Q-Q Plot":
+        return {
+          x: "Theoretical Quantiles",
+          y: getVariableName(chartVariables.y, 0),
+        };
+
+      case "P-P Plot":
+        return {
+          x: "Observed Cum Prop",
+          y: getVariableName(chartVariables.y, 0),
+        };
+
       case "Stacked Histogram":
         return {
           value: getVariableName(chartVariables.y, 0),

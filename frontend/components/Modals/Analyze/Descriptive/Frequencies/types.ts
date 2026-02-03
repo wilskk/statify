@@ -1,5 +1,9 @@
 import type { Variable } from "@/types/Variable";
+<<<<<<< HEAD
 import { BaseModalProps } from "@/types/modalTypes";
+=======
+import type { BaseModalProps } from "@/types/modalTypes";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // === Statistics Options ===
 export interface PercentileOptions {
@@ -95,7 +99,11 @@ export interface DescriptiveStatistics {
     Missing?: number;
     Mean?: number | null;
     Median?: number | null;
+<<<<<<< HEAD
     Mode?: number | null;
+=======
+    Mode?: (number | string)[] | number | null;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     Sum?: number | null;
     StdDev?: number | null;
     Variance?: number | null;

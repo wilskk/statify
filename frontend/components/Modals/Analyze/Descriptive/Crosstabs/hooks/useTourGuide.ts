@@ -1,5 +1,9 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+<<<<<<< HEAD
 import { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes';
+=======
+import type { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // Constants
 const TABS = {

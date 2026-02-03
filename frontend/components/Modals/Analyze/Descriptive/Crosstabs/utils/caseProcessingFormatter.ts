@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { CrosstabsAnalysisParams, CrosstabsWorkerResult } from '../types';
 import { ColumnHeader, FormattedTable, TableRowData } from './helpers';
+=======
+import type { CrosstabsAnalysisParams, CrosstabsWorkerResult } from '../types';
+import type { ColumnHeader, FormattedTable, TableRowData } from './helpers';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 /**
  * Formats the Case Processing Summary table for Crosstabs.
@@ -8,7 +13,11 @@ export const formatCaseProcessingSummary = (
   result: CrosstabsWorkerResult,
   params: CrosstabsAnalysisParams,
 ): FormattedTable | null => {
+<<<<<<< HEAD
   if (!result || !result.summary) return null;
+=======
+  if (!result?.summary) return null;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
   const { valid, missing } = result.summary;
   const total = valid + missing;

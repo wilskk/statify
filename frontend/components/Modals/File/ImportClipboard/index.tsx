@@ -8,7 +8,6 @@ import { ImportClipboardConfigurationStep } from "./components/ImportClipboardCo
 
 export const ImportClipboardModal: React.FC<ImportClipboardProps> = ({
     onClose,
-    containerType,
 }) => {
     const {
         pastedText,

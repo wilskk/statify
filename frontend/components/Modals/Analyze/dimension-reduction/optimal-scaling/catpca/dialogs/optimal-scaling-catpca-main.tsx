@@ -1,5 +1,9 @@
 import {useEffect, useMemo, useRef, useState} from "react";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     DialogHandlers,
     OptScaCatpcaContainerProps,
     OptScaCatpcaDefineRangeScaleType,
@@ -221,8 +225,13 @@ export const OptScaCatpcaContainer = ({
 
             await analyzeOptScaCatpca({
                 configData: newFormData,
+<<<<<<< HEAD
                 dataVariables: dataVariables,
                 variables: variables,
+=======
+                dataVariables,
+                variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             });
         } catch (error) {
             console.error(error);

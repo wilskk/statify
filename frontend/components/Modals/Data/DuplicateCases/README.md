@@ -1,59 +1,601 @@
-# Fitur Identifikasi Kasus Duplikat
+# Duplicate Cases Modal - Identify and Manage Duplicate Data Records
 
-Dokumen ini menjelaskan fungsionalitas fitur "Identifikasi Kasus Duplikat", yang berfungsi untuk mengenali dan menandai kasus-kasus duplikat dalam sebuah dataset berdasarkan variabel-variabel pencocokan yang telah ditentukan.
+Modal untuk identifying dan managing duplicate cases dalam dataset Statify. Feature ini menyediakan advanced duplicate detection algorithms dengan flexible matching criteria dan comprehensive handling options.
 
-## 1. Gambaran Umum
+## 📁 Component Architecture
 
-Fitur ini memungkinkan pengguna untuk:
-- Mengidentifikasi kasus duplikat berdasarkan nilai-nilai yang identik pada satu atau lebih variabel.
-- Membuat variabel indikator baru untuk menandai mana kasus yang "primer" dan mana yang "duplikat".
-- Mengurutkan kasus di dalam grup duplikat untuk menentukan kasus primer.
-- Mengelola hasil dengan menyusun ulang data atau memfilter kasus duplikat.
+```
+DuplicateCases/
+├── index.tsx                   # Main modal component
+├── OptionsTab.tsx              # Duplicate handling options
+├── VariableTab.tsx             # Variable selection for matching
+├── types.ts                    # TypeScript type definitions
+├── README.md                   # Documentation
+│
+├── __tests__/                  # Test suite
+│   ├── index.test.tsx              # Main component tests
+│   ├── useDuplicateCases.test.ts   # Hook logic tests
+│   ├── duplicateCasesService.test.ts # Service function tests
+│   └── README.md                   # Test documentation
+│
+├── hooks/                      # Business logic hooks
+│   ├── useDuplicateCases.ts        # Core duplicate detection logic
+│   └── useTourGuide.ts             # Guided tour functionality
+│
+└── services/                   # Business logic services
+    └── duplicateCasesService.ts    # Duplicate detection algorithms
+```
 
-## 2. Spesifikasi Fitur & Opsi
+## 🎯 Core Functionality
 
-### Variabel Indikator Baru
+### Duplicate Detection Workflow
 
-Fitur ini dapat membuat dua variabel baru untuk membantu analisis duplikasi:
+```typescript
+interface DuplicateDetectionWorkflow {
+  // Step 1: Variable selection
+  variableSelection: {
+    keyVariables: Variable[]; // Variables to compare for duplicates
+    identifierVariables: Variable[]; // Variables that identify records
+    excludedVariables: Variable[]; // Variables to ignore in comparison
+    weightingSystem: VariableWeight[]; // Weight importance of variables
+  };
 
-#### 1. Indikator Kasus Primer
-- **Fungsi**: Membuat variabel (default: `PrimaryLast`) yang menandai setiap kasus sebagai primer (nilai 1) atau duplikat (nilai 0).
-- **Pilihan Kasus Primer**: Pengguna dapat menentukan apakah kasus **pertama** atau **terakhir** dalam setiap grup duplikat yang akan dianggap sebagai primer.
-- **Nama Variabel**: Nama untuk variabel indikator ini dapat disesuaikan.
+  // Step 2: Matching criteria
+  matchingCriteria: {
+    exactMatch: boolean; // Exact value matching
+    caseInsensitive: boolean; // Case-insensitive string matching
+    fuzzyMatch: FuzzyMatchConfig; // Fuzzy matching configuration
+    toleranceSettings: ToleranceConfig; // Numeric tolerance settings
+  };
 
-#### 2. Penghitung Berurutan
-- **Fungsi**: Membuat variabel (default: `MatchSequence`) yang memberikan nomor urut untuk setiap kasus di dalam grup duplikat (1, 2, 3, ...). Kasus yang unik (tidak memiliki duplikat) akan diberi nilai 0.
-- **Manfaat**: Berguna untuk melihat berapa banyak duplikat yang ada dalam setiap grup.
-- **Nama Variabel**: Nama untuk variabel penghitung ini dapat disesuaikan.
+  // Step 3: Detection execution
+  detectionExecution: {
+    comparisonEngine: ComparisonEngine; // Core comparison logic
+    duplicateGroups: DuplicateGroup[]; // Groups of duplicate records
+    similarityScores: SimilarityScore[]; // Similarity measurements
+    performanceOptimization: OptimizationConfig; // Large dataset handling
+  };
 
-### Opsi Manajemen & Tampilan
+  // Step 4: Result management
+  resultManagement: {
+    duplicateVisualization: VisualizationConfig; // Results display
+    actionSelection: ActionSelector; // Choose handling action
+    recordMerging: MergeStrategy; // Merge duplicate records
+    recordDeletion: DeletionStrategy; // Delete duplicate records
+  };
+}
+```
 
-#### 1. Pindahkan Kasus Duplikat ke Atas
-- **Fungsi**: Jika diaktifkan, semua kasus yang memiliki duplikat akan dipindahkan ke bagian atas file data, memudahkan untuk inspeksi.
+## 🔍 Duplicate Detection System
 
-#### 2. Filter Kasus Duplikat
-- **Fungsi**: Jika diaktifkan, setelah proses selesai, dataset akan secara otomatis difilter untuk hanya menampilkan kasus-kasus primer (di mana nilai indikator adalah 1). Ini adalah cara cepat untuk "menghapus" duplikat dari tampilan.
+### Indicator Variable Creation
 
-#### 3. Tampilkan Frekuensi
-- **Fungsi**: Jika diaktifkan, tabel frekuensi untuk variabel-variabel baru yang dibuat akan ditampilkan di jendela Output. Ini memberikan ringkasan cepat tentang jumlah kasus primer dan duplikat yang ditemukan.
+```typescript
+interface DuplicateIndicators {
+  // Primary case indicator
+  primaryCaseIndicator: {
+    variableName: string; // Default: 'PrimaryLast'
+    primaryStrategy: "first" | "last"; // Which case to mark as primary
+    encoding: {
+      primary: 1; // Primary case value
+      duplicate: 0; // Duplicate case value
+    };
+    description: string; // Variable label
+  };
 
-## 3. Contoh Penggunaan
+  // Sequential counter
+  sequentialCounter: {
+    variableName: string; // Default: 'MatchSequence'
+    counterLogic: {
+      uniqueCases: 0; // Value for unique cases
+      duplicateSequence: number[]; // Sequential numbering (1, 2, 3...)
+    };
+    purpose: "group identification"; // Counter purpose
+    description: string; // Variable label
+  };
 
-### Skenario 1: Menemukan Duplikat yang Sama Persis
-1.  Pindahkan **semua** variabel ke dalam daftar "Define matching cases by".
-2.  Pilih apakah kasus pertama atau terakhir yang akan menjadi primer.
-3.  Klik OK.
-> Hasil: Variabel `PrimaryLast` akan bernilai 0 untuk setiap baris yang merupakan duplikat persis dari baris lain.
+  // Duplicate group identifier
+  groupIdentifier: {
+    variableName: string; // Default: 'DuplicateGroup'
+    groupingStrategy: GroupStrategy; // How to assign group IDs
+    idFormat: "numeric" | "alphanumeric"; // ID format
+    description: string; // Variable label
+  };
+}
+```
 
-### Skenario 2: Membuat Dataset Tanpa Duplikat
-1.  Pindahkan variabel kunci (misal: ID Pelanggan, Email) ke daftar "Define matching cases by".
-2.  Pada tab **Options**, centang opsi "Filter out duplicate cases after processing".
-3.  Klik OK.
+### Matching Logic Implementation
+
+```typescript
+interface MatchingLogic {
+  // Exact matching
+  exactMatching: {
+    fullRecordMatch: (
+      record1: DataRow,
+      record2: DataRow,
+      variables: Variable[],
+    ) => boolean;
+    keyVariableMatch: (
+      record1: DataRow,
+      record2: DataRow,
+      keyVars: Variable[],
+    ) => boolean;
+    hashBasedMatch: (
+      records: DataRow[],
+      hashFunction: HashFunction,
+    ) => DuplicateGroup[];
+    performanceOptimized: boolean;
+  };
+
+  // Case sensitivity handling
+  caseSensitivity: {
+    stringNormalization: (value: string) => string;
+    caseInsensitiveMatch: (str1: string, str2: string) => boolean;
+    whitespaceHandling: "trim" | "normalize" | "preserve";
+    accentHandling: "normalize" | "preserve";
+  };
+
+  // Missing value handling
+  missingValueHandling: {
+    treatMissingAsEqual: boolean; // Missing = Missing?
+    ignoreMissingInComparison: boolean; // Skip missing values?
+    missingValueStrategy: MissingStrategy; // How to handle missing
+  };
+
+  // Performance optimization
+  performanceOptimization: {
+    indexingStrategy: IndexStrategy; // Create lookup indexes
+    batchProcessing: BatchConfig; // Process in batches
+    parallelComparison: boolean; // Use parallel processing
+    memoryManagement: MemoryConfig; // Memory optimization
+  };
+}
+```
+
+## 🔧 Hook Implementation
+
+### useDuplicateCases Hook
+
+```typescript
+interface UseDuplicateCasesHook {
+  // Configuration state
+  configurationState: {
+    selectedVariables: Variable[]; // Variables for matching
+    indicatorOptions: IndicatorOptions; // Indicator variable settings
+    processingOptions: ProcessingOptions; // Processing configuration
+    outputOptions: OutputOptions; // Output settings
+  };
+
+  // Variable management
+  variableManagement: {
+    availableVariables: Variable[];
+    addVariable: (variable: Variable) => void;
+    removeVariable: (variableId: string) => void;
+    reorderVariables: (fromIndex: number, toIndex: number) => void;
+    validateVariableSelection: () => ValidationResult;
+  };
+
+  // Indicator configuration
+  indicatorConfiguration: {
+    primaryIndicatorName: string;
+    sequenceCounterName: string;
+    groupIdentifierName: string;
+    primaryStrategy: "first" | "last";
+    setPrimaryIndicatorName: (name: string) => void;
+    setSequenceCounterName: (name: string) => void;
+    setGroupIdentifierName: (name: string) => void;
+    setPrimaryStrategy: (strategy: "first" | "last") => void;
+  };
+
+  // Processing options
+  processingOptions: {
+    moveDuplicatesToTop: boolean;
+    filterDuplicatesAfterProcessing: boolean;
+    showFrequencyTables: boolean;
+    createBackup: boolean;
+    setMoveDuplicatesToTop: (move: boolean) => void;
+    setFilterDuplicatesAfterProcessing: (filter: boolean) => void;
+    setShowFrequencyTables: (show: boolean) => void;
+    setCreateBackup: (backup: boolean) => void;
+  };
+
+  // Execution
+  execution: {
+    validateConfiguration: () => ValidationResult;
+    executeDuplicateDetection: () => Promise<DuplicateDetectionResult>;
+    cancelDetection: () => void;
+    resetConfiguration: () => void;
+    detectionProgress: DetectionProgress;
+    isDetectionRunning: boolean;
+  };
+}
+```
+
+### Duplicate Detection Service
+
+```typescript
+interface DuplicateCasesService {
+  // Core detection logic
+  coreDetection: {
+    identifyDuplicates: (
+      data: DataRow[],
+      variables: Variable[],
+      options: DetectionOptions,
+    ) => Promise<DuplicateDetectionResult>;
+
+    groupDuplicateRecords: (
+      duplicatePairs: DuplicatePair[],
+    ) => DuplicateGroup[];
+
+    createIndicatorVariables: (
+      duplicateGroups: DuplicateGroup[],
+      options: IndicatorOptions,
+    ) => IndicatorVariable[];
+
+    calculateStatistics: (
+      duplicateGroups: DuplicateGroup[],
+    ) => DuplicateStatistics;
+  };
+
+  // Data processing
+  dataProcessing: {
+    reorderData: (
+      data: DataRow[],
+      duplicateGroups: DuplicateGroup[],
+      strategy: ReorderStrategy,
+    ) => DataRow[];
+
+    filterDuplicates: (
+      data: DataRow[],
+      primaryIndicatorVariable: Variable,
+    ) => DataRow[];
+
+    assignPrimaryFlags: (
+      duplicateGroups: DuplicateGroup[],
+      strategy: "first" | "last",
+    ) => PrimaryAssignment[];
+
+    createSequenceNumbers: (
+      duplicateGroups: DuplicateGroup[],
+    ) => SequenceAssignment[];
+  };
+
+  // Performance optimization
+  performanceOptimization: {
+    createHashIndex: (data: DataRow[], variables: Variable[]) => HashIndex;
+
+    batchCompareRecords: (
+      data: DataRow[],
+      variables: Variable[],
+      batchSize: number,
+    ) => Promise<ComparisonResult[]>;
+
+    optimizeMemoryUsage: (
+      data: DataRow[],
+      variables: Variable[],
+    ) => OptimizationResult;
+  };
+
+  // Validation and quality
+  validationQuality: {
+    validateMatchingVariables: (
+      variables: Variable[],
+      data: DataRow[],
+    ) => ValidationResult;
+
+    assessDetectionQuality: (
+      result: DuplicateDetectionResult,
+    ) => QualityAssessment;
+
+    generateDetectionReport: (
+      result: DuplicateDetectionResult,
+    ) => DetectionReport;
+  };
+}
+```
+
+## 📊 Result Management
+
+### Duplicate Group Structure
+
+```typescript
+interface DuplicateGroupStructure {
+  // Group identification
+  groupIdentification: {
+    groupId: string; // Unique group identifier
+    groupSize: number; // Number of records in group
+    matchingValues: MatchingValues; // Values that make records duplicates
+    confidence: number; // Confidence in duplicate detection
+  };
+
+  // Record details
+  recordDetails: {
+    records: DataRow[]; // All records in the group
+    primaryRecord: DataRow; // Designated primary record
+    duplicateRecords: DataRow[]; // Non-primary records
+    recordIndices: number[]; // Original row indices
+  };
+
+  // Comparison metadata
+  comparisonMetadata: {
+    matchingVariables: Variable[]; // Variables used for matching
+    exactMatches: boolean[]; // Which variables matched exactly
+    similarityScores: number[]; // Similarity scores per variable
+    overallSimilarity: number; // Combined similarity score
+  };
+
+  // Processing flags
+  processingFlags: {
+    userReviewed: boolean; // Has user reviewed this group?
+    actionTaken: DuplicateAction | null; // What action was taken?
+    notes: string; // User notes about this group
+    locked: boolean; // Prevent further changes?
+  };
+}
+```
+
+### Output Configuration
+
+```typescript
+interface OutputConfiguration {
+  // Frequency tables
+  frequencyTables: {
+    primaryIndicatorFrequency: FrequencyTable; // Primary/duplicate counts
+    sequenceCounterFrequency: FrequencyTable; // Sequence number distribution
+    groupSizeDistribution: FrequencyTable; // Distribution of group sizes
+    showInOutput: boolean; // Display in output window
+  };
+
+  // Data reorganization
+  dataReorganization: {
+    moveDuplicatesToTop: boolean; // Move all duplicates to top
+    sortByGroupId: boolean; // Sort by duplicate group ID
+    sortWithinGroups: boolean; // Sort records within each group
+    groupSeparators: boolean; // Add visual separators between groups
+  };
+
+  // Filtering options
+  filteringOptions: {
+    showOnlyDuplicates: boolean; // Show only duplicate records
+    showOnlyPrimary: boolean; // Show only primary records
+    showSpecificGroups: string[]; // Show specific group IDs only
+    hideProcessedGroups: boolean; // Hide groups that were processed
+  };
+
+  // Export options
+  exportOptions: {
+    exportDuplicateReport: boolean; // Export detailed report
+    exportGroupSummary: boolean; // Export group summary
+    includeStatistics: boolean; // Include detection statistics
+    reportFormat: "csv" | "excel" | "pdf"; // Report format
+  };
+}
+```
+
+## 🎨 UI Components
+
+### VariableTab Component
+
+```typescript
+interface VariableTabProps {
+  // Variable selection
+  availableVariables: Variable[];
+  selectedVariables: Variable[];
+  onVariableAdd: (variable: Variable) => void;
+  onVariableRemove: (variableId: string) => void;
+  onVariableReorder: (fromIndex: number, toIndex: number) => void;
+
+  // Selection helpers
+  onSelectAll: () => void;
+  onClearAll: () => void;
+  onSelectByType: (dataType: DataType) => void;
+
+  // Variable information
+  variableInfo: Map<string, VariableInfo>;
+  showVariableDetails: boolean;
+  onToggleVariableDetails: () => void;
+
+  // Validation
+  validationErrors: ValidationError[];
+  warnings: Warning[];
+  isValid: boolean;
+}
+```
+
+### OptionsTab Component
+
+```typescript
+interface OptionsTabProps {
+  // Indicator variable options
+  indicatorOptions: {
+    createPrimaryIndicator: boolean;
+    primaryIndicatorName: string;
+    createSequenceCounter: boolean;
+    sequenceCounterName: string;
+    createGroupIdentifier: boolean;
+    groupIdentifierName: string;
+    primaryStrategy: "first" | "last";
+  };
+
+  // Processing options
+  processingOptions: {
+    moveDuplicatesToTop: boolean;
+    filterDuplicatesAfterProcessing: boolean;
+    showFrequencyTables: boolean;
+    createBackupBeforeProcessing: boolean;
+    caseSensitiveMatching: boolean;
+    ignoreMissingValues: boolean;
+  };
+
+  // Performance options
+  performanceOptions: {
+    useIndexing: boolean;
+    batchSize: number;
+    maxMemoryUsage: number;
+    parallelProcessing: boolean;
+  };
+
+  // Event handlers
+  onIndicatorOptionsChange: (options: IndicatorOptions) => void;
+  onProcessingOptionsChange: (options: ProcessingOptions) => void;
+  onPerformanceOptionsChange: (options: PerformanceOptions) => void;
+}
+```
+
+## 🧪 Testing Strategy
+
+### Test Coverage Areas
+
+```typescript
+// Core functionality testing
+describe("DuplicateCasesModal", () => {
+  describe("Variable selection", () => {
+    it("manages variable selection correctly");
+    it("validates variable combinations");
+    it("handles variable reordering");
+    it("shows appropriate warnings");
+  });
+
+  describe("Duplicate detection", () => {
+    it("detects exact duplicates correctly");
+    it("handles case sensitivity options");
+    it("manages missing values properly");
+    it("creates correct indicator variables");
+  });
+
+  describe("Result processing", () => {
+    it("assigns primary flags correctly");
+    it("creates sequence numbers properly");
+    it("reorders data as requested");
+    it("applies filters correctly");
+  });
+
+  describe("Performance", () => {
+    it("handles large datasets efficiently");
+    it("uses indexing when appropriate");
+    it("manages memory usage");
+    it("provides progress feedback");
+  });
+});
+
+// Service testing
+describe("duplicateCasesService", () => {
+  describe("Detection algorithms", () => {
+    it("identifies duplicates accurately");
+    it("groups duplicates correctly");
+    it("calculates statistics properly");
+    it("handles edge cases");
+  });
+
+  describe("Data processing", () => {
+    it("creates indicator variables correctly");
+    it("reorders data properly");
+    it("filters data accurately");
+    it("maintains data integrity");
+  });
+});
+
+// Integration testing
+describe("Integration tests", () => {
+  describe("End-to-end workflows", () => {
+    it("completes full duplicate detection workflow");
+    it("handles cancellation properly");
+    it("recovers from errors gracefully");
+    it("maintains consistent state");
+  });
+});
+```
+
+## 📋 Development Guidelines
+
+### Performance Optimization
+
+```typescript
+// 1. Efficient duplicate detection
+const optimizedDuplicateDetection = (
+  data: DataRow[],
+  variables: Variable[],
+) => {
+  // Create hash index for faster lookups
+  const hashIndex = createHashIndex(data, variables);
+
+  // Use batch processing for large datasets
+  if (data.length > LARGE_DATASET_THRESHOLD) {
+    return batchProcessDuplicates(data, variables, hashIndex);
+  }
+
+  // Standard processing for smaller datasets
+  return standardProcessDuplicates(data, variables, hashIndex);
+};
+
+// 2. Memory management
+const memoryEfficientProcessing = (data: DataRow[]) => {
+  // Process data in chunks to avoid memory overflow
+  const chunkSize = calculateOptimalChunkSize(data.length);
+  const chunks = chunkArray(data, chunkSize);
+
+  return chunks.reduce((accumulator, chunk) => {
+    const chunkResult = processDuplicatesChunk(chunk);
+    return mergeResults(accumulator, chunkResult);
+  }, initialResult);
+};
+```
+
+### Configuration Validation
+
+```typescript
+// Comprehensive validation
+const validateDuplicateDetectionConfig = (
+  variables: Variable[],
+  options: DetectionOptions,
+): ValidationResult => {
+  const errors: ValidationError[] = [];
+
+  // Validate variable selection
+  if (variables.length === 0) {
+    errors.push({
+      type: "variable_selection",
+      message: "At least one variable must be selected for matching",
+    });
+  }
+
+  // Validate indicator variable names
+  if (
+    options.createPrimaryIndicator &&
+    !isValidVariableName(options.primaryIndicatorName)
+  ) {
+    errors.push({
+      type: "variable_name",
+      message: "Primary indicator variable name is invalid",
+    });
+  }
+
+  // Validate performance settings
+  if (options.batchSize < 1 || options.batchSize > MAX_BATCH_SIZE) {
+    errors.push({
+      type: "performance",
+      message: "Batch size must be between 1 and " + MAX_BATCH_SIZE,
+    });
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings: generateWarnings(variables, options),
+  };
+};
+```
+
+---
+
+DuplicateCases modal menyediakan sophisticated duplicate detection capabilities dengan efficient algorithms dan comprehensive management options untuk maintaining data quality dalam Statify. 3. Klik OK.
+
 > Hasil: Tampilan data akan langsung diperbarui dan hanya menunjukkan baris-baris yang unik/primer.
 
 ## 4. Rencana Pengembangan (Belum Diimplementasikan)
 
 Fitur-fitur berikut direncanakan untuk rilis mendatang:
+
 - **Pencocokan Fuzzy (Fuzzy Matching)**: Kemampuan untuk mengidentifikasi duplikat yang "mirip" tetapi tidak identik (misalnya, "Jhon Smith" vs "John Smith").
 - **Aturan Pemilihan Primer Kustom**: Memungkinkan pengguna mendefinisikan aturan yang lebih kompleks untuk memilih kasus primer (misalnya, berdasarkan baris dengan data paling lengkap).
 - **Antarmuka Review Duplikat**: Sebuah UI khusus untuk meninjau grup duplikat secara berdampingan dan secara manual memilih kasus primer atau menggabungkan data.

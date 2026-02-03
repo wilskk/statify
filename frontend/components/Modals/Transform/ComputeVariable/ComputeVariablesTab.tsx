@@ -1,8 +1,10 @@
-import React, { FC, useCallback } from "react";
+import type { FC} from "react";
+import React, { useCallback } from "react";
 import type { Variable } from "@/types/Variable";
-import VariableListManager, {
+import type {
   TargetListConfig,
 } from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
 
 interface ComputeVariablesTabProps {
   availableVariables: Variable[];

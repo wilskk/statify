@@ -4,7 +4,10 @@ import StandardizedGuideLayout from '../shared/StandardizedGuideLayout';
 import { OverviewTab } from './tabs/OverviewTab';
 import { VariablesTab } from './tabs/VariablesTab';
 import { StatisticsTab } from './tabs/StatisticsTab';
+<<<<<<< HEAD
 import { QuickStartGuide } from './tabs/QuickStartGuide';
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const DescriptiveAnalysis = () => {
   const tabs = [
@@ -35,7 +38,11 @@ export const DescriptiveAnalysis = () => {
       tabs={tabs}
       defaultTab="overview"
     >
+<<<<<<< HEAD
       <QuickStartGuide />
+=======
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     </StandardizedGuideLayout>
   );
 };

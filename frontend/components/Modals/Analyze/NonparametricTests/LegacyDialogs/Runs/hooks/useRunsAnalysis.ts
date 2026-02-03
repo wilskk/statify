@@ -3,11 +3,21 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
+<<<<<<< HEAD
 import {
   RunsAnalysisProps,
   RunsTestResults,
   RunsTestResult
 } from '../types';
+=======
+import type {
+  RunsAnalysisProps,
+  RunsTestResult
+} from '../types';
+import {
+  RunsTestResults
+} from '../types';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 import {
   formatRunsTestTable,
@@ -144,9 +154,15 @@ export const useRunsAnalysis = ({
             // Save to database
             const logId = await addLog({ log: logMsg });
 
+<<<<<<< HEAD
             let runsTestNote: Record<string, string> = {};
             let note = "";
             let typeToVars: Record<string, string[]> = {};
+=======
+            const runsTestNote: Record<string, string> = {};
+            let note = "";
+            const typeToVars: Record<string, string[]> = {};
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             // console.log('insufficientDataVarsRef.current', JSON.stringify(insufficientDataVarsRef.current));
             if (insufficientDataVarsRef.current.length > 0) {
               for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {

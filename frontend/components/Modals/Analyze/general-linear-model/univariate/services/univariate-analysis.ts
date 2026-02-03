@@ -1,5 +1,9 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
+<<<<<<< HEAD
 import { UnivariateAnalysisType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
+=======
+import type { UnivariateAnalysisType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { transformUnivariateResult } from "./univariate-analysis-formatter";
 import { resultUnivariateAnalysis } from "./univariate-analysis-output";
 import init, {
@@ -20,32 +24,57 @@ export async function analyzeUnivariate({
         : [];
 
     const slicedDataForDependent = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: DependentVariables,
     });
 
     const slicedDataForFixFactor = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: FixFactorVariables,
     });
 
     const slicedDataForRandomFactor = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: RandomFactorVariables,
     });
 
     const slicedDataForCovariate = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: CovariateVariables,
     });
 
     const slicedDataForWlsWeight = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: WlsWeightVariable,
     });
 
@@ -92,7 +121,12 @@ export async function analyzeUnivariate({
      * */
     await resultUnivariateAnalysis({
         formattedResult: formattedResults ?? [],
+<<<<<<< HEAD
         configData: configData,
         variables: variables,
+=======
+        configData,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     });
 }

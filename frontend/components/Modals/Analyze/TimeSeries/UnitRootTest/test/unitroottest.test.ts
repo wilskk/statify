@@ -3,7 +3,11 @@
 import '@testing-library/jest-dom';
 import { renderHook, act } from '@testing-library/react';
 import { useAnalyzeHook } from '@/components/Modals/Analyze/TimeSeries/UnitRootTest/hooks/analyzeHook';
+<<<<<<< HEAD
 import { Variable } from '@/types/Variable';
+=======
+import type { Variable } from '@/types/Variable';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 const createMockVar = (type: "NUMERIC" | "STRING" = "NUMERIC"): Variable => ({
     id: 1,

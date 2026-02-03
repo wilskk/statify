@@ -1,5 +1,9 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     RepeatedMeasuresAnalysisType
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures-worker";
 
@@ -13,20 +17,35 @@ export async function analyzeRepeatedMeasures({
     const CovariateVariables = configData.main.Covariates || [];
 
     const slicedDataForSubject = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: SubjectVariables,
     });
 
     const slicedDataForFactors = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: FactorsVariables,
     });
 
     const slicedDataForCovariate = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: CovariateVariables,
     });
 

@@ -1,5 +1,9 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+<<<<<<< HEAD
 import {DiscriminantAnalysisType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
+=======
+import type {DiscriminantAnalysisType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
 
@@ -17,20 +21,35 @@ export async function analyzeDiscriminant({
         : [];
 
     const slicedDataForGrouping = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: GroupingVariable,
     });
 
     const slicedDataForIndependent = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: IndependentVariables,
     });
 
     const slicedDataForSelection = getSlicedData({
+<<<<<<< HEAD
         dataVariables: dataVariables,
         variables: variables,
+=======
+        dataVariables,
+        variables,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: SelectionVariable,
     });
 

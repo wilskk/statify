@@ -41,7 +41,6 @@ export function VariableTableSkeleton({ ...props }) {
     const columnCount = 7;
     const rowCount = 25;
     const columnWidths = ["flex-1", "flex-1", "w-24", "w-24", "flex-1", "flex-1", "flex-1"];
-    const columnNames = ["Name", "Type", "Width", "Decimals", "Label", "Values", "Missing"];
 
     return (
         <div className="h-full w-full relative border border-border rounded animate-pulse" {...props}>

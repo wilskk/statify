@@ -1,5 +1,6 @@
 import React, {lazy, Suspense} from "react";
-import {BaseModalProps, ModalType} from "@/types/modalTypes";
+import type {BaseModalProps} from "@/types/modalTypes";
+import { ModalType} from "@/types/modalTypes";
 
 /**
  * LoadingModal - Displayed while modal components are loading
@@ -42,6 +43,11 @@ const KMeansClusterModal = lazy(
         import(
             "@/components/Modals/Analyze/Classify/k-means-cluster/dialogs/k-means-cluster-main"
         )
+);
+const KMedoidsClusterModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/Classify/k-medoids-cluster/dialogs/k-medoids-cluster-main"
+    )
 );
 const HierarchicalClusterModal = lazy(() =>
     import(
@@ -88,6 +94,9 @@ export const CLASSIFY_MODAL_COMPONENTS: Record<
     ) as React.ComponentType<BaseModalProps>,
     [ModalType.ModalKMeansCluster]: withSuspense(
         KMeansClusterModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalKMedoidsCluster]: withSuspense(
+        KMedoidsClusterModal as any
     ) as React.ComponentType<BaseModalProps>,
     [ModalType.ModalHierarchicalCluster]: withSuspense(
         HierarchicalClusterModal as any
@@ -141,6 +150,7 @@ export const CLASSIFY_MODAL_CONTAINER_PREFERENCES: Partial<
 > = {
     [ModalType.ModalTwoStepCluster]: "sidebar",
     [ModalType.ModalKMeansCluster]: "sidebar",
+    [ModalType.ModalKMedoidsCluster]: "sidebar",
     [ModalType.ModalHierarchicalCluster]: "sidebar",
     [ModalType.ModalTree]: "sidebar",
     [ModalType.ModalDiscriminant]: "sidebar",

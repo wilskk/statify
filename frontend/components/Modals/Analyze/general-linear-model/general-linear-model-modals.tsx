@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import {ModalType} from "@/hooks/useModal";
+import type React from "react";
+import type {ModalType} from "@/hooks/useModal";
 
 interface GeneralLinearModelModalsProps {
     modalType: ModalType;

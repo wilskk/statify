@@ -1,5 +1,9 @@
 import { formatDisplayNumber, formatSig } from "@/hooks/useFormatter";
+<<<<<<< HEAD
 import { ResultJson, Row, Table } from "@/types/Table";
+=======
+import type { ResultJson, Row, Table } from "@/types/Table";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export function formatPart1(data: any, resultJson: ResultJson) {
     // 1. Between-Subjects Factors table
@@ -136,8 +140,12 @@ export function formatPart1(data: any, resultJson: ResultJson) {
     if (data.levene_test && data.levene_test.length > 0) {
         const firstTest = data.levene_test[0];
         const isSimpleLevene =
+<<<<<<< HEAD
             firstTest &&
             firstTest.entries &&
+=======
+            firstTest?.entries &&
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             firstTest.entries.length === 1 &&
             firstTest.entries[0].function === "Levene";
 
@@ -253,7 +261,11 @@ export function formatPart1(data: any, resultJson: ResultJson) {
                     ...nullColumns,
                 });
             }
+<<<<<<< HEAD
             if (firstTest && firstTest.design) {
+=======
+            if (firstTest?.design) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 table.rows.push({
                     rowHeader: [`b. Design: ${firstTest.design}`],
                     ...nullColumns,
@@ -579,7 +591,11 @@ export function formatPart1(data: any, resultJson: ResultJson) {
             const table: Table = {
                 key: "tests_of_between_subjects_effects",
                 title: `Tests of Between-Subjects Effects`,
+<<<<<<< HEAD
                 columnHeaders: columnHeaders,
+=======
+                columnHeaders,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 rows: [],
                 note: effects.note,
                 interpretation: effects.interpretation,
@@ -632,7 +648,11 @@ export function formatPart1(data: any, resultJson: ResultJson) {
     }
 
     // 5. Parameter Estimates table
+<<<<<<< HEAD
     if (data.parameter_estimates && data.parameter_estimates.estimates) {
+=======
+    if (data.parameter_estimates?.estimates) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const estimates = data.parameter_estimates;
         let depVarName = "";
         const notes: string[] = [];
@@ -713,7 +733,11 @@ export function formatPart1(data: any, resultJson: ResultJson) {
         const table: Table = {
             key: "parameter_estimates",
             title: `Parameter Estimates`,
+<<<<<<< HEAD
             columnHeaders: columnHeaders,
+=======
+            columnHeaders,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             rows: [],
             note: estimates.note,
             interpretation: estimates.interpretation,

@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 import { Variable } from '@/types/Variable';
 import { Dispatch, SetStateAction } from 'react';
 import { TourStep as BaseTourStep } from '@/types/tourTypes';
 import { BaseModalProps } from '@/types/modalTypes';
+=======
+import type { Variable } from '@/types/Variable';
+import type { Dispatch, SetStateAction } from 'react';
+import type { TourStep as BaseTourStep } from '@/types/tourTypes';
+import type { BaseModalProps } from '@/types/modalTypes';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // ---------------------------------
 // Constants

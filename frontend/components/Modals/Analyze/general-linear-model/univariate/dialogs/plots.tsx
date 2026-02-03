@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+<<<<<<< HEAD
 import {
+=======
+import type {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     UnivariatePlotsProps,
     UnivariatePlotsType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
@@ -13,11 +17,20 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+<<<<<<< HEAD
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Badge } from "@/components/ui/badge";
 import VariableListManager, {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
+=======
+import type { CheckedState } from "@radix-ui/react-checkbox";
+import { Badge } from "@/components/ui/badge";
+import type {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import VariableListManager from "@/components/Common/VariableListManager";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import type { Variable } from "@/types/Variable";
 import { toast } from "sonner";
 import { HelpCircle } from "lucide-react";

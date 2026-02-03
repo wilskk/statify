@@ -23,6 +23,10 @@ interface StandardizedGuideLayoutProps {
   defaultTab?: string;
   className?: string;
   children?: React.ReactNode;
+<<<<<<< HEAD
+=======
+  summary?: React.ReactNode;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 }
 
 export const StandardizedGuideLayout: React.FC<StandardizedGuideLayoutProps> = ({
@@ -31,7 +35,12 @@ export const StandardizedGuideLayout: React.FC<StandardizedGuideLayoutProps> = (
   tabs,
   defaultTab,
   className,
+<<<<<<< HEAD
   children
+=======
+  children,
+  summary
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 }) => {
   const [activeTab, setActiveTab] = useState(defaultTab ?? tabs[0]?.id ?? 'overview');
 
@@ -114,9 +123,28 @@ export const StandardizedGuideLayout: React.FC<StandardizedGuideLayoutProps> = (
                 "rounded-lg"
               )}
             >
+<<<<<<< HEAD
               <div className="space-y-6">
                 <TabComponent />
               </div>
+=======
+              {summary ? (
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                  <div className="space-y-6">
+                    <TabComponent />
+                  </div>
+                  <aside className="hidden lg:block">
+                    <div className="sticky top-24 space-y-4">
+                      {summary}
+                    </div>
+                  </aside>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <TabComponent />
+                </div>
+              )}
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             </TabsContent>
           );
         })}

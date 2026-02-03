@@ -3,11 +3,21 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
+<<<<<<< HEAD
 import {
     ChiSquareAnalysisProps,
     ChiSquareResults,
     ChiSquareResult
 } from '../types';
+=======
+import type {
+    ChiSquareAnalysisProps,
+    ChiSquareResult
+} from '../types';
+import {
+    ChiSquareResults
+} from '../types';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 import {
     formatFrequenciesTable,
@@ -82,7 +92,11 @@ export const useChiSquareAnalysis = ({
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
+<<<<<<< HEAD
                 if (results.metadata && results.metadata.hasInsufficientData) {
+=======
+                if (results.metadata?.hasInsufficientData) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
                     // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                   }
@@ -138,7 +152,11 @@ export const useChiSquareAnalysis = ({
 
                         let chiSquareNote = "";
                         let note = "";
+<<<<<<< HEAD
                         let typeToVars: Record<string, string[]> = {};
+=======
+                        const typeToVars: Record<string, string[]> = {};
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         if (insufficientDataVarsRef.current.length > 0) {
                             for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
                                 for (const type of insufficientType) {
@@ -181,7 +199,11 @@ export const useChiSquareAnalysis = ({
                                     // hitung banyak baris, jika hanya 2, tambahkan note
                                     let freqNote = "";
                                     if (table && Array.isArray(table.rows) && table.rows.length === 2) {
+<<<<<<< HEAD
                                         freqNote += (freqNote ? " " : "") + "Note: The Chi-Square Test cannot be performed because this variable have only one category (constant value).";
+=======
+                                        freqNote += `${freqNote ? " " : ""  }Note: The Chi-Square Test cannot be performed because this variable have only one category (constant value).`;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                     }
                                     await addStatistic(analyticId, {
                                         title: "Frequencies",

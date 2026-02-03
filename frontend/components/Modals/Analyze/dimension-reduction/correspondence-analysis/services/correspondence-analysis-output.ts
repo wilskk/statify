@@ -1,8 +1,15 @@
 // correspondence-analysis-output.ts
+<<<<<<< HEAD
 import {
     CorrespondenceFinalResultType
 } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis-worker";
 import {Table} from "@/types/Table";
+=======
+import type {
+    CorrespondenceFinalResultType
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis-worker";
+import type {Table} from "@/types/Table";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultCorrespondence({

@@ -3,10 +3,17 @@ import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTi
 import {Button} from "@/components/ui/button";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {Separator} from "@/components/ui/separator";
+<<<<<<< HEAD
 import {TreeDialogProps, TreeMainType} from "@/components/Modals/Analyze/Classify/tree/types/tree";
 import {Label} from "@/components/ui/label";
 import {Checkbox} from "@/components/ui/checkbox";
 import {CheckedState} from "@radix-ui/react-checkbox";
+=======
+import type {TreeDialogProps, TreeMainType} from "@/components/Modals/Analyze/Classify/tree/types/tree";
+import {Label} from "@/components/ui/label";
+import {Checkbox} from "@/components/ui/checkbox";
+import type {CheckedState} from "@radix-ui/react-checkbox";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {GROWINGMETHOD} from "@/components/Modals/Analyze/Classify/tree/constants/tree-method";
 import {Badge} from "@/components/ui/badge";

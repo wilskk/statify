@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore, CellUpdate } from "@/stores/useDataStore";
+import type { CellUpdate } from "@/stores/useDataStore";
+import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import {
   Dialog,
   DialogContent,

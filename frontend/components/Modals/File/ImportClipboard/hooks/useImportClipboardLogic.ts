@@ -11,13 +11,18 @@ export const useImportClipboardLogic = ({
 }: UseImportClipboardLogicProps): UseImportClipboardLogicOutput => {
     const [pastedText, setPastedText] = useState<string | null>(null);
     const [parsedData, setParsedData] = useState<string[][]>([]);
+<<<<<<< HEAD
     const [isLoading, setIsLoading] = useState<boolean>(false);
+=======
+    const [isLoading, _setIsLoading] = useState<boolean>(false);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     const [error, setError] = useState<string | null>(null);
     const [stage, setStage] = useState<ImportClipboardStage>("paste");
 
     const { isMobile, isPortrait } = useMobile();
 
     const handleTextPaste = useCallback((text: string) => {
+<<<<<<< HEAD
         console.log('Text pasted - Excel Text to Columns analysis:');
         console.log('---------------------------------------------');
         setPastedText(text);
@@ -76,13 +81,24 @@ export const useImportClipboardLogic = ({
                 }
             });
 
+=======
+        setPastedText(text);
+        setError(null);
+
+        if (text.trim()) {
+            const rows = text.split(/\r?\n/);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             try {
                 const parsedRows = rows
                     .filter(row => row.trim() !== '')
                     .map(row => row.split('\t'));
                 setParsedData(parsedRows);
+<<<<<<< HEAD
             } catch (err) {
                 console.error("Error parsing pasted text:", err);
+=======
+            } catch {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 setError("Failed to parse pasted text. Please check the format.");
                 setParsedData([]);
             }
@@ -125,4 +141,8 @@ export const useImportClipboardLogic = ({
         handleBackToPaste,
         handleModalClose,
     };
+<<<<<<< HEAD
 }; 
+=======
+};
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

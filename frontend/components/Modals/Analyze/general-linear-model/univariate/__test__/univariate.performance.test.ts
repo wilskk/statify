@@ -1,6 +1,10 @@
 /** @jest-environment node */
 
+<<<<<<< HEAD
 import { Variable } from "@/types/Variable";
+=======
+import type { Variable } from "@/types/Variable";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";

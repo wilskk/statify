@@ -1,4 +1,5 @@
 import React from 'react';
+<<<<<<< HEAD
 import { Calculator, TrendingUp } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
@@ -25,6 +26,24 @@ export const StatisticsTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Central Tendency</h3>
       </div>
       <div className="space-y-4">
+=======
+import { Calculator, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react';
+import 'katex/dist/katex.min.css';
+import { BlockMath, InlineMath } from 'react-katex';
+import { HelpCard, HelpAlert } from '@/app/help/ui/HelpLayout';
+
+export const StatisticsTab = () => (
+  <div className="space-y-6">
+    <HelpAlert variant="info" title="Statistik dalam Analisis Frequencies">
+      <p className="text-sm mt-2">
+        Centang <strong>"Display statistics"</strong> untuk mengaktifkan perhitungan statistik. Sistem menggunakan 
+        <strong>weighted calculation</strong> dengan bobot W untuk semua formula. Statistik tersedia sesuai level measurement variabel.
+      </p>
+    </HelpAlert>
+
+    <HelpCard title="Central Tendency" icon={Calculator} variant="feature">
+      <div className="space-y-4 mt-2">
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
@@ -39,7 +58,11 @@ export const StatisticsTab = () => (
 
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
+<<<<<<< HEAD
             <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+=======
+            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Median</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
@@ -52,7 +75,11 @@ export const StatisticsTab = () => (
 
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
+<<<<<<< HEAD
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+=======
+            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Mode</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
@@ -64,7 +91,11 @@ export const StatisticsTab = () => (
 
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
+<<<<<<< HEAD
             <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+=======
+            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Sum</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
@@ -74,6 +105,7 @@ export const StatisticsTab = () => (
           <p className="text-xs text-slate-500 dark:text-slate-500">Menggunakan implementasi DescriptiveCalculator yang sama dengan Descriptives</p>
         </div>
       </div>
+<<<<<<< HEAD
     </div>
 
     <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -84,6 +116,12 @@ export const StatisticsTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Dispersion</h3>
       </div>
       <div className="space-y-4">
+=======
+    </HelpCard>
+
+    <HelpCard title="Dispersion" icon={Calculator} variant="default">
+      <div className="space-y-4 mt-2">
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
@@ -141,6 +179,7 @@ export const StatisticsTab = () => (
           <p className="text-sm text-slate-600 dark:text-slate-400">Standard error of the mean. Hanya tersedia untuk variabel scale.</p>
         </div>
       </div>
+<<<<<<< HEAD
     </div>
 
     <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -151,6 +190,12 @@ export const StatisticsTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Distribution</h3>
       </div>
       <div className="space-y-4">
+=======
+    </HelpCard>
+
+    <HelpCard title="Distribution" icon={Calculator} variant="default">
+      <div className="space-y-4 mt-2">
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
@@ -173,6 +218,7 @@ export const StatisticsTab = () => (
           <p className="text-sm text-slate-600 dark:text-slate-400">Mengukur ketajaman puncak distribusi. Hanya tersedia untuk variabel scale.</p>
         </div>
       </div>
+<<<<<<< HEAD
     </div>
 
     <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -183,6 +229,12 @@ export const StatisticsTab = () => (
         <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Percentiles & Quartiles</h3>
       </div>
       <div className="space-y-4">
+=======
+    </HelpCard>
+
+    <HelpCard title="Percentiles & Quartiles" icon={TrendingUp} variant="default">
+      <div className="space-y-4 mt-2">
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-slate-500 rounded-full"></span>
@@ -220,6 +272,7 @@ export const StatisticsTab = () => (
           <p className="text-xs text-slate-500 dark:text-slate-500">Mendukung multiple percentiles. Metode: waverage, tukey, atau haverage</p>
         </div>
       </div>
+<<<<<<< HEAD
     </div>
 
     <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800">
@@ -254,6 +307,28 @@ export const StatisticsTab = () => (
           </div>
         </div>
       </div>
+=======
+    </HelpCard>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <HelpCard title="Pembatasan Level Measurement" variant="default" icon={AlertTriangle}>
+        <ul className="text-sm space-y-1 list-disc list-inside">
+          <li><strong>Nominal:</strong> Hanya mode yang tersedia</li>
+          <li><strong>Ordinal:</strong> Mode, median, quartiles, percentiles</li>
+          <li><strong>Scale:</strong> Semua statistik tersedia (menggunakan DescriptiveCalculator)</li>
+          <li><strong>Extreme Values:</strong> Hanya untuk scale variables, menampilkan 5 nilai tertinggi dan terendah</li>
+        </ul>
+      </HelpCard>
+      
+      <HelpCard title="Tips Praktis" variant="default" icon={Lightbulb}>
+        <ul className="text-sm space-y-1 list-disc list-inside">
+          <li><strong>Metode Persentil:</strong> Default 'waverage' untuk konsistensi dengan SPSS</li>
+          <li><strong>Weighted Calculation:</strong> Semua statistik menggunakan weights jika tersedia</li>
+          <li><strong>Date Variables:</strong> Otomatis ditangani sebagai scale measurement</li>
+          <li><strong>Missing Values:</strong> Dipisahkan dalam perhitungan valid percent dan cumulative percent</li>
+        </ul>
+      </HelpCard>
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     </div>
   </div>
 );

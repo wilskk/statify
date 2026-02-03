@@ -1,6 +1,11 @@
 // roc-analysis-output.ts
+<<<<<<< HEAD
 import {RocAnalysisFinalResultType} from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
 import {Table} from "@/types/Table";
+=======
+import type {RocAnalysisFinalResultType} from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
+import type {Table} from "@/types/Table";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultROCAnalysis({

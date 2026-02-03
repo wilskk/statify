@@ -1,4 +1,4 @@
-import { ChartType } from "@/components/Modals/Graphs/ChartTypes";
+import type { ChartType } from "@/components/Modals/Graphs/ChartTypes";
 
 export type AllowedDataTypes = "numeric" | "string" | "both";
 

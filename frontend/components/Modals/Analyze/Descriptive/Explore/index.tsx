@@ -1,5 +1,10 @@
 "use client";
+<<<<<<< HEAD
 import React, { useState, FC, useMemo, useEffect } from "react";
+=======
+import type { FC} from "react";
+import React, { useState, useMemo, useEffect } from "react";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,15 +18,27 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
+<<<<<<< HEAD
 import { BaseModalProps } from "@/types/modalTypes";
+=======
+import type { BaseModalProps } from "@/types/modalTypes";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { HelpCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 
 // Tour guide
+<<<<<<< HEAD
 import {
     useTourGuide,
     TabType,
     TabControlProps,
+=======
+import type {
+    TabType,
+    TabControlProps} from "./hooks";
+import {
+    useTourGuide,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     useVariableManagement,
     useStatisticsSettings,
     usePlotsSettings,

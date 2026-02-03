@@ -76,7 +76,7 @@ export async function generateDate(
     startYear: number,
     dataLength: number,
 ): Promise<string[]>{
-    let dateArray: string[] = [];
+    const dateArray: string[] = [];
     let hour = startHour;
     let day = startDay;
     let month = startMonth;
@@ -120,7 +120,7 @@ export async function generateDate(
                 dateArray.push(stringDate(day, month, year));
                 day++;
                 [day, month, year] = switchMonth(day, month, year);
-                let dayName = format(new Date(`${year}-${month}-${day}`), 'EEEE');
+                const dayName = format(new Date(`${year}-${month}-${day}`), 'EEEE');
                 if (dayName === "Saturday"){
                     day += 2; // Skip to Monday
                 } else if (dayName === "Sunday") {
@@ -135,7 +135,7 @@ export async function generateDate(
                 dateArray.push(stringDate(day, month, year));
                 day++;
                 [day, month, year] = switchMonth(day, month, year);
-                let dayName = format(new Date(`${year}-${month}-${day}`), 'EEEE');
+                const dayName = format(new Date(`${year}-${month}-${day}`), 'EEEE');
                 if (dayName === "Sunday"){
                     day += 1; // Skip to Monday
                 }

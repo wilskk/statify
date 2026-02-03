@@ -12,13 +12,21 @@ describe('dateTimeService', () => {
             const currentVariables: Variable[] = [];
             const existingRowCount = 3;
 
+<<<<<<< HEAD
             const { variablesToCreate, cellUpdates } = prepareDateVariables(
+=======
+            const { variablesToCreate: _variablesToCreate, cellUpdates } = prepareDateVariables(
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 timeComponents,
                 currentVariables,
                 existingRowCount
             );
+<<<<<<< HEAD
 
             // 1. Test `variablesToCreate`
+=======
+            
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             expect(variablesToCreate).toHaveLength(3);
             
             expect(variablesToCreate[0]).toMatchObject({
@@ -153,4 +161,8 @@ describe('dateTimeService', () => {
             expect(findUpdate(2, 2)?.value).toBe(1); // Hour
         });
     });
+<<<<<<< HEAD
 }); 
+=======
+});
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

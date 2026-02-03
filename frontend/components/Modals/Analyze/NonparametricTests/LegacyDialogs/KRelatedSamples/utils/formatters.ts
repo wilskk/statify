@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
     KRelatedSamplesResults,
     KRelatedSamplesTable,
@@ -6,6 +7,17 @@ import {
     TestStatistics,
     DescriptiveStatistics,
     DisplayStatisticsOptions,
+=======
+import type {
+    KRelatedSamplesTable,
+    TableColumnHeader,
+    TableRow,
+    DisplayStatisticsOptions} from '../types';
+import {
+    KRelatedSamplesResults,
+    TestStatistics,
+    DescriptiveStatistics
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 } from '../types';
 
 /**
@@ -25,9 +37,15 @@ export function formatRanksTable(
     }
     
     // Find the result with ranks
+<<<<<<< HEAD
     const ranksResult = results.find(result => result.ranks && result.ranks.groups);
     
     if (!ranksResult || !ranksResult.ranks || !ranksResult.ranks.groups) {
+=======
+    const ranksResult = results.find(result => result.ranks?.groups);
+    
+    if (!ranksResult?.ranks?.groups) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         return {
             title: "Ranks",
             columnHeaders: [{ header: "No Data", key: "noData" }],
@@ -71,9 +89,15 @@ export function formatFrequenciesTable(
     }
     
     // Find the result with frequencies
+<<<<<<< HEAD
     const frequenciesResult = results.find(result => result.frequencies && result.frequencies.groups);
     
     if (!frequenciesResult || !frequenciesResult.frequencies || !frequenciesResult.frequencies.groups) {
+=======
+    const frequenciesResult = results.find(result => result.frequencies?.groups);
+    
+    if (!frequenciesResult?.frequencies?.groups) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         return {
             title: "Frequencies",
             columnHeaders: [{ header: "No Data", key: "noData" }],

@@ -161,7 +161,6 @@ pub fn run_analysis(
         }
     };
 
-
     // Step 8: Calculate Factor/Component Matrix
     executed_functions.push("calculate_component_matrix".to_string());
     let component_matrix = match core::calculate_component_matrix(&filtered_data, config) {
@@ -328,7 +327,10 @@ pub fn run_analysis(
         }
     }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     // Step 14: Calculate Component Score Covariance Matrix if scores are saved
     let mut component_score_covariance_matrix = None;
     if config.scores.save_var {
@@ -337,7 +339,6 @@ pub fn run_analysis(
             Ok(matrix) => {
                 component_score_covariance_matrix = Some(matrix);
             }
-
             Err(e) => {
                 error_collector.add_error("calculate_component_score_covariance_matrix", &e);
                 // Continue execution despite errors for non-critical functions

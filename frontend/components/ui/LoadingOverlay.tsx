@@ -63,7 +63,7 @@ export default function LoadingOverlay({ children, fallback }: LoadingOverlayPro
     return (
         <>
             <GlobalLoadingIndicator />
-            <Suspense fallback={fallback || <div className="text-[#444444] text-sm flex items-center justify-center h-32">Loading...</div>}>
+            <Suspense fallback={fallback ?? <div className="text-[#444444] text-sm flex items-center justify-center h-32">Loading...</div>}>
                 {children}
             </Suspense>
         </>

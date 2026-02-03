@@ -3,7 +3,6 @@
 import React, { useEffect } from "react";
 import { useModal } from "@/hooks/useModal";
 import ModalRenderer from "./ModalRenderer";
-import { ModalType } from "@/types/modalTypes";
 import { useOnborda } from "onborda";
 
 interface ModalManagerProps {
@@ -71,4 +70,4 @@ const ModalManager: React.FC<ModalManagerProps> = ({
   );
 };
 
-export default ModalManager; 
+export default ModalManager;

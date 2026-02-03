@@ -43,7 +43,11 @@ self.onmessage = function(e) {
     try {
       // Run the regression
       const regression = multipleLinearRegression(dependentData, X);
+<<<<<<< HEAD
       const { residuals, yHat, beta } = regression;
+=======
+      const { residuals, yHat, beta, X: XwithIntercept } = regression;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       
       // Perform Breusch-Pagan test for homoscedasticity
       let breuschPaganTest = { testName: "Breusch-Pagan", error: "Test failed", isHomoscedastic: true };
@@ -69,6 +73,67 @@ self.onmessage = function(e) {
       // Calculate basic statistics of residuals for visual analysis
       const residualStats = calculateResidualStats(residuals);
       
+<<<<<<< HEAD
+=======
+      // Compute standardized predicted values (ZPRED)
+      const meanPred = mean(yHat);
+      const stdPred = standardDeviation(yHat, meanPred);
+      const zPred = yHat.map(v => (v - meanPred) / (stdPred === 0 ? 1 : stdPred));
+
+      // Compute leverage values using hat matrix diagonal
+      const leverage = (function calculateLeverage(Xraw) {
+        try {
+          // Ensure X is without intercept for leverage since XwithIntercept already contains it
+          const X = XwithIntercept; // already has intercept
+          const n = X.length;
+          const p_plus_1 = X[0].length; // with intercept
+
+          // Compute XtX
+          const XtX = [];
+          for (let i = 0; i < p_plus_1; i++) {
+            XtX[i] = [];
+            for (let j = 0; j < p_plus_1; j++) {
+              let sum = 0;
+              for (let k = 0; k < n; k++) {
+                sum += X[k][i] * X[k][j];
+              }
+              XtX[i][j] = sum;
+            }
+          }
+
+          // Invert XtX
+          const XtXinv = matrixInverse(XtX);
+
+          // Hat diagonal
+          const h = [];
+          for (let i = 0; i < n; i++) {
+            let hii = 0;
+            for (let j = 0; j < p_plus_1; j++) {
+              for (let k = 0; k < p_plus_1; k++) {
+                hii += X[i][j] * XtXinv[j][k] * X[i][k];
+              }
+            }
+            h.push(hii);
+          }
+          return h;
+        } catch (err) {
+          // Fallback: equal leverage
+          return Array(XwithIntercept.length).fill(1 / XwithIntercept.length);
+        }
+      })(X);
+
+      // Compute studentized residuals
+      const nObs = dependentData.length;
+      const p_plus_1 = XwithIntercept[0].length;
+      const df = nObs - p_plus_1;
+      const MSE = residuals.reduce((acc, e) => acc + e * e, 0) / Math.max(1, df);
+      const s = Math.sqrt(MSE);
+      const sResid = residuals.map((e, i) => s === 0 ? 0 : e / (s * Math.sqrt(Math.max(1e-12, 1 - leverage[i]))));
+
+      // Build scatter points for homoscedasticity evaluation
+      const homoscedasticityScatter = zPred.map((x, i) => ({ x, y: sResid[i] }));
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       // Generate plot data - residuals vs. fitted values
       const residualVsFittedData = generateResidualVsFittedData(residuals, yHat);
       
@@ -156,7 +221,12 @@ self.onmessage = function(e) {
         visualizations: {
           residualVsFitted: residualVsFittedData,
           residualVsIndependent: residualVsIndependentData,
+<<<<<<< HEAD
           scaleLocation: scaleLocationData
+=======
+          scaleLocation: scaleLocationData,
+          homoscedasticityScatter
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         },
         interpretation: interpretationText,
         output_data: JSON.stringify(outputData)

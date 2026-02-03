@@ -10,7 +10,11 @@ import {
 } from "../importClipboard.utils";
 
 export const useImportClipboardProcessor = () => {
+<<<<<<< HEAD
     const { setData } = useDataStore();
+=======
+    const { setData: _setData } = useDataStore();
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     const { overwriteAll } = useVariableStore();
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -28,10 +32,15 @@ export const useImportClipboardProcessor = () => {
             let parsedDataResult: string[][];
             
             if (options.excelProcessedData && options.excelProcessedData.length > 0) {
+<<<<<<< HEAD
                 console.log('Using pre-processed data from Excel-style parser');
                 parsedDataResult = options.excelProcessedData;
             } else {
                 console.log('Starting Excel-style Text to Columns processing...');
+=======
+                parsedDataResult = options.excelProcessedData;
+            } else {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 const currentDelimiter = getDelimiterCharacter(options);
                 const excelParsedResult = excelStyleTextToColumns(text, {
                     delimiterType: 'delimited',
@@ -42,7 +51,10 @@ export const useImportClipboardProcessor = () => {
                     detectDataTypes: options.detectDataTypes,
                     hasHeaderRow: options.firstRowAsHeader
                 });
+<<<<<<< HEAD
                 console.log('Excel-style Text to Columns processing complete.');
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 parsedDataResult = excelParsedResult;
             }
             
@@ -110,7 +122,10 @@ export const useImportClipboardProcessor = () => {
             return { headers, data: dataRows };
             
         } catch (error) {
+<<<<<<< HEAD
             console.error("Error processing clipboard data:", error);
+=======
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             throw error;
         } finally {
             setIsProcessing(false);
@@ -123,4 +138,8 @@ export const useImportClipboardProcessor = () => {
         excelStyleTextToColumns,
         parsePreviewData,
     };
+<<<<<<< HEAD
 }; 
+=======
+};
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

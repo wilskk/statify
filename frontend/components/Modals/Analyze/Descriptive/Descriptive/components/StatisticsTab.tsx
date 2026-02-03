@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { FC } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -5,6 +6,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DescriptiveStatisticsOptions, DisplayOrderType } from "../types";
 import { Dispatch, SetStateAction } from "react";
 import { TourStep } from "../hooks/useTourGuide";
+=======
+import type { FC } from "react";
+import React from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { DescriptiveStatisticsOptions, DisplayOrderType } from "../types";
+import type { Dispatch, SetStateAction } from "react";
+import type { TourStep } from "../hooks/useTourGuide";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 export interface StatisticsTabProps {

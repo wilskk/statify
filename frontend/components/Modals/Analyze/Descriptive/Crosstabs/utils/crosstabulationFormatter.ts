@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { CrosstabsAnalysisParams, CrosstabsWorkerResult } from '../types';
 import { ColumnHeader, FormattedTable } from './helpers';
+=======
+import type { CrosstabsAnalysisParams, CrosstabsWorkerResult } from '../types';
+import type { ColumnHeader, FormattedTable } from './helpers';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import type { Variable } from '@/types/Variable';
 
 /**
@@ -9,7 +14,11 @@ export const formatCrosstabulationTable = (
   result: CrosstabsWorkerResult,
   params: CrosstabsAnalysisParams,
 ): FormattedTable | null => {
+<<<<<<< HEAD
   if (!result || !result.summary || !result.contingencyTable) return null;
+=======
+  if (!result?.summary || !result.contingencyTable) return null;
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
   const { rowCategories, colCategories, rowTotals, colTotals, totalCases } = result.summary;
   const counts = result.contingencyTable;
@@ -26,7 +35,11 @@ export const formatCrosstabulationTable = (
   // Helper untuk mendapatkan teks kategori (menggunakan value label jika ada)
   const getCategoryLabel = (variable: Variable, value: string | number): string => {
     const valObj = variable.values?.find(v => v.value === value);
+<<<<<<< HEAD
     if (valObj && valObj.label) return String(valObj.label);
+=======
+    if (valObj?.label) return String(valObj.label);
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     return String(value);
   };
 
@@ -42,7 +55,11 @@ export const formatCrosstabulationTable = (
   }> = [];
 
   // Helper functions for percentage formatting
+<<<<<<< HEAD
   const pct = (value: number): string => (isFinite(value) ? (value * 100).toFixed(1) + '%' : '');
+=======
+  const pct = (value: number): string => (isFinite(value) ? `${(value * 100).toFixed(1)  }%` : '');
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
   // Helper untuk formatting desimal: satu posisi
   const dec = (value: number): string => {
@@ -201,11 +218,23 @@ export const formatCrosstabulationTable = (
               value = observed;
               break;
             case 'expected':
+<<<<<<< HEAD
               value = dec(
                 result.cellStatistics && result.cellStatistics[rowIdx][colIdx].expected !== null && result.cellStatistics[rowIdx][colIdx].expected !== undefined
                   ? (result.cellStatistics[rowIdx][colIdx].expected as number)
                   : (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases
               );
+=======
+              {
+                const cs = result.cellStatistics?.[rowIdx]?.[colIdx];
+                const exp = cs?.expected;
+                const expectedVal =
+                  exp !== null && exp !== undefined
+                    ? (exp as number)
+                    : (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases;
+                value = dec(expectedVal);
+              }
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
               break;
             case 'rowPct':
               value = rowTotals[rowIdx] > 0 ? pct(observed / rowTotals[rowIdx]) : '0.0%';
@@ -217,6 +246,7 @@ export const formatCrosstabulationTable = (
               value = totalCases > 0 ? pct(observed / totalCases) : '';
               break;
             case 'unstdResid':
+<<<<<<< HEAD
               value = dec(
                 result.cellStatistics && result.cellStatistics[rowIdx][colIdx].residual !== null && result.cellStatistics[rowIdx][colIdx].residual !== undefined
                   ? (result.cellStatistics[rowIdx][colIdx].residual as number)
@@ -236,6 +266,34 @@ export const formatCrosstabulationTable = (
                   ? (result.cellStatistics[rowIdx][colIdx].adjustedResidual as number)
                   : NaN
               );
+=======
+              {
+                const cs = result.cellStatistics?.[rowIdx]?.[colIdx];
+                const res = cs?.residual;
+                const expectedVal = (rowTotals[rowIdx] * colTotals[colIdx]) / totalCases;
+                const residVal =
+                  res !== null && res !== undefined ? (res as number) : observed - expectedVal;
+                value = dec(residVal);
+              }
+              break;
+            case 'stdResid':
+              {
+                const cs = result.cellStatistics?.[rowIdx]?.[colIdx];
+                const std = cs?.standardizedResidual;
+                const stdVal =
+                  std !== null && std !== undefined ? (std as number) : NaN;
+                value = dec(stdVal);
+              }
+              break;
+            case 'adjStdResid':
+              {
+                const cs = result.cellStatistics?.[rowIdx]?.[colIdx];
+                const adj = cs?.adjustedResidual;
+                const adjVal =
+                  adj !== null && adj !== undefined ? (adj as number) : NaN;
+                value = dec(adjVal);
+              }
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
               break;
             default:
               value = '';

@@ -1,5 +1,9 @@
 import { formatDisplayNumber, formatSig } from "@/hooks/useFormatter";
+<<<<<<< HEAD
 import { ResultJson, Row, Table } from "@/types/Table";
+=======
+import type { ResultJson, Row, Table } from "@/types/Table";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export function formatPart3(
     data: any,
@@ -10,8 +14,12 @@ export function formatPart3(
     if (data.emmeans) {
         const emmeans = data.emmeans;
         const depVarName =
+<<<<<<< HEAD
             (data.tests_of_between_subjects_effects &&
                 data.tests_of_between_subjects_effects.dependent_variable) ||
+=======
+            (data.tests_of_between_subjects_effects?.dependent_variable) ||
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             (data.descriptive_statistics &&
                 Object.values(data.descriptive_statistics).length > 0 &&
                 (Object.values(data.descriptive_statistics)[0] as any)
@@ -326,7 +334,11 @@ export function formatPart3(
                             )}`,
                             title: `Univariate Tests`,
                             subtitle: `Dependent Variable: ${depVarName}`,
+<<<<<<< HEAD
                             columnHeaders: columnHeaders,
+=======
+                            columnHeaders,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                             rows: [],
                             note: test.note,
                             interpretation: test.interpretation,
@@ -475,7 +487,11 @@ export function formatPart3(
                         /\W/g,
                         "_"
                     )}`,
+<<<<<<< HEAD
                     title: title,
+=======
+                    title,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     columnHeaders: lMatrixHeaders,
                     rows: [],
                     note: contrastCoeffs.note,
@@ -506,7 +522,11 @@ export function formatPart3(
         Object.entries(data.plots).forEach(
             ([plotName, plotData]: [string, any]) => {
                 // Only process if we have series and points
+<<<<<<< HEAD
                 if (plotData && plotData.series && plotData.series.length > 0) {
+=======
+                if (plotData?.series && plotData.series.length > 0) {
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     const table: Table = {
                         key: `plot_${plotName
                             .toLowerCase()
@@ -526,8 +546,12 @@ export function formatPart3(
                     // Process each series and its points
                     plotData.series.forEach((series: any) => {
                         if (
+<<<<<<< HEAD
                             series &&
                             series.points &&
+=======
+                            series?.points &&
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                             series.points.length > 0
                         ) {
                             series.points.forEach((point: any) => {
@@ -577,14 +601,22 @@ export function formatPart3(
             varKeys.forEach((key) => {
                 columnHeaders.push({
                     header: nameMapping[key] || key,
+<<<<<<< HEAD
                     key: key,
+=======
+                    key,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 });
             });
 
             const table: Table = {
                 key: "saved_variables_table",
                 title: "Case Diagnostics",
+<<<<<<< HEAD
                 columnHeaders: columnHeaders,
+=======
+                columnHeaders,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 rows: [],
                 note: data.saved_variables.note,
                 interpretation: data.saved_variables.interpretation,
@@ -649,8 +681,12 @@ export function formatPart3(
         }
 
         const depVarName =
+<<<<<<< HEAD
             (data.tests_of_between_subjects_effects &&
                 data.tests_of_between_subjects_effects.dependent_variable) ||
+=======
+            (data.tests_of_between_subjects_effects?.dependent_variable) ||
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             (data.descriptive_statistics &&
                 Object.values(data.descriptive_statistics).length > 0 &&
                 (Object.values(data.descriptive_statistics)[0] as any)
@@ -885,7 +921,11 @@ export function formatPart3(
                         key: `custom_test_results_${index}`,
                         title: "Test Results",
                         subtitle: `Dependent Variable: ${depVarName}`,
+<<<<<<< HEAD
                         columnHeaders: columnHeaders,
+=======
+                        columnHeaders,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         rows: [],
                         note: test_result.note,
                         interpretation: test_result.interpretation,
@@ -970,7 +1010,11 @@ export function formatPart3(
                     table.rows.push({
                         rowHeader: [],
                         context: isFirstRowForContext ? currentContext : "",
+<<<<<<< HEAD
                         message: message,
+=======
+                        message,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     });
                     isFirstRowForContext = false;
                 }

@@ -7,11 +7,19 @@ import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
 import {Input} from "@/components/ui/input";
 import {Separator} from "@/components/ui/separator";
+<<<<<<< HEAD
 import {
     DiscriminantSaveProps,
     DiscriminantSaveType
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
 import {CheckedState} from "@radix-ui/react-checkbox";
+=======
+import type {
+    DiscriminantSaveProps,
+    DiscriminantSaveType
+} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
+import type {CheckedState} from "@radix-ui/react-checkbox";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const DiscriminantSave = ({isSaveOpen, setIsSaveOpen, updateFormData, data}: DiscriminantSaveProps) => {
     const [saveState, setSaveState] = useState<DiscriminantSaveType>({...data});

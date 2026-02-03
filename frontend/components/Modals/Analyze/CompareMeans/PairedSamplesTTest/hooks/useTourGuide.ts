@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+<<<<<<< HEAD
 import { HorizontalPosition } from '@/types/tourTypes';
 import { TabControlProps, UseTourGuideResult, TourStep, TabType } from '../types';
+=======
+import type { HorizontalPosition } from '@/types/tourTypes';
+import type { TabControlProps, UseTourGuideResult, TourStep, TabType } from '../types';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 const TIMEOUT_DELAY = 200;
 

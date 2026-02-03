@@ -1,7 +1,11 @@
 import type { Variable, VariableData } from '@/types/Variable';
 import type { Dispatch, SetStateAction } from 'react';
 import { ContainerType } from '@/types/ui';
+<<<<<<< HEAD
 import { BaseModalProps } from '@/types/modalTypes';
+=======
+import type { BaseModalProps } from '@/types/modalTypes';
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // ---------------------------------
 // Statistics Settings Types

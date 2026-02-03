@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 import { KMeansClusterFinalResultType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
 import { Table } from "@/types/Table";
 import { Variable } from "@/types/Variable";
+=======
+import type { KMeansClusterFinalResultType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
+import type { Table } from "@/types/Table";
+import type { Variable } from "@/types/Variable";
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
@@ -259,8 +265,12 @@ async function saveClusterResults(
     );
 
     if (
+<<<<<<< HEAD
         !clusterMembershipTable ||
         !clusterMembershipTable.rows ||
+=======
+        !clusterMembershipTable?.rows ||
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         clusterMembershipTable.rows.length === 0
     ) {
         console.error("No cluster membership data found for saving variables");
@@ -318,7 +328,11 @@ async function saveClusterResults(
         const clusterUpdates = clusterValues.map((value, rowIndex) => ({
             row: rowIndex,
             col: nextColumnIndex,
+<<<<<<< HEAD
             value: value,
+=======
+            value,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         }));
 
         if (clusterUpdates.length > 0) {
@@ -352,7 +366,11 @@ async function saveClusterResults(
         const distanceUpdates = distanceValues.map((value, rowIndex) => ({
             row: rowIndex,
             col: nextColumnIndex,
+<<<<<<< HEAD
             value: value,
+=======
+            value,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         }));
 
         if (distanceUpdates.length > 0) {

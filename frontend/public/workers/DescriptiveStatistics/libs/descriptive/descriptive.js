@@ -317,6 +317,10 @@ class DescriptiveCalculator {
         const { W } = this.#getDistribution();
         const { mode } = this.#getMode();
         return {
+<<<<<<< HEAD
+=======
+            variable: this.variable,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             stats: {
                 N: this.data.length,
                 Valid: W,
@@ -333,18 +337,53 @@ class DescriptiveCalculator {
         const p25 = this.#getPercentile(25);
         const p75 = this.#getPercentile(75);
         const median = this.#getPercentile(50);
+<<<<<<< HEAD
         const iqr = (p75 !== null && p25 !== null) ? (p75 - p25) : null;
         return {
+=======
+        // Apply custom rounding for ordinal percentiles (round-half-even at variable precision)
+        const decimals = (this.variable && typeof this.variable.decimals === 'number')
+            ? Math.max(0, Math.min(16, this.variable.decimals))
+            : 1;
+        const roundOrdinal = (v) => {
+            if (typeof v !== 'number' || !isFinite(v)) return v;
+            // Do not round date-core variables' percentiles (they are SPSS seconds)
+            try {
+                const core = typeof getCoreType === 'function' ? getCoreType(this.variable) : 'numeric';
+                if (core === 'date') return v;
+            } catch (_) { /* ignore */ }
+            if (typeof toSPSSFixed === 'function') return toSPSSFixed(v, decimals);
+            if (typeof roundToDecimals === 'function') return roundToDecimals(v, decimals);
+            return v;
+        };
+        const rp25 = roundOrdinal(p25);
+        const rp75 = roundOrdinal(p75);
+        const rMedian = roundOrdinal(median);
+        // IQR should be derived from unrounded quartiles to avoid compounding rounding
+        const iqr = (typeof p75 === 'number' && isFinite(p75) && typeof p25 === 'number' && isFinite(p25))
+            ? (p75 - p25)
+            : null;
+        return {
+            variable: this.variable,
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             stats: {
                 N: this.data.length,
                 Valid: W,
                 Missing: this.data.length - W,
                 Mode: mode,
+<<<<<<< HEAD
                 Median: median,
                 '25th Percentile': p25,
                 '75th Percentile': p75,
                 IQR: iqr,
                 Percentiles: { '25': p25, '75': p75 },
+=======
+                Median: rMedian,
+                '25th Percentile': rp25,
+                '75th Percentile': rp75,
+                IQR: iqr,
+                Percentiles: { '25': rp25, '75': rp75 },
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             },
             zScores: null,
         };
@@ -379,6 +418,19 @@ class DescriptiveCalculator {
             Percentiles: { '25': p25, '75': p75 },
         };
 
+<<<<<<< HEAD
+=======
+        // Include Mode for scale variables as well, consistent with nominal/ordinal.
+        // #getMode returns modes in ascending order for numeric-like variables,
+        // so the first element is the smallest mode.
+        const modeInfo = this.#getMode();
+        if (modeInfo && Array.isArray(modeInfo.mode)) {
+            stats.Mode = modeInfo.mode;
+        } else {
+            stats.Mode = null;
+        }
+
+>>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const shouldSaveZScores = this.options.saveStandardized && stats.StdDev && stats.StdDev > 0;
         let zScores = null;
 
