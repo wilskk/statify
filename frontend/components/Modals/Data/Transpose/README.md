@@ -28,77 +28,75 @@ Transpose/
 ## 🎯 Core Functionality
 
 ### Transposition Methods
-
 ```typescript
 interface TranspositionMethods {
   // Complete matrix transpose
   completeMatrixTranspose: {
-    purpose: "Swap all rows and columns in dataset";
-    behavior: "Full matrix transposition with dimension flip";
-    useCase: "Data orientation change, matrix operations";
+    purpose: 'Swap all rows and columns in dataset';
+    behavior: 'Full matrix transposition with dimension flip';
+    useCase: 'Data orientation change, matrix operations';
     implementation: CompleteMatrixTransposer;
   };
-
+  
   // Selective variable transpose
   selectiveVariableTranspose: {
-    purpose: "Transpose selected variables only";
-    behavior: "Partial transposition with variable selection";
-    useCase: "Targeted data restructuring, keeping some variables intact";
+    purpose: 'Transpose selected variables only';
+    behavior: 'Partial transposition with variable selection';
+    useCase: 'Targeted data restructuring, keeping some variables intact';
     implementation: SelectiveTransposer;
   };
-
+  
   // Named transpose
   namedTranspose: {
-    purpose: "Use variable values as new column names";
-    behavior: "Value-based naming for transposed variables";
-    useCase: "Meaningful column naming, identifier-based transpose";
+    purpose: 'Use variable values as new column names';
+    behavior: 'Value-based naming for transposed variables';
+    useCase: 'Meaningful column naming, identifier-based transpose';
     implementation: NamedTransposer;
   };
-
+  
   // First row header transpose
   firstRowHeaderTranspose: {
-    purpose: "Use first row values as column headers";
-    behavior: "Header extraction from data values";
-    useCase: "Converting tabular data with embedded headers";
+    purpose: 'Use first row values as column headers';
+    behavior: 'Header extraction from data values';
+    useCase: 'Converting tabular data with embedded headers';
     implementation: HeaderExtractingTransposer;
   };
 }
 ```
 
 ### Transposition Configuration
-
 ```typescript
 interface TranspositionConfiguration {
   // Variable selection
   variableSelection: {
-    selectedVariables: Variable[]; // Variables to transpose
-    excludedVariables: Variable[]; // Variables to keep as-is
-    nameVariable: Variable; // Variable providing new column names
-    identifierVariables: Variable[]; // Variables to preserve as identifiers
+    selectedVariables: Variable[];          // Variables to transpose
+    excludedVariables: Variable[];          // Variables to keep as-is
+    nameVariable: Variable;                 // Variable providing new column names
+    identifierVariables: Variable[];        // Variables to preserve as identifiers
   };
-
+  
   // Naming strategies
   namingStrategies: {
-    automaticNaming: AutomaticNamingStrategy; // Auto-generate column names
+    automaticNaming: AutomaticNamingStrategy;   // Auto-generate column names
     valueBasedNaming: ValueBasedNamingStrategy; // Use variable values as names
-    headerRowNaming: HeaderRowNamingStrategy; // Use first row as headers
-    customNamingPattern: CustomNamingPattern; // User-defined naming pattern
+    headerRowNaming: HeaderRowNamingStrategy;   // Use first row as headers
+    customNamingPattern: CustomNamingPattern;   // User-defined naming pattern
   };
-
+  
   // Data handling options
   dataHandlingOptions: {
-    preserveDataTypes: boolean; // Maintain original data types when possible
+    preserveDataTypes: boolean;             // Maintain original data types when possible
     handleMissingValues: MissingValueStrategy; // Strategy for missing values
     aggregateDuplicates: DuplicateAggregationStrategy; // Handle duplicate names
-    validateResultStructure: boolean; // Validate transposed structure
+    validateResultStructure: boolean;        // Validate transposed structure
   };
-
+  
   // Advanced options
   advancedOptions: {
     memoryOptimization: MemoryOptimizationStrategy; // Optimize for large datasets
-    progressTracking: ProgressTrackingOption; // Track transposition progress
+    progressTracking: ProgressTrackingOption;  // Track transposition progress
     parallelProcessing: ParallelProcessingOption; // Use parallel processing
-    resultValidation: ResultValidationOption; // Validate transposition results
+    resultValidation: ResultValidationOption;   // Validate transposition results
   };
 }
 ```
@@ -106,121 +104,119 @@ interface TranspositionConfiguration {
 ## 🔄 Transposition Workflow
 
 ### Complete Transposition Process
-
 ```typescript
 interface CompleteTranspositionProcess {
   // Step 1: Configuration setup
   configurationSetup: {
-    variableSelection: VariableSelector; // Select variables for transposition
+    variableSelection: VariableSelector;     // Select variables for transposition
     namingConfiguration: NamingConfigurator; // Configure naming strategy
     optionConfiguration: OptionConfigurator; // Set transposition options
-    validationSetup: ValidationSetup; // Setup validation rules
+    validationSetup: ValidationSetup;       // Setup validation rules
   };
-
+  
   // Step 2: Data preparation
   dataPreparation: {
-    dataValidation: DataValidator; // Validate input data structure
-    typeAnalysis: TypeAnalyzer; // Analyze data types
-    structureAnalysis: StructureAnalyzer; // Analyze data structure
-    memoryEstimation: MemoryEstimator; // Estimate memory requirements
+    dataValidation: DataValidator;           // Validate input data structure
+    typeAnalysis: TypeAnalyzer;             // Analyze data types
+    structureAnalysis: StructureAnalyzer;   // Analyze data structure
+    memoryEstimation: MemoryEstimator;      // Estimate memory requirements
   };
-
+  
   // Step 3: Matrix transposition
   matrixTransposition: {
     dimensionCalculation: DimensionCalculator; // Calculate new dimensions
-    matrixRotation: MatrixRotator; // Perform matrix rotation
-    dataReorganization: DataReorganizer; // Reorganize data elements
-    progressTracking: ProgressTracker; // Track transposition progress
+    matrixRotation: MatrixRotator;           // Perform matrix rotation
+    dataReorganization: DataReorganizer;     // Reorganize data elements
+    progressTracking: ProgressTracker;      // Track transposition progress
   };
-
+  
   // Step 4: Variable reconstruction
   variableReconstruction: {
-    newVariableCreation: VariableCreator; // Create new variable definitions
-    nameGeneration: NameGenerator; // Generate variable names
-    typeInference: TypeInferrer; // Infer new variable types
+    newVariableCreation: VariableCreator;    // Create new variable definitions
+    nameGeneration: NameGenerator;           // Generate variable names
+    typeInference: TypeInferrer;             // Infer new variable types
     metadataPreservation: MetadataPreserver; // Preserve relevant metadata
   };
-
+  
   // Step 5: Result validation
   resultValidation: {
     dimensionValidation: DimensionValidator; // Validate new dimensions
-    dataIntegrityCheck: IntegrityChecker; // Check data integrity
+    dataIntegrityCheck: IntegrityChecker;    // Check data integrity
     typeConsistencyCheck: TypeConsistencyChecker; // Verify type consistency
-    qualityAssessment: QualityAssessor; // Assess transposition quality
+    qualityAssessment: QualityAssessor;      // Assess transposition quality
   };
 }
 ```
 
 ### Advanced Transposition Algorithms
-
 ```typescript
 interface AdvancedTranspositionAlgorithms {
   // Memory-efficient transposition
   memoryEfficientTransposition: {
     chunkedProcessing: {
-      description: "Process large datasets in chunks";
+      description: 'Process large datasets in chunks';
       chunkSize: number;
       implementation: ChunkedTransposer;
-      memoryUsage: "O(chunk_size)";
+      memoryUsage: 'O(chunk_size)';
     };
-
+    
     streamingTransposition: {
-      description: "Stream data during transposition";
+      description: 'Stream data during transposition';
       bufferSize: number;
       implementation: StreamingTransposer;
-      memoryUsage: "O(buffer_size)";
+      memoryUsage: 'O(buffer_size)';
     };
-
+    
     temporaryFileUsage: {
-      description: "Use temporary files for very large datasets";
+      description: 'Use temporary files for very large datasets';
       tempFileStrategy: TempFileStrategy;
       implementation: TempFileTransposer;
-      diskSpaceRequirement: "O(2 * dataset_size)";
+      diskSpaceRequirement: 'O(2 * dataset_size)';
     };
   };
-
+  
   // Parallel transposition
   parallelTransposition: {
     threadBasedParallelism: {
-      description: "Use multiple threads for transposition";
+      description: 'Use multiple threads for transposition';
       threadCount: number;
       implementation: ThreadParallelTransposer;
-      speedup: "O(thread_count)";
+      speedup: 'O(thread_count)';
     };
-
+    
     blockBasedParallelism: {
-      description: "Divide matrix into blocks for parallel processing";
+      description: 'Divide matrix into blocks for parallel processing';
       blockSize: [number, number];
       implementation: BlockParallelTransposer;
       coordination: ParallelCoordinator;
     };
-
+    
     pipelineParallelism: {
-      description: "Pipeline different stages of transposition";
+      description: 'Pipeline different stages of transposition';
       stageCount: number;
       implementation: PipelineTransposer;
-      throughput: "Improved for large datasets";
+      throughput: 'Improved for large datasets';
     };
   };
-
+  
   // Intelligent transposition
   intelligentTransposition: {
     typePreservingTransposition: {
-      description: "Maintain data types during transposition";
+      description: 'Maintain data types during transposition';
       typeAnalyzer: TypeAnalyzer;
       implementation: TypePreservingTransposer;
-      preservationAccuracy: "High";
+      preservationAccuracy: 'High';
     };
-
+    
     structureAwareTransposition: {
-      description: "Consider data structure during transposition";
+      description: 'Consider data structure during transposition';
       structureAnalyzer: StructureAnalyzer;
       implementation: StructureAwareTransposer;
       adaptiveProcessing: AdaptiveProcessor;
     };
-
+    
     qualityOptimizedTransposition: {
-      description: "Optimize for result quality";
+      description: 'Optimize for result quality';
       qualityMetrics: QualityMetric[];
       implementation: QualityOptimizedTransposer;
       qualityAssurance: QualityAssurer;
@@ -232,18 +228,17 @@ interface AdvancedTranspositionAlgorithms {
 ## 🔧 Hook Implementation
 
 ### useTranspose Hook
-
 ```typescript
 interface UseTransposeHook {
   // Transposition state
   transpositionState: {
-    availableVariables: Variable[]; // Variables available for transposition
-    selectedVariables: Variable[]; // Variables selected for transposition
-    nameVariable: Variable; // Variable for naming new columns
+    availableVariables: Variable[];         // Variables available for transposition
+    selectedVariables: Variable[];          // Variables selected for transposition
+    nameVariable: Variable;                 // Variable for naming new columns
     currentConfiguration: TranspositionConfiguration; // Current config
-    previewData: TranspositionPreview; // Preview of transposed data
+    previewData: TranspositionPreview;      // Preview of transposed data
   };
-
+  
   // Variable management
   variableManagement: {
     selectVariable: (variable: Variable) => void;
@@ -253,7 +248,7 @@ interface UseTransposeHook {
     selectAllVariables: () => void;
     clearAllVariables: () => void;
   };
-
+  
   // Configuration management
   configurationManagement: {
     setNamingStrategy: (strategy: NamingStrategy) => void;
@@ -263,7 +258,7 @@ interface UseTransposeHook {
     saveConfiguration: (name: string) => void;
     loadConfiguration: (name: string) => void;
   };
-
+  
   // Preview and validation
   previewValidation: {
     generatePreview: () => Promise<TranspositionPreview>;
@@ -272,7 +267,7 @@ interface UseTransposeHook {
     checkMemoryRequirements: () => MemoryRequirement;
     analyzePerformanceImpact: () => PerformanceImpact;
   };
-
+  
   // Execution control
   executionControl: {
     executeTransposition: () => Promise<TranspositionResult>;
@@ -282,7 +277,7 @@ interface UseTransposeHook {
     resetToOriginal: () => void;
     transpositionProgress: TranspositionProgress;
   };
-
+  
   // History management
   historyManagement: {
     transpositionHistory: TranspositionOperation[];
@@ -296,35 +291,34 @@ interface UseTransposeHook {
 ```
 
 ### Transpose Service
-
 ```typescript
 interface TransposeService {
   // Core transposition operations
   coreTranspositionOperations: {
     transposeMatrix: (
       data: DataMatrix,
-      config: TranspositionConfiguration,
+      config: TranspositionConfiguration
     ) => Promise<TranspositionResult>;
-
+    
     selectiveTranspose: (
       data: DataMatrix,
       selectedColumns: number[],
-      config: TranspositionConfiguration,
+      config: TranspositionConfiguration
     ) => Promise<TranspositionResult>;
-
+    
     namedTranspose: (
       data: DataMatrix,
       nameColumn: number,
-      config: TranspositionConfiguration,
+      config: TranspositionConfiguration
     ) => Promise<TranspositionResult>;
-
+    
     headerRowTranspose: (
       data: DataMatrix,
       useFirstRowAsHeaders: boolean,
-      config: TranspositionConfiguration,
+      config: TranspositionConfiguration
     ) => Promise<TranspositionResult>;
   };
-
+  
   // Data structure analysis
   dataStructureAnalysis: {
     analyzeDimensions: (data: DataMatrix) => DimensionAnalysis;
@@ -332,56 +326,57 @@ interface TransposeService {
     estimateMemoryUsage: (data: DataMatrix) => MemoryUsageEstimate;
     assessTranspositionComplexity: (data: DataMatrix) => ComplexityAssessment;
   };
-
+  
   // Naming utilities
   namingUtilities: {
     generateAutomaticNames: (count: number, prefix: string) => string[];
     extractNamesFromColumn: (data: DataMatrix, columnIndex: number) => string[];
     validateVariableNames: (names: string[]) => NameValidationResult;
     sanitizeVariableNames: (names: string[]) => string[];
-    handleDuplicateNames: (
-      names: string[],
-      strategy: DuplicateStrategy,
-    ) => string[];
+    handleDuplicateNames: (names: string[], strategy: DuplicateStrategy) => string[];
   };
-
+  
   // Performance optimization
   performanceOptimization: {
     selectOptimalAlgorithm: (
       dataSize: DataSize,
-      memoryConstraints: MemoryConstraints,
+      memoryConstraints: MemoryConstraints
     ) => OptimalAlgorithm;
-
+    
     optimizeForLargeDatasets: (
       data: DataMatrix,
-      config: TranspositionConfiguration,
+      config: TranspositionConfiguration
     ) => OptimizedConfiguration;
-
+    
     parallelizeTransposition: (
       data: DataMatrix,
-      parallelismConfig: ParallelismConfiguration,
+      parallelismConfig: ParallelismConfiguration
     ) => Promise<ParallelTranspositionResult>;
-
+    
     streamTransposition: (
       dataStream: DataStream,
-      config: TranspositionConfiguration,
+      config: TranspositionConfiguration
     ) => Promise<StreamTranspositionResult>;
   };
-
+  
   // Quality assurance
   qualityAssurance: {
     validateTranspositionResult: (
       original: DataMatrix,
       transposed: DataMatrix,
-      config: TranspositionConfiguration,
+      config: TranspositionConfiguration
     ) => ValidationReport;
-
-    checkDataIntegrity: (result: TranspositionResult) => IntegrityReport;
-
-    assessResultQuality: (result: TranspositionResult) => QualityReport;
-
+    
+    checkDataIntegrity: (
+      result: TranspositionResult
+    ) => IntegrityReport;
+    
+    assessResultQuality: (
+      result: TranspositionResult
+    ) => QualityReport;
+    
     generateTranspositionSummary: (
-      operation: TranspositionOperation,
+      operation: TranspositionOperation
     ) => OperationSummary;
   };
 }
@@ -390,7 +385,6 @@ interface TransposeService {
 ## 🎨 UI Components
 
 ### TransposeUI Component
-
 ```typescript
 interface TransposeUIProps {
   // Variable selection
@@ -402,7 +396,7 @@ interface TransposeUIProps {
     onSelectAll: () => void;
     onClearAll: () => void;
   };
-
+  
   // Naming configuration
   namingConfiguration: {
     nameVariable: Variable;
@@ -413,7 +407,7 @@ interface TransposeUIProps {
     useFirstRowAsHeaders: boolean;
     onUseFirstRowChange: (use: boolean) => void;
   };
-
+  
   // Options configuration
   optionsConfiguration: {
     preserveDataTypes: boolean;
@@ -425,7 +419,7 @@ interface TransposeUIProps {
     showAdvancedOptions: boolean;
     onToggleAdvancedOptions: () => void;
   };
-
+  
   // Preview
   preview: {
     previewData: TranspositionPreview;
@@ -435,7 +429,7 @@ interface TransposeUIProps {
     previewSize: PreviewSize;
     onPreviewSizeChange: (size: PreviewSize) => void;
   };
-
+  
   // Validation
   validation: {
     validationResults: ValidationResult[];
@@ -444,7 +438,7 @@ interface TransposeUIProps {
     memoryRequirements: MemoryRequirement;
     performanceWarnings: PerformanceWarning[];
   };
-
+  
   // Actions
   actions: {
     onTranspose: () => void;
@@ -455,7 +449,7 @@ interface TransposeUIProps {
     onSaveConfiguration: () => void;
     onLoadConfiguration: (config: SavedConfiguration) => void;
   };
-
+  
   // State indicators
   stateIndicators: {
     isProcessing: boolean;
@@ -468,14 +462,13 @@ interface TransposeUIProps {
 ```
 
 ### TransposeTest Component
-
 ```typescript
 interface TransposeTestProps {
   // Test scenarios
   testScenarios: TranspositionTestScenario[];
   selectedScenario: TranspositionTestScenario;
   onScenarioSelect: (scenario: TranspositionTestScenario) => void;
-
+  
   // Test data
   testData: {
     originalMatrices: TestMatrix[];
@@ -483,7 +476,7 @@ interface TransposeTestProps {
     expectedResults: ExpectedTranspositionResult[];
     actualResults: ActualTranspositionResult[];
   };
-
+  
   // Algorithm testing
   algorithmTesting: {
     availableAlgorithms: TranspositionAlgorithm[];
@@ -491,7 +484,7 @@ interface TransposeTestProps {
     onAlgorithmSelect: (algorithm: TranspositionAlgorithm) => void;
     algorithmPerformance: AlgorithmPerformanceMetrics[];
   };
-
+  
   // Performance metrics
   performanceMetrics: {
     transpositionTime: TimeMetrics;
@@ -499,7 +492,7 @@ interface TransposeTestProps {
     cpuUtilization: CPUMetrics;
     qualityMetrics: QualityMetrics;
   };
-
+  
   // Test execution
   testExecution: {
     onRunTest: () => void;
@@ -514,67 +507,66 @@ interface TransposeTestProps {
 ## 🧪 Testing Strategy
 
 ### Test Coverage Areas
-
 ```typescript
 // Transposition functionality testing
-describe("TransposeModal", () => {
-  describe("Complete matrix transposition", () => {
-    it("transposes simple matrices correctly");
-    it("handles rectangular matrices properly");
-    it("preserves data values during transposition");
-    it("maintains data relationships correctly");
+describe('TransposeModal', () => {
+  describe('Complete matrix transposition', () => {
+    it('transposes simple matrices correctly');
+    it('handles rectangular matrices properly');
+    it('preserves data values during transposition');
+    it('maintains data relationships correctly');
   });
-
-  describe("Selective transposition", () => {
-    it("transposes selected variables only");
-    it("preserves non-selected variables");
-    it("handles mixed variable types");
-    it("maintains proper indexing");
+  
+  describe('Selective transposition', () => {
+    it('transposes selected variables only');
+    it('preserves non-selected variables');
+    it('handles mixed variable types');
+    it('maintains proper indexing');
   });
-
-  describe("Named transposition", () => {
-    it("uses variable values as column names");
-    it("handles duplicate names appropriately");
-    it("sanitizes invalid names correctly");
-    it("preserves original variable relationships");
+  
+  describe('Named transposition', () => {
+    it('uses variable values as column names');
+    it('handles duplicate names appropriately');
+    it('sanitizes invalid names correctly');
+    it('preserves original variable relationships');
   });
-
-  describe("Header row transposition", () => {
-    it("extracts headers from first row");
-    it("excludes header row from data");
-    it("handles mixed data types in headers");
-    it("validates header name uniqueness");
+  
+  describe('Header row transposition', () => {
+    it('extracts headers from first row');
+    it('excludes header row from data');
+    it('handles mixed data types in headers');
+    it('validates header name uniqueness');
   });
-
-  describe("Performance", () => {
-    it("handles large matrices efficiently");
-    it("optimizes memory usage for large datasets");
-    it("provides progress feedback for long operations");
-    it("supports cancellation of long operations");
+  
+  describe('Performance', () => {
+    it('handles large matrices efficiently');
+    it('optimizes memory usage for large datasets');
+    it('provides progress feedback for long operations');
+    it('supports cancellation of long operations');
   });
-
-  describe("Data integrity", () => {
-    it("preserves all data values");
-    it("maintains data type consistency");
-    it("handles missing values correctly");
-    it("validates result dimensions");
+  
+  describe('Data integrity', () => {
+    it('preserves all data values');
+    it('maintains data type consistency');
+    it('handles missing values correctly');
+    it('validates result dimensions');
   });
 });
 
 // Service testing
-describe("transposeService", () => {
-  describe("Matrix operations", () => {
-    it("performs matrix transposition correctly");
-    it("handles edge cases gracefully");
-    it("optimizes for different matrix sizes");
-    it("validates input and output data");
+describe('transposeService', () => {
+  describe('Matrix operations', () => {
+    it('performs matrix transposition correctly');
+    it('handles edge cases gracefully');
+    it('optimizes for different matrix sizes');
+    it('validates input and output data');
   });
-
-  describe("Naming utilities", () => {
-    it("generates valid variable names");
-    it("handles name conflicts appropriately");
-    it("sanitizes invalid characters");
-    it("preserves name uniqueness");
+  
+  describe('Naming utilities', () => {
+    it('generates valid variable names');
+    it('handles name conflicts appropriately');
+    it('sanitizes invalid characters');
+    it('preserves name uniqueness');
   });
 });
 ```
@@ -582,13 +574,12 @@ describe("transposeService", () => {
 ## 📋 Development Guidelines
 
 ### Adding New Transposition Algorithms
-
 ```typescript
 // 1. Define algorithm interface
 interface NewTranspositionAlgorithm extends TranspositionAlgorithm {
-  id: "newAlgorithm";
-  name: "New Transposition Algorithm";
-  description: "Description of algorithm characteristics";
+  id: 'newAlgorithm';
+  name: 'New Transposition Algorithm';
+  description: 'Description of algorithm characteristics';
   memoryComplexity: string;
   timeComplexity: string;
   bestFor: DataCharacteristics[];
@@ -598,71 +589,77 @@ interface NewTranspositionAlgorithm extends TranspositionAlgorithm {
 const newAlgorithmImplementation = {
   transpose: (
     data: DataMatrix,
-    config: TranspositionConfiguration,
+    config: TranspositionConfiguration
   ): Promise<TranspositionResult> => {
     // Algorithm implementation
   },
-
+  
   validate: (data: DataMatrix): ValidationResult => {
     // Validation logic
   },
-
-  estimatePerformance: (dataSize: DataSize): PerformanceEstimate => {
+  
+  estimatePerformance: (
+    dataSize: DataSize
+  ): PerformanceEstimate => {
     // Performance estimation
-  },
+  }
 };
 
 // 3. Register algorithm
 const TRANSPOSITION_ALGORITHMS = {
   ...existingAlgorithms,
-  newAlgorithm: newAlgorithmImplementation,
+  newAlgorithm: newAlgorithmImplementation
 };
 
 // 4. Add comprehensive tests
-describe("New Transposition Algorithm", () => {
-  it("transposes data correctly");
-  it("handles edge cases appropriately");
-  it("performs within expected complexity bounds");
-  it("maintains data integrity");
+describe('New Transposition Algorithm', () => {
+  it('transposes data correctly');
+  it('handles edge cases appropriately');
+  it('performs within expected complexity bounds');
+  it('maintains data integrity');
 });
 ```
 
 ### Performance Optimization Guidelines
-
 ```typescript
 // 1. Memory optimization
-const optimizeMemoryUsage = (dataSize: DataSize, availableMemory: number) => {
+const optimizeMemoryUsage = (
+  dataSize: DataSize,
+  availableMemory: number
+) => {
   const estimatedMemory = dataSize.rows * dataSize.columns * MEMORY_PER_CELL;
-
+  
   if (estimatedMemory > availableMemory * 0.8) {
     return {
       useChunkedProcessing: true,
       chunkSize: calculateOptimalChunkSize(availableMemory),
-      enableTemporaryFiles: true,
+      enableTemporaryFiles: true
     };
   }
-
+  
   return {
     useInMemoryProcessing: true,
-    enableParallelProcessing: true,
+    enableParallelProcessing: true
   };
 };
 
 // 2. Algorithm selection
-const selectOptimalAlgorithm = (dataCharacteristics: DataCharacteristics) => {
+const selectOptimalAlgorithm = (
+  dataCharacteristics: DataCharacteristics
+) => {
   if (dataCharacteristics.isSparse) {
-    return "sparseMatrixTransposer";
+    return 'sparseMatrixTransposer';
   }
-
+  
   if (dataCharacteristics.isVeryLarge) {
-    return "streamingTransposer";
+    return 'streamingTransposer';
   }
-
+  
   if (dataCharacteristics.isSquare) {
-    return "inPlaceTransposer";
+    return 'inPlaceTransposer';
   }
-
-  return "standardTransposer";
+  
+  return 'standardTransposer';
 };
 ```
 
@@ -682,23 +679,23 @@ Transpose modal menyediakan comprehensive matrix transposition capabilities deng
 └── 📄 types.ts                 // Definisi tipe TypeScript.
 ```
 
-- **`index.tsx` (Orchestrator)**: Hanya bertindak sebagai perakit. Ia memanggil _hook_ `useTranspose` dan menyambungkan propertinya ke komponen `TransposeUI`.
-- **`TransposeUI.tsx` (Komponen UI)**: Komponen "bodoh" yang bertanggung jawab untuk menampilkan semua elemen antarmuka pengguna, termasuk daftar variabel dan tombol.
-- **`hooks/useTranspose.ts` (Hook Logika)**: Mengelola state UI (seperti variabel mana yang tersedia, dipilih, dan untuk penamaan) dan menangani interaksi pengguna, mendelegasikan pemrosesan data ke _service_.
-- **`services/transposeService.ts` (Service)**: Berisi fungsi murni `transposeDataService` yang melakukan semua pekerjaan berat: mengambil data, variabel yang dipilih, dan variabel penamaan, lalu mengembalikan dataset dan daftar variabel baru yang sudah ditransposisi.
-- **`types.ts` (Definisi Tipe)**: Mengekspor semua tipe dan _props_ yang diperlukan untuk memastikan keamanan tipe di seluruh fitur.
+-   **`index.tsx` (Orchestrator)**: Hanya bertindak sebagai perakit. Ia memanggil *hook* `useTranspose` dan menyambungkan propertinya ke komponen `TransposeUI`.
+-   **`TransposeUI.tsx` (Komponen UI)**: Komponen "bodoh" yang bertanggung jawab untuk menampilkan semua elemen antarmuka pengguna, termasuk daftar variabel dan tombol.
+-   **`hooks/useTranspose.ts` (Hook Logika)**: Mengelola state UI (seperti variabel mana yang tersedia, dipilih, dan untuk penamaan) dan menangani interaksi pengguna, mendelegasikan pemrosesan data ke *service*.
+-   **`services/transposeService.ts` (Service)**: Berisi fungsi murni `transposeDataService` yang melakukan semua pekerjaan berat: mengambil data, variabel yang dipilih, dan variabel penamaan, lalu mengembalikan dataset dan daftar variabel baru yang sudah ditransposisi.
+-   **`types.ts` (Definisi Tipe)**: Mengekspor semua tipe dan *props* yang diperlukan untuk memastikan keamanan tipe di seluruh fitur.
 
 ## Alur Kerja
 
 1.  **Inisialisasi**: `useTranspose` mengambil daftar variabel saat ini dari `useVariableStore`.
 2.  **Interaksi Pengguna**: Pengguna menyeret variabel ke dalam daftar "Variable(s)" dan (opsional) ke daftar "Name Variable".
 3.  **Eksekusi**:
-    - Pengguna mengklik "OK".
-    - `handleOk` di dalam `useTranspose` dipanggil.
-    - Ia memanggil `transposeDataService`, memberikan data saat ini dan variabel yang dipilih pengguna.
-    - _Service_ melakukan transposisi, membuat variabel `case_lbl`, dan membuat nama variabel baru.
-    - Hasilnya (data baru dan variabel baru) dikembalikan ke _hook_.
-4.  **Pembaruan State**: _Hook_ `useTranspose` memperbarui `useDataStore` dan `useVariableStore` dengan data dan variabel baru.
+    -   Pengguna mengklik "OK".
+    -   `handleOk` di dalam `useTranspose` dipanggil.
+    -   Ia memanggil `transposeDataService`, memberikan data saat ini dan variabel yang dipilih pengguna.
+    -   *Service* melakukan transposisi, membuat variabel `case_lbl`, dan membuat nama variabel baru.
+    -   Hasilnya (data baru dan variabel baru) dikembalikan ke *hook*.
+4.  **Pembaruan State**: *Hook* `useTranspose` memperbarui `useDataStore` dan `useVariableStore` dengan data dan variabel baru.
 5.  **Selesai**: Modal ditutup.
 
 ## Usage Examples
@@ -706,7 +703,6 @@ Transpose modal menyediakan comprehensive matrix transposition capabilities deng
 ### Simple Transposition
 
 To convert a wide format dataset to long format:
-
 1. Select all variables to transpose
 2. Do not specify a name variable
 3. Disable "Create Variable Names from First Row"
@@ -716,7 +712,6 @@ To convert a wide format dataset to long format:
 ### Using Variable Values as Names
 
 To transpose data with meaningful variable names:
-
 1. Select the variables to transpose
 2. Select an identifier variable as the "Name Variable"
 3. Enable "Keep Original Variable as ID Variable" if needed
@@ -726,7 +721,6 @@ To transpose data with meaningful variable names:
 ### Headers from First Row
 
 To use first row values as variable names:
-
 1. Select the variables to transpose
 2. Enable "Create Variable Names from First Row of Data"
 3. Click OK to process
@@ -793,4 +787,4 @@ ID,Year,Q1,Q2,Q3,Q4
    - Create Variable Names from First Row: Checked
    - Expected Result: A dataset using the values from the first row as column names
 
-These examples demonstrate how to use the Transpose Data feature for different data restructuring needs and validate the expected outcomes.
+These examples demonstrate how to use the Transpose Data feature for different data restructuring needs and validate the expected outcomes. 

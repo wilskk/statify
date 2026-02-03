@@ -2,11 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     OptScaOveralsOptionsProps,
     OptScaOveralsOptionsType,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/types/optimal-scaling-overals";
@@ -15,11 +11,7 @@ import {ScrollArea} from "@/components/ui/scroll-area";
 import {Label} from "@/components/ui/label";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Input} from "@/components/ui/input";
-<<<<<<< HEAD
-import {CheckedState} from "@radix-ui/react-checkbox";
-=======
 import type {CheckedState} from "@radix-ui/react-checkbox";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const OptScaOveralsOptions = ({
     isOptionsOpen,

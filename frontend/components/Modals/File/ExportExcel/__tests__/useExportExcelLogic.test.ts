@@ -22,15 +22,9 @@ jest.mock('xlsx', () => ({
 
 const mockedUseToast = useToast as jest.Mock;
 const mockedToast = jest.fn();
-<<<<<<< HEAD
-const mockedUseDataStore = useDataStore as unknown as jest.Mock;
-const mockedUseVariableStore = useVariableStore as unknown as jest.Mock;
-const mockedUseMetaStore = useMetaStore as unknown as jest.Mock;
-=======
 const _mockedUseDataStore = useDataStore as unknown as jest.Mock;
 const _mockedUseVariableStore = useVariableStore as unknown as jest.Mock;
 const _mockedUseMetaStore = useMetaStore as unknown as jest.Mock;
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 const mockedGenerateExcelWorkbook = excelExporter.generateExcelWorkbook as jest.Mock;
 const mockedXLSXWriteFile = XLSX.writeFile as jest.Mock;
 
@@ -153,8 +147,4 @@ describe('useExportExcelLogic', () => {
     
     consoleErrorSpy.mockRestore();
   });
-<<<<<<< HEAD
-}); 
-=======
 });
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

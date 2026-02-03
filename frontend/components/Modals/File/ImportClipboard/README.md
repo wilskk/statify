@@ -34,72 +34,62 @@ ImportClipboard/
 ## 🎯 Core Functionality
 
 ### Clipboard Import System
-
 ```typescript
 interface ClipboardImportSystem {
   // Import workflow stages
   importWorkflowStages: {
     dataCapture: {
-      purpose: "Capture data from clipboard or manual input";
+      purpose: 'Capture data from clipboard or manual input';
       methods: DataCaptureMethod[];
       validation: InputValidation;
       preprocessing: DataPreprocessing;
     };
-
+    
     formatDetection: {
-      purpose: "Automatically detect data format and structure";
+      purpose: 'Automatically detect data format and structure';
       detectors: FormatDetector[];
       heuristics: DetectionHeuristic[];
       confidence: DetectionConfidence;
     };
-
+    
     configuration: {
-      purpose: "Configure parsing parameters with real-time preview";
+      purpose: 'Configure parsing parameters with real-time preview';
       options: ConfigurationOption[];
       preview: RealTimePreview;
       validation: ConfigurationValidation;
     };
-
+    
     dataProcessing: {
-      purpose: "Process and import data into application";
+      purpose: 'Process and import data into application';
       processing: DataProcessingPipeline;
       validation: DataValidation;
       integration: StoreIntegration;
     };
   };
-
+  
   // Advanced parsing capabilities
   advancedParsingCapabilities: {
     intelligentDelimiterDetection: {
       autoDetectDelimiter: (text: string) => DelimiterDetectionResult;
       analyzeDataStructure: (text: string) => StructureAnalysisResult;
-      validateDelimiterConsistency: (
-        text: string,
-        delimiter: string,
-      ) => ConsistencyResult;
+      validateDelimiterConsistency: (text: string, delimiter: string) => ConsistencyResult;
       suggestOptimalDelimiter: (text: string) => DelimiterSuggestion;
     };
-
+    
     textQualifierHandling: {
       detectTextQualifiers: (text: string) => QualifierDetectionResult;
-      handleNestedQualifiers: (
-        text: string,
-        qualifier: string,
-      ) => ProcessedText;
-      validateQualifierConsistency: (
-        text: string,
-        qualifier: string,
-      ) => QualifierValidation;
+      handleNestedQualifiers: (text: string, qualifier: string) => ProcessedText;
+      validateQualifierConsistency: (text: string, qualifier: string) => QualifierValidation;
       escapeSpecialCharacters: (text: string) => EscapedText;
     };
-
+    
     dataTypeInference: {
       inferColumnTypes: (columns: string[][]) => TypeInferenceResult[];
       detectDateFormats: (values: string[]) => DateFormatDetection;
       identifyNumericFormats: (values: string[]) => NumericFormatDetection;
       handleMixedTypes: (values: string[]) => MixedTypeHandling;
     };
-
+    
     structuralAnalysis: {
       detectHeaderRow: (data: string[][]) => HeaderDetectionResult;
       identifyDataRegions: (data: string[][]) => DataRegionAnalysis;
@@ -107,7 +97,7 @@ interface ClipboardImportSystem {
       validateDataConsistency: (data: string[][]) => ConsistencyValidation;
     };
   };
-
+  
   // Real-time preview system
   realTimePreviewSystem: {
     previewGeneration: {
@@ -116,16 +106,14 @@ interface ClipboardImportSystem {
       optimizePreviewPerformance: (text: string) => PerformanceOptimization;
       handleLargeDataPreviews: (text: string) => LargeDataPreview;
     };
-
+    
     interactiveConfiguration: {
       provideConfigurationOptions: () => ConfigurationOption[];
-      validateConfigurationChanges: (
-        changes: ConfigurationChange[],
-      ) => ValidationResult;
+      validateConfigurationChanges: (changes: ConfigurationChange[]) => ValidationResult;
       applyConfigurationRealTime: (options: ParsingOptions) => void;
       suggestOptimalConfiguration: (text: string) => ConfigurationSuggestion;
     };
-
+    
     visualFeedback: {
       highlightParsingIssues: (preview: PreviewResult) => HighlightedIssues;
       showDataQualityIndicators: (preview: PreviewResult) => QualityIndicator[];
@@ -133,56 +121,41 @@ interface ClipboardImportSystem {
       displayConfidenceMetrics: (analysis: AnalysisResult) => ConfidenceMetrics;
     };
   };
-
+  
   // Advanced import features
   advancedImportFeatures: {
     batchClipboardProcessing: {
-      processMultipleClipboards: (
-        clipboards: ClipboardData[],
-      ) => Promise<BatchProcessingResult>;
+      processMultipleClipboards: (clipboards: ClipboardData[]) => Promise<BatchProcessingResult>;
       mergeClipboardData: (clipboards: ClipboardData[]) => MergedData;
       handleDataConflicts: (conflicts: DataConflict[]) => ConflictResolution;
       validateBatchConsistency: (batch: ClipboardBatch) => BatchValidation;
     };
-
+    
     formatSpecificHandling: {
       handleExcelCopiedData: (excelData: ExcelClipboardData) => ProcessedData;
       processSpssCopiedData: (spssData: SpssClipboardData) => ProcessedData;
       handleWebTableData: (htmlData: HtmlTableData) => ProcessedData;
       processJsonClipboardData: (jsonData: JsonClipboardData) => ProcessedData;
     };
-
+    
     intelligentDataCleaning: {
       removeUnwantedCharacters: (text: string) => CleanedText;
       normalizeWhitespace: (text: string) => NormalizedText;
       handleEncodingIssues: (text: string) => EncodingCorrectedText;
       repairCorruptedData: (data: CorruptedData) => RepairedData;
     };
-
+    
     contextAwareProcessing: {
-      adaptToDataContext: (
-        data: RawData,
-        context: DataContext,
-      ) => AdaptedProcessing;
-      applyDomainSpecificRules: (
-        data: RawData,
-        domain: DataDomain,
-      ) => DomainProcessedData;
-      useHistoricalPatterns: (
-        data: RawData,
-        history: ImportHistory,
-      ) => PatternBasedProcessing;
-      personalizeImportSettings: (
-        data: RawData,
-        userProfile: UserProfile,
-      ) => PersonalizedSettings;
+      adaptToDataContext: (data: RawData, context: DataContext) => AdaptedProcessing;
+      applyDomainSpecificRules: (data: RawData, domain: DataDomain) => DomainProcessedData;
+      useHistoricalPatterns: (data: RawData, history: ImportHistory) => PatternBasedProcessing;
+      personalizeImportSettings: (data: RawData, userProfile: UserProfile) => PersonalizedSettings;
     };
   };
 }
 ```
 
 ### Clipboard Data Processing Pipeline
-
 ```typescript
 interface ClipboardDataProcessingPipeline {
   // Data capture and validation
@@ -193,14 +166,14 @@ interface ClipboardDataProcessingPipeline {
       handleClipboardErrors: (error: ClipboardError) => ErrorHandling;
       validateClipboardData: (data: ClipboardData) => ValidationResult;
     };
-
+    
     inputValidation: {
       validateTextInput: (text: string) => TextValidationResult;
       checkDataSize: (text: string) => SizeValidationResult;
       validateCharacterEncoding: (text: string) => EncodingValidation;
       detectPotentialIssues: (text: string) => IssueDetection[];
     };
-
+    
     preprocessing: {
       normalizeLineEndings: (text: string) => NormalizedText;
       handleSpecialCharacters: (text: string) => ProcessedText;
@@ -208,39 +181,30 @@ interface ClipboardDataProcessingPipeline {
       prepareForParsing: (text: string) => ParseReadyText;
     };
   };
-
+  
   // Parsing and structure analysis
   parsingStructureAnalysis: {
     delimiterAnalysis: {
       detectCommonDelimiters: (text: string) => DelimiterCandidate[];
-      analyzeDelimiterFrequency: (
-        text: string,
-        delimiter: string,
-      ) => FrequencyAnalysis;
-      validateDelimiterChoice: (
-        text: string,
-        delimiter: string,
-      ) => DelimiterValidation;
+      analyzeDelimiterFrequency: (text: string, delimiter: string) => FrequencyAnalysis;
+      validateDelimiterChoice: (text: string, delimiter: string) => DelimiterValidation;
       handleMixedDelimiters: (text: string) => MixedDelimiterHandling;
     };
-
+    
     structuralParsing: {
       parseTextToColumns: (text: string, options: ParsingOptions) => ParsedData;
-      handleQuotedFields: (
-        text: string,
-        qualifier: string,
-      ) => QuotedFieldHandling;
+      handleQuotedFields: (text: string, qualifier: string) => QuotedFieldHandling;
       processEscapedCharacters: (text: string) => EscapeProcessing;
       normalizeRowStructure: (rows: string[][]) => NormalizedRows;
     };
-
+    
     dataTypeAnalysis: {
       analyzeColumnTypes: (columns: string[][]) => ColumnTypeAnalysis[];
       detectNumericColumns: (column: string[]) => NumericDetection;
       identifyDateColumns: (column: string[]) => DateDetection;
       handleMixedTypeColumns: (column: string[]) => MixedTypeHandling;
     };
-
+    
     qualityAssessment: {
       assessDataQuality: (data: ParsedData) => DataQualityReport;
       identifyInconsistencies: (data: ParsedData) => InconsistencyReport;
@@ -248,37 +212,26 @@ interface ClipboardDataProcessingPipeline {
       validateDataIntegrity: (data: ParsedData) => IntegrityValidation;
     };
   };
-
+  
   // Configuration and optimization
   configurationOptimization: {
     configurationRecommendation: {
       recommendParsingOptions: (text: string) => ParsingRecommendation;
       suggestDataTypes: (columns: string[][]) => TypeSuggestion[];
       optimizeForDataQuality: (data: ParsedData) => QualityOptimization;
-      personalizeRecommendations: (
-        text: string,
-        history: ImportHistory,
-      ) => PersonalizedRecommendation;
+      personalizeRecommendations: (text: string, history: ImportHistory) => PersonalizedRecommendation;
     };
-
+    
     performanceOptimization: {
-      optimizeParsingPerformance: (
-        text: string,
-        options: ParsingOptions,
-      ) => PerformanceOptimization;
+      optimizeParsingPerformance: (text: string, options: ParsingOptions) => PerformanceOptimization;
       handleLargeClipboardData: (largeText: string) => LargeDataHandling;
       implementProgressiveLoading: (text: string) => ProgressiveLoadingStrategy;
-      cacheParsingResults: (
-        text: string,
-        options: ParsingOptions,
-      ) => CachingStrategy;
+      cacheParsingResults: (text: string, options: ParsingOptions) => CachingStrategy;
     };
-
+    
     adaptiveConfiguration: {
       adaptToDataCharacteristics: (data: ParsedData) => AdaptiveSettings;
-      learnFromUserBehavior: (
-        interactions: UserInteraction[],
-      ) => LearnedPreferences;
+      learnFromUserBehavior: (interactions: UserInteraction[]) => LearnedPreferences;
       adjustBasedOnFeedback: (feedback: UserFeedback) => AdjustedSettings;
       evolveParsingSrategy: (history: ParsingHistory) => EvolvedStrategy;
     };
@@ -289,7 +242,6 @@ interface ClipboardDataProcessingPipeline {
 ## 🔧 Hook Implementation
 
 ### useImportClipboardLogic Hook
-
 ```typescript
 interface UseImportClipboardLogicHook {
   // Import stage management
@@ -300,7 +252,7 @@ interface UseImportClipboardLogicHook {
     canGoBack: () => boolean;
     resetToInitial: () => void;
   };
-
+  
   // Data state management
   dataStateManagement: {
     pastedText: string;
@@ -310,7 +262,7 @@ interface UseImportClipboardLogicHook {
     clearData: () => void;
     hasValidData: () => boolean;
   };
-
+  
   // Configuration state
   configurationState: {
     parsingOptions: ParsingOptions;
@@ -318,7 +270,7 @@ interface UseImportClipboardLogicHook {
     resetParsingOptions: () => void;
     validateConfiguration: () => ConfigurationValidationResult;
   };
-
+  
   // Import execution
   importExecution: {
     processImport: () => Promise<ImportResult>;
@@ -326,7 +278,7 @@ interface UseImportClipboardLogicHook {
     retryImport: () => Promise<ImportResult>;
     importWithValidation: () => Promise<ValidatedImportResult>;
   };
-
+  
   // Error and state management
   errorStateManagement: {
     importError: ImportError | null;
@@ -335,7 +287,7 @@ interface UseImportClipboardLogicHook {
     importSuccess: boolean;
     importProgress: ImportProgress;
   };
-
+  
   // Advanced features
   advancedFeatures: {
     clipboardIntegration: {
@@ -344,62 +296,73 @@ interface UseImportClipboardLogicHook {
       detectClipboardFormat: () => Promise<FormatDetectionResult>;
       handleClipboardPermissions: () => Promise<PermissionResult>;
     };
-
+    
     presetManagement: {
       saveImportPreset: (name: string) => void;
       loadImportPreset: (presetId: string) => void;
       deleteImportPreset: (presetId: string) => void;
       listAvailablePresets: () => ImportPreset[];
     };
-
+    
     historyTracking: {
       recordImportHistory: (importOperation: ImportOperation) => void;
       getImportHistory: () => ImportHistoryEntry[];
       clearImportHistory: () => void;
       learnFromHistory: () => LearnedPreferences;
     };
-
+    
     intelligentSuggestions: {
       suggestParsingOptions: (text: string) => OptionSuggestion[];
       recommendDataTypes: (columns: string[][]) => TypeRecommendation[];
       provideQualityFeedback: (data: ParsedData) => QualityFeedback;
-      generateImprovementSuggestions: (
-        issues: DataIssue[],
-      ) => ImprovementSuggestion[];
+      generateImprovementSuggestions: (issues: DataIssue[]) => ImprovementSuggestion[];
     };
   };
 }
 ```
 
 ### useImportClipboardProcessor Hook
-
 ```typescript
 interface UseImportClipboardProcessorHook {
   // Data processing
   dataProcessing: {
     processClipboardData: (
       text: string,
-      options: ParsingOptions,
+      options: ParsingOptions
     ) => Promise<ProcessingResult>;
-
-    validateProcessedData: (data: ProcessedData) => ValidationResult;
-
-    optimizeDataStructure: (data: ProcessedData) => OptimizedData;
-
-    handleProcessingErrors: (error: ProcessingError) => ErrorHandlingResult;
+    
+    validateProcessedData: (
+      data: ProcessedData
+    ) => ValidationResult;
+    
+    optimizeDataStructure: (
+      data: ProcessedData
+    ) => OptimizedData;
+    
+    handleProcessingErrors: (
+      error: ProcessingError
+    ) => ErrorHandlingResult;
   };
-
+  
   // Variable creation
   variableCreation: {
-    createVariablesFromData: (data: ProcessedData) => Variable[];
-
-    inferVariableTypes: (columns: DataColumn[]) => VariableType[];
-
-    generateVariableLabels: (headers: string[]) => VariableLabel[];
-
-    validateVariableStructure: (variables: Variable[]) => VariableValidation;
+    createVariablesFromData: (
+      data: ProcessedData
+    ) => Variable[];
+    
+    inferVariableTypes: (
+      columns: DataColumn[]
+    ) => VariableType[];
+    
+    generateVariableLabels: (
+      headers: string[]
+    ) => VariableLabel[];
+    
+    validateVariableStructure: (
+      variables: Variable[]
+    ) => VariableValidation;
   };
-
+  
   // Store integration
   storeIntegration: {
     updateDataStore: (data: DataMatrix) => void;
@@ -407,25 +370,27 @@ interface UseImportClipboardProcessorHook {
     updateMetaStore: (metadata: ImportMetadata) => void;
     overwriteAllStores: (importResult: ImportResult) => void;
   };
-
+  
   // Quality assurance
   qualityAssurance: {
-    performQualityChecks: (data: ProcessedData) => QualityAssessmentResult;
-
+    performQualityChecks: (
+      data: ProcessedData
+    ) => QualityAssessmentResult;
+    
     validateDataIntegrity: (
       originalText: string,
-      processedData: ProcessedData,
+      processedData: ProcessedData
     ) => IntegrityValidation;
-
+    
     generateQualityReport: (
-      processingResult: ProcessingResult,
+      processingResult: ProcessingResult
     ) => QualityReport;
-
+    
     suggestDataImprovements: (
-      qualityReport: QualityReport,
+      qualityReport: QualityReport
     ) => ImprovementSuggestion[];
   };
-
+  
   // Processing state
   processingState: {
     isProcessing: boolean;
@@ -440,7 +405,6 @@ interface UseImportClipboardProcessorHook {
 ## 🎨 UI Components
 
 ### ImportClipboardPasteStep Component
-
 ```typescript
 interface ImportClipboardPasteStepProps {
   // Data input
@@ -451,7 +415,7 @@ interface ImportClipboardPasteStepProps {
     placeholder: string;
     maxLength: number;
   };
-
+  
   // Clipboard integration
   clipboardIntegration: {
     canAccessClipboard: boolean;
@@ -459,7 +423,7 @@ interface ImportClipboardPasteStepProps {
     clipboardError: ClipboardError | null;
     onRetryClipboardAccess: () => void;
   };
-
+  
   // Validation and feedback
   validationFeedback: {
     inputValidation: InputValidationResult;
@@ -467,7 +431,7 @@ interface ImportClipboardPasteStepProps {
     showValidation: boolean;
     validationErrors: ValidationError[];
   };
-
+  
   // Navigation
   navigation: {
     canContinue: boolean;
@@ -475,7 +439,7 @@ interface ImportClipboardPasteStepProps {
     onCancel: () => void;
     onBack: () => void;
   };
-
+  
   // Help and guidance
   helpGuidance: {
     showTour: boolean;
@@ -487,7 +451,6 @@ interface ImportClipboardPasteStepProps {
 ```
 
 ### ImportClipboardConfigurationStep Component
-
 ```typescript
 interface ImportClipboardConfigurationStepProps {
   // Configuration options
@@ -503,7 +466,7 @@ interface ImportClipboardConfigurationStepProps {
     skipEmptyRows: boolean;
     onSkipEmptyRowsChange: (value: boolean) => void;
   };
-
+  
   // Real-time preview
   realTimePreview: {
     previewData: PreviewData;
@@ -511,7 +474,7 @@ interface ImportClipboardConfigurationStepProps {
     previewError: PreviewError | null;
     onRefreshPreview: () => void;
   };
-
+  
   // Data quality feedback
   dataQualityFeedback: {
     qualityMetrics: DataQualityMetric[];
@@ -520,7 +483,7 @@ interface ImportClipboardConfigurationStepProps {
     showQualityDetails: boolean;
     onToggleQualityDetails: () => void;
   };
-
+  
   // Import execution
   importExecution: {
     canImport: boolean;
@@ -529,7 +492,7 @@ interface ImportClipboardConfigurationStepProps {
     importProgress: ImportProgress;
     onCancelImport: () => void;
   };
-
+  
   // Navigation and help
   navigationHelp: {
     onBack: () => void;
@@ -544,60 +507,59 @@ interface ImportClipboardConfigurationStepProps {
 ## 🧪 Testing Strategy
 
 ### Test Coverage Areas
-
 ```typescript
 // Clipboard import functionality testing
-describe("ImportClipboardModal", () => {
-  describe("Data capture", () => {
-    it("captures clipboard data correctly");
-    it("handles manual text input properly");
-    it("validates input data appropriately");
-    it("manages clipboard permissions correctly");
+describe('ImportClipboardModal', () => {
+  describe('Data capture', () => {
+    it('captures clipboard data correctly');
+    it('handles manual text input properly');
+    it('validates input data appropriately');
+    it('manages clipboard permissions correctly');
   });
-
-  describe("Format detection", () => {
-    it("detects delimiters accurately");
-    it("identifies text qualifiers correctly");
-    it("infers data types properly");
-    it("handles complex data structures");
+  
+  describe('Format detection', () => {
+    it('detects delimiters accurately');
+    it('identifies text qualifiers correctly');
+    it('infers data types properly');
+    it('handles complex data structures');
   });
-
-  describe("Real-time preview", () => {
-    it("generates previews correctly");
-    it("updates previews in real-time");
-    it("handles large data previews efficiently");
-    it("provides accurate quality feedback");
+  
+  describe('Real-time preview', () => {
+    it('generates previews correctly');
+    it('updates previews in real-time');
+    it('handles large data previews efficiently');
+    it('provides accurate quality feedback');
   });
-
-  describe("Data processing", () => {
-    it("processes data correctly");
-    it("handles various text formats");
-    it("maintains data integrity");
-    it("integrates with stores properly");
+  
+  describe('Data processing', () => {
+    it('processes data correctly');
+    it('handles various text formats');
+    it('maintains data integrity');
+    it('integrates with stores properly');
   });
-
-  describe("User experience", () => {
-    it("provides intuitive workflow");
-    it("handles errors gracefully");
-    it("offers helpful guidance");
-    it("maintains responsive interface");
+  
+  describe('User experience', () => {
+    it('provides intuitive workflow');
+    it('handles errors gracefully');
+    it('offers helpful guidance');
+    it('maintains responsive interface');
   });
 });
 
 // Utility testing
-describe("importClipboard.utils", () => {
-  describe("Text parsing", () => {
-    it("parses delimited text correctly");
-    it("handles quoted fields properly");
-    it("processes escaped characters");
-    it("manages edge cases gracefully");
+describe('importClipboard.utils', () => {
+  describe('Text parsing', () => {
+    it('parses delimited text correctly');
+    it('handles quoted fields properly');
+    it('processes escaped characters');
+    it('manages edge cases gracefully');
   });
-
-  describe("Type inference", () => {
-    it("infers types correctly");
-    it("handles mixed types properly");
-    it("detects dates accurately");
-    it("identifies numeric formats");
+  
+  describe('Type inference', () => {
+    it('infers types correctly');
+    it('handles mixed types properly');
+    it('detects dates accurately');
+    it('identifies numeric formats');
   });
 });
 ```
@@ -605,14 +567,13 @@ describe("importClipboard.utils", () => {
 ## 📋 Development Guidelines
 
 ### Adding New Parsing Features
-
 ```typescript
 // 1. Define parsing feature interface
 interface NewParsingFeature extends ParsingFeature {
-  id: "newFeature";
-  name: "New Parsing Feature";
-  description: "Feature description";
-  category: "delimiter" | "type" | "structure" | "quality";
+  id: 'newFeature';
+  name: 'New Parsing Feature';
+  description: 'Feature description';
+  category: 'delimiter' | 'type' | 'structure' | 'quality';
   implementation: FeatureImplementation;
 }
 
@@ -621,33 +582,32 @@ const newParsingFeatureImplementation = {
   detect: (text: string) => {
     // Feature detection logic
   },
-
+  
   apply: (text: string, options: FeatureOptions) => {
     // Feature application logic
   },
-
+  
   validate: (result: FeatureResult) => {
     // Result validation
-  },
+  }
 };
 
 // 3. Register feature
 const PARSING_FEATURES = {
   ...existingFeatures,
-  newFeature: newParsingFeatureImplementation,
+  newFeature: newParsingFeatureImplementation
 };
 
 // 4. Add comprehensive tests
-describe("New Parsing Feature", () => {
-  it("detects feature correctly");
-  it("applies feature properly");
-  it("validates results accurately");
-  it("handles edge cases gracefully");
+describe('New Parsing Feature', () => {
+  it('detects feature correctly');
+  it('applies feature properly');
+  it('validates results accurately');
+  it('handles edge cases gracefully');
 });
 ```
 
 ### Clipboard Integration Guidelines
-
 ```typescript
 // 1. Clipboard API enhancement
 const enhanceClipboardIntegration = () => {
@@ -655,7 +615,7 @@ const enhanceClipboardIntegration = () => {
     modernAPI: useClipboardAPI(),
     fallbackMethods: implementFallbackMethods(),
     permissionHandling: manageClipboardPermissions(),
-    crossBrowserSupport: ensureCrossBrowserCompatibility(),
+    crossBrowserSupport: ensureCrossBrowserCompatibility()
   };
 };
 
@@ -665,39 +625,41 @@ const optimizeClipboardPerformance = (data: ClipboardData) => {
     streamProcessing: implementStreamProcessing(data.size),
     chunkProcessing: useChunkProcessing(data.complexity),
     caching: implementIntelligentCaching(data.characteristics),
-    memoryManagement: optimizeMemoryUsage(data.estimatedSize),
+    memoryManagement: optimizeMemoryUsage(data.estimatedSize)
   };
 };
 ```
 
 ---
 
-Import Clipboard modal menyediakan comprehensive clipboard data import dengan intelligent parsing capabilities, real-time preview system, dan advanced format detection untuk optimal data import experience dalam Statify. - **`types.ts`**: Mendefinisikan semua tipe dan _interface_ TypeScript yang relevan untuk fitur ini. - **`README.md`**: (File ini) Dokumentasi fitur.
+Import Clipboard modal menyediakan comprehensive clipboard data import dengan intelligent parsing capabilities, real-time preview system, dan advanced format detection untuk optimal data import experience dalam Statify.
+    -   **`types.ts`**: Mendefinisikan semua tipe dan *interface* TypeScript yang relevan untuk fitur ini.
+    -   **`README.md`**: (File ini) Dokumentasi fitur.
 
-- **`components/`**
-  - **`ImportClipboardPasteStep.tsx`**: Komponen UI untuk tahap pertama. Bertanggung jawab untuk menangani input teks dari pengguna, baik melalui _paste_ manual maupun tombol.
-  - **`ImportClipboardConfigurationStep.tsx`**: Komponen UI untuk tahap kedua. Menampilkan opsi konfigurasi _parsing_ dan pratinjau data menggunakan `Handsontable`.
+-   **`components/`**
+    -   **`ImportClipboardPasteStep.tsx`**: Komponen UI untuk tahap pertama. Bertanggung jawab untuk menangani input teks dari pengguna, baik melalui *paste* manual maupun tombol.
+    -   **`ImportClipboardConfigurationStep.tsx`**: Komponen UI untuk tahap kedua. Menampilkan opsi konfigurasi *parsing* dan pratinjau data menggunakan `Handsontable`.
 
-- **`hooks/`**
-  - **`useImportClipboardLogic.ts`**: Mengelola _state_ utama modal, seperti tahap saat ini (`paste` atau `configure`), teks yang ditempel, dan navigasi antar-langkah.
-  - **`useImportClipboardProcessor.ts`**: Berisi logika untuk memproses, mengubah, dan mengimpor data. Hook ini dipanggil oleh `ConfigurationStep` untuk finalisasi.
+-   **`hooks/`**
+    -   **`useImportClipboardLogic.ts`**: Mengelola *state* utama modal, seperti tahap saat ini (`paste` atau `configure`), teks yang ditempel, dan navigasi antar-langkah.
+    -   **`useImportClipboardProcessor.ts`**: Berisi logika untuk memproses, mengubah, dan mengimpor data. Hook ini dipanggil oleh `ConfigurationStep` untuk finalisasi.
 
-- **`services/`**
-  - **`services.ts`**: Abstraksi untuk interaksi dengan Browser API, khususnya `navigator.clipboard.readText()` untuk mengakses clipboard secara aman.
+-   **`services/`**
+    -   **`services.ts`**: Abstraksi untuk interaksi dengan Browser API, khususnya `navigator.clipboard.readText()` untuk mengakses clipboard secara aman.
 
-- **`utils/`**
-  - **`utils.ts`**: Berisi fungsi utilitas inti, termasuk fungsi `excelStyleTextToColumns` yang merupakan jantung dari logika _parsing_ teks menjadi struktur kolom dan baris.
+-   **`utils/`**
+    -   **`utils.ts`**: Berisi fungsi utilitas inti, termasuk fungsi `excelStyleTextToColumns` yang merupakan jantung dari logika *parsing* teks menjadi struktur kolom dan baris.
 
 ## 6. Properti Komponen (`ImportClipboardProps`)
 
-- `onClose: () => void`: **(Wajib)** Fungsi _callback_ yang dipanggil untuk menutup modal.
-- `containerType?: "dialog" | "sidebar"`: **(Opsional)** Menentukan konteks render untuk penyesuaian tata letak.
+-   `onClose: () => void`: **(Wajib)** Fungsi *callback* yang dipanggil untuk menutup modal.
+-   `containerType?: "dialog" | "sidebar"`: **(Opsional)** Menentukan konteks render untuk penyesuaian tata letak.
 
 ## 7. Ketergantungan Utama (Dependencies)
 
-- **Internal**:
-  - Zustand Stores (`useDataStore`, `useVariableStore`).
-  - Komponen UI dari `@/components/ui/*`.
-- **Eksternal**:
-  - `handsontable/react-wrapper`: Untuk menampilkan pratinjau data interaktif.
-  - `framer-motion`: Untuk animasi transisi dan _highlighting_ pada fitur _tour_.
+-   **Internal**:
+    -   Zustand Stores (`useDataStore`, `useVariableStore`).
+    -   Komponen UI dari `@/components/ui/*`.
+-   **Eksternal**:
+    -   `handsontable/react-wrapper`: Untuk menampilkan pratinjau data interaktif.
+    -   `framer-motion`: Untuk animasi transisi dan *highlighting* pada fitur *tour*.

@@ -1,14 +1,8 @@
 import { useState, useEffect } from 'react';
-<<<<<<< HEAD
-import { Variable } from '@/types/Variable';
-import { useVariableStore } from '@/stores/useVariableStore';
-import { 
-=======
 import type { Variable, VariableType} from '@/types/Variable';
 import { spssDateTypes } from '@/types/Variable';
 import { useVariableStore } from '@/stores/useVariableStore';
 import type { 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   VariableSelectionProps,
   HighlightedVariableInfo 
 } from '../types';
@@ -21,8 +15,6 @@ export const useVariableSelection = ({
   const [selectedVariables, setSelectedVariables] = useState<Variable[]>(initialVariables);
   const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariableInfo | null>(null);
 
-<<<<<<< HEAD
-=======
   // Normalize to core type buckets
   const allowedNumericTypes = new Set<VariableType>([
     'NUMERIC',
@@ -35,7 +27,6 @@ export const useVariableSelection = ({
   const isNumericType = (t?: VariableType): boolean => !!t && allowedNumericTypes.has(t);
   const isDateType = (t?: VariableType): boolean => !!t && spssDateTypes.has(t);
 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   useEffect(() => {
     useVariableStore.getState().loadVariables();
   }, []);
@@ -62,9 +53,6 @@ export const useVariableSelection = ({
 
     // Compute available variables (those not selected and having valid id & name)
     const selectedIds = new Set(stillExistingSelectedVars.map(v => v.id as number));
-<<<<<<< HEAD
-    const newAvailableVariables = validGlobalVars.filter(v => !selectedIds.has(v.id as number));
-=======
     const newAvailableVariables = validGlobalVars.filter(v => 
       !selectedIds.has(v.id as number) &&
       (
@@ -72,7 +60,6 @@ export const useVariableSelection = ({
         (isDateType(v.type) && v.width === 10)
       )
     );
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     setAvailableVariables(newAvailableVariables);
 
@@ -129,9 +116,6 @@ export const useVariableSelection = ({
 
   const resetVariableSelection = () => {
     setSelectedVariables([]);
-<<<<<<< HEAD
-    setAvailableVariables(variables.filter(v => v.name !== "" && v.id !== undefined));
-=======
     setAvailableVariables(
       variables.filter(v => 
         v.name !== "" && 
@@ -142,7 +126,6 @@ export const useVariableSelection = ({
         )
       )
     );
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     setHighlightedVariable(null);
   };
 
@@ -156,8 +139,4 @@ export const useVariableSelection = ({
     reorderVariables,
     resetVariableSelection
   };
-<<<<<<< HEAD
-}; 
-=======
 };
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

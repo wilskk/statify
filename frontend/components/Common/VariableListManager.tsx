@@ -2,11 +2,7 @@ import type { FC} from 'react';
 import React, { useState, useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getVariableIcon as defaultGetVariableIcon } from './iconHelper';
-<<<<<<< HEAD
-import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft, ArrowBigRight } from 'lucide-react';
-=======
 import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigLeft, ArrowBigRight } from 'lucide-react';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import type { Variable } from "@/types/Variable";
 import { useMobile } from "@/hooks/useMobile";
 
@@ -448,12 +444,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
     // --- Rendering Logic ---
     const renderVariableItem = (variable: Variable, listId: string, index: number) => {
-<<<<<<< HEAD
-        const varRawId = variable[variableIdKey] ?? (variable as any).columnIndex ?? (variable as any).aggregateId ?? (variable as any).name;
-=======
         const extra = variable as Partial<{ columnIndex: unknown; aggregateId: unknown; name: unknown }>;
         const varRawId = variable[variableIdKey] ?? extra.columnIndex ?? extra.aggregateId ?? extra.name;
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const varId = varRawId !== undefined && varRawId !== null ? String(varRawId) : undefined;
         if (varId === undefined) {
             console.warn("Variable missing identifier for rendering:", variable);
@@ -653,10 +645,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     // --- Main Return with Responsive Layout ---
     // Only use flex column layout if mobile AND portrait orientation
     const useVerticalLayout = isMobile && isPortrait;
-<<<<<<< HEAD
-=======
     const availableList = allLists.find(l => l.id === 'available');
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     if (useVerticalLayout) {
         return (
@@ -671,11 +660,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                     id="available-variables-section"
                     data-testid="available-variables-section"
                 >
-<<<<<<< HEAD
-                    {renderList(allLists.find(l => l.id === 'available')!)}
-=======
                     {availableList ? renderList(availableList) : null}
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 </div>
                 
                 {/* Central Arrow Button for Mobile */}
@@ -735,11 +720,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     const arrowButtons: Record<string, ArrowInfo> = {};
     
     if (isFromAvailable && eligibleTargets.length > 0) {
-<<<<<<< HEAD
-        const variableToMove = allLists.find(l => l.id === 'available')?.variables.find(
-=======
         const variableToMove = availableList?.variables.find(
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             v => String(v[variableIdKey]) === highlightedVariable?.id
         );
         
@@ -803,11 +784,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         }
     }
 
-<<<<<<< HEAD
-    // Pendekatan baru dengan layout 2 kolom dan tombol di antara kolom
-=======
     // Desktop layout
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     return (
         <div 
             className="flex gap-8 items-start relative"
@@ -820,11 +797,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 id="available-variables-column"
                 data-testid="available-variables-column"
             >
-<<<<<<< HEAD
-                {renderList(allLists.find(l => l.id === 'available')!)}
-=======
                 {availableList ? renderList(availableList) : null}
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 
                 <div 
                     className="flex flex-col mt-2 space-y-2"

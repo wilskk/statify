@@ -1,8 +1,4 @@
 import fs from 'fs';
-<<<<<<< HEAD
-import path from 'path';
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import request from 'supertest';
 
 // Dynamic control for sav-writer behavior in this suite
@@ -22,26 +18,6 @@ jest.mock('sav-writer', () => ({
 }));
 
 import { app } from '../../app';
-<<<<<<< HEAD
-
-describe('savController branches', () => {
-  const tmpDir = path.join(__dirname, '..', '..', '..', 'temp_branch_tests');
-
-  beforeAll(() => {
-    process.env.TEMP_DIR = tmpDir;
-    if (!fs.existsSync(tmpDir)) { fs.mkdirSync(tmpDir, { recursive: true }); }
-  });
-
-  afterAll(() => {
-    try {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch {
-      void 0;
-    }
-    delete process.env.TEMP_DIR;
-  });
-
-=======
 import { getTempDir } from '../../config/constants';
 
 describe('savController branches', () => {
@@ -50,7 +26,6 @@ describe('savController branches', () => {
     if (!fs.existsSync(tmpDir)) { fs.mkdirSync(tmpDir, { recursive: true }); }
   });
 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   beforeEach(() => {
     throwInvalidName = false;
   });

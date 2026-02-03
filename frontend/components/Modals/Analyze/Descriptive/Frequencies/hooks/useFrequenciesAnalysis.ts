@@ -1,16 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-<<<<<<< HEAD
-import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
-import { useResultStore } from '@/stores/useResultStore';
-import { useAnalysisData } from '@/hooks/useAnalysisData';
-import { 
-=======
 import type { WorkerClient } from '@/utils/workerClient';
 import { createPooledWorkerClient } from '@/utils/workerClient';
 import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import type { 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     FrequenciesAnalysisParams, 
     WorkerInput, 
     WorkerResult, 
@@ -19,11 +12,7 @@ import type {
     FrequenciesResult
 } from '../types';
 import { processAndAddCharts, formatStatisticsTable, formatFrequencyTable } from '../utils';
-<<<<<<< HEAD
-import { Variable } from '@/types/Variable';
-=======
 import type { Variable } from '@/types/Variable';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // --- Helper to build SPSS-style log string ----------------------------------
 const buildFrequenciesLog = (
@@ -145,20 +134,12 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
             if (showStatistics && results.statistics) {
                 const statsResults: FrequenciesResult[] = Object.entries(results.statistics).map(([varName, stats]) => ({
                     variable: selectedVariables.find(v => v.name === varName)!,
-<<<<<<< HEAD
-                    stats: stats
-=======
                     stats
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 }));
 
                 if (statsResults.length > 0) {
                     const statsTableObject = formatStatisticsTable(statsResults);
-<<<<<<< HEAD
-                    if (statsTableObject && statsTableObject.tables) {
-=======
                     if (statsTableObject?.tables) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         await addStatistic(analyticId, {
                             title: statsTableObject.tables[0]?.title || 'Statistics',
                             output_data: JSON.stringify(statsTableObject),
@@ -172,11 +153,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                 for (const varName in results.frequencyTables) {
                     const freqTableData = results.frequencyTables[varName];
                     const freqTableObject = formatFrequencyTable(freqTableData);
-<<<<<<< HEAD
-                    if (freqTableObject && freqTableObject.tables) {
-=======
                     if (freqTableObject?.tables) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         await addStatistic(analyticId, {
                             title: freqTableObject.tables[0]?.title || 'Frequency Table',
                             output_data: JSON.stringify(freqTableObject),

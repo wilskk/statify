@@ -1,9 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-<<<<<<< HEAD
-import {KNNAnalysisType} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
-=======
 import type {KNNAnalysisType} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export async function analyzeKNN({
     configData,
@@ -22,46 +18,26 @@ export async function analyzeKNN({
         : [];
 
     const slicedDataForTarget = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: TargetVariable,
     });
 
     const slicedDataForFeatures = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: FeaturesVariables,
     });
 
     const slicedDataForFocalCaseIdentifier = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: FocalCaseIdentifierVariable,
     });
 
     const slicedDataForCaseIdentifier = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: CaseIdentifierVariable,
     });
 

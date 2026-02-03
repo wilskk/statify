@@ -1,13 +1,8 @@
 import React from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
-<<<<<<< HEAD
-import { HelpCard, HelpAlert } from "../ui/HelpLayout";
-import { Search, FileQuestion, FileCode, BarChart4, Clock, Save, BookOpen } from "lucide-react";
-=======
 import { HelpCard, HelpAlert, HelpStep } from "../ui/HelpLayout";
 import { Search, FileQuestion, FileCode, BarChart4, Clock, Save, BookOpen, ListOrdered } from "lucide-react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Button } from "@/components/ui/button";
 
 // Data FAQ khusus Statify
@@ -63,8 +58,6 @@ const faqCategories = [
 export const FAQ = () => {
   const sections = [
     {
-<<<<<<< HEAD
-=======
       id: 'how-to-search',
       title: 'Cara Mencari Jawaban',
       description: 'Panduan untuk menemukan informasi yang Anda butuhkan dengan cepat',
@@ -105,7 +98,6 @@ export const FAQ = () => {
       )
     },
     {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       id: 'overview',
       title: 'Bantuan Cepat',
       description: 'Informasi penting untuk memulai',
@@ -202,15 +194,6 @@ export const FAQ = () => {
   const tips = [
     {
       type: 'tip' as const,
-<<<<<<< HEAD
-      title: 'Umpan Balik',
-      content: 'Bantu kami meningkatkan dokumentasi dengan memberikan umpan balik pada setiap halaman bantuan.'
-    },
-    {
-      type: 'info' as const,
-      title: 'Pencarian',
-      content: 'Gunakan fitur pencarian untuk menemukan jawaban dengan cepat menggunakan kata kunci.'
-=======
       title: 'Pencarian Efektif',
       content: 'Gunakan kata kunci spesifik seperti "import excel", "t-test", atau "missing values" untuk hasil pencarian yang lebih akurat.'
     },
@@ -228,33 +211,21 @@ export const FAQ = () => {
       type: 'tip' as const,
       title: 'Umpan Balik Berharga',
       content: 'Bantu kami meningkatkan dokumentasi dengan memberikan umpan balik tentang kejelasan dan kelengkapan jawaban FAQ.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
     { title: 'Memulai', href: '/help/getting-started' },
-<<<<<<< HEAD
-    { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
-    { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' },
-    { title: 'Manajemen Data', href: '/help/data-guide' }
-=======
     { title: 'Umpan Balik & Dukungan', href: '/help/feedback' },
     { title: 'Panduan File', href: '/help/file-guide' },
     { title: 'Panduan Data', href: '/help/data-guide' },
     { title: 'Panduan Statistik', href: '/help/statistics-guide' }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   ];
 
   return (
     <HelpGuideTemplate
-<<<<<<< HEAD
-      title="Pertanyaan yang Sering Diajukan"
-      description="Temukan jawaban untuk pertanyaan umum tentang penggunaan Statify"
-=======
       title="FAQ - Pertanyaan Umum"
       description="Temukan jawaban cepat untuk pertanyaan yang sering diajukan tentang penggunaan Statify"
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

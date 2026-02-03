@@ -9,12 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, RefreshCw, HelpCircle, Clipboard, X, Info, ChevronLeft, ChevronRight } from "lucide-react";
-<<<<<<< HEAD
-import { useDataStore } from "@/stores/useDataStore";
-import { useVariableStore } from "@/stores/useVariableStore";
-=======
 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import type { ImportClipboardConfigurationStepProps, ClipboardProcessingOptions } from "../types";
 import { useImportClipboardProcessor } from "../hooks/useImportClipboardProcessor";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -317,11 +312,7 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
     const [currentStep, setCurrentStep] = useState(0);
     const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
 
-<<<<<<< HEAD
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
-=======
     const _startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     const nextStep = useCallback(() => { if (currentStep < baseTourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);
@@ -360,19 +351,6 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
             setIsPreviewLoading(true);
             setError(null);
             try {
-<<<<<<< HEAD
-                let result;
-                const currentDelimiter = getDelimiterCharacter();
-                result = excelStyleTextToColumns(pastedText, {
-                    delimiterType: 'delimited',
-                    delimiter: currentDelimiter,
-                    textQualifier: textQualifierOption === "NO_QUALIFIER" ? "" : textQualifierOption,
-                    treatConsecutiveDelimitersAsOne: options.skipEmptyRows,
-                    trimWhitespace: options.trimWhitespace,
-                    detectDataTypes: options.detectDataTypes,
-                    hasHeaderRow: options.firstRowAsHeader
-                });
-=======
                 const result = excelStyleTextToColumns(pastedText, {
                 delimiterType: 'delimited',
                 delimiter: getDelimiterCharacter(),
@@ -382,7 +360,6 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
                 detectDataTypes: options.detectDataTypes,
                 hasHeaderRow: options.firstRowAsHeader
             });
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 setPreviewData(result);
             } catch (err: any) {
                 setError(err?.message || "Failed to update preview");
@@ -398,11 +375,7 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
 
     }, [options, customDelimiter, pastedText, excelStyleTextToColumns, textQualifierOption, getDelimiterCharacter]);
 
-<<<<<<< HEAD
-    const { dataForTable, columnHeaders, variables } = useMemo(() => {
-=======
     const { dataForTable, columnHeaders } = useMemo(() => {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         if (!previewData || previewData.length === 0) {
             setOriginalRowCount(0);
             setOriginalColCount(0);
@@ -434,19 +407,9 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
         
         setIsPreviewTruncated(fullData.length > PREVIEW_ROW_LIMIT || fullHeaders.length > PREVIEW_COL_LIMIT);
         
-<<<<<<< HEAD
-        const variables = slicedHeaders.map((header, index) => ({
-            name: header,
-            type: 'string' as const,
-            index
-        }));
-
-        return { dataForTable: slicedData, columnHeaders: slicedHeaders, variables };
-=======
 
 
         return { dataForTable: slicedData, columnHeaders: slicedHeaders };
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }, [previewData, options.firstRowAsHeader]);
 
     const handleOptionChange = (key: keyof ClipboardProcessingOptions, value: any) => {

@@ -1,10 +1,6 @@
 "use client";
-<<<<<<< HEAD
-import React, { FC, useCallback, useMemo } from "react";
-=======
 import type { FC} from "react";
 import React, { useCallback, useMemo } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Button } from "@/components/ui/button";
 import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import {
@@ -20,14 +16,9 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { HelpCircle } from "lucide-react";
-<<<<<<< HEAD
-import { BaseModalProps } from "@/types/modalTypes";
-import { useTourGuide, TabControlProps } from "./hooks";
-=======
 import type { BaseModalProps } from "@/types/modalTypes";
 import type { TabControlProps } from "./hooks";
 import { useTourGuide } from "./hooks";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { TourPopup } from "@/components/Common/TourComponents";
 import { AnimatePresence } from "framer-motion";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";

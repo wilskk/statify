@@ -6,18 +6,7 @@ import { generateCsvContent } from "../utils/exportCsvUtils"; // Adjusted path
 import type { CsvExportOptions, UseExportCsvOptions } from "../types"; // Import from new types.ts
 import { useModal } from "@/hooks/useModal";
 
-<<<<<<< HEAD
-const initialState = {
-    filename: "dataset_export",
-    delimiter: ",",
-    includeHeaders: true,
-    includeVariableProperties: false,
-    quoteStrings: false,
-    encoding: "utf-8", 
-};
-=======
 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const useExportCsv = (options?: UseExportCsvOptions) => {
     const { closeModal } = useModal();

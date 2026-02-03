@@ -1,10 +1,6 @@
 // roc-analysis-formatter.ts
 import {ensureEnoughHeaders, formatDisplayNumber} from "@/hooks/useFormatter";
-<<<<<<< HEAD
-import {ResultJson, Table} from "@/types/Table";
-=======
 import type {ResultJson, Table} from "@/types/Table";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export function transformROCAnalysisResult(data: any): ResultJson {
     const resultJson: ResultJson = {
@@ -206,15 +202,9 @@ export function transformROCAnalysisResult(data: any): ResultJson {
 
             table.rows.push({
                 rowHeader: [
-<<<<<<< HEAD
-                    "The test result variable(s): " +
-                        variable +
-                        " has at least one tie between the positive actual state group and the negative actual state group.",
-=======
                     `The test result variable(s): ${ 
                         variable 
                         } has at least one tie between the positive actual state group and the negative actual state group.`,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 ],
                 "Positive if Greater Than or Equal To\u1D43": null,
                 Sensitivity: null,
@@ -264,15 +254,9 @@ export function transformROCAnalysisResult(data: any): ResultJson {
 
             table.rows.push({
                 rowHeader: [
-<<<<<<< HEAD
-                    "The test result variable(s): " +
-                        variable +
-                        " has at least one tie between the positive actual state group and the negative actual state group.",
-=======
                     `The test result variable(s): ${ 
                         variable 
                         } has at least one tie between the positive actual state group and the negative actual state group.`,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 ],
                 "Positive if Greater Than or Equal To\u1D43": null,
                 Precision: null,

@@ -42,11 +42,7 @@ export async function handleAutocorrelation(
         const df = Array.from(autocorrelation.get_df_lb());
 
         // Description Table
-<<<<<<< HEAD
-        let descriptionJSON = JSON.stringify({
-=======
         const descriptionJSON = JSON.stringify({
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [
                 {
                     title: `Description Table`,
@@ -98,11 +94,7 @@ export async function handleAutocorrelation(
             ],
         });
 
-<<<<<<< HEAD
-        let acfStruct: Record<string, any> = {}; // Menggunakan objek kosong
-=======
         const acfStruct: Record<string, any> = {}; // Menggunakan objek kosong
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         // Mengecek panjang seluruh data apakah sama
         if ((acf.length + acf_se.length + lb.length + df.length + pval.length) % acf.length == 0) {
             for (let i = 0; i < acf.length; i++) {
@@ -117,11 +109,7 @@ export async function handleAutocorrelation(
         } else {
             throw new Error("Data length is not equal");
         }
-<<<<<<< HEAD
-        let acfJSON = JSON.stringify({
-=======
         const acfJSON = JSON.stringify({
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [{
                 title: "Autocorrelation Function (ACF)",
                 columnHeaders: [{header: ""}, {header: "ACF"}, {header: "SE"}, {header: "Ljung-Box"}, {header: "df"}, {header: "p-value"}],
@@ -136,11 +124,7 @@ export async function handleAutocorrelation(
             }]
         });
 
-<<<<<<< HEAD
-        let pacfStruct: Record<string, any> = {};
-=======
         const pacfStruct: Record<string, any> = {};
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         // mengecek panjang seluruh data apakah sama
         if ((pacf.length + pacf_se.length) % pacf.length == 0) {
             for (let i = 0; i < pacf.length; i++) {
@@ -152,11 +136,7 @@ export async function handleAutocorrelation(
         }else{
             throw new Error("Data length is not equal");
         }
-<<<<<<< HEAD
-        let pacfJSON = JSON.stringify({
-=======
         const pacfJSON = JSON.stringify({
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [{
                 title: "Partial Autocorrelation Function (PACF)",
                 columnHeaders: [{header: ""}, {header: "PACF"}, {header: "SE"}],
@@ -168,15 +148,9 @@ export async function handleAutocorrelation(
             }]
         });
 
-<<<<<<< HEAD
-        let bartletLeftACF = Array.from(autocorrelation.calculate_bartlet_left (new Float64Array(acf_se), 0.05));
-        let bartletRightACF = Array.from(autocorrelation.calculate_bartlet_right (new Float64Array(acf_se), 0.05));
-        let structureACF: any[] = [];
-=======
         const bartletLeftACF = Array.from(autocorrelation.calculate_bartlet_left (new Float64Array(acf_se), 0.05));
         const bartletRightACF = Array.from(autocorrelation.calculate_bartlet_right (new Float64Array(acf_se), 0.05));
         const structureACF: any[] = [];
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         // Validasi panjang array
         for (let i = 0; i < acf.length; i++) {
             structureACF.push({
@@ -190,11 +164,7 @@ export async function handleAutocorrelation(
                 },
             });
         }
-<<<<<<< HEAD
-        let acfGraphicJSON = JSON.stringify({
-=======
         const acfGraphicJSON = JSON.stringify({
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             charts: [
                 {
                     chartType: "Vertical Bar & Line Chart2",
@@ -220,15 +190,9 @@ export async function handleAutocorrelation(
             ]
         });
 
-<<<<<<< HEAD
-        let bartletLeftPACF = Array.from(autocorrelation.calculate_bartlet_left(new Float64Array(pacf_se), 0.05));
-        let bartletRightPACF = Array.from(autocorrelation.calculate_bartlet_right(new Float64Array(pacf_se), 0.05));
-        let structurePACF: any[] = [];
-=======
         const bartletLeftPACF = Array.from(autocorrelation.calculate_bartlet_left(new Float64Array(pacf_se), 0.05));
         const bartletRightPACF = Array.from(autocorrelation.calculate_bartlet_right(new Float64Array(pacf_se), 0.05));
         const structurePACF: any[] = [];
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         // Validasi panjang array
         for (let i = 0; i < pacf.length; i++) {
             structurePACF.push({
@@ -242,11 +206,7 @@ export async function handleAutocorrelation(
                 },
             });
         }
-<<<<<<< HEAD
-        let pacfGraphicJSON = JSON.stringify({
-=======
         const pacfGraphicJSON = JSON.stringify({
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             charts: [
                 {
                     chartType: "Vertical Bar & Line Chart2",
@@ -274,13 +234,8 @@ export async function handleAutocorrelation(
 
         return ["success", descriptionJSON, test7, acfJSON, pacfJSON, acfGraphicJSON, pacfGraphicJSON];
     } catch (error) {
-<<<<<<< HEAD
-        let errorMessage = error as Error;
-        let errorJSON = JSON.stringify({
-=======
         const errorMessage = error as Error;
         const errorJSON = JSON.stringify({
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             tables: [
                 {
                     title: `Error Table`,

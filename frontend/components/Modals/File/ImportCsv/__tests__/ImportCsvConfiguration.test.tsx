@@ -1,9 +1,5 @@
 import React from 'react';
-<<<<<<< HEAD
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-=======
 import { render, screen, waitFor } from '@testing-library/react';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ImportCsvConfiguration } from '../components/ImportCsvConfiguration';

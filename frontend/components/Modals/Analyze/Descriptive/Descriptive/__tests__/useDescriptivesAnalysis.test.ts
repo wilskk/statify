@@ -205,8 +205,6 @@ describe('useDescriptivesAnalysis', () => {
         expect(result.current.isCalculating).toBe(false);
     });
     
-<<<<<<< HEAD
-=======
     it('omits numeric-only /STATISTICS when only date variables are selected', async () => {
         const dateVar: Variable = { name: 'date1', label: 'Date 1', columnIndex: 0, type: 'DATE', tempId: 'd1', width: 10, decimals: 0, values: [], missing: {}, align: 'left', measure: 'scale', role: 'input', columns: 10 } as any;
 
@@ -257,7 +255,6 @@ describe('useDescriptivesAnalysis', () => {
         expect(statLine).toMatch(/\/STATISTICS=RANGE MIN MAX MEDIAN/);
     });
     
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     it('should handle critical worker instantiation errors', async () => {
         const { result } = renderTestHook();
         

@@ -1,15 +1,3 @@
-<<<<<<< HEAD
-import React, { FC, useCallback } from "react";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Variable, spssDateTypes, VariableType } from "@/types/Variable";
-import { HighlightedVariableInfo } from "../types";
-import { Dispatch, SetStateAction } from "react";
-import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
-import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { TourStep } from "../hooks/useTourGuide";
-=======
 import type { FC} from "react";
 import React, { useCallback } from "react";
 import { Label } from "@/components/ui/label";
@@ -23,7 +11,6 @@ import type { TargetListConfig } from "@/components/Common/VariableListManager";
 import VariableListManager from "@/components/Common/VariableListManager";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import type { TourStep } from "../hooks/useTourGuide";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export interface VariablesTabProps {
     availableVariables: Variable[];
@@ -70,19 +57,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // const isStringType = (t?: VariableType): boolean => t === 'STRING'; // reserved if needed later
     const isDateType = (t?: VariableType): boolean => !!t && spssDateTypes.has(t);
 
-<<<<<<< HEAD
-    // For Descriptives, only show numeric variables with scale measurement level
-    const filteredAvailableVariables = availableVariables.filter(variable => 
-        isNumericType(variable.type) && 
-        (variable.measure === 'scale' || variable.measure === 'unknown' || !variable.measure)
-=======
     // For Descriptives, show only:
     // - Numeric variables (any measurement level)
     // - Date variables with width exactly 10 (dd-mm-yyyy)
     const filteredAvailableVariables = availableVariables.filter(variable =>
         (isNumericType(variable.type)) ||
         (isDateType(variable.type) && variable.width === 10)
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     );
 
     const getDisplayName = (variable: Variable) => {
@@ -93,14 +73,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         // Prevent moving from available to selected if it's disabled (numeric scale only)
         if (sourceListId === 'available') {
-<<<<<<< HEAD
-            const isValidForDescriptives = isNumericType(variable.type) && 
-                (variable.measure === 'scale' || variable.measure === 'unknown' || !variable.measure);
-=======
             const isValidForDescriptives =
                 isNumericType(variable.type) ||
                 (isDateType(variable.type) && variable.width === 10);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             if (!isValidForDescriptives) {
                 return;
             }

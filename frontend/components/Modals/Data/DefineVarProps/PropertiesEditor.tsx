@@ -144,6 +144,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
     }, [gridData, setGridData]);
 
 
+
     const renderDropdown = (options: string[], currentValue: string, onChange: (value: string) => void, onCloseDropdown: () => void) => {
         return (
             <div className="absolute top-full left-0 z-50 mt-1 w-full bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
@@ -160,6 +161,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
             </div>
         );
     };
+
 
     
     return (

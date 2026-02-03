@@ -1,11 +1,3 @@
-<<<<<<< HEAD
-import React, { FC, useCallback, useEffect } from "react";
-import type { Variable } from "@/types/Variable";
-import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
-import { VariablesTabProps } from "./types";
-import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { toast } from "sonner";
-=======
 import type { FC} from "react";
 import { useCallback } from "react";
 import type { Variable } from "@/types/Variable";
@@ -13,7 +5,6 @@ import type { TargetListConfig } from '@/components/Common/VariableListManager';
 import VariableListManager from '@/components/Common/VariableListManager';
 import type { VariablesTabProps } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // Source types remain the same, but used internally by the parent mostly
 type AllSource = 'available' | 'dependent' | 'factor' | 'label';
@@ -46,51 +37,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // --- Adapt props for VariableListManager ---
     const variableIdKeyToUse: keyof Variable = 'id';
     
-<<<<<<< HEAD
-    // Filter to show only NUMERIC variables with scale or unknown measurement in available list
-    const filteredAvailableVariables = availableVariables.filter(variable => 
-        variable.type === 'NUMERIC' && 
-        (variable.measure === 'scale' || variable.measure === 'unknown')
-    );
-
-    // Show toast notifications for filtered variables
-    useEffect(() => {
-        const filteredOutVariables = availableVariables.filter(variable => 
-            variable.type !== 'NUMERIC' || 
-            (variable.measure !== 'scale' && variable.measure !== 'unknown')
-        );
-        
-        if (filteredOutVariables.length > 0) {
-            const nonNumericCount = filteredOutVariables.filter(v => v.type !== 'NUMERIC').length;
-            const nonScaleCount = filteredOutVariables.filter(v => v.type === 'NUMERIC' && v.measure !== 'scale' && v.measure !== 'unknown').length;
-            
-            if (nonNumericCount > 0 || nonScaleCount > 0) {
-                const messages = [];
-                if (nonNumericCount > 0) messages.push(`${nonNumericCount} non-numeric variable${nonNumericCount > 1 ? 's' : ''}`);
-                if (nonScaleCount > 0) messages.push(`${nonScaleCount} non-scale variable${nonScaleCount > 1 ? 's' : ''}`);
-                
-                toast.info(`${messages.join(' and ')} ${messages.length > 1 ? 'were' : 'was'} filtered out from available variables for descriptive analysis`);
-            }
-        }
-    }, [availableVariables]);
-
-    // Check for variables with unknown measurement levels
-    const unknownVariables = [...dependentVariables, ...factorVariables].filter(variable => variable.measure === 'unknown');
-    const unknownCount = unknownVariables.length;
-
-    // Show toast for unknown measurement levels
-    useEffect(() => {
-        if (unknownCount > 0) {
-            toast.warning(`${unknownCount} variable${unknownCount > 1 ? 's' : ''} with unknown measurement level selected. Consider reviewing variable properties.`);
-        }
-    }, [unknownCount]);
-=======
     // Filter to show only NUMERIC variables in available list (include all measurements for NUMERIC)
     const filteredAvailableVariables = availableVariables.filter(variable => 
         variable.type === 'NUMERIC'
     );
 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
     // 1. Configure the target lists
     const targetLists: TargetListConfig[] = [
@@ -102,11 +53,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             draggableItems: true,
             droppable: true,
             allowedTypes: ['NUMERIC'],
-<<<<<<< HEAD
-            allowedMeasurements: ['scale', 'unknown'],
-=======
             allowedMeasurements: ['unknown', 'nominal', 'ordinal', 'scale'],
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         },
         {
             id: 'factor',
@@ -116,11 +63,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             draggableItems: true,
             droppable: true,
             allowedTypes: ['NUMERIC'],
-<<<<<<< HEAD
-            allowedMeasurements: ['scale', 'unknown'],
-=======
             allowedMeasurements: ['unknown', 'nominal', 'ordinal', 'scale'],
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         }
     ];
 
@@ -146,28 +89,16 @@ const VariablesTab: FC<VariablesTabProps> = ({
             case 'available':
                 if (source === 'dependent' || source === 'factor' || source === 'label') {
                     moveToAvailableVariables(variable, source, targetIndex);
-<<<<<<< HEAD
-                    toast.success(`Variable "${variable.name}" moved to available variables`);
-=======
                     // notification suppressed to reduce noise: moved to available variables
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 }
                 break;
             case 'dependent':
                 moveToDependentVariables(variable, targetIndex);
-<<<<<<< HEAD
-                toast.success(`Variable "${variable.name}" added to dependent list`);
-                break;
-            case 'factor':
-                moveToFactorVariables(variable, targetIndex);
-                toast.success(`Variable "${variable.name}" added to factor list`);
-=======
                 // notification suppressed to reduce noise: added to dependent list
                 break;
             case 'factor':
                 moveToFactorVariables(variable, targetIndex);
                 // notification suppressed to reduce noise: added to factor list
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 break;
             // 'label' list removed – no action needed
         }

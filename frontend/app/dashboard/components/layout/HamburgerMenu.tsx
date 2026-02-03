@@ -333,13 +333,7 @@ const HamburgerMenu: React.FC = () => {
                     Prepare Data for Modeling
                   </DrawerMenuItem>
                   <DrawerMenuSeparator />
-<<<<<<< HEAD
-                  <DrawerMenuItem onClick={() => openModal(ModalType.RankCases)}>
-                    Rank Cases...
-                  </DrawerMenuItem>
-=======
                   <DrawerMenuItem disabled>Rank Cases...</DrawerMenuItem>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                   <DrawerMenuSeparator />
                   <DrawerMenuItem disabled>
                     Date and Time Wizard...
@@ -619,8 +613,6 @@ const HamburgerMenu: React.FC = () => {
                         >
                           Box-Jenkins Model
                         </DrawerMenuItem>
-<<<<<<< HEAD
-=======
                         <DrawerMenuItem
                           onClick={() => openModal(ModalType.ARDL)}
                         >
@@ -641,7 +633,6 @@ const HamburgerMenu: React.FC = () => {
                         >
                           Generalized Autoregressive Conditional Heteroscedasticity
                         </DrawerMenuItem>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>

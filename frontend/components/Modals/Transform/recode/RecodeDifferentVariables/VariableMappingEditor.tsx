@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-<<<<<<< HEAD
-import { Variable } from "@/types/Variable";
-import { RecodeMapping } from "../Types";
-=======
 import type { Variable } from "@/types/Variable";
 import type { RecodeMapping } from "../Types";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 interface VariableMappingEditorProps {
   recodeMappings: RecodeMapping[];

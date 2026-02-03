@@ -18,21 +18,12 @@ const selectRow = (hotInstance: any, rowIndex: number): boolean => {
             hotInstance.selectCell(rowIndex, 0, rowIndex, colCount - 1);
         }
         return true;
-<<<<<<< HEAD
-    } catch (err) {
-        try {
-            hotInstance.selectCell(rowIndex, 0);
-            return true;
-        } catch (finalErr) {
-            console.error("Failed to select cell:", finalErr);
-=======
     } catch (_err) {
         try {
             hotInstance.selectCell(rowIndex, 0);
             return true;
         } catch (_finalErr) {
             console.error("Failed to select cell:", _finalErr);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             return false;
         }
     }
@@ -47,21 +38,12 @@ const selectColumn = (hotInstance: any, colIndex: number): boolean => {
             hotInstance.selectCell(0, colIndex, rowCount - 1, colIndex);
         }
         return true;
-<<<<<<< HEAD
-    } catch (err) {
-        try {
-            hotInstance.selectCell(0, colIndex);
-            return true;
-        } catch (finalErr) {
-            console.error("Failed to select cell:", finalErr);
-=======
     } catch (_err) {
         try {
             hotInstance.selectCell(0, colIndex);
             return true;
         } catch (_finalErr) {
             console.error("Failed to select cell:", _finalErr);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             return false;
         }
     }
@@ -211,8 +193,4 @@ export const useGoToForm = ({ defaultMode = GoToMode.CASE, onClose }: UseGoToFor
     handleClose,
     lastNavigationSuccess
   };
-<<<<<<< HEAD
-}; 
-=======
 };
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

@@ -8,20 +8,20 @@ Direktori ini berisi semua fitur modal yang berhubungan dengan **analisis statis
 
 ## Daftar Fitur (Tidak Lengkap)
 
-- **Descriptive Statistics**:
-  - `Descriptives`: Statistik univariat dasar.
-  - `Frequencies`: Tabel frekuensi dan chart.
-  - `Explore`: Analisis data eksplorasi.
-  - `Crosstabs`: Analisis tabulasi silang.
-- **Compare Means**:
-  - `One-Sample T-Test`
-  - `Independent-Samples T-Test`
-  - `Paired-Samples T-Test`
-  - `One-Way ANOVA`
-- **Regression**:
-  - `Linear`: Regresi linear.
-  - `Curve Estimation`: Estimasi kurva.
-- **Dan lain-lain...**
+-   **Descriptive Statistics**:
+    -   `Descriptives`: Statistik univariat dasar.
+    -   `Frequencies`: Tabel frekuensi dan chart.
+    -   `Explore`: Analisis data eksplorasi.
+    -   `Crosstabs`: Analisis tabulasi silang.
+-   **Compare Means**:
+    -   `One-Sample T-Test`
+    -   `Independent-Samples T-Test`
+    -   `Paired-Samples T-Test`
+    -   `One-Way ANOVA`
+-   **Regression**:
+    -   `Linear`: Regresi linear.
+    -   `Curve Estimation`: Estimasi kurva.
+-   **Dan lain-lain...**
 
 ## Registrasi Fitur
 

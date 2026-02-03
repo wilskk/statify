@@ -1,26 +1,15 @@
-<<<<<<< HEAD
-import {
-    TwoIndependentSamplesTestResults,
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     TwoIndependentSamplesTestTable,
     TableColumnHeader,
     TableRow,
     FrequenciesRanks,
     MannWhitneyUTestStatistics,
     KolmogorovSmirnovZTestStatistics,
-<<<<<<< HEAD
-    DescriptiveStatistics,
-    DisplayStatisticsOptions,
-    TwoIndependentSamplesTestResult,
-=======
     DisplayStatisticsOptions,
     TwoIndependentSamplesTestResult} from '../types';
 import {
     TwoIndependentSamplesTestResults,
     DescriptiveStatistics
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 } from '../types';
 
 /**
@@ -37,20 +26,12 @@ export function formatFrequenciesRanksTable(
     
     if (!results || results.length === 0) {
         return {
-<<<<<<< HEAD
-            title: title,
-=======
             title,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
     }
-<<<<<<< HEAD
-    let columnHeaders: TableColumnHeader[] = [
-=======
     const columnHeaders: TableColumnHeader[] = [
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         { header: "", key: "rowHeader" },
         { header: groupingVariable, key: "groupingVariable" },
         { header: "N", key: "N" }
@@ -309,19 +290,11 @@ export function formatDescriptiveStatisticsTable (
         
         table.rows.push({
             rowHeader: [result.variable1.name],
-<<<<<<< HEAD
-            N: N,
-            Mean: formatNumber(Mean, decimals + 2),
-            StdDev: formatNumber(StdDev, decimals + 3),
-            Min: Min,
-            Max: Max,
-=======
             N,
             Mean: formatNumber(Mean, decimals + 2),
             StdDev: formatNumber(StdDev, decimals + 3),
             Min,
             Max,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             Percentile25: formatNumber(Percentile25, decimals + 2),
             Percentile50: formatNumber(Percentile50, decimals + 2),
             Percentile75: formatNumber(Percentile75, decimals + 2)

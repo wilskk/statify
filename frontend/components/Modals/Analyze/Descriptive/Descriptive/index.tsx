@@ -15,12 +15,8 @@
  * ------------------------------------------------------------------------------------------------- */
 "use client";
 
-<<<<<<< HEAD
-import React, { FC, useState, useCallback, useEffect, useMemo } from "react";
-=======
 import type { FC} from "react";
 import React, { useState, useCallback, useEffect, useMemo } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { saveFormData, clearFormData, getFormData } from "@/hooks/useIndexedDB";
 import {
     DialogContent,
@@ -35,26 +31,16 @@ import {
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { HelpCircle, Loader2 } from "lucide-react";
-<<<<<<< HEAD
-=======
 import type {
     TabControlProps
 } from "./hooks";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {
     useVariableSelection,
     useStatisticsSettings,
     useDescriptivesAnalysis,
-<<<<<<< HEAD
-    useTourGuide,
-    TabControlProps
-} from "./hooks";
-import { BaseModalProps } from "@/types/modalTypes";
-=======
     useTourGuide
 } from "./hooks";
 import type { BaseModalProps } from "@/types/modalTypes";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { AnimatePresence } from "framer-motion";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -62,12 +48,8 @@ import { useVariableStore } from "@/stores/useVariableStore";
 
 import VariablesTab from "./components/VariablesTab";
 import StatisticsTab from "./components/StatisticsTab";
-<<<<<<< HEAD
-import { baseTourSteps, TabType } from './hooks/tourConfig';
-=======
 import type { TabType } from './hooks/tourConfig';
 import { baseTourSteps } from './hooks/tourConfig';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // Komponen utama konten Descriptives yang agnostik terhadap container
 const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {

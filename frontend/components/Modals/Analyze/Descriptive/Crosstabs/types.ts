@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-import { Dispatch, SetStateAction } from 'react';
-import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
-import { TourStep } from './hooks/useTourGuide';
-=======
 import type { Dispatch, SetStateAction } from 'react';
 import type { Variable } from "@/types/Variable";
 import { BaseModalProps } from "@/types/modalTypes";
 import type { TourStep } from './hooks/useTourGuide';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // === Shared Types ===
 export type NonintegerWeightsType = 'roundCell' | 'roundCase' | 'truncateCell' | 'truncateCase' | 'noAdjustment';

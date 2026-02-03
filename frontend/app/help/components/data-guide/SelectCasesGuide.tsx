@@ -1,19 +1,12 @@
 /* eslint-disable react/no-unescaped-entities */
-<<<<<<< HEAD
-import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-=======
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep, HelpSection } from '../../ui/HelpLayout';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Filter, Settings, FileText } from 'lucide-react';
 
 const SelectCasesGuide = () => {
   const sections = [
     {
-<<<<<<< HEAD
-=======
       id: 'how-to-steps',
       title: 'Cara Memilih Kasus',
       description: 'Panduan langkah demi langkah untuk memfilter kasus dalam dataset',
@@ -54,7 +47,6 @@ const SelectCasesGuide = () => {
       )
     },
     {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       id: 'selection-methods',
   title: 'Metode Seleksi (Select) ',
       description: 'Berbagai cara untuk memilih kasus dalam dataset Anda',
@@ -180,57 +172,32 @@ const SelectCasesGuide = () => {
     {
       type: 'tip' as const,
       title: 'Sintaks Kondisi',
-<<<<<<< HEAD
-      content: 'Gunakan tanda kutip untuk nilai string dan pastikan nama variabel dieja dengan benar.'
-=======
       content: 'Gunakan tanda kutip untuk nilai string dan pastikan nama variabel dieja dengan benar dalam ekspresi kondisi.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     },
     {
       type: 'warning' as const,
       title: 'Operasi Permanen',
-<<<<<<< HEAD
-      content: 'Hati-hati dengan opsi hapus permanen - operasi ini tidak dapat dibatalkan.'
-    },
-    {
-      type: 'info' as const,
-      title: 'Variabel Filter',
-      content: 'Variabel filter_$ akan dibuat secara otomatis untuk melacak kasus yang dipilih.'
-=======
       content: 'Hati-hati dengan opsi hapus permanen - operasi ini tidak dapat dibatalkan dan akan menghilangkan data secara permanen.'
     },
     {
       type: 'info' as const,
       title: 'Variabel Filter Otomatis',
       content: 'Variabel filter_$ akan dibuat secara otomatis untuk melacak kasus yang dipilih, memungkinkan Anda melihat status seleksi.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
-<<<<<<< HEAD
-    { title: 'Manajemen Data', href: '/help/data-guide' },
-    { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
-    { title: 'Bobot Kasus', href: '/help/data-guide/weight-cases' },
-    { title: 'Pisah File', href: '/help/data-guide/split-file' }
-=======
     { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
     { title: 'Bobot Kasus', href: '/help/data-guide/weight-cases' },
     { title: 'Kasus Duplikat', href: '/help/data-guide/duplicate-cases' },
     { title: 'Definisi Properti Variabel', href: '/help/data-guide/define-var-props' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   ];
 
   return (
     <HelpGuideTemplate
-<<<<<<< HEAD
-      title="Fitur Pilih Kasus"
-      description="Panduan ini menjelaskan fitur Pilih Kasus, yang memungkinkan Anda memfilter atau menghapus baris (kasus) berdasarkan berbagai kriteria."
-=======
       title="Pilih Kasus"
       description="Panduan lengkap untuk memfilter atau menghapus baris (kasus) berdasarkan berbagai kriteria di Statify"
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

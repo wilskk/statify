@@ -43,11 +43,7 @@ self.onmessage = function(e) {
     try {
       // Run the regression
       const regression = multipleLinearRegression(dependentData, X);
-<<<<<<< HEAD
-      const { residuals, yHat, beta } = regression;
-=======
       const { residuals, yHat, beta, X: XwithIntercept } = regression;
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       
       // Perform Breusch-Pagan test for homoscedasticity
       let breuschPaganTest = { testName: "Breusch-Pagan", error: "Test failed", isHomoscedastic: true };
@@ -73,8 +69,6 @@ self.onmessage = function(e) {
       // Calculate basic statistics of residuals for visual analysis
       const residualStats = calculateResidualStats(residuals);
       
-<<<<<<< HEAD
-=======
       // Compute standardized predicted values (ZPRED)
       const meanPred = mean(yHat);
       const stdPred = standardDeviation(yHat, meanPred);
@@ -133,7 +127,6 @@ self.onmessage = function(e) {
       // Build scatter points for homoscedasticity evaluation
       const homoscedasticityScatter = zPred.map((x, i) => ({ x, y: sResid[i] }));
 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       // Generate plot data - residuals vs. fitted values
       const residualVsFittedData = generateResidualVsFittedData(residuals, yHat);
       
@@ -221,12 +214,8 @@ self.onmessage = function(e) {
         visualizations: {
           residualVsFitted: residualVsFittedData,
           residualVsIndependent: residualVsIndependentData,
-<<<<<<< HEAD
-          scaleLocation: scaleLocationData
-=======
           scaleLocation: scaleLocationData,
           homoscedasticityScatter
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         },
         interpretation: interpretationText,
         output_data: JSON.stringify(outputData)

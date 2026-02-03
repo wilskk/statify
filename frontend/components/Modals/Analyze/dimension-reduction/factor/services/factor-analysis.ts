@@ -29,6 +29,32 @@ function sanitizeVarDefs(varDefs: any[][]): any[][] {
     );
 }
 
+// Helper function to create synthetic variable definitions when metadata is missing
+// This parses variable names like "VAR1", "VAR2", etc. to extract the column index
+function createSyntheticVariables(varNames: string[], dataRow: string[] | null): { name: string; columnIndex: number; type: string; width: number; decimals: number; label: string; values: any[]; missing: any; columns: number; align: string; measure: string; role: string }[] {
+    return varNames.map((name) => {
+        // Try to extract column index from variable name (e.g., "VAR1" -> 0, "VAR2" -> 1)
+        const match = name.match(/^VAR(\d+)$/i);
+        // columnIndex is 0-based, so VAR1 -> 0, VAR2 -> 1, etc.
+        const columnIndex = match ? parseInt(match[1], 10) - 1 : 0;
+        
+        return {
+            name,
+            columnIndex,
+            type: "NUMERIC",
+            width: 8,
+            decimals: 2,
+            label: "",
+            values: [],
+            missing: null,
+            columns: 64,
+            align: "right",
+            measure: "unknown",
+            role: "input",
+        };
+    });
+}
+
 export async function analyzeFactor({
     configData,
     dataVariables,
@@ -39,28 +65,58 @@ export async function analyzeFactor({
         ? [configData.main.ValueTarget]
         : [];
 
+    // If variables metadata is missing, create synthetic variables from the target variable names
+    // This handles the case when variables table in IndexedDB is empty but data exists
+    let effectiveVariables = variables;
+    if (!variables || variables.length === 0) {
+        console.warn("[analyzeFactor] Variables metadata is empty! Creating synthetic variables from target variable names.");
+        const allVarNames = [...targetVariables, ...(valueTarget.length > 0 ? valueTarget : [])];
+        effectiveVariables = createSyntheticVariables(allVarNames, dataVariables?.[0] ?? null) as any;
+        console.log("[analyzeFactor] Created synthetic variables:", effectiveVariables);
+    }
+
     const slicedDataForTarget = getSlicedData({
         dataVariables: dataVariables,
-        variables: variables,
+        variables: effectiveVariables,
         selectedVariables: targetVariables,
     });
 
     const slicedDataForValue = getSlicedData({
         dataVariables: dataVariables,
-        variables: variables,
+        variables: effectiveVariables,
         selectedVariables: valueTarget,
     });
 
     const varDefsForTarget = sanitizeVarDefs(
-        getVarDefs(variables, targetVariables)
+        getVarDefs(effectiveVariables, targetVariables)
     );
     const varDefsForValue = sanitizeVarDefs(
-        getVarDefs(variables, valueTarget)
+        getVarDefs(effectiveVariables, valueTarget)
     );
 
-    console.log("configData", configData);
-    console.log("slicedDataForTarget", slicedDataForTarget);
-    console.log("varDefsForTarget", varDefsForTarget);
+    console.log("=== FACTOR ANALYSIS DEBUG START ===");
+    console.log("configData:", JSON.stringify(configData, null, 2));
+    console.log("dataVariables length:", dataVariables?.length);
+    console.log("dataVariables first row:", dataVariables?.[0]);
+    console.log("variables count:", variables?.length);
+    console.log("variables names:", variables?.map(v => v.name));
+    console.log("targetVariables:", targetVariables);
+    console.log("slicedDataForTarget:", JSON.stringify(slicedDataForTarget?.slice(0, 2), null, 2)); // First 2 vars
+    console.log("slicedDataForTarget structure:");
+    slicedDataForTarget?.forEach((varData, idx) => {
+        console.log(`  Variable ${idx}: ${varData?.length} records, first record:`, varData?.[0]);
+    });
+    console.log("varDefsForTarget:", JSON.stringify(varDefsForTarget, null, 2));
+    console.log("=== FACTOR ANALYSIS DEBUG END ===");
+
+    // Validation before WASM call
+    if (!slicedDataForTarget || slicedDataForTarget.length === 0) {
+        throw new Error("No data available for selected variables. Please ensure data is loaded and variables are selected.");
+    }
+    
+    if (slicedDataForTarget[0]?.length === 0) {
+        throw new Error("Selected variables have no valid data records. Please check if data is loaded correctly.");
+    }
 
     // Di dalam blok try, file ini menjalankan await init (fungsi dari paket rust/pkg yang memuat modul WebAssembly 
     // ke dalam memori browser agar fungsi-fungsi Rust bisa dipanggil oleh JavaScript)

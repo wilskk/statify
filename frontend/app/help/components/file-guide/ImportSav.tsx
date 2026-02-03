@@ -37,15 +37,9 @@ export const ImportSav = () => {
       )
     },
     {
-<<<<<<< HEAD
-      id: 'tips',
-      title: 'Informasi Berguna',
-      description: 'Apa yang perlu Anda ketahui tentang file SPSS',
-=======
       id: 'features',
       title: 'Fitur & Informasi',
       description: 'Informasi penting tentang impor file SPSS',
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
@@ -75,26 +69,19 @@ export const ImportSav = () => {
       type: 'warning' as const,
       title: 'Kompatibilitas',
       content: 'Beberapa fitur SPSS yang sangat spesifik mungkin tidak sepenuhnya didukung.'
-<<<<<<< HEAD
-=======
     },
     {
       type: 'info' as const,
       title: 'Preservasi Metadata',
       content: 'File SPSS menyimpan informasi metadata seperti label variabel dan format yang akan dipertahankan saat impor.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
     { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
     { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
-<<<<<<< HEAD
-    { title: 'Ekspor Data Anda', href: '/help/file-guide/export-csv' },
-=======
     { title: 'Dataset Contoh', href: '/help/file-guide/example-data' },
     { title: 'Ekspor Data', href: '/help/file-guide/export-csv' },
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];
 

@@ -16,120 +16,119 @@ Actions/
 ## 🎯 Core Functionality
 
 ### File Operations System
-
 ```typescript
 interface FileOperationsSystem {
   // Session management
   sessionManagement: {
     newSession: {
-      purpose: "Create new analysis session";
+      purpose: 'Create new analysis session';
       workflow: NewSessionWorkflow;
       stateReset: StateResetStrategy;
       validation: SessionValidation;
     };
-
+    
     saveSession: {
-      purpose: "Persist current session state";
+      purpose: 'Persist current session state';
       persistence: SessionPersistence;
       dataIntegrity: DataIntegrityChecker;
       rollbackStrategy: RollbackStrategy;
     };
-
+    
     exitSession: {
-      purpose: "Clean exit with state preservation";
+      purpose: 'Clean exit with state preservation';
       cleanup: SessionCleanup;
       unsavedChangesCheck: UnsavedChangesChecker;
       gracefulShutdown: GracefulShutdown;
     };
   };
-
+  
   // File export operations
   fileExportOperations: {
     savAsSpss: {
-      purpose: "Export data as SPSS .sav file";
+      purpose: 'Export data as SPSS .sav file';
       implementation: SpssExporter;
       dataTransformation: DataTransformer;
       formatValidation: FormatValidator;
     };
-
+    
     exportCsv: {
-      purpose: "Export data as CSV file";
+      purpose: 'Export data as CSV file';
       implementation: CsvExporter;
       encodingOptions: EncodingOption[];
       customizations: CsvCustomization[];
     };
-
+    
     exportExcel: {
-      purpose: "Export data as Excel file";
+      purpose: 'Export data as Excel file';
       implementation: ExcelExporter;
       worksheetManagement: WorksheetManager;
       formatting: ExcelFormatting;
     };
-
+    
     exportPdf: {
-      purpose: "Export reports as PDF";
+      purpose: 'Export reports as PDF';
       implementation: PdfExporter;
       layoutOptions: PdfLayoutOption[];
       reportGeneration: ReportGenerator;
     };
   };
-
+  
   // File import operations
   fileImportOperations: {
     importSpss: {
-      purpose: "Import SPSS .sav files";
+      purpose: 'Import SPSS .sav files';
       implementation: SpssImporter;
       metadataPreservation: MetadataPreserver;
       variableMapping: VariableMapper;
     };
-
+    
     importCsv: {
-      purpose: "Import CSV files with intelligent parsing";
+      purpose: 'Import CSV files with intelligent parsing';
       implementation: CsvImporter;
       delimiterDetection: DelimiterDetector;
       typeInference: TypeInferenceEngine;
     };
-
+    
     importExcel: {
-      purpose: "Import Excel files with sheet selection";
+      purpose: 'Import Excel files with sheet selection';
       implementation: ExcelImporter;
       sheetSelector: SheetSelector;
       rangeSelection: RangeSelector;
     };
-
+    
     importClipboard: {
-      purpose: "Import data from clipboard";
+      purpose: 'Import data from clipboard';
       implementation: ClipboardImporter;
       formatDetection: FormatDetector;
       dataValidation: ClipboardDataValidator;
     };
   };
-
+  
   // Advanced file operations
   advancedFileOperations: {
     fileCompression: {
-      purpose: "Compress large datasets for export";
+      purpose: 'Compress large datasets for export';
       implementation: FileCompressor;
       algorithms: CompressionAlgorithm[];
       optimizationStrategies: OptimizationStrategy[];
     };
-
+    
     fileEncryption: {
-      purpose: "Encrypt sensitive data files";
+      purpose: 'Encrypt sensitive data files';
       implementation: FileEncryptor;
       encryptionMethods: EncryptionMethod[];
       keyManagement: KeyManager;
     };
-
+    
     batchOperations: {
-      purpose: "Process multiple files in batch";
+      purpose: 'Process multiple files in batch';
       implementation: BatchProcessor;
       progressTracking: ProgressTracker;
       errorRecovery: BatchErrorRecovery;
     };
-
+    
     fileVersioning: {
-      purpose: "Manage file versions and history";
+      purpose: 'Manage file versions and history';
       implementation: FileVersionManager;
       versionControl: VersionController;
       changeTracking: ChangeTracker;
@@ -139,7 +138,6 @@ interface FileOperationsSystem {
 ```
 
 ### Session Lifecycle Management
-
 ```typescript
 interface SessionLifecycleManagement {
   // Session initialization
@@ -152,14 +150,14 @@ interface SessionLifecycleManagement {
         resultStore: ResultStoreReset;
         modalStore: ModalStoreReset;
       };
-
+      
       defaultConfiguration: {
         analysisSettings: DefaultAnalysisSettings;
         uiPreferences: DefaultUIPreferences;
         dataViewSettings: DefaultDataViewSettings;
         chartDefaults: DefaultChartSettings;
       };
-
+      
       initialization: {
         loadDefaultDataset: () => Promise<void>;
         setupAnalysisEnvironment: () => void;
@@ -167,7 +165,7 @@ interface SessionLifecycleManagement {
         configureWorkspace: () => void;
       };
     };
-
+    
     sessionValidation: {
       validateSessionState: () => SessionValidationResult;
       checkDataIntegrity: () => DataIntegrityResult;
@@ -175,7 +173,7 @@ interface SessionLifecycleManagement {
       assessSessionHealth: () => SessionHealthResult;
     };
   };
-
+  
   // Session persistence
   sessionPersistence: {
     saveCurrentSession: {
@@ -186,14 +184,14 @@ interface SessionLifecycleManagement {
         gatherResultState: () => ResultState;
         gatherUIState: () => UIState;
       };
-
+      
       dataSerialization: {
         serializeToSav: (data: SessionData) => Promise<Blob>;
         serializeToJson: (data: SessionData) => Promise<string>;
         compressSession: (data: SessionData) => Promise<CompressedSession>;
         validateSerialization: (serialized: SerializedData) => ValidationResult;
       };
-
+      
       persistenceStrategy: {
         localPersistence: LocalPersistenceManager;
         cloudPersistence: CloudPersistenceManager;
@@ -201,17 +199,15 @@ interface SessionLifecycleManagement {
         filePersistence: FilePersistenceManager;
       };
     };
-
+    
     sessionRecovery: {
       recoverFromCrash: () => Promise<RecoveryResult>;
       restoreFromBackup: (backup: SessionBackup) => Promise<RestoreResult>;
       validateRecoveredSession: (session: RecoveredSession) => ValidationResult;
-      migrateOldSessions: (
-        oldSession: OldSessionFormat,
-      ) => Promise<MigrationResult>;
+      migrateOldSessions: (oldSession: OldSessionFormat) => Promise<MigrationResult>;
     };
   };
-
+  
   // Session termination
   sessionTermination: {
     gracefulExit: {
@@ -221,14 +217,14 @@ interface SessionLifecycleManagement {
         performAutoSave: () => Promise<AutoSaveResult>;
         skipSaveIfRequested: () => void;
       };
-
+      
       cleanup: {
         clearTemporaryFiles: () => void;
         releaseResources: () => void;
         closeConnections: () => void;
         disposeEventListeners: () => void;
       };
-
+      
       statePreservation: {
         preserveUserPreferences: () => void;
         saveWindowState: () => void;
@@ -236,7 +232,7 @@ interface SessionLifecycleManagement {
         updateRecentFiles: () => void;
       };
     };
-
+    
     emergencyExit: {
       forceQuit: () => void;
       emergencyBackup: () => Promise<void>;
@@ -250,7 +246,6 @@ interface SessionLifecycleManagement {
 ## 🔧 Hook Implementation
 
 ### useFileMenuActions Hook
-
 ```typescript
 interface UseFileMenuActionsHook {
   // Core action handler
@@ -260,7 +255,7 @@ interface UseFileMenuActionsHook {
     actionMiddleware: ActionMiddleware[];
     actionHistory: ActionHistory;
   };
-
+  
   // File action implementations
   fileActionImplementations: {
     newAction: {
@@ -269,21 +264,21 @@ interface UseFileMenuActionsHook {
       preparation: NewActionPreparation;
       confirmation: NewActionConfirmation;
     };
-
+    
     saveAction: {
       execute: () => Promise<SaveActionResult>;
       validation: SaveActionValidator;
       preparation: SaveActionPreparation;
       progressTracking: SaveProgressTracker;
     };
-
+    
     saveAsAction: {
       execute: () => Promise<SaveAsActionResult>;
       validation: SaveAsActionValidator;
       fileDialog: FileDialogManager;
       formatSelection: FormatSelector;
     };
-
+    
     exitAction: {
       execute: () => Promise<ExitActionResult>;
       validation: ExitActionValidator;
@@ -291,7 +286,7 @@ interface UseFileMenuActionsHook {
       cleanup: ExitCleanup;
     };
   };
-
+  
   // State management integration
   stateManagementIntegration: {
     dataStore: {
@@ -300,21 +295,21 @@ interface UseFileMenuActionsHook {
       backup: () => DataStoreBackup;
       restore: (backup: DataStoreBackup) => void;
     };
-
+    
     variableStore: {
       access: () => VariableStore;
       reset: () => void;
       backup: () => VariableStoreBackup;
       restore: (backup: VariableStoreBackup) => void;
     };
-
+    
     metaStore: {
       access: () => MetaStore;
       reset: () => void;
       backup: () => MetaStoreBackup;
       restore: (backup: MetaStoreBackup) => void;
     };
-
+    
     resultStore: {
       access: () => ResultStore;
       reset: () => void;
@@ -322,7 +317,7 @@ interface UseFileMenuActionsHook {
       restore: (backup: ResultStoreBackup) => void;
     };
   };
-
+  
   // Advanced features
   advancedFeatures: {
     actionQueuing: {
@@ -331,7 +326,7 @@ interface UseFileMenuActionsHook {
       clearQueue: () => void;
       prioritizeAction: (action: FileAction) => void;
     };
-
+    
     undoRedoSystem: {
       undoLastAction: () => Promise<void>;
       redoLastAction: () => Promise<void>;
@@ -339,14 +334,14 @@ interface UseFileMenuActionsHook {
       canRedo: boolean;
       actionHistory: FileActionHistory;
     };
-
+    
     batchOperations: {
       executeBatch: (actions: FileAction[]) => Promise<BatchResult>;
       createBatch: () => BatchBuilder;
       optimizeBatch: (batch: FileActionBatch) => OptimizedBatch;
       validateBatch: (batch: FileActionBatch) => BatchValidationResult;
     };
-
+    
     fileWatching: {
       watchFile: (filePath: string) => FileWatcher;
       stopWatching: (watcher: FileWatcher) => void;
@@ -354,7 +349,7 @@ interface UseFileMenuActionsHook {
       autoReload: boolean;
     };
   };
-
+  
   // Error handling and recovery
   errorHandlingRecovery: {
     errorHandler: {
@@ -363,14 +358,14 @@ interface UseFileMenuActionsHook {
       logError: (error: ActionError) => void;
       notifyUser: (error: ActionError) => void;
     };
-
+    
     rollbackSystem: {
       createCheckpoint: () => Checkpoint;
       rollbackToCheckpoint: (checkpoint: Checkpoint) => Promise<void>;
       clearCheckpoints: () => void;
       autoCheckpoint: boolean;
     };
-
+    
     retryMechanism: {
       retryAction: (action: FileAction) => Promise<RetryResult>;
       configureRetryPolicy: (policy: RetryPolicy) => void;
@@ -382,7 +377,6 @@ interface UseFileMenuActionsHook {
 ```
 
 ### File Export System
-
 ```typescript
 interface FileExportSystem {
   // SPSS export
@@ -393,24 +387,21 @@ interface FileExportSystem {
       convertTypes: (data: DataMatrix) => TypeConvertedData;
       handleMissingValues: (data: DataMatrix) => ProcessedData;
     };
-
+    
     metadataGeneration: {
       generateVariableLabels: (variables: Variable[]) => VariableLabel[];
       generateValueLabels: (variables: Variable[]) => ValueLabel[];
       generateMeasurementLevels: (variables: Variable[]) => MeasurementLevel[];
       generateCustomAttributes: (variables: Variable[]) => CustomAttribute[];
     };
-
+    
     fileGeneration: {
-      createSavFile: (
-        data: ProcessedData,
-        metadata: Metadata,
-      ) => Promise<SavFile>;
+      createSavFile: (data: ProcessedData, metadata: Metadata) => Promise<SavFile>;
       optimizeFileSize: (savFile: SavFile) => OptimizedSavFile;
       validateSavFile: (savFile: SavFile) => ValidationResult;
       compressSavFile: (savFile: SavFile) => CompressedSavFile;
     };
-
+    
     downloadManagement: {
       triggerDownload: (file: SavFile, filename: string) => void;
       trackDownloadProgress: (download: Download) => ProgressTracker;
@@ -418,7 +409,7 @@ interface FileExportSystem {
       cleanupTemporaryFiles: () => void;
     };
   };
-
+  
   // Advanced export features
   advancedExportFeatures: {
     formatConversion: {
@@ -427,35 +418,24 @@ interface FileExportSystem {
       convertToSas: (data: DataMatrix) => SasFile;
       convertToJson: (data: DataMatrix) => JsonFile;
     };
-
+    
     customExportFormats: {
       defineCustomFormat: (format: CustomFormatDefinition) => CustomFormat;
       registerExporter: (exporter: CustomExporter) => void;
       validateCustomFormat: (format: CustomFormat) => ValidationResult;
-      exportToCustomFormat: (
-        data: DataMatrix,
-        format: CustomFormat,
-      ) => CustomFile;
+      exportToCustomFormat: (data: DataMatrix, format: CustomFormat) => CustomFile;
     };
-
+    
     batchExport: {
-      exportMultipleFormats: (
-        data: DataMatrix,
-        formats: ExportFormat[],
-      ) => Promise<ExportBatchResult>;
+      exportMultipleFormats: (data: DataMatrix, formats: ExportFormat[]) => Promise<ExportBatchResult>;
       splitLargeDatasets: (data: DataMatrix) => DataChunk[];
       mergeExportResults: (results: ExportResult[]) => MergedExportResult;
       scheduleExport: (exportJob: ExportJob) => Promise<ScheduledExportResult>;
     };
-
+    
     qualityAssurance: {
-      validateExportedData: (
-        original: DataMatrix,
-        exported: ExportedData,
-      ) => QualityReport;
-      performIntegrityCheck: (
-        exportedFile: ExportedFile,
-      ) => IntegrityCheckResult;
+      validateExportedData: (original: DataMatrix, exported: ExportedData) => QualityReport;
+      performIntegrityCheck: (exportedFile: ExportedFile) => IntegrityCheckResult;
       generateExportReport: (exportOperation: ExportOperation) => ExportReport;
       auditExportProcess: (exportProcess: ExportProcess) => AuditReport;
     };
@@ -466,60 +446,59 @@ interface FileExportSystem {
 ## 🧪 Testing Strategy
 
 ### Test Coverage Areas
-
 ```typescript
 // File actions testing
-describe("FileActionsSystem", () => {
-  describe("Session management", () => {
-    it("creates new session correctly");
-    it("resets all stores properly");
-    it("validates session state");
-    it("handles session errors gracefully");
+describe('FileActionsSystem', () => {
+  describe('Session management', () => {
+    it('creates new session correctly');
+    it('resets all stores properly');
+    it('validates session state');
+    it('handles session errors gracefully');
   });
-
-  describe("File operations", () => {
-    it("saves session data correctly");
-    it("exports to SPSS format properly");
-    it("handles large datasets efficiently");
-    it("maintains data integrity during export");
+  
+  describe('File operations', () => {
+    it('saves session data correctly');
+    it('exports to SPSS format properly');
+    it('handles large datasets efficiently');
+    it('maintains data integrity during export');
   });
-
-  describe("State integration", () => {
-    it("integrates with Zustand stores correctly");
-    it("manages store state transitions");
-    it("handles concurrent store updates");
-    it("maintains store consistency");
+  
+  describe('State integration', () => {
+    it('integrates with Zustand stores correctly');
+    it('manages store state transitions');
+    it('handles concurrent store updates');
+    it('maintains store consistency');
   });
-
-  describe("Error handling", () => {
-    it("recovers from export failures");
-    it("provides meaningful error messages");
-    it("implements proper rollback mechanisms");
-    it("handles network failures gracefully");
+  
+  describe('Error handling', () => {
+    it('recovers from export failures');
+    it('provides meaningful error messages');
+    it('implements proper rollback mechanisms');
+    it('handles network failures gracefully');
   });
-
-  describe("Performance optimization", () => {
-    it("handles large datasets efficiently");
-    it("implements proper memory management");
-    it("optimizes file generation speed");
-    it("manages concurrent operations");
+  
+  describe('Performance optimization', () => {
+    it('handles large datasets efficiently');
+    it('implements proper memory management');
+    it('optimizes file generation speed');
+    it('manages concurrent operations');
   });
 });
 
 // Hook testing
-describe("useFileMenuActions", () => {
-  describe("Action handling", () => {
-    it("processes file actions correctly");
-    it("validates action parameters");
-    it("handles action queuing properly");
-    it("implements action history");
+describe('useFileMenuActions', () => {
+  describe('Action handling', () => {
+    it('processes file actions correctly');
+    it('validates action parameters');
+    it('handles action queuing properly');
+    it('implements action history');
   });
-
-  describe("Integration testing", () => {
-    it("works with all Zustand stores");
-    it("integrates with Next.js router");
-    it("handles browser download APIs");
-    it("manages file system interactions");
+  
+  describe('Integration testing', () => {
+    it('works with all Zustand stores');
+    it('integrates with Next.js router');
+    it('handles browser download APIs');
+    it('manages file system interactions');
   });
 });
 ```
@@ -527,14 +506,13 @@ describe("useFileMenuActions", () => {
 ## 📋 Development Guidelines
 
 ### Adding New File Operations
-
 ```typescript
 // 1. Define file operation interface
 interface NewFileOperation extends FileOperation {
-  id: "newOperation";
-  name: "New File Operation";
-  description: "Description of operation";
-  category: "import" | "export" | "session" | "utility";
+  id: 'newOperation';
+  name: 'New File Operation';
+  description: 'Description of operation';
+  category: 'import' | 'export' | 'session' | 'utility';
   parameters: FileOperationParameters;
   validation: FileOperationValidation;
 }
@@ -543,37 +521,40 @@ interface NewFileOperation extends FileOperation {
 const newFileOperationImplementation = {
   execute: async (
     data: DataMatrix,
-    parameters: FileOperationParameters,
+    parameters: FileOperationParameters
   ): Promise<FileOperationResult> => {
     // Operation implementation
   },
-
-  validate: (parameters: FileOperationParameters): ValidationResult => {
+  
+  validate: (
+    parameters: FileOperationParameters
+  ): ValidationResult => {
     // Parameter validation
   },
-
-  prepare: (data: DataMatrix): PreparationResult => {
+  
+  prepare: (
+    data: DataMatrix
+  ): PreparationResult => {
     // Data preparation
-  },
+  }
 };
 
 // 3. Register in file actions system
 const FILE_OPERATIONS = {
   ...existingOperations,
-  newOperation: newFileOperationImplementation,
+  newOperation: newFileOperationImplementation
 };
 
 // 4. Add comprehensive tests
-describe("New File Operation", () => {
-  it("executes operation correctly");
-  it("validates parameters appropriately");
-  it("handles edge cases gracefully");
-  it("maintains data integrity");
+describe('New File Operation', () => {
+  it('executes operation correctly');
+  it('validates parameters appropriately');
+  it('handles edge cases gracefully');
+  it('maintains data integrity');
 });
 ```
 
 ### File Format Support Guidelines
-
 ```typescript
 // 1. File format capabilities
 const ensureFormatSupport = (format: FileFormat) => {
@@ -582,9 +563,9 @@ const ensureFormatSupport = (format: FileFormat) => {
     write: true,
     metadata: true,
     largeFiles: true,
-    streaming: true,
+    streaming: true
   };
-
+  
   return validateFormatCapabilities(format, capabilities);
 };
 
@@ -594,7 +575,7 @@ const optimizeFileOperations = (operation: FileOperation) => {
     chunkSize: calculateOptimalChunkSize(operation.dataSize),
     parallelization: determineParallelizationStrategy(operation.complexity),
     memoryManagement: implementMemoryOptimization(operation.requirements),
-    progressTracking: setupProgressTracking(operation.estimatedDuration),
+    progressTracking: setupProgressTracking(operation.estimatedDuration)
   };
 };
 ```
@@ -603,27 +584,27 @@ const optimizeFileOperations = (operation: FileOperation) => {
 
 File Actions system menyediakan comprehensive file operations management dengan advanced session lifecycle, robust export capabilities, dan sophisticated state management integration untuk optimal file handling dalam Statify.
 flowchart TD
-A[User Interaction] --> B{handleAction};
-B -- "New" --> C[Reset All Stores];
-B -- "Save" --> D[Save All Stores];
-B -- "SaveAs" --> E[Load Data from Stores];
-B -- "Exit" --> F[Reset All Stores];
-B -- "Exit" --> G[Redirect to Home];
-
+    A[User Interaction] --> B{handleAction};
+    B -- "New" --> C[Reset All Stores];
+    B -- "Save" --> D[Save All Stores];
+    B -- "SaveAs" --> E[Load Data from Stores];
+    B -- "Exit" --> F[Reset All Stores];
+    B -- "Exit" --> G[Redirect to Home];
+    
     E --> H[Trim Data Matrix];
     H --> I[Filter Variables];
     I --> J[Sanitize Names];
     J --> K[Transform Data];
     K --> L[Call createSavFile API];
     L --> M[Trigger Download];
-
+    
     C --> N[Zustand Stores];
     D --> N;
     F --> N;
     E --> N;
-
+    
     N -- "State Changes" --> N;
-
+    
     subgraph Legend
         direction LR
         subgraph Node Types
@@ -634,19 +615,18 @@ B -- "Exit" --> G[Redirect to Home];
             browser[Browser API]:::legend
         end
     end
-
+    
     classDef legend fill:#f9f9f9,stroke:#333,stroke-width:1px;
     classDef hook fill:#d5e8d4,stroke:#82b366;
     classDef store fill:#fff2cc,stroke:#d6b656;
     classDef api fill:#e1d5e7,stroke:#9673a6;
     classDef browser fill:#ffe6cc,stroke:#d79b00;
-
+    
     class A,B,C,D,E,F,G,H,I,J,K hook;
     class N store;
     class L,M api;
     class M browser;
-
-````
+```
 
 ### 3.3. Detailed Workflow Steps
 
@@ -705,10 +685,9 @@ interface FileActionPayload {
 }
 
 type FileMenuActionType = "New" | "Save" | "SaveAs" | "Exit";
-````
+```
 
 ### Return Values
-
 The hook returns an object with the following properties:
 
 - `handleAction: (payload: FileActionPayload) => Promise<void>`: Function to handle file menu actions
@@ -735,7 +714,6 @@ The hook implements comprehensive error handling:
 ## 6. Testing Strategy
 
 ### 6.1. Hook Testing (`__tests__/useFileMenuActions.test.ts`)
-
 - **Focus**: Business logic in `useFileMenuActions` hook
 - **Approach**: Mock Zustand stores, router, and API services
 - **Coverage**:
@@ -766,35 +744,26 @@ The hook implements comprehensive error handling:
 The hook is designed to be called from UI components like a main navigation menu.
 
 ```tsx
-import React from "react";
-import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import {
-  useFileMenuActions,
-  FileMenuActionType,
-} from "./hooks/useFileMenuActions";
+import React from 'react';
+import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { useFileMenuActions, FileMenuActionType } from './hooks/useFileMenuActions';
 
 const FileMenu = () => {
-  const { handleAction } = useFileMenuActions();
+    const { handleAction } = useFileMenuActions();
 
-  const onSelect = (action: FileMenuActionType) => {
-    handleAction({ actionType: action });
-  };
+    const onSelect = (action: FileMenuActionType) => {
+        handleAction({ actionType: action });
+    };
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuItem onSelect={() => onSelect("New")}>New</DropdownMenuItem>
-      <DropdownMenuItem onSelect={() => onSelect("Save")}>
-        Save
-      </DropdownMenuItem>
-      <DropdownMenuItem onSelect={() => onSelect("SaveAs")}>
-        Save As...
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem onSelect={() => onSelect("Exit")}>
-        Exit
-      </DropdownMenuItem>
-    </DropdownMenu>
-  );
+    return (
+        <DropdownMenu>
+            <DropdownMenuItem onSelect={() => onSelect("New")}>New</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onSelect("Save")}>Save</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onSelect("SaveAs")}>Save As...</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => onSelect("Exit")}>Exit</DropdownMenuItem>
+        </DropdownMenu>
+    );
 };
 
 export default FileMenu;

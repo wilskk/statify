@@ -16,11 +16,7 @@ import {
     OptScaOveralsDefault
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/constants/optimal-scaling-overals-default";
 import {useModal} from "@/hooks/useModal";
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     DialogHandlers,
     OptScaOveralsContainerProps,
     OptScaOveralsDefineRangeScaleType,
@@ -117,13 +113,8 @@ export const OptScaOveralsContainer = ({
 
             await analyzeOptScaOverals({
                 configData: newFormData,
-<<<<<<< HEAD
-                dataVariables: dataVariables,
-                variables: variables,
-=======
                 dataVariables,
                 variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             });
         } catch (error) {
             console.error(error);

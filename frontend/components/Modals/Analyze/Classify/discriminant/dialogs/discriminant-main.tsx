@@ -7,11 +7,7 @@ import {DiscriminantMethod} from "@/components/Modals/Analyze/Classify/discrimin
 import {DiscriminantClassify} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/classify";
 import {DiscriminantSave} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/save";
 import {DiscriminantBootstrap} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/bootstrap";
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     DiscriminantContainerProps,
     DiscriminantMainType,
     DiscriminantType,
@@ -125,13 +121,8 @@ export const DiscriminantContainer = ({
 
             await analyzeDiscriminant({
                 configData: newFormData,
-<<<<<<< HEAD
-                dataVariables: dataVariables,
-                variables: variables,
-=======
                 dataVariables,
                 variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             });
         } catch (error) {
             console.error(error);

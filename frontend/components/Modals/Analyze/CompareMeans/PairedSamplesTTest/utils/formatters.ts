@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     PairedSamplesTTestResult,
     PairedSamplesTTestTable,
     TableColumnHeader,
@@ -105,13 +101,8 @@ export function formatPairedSamplesStatisticsTable(
 
     return {
         title: "Paired Samples Statistics",
-<<<<<<< HEAD
-        columnHeaders: columnHeaders,
-        rows: rows
-=======
         columnHeaders,
         rows
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     };
 }
 
@@ -148,13 +139,8 @@ export function formatPairedSamplesCorrelationTable(
 
         rows.push({
             rowHeader: [`Pair ${metadata.pair}`],
-<<<<<<< HEAD
-            correlationLabel: correlationLabel,
-            N: N,
-=======
             correlationLabel,
             N,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             Correlation: formatNumber(Correlation, Math.max(result.variable1.decimals, result.variable2.decimals)+3),
             PValue: formatPValue(correlationPValue)
         });
@@ -162,13 +148,8 @@ export function formatPairedSamplesCorrelationTable(
 
     return {
         title: "Paired Samples Correlation",
-<<<<<<< HEAD
-        columnHeaders: columnHeaders,
-        rows: rows
-=======
         columnHeaders,
         rows
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     };
 }
 
@@ -237,13 +218,8 @@ export function formatPairedSamplesTestTable (
 
     return {
         title: "Paired Samples Test",
-<<<<<<< HEAD
-        columnHeaders: columnHeaders,
-        rows: rows
-=======
         columnHeaders,
         rows
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     };
 }
 

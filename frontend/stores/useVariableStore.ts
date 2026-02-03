@@ -168,10 +168,6 @@ interface VariableStoreState {
     // Single-item operations
     addVariable: (variableData?: Partial<Variable>) => Promise<void>;
     addVariables: (variablesData: Partial<Variable>[], updates: CellUpdate[]) => Promise<void>;
-<<<<<<< HEAD
-    registerVariableMetadata: (variablesData: Partial<Variable>[]) => Promise<void>;
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     updateVariable: <K extends keyof Variable>(identifier: number | string, field: K, value: Variable[K]) => Promise<void>;
     updateMultipleFields: (identifier: number | string, changes: Partial<Variable>) => Promise<void>;
     deleteVariable: (columnIndex: number) => Promise<void>;
@@ -181,6 +177,22 @@ interface VariableStoreState {
     updateMultipleVariables: (batch: { identifier: number | string; changes: Partial<Variable> }[]) => Promise<void>;
     sortVariables: (direction: 'asc' | 'desc', columnIndex: number) => Promise<void>;
     saveVariables: () => Promise<void>;
+    
+    // Register variable metadata (for factor scores - updates metadata without shifting columns)
+    registerVariableMetadata: (newVariablesData: Array<{
+        columnIndex: number;
+        name: string;
+        type: 'NUMERIC' | 'STRING' | 'DATE' | 'ADATE' | 'EDATE' | 'SDATE' | 'JDATE' | 'COMMA' | 'DOT' | 'SCIENTIFIC';
+        width: number;
+        decimals: number;
+        label: string;
+        values: any[];
+        missing: any;
+        columns: number;
+        align: 'left' | 'right' | 'center';
+        measure: 'nominal' | 'ordinal' | 'scale' | 'unknown';
+        role: 'input' | 'target' | 'both' | 'none' | 'partition' | 'split';
+    }>) => Promise<void>;
 }
 
 // Helper to enforce measure constraint
@@ -295,15 +307,6 @@ export const useVariableStore = create<VariableStoreState>()(
                 try {
                     // Save any pending changes first to avoid data loss
                     await useDataStore.getState().checkAndSave();
-<<<<<<< HEAD
-
-                    const finalNewVars: Variable[] = [];
-                    const combinedVars = [...get().variables]; // Start with current variables for uniqueness checks
-
-                    // Sort by column index to process them in order
-                    const sortedVariablesData = [...variablesData].sort((a, b) => a.columnIndex! - b.columnIndex!);
-
-=======
             
                     const finalNewVars: Variable[] = [];
                     const combinedVars = [...get().variables]; // Start with current variables for uniqueness checks
@@ -311,28 +314,12 @@ export const useVariableStore = create<VariableStoreState>()(
                     // Sort by column index to process them in order
                     const sortedVariablesData = [...variablesData].sort((a, b) => a.columnIndex! - b.columnIndex!);
             
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     for (const varData of sortedVariablesData) {
                         const idx = varData.columnIndex!;
                         // Use the combined array which grows with each new variable
                         const defaultVar = createDefaultVariable(idx, combinedVars);
                         const inferred = varData.type ? inferDefaultValues(varData.type) : {};
                         const baseVar: Variable = { ...defaultVar, ...inferred, ...varData, columnIndex: idx };
-<<<<<<< HEAD
-
-                        const nameRes = processVariableName(baseVar.name, combinedVars);
-                        const finalName = nameRes.processedName ?? baseVar.name;
-                        const finalVar: Variable = { ...baseVar, name: finalName, ...enforceMeasureConstraint({ ...baseVar, name: finalName }, null) };
-
-                        finalNewVars.push(finalVar);
-                        combinedVars.push(finalVar); // Add to temp array for the next iteration's uniqueness check
-                    }
-
-                    // Update data state immediately to show the column insertions
-                    const dataStore = useDataStore.getState();
-                    let currentData = [...dataStore.data];
-
-=======
                         
                         const nameRes = processVariableName(baseVar.name, combinedVars);
                         const finalName = nameRes.processedName ?? baseVar.name;
@@ -346,7 +333,6 @@ export const useVariableStore = create<VariableStoreState>()(
                     const dataStore = useDataStore.getState();
                     let currentData = [...dataStore.data];
                     
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // Process columns in reverse order to maintain correct indices
                     const reverseSortedVars = [...finalNewVars].sort((a, b) => b.columnIndex - a.columnIndex);
                     for (const newVar of reverseSortedVars) {
@@ -356,31 +342,14 @@ export const useVariableStore = create<VariableStoreState>()(
                             return newRow;
                         });
                     }
-<<<<<<< HEAD
-
-                    // Update the data store state immediately
-                    dataStore.setData(currentData);
-
-=======
                     
                     // Update the data store state immediately
                     dataStore.setData(currentData);
                     
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // Apply the pending updates to the new data structure
                     if (updates && updates.length > 0) {
                         await dataStore.updateCells(updates);
                     }
-<<<<<<< HEAD
-
-                    // Create variables in database
-                    await sheetService.addMultipleColumns(finalNewVars);
-
-                    // Reload variables to get the new structure from database
-                    const variables = await variableService.getAllVariables();
-                    updateStateAfterSuccess(set, variables);
-
-=======
                     
                     // Create variables in database
                     await sheetService.addMultipleColumns(finalNewVars);
@@ -389,7 +358,6 @@ export const useVariableStore = create<VariableStoreState>()(
                     const variables = await variableService.getAllVariables();
                     updateStateAfterSuccess(set, variables);
                     
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // Save the data changes to database
                     await dataStore.saveData();
                 } catch (error: any) {
@@ -397,52 +365,6 @@ export const useVariableStore = create<VariableStoreState>()(
                 }
             },
 
-<<<<<<< HEAD
-            /**
-             * Register variable metadata WITHOUT manipulating the data structure.
-             * Use this when data has already been injected via addVariableColumns.
-             * This prevents column shifting issues and ensures proper metadata synchronization.
-             */
-            registerVariableMetadata: async (variablesData: Partial<Variable>[]) => {
-                set(draft => { draft.isLoading = true; draft.error = null; });
-                try {
-                    // Save any pending changes first
-                    await useDataStore.getState().checkAndSave();
-
-                    const finalNewVars: Variable[] = [];
-                    const combinedVars = [...get().variables]; // Start with current variables for uniqueness checks
-
-                    // Sort by column index to process them in order
-                    const sortedVariablesData = [...variablesData].sort((a, b) => a.columnIndex! - b.columnIndex!);
-
-                    for (const varData of sortedVariablesData) {
-                        const idx = varData.columnIndex!;
-                        // Use the combined array which grows with each new variable
-                        const defaultVar = createDefaultVariable(idx, combinedVars);
-                        const inferred = varData.type ? inferDefaultValues(varData.type) : {};
-                        const baseVar: Variable = { ...defaultVar, ...inferred, ...varData, columnIndex: idx };
-
-                        const nameRes = processVariableName(baseVar.name, combinedVars);
-                        const finalName = nameRes.processedName ?? baseVar.name;
-                        const finalVar: Variable = { ...baseVar, name: finalName, ...enforceMeasureConstraint({ ...baseVar, name: finalName }, null) };
-
-                        finalNewVars.push(finalVar);
-                        combinedVars.push(finalVar);
-                    }
-
-                    // Create variables in database WITHOUT modifying the data structure
-                    await sheetService.addMultipleColumns(finalNewVars);
-
-                    // Reload variables to get the new structure from database
-                    const variables = await variableService.getAllVariables();
-                    updateStateAfterSuccess(set, variables);
-                } catch (error: any) {
-                    handleError(set, 'registerVariableMetadata')(error);
-                }
-            },
-
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             addVariable: async (variableData?) => {
                 set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
@@ -598,10 +520,56 @@ export const useVariableStore = create<VariableStoreState>()(
             getVariableByColumnIndex: (columnIndex: number) => {
                 return get().variables.find(v => v.columnIndex === columnIndex);
             },
+
+            registerVariableMetadata: async (newVariablesData) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
+                try {
+                    const currentVariables = get().variables;
+                    
+                    // Create new Variable objects from the metadata
+                    const newVariables: Variable[] = newVariablesData.map(data => ({
+                        tempId: uuidv4(),
+                        columnIndex: data.columnIndex,
+                        name: data.name,
+                        type: data.type,
+                        width: data.width,
+                        decimals: data.decimals,
+                        label: data.label,
+                        values: data.values,
+                        missing: data.missing,
+                        columns: data.columns,
+                        align: data.align,
+                        measure: data.measure,
+                        role: data.role,
+                    }));
+                    
+                    // Merge with existing variables (add new ones, don't modify existing)
+                    const mergedVariables = [...currentVariables];
+                    for (const newVar of newVariables) {
+                        const existingIndex = mergedVariables.findIndex(v => v.columnIndex === newVar.columnIndex);
+                        if (existingIndex >= 0) {
+                            // Update existing variable metadata
+                            mergedVariables[existingIndex] = { ...mergedVariables[existingIndex], ...newVar };
+                        } else {
+                            // Add new variable
+                            mergedVariables.push(newVar);
+                        }
+                    }
+                    
+                    // Sort by column index
+                    mergedVariables.sort((a, b) => a.columnIndex - b.columnIndex);
+                    
+                    // Save to service
+                    await variableService.importVariables(mergedVariables);
+                    
+                    // Update state
+                    updateStateAfterSuccess(set, mergedVariables);
+                    
+                    console.log(`[registerVariableMetadata] Registered ${newVariablesData.length} new variable(s)`);
+                } catch (error: any) {
+                    handleError(set, 'registerVariableMetadata')(error);
+                }
+            },
         }))
     )
-<<<<<<< HEAD
 );
-=======
-);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

@@ -1,26 +1,11 @@
 import React from 'react';
 import { HelpCard, HelpAlert } from '@/app/help/ui/HelpLayout';
-<<<<<<< HEAD
-import { Calculator, TrendingUp, Target, BarChart3 } from 'lucide-react';
-=======
 import { Calculator, TrendingUp, Target, BarChart3, AlertTriangle } from 'lucide-react';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
 
 export const StatisticsTab = () => (
   <div className="space-y-6">
-<<<<<<< HEAD
-    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-          <Calculator className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-        </div>
-        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Uji Chi-Square</h3>
-      </div>
-      <div className="space-y-4">
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-=======
     <HelpAlert variant="info" title="Statistik dalam Analisis Crosstabs">
       <p className="text-sm mt-2">
         Analisis crosstabs menyediakan berbagai <strong>uji independensi</strong> dan <strong>ukuran asosiasi</strong> 
@@ -30,7 +15,6 @@ export const StatisticsTab = () => (
     <HelpCard title="Uji Chi-Square" icon={Calculator} variant="feature">
       <div className="space-y-4 mt-2">
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Chi-Square Test of Independence</h4>
@@ -48,15 +32,9 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-=======
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Interpretasi Hasil</h4>
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
@@ -66,21 +44,12 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-            <h4 className="font-medium text-amber-800 dark:text-amber-200">Asumsi Chi-Square</h4>
-          </div>
-          <div className="text-sm text-amber-700 dark:text-amber-300 space-y-1">
-=======
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Asumsi Chi-Square</h4>
           </div>
           <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <p>• Frekuensi yang diharapkan ≥ 5 di setiap sel</p>
             <p>• Observasi independen</p>
             <p>• Sampel acak</p>
@@ -88,25 +57,11 @@ export const StatisticsTab = () => (
           </div>
         </div>
       </div>
-<<<<<<< HEAD
-    </div>
-
-    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-          <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-        </div>
-        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Ukuran Asosiasi</h3>
-      </div>
-      <div className="space-y-4">
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-=======
     </HelpCard>
 
     <HelpCard title="Ukuran Asosiasi" icon={TrendingUp} variant="default">
       <div className="space-y-4 mt-2">
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Cramer&apos;s V</h4>
@@ -121,15 +76,9 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-=======
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Phi Coefficient (φ)</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
@@ -142,15 +91,9 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-=======
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Contingency Coefficient (C)</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
@@ -163,15 +106,9 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-=======
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Lambda (λ)</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
@@ -184,21 +121,6 @@ export const StatisticsTab = () => (
           </div>
         </div>
       </div>
-<<<<<<< HEAD
-    </div>
-
-    <div className="p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900 rounded-lg flex items-center justify-center">
-          <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <h3 className="text-base font-medium text-slate-800 dark:text-slate-200">Uji Alternatif</h3>
-      </div>
-      <div className="space-y-4">
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-=======
     </HelpCard>
 
     <HelpCard title="Uji Alternatif" icon={Target} variant="default">
@@ -206,7 +128,6 @@ export const StatisticsTab = () => (
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Fisher&apos;s Exact Test</h4>
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
@@ -217,15 +138,9 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-=======
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Likelihood Ratio Chi-Square</h4>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded border mb-2">
@@ -238,15 +153,9 @@ export const StatisticsTab = () => (
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-600">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-=======
         <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <h4 className="font-medium text-slate-800 dark:text-slate-200">Linear-by-Linear Association</h4>
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
@@ -257,19 +166,11 @@ export const StatisticsTab = () => (
           </div>
         </div>
       </div>
-<<<<<<< HEAD
-    </div>
-
-    <HelpCard title="Pemilihan Ukuran Asosiasi" icon={BarChart3} variant="feature">
-      <div className="space-y-4 mt-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-=======
     </HelpCard>
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <HelpCard title="Pemilihan Ukuran Asosiasi" variant="default" icon={BarChart3}>
         <div className="space-y-4 mt-2">
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           <div className="space-y-3">
             <h4 className="font-medium text-sm">Rekomendasi Berdasarkan Ukuran Tabel</h4>
             <div className="text-sm space-y-2 text-muted-foreground">
@@ -290,27 +191,6 @@ export const StatisticsTab = () => (
             </div>
           </div>
         </div>
-<<<<<<< HEAD
-      </div>
-    </HelpCard>
-
-    <HelpAlert variant="warning" title="Perhatian dalam Interpretasi">
-      <div className="text-sm space-y-2 mt-2">
-        <p>
-          <strong>Signifikansi vs Kekuatan:</strong> Chi-Square yang signifikan tidak selalu berarti hubungan yang kuat. 
-          Dengan sampel besar, bahkan asosiasi lemah bisa menjadi signifikan secara statistik.
-        </p>
-        <p>
-          <strong>Kausalitas:</strong> Asosiasi yang signifikan tidak menyiratkan hubungan kausal. 
-          Pertimbangkan kemungkinan confounding variables.
-        </p>
-        <p>
-          <strong>Validitas Praktis:</strong> Selalu pertimbangkan apakah hasil secara praktis bermakna 
-          dalam konteks penelitian Anda.
-        </p>
-      </div>
-    </HelpAlert>
-=======
       </HelpCard>
       
       <HelpCard title="Perhatian dalam Interpretasi" variant="default" icon={AlertTriangle}>
@@ -330,6 +210,5 @@ export const StatisticsTab = () => (
         </div>
       </HelpCard>
     </div>
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   </div>
 );

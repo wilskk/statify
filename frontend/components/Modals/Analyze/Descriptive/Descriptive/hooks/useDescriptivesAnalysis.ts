@@ -1,11 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
 import { Variable } from '@/types/Variable';
-<<<<<<< HEAD
-import { 
-=======
 import type { 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     DescriptivesAnalysisProps, 
     DescriptiveResult, 
     ZScoreData
@@ -14,13 +10,9 @@ import { formatDescriptiveTableOld } from '../utils/formatters';
 import { useZScoreProcessing } from './useZScoreProcessing';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
-<<<<<<< HEAD
-import { createPooledWorkerClient, WorkerClient } from '@/utils/workerClient';
-=======
 import type { WorkerClient } from '@/utils/workerClient';
 import { createPooledWorkerClient } from '@/utils/workerClient';
 import { spssDateTypes } from '@/types/Variable';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const useDescriptivesAnalysis = ({
     selectedVariables,
@@ -152,10 +144,6 @@ export const useDescriptivesAnalysis = ({
                         kurtosis: "KURTOSIS",
                     };
 
-<<<<<<< HEAD
-                    const requestedStats = (Object.keys(displayStatistics) as (keyof typeof displayStatistics)[])
-                        .filter(key => displayStatistics[key])
-=======
                     // Gate numeric-only stats when ALL selected variables are date types.
                     // Exception: RANGE is meaningful for dates (shown in days), so do not gate it.
                     const hasNonDate = selectedVariables.some(v => (v.type ? !spssDateTypes.has(v.type) : true));
@@ -165,7 +153,6 @@ export const useDescriptivesAnalysis = ({
                     const requestedStats = (Object.keys(displayStatistics) as (keyof typeof displayStatistics)[])
                         .filter(key => displayStatistics[key])
                         .filter(key => hasNonDate || !numericOnlyKeys.includes(key))
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         .map(key => statKeywordMap[key]);
 
                     if (requestedStats.length > 0) {

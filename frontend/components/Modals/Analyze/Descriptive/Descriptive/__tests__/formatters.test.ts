@@ -59,9 +59,6 @@ describe('formatDescriptiveTableOld', () => {
     expect(row.Sum).toBe(30);
     expect(row.Range).toBe(5);
   });
-<<<<<<< HEAD
-}); 
-=======
 
   it('date-only variables: hide numeric-only columns; show Median and Percentiles with date formatting', () => {
     const d1 = '01-01-2020';
@@ -257,4 +254,3 @@ describe('formatDescriptiveTableOld', () => {
     expect(row['75th Percentile']).toBe(3);
   });
 });
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

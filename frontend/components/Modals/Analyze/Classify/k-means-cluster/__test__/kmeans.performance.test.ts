@@ -1,16 +1,9 @@
 /** @jest-environment node */
 
-<<<<<<< HEAD
-import { Variable } from "@/types/Variable";
-import * as fs from "fs";
-import * as path from "path";
-import { KMeansClusterType } from "../types/k-means-cluster";
-=======
 import type { Variable } from "@/types/Variable";
 import * as fs from "fs";
 import * as path from "path";
 import type { KMeansClusterType } from "../types/k-means-cluster";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { performance } from "perf_hooks";
 
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
@@ -160,24 +153,14 @@ describe("KMeansClusterAnalysis Constructor Performance Test", () => {
                         : [];
 
                     const slicedDataForTarget = getSlicedData({
-<<<<<<< HEAD
-                        dataVariables: dataVariables,
-                        variables: variables,
-=======
                         dataVariables,
                         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         selectedVariables: TargetVariables,
                     });
 
                     const slicedDataForCaseTarget = getSlicedData({
-<<<<<<< HEAD
-                        dataVariables: dataVariables,
-                        variables: variables,
-=======
                         dataVariables,
                         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         selectedVariables: CaseTargetVariable,
                     });
 

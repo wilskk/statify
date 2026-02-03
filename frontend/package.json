@@ -19,10 +19,7 @@
   },
   "dependencies": {
     "@handsontable/react-wrapper": "^15.3.0",
-<<<<<<< HEAD
-=======
     "@popperjs/core": "^2.11.8",
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     "@radix-ui/react-accordion": "^1.2.8",
     "@radix-ui/react-alert-dialog": "^1.1.10",
     "@radix-ui/react-avatar": "^1.1.10",

@@ -37,11 +37,7 @@ self.onmessage = function(e) {
         "stdError": parseFloat(coef.stdError.toFixed(3)),
         "Beta": coef.standardizedCoefficient !== null ? parseFloat(coef.standardizedCoefficient.toFixed(3)) : "",
         "t": parseFloat(coef.tValue.toFixed(3)),
-<<<<<<< HEAD
-        "Sig.": parseFloat(coef.pValue.toFixed(3))
-=======
         "p-value": parseFloat(coef.pValue.toFixed(3))
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       });
     });
 
@@ -72,11 +68,7 @@ self.onmessage = function(e) {
               ]
             },
             { header: "t" },
-<<<<<<< HEAD
-            { header: "Sig." }
-=======
             { header: "p-value" }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           ],
           rows: coefficientsData
         }

@@ -28,37 +28,36 @@ WeightCases/
 ## 🎯 Core Functionality
 
 ### Weighting Methods
-
 ```typescript
 interface WeightingMethods {
   // Frequency weighting
   frequencyWeighting: {
-    purpose: "Weight cases by frequency values";
-    application: "Survey data, population representation";
+    purpose: 'Weight cases by frequency values';
+    application: 'Survey data, population representation';
     implementation: FrequencyWeighter;
-    constraints: ["Non-negative values", "Numeric variables only"];
+    constraints: ['Non-negative values', 'Numeric variables only'];
   };
-
+  
   // Probability weighting
   probabilityWeighting: {
-    purpose: "Weight cases by selection probability";
-    application: "Complex survey designs, stratified sampling";
+    purpose: 'Weight cases by selection probability';
+    application: 'Complex survey designs, stratified sampling';
     implementation: ProbabilityWeighter;
-    constraints: ["Values between 0 and 1", "Sum constraints"];
+    constraints: ['Values between 0 and 1', 'Sum constraints'];
   };
-
+  
   // Design weighting
   designWeighting: {
-    purpose: "Weight cases based on sampling design";
-    application: "Multi-stage sampling, cluster sampling";
+    purpose: 'Weight cases based on sampling design';
+    application: 'Multi-stage sampling, cluster sampling';
     implementation: DesignWeighter;
     calculations: DesignWeightCalculator;
   };
-
+  
   // Post-stratification weighting
   postStratificationWeighting: {
-    purpose: "Adjust weights for population alignment";
-    application: "Demographic adjustment, calibration";
+    purpose: 'Adjust weights for population alignment';
+    application: 'Demographic adjustment, calibration';
     implementation: PostStratificationWeighter;
     calibrationMethods: CalibrationMethod[];
   };
@@ -66,25 +65,24 @@ interface WeightingMethods {
 ```
 
 ### Weight Configuration
-
 ```typescript
 interface WeightConfiguration {
   // Basic weight settings
   basicWeightSettings: {
-    weightVariable: Variable; // Variable containing weight values
-    weightType: WeightType; // Type of weighting applied
-    weightValidation: WeightValidator; // Validation rules for weights
+    weightVariable: Variable;               // Variable containing weight values
+    weightType: WeightType;                // Type of weighting applied
+    weightValidation: WeightValidator;      // Validation rules for weights
     missingValueHandling: MissingWeightStrategy; // Handle missing weight values
   };
-
+  
   // Advanced weight options
   advancedWeightOptions: {
     weightNormalization: WeightNormalization; // Normalization method
-    weightTrimming: WeightTrimming; // Trimming extreme weights
-    weightCalibration: WeightCalibration; // Calibration to known totals
+    weightTrimming: WeightTrimming;         // Trimming extreme weights
+    weightCalibration: WeightCalibration;   // Calibration to known totals
     varianceEstimation: VarianceEstimation; // Variance estimation method
   };
-
+  
   // Weight quality control
   weightQualityControl: {
     weightDistributionAnalysis: WeightDistributionAnalyzer;
@@ -92,10 +90,10 @@ interface WeightConfiguration {
     designEffectCalculation: DesignEffectCalculator;
     weightingEfficiencyMetrics: EfficiencyMetric[];
   };
-
+  
   // Statistical adjustment
   statisticalAdjustment: {
-    biasCorrection: BiasCorrector; // Correction for selection bias
+    biasCorrection: BiasCorrector;          // Correction for selection bias
     nonResponseAdjustment: NonResponseAdjuster; // Adjust for non-response
     populationAlignment: PopulationAligner; // Align with population parameters
     calibrationWeighting: CalibrationWeighter; // Calibrate to known margins
@@ -106,33 +104,32 @@ interface WeightConfiguration {
 ## 📊 Weight Management and Analysis
 
 ### Weight Validation and Quality Control
-
 ```typescript
 interface WeightValidationQualityControl {
   // Weight value validation
   weightValueValidation: {
     rangeValidation: {
-      minimumValue: number; // Minimum acceptable weight value
-      maximumValue: number; // Maximum acceptable weight value
-      validateRange: RangeValidator; // Range validation function
+      minimumValue: number;               // Minimum acceptable weight value
+      maximumValue: number;               // Maximum acceptable weight value
+      validateRange: RangeValidator;      // Range validation function
       handleOutOfRange: OutOfRangeHandler; // Handle values outside valid range
     };
-
+    
     distributionValidation: {
-      checkSkewness: SkewnessChecker; // Check weight distribution skewness
-      detectOutliers: OutlierDetector; // Detect extreme weight values
+      checkSkewness: SkewnessChecker;     // Check weight distribution skewness
+      detectOutliers: OutlierDetector;    // Detect extreme weight values
       assessVariability: VariabilityAssessor; // Assess weight variability
       flagSuspiciousValues: SuspiciousValueFlagger; // Flag potentially problematic weights
     };
-
+    
     logicalValidation: {
       checkConsistency: ConsistencyChecker; // Check weight consistency
-      validateSum: SumValidator; // Validate weight sum constraints
+      validateSum: SumValidator;          // Validate weight sum constraints
       crossValidateWeights: CrossValidator; // Cross-validate with other variables
-      detectAnomalies: AnomalyDetector; // Detect anomalous weight patterns
+      detectAnomalies: AnomalyDetector;   // Detect anomalous weight patterns
     };
   };
-
+  
   // Weight effectiveness assessment
   weightEffectivenessAssessment: {
     designEffect: {
@@ -141,14 +138,14 @@ interface WeightValidationQualityControl {
       benchmarks: DesignEffectBenchmark[];
       recommendations: DesignEffectRecommendation[];
     };
-
+    
     effectiveSampleSize: {
       calculate: (weights: number[]) => number;
       comparison: SampleSizeComparator;
       efficiency: EfficiencyCalculator;
       powerAnalysis: PowerAnalyzer;
     };
-
+    
     weightingEfficiency: {
       calculateLoss: (weights: number[]) => number;
       varianceInflation: VarianceInflationCalculator;
@@ -156,7 +153,7 @@ interface WeightValidationQualityControl {
       costBenefitAnalysis: CostBenefitAnalyzer;
     };
   };
-
+  
   // Quality metrics
   qualityMetrics: {
     weightVariability: {
@@ -165,14 +162,14 @@ interface WeightValidationQualityControl {
       weightSpread: SpreadCalculator;
       stabilityMeasures: StabilityMeasure[];
     };
-
+    
     representativenessMetrics: {
       populationCoverage: CoverageCalculator;
       demographicAlignment: AlignmentCalculator;
       biasReduction: BiasReductionCalculator;
       representativenessIndex: RepresentativenessCalculator;
     };
-
+    
     statisticalProperties: {
       moments: MomentCalculator;
       distributionFit: DistributionFitter;
@@ -184,106 +181,105 @@ interface WeightValidationQualityControl {
 ```
 
 ### Advanced Weighting Techniques
-
 ```typescript
 interface AdvancedWeightingTechniques {
   // Calibration weighting
   calibrationWeighting: {
     raking: {
-      description: "Iterative proportional fitting for multiple margins";
+      description: 'Iterative proportional fitting for multiple margins';
       implementation: RakingCalibrator;
       convergenceCriteria: ConvergenceCriteria;
       marginConstraints: MarginConstraint[];
     };
-
+    
     linearCalibration: {
-      description: "Linear programming approach to calibration";
+      description: 'Linear programming approach to calibration';
       implementation: LinearCalibrator;
       objectiveFunction: ObjectiveFunction;
       constraints: LinearConstraint[];
     };
-
+    
     entropyCalibration: {
-      description: "Minimum entropy approach to weight calibration";
+      description: 'Minimum entropy approach to weight calibration';
       implementation: EntropyCalibrator;
       entropyMeasure: EntropyMeasure;
       distanceFunction: DistanceFunction;
     };
-
+    
     quadraticCalibration: {
-      description: "Quadratic distance minimization for calibration";
+      description: 'Quadratic distance minimization for calibration';
       implementation: QuadraticCalibrator;
       distanceMatrix: DistanceMatrix;
       regularization: RegularizationParameter;
     };
   };
-
+  
   // Propensity score weighting
   propensityScoreWeighting: {
     inverseWeighting: {
-      description: "Inverse probability weighting using propensity scores";
+      description: 'Inverse probability weighting using propensity scores';
       implementation: IPWCalculator;
       propensityModel: PropensityModel;
       truncationPoints: TruncationPoint[];
     };
-
+    
     stratificationWeighting: {
-      description: "Stratification-based propensity score weighting";
+      description: 'Stratification-based propensity score weighting';
       implementation: StratificationWeighter;
       strataDefinition: StrataDefinition;
       balanceAssessment: BalanceAssessor;
     };
-
+    
     matchingWeights: {
-      description: "Weights derived from propensity score matching";
+      description: 'Weights derived from propensity score matching';
       implementation: MatchingWeighter;
       matchingAlgorithm: MatchingAlgorithm;
       caliperSize: CaliperSize;
     };
   };
-
+  
   // Non-response adjustment
   nonResponseAdjustment: {
     responseModel: {
-      description: "Model-based non-response adjustment";
+      description: 'Model-based non-response adjustment';
       implementation: ResponseModelAdjuster;
       responseModel: ResponseModel;
       predictionAccuracy: PredictionAccuracyAssessor;
     };
-
+    
     classAdjustment: {
-      description: "Adjustment within response homogeneity groups";
+      description: 'Adjustment within response homogeneity groups';
       implementation: ClassAdjuster;
       classDefinition: ClassDefinition;
       homogeneityAssessment: HomogeneityAssessor;
     };
-
+    
     weaveAdjustment: {
-      description: "Weighting class estimation and variance estimation";
+      description: 'Weighting class estimation and variance estimation';
       implementation: WeaveAdjuster;
       varianceEstimator: VarianceEstimator;
       weightingClassOptimization: WeightingClassOptimizer;
     };
   };
-
+  
   // Robust weighting
   robustWeighting: {
     trimmedWeights: {
-      description: "Trimming extreme weights for robustness";
+      description: 'Trimming extreme weights for robustness';
       implementation: WeightTrimmer;
       trimmingPercentile: TrimmingPercentile;
       alternativeAssignment: AlternativeAssigner;
     };
-
+    
     winsorizdWeights: {
-      description: "Winsorizing extreme weights";
+      description: 'Winsorizing extreme weights';
       implementation: WeightWinsorizer;
       winsorizingLimits: WinsorizingLimit[];
       impactAssessment: ImpactAssessor;
     };
-
+    
     adaptiveWeighting: {
-      description: "Adaptive weighting based on data characteristics";
+      description: 'Adaptive weighting based on data characteristics';
       implementation: AdaptiveWeighter;
       adaptationCriteria: AdaptationCriteria;
       robustnessMetrics: RobustnessMetric[];
@@ -295,18 +291,17 @@ interface AdvancedWeightingTechniques {
 ## 🔧 Hook Implementation
 
 ### useWeightCases Hook
-
 ```typescript
 interface UseWeightCasesHook {
   // Weight configuration state
   weightConfigurationState: {
-    availableVariables: Variable[]; // Variables available for weighting
-    selectedWeightVariable: Variable; // Currently selected weight variable
-    currentWeightStatus: WeightStatus; // Current weighting status
+    availableVariables: Variable[];         // Variables available for weighting
+    selectedWeightVariable: Variable;       // Currently selected weight variable
+    currentWeightStatus: WeightStatus;      // Current weighting status
     weightValidation: WeightValidationResult; // Validation results
-    weightStatistics: WeightStatistics; // Weight distribution statistics
+    weightStatistics: WeightStatistics;     // Weight distribution statistics
   };
-
+  
   // Weight variable management
   weightVariableManagement: {
     selectWeightVariable: (variable: Variable) => void;
@@ -314,7 +309,7 @@ interface UseWeightCasesHook {
     validateWeightVariable: (variable: Variable) => ValidationResult;
     getWeightVariableStatistics: (variable: Variable) => WeightStatistics;
   };
-
+  
   // Weight configuration options
   weightConfigurationOptions: {
     weightType: WeightType;
@@ -326,7 +321,7 @@ interface UseWeightCasesHook {
     missingValueHandling: MissingWeightHandling;
     setMissingValueHandling: (handling: MissingWeightHandling) => void;
   };
-
+  
   // Advanced weighting features
   advancedWeightingFeatures: {
     calibrationSettings: CalibrationSettings;
@@ -336,7 +331,7 @@ interface UseWeightCasesHook {
     robustnessOptions: RobustnessOptions;
     setRobustnessOptions: (options: RobustnessOptions) => void;
   };
-
+  
   // Weight analysis and diagnostics
   weightAnalysisDiagnostics: {
     analyzeWeightDistribution: () => WeightDistributionAnalysis;
@@ -344,7 +339,7 @@ interface UseWeightCasesHook {
     assessWeightQuality: () => WeightQualityAssessment;
     generateWeightReport: () => WeightReport;
   };
-
+  
   // Weight application
   weightApplication: {
     applyWeights: () => Promise<WeightApplicationResult>;
@@ -353,7 +348,7 @@ interface UseWeightCasesHook {
     validateWeightApplication: () => ApplicationValidationResult;
     weightApplicationProgress: WeightApplicationProgress;
   };
-
+  
   // History and management
   historyManagement: {
     weightingHistory: WeightingOperation[];
@@ -369,7 +364,6 @@ interface UseWeightCasesHook {
 ```
 
 ### Weighting Service
-
 ```typescript
 interface WeightingService {
   // Core weighting operations
@@ -377,117 +371,119 @@ interface WeightingService {
     applyFrequencyWeights: (
       data: DataMatrix,
       weightVariable: Variable,
-      options: WeightingOptions,
+      options: WeightingOptions
     ) => Promise<WeightedDataResult>;
-
+    
     calculateDesignWeights: (
       samplingDesign: SamplingDesign,
-      populationParameters: PopulationParameters,
+      populationParameters: PopulationParameters
     ) => Promise<DesignWeightResult>;
-
+    
     performCalibration: (
       baseWeights: number[],
       calibrationConstraints: CalibrationConstraint[],
-      method: CalibrationMethod,
+      method: CalibrationMethod
     ) => Promise<CalibratedWeightResult>;
-
+    
     adjustForNonResponse: (
       responseIndicators: boolean[],
       auxiliaryVariables: DataMatrix,
-      method: NonResponseMethod,
+      method: NonResponseMethod
     ) => Promise<NonResponseAdjustmentResult>;
   };
-
+  
   // Weight validation and quality control
   weightValidationQualityControl: {
     validateWeightValues: (
       weights: number[],
-      validationCriteria: ValidationCriteria,
+      validationCriteria: ValidationCriteria
     ) => WeightValidationResult;
-
+    
     assessWeightQuality: (
       weights: number[],
-      qualityMetrics: QualityMetric[],
+      qualityMetrics: QualityMetric[]
     ) => WeightQualityAssessment;
-
+    
     detectWeightAnomalies: (
       weights: number[],
-      detectionMethod: AnomalyDetectionMethod,
+      detectionMethod: AnomalyDetectionMethod
     ) => WeightAnomalyResult;
-
+    
     optimizeWeightDistribution: (
       weights: number[],
-      optimizationCriteria: OptimizationCriteria,
+      optimizationCriteria: OptimizationCriteria
     ) => WeightOptimizationResult;
   };
-
+  
   // Statistical calculations with weights
   statisticalCalculationsWithWeights: {
     calculateWeightedMean: (
       values: number[],
-      weights: number[],
+      weights: number[]
     ) => WeightedStatistic;
-
+    
     calculateWeightedVariance: (
       values: number[],
       weights: number[],
-      method: VarianceEstimationMethod,
+      method: VarianceEstimationMethod
     ) => WeightedVariance;
-
+    
     calculateWeightedQuantiles: (
       values: number[],
       weights: number[],
-      quantiles: number[],
+      quantiles: number[]
     ) => WeightedQuantile[];
-
+    
     calculateWeightedCorrelation: (
       x: number[],
       y: number[],
-      weights: number[],
+      weights: number[]
     ) => WeightedCorrelation;
   };
-
+  
   // Weighting diagnostics
   weightingDiagnostics: {
-    calculateDesignEffect: (weights: number[]) => DesignEffectCalculation;
-
+    calculateDesignEffect: (
+      weights: number[]
+    ) => DesignEffectCalculation;
+    
     calculateEffectiveSampleSize: (
-      weights: number[],
+      weights: number[]
     ) => EffectiveSampleSizeCalculation;
-
+    
     assessWeightingEfficiency: (
       weights: number[],
-      comparisonWeights?: number[],
+      comparisonWeights?: number[]
     ) => WeightingEfficiencyAssessment;
-
+    
     generateWeightingSummary: (
-      weightingOperation: WeightingOperation,
+      weightingOperation: WeightingOperation
     ) => WeightingSummary;
   };
-
+  
   // Advanced weighting techniques
   advancedWeightingTechniques: {
     performRaking: (
       baseWeights: number[],
       marginConstraints: MarginConstraint[],
-      convergenceOptions: ConvergenceOptions,
+      convergenceOptions: ConvergenceOptions
     ) => Promise<RakingResult>;
-
+    
     calculatePropensityWeights: (
       treatmentIndicator: boolean[],
       covariates: DataMatrix,
-      propensityModel: PropensityModel,
+      propensityModel: PropensityModel
     ) => Promise<PropensityWeightResult>;
-
+    
     performEntropyCalibration: (
       baseWeights: number[],
       constraints: CalibrationConstraint[],
-      entropyOptions: EntropyOptions,
+      entropyOptions: EntropyOptions
     ) => Promise<EntropyCalibrationResult>;
-
+    
     robustWeightAdjustment: (
       weights: number[],
-      robustnessOptions: RobustnessOptions,
+      robustnessOptions: RobustnessOptions
     ) => RobustWeightResult;
   };
 }
@@ -496,7 +492,6 @@ interface WeightingService {
 ## 🎨 UI Components
 
 ### WeightCasesUI Component
-
 ```typescript
 interface WeightCasesUIProps {
   // Variable selection
@@ -507,7 +502,7 @@ interface WeightCasesUIProps {
     onWeightVariableClear: () => void;
     variableValidation: VariableValidationResult;
   };
-
+  
   // Weight configuration
   weightConfiguration: {
     weightType: WeightType;
@@ -517,7 +512,7 @@ interface WeightCasesUIProps {
     showAdvancedOptions: boolean;
     onToggleAdvancedOptions: () => void;
   };
-
+  
   // Advanced options
   advancedOptions: {
     trimmingOptions: TrimmingOptions;
@@ -527,7 +522,7 @@ interface WeightCasesUIProps {
     qualityControlOptions: QualityControlOptions;
     onQualityControlOptionsChange: (options: QualityControlOptions) => void;
   };
-
+  
   // Weight analysis
   weightAnalysis: {
     weightStatistics: WeightStatistics;
@@ -537,7 +532,7 @@ interface WeightCasesUIProps {
     onToggleAnalysis: () => void;
     onRefreshAnalysis: () => void;
   };
-
+  
   // Preview and validation
   previewValidation: {
     weightPreview: WeightPreview;
@@ -547,7 +542,7 @@ interface WeightCasesUIProps {
     showPreview: boolean;
     onTogglePreview: () => void;
   };
-
+  
   // Actions
   actions: {
     onApplyWeights: () => void;
@@ -558,7 +553,7 @@ interface WeightCasesUIProps {
     onLoadConfiguration: (config: WeightConfiguration) => void;
     onExportReport: () => void;
   };
-
+  
   // State indicators
   stateIndicators: {
     currentWeightStatus: WeightStatus;
@@ -572,14 +567,13 @@ interface WeightCasesUIProps {
 ```
 
 ### WeightCasesTest Component
-
 ```typescript
 interface WeightCasesTestProps {
   // Test scenarios
   testScenarios: WeightingTestScenario[];
   selectedScenario: WeightingTestScenario;
   onScenarioSelect: (scenario: WeightingTestScenario) => void;
-
+  
   // Test data
   testData: {
     testDatasets: WeightingTestDataset[];
@@ -587,7 +581,7 @@ interface WeightCasesTestProps {
     expectedResults: ExpectedWeightingResult[];
     actualResults: ActualWeightingResult[];
   };
-
+  
   // Method comparison
   methodComparison: {
     availableMethods: WeightingMethod[];
@@ -595,7 +589,7 @@ interface WeightCasesTestProps {
     onMethodSelect: (methods: WeightingMethod[]) => void;
     comparisonMetrics: WeightingComparisonMetric[];
   };
-
+  
   // Performance evaluation
   performanceEvaluation: {
     effectivenessMetrics: EffectivenessMetric[];
@@ -603,7 +597,7 @@ interface WeightCasesTestProps {
     robustnessMetrics: RobustnessMetric[];
     accuracyMetrics: AccuracyMetric[];
   };
-
+  
   // Test execution
   testExecution: {
     onRunTest: () => void;
@@ -618,60 +612,59 @@ interface WeightCasesTestProps {
 ## 🧪 Testing Strategy
 
 ### Test Coverage Areas
-
 ```typescript
 // Weighting functionality testing
-describe("WeightCasesModal", () => {
-  describe("Weight variable selection", () => {
-    it("filters numeric variables correctly");
-    it("validates weight variable appropriately");
-    it("handles missing weight values correctly");
-    it("prevents invalid variable selection");
+describe('WeightCasesModal', () => {
+  describe('Weight variable selection', () => {
+    it('filters numeric variables correctly');
+    it('validates weight variable appropriately');
+    it('handles missing weight values correctly');
+    it('prevents invalid variable selection');
   });
-
-  describe("Weight application", () => {
-    it("applies frequency weights correctly");
-    it("handles zero and negative weights appropriately");
-    it("maintains data integrity during weighting");
-    it("updates global weight status correctly");
+  
+  describe('Weight application', () => {
+    it('applies frequency weights correctly');
+    it('handles zero and negative weights appropriately');
+    it('maintains data integrity during weighting');
+    it('updates global weight status correctly');
   });
-
-  describe("Weight validation", () => {
-    it("validates weight ranges correctly");
-    it("detects anomalous weight values");
-    it("calculates quality metrics accurately");
-    it("provides appropriate warnings");
+  
+  describe('Weight validation', () => {
+    it('validates weight ranges correctly');
+    it('detects anomalous weight values');
+    it('calculates quality metrics accurately');
+    it('provides appropriate warnings');
   });
-
-  describe("Advanced weighting", () => {
-    it("performs calibration correctly");
-    it("applies trimming appropriately");
-    it("handles normalization properly");
-    it("calculates design effects accurately");
+  
+  describe('Advanced weighting', () => {
+    it('performs calibration correctly');
+    it('applies trimming appropriately');
+    it('handles normalization properly');
+    it('calculates design effects accurately');
   });
-
-  describe("Statistical calculations", () => {
-    it("calculates weighted statistics correctly");
-    it("handles design effects appropriately");
-    it("estimates variances correctly with weights");
-    it("maintains statistical properties");
+  
+  describe('Statistical calculations', () => {
+    it('calculates weighted statistics correctly');
+    it('handles design effects appropriately');
+    it('estimates variances correctly with weights');
+    it('maintains statistical properties');
   });
 });
 
 // Service testing
-describe("weightingService", () => {
-  describe("Weight calculations", () => {
-    it("calculates weights correctly");
-    it("validates weight constraints");
-    it("handles edge cases appropriately");
-    it("maintains numerical stability");
+describe('weightingService', () => {
+  describe('Weight calculations', () => {
+    it('calculates weights correctly');
+    it('validates weight constraints');
+    it('handles edge cases appropriately');
+    it('maintains numerical stability');
   });
-
-  describe("Quality control", () => {
-    it("assesses weight quality correctly");
-    it("detects problems appropriately");
-    it("provides actionable recommendations");
-    it("validates improvement strategies");
+  
+  describe('Quality control', () => {
+    it('assesses weight quality correctly');
+    it('detects problems appropriately');
+    it('provides actionable recommendations');
+    it('validates improvement strategies');
   });
 });
 ```
@@ -679,14 +672,13 @@ describe("weightingService", () => {
 ## 📋 Development Guidelines
 
 ### Adding New Weighting Methods
-
 ```typescript
 // 1. Define weighting method interface
 interface NewWeightingMethod extends WeightingMethod {
-  id: "newMethod";
-  name: "New Weighting Method";
-  description: "Description of weighting method";
-  type: "frequency" | "probability" | "design" | "calibration";
+  id: 'newMethod';
+  name: 'New Weighting Method';
+  description: 'Description of weighting method';
+  type: 'frequency' | 'probability' | 'design' | 'calibration';
   parameters: WeightingMethodParameters;
   constraints: WeightingConstraint[];
 }
@@ -695,56 +687,54 @@ interface NewWeightingMethod extends WeightingMethod {
 const newWeightingImplementation = {
   calculateWeights: (
     data: DataMatrix,
-    parameters: WeightingMethodParameters,
+    parameters: WeightingMethodParameters
   ): Promise<WeightingResult> => {
     // Weighting calculation logic
   },
-
+  
   validateParameters: (
-    parameters: WeightingMethodParameters,
+    parameters: WeightingMethodParameters
   ): ValidationResult => {
     // Parameter validation
   },
-
-  assessQuality: (weights: number[], data: DataMatrix): QualityAssessment => {
+  
+  assessQuality: (
+    weights: number[],
+    data: DataMatrix
+  ): QualityAssessment => {
     // Quality assessment logic
-  },
+  }
 };
 
 // 3. Register weighting method
 const WEIGHTING_METHODS = {
   ...existingMethods,
-  newMethod: newWeightingImplementation,
+  newMethod: newWeightingImplementation
 };
 
 // 4. Add comprehensive tests
-describe("New Weighting Method", () => {
-  it("calculates weights correctly");
-  it("validates parameters appropriately");
-  it("handles edge cases gracefully");
-  it("maintains statistical properties");
+describe('New Weighting Method', () => {
+  it('calculates weights correctly');
+  it('validates parameters appropriately');
+  it('handles edge cases gracefully');
+  it('maintains statistical properties');
 });
 ```
 
 ### Survey Data Analysis Guidelines
-
 ```typescript
 // 1. Design effect monitoring
 const monitorDesignEffect = (weights: number[]) => {
   const designEffect = calculateDesignEffect(weights);
-
+  
   if (designEffect > DESIGN_EFFECT_WARNING_THRESHOLD) {
     return {
       warning: true,
-      message: "High design effect detected - consider weight trimming",
-      recommendations: [
-        "Trim extreme weights",
-        "Check for outliers",
-        "Consider alternative weighting",
-      ],
+      message: 'High design effect detected - consider weight trimming',
+      recommendations: ['Trim extreme weights', 'Check for outliers', 'Consider alternative weighting']
     };
   }
-
+  
   return { warning: false };
 };
 
@@ -752,7 +742,7 @@ const monitorDesignEffect = (weights: number[]) => {
 const calculateEffectiveSampleSize = (weights: number[]) => {
   const sumWeights = weights.reduce((sum, w) => sum + w, 0);
   const sumSquaredWeights = weights.reduce((sum, w) => sum + w * w, 0);
-
+  
   return (sumWeights * sumWeights) / sumSquaredWeights;
 };
 ```
@@ -760,11 +750,10 @@ const calculateEffectiveSampleSize = (weights: number[]) => {
 ---
 
 WeightCases modal menyediakan comprehensive case weighting capabilities dengan advanced statistical methods, quality control mechanisms, dan robust weighting techniques untuk proper survey data analysis dan population inference dalam Statify.
-M --> D(closes dialog);
-end
+        M --> D(closes dialog);
+    end
 
     A --> D;
-
 ```
 
 1.  **Initialization**: `WeightCasesModal` mounts and initializes the `useWeightCases` hook, passing the full variable list from `useVariableStore` and the current weight from `useMetaStore`.
@@ -799,14 +788,12 @@ This suite tests the `WeightCasesUI` component in isolation.
 -   **Error Handling**: Confirms that the error dialog is rendered when `errorDialogOpen` is true.
 
 ```
-
 /WeightCases
 ├── 📂 hooks/
-│ └── 📄 useWeightCases.ts // Mengelola state & logika UI.
-├── 📄 index.tsx // Titik masuk & perakit (Orchestrator).
-├── 📄 README.md // Dokumen ini.
-└── 📄 types.ts // Definisi tipe TypeScript.
-
+│   └── 📄 useWeightCases.ts  // Mengelola state & logika UI.
+├── 📄 index.tsx              // Titik masuk & perakit (Orchestrator).
+├── 📄 README.md              // Dokumen ini.
+└── 📄 types.ts              // Definisi tipe TypeScript.
 ```
 
 -   **`index.tsx` (Orchestrator & UI)**: Karena UI untuk fitur ini cukup sederhana, komponen UI (`WeightCasesContent`) dan perakit (`WeightCasesModal`) digabungkan dalam satu file, namun tetap dengan pemisahan logis. Perakit memanggil *hook* dan menyalurkan *props* ke komponen UI.
@@ -825,5 +812,4 @@ This suite tests the `WeightCasesUI` component in isolation.
 4.  **Reset/Hapus Pembobotan**:
     -   Pengguna menghapus variabel dari kotak atau mengklik "Reset".
     -   `handleSave` dipanggil (jika OK diklik setelah menghapus) atau `handleReset` dipanggil.
-    -   `setMeta({ weight: '' })` dipanggil, menghapus konfigurasi pembobotan dari state global.
-```
+    -   `setMeta({ weight: '' })` dipanggil, menghapus konfigurasi pembobotan dari state global. 

@@ -1,30 +1,18 @@
 "use client";
 
-<<<<<<< HEAD
-import React, { FC, useState, useEffect } from "react";
-=======
 import type { FC} from "react";
 import React, { useState, useEffect } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-<<<<<<< HEAD
-import { Variable } from "@/types/Variable";
-=======
 import type { Variable } from "@/types/Variable";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/UnitRootTest/hooks/analyzeHook";
 import { useOptionHook } from "@/components/Modals/Analyze/TimeSeries/UnitRootTest/hooks/optionHook";
 import VariablesTab from "@/components/Modals/Analyze/TimeSeries/UnitRootTest/VariablesTab";
 import OptionTab from "@/components/Modals/Analyze/TimeSeries/UnitRootTest/OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
-<<<<<<< HEAD
-import { DataRow } from "@/types/Data";
-=======
 import type { DataRow } from "@/types/Data";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { toast } from "sonner";
 
 interface UnitRootTestProps {
@@ -77,11 +65,7 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
 
     useEffect(() => {
         if (combinedError) {
-<<<<<<< HEAD
-            toast.error("Error: " + String(combinedError));
-=======
             toast.error(`Error: ${  String(combinedError)}`);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         }
     }, [combinedError]);
 
@@ -92,11 +76,7 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
                 const savedData = await getFormData("UnitRootTest", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
                 
-<<<<<<< HEAD
-                if (savedData && savedData.prevDataRef) {
-=======
                 if (savedData?.prevDataRef) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // If previous data reference exists, check if it matches current data
                     setPrevDataRef(savedData.prevDataRef);
                     if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
@@ -108,11 +88,7 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
                     }
                 }
 
-<<<<<<< HEAD
-                if (savedData && savedData.availableVariables && savedData.selectedVariables) {
-=======
                 if (savedData?.availableVariables && savedData.selectedVariables) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // Validate that saved variables still exist in current variable store
                     const validAvailableVars = savedData.availableVariables.filter((savedVar: Variable) =>
                         filteredVariables.some(v => v.columnIndex === savedVar.columnIndex)

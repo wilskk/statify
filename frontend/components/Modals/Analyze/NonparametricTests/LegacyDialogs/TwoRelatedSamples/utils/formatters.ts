@@ -1,25 +1,14 @@
-<<<<<<< HEAD
-import {
-    TwoRelatedSamplesResults,
-    TwoRelatedSamplesResult,
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     TwoRelatedSamplesTable,
     TableColumnHeader,
     TableRow,
     RanksFrequencies,
     TestStatistics,
-<<<<<<< HEAD
-    DescriptiveStatistics,
-    DisplayStatistics,
-=======
     DisplayStatistics} from '../types';
 import {
     TwoRelatedSamplesResults,
     TwoRelatedSamplesResult,
     DescriptiveStatistics
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 } from '../types';
 
 /**
@@ -35,11 +24,7 @@ export function formatRanksFrequenciesTable(
     
     if (!results || results.length === 0) {
         return {
-<<<<<<< HEAD
-            title: title,
-=======
             title,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
@@ -50,21 +35,13 @@ export function formatRanksFrequenciesTable(
     
     if (testResults.length === 0) {
         return {
-<<<<<<< HEAD
-            title: title,
-=======
             title,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             columnHeaders: [{ header: "No Data", key: "noData" }],
             rows: []
         };
     }
     
-<<<<<<< HEAD
-    let columnHeaders: TableColumnHeader[] = [
-=======
     const columnHeaders: TableColumnHeader[] = [
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         { header: "", key: "rowHeader" },
         { header: "", key: "type" },
         { header: "N", key: "N" }
@@ -189,11 +166,7 @@ export function formatTestStatisticsTable (
 
         if (testType === "WILCOXON") {
             testResults.forEach((result, index) => {
-<<<<<<< HEAD
-                if (result && result.variable1 && result.variable2 && result.testStatisticsWilcoxon && !result.metadata?.insufficientType.includes('empty')) {
-=======
                 if (result?.variable1 && result.variable2 && result.testStatisticsWilcoxon && !result.metadata?.insufficientType.includes('empty')) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     const stats = result.testStatisticsWilcoxon as TestStatistics;
 
                     table.columnHeaders.push({
@@ -208,11 +181,7 @@ export function formatTestStatisticsTable (
 
         if (testType === "SIGN") {
             testResults.forEach((result, index) => {
-<<<<<<< HEAD
-                if (result && result.variable1 && result.variable2 && result.testStatisticsSign && !result.metadata?.insufficientType.includes('empty')) {
-=======
                 if (result?.variable1 && result.variable2 && result.testStatisticsSign && !result.metadata?.insufficientType.includes('empty')) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     const stats = result.testStatisticsSign as TestStatistics;
                     table.columnHeaders.push({
                         header: `${result.variable1.label || result.variable1.name} - ${result.variable2.label || result.variable2.name}`,

@@ -1,16 +1,8 @@
-<<<<<<< HEAD
-import { UnivariateFinalResultType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
-import { ColumnHeader, Table } from "@/types/Table";
-import { useResultStore } from "@/stores/useResultStore";
-import { UnivariateType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import { Variable } from "@/types/Variable";
-=======
 import type { UnivariateFinalResultType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
 import type { ColumnHeader, Table } from "@/types/Table";
 import { useResultStore } from "@/stores/useResultStore";
 import type { UnivariateType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
 import type { Variable } from "@/types/Variable";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 
@@ -416,12 +408,7 @@ export async function resultUnivariateAnalysis({
             const savedVariablesTable = findTable("saved_variables_table");
 
             if (
-<<<<<<< HEAD
-                savedVariablesTable &&
-                savedVariablesTable.rows &&
-=======
                 savedVariablesTable?.rows &&
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 savedVariablesTable.rows.length > 0
             ) {
                 await saveUnivariateResults(

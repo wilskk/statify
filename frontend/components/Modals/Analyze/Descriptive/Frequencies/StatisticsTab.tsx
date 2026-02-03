@@ -1,24 +1,14 @@
-<<<<<<< HEAD
-import React, { FC, useState, useEffect, Dispatch, SetStateAction } from "react";
-=======
 import type { FC} from "react";
 import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useMobile } from '@/hooks/useMobile';
-<<<<<<< HEAD
-import { TourStep } from "./hooks/useTourGuide";
-import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { StatisticsSettingsResult } from "./hooks";
-=======
 import type { TourStep } from "./hooks/useTourGuide";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import type { StatisticsSettingsResult } from "./hooks";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export interface StatisticsTabProps {
     settings: StatisticsSettingsResult;
@@ -77,11 +67,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
 
     const showAlert = (title: string, description: string) => {
         toast.error(title, {
-<<<<<<< HEAD
-            description: description,
-=======
             description,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         });
     };
 

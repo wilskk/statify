@@ -1,12 +1,7 @@
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
-<<<<<<< HEAD
-import { ExploreAnalysisParams } from "../types";
-import { Variable } from "@/types/Variable";
-=======
 import type { ExploreAnalysisParams } from "../types";
 import type { Variable } from "@/types/Variable";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // Date utility functions
 function isDateString(value: string): boolean {
@@ -106,11 +101,7 @@ export const processAndAddPlots = async (
 
   // Determine output order: Boxplot(s), Histogram(s), then Stem-and-Leaf plot(s)
   const order: Array<{ type: string; enabled: boolean }> = [
-<<<<<<< HEAD
-    { type: "Boxplot", enabled: boxplotType !== "none" },
-=======
     { type: boxplotType === "factor-levels-together" ? "Clustered Boxplot" : "Boxplot", enabled: boxplotType !== "none" },
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     { type: "Histogram", enabled: showHistogram },
     { type: "Stem And Leaf Plot", enabled: showStemAndLeaf },
   ];
@@ -237,11 +228,7 @@ export const processAndAddPlots = async (
       }
       if (clusterData.length > 0) {
         const chartTitle = dep.name; // Variable name only
-<<<<<<< HEAD
-        pushChart("Boxplot", chartTitle, clusterData, "Boxplot");
-=======
         pushChart("Clustered Boxplot", chartTitle, clusterData, "Clustered Boxplot");
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       }
     }
   }

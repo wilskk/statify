@@ -32,8 +32,6 @@ const LinearityTest: React.FC<LinearityTestProps> = ({ data }) => {
   try {
     // Parse the JSON data
     const parsedData = JSON.parse(data);
-<<<<<<< HEAD
-=======
 
     // New schema from AssumptionTest: { tables: [...] } wrapped with title/description via statistics store
     if (parsedData && parsedData.tables && Array.isArray(parsedData.tables)) {
@@ -74,7 +72,6 @@ const LinearityTest: React.FC<LinearityTestProps> = ({ data }) => {
     }
 
     // Legacy schema support
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     const { title, description, allLinear, results } = parsedData;
 
     if (!results || !Array.isArray(results)) {

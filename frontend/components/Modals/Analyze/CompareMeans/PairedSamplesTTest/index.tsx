@@ -1,11 +1,7 @@
 "use client";
 
-<<<<<<< HEAD
-import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
-=======
 import type { FC} from "react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { HelpCircle, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -28,11 +24,7 @@ import {
 } from "@/components/ui/tooltip";
 import { TourPopup } from "@/components/Common/TourComponents";
 import { useVariableStore } from "@/stores/useVariableStore";
-<<<<<<< HEAD
-import { BaseModalProps } from "@/types/modalTypes";
-=======
 import type { BaseModalProps } from "@/types/modalTypes";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { toast } from "sonner";
 import {
     useVariableSelection,
@@ -41,11 +33,7 @@ import {
     useTourGuide,
     baseTourSteps,
 } from "./hooks";
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     TabControlProps,
     TabType,
 } from "./types";

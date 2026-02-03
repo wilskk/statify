@@ -2,11 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Separator} from "@/components/ui/separator";
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     CorrespondenceStatisticsProps,
     CorrespondenceStatisticsType,
 } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis";
@@ -14,11 +10,7 @@ import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";
 import {ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
 import {Checkbox} from "@/components/ui/checkbox";
-<<<<<<< HEAD
-import {CheckedState} from "@radix-ui/react-checkbox";
-=======
 import type {CheckedState} from "@radix-ui/react-checkbox";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const CorrespondenceStatistics = ({
     isStatisticsOpen,

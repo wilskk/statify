@@ -1,17 +1,9 @@
-<<<<<<< HEAD
-import React, { FC } from "react";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { CellsTabProps } from "./types";
-=======
 import type { FC } from "react";
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import type { CellsTabProps } from "./types";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { useMetaStore } from "@/stores/useMetaStore";
 

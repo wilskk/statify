@@ -1,10 +1,7 @@
 import { formatStatisticsTable } from '../utils/formatters';
 import type { FrequenciesResult } from '../types';
 import type { Variable } from '@/types/Variable';
-<<<<<<< HEAD
-=======
 import { spssSecondsToDateString } from '@/lib/spssDateConverter';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 describe('formatStatisticsTable across variable types', () => {
   const numVar: Variable = {
@@ -109,19 +106,6 @@ describe('formatStatisticsTable across variable types', () => {
     expect(meanRow.dateVar).toBe('');
     expect(meanRow.strVar ?? '').toBe('');
 
-<<<<<<< HEAD
-    // Mode row: numeric formatted, string raw label, date unformatted numeric
-    const modeRow = table.rows.find((r: any) => r.rowHeader[0] === 'Mode');
-    expect(modeRow.numVar).toBe('8.00');
-    expect(modeRow.strVar).toBe('A');
-    expect(modeRow.dateVar).toBe('18628');
-
-    // Percentiles should hide for date (.) and format for numeric
-    const percentilesGroup = table.rows.find((r: any) => r.rowHeader[0] === 'Percentiles');
-    const p25 = percentilesGroup.children.find((r: any) => r.rowHeader[1] === '25');
-    expect(p25.numVar).toBe('8.00');
-    expect(p25.dateVar).toBe('.');
-=======
     // Mode row: numeric formatted, string raw label, date formatted as dd-mm-yyyy
     const modeRow = table.rows.find((r: any) => r.rowHeader[0] === 'Mode');
     expect(modeRow.numVar).toBe('8.00');
@@ -140,7 +124,6 @@ describe('formatStatisticsTable across variable types', () => {
     expect(p25.numVar).toBe('8.00');
     const expectedP25Date = spssSecondsToDateString(18500) as string;
     expect(p25.dateVar).toBe(expectedP25Date);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   });
 });
 

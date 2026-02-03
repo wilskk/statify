@@ -1,15 +1,3 @@
-<<<<<<< HEAD
-import { 
-    OneWayAnovaResult, 
-    OneWayAnovaTable, 
-    TableColumnHeader, 
-    TableRow, 
-    MultipleComparisons,
-    HomogeneousSubsets,
-    OneWayAnova
-} from '../types';
-import { Variable } from '@/types/Variable';
-=======
 import type { 
     OneWayAnovaResult, 
     OneWayAnovaTable, 
@@ -22,7 +10,6 @@ import {
     HomogeneousSubsets
 } from '../types';
 import type { Variable } from '@/types/Variable';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 /**
  * Formats the ANOVA table
@@ -66,11 +53,7 @@ export function formatOneWayAnovaTable(
                 rowHeader: [variable1.label || variable1.name],
                 type: 'Between Groups',
                 SumOfSquares: formatNumber(SumOfSquares, decimals + 3),
-<<<<<<< HEAD
-                df: df,
-=======
                 df,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 MeanSquare: formatNumber(MeanSquare, decimals + 3),
             });
         } else {
@@ -78,11 +61,7 @@ export function formatOneWayAnovaTable(
                 rowHeader: [variable1.label || variable1.name],
                 type: 'Between Groups',
                 SumOfSquares: formatNumber(SumOfSquares, decimals + 3),
-<<<<<<< HEAD
-                df: df,
-=======
                 df,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 MeanSquare: formatNumber(MeanSquare, decimals + 3),
                 F: formatNumber(F, decimals + 3),
                 Sig: formatPValue(Sig)
@@ -237,11 +216,7 @@ export function formatHomogeneityOfVarianceTable(
             
             table.rows.push({
                 rowHeader: [variableName],
-<<<<<<< HEAD
-                type: type,
-=======
                 type,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 LeveneStatistic: formatNumber(LeveneStatistic, decimals + 3),
                 df1: formatDF(df1),
                 df2: formatDF(df2),
@@ -304,13 +279,8 @@ export function formatMultipleComparisonsTable(
                 
                 table.rows.push({
                     rowHeader: [variableName],
-<<<<<<< HEAD
-                    factor1: factor1,
-                    factor2: factor2,
-=======
                     factor1,
                     factor2,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     meanDifference: formatNumber(meanDifference, decimals),
                     stdError: formatNumber(stdError, decimals),
                     Sig: formatPValue(Sig),
@@ -347,11 +317,7 @@ export function formatHomogeneousSubsetsTable(
     // Find the result for this specific variable
     const variableResult = results;
 
-<<<<<<< HEAD
-    if (!variableResult || !variableResult.homogeneousSubsets) {
-=======
     if (!variableResult?.homogeneousSubsets) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         return {
             title: variable.label || variable.name,
             columnHeaders: [{ header: "No Data", key: "noData" }],

@@ -1,9 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     OptScaOveralsAnalysisType
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/types/optimal-scaling-overals-worker";
 
@@ -35,13 +31,8 @@ export async function analyzeOptScaOverals({
 
         // Get sliced data for this set
         const setSlicedData = getSlicedData({
-<<<<<<< HEAD
-            dataVariables: dataVariables,
-            variables: variables,
-=======
             dataVariables,
             variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             selectedVariables: setVariableNames,
         });
 
@@ -55,13 +46,8 @@ export async function analyzeOptScaOverals({
 
     // For plots target (keeping this as-is since it wasn't nested in the original)
     const slicedDataForPlotsTarget = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: PlotsTargetVariable,
     });
 

@@ -1,17 +1,10 @@
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-<<<<<<< HEAD
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { Ruler, Hash, Settings } from 'lucide-react';
-=======
 import { HelpCard, HelpAlert, HelpSection, HelpStep } from '../../ui/HelpLayout';
 import { Ruler, Hash, Settings, ListOrdered } from 'lucide-react';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export default function SetMeasurementLevelGuide() {
   const sections = [
     {
-<<<<<<< HEAD
-=======
       id: 'how-to-steps',
       title: 'Cara Mengatur Tingkat Pengukuran',
       description: 'Langkah-langkah untuk mendefinisikan tingkat pengukuran variabel',
@@ -59,7 +52,6 @@ export default function SetMeasurementLevelGuide() {
       )
     },
     {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       id: 'overview',
       title: 'Ringkasan',
       description: 'Pengantar fitur Atur Tingkat Pengukuran',
@@ -179,20 +171,6 @@ export default function SetMeasurementLevelGuide() {
   const tips = [
     {
       type: 'tip' as const,
-<<<<<<< HEAD
-      title: 'Identifikasi Cepat',
-      content: 'Pertimbangkan sifat data Anda: apakah kategorikal (nominal/ordinal) atau numerik (skala)?'
-    },
-    {
-      type: 'info' as const,
-      title: 'Seleksi Berganda',
-  content: 'Gunakan fitur seleksi berganda pada dialog untuk memilih beberapa variabel sekaligus dan memindahkannya bersamaan.'
-    },
-    {
-      type: 'warning' as const,
-      title: 'Validasi Hasil',
-      content: 'Selalu periksa kembali kategori yang dipilih sebelum menyimpan perubahan.'
-=======
       title: 'Identifikasi Jenis Data dengan Cepat',
       content: 'Pertimbangkan sifat data Anda: apakah berupa kategori tanpa urutan (nominal), kategori dengan urutan (ordinal), atau data numerik (skala)?'
     },
@@ -210,32 +188,21 @@ export default function SetMeasurementLevelGuide() {
       type: 'tip' as const,
       title: 'Contoh Praktis Pengelompokan',
       content: 'Nominal: Jenis Kelamin, Agama, Warna. Ordinal: Rating, Tingkat Pendidikan, Skala Likert. Skala: Umur, Pendapatan, Berat Badan.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
-<<<<<<< HEAD
-    { title: 'Properti Variabel', href: '/help/data-guide/define-var-props' },
-    { title: 'Panduan Jenis Data', href: '/help/data-guide' },
-=======
     { title: 'Manajemen Data', href: '/help/data-guide' },
     { title: 'Properti Variabel', href: '/help/data-guide/define-var-props' },
     { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' },
     { title: 'Validasi Data', href: '/help/data-guide/unusual-cases' }
   ];
 
   return (
     <HelpGuideTemplate
-<<<<<<< HEAD
-      title="Fitur Atur Tingkat Pengukuran"
-      description="Panduan ini memberikan gambaran umum tentang fitur 'Atur Tingkat Pengukuran' yang memungkinkan Anda secara efisien mendefinisikan tingkat pengukuran (Nominal, Ordinal, atau Skala) untuk variabel yang saat ini memiliki tingkat pengukuran 'Tidak Diketahui'."
-=======
       title="Atur Tingkat Pengukuran"
       description="Panduan lengkap untuk mendefinisikan tingkat pengukuran (Nominal, Ordinal, Skala) variabel dalam dataset"
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

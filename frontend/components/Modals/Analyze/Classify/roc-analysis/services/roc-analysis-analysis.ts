@@ -1,9 +1,5 @@
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
-<<<<<<< HEAD
-import {RocAnalysisAnalysisType} from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
-=======
 import type {RocAnalysisAnalysisType} from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export async function analyzeRocAnalysis({
     configData,
@@ -19,35 +15,20 @@ export async function analyzeRocAnalysis({
         : [];
 
     const slicedDataForTest = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: TestVariables,
     });
 
     const slicedDataForState = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: StateVariable,
     });
 
     const slicedDataForTargetGroup = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: TargetGroupVariable,
     });
 

@@ -28,132 +28,130 @@ SortVars/
 ## 🎯 Core Functionality
 
 ### Variable Sorting Capabilities
-
 ```typescript
 interface VariableSortingCapabilities {
   // Attribute-based sorting
   attributeBasedSorting: {
-    sortableAttributes: SortableAttribute[]; // Variable properties available for sorting
-    attributeTypes: AttributeType[]; // Data types of sortable attributes
-    sortingMethods: SortingMethod[]; // Methods for handling different attribute types
-    customAttributes: CustomAttribute[]; // User-defined variable attributes
+    sortableAttributes: SortableAttribute[];   // Variable properties available for sorting
+    attributeTypes: AttributeType[];           // Data types of sortable attributes
+    sortingMethods: SortingMethod[];          // Methods for handling different attribute types
+    customAttributes: CustomAttribute[];      // User-defined variable attributes
   };
-
+  
   // Multi-criteria sorting
   multiCriteriaSorting: {
-    primaryAttribute: SortableAttribute; // Primary sort criterion
+    primaryAttribute: SortableAttribute;      // Primary sort criterion
     secondaryAttributes: SortableAttribute[]; // Secondary sort criteria
-    tieBreakingRules: TieBreakingRule[]; // Rules for handling equal values
+    tieBreakingRules: TieBreakingRule[];     // Rules for handling equal values
     hierarchicalSorting: HierarchicalSorter; // Multi-level sorting implementation
   };
-
+  
   // Data synchronization
   dataSynchronization: {
-    variableColumnAlignment: ColumnAligner; // Align data columns with variable order
+    variableColumnAlignment: ColumnAligner;   // Align data columns with variable order
     dataIntegrityMaintenance: IntegrityMaintainer; // Maintain data-variable relationships
-    atomicOperations: AtomicOperator; // Ensure consistency during updates
-    rollbackCapability: RollbackManager; // Undo capability for failed operations
+    atomicOperations: AtomicOperator;         // Ensure consistency during updates
+    rollbackCapability: RollbackManager;     // Undo capability for failed operations
   };
-
+  
   // Advanced sorting features
   advancedSortingFeatures: {
-    naturalLanguageSorting: NaturalSorter; // Human-friendly text sorting
-    numericAwareSorting: NumericAwareSorter; // Number-aware text sorting
-    localeSpecificSorting: LocaleSorter; // Culture-specific sorting rules
+    naturalLanguageSorting: NaturalSorter;    // Human-friendly text sorting
+    numericAwareSorting: NumericAwareSorter;  // Number-aware text sorting
+    localeSpecificSorting: LocaleSorter;      // Culture-specific sorting rules
     customComparatorSorting: CustomComparatorSorter; // User-defined comparison logic
   };
 }
 ```
 
 ### Sortable Variable Attributes
-
 ```typescript
 interface SortableVariableAttributes {
   // Core variable properties
   coreVariableProperties: {
     name: {
-      attribute: "Variable name identifier";
-      sortType: "alphanumeric";
+      attribute: 'Variable name identifier';
+      sortType: 'alphanumeric';
       caseSensitive: boolean;
       naturalSorting: boolean;
     };
-
+    
     label: {
-      attribute: "Descriptive variable label";
-      sortType: "text";
+      attribute: 'Descriptive variable label';
+      sortType: 'text';
       localeAware: boolean;
       emptyValueHandling: EmptyValueStrategy;
     };
-
+    
     type: {
-      attribute: "Data type classification";
-      sortType: "categorical";
+      attribute: 'Data type classification';
+      sortType: 'categorical';
       customOrder: DataType[];
       priorityRules: TypePriorityRule[];
     };
-
+    
     measure: {
-      attribute: "Measurement level";
-      sortType: "categorical";
+      attribute: 'Measurement level';
+      sortType: 'categorical';
       customOrder: MeasurementLevel[];
       hierarchicalOrder: MeasurementHierarchy;
     };
   };
-
+  
   // Extended variable properties
   extendedVariableProperties: {
     columnIndex: {
-      attribute: "Position in dataset";
-      sortType: "numeric";
-      sortDirection: "ascending" | "descending";
+      attribute: 'Position in dataset';
+      sortType: 'numeric';
+      sortDirection: 'ascending' | 'descending';
     };
-
+    
     width: {
-      attribute: "Display width in variable view";
-      sortType: "numeric";
+      attribute: 'Display width in variable view';
+      sortType: 'numeric';
       defaultValue: number;
     };
-
+    
     decimals: {
-      attribute: "Number of decimal places";
-      sortType: "numeric";
+      attribute: 'Number of decimal places';
+      sortType: 'numeric';
       applicableTypes: DataType[];
     };
-
+    
     values: {
-      attribute: "Value labels configuration";
-      sortType: "complex";
+      attribute: 'Value labels configuration';
+      sortType: 'complex';
       sortingCriteria: ValueLabelSortingCriteria;
     };
   };
-
+  
   // Computed variable properties
   computedVariableProperties: {
     uniqueValueCount: {
-      attribute: "Number of unique values";
-      sortType: "numeric";
+      attribute: 'Number of unique values';
+      sortType: 'numeric';
       computationMethod: UniqueValueCounter;
     };
-
+    
     missingValueCount: {
-      attribute: "Number of missing values";
-      sortType: "numeric";
+      attribute: 'Number of missing values';
+      sortType: 'numeric';
       computationMethod: MissingValueCounter;
     };
-
+    
     dataQualityScore: {
-      attribute: "Overall data quality metric";
-      sortType: "numeric";
+      attribute: 'Overall data quality metric';
+      sortType: 'numeric';
       computationMethod: QualityScoreCalculator;
     };
-
+    
     lastModified: {
-      attribute: "Last modification timestamp";
-      sortType: "datetime";
+      attribute: 'Last modification timestamp';
+      sortType: 'datetime';
       computationMethod: TimestampTracker;
     };
   };
-
+  
   // Custom user attributes
   customUserAttributes: {
     userDefinedProperties: Map<string, CustomProperty>;
@@ -167,120 +165,118 @@ interface SortableVariableAttributes {
 ## 🔄 Variable Sorting Workflow
 
 ### Complete Sorting Process
-
 ```typescript
 interface CompleteSortingProcess {
   // Step 1: Attribute selection
   attributeSelection: {
-    availableAttributes: SortableAttribute[]; // All sortable variable attributes
-    selectedAttribute: SortableAttribute; // User-selected sort attribute
-    attributeValidation: AttributeValidator; // Validate attribute suitability
+    availableAttributes: SortableAttribute[];  // All sortable variable attributes
+    selectedAttribute: SortableAttribute;     // User-selected sort attribute
+    attributeValidation: AttributeValidator;  // Validate attribute suitability
     attributePreprocessing: AttributePreprocessor; // Prepare attribute for sorting
   };
-
+  
   // Step 2: Sort configuration
   sortConfiguration: {
-    sortDirection: SortDirection; // Ascending or descending
-    sortAlgorithm: VariableSortAlgorithm; // Algorithm for variable sorting
+    sortDirection: SortDirection;             // Ascending or descending
+    sortAlgorithm: VariableSortAlgorithm;    // Algorithm for variable sorting
     tieBreakingStrategy: TieBreakingStrategy; // Handling of equal values
     specialValueHandling: SpecialValueHandler; // Null, undefined, empty handling
   };
-
+  
   // Step 3: Variable reordering
   variableReordering: {
-    originalVariableOrder: Variable[]; // Variables before sorting
-    sortedVariableOrder: Variable[]; // Variables after sorting
-    orderMapping: OrderMapping; // Mapping from old to new positions
-    validationResults: ValidationResult[]; // Validation of new order
+    originalVariableOrder: Variable[];        // Variables before sorting
+    sortedVariableOrder: Variable[];         // Variables after sorting
+    orderMapping: OrderMapping;              // Mapping from old to new positions
+    validationResults: ValidationResult[];   // Validation of new order
   };
-
+  
   // Step 4: Data column synchronization
   dataColumnSynchronization: {
-    originalDataStructure: DataStructure; // Data before column reordering
-    reorderedDataStructure: DataStructure; // Data after column reordering
-    columnMapping: ColumnMapping; // Mapping of column positions
+    originalDataStructure: DataStructure;    // Data before column reordering
+    reorderedDataStructure: DataStructure;   // Data after column reordering
+    columnMapping: ColumnMapping;            // Mapping of column positions
     integrityVerification: IntegrityVerification; // Verify data integrity
   };
-
+  
   // Step 5: State update
   stateUpdate: {
     variableStoreUpdate: VariableStoreUpdater; // Update variable store
-    dataStoreUpdate: DataStoreUpdater; // Update data store
-    atomicTransaction: AtomicTransaction; // Ensure consistency
-    rollbackPlan: RollbackPlan; // Recovery plan if needed
+    dataStoreUpdate: DataStoreUpdater;        // Update data store
+    atomicTransaction: AtomicTransaction;     // Ensure consistency
+    rollbackPlan: RollbackPlan;              // Recovery plan if needed
   };
 }
 ```
 
 ### Advanced Sorting Algorithms
-
 ```typescript
 interface AdvancedSortingAlgorithms {
   // Natural language sorting
   naturalLanguageSorting: {
     alphanumericSorting: {
-      description: "Sort considering numeric parts in text";
-      example: ["item1", "item2", "item10"]; // Not ['item1', 'item10', 'item2']
+      description: 'Sort considering numeric parts in text';
+      example: ['item1', 'item2', 'item10'] // Not ['item1', 'item10', 'item2']
       implementation: AlphanumericSorter;
       caseSensitivity: CaseSensitivityOption;
     };
-
+    
     localeAwareSorting: {
-      description: "Sort according to language-specific rules";
+      description: 'Sort according to language-specific rules';
       supportedLocales: SupportedLocale[];
       implementation: LocaleAwareSorter;
       collationRules: CollationRule[];
     };
-
+    
     unicodeSorting: {
-      description: "Proper Unicode character sorting";
+      description: 'Proper Unicode character sorting';
       normalizationForm: UnicodeNormalizationForm;
       implementation: UnicodeSorter;
       characterClassHandling: CharacterClassHandler;
     };
   };
-
+  
   // Complex attribute sorting
   complexAttributeSorting: {
     valueLabelsBasedSorting: {
-      description: "Sort by value label definitions";
+      description: 'Sort by value label definitions';
       sortingStrategy: ValueLabelSortStrategy;
       implementation: ValueLabelSorter;
       labelPriorityRules: LabelPriorityRule[];
     };
-
+    
     dataTypeHierarchySorting: {
-      description: "Sort by data type hierarchy";
+      description: 'Sort by data type hierarchy';
       typeHierarchy: DataTypeHierarchy;
       implementation: HierarchicalTypeSorter;
       customTypeRules: CustomTypeRule[];
     };
-
+    
     computedPropertySorting: {
-      description: "Sort by calculated variable properties";
+      description: 'Sort by calculated variable properties';
       computationMethods: ComputationMethod[];
       implementation: ComputedPropertySorter;
       cachingStrategy: CachingStrategy;
     };
   };
-
+  
   // Performance-optimized sorting
   performanceOptimizedSorting: {
     lazyEvaluation: {
-      description: "Compute sort keys only when needed";
+      description: 'Compute sort keys only when needed';
       implementation: LazyEvaluationSorter;
       memoryOptimization: MemoryOptimizer;
     };
-
+    
     batchProcessing: {
-      description: "Process large variable sets in batches";
+      description: 'Process large variable sets in batches';
       batchSize: number;
       implementation: BatchProcessor;
       progressTracking: ProgressTracker;
     };
-
+    
     indexedSorting: {
-      description: "Use pre-computed indices for faster sorting";
+      description: 'Use pre-computed indices for faster sorting';
       indexBuilding: IndexBuilder;
       implementation: IndexedSorter;
       indexMaintenance: IndexMaintainer;
@@ -292,18 +288,17 @@ interface AdvancedSortingAlgorithms {
 ## 🔧 Hook Implementation
 
 ### useSortVariables Hook
-
 ```typescript
 interface UseSortVariablesHook {
   // Variable sorting state
   variableSortingState: {
     availableAttributes: SortableAttribute[]; // All sortable variable attributes
-    selectedAttribute: SortableAttribute; // Currently selected sort attribute
-    sortDirection: SortDirection; // Current sort direction
-    currentVariableOrder: Variable[]; // Current variable ordering
-    originalVariableOrder: Variable[]; // Original variable ordering before sort
+    selectedAttribute: SortableAttribute;    // Currently selected sort attribute
+    sortDirection: SortDirection;            // Current sort direction
+    currentVariableOrder: Variable[];        // Current variable ordering
+    originalVariableOrder: Variable[];       // Original variable ordering before sort
   };
-
+  
   // Attribute management
   attributeManagement: {
     selectAttribute: (attribute: SortableAttribute) => void;
@@ -311,7 +306,7 @@ interface UseSortVariablesHook {
     getAttributeMetadata: (attribute: SortableAttribute) => AttributeMetadata;
     refreshAttributes: () => void;
   };
-
+  
   // Sort configuration
   sortConfiguration: {
     sortDirection: SortDirection;
@@ -321,7 +316,7 @@ interface UseSortVariablesHook {
     sortAlgorithm: VariableSortAlgorithm;
     setSortAlgorithm: (algorithm: VariableSortAlgorithm) => void;
   };
-
+  
   // Advanced options
   advancedOptions: {
     caseSensitive: boolean;
@@ -333,7 +328,7 @@ interface UseSortVariablesHook {
     customComparator: CustomComparator;
     setCustomComparator: (comparator: CustomComparator) => void;
   };
-
+  
   // Preview and validation
   previewValidation: {
     generateSortPreview: () => Promise<SortPreview>;
@@ -341,7 +336,7 @@ interface UseSortVariablesHook {
     previewResults: PreviewResult[];
     estimateSortImpact: () => SortImpact;
   };
-
+  
   // Execution control
   executionControl: {
     executeSort: () => Promise<SortResult>;
@@ -351,7 +346,7 @@ interface UseSortVariablesHook {
     resetToOriginalOrder: () => void;
     sortProgress: SortProgress;
   };
-
+  
   // History management
   historyManagement: {
     sortHistory: VariableSortOperation[];
@@ -366,7 +361,6 @@ interface UseSortVariablesHook {
 ```
 
 ### Sort Variables Service
-
 ```typescript
 interface SortVariablesService {
   // Core sorting operations
@@ -375,114 +369,114 @@ interface SortVariablesService {
       variables: Variable[],
       attribute: SortableAttribute,
       direction: SortDirection,
-      options: SortOptions,
+      options: SortOptions
     ) => Promise<VariableSortResult>;
-
+    
     sortDataColumns: (
       data: DataRow[],
       originalVariableOrder: Variable[],
-      newVariableOrder: Variable[],
+      newVariableOrder: Variable[]
     ) => Promise<DataColumnReorderResult>;
-
+    
     synchronizeVariableDataOrder: (
       variables: Variable[],
-      data: DataRow[],
+      data: DataRow[]
     ) => Promise<SynchronizationResult>;
-
+    
     validateSortIntegrity: (
       originalState: DataState,
-      sortedState: DataState,
+      sortedState: DataState
     ) => IntegrityValidationResult;
   };
-
+  
   // Attribute value extraction
   attributeValueExtraction: {
     extractAttributeValue: (
       variable: Variable,
-      attribute: SortableAttribute,
+      attribute: SortableAttribute
     ) => AttributeValue;
-
+    
     preprocessAttributeValues: (
       values: AttributeValue[],
-      attribute: SortableAttribute,
+      attribute: SortableAttribute
     ) => PreprocessedValue[];
-
+    
     handleSpecialValues: (
       value: AttributeValue,
-      strategy: SpecialValueStrategy,
+      strategy: SpecialValueStrategy
     ) => ProcessedValue;
-
+    
     computeDynamicAttributes: (
       variable: Variable,
-      data: DataRow[],
+      data: DataRow[]
     ) => ComputedAttributeValue[];
   };
-
+  
   // Comparison and ordering
   comparisonOrdering: {
     createAttributeComparator: (
       attribute: SortableAttribute,
-      options: ComparatorOptions,
+      options: ComparatorOptions
     ) => ComparatorFunction;
-
+    
     naturalLanguageComparator: (
       a: string,
       b: string,
-      options: NaturalSortOptions,
+      options: NaturalSortOptions
     ) => number;
-
+    
     hierarchicalComparator: (
       a: any,
       b: any,
-      hierarchy: SortHierarchy,
+      hierarchy: SortHierarchy
     ) => number;
-
+    
     customComparator: (
-      compareFn: CustomComparatorFunction,
+      compareFn: CustomComparatorFunction
     ) => ComparatorFunction;
   };
-
+  
   // Performance optimization
   performanceOptimization: {
     optimizeSortingStrategy: (
       variableCount: number,
-      attribute: SortableAttribute,
+      attribute: SortableAttribute
     ) => OptimalSortStrategy;
-
+    
     batchProcessLargeVariableSets: (
       variables: Variable[],
-      batchSize: number,
+      batchSize: number
     ) => Promise<BatchProcessResult>;
-
+    
     cacheAttributeValues: (
       variables: Variable[],
-      attributes: SortableAttribute[],
+      attributes: SortableAttribute[]
     ) => AttributeValueCache;
-
+    
     parallelizeColumnReordering: (
       data: DataRow[],
-      mapping: ColumnMapping,
+      mapping: ColumnMapping
     ) => Promise<ParallelReorderResult>;
   };
-
+  
   // Quality assurance
   qualityAssurance: {
     validateVariableOrder: (
       originalVariables: Variable[],
-      sortedVariables: Variable[],
+      sortedVariables: Variable[]
     ) => OrderValidationResult;
-
+    
     verifyDataColumnAlignment: (
       variables: Variable[],
-      data: DataRow[],
+      data: DataRow[]
     ) => AlignmentValidationResult;
-
+    
     detectSortingAnomalies: (
-      sortResult: VariableSortResult,
+      sortResult: VariableSortResult
     ) => AnomalyDetectionResult;
-
+    
     generateSortQualityReport: (
-      sortOperation: VariableSortOperation,
+      sortOperation: VariableSortOperation
     ) => QualityReport;
   };
 }
@@ -491,7 +485,6 @@ interface SortVariablesService {
 ## 🎨 UI Components
 
 ### SortVarsUI Component
-
 ```typescript
 interface SortVarsUIProps {
   // Attribute selection
@@ -501,7 +494,7 @@ interface SortVarsUIProps {
     onAttributeSelect: (attribute: SortableAttribute) => void;
     attributeMetadata: Map<string, AttributeMetadata>;
   };
-
+  
   // Sort configuration
   sortConfiguration: {
     sortDirection: SortDirection;
@@ -511,7 +504,7 @@ interface SortVarsUIProps {
     sortAlgorithm: VariableSortAlgorithm;
     onAlgorithmChange: (algorithm: VariableSortAlgorithm) => void;
   };
-
+  
   // Advanced options
   advancedOptions: {
     caseSensitive: boolean;
@@ -523,7 +516,7 @@ interface SortVarsUIProps {
     showAdvancedOptions: boolean;
     onToggleAdvancedOptions: () => void;
   };
-
+  
   // Preview
   preview: {
     sortPreview: SortPreview;
@@ -532,7 +525,7 @@ interface SortVarsUIProps {
     onGeneratePreview: () => void;
     previewSize: number;
   };
-
+  
   // Validation
   validation: {
     validationResults: ValidationResult[];
@@ -540,7 +533,7 @@ interface SortVarsUIProps {
     sortImpact: SortImpact;
     showValidation: boolean;
   };
-
+  
   // Actions
   actions: {
     onSort: () => void;
@@ -551,7 +544,7 @@ interface SortVarsUIProps {
     onSaveConfiguration: () => void;
     onLoadConfiguration: (config: SavedSortConfiguration) => void;
   };
-
+  
   // State indicators
   stateIndicators: {
     isProcessing: boolean;
@@ -564,14 +557,13 @@ interface SortVarsUIProps {
 ```
 
 ### SortVarsTest Component
-
 ```typescript
 interface SortVarsTestProps {
   // Test scenarios
   testScenarios: VariableSortTestScenario[];
   selectedScenario: VariableSortTestScenario;
   onScenarioSelect: (scenario: VariableSortTestScenario) => void;
-
+  
   // Test data
   testData: {
     testVariables: TestVariable[];
@@ -579,7 +571,7 @@ interface SortVarsTestProps {
     expectedResults: ExpectedSortResult[];
     actualResults: ActualSortResult[];
   };
-
+  
   // Algorithm testing
   algorithmTesting: {
     availableAlgorithms: VariableSortAlgorithm[];
@@ -587,7 +579,7 @@ interface SortVarsTestProps {
     onAlgorithmSelect: (algorithm: VariableSortAlgorithm) => void;
     algorithmPerformance: AlgorithmPerformance[];
   };
-
+  
   // Performance metrics
   performanceMetrics: {
     sortingTime: TimeMetrics;
@@ -595,7 +587,7 @@ interface SortVarsTestProps {
     columnReorderingTime: TimeMetrics;
     integrityValidationTime: TimeMetrics;
   };
-
+  
   // Test execution
   testExecution: {
     onRunTest: () => void;
@@ -610,60 +602,59 @@ interface SortVarsTestProps {
 ## 🧪 Testing Strategy
 
 ### Test Coverage Areas
-
 ```typescript
 // Variable sorting testing
-describe("SortVarsModal", () => {
-  describe("Attribute-based sorting", () => {
-    it("sorts variables by name correctly");
-    it("sorts variables by type with proper ordering");
-    it("sorts variables by measurement level hierarchically");
-    it("handles computed attributes appropriately");
+describe('SortVarsModal', () => {
+  describe('Attribute-based sorting', () => {
+    it('sorts variables by name correctly');
+    it('sorts variables by type with proper ordering');
+    it('sorts variables by measurement level hierarchically');
+    it('handles computed attributes appropriately');
   });
-
-  describe("Data column synchronization", () => {
-    it("reorders data columns to match variable order");
-    it("maintains data-variable relationship integrity");
-    it("handles missing or extra columns gracefully");
-    it("preserves data values during reordering");
+  
+  describe('Data column synchronization', () => {
+    it('reorders data columns to match variable order');
+    it('maintains data-variable relationship integrity');
+    it('handles missing or extra columns gracefully');
+    it('preserves data values during reordering');
   });
-
-  describe("Advanced sorting features", () => {
-    it("performs natural language sorting correctly");
-    it("applies locale-specific sorting rules");
-    it("handles Unicode characters properly");
-    it("supports custom comparison logic");
+  
+  describe('Advanced sorting features', () => {
+    it('performs natural language sorting correctly');
+    it('applies locale-specific sorting rules');
+    it('handles Unicode characters properly');
+    it('supports custom comparison logic');
   });
-
-  describe("Performance", () => {
-    it("handles large numbers of variables efficiently");
-    it("optimizes column reordering for large datasets");
-    it("provides progress feedback for long operations");
-    it("manages memory usage effectively");
+  
+  describe('Performance', () => {
+    it('handles large numbers of variables efficiently');
+    it('optimizes column reordering for large datasets');
+    it('provides progress feedback for long operations');
+    it('manages memory usage effectively');
   });
-
-  describe("State management", () => {
-    it("updates variable store atomically");
-    it("maintains undo/redo history correctly");
-    it("handles concurrent modifications gracefully");
-    it("preserves state consistency across operations");
+  
+  describe('State management', () => {
+    it('updates variable store atomically');
+    it('maintains undo/redo history correctly');
+    it('handles concurrent modifications gracefully');
+    it('preserves state consistency across operations');
   });
 });
 
 // Service testing
-describe("sortVarsService", () => {
-  describe("Variable sorting algorithms", () => {
-    it("implements attribute-based sorting correctly");
-    it("handles special values appropriately");
-    it("maintains sort stability when required");
-    it("optimizes performance for different data types");
+describe('sortVarsService', () => {
+  describe('Variable sorting algorithms', () => {
+    it('implements attribute-based sorting correctly');
+    it('handles special values appropriately');
+    it('maintains sort stability when required');
+    it('optimizes performance for different data types');
   });
-
-  describe("Column reordering", () => {
-    it("maps column positions correctly");
-    it("preserves data integrity during reordering");
-    it("handles edge cases gracefully");
-    it("validates results accurately");
+  
+  describe('Column reordering', () => {
+    it('maps column positions correctly');
+    it('preserves data integrity during reordering');
+    it('handles edge cases gracefully');
+    it('validates results accurately');
   });
 });
 ```
@@ -671,14 +662,13 @@ describe("sortVarsService", () => {
 ## 📋 Development Guidelines
 
 ### Adding New Sortable Attributes
-
 ```typescript
 // 1. Define new attribute interface
 interface NewSortableAttribute extends SortableAttribute {
-  id: "newAttribute";
-  name: "New Sortable Attribute";
-  description: "Description of attribute";
-  type: "string" | "number" | "boolean" | "date" | "complex";
+  id: 'newAttribute';
+  name: 'New Sortable Attribute';
+  description: 'Description of attribute';
+  type: 'string' | 'number' | 'boolean' | 'date' | 'complex';
   extractionMethod: AttributeExtractionMethod;
   comparisonMethod: AttributeComparisonMethod;
 }
@@ -692,7 +682,7 @@ const extractNewAttribute = (variable: Variable): AttributeValue => {
 const compareNewAttribute = (
   a: AttributeValue,
   b: AttributeValue,
-  options: ComparisonOptions,
+  options: ComparisonOptions
 ): number => {
   // Comparison logic
 };
@@ -703,21 +693,20 @@ const SORTABLE_ATTRIBUTES = {
   newAttribute: {
     extract: extractNewAttribute,
     compare: compareNewAttribute,
-    metadata: newAttributeMetadata,
-  },
+    metadata: newAttributeMetadata
+  }
 };
 
 // 5. Add comprehensive tests
-describe("New Sortable Attribute", () => {
-  it("extracts attribute values correctly");
-  it("compares values appropriately");
-  it("handles edge cases gracefully");
-  it("maintains sort stability");
+describe('New Sortable Attribute', () => {
+  it('extracts attribute values correctly');
+  it('compares values appropriately');
+  it('handles edge cases gracefully');
+  it('maintains sort stability');
 });
 ```
 
 ### Performance Optimization Guidelines
-
 ```typescript
 // 1. Large variable set optimization
 const optimizeForLargeVariableSets = (variableCount: number) => {
@@ -726,57 +715,62 @@ const optimizeForLargeVariableSets = (variableCount: number) => {
       useLazyEvaluation: true,
       batchSize: calculateOptimalBatchSize(variableCount),
       enableCaching: true,
-      useIndexedSorting: true,
+      useIndexedSorting: true
     };
   }
-
+  
   return {
     useStandardSorting: true,
-    enableBasicCaching: false,
+    enableBasicCaching: false
   };
 };
 
 // 2. Column reordering optimization
-const optimizeColumnReordering = (dataSize: number, columnCount: number) => {
+const optimizeColumnReordering = (
+  dataSize: number,
+  columnCount: number
+) => {
   const estimatedComplexity = dataSize * columnCount;
-
+  
   if (estimatedComplexity > COMPLEX_REORDER_THRESHOLD) {
     return {
       useParallelProcessing: true,
       chunkSize: calculateOptimalChunkSize(dataSize),
-      enableProgressTracking: true,
+      enableProgressTracking: true
     };
   }
-
+  
   return {
     useSequentialProcessing: true,
-    enableProgressTracking: false,
+    enableProgressTracking: false
   };
 };
 ```
 
 ---
 
-SortVars modal menyediakan comprehensive variable organization capabilities dengan attribute-based sorting, synchronized data column management, dan advanced sorting algorithms untuk optimal dataset structure management dalam Statify. - The `overwriteAll` function from `useVariableStore` is called with both the new variable list and the new data array, atomically updating the application's state. - The modal is closed, and the user sees the newly sorted variable view and data view.
+SortVars modal menyediakan comprehensive variable organization capabilities dengan attribute-based sorting, synchronized data column management, dan advanced sorting algorithms untuk optimal dataset structure management dalam Statify.
+    -   The `overwriteAll` function from `useVariableStore` is called with both the new variable list and the new data array, atomically updating the application's state.
+    -   The modal is closed, and the user sees the newly sorted variable view and data view.
 
 ## 5. Testing Strategy
 
 The feature is tested across three layers to ensure correctness and robustness.
 
-- **UI Component Test (`__tests__/SortVarsUI.test.tsx`)**:
-  - Tests the `SortVarsUI` component in isolation by mocking its props.
-  - Verifies that the component renders the list of columns and sort options correctly.
-  - Simulates user clicks to ensure that the correct handler functions (`handleSelectColumn`, `setSortOrder`, `handleOk`, etc.) are called.
-  - Checks that the UI correctly reflects the state passed in via props (e.g., highlighting the selected column).
+-   **UI Component Test (`__tests__/SortVarsUI.test.tsx`)**:
+    -   Tests the `SortVarsUI` component in isolation by mocking its props.
+    -   Verifies that the component renders the list of columns and sort options correctly.
+    -   Simulates user clicks to ensure that the correct handler functions (`handleSelectColumn`, `setSortOrder`, `handleOk`, etc.) are called.
+    -   Checks that the UI correctly reflects the state passed in via props (e.g., highlighting the selected column).
 
-- **Hook Test (`__tests__/useSortVariables.test.tsx`)**:
-  - Tests the business logic in the `useSortVariables` hook.
-  - Mocks dependencies like the Zustand stores and the `sortVarsService`.
-  - Verifies that the variable sorting logic is correct for different attributes and directions, including handling of null/undefined values.
-  - Ensures `sortDataColumns` is called with the correct arguments and that the stores are updated with the results.
-  - Tests the reset functionality.
+-   **Hook Test (`__tests__/useSortVariables.test.tsx`)**:
+    -   Tests the business logic in the `useSortVariables` hook.
+    -   Mocks dependencies like the Zustand stores and the `sortVarsService`.
+    -   Verifies that the variable sorting logic is correct for different attributes and directions, including handling of null/undefined values.
+    -   Ensures `sortDataColumns` is called with the correct arguments and that the stores are updated with the results.
+    -   Tests the reset functionality.
 
-- **Service Test (`__tests__/sortVarsService.test.ts`)**:
-  - Unit tests the pure `sortDataColumns` function.
-  - Asserts that data columns are reordered correctly based on a provided mapping of old-to-new variable order.
-  - Tests edge cases like empty datasets and incomplete variable mappings to ensure the function is robust.
+-   **Service Test (`__tests__/sortVarsService.test.ts`)**:
+    -   Unit tests the pure `sortDataColumns` function.
+    -   Asserts that data columns are reordered correctly based on a provided mapping of old-to-new variable order.
+    -   Tests edge cases like empty datasets and incomplete variable mappings to ensure the function is robust.

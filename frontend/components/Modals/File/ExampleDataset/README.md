@@ -26,44 +26,43 @@ ExampleDataset/
 ## 🎯 Core Functionality
 
 ### Example Dataset System
-
 ```typescript
 interface ExampleDatasetSystem {
   // Dataset catalog
   datasetCatalog: {
     educationalDatasets: {
-      purpose: "Learning and training datasets";
+      purpose: 'Learning and training datasets';
       categories: DatasetCategory[];
       difficulty: DatasetDifficulty[];
       analysisTypes: AnalysisType[];
       datasets: EducationalDataset[];
     };
-
+    
     businessDatasets: {
-      purpose: "Real-world business scenario datasets";
+      purpose: 'Real-world business scenario datasets';
       industries: Industry[];
       useCases: BusinessUseCase[];
       complexityLevels: ComplexityLevel[];
       datasets: BusinessDataset[];
     };
-
+    
     scientificDatasets: {
-      purpose: "Research and scientific analysis datasets";
+      purpose: 'Research and scientific analysis datasets';
       disciplines: ScientificDiscipline[];
       methodologies: ResearchMethodology[];
       publicationStatus: PublicationStatus[];
       datasets: ScientificDataset[];
     };
-
+    
     syntheticDatasets: {
-      purpose: "Generated datasets for specific testing";
+      purpose: 'Generated datasets for specific testing';
       generators: DataGenerator[];
       patterns: DataPattern[];
       anomalies: AnomalyType[];
       datasets: SyntheticDataset[];
     };
   };
-
+  
   // Dataset metadata
   datasetMetadata: {
     basicInfo: {
@@ -74,7 +73,7 @@ interface ExampleDatasetSystem {
       version: string;
       lastUpdated: Date;
     };
-
+    
     statisticalInfo: {
       sampleSize: number;
       variableCount: number;
@@ -82,7 +81,7 @@ interface ExampleDatasetSystem {
       dataQualityScore: number;
       distributionSummary: DistributionSummary;
     };
-
+    
     analyticalInfo: {
       recommendedAnalyses: AnalysisRecommendation[];
       skillLevel: SkillLevel;
@@ -90,7 +89,7 @@ interface ExampleDatasetSystem {
       learningObjectives: LearningObjective[];
       keyInsights: DatasetInsight[];
     };
-
+    
     technicalInfo: {
       fileFormat: FileFormat;
       encoding: DataEncoding;
@@ -99,7 +98,7 @@ interface ExampleDatasetSystem {
       dataTypes: DataTypeInfo[];
     };
   };
-
+  
   // Advanced dataset features
   advancedDatasetFeatures: {
     datasetVariations: {
@@ -108,21 +107,21 @@ interface ExampleDatasetSystem {
       partialVersion: PartialDatasetVersion;
       augmentedVersion: AugmentedDatasetVersion;
     };
-
+    
     interactiveFeatures: {
       guidedAnalysis: GuidedAnalysisWorkflow;
       stepByStepTutorial: TutorialSteps[];
       challengeMode: AnalysisChallenge[];
       progressTracking: ProgressTracker;
     };
-
+    
     customization: {
       sampleSizeAdjustment: SampleSizeAdjuster;
       variableSelection: VariableSelector;
       dataTransformation: DataTransformer;
       noiseInjection: NoiseInjector;
     };
-
+    
     collaboration: {
       shareableConfigurations: ShareableConfig[];
       teamWorkspaces: TeamWorkspace[];
@@ -134,7 +133,6 @@ interface ExampleDatasetSystem {
 ```
 
 ### Dataset Loading and Processing
-
 ```typescript
 interface DatasetLoadingProcessing {
   // Loading workflow
@@ -145,21 +143,21 @@ interface DatasetLoadingProcessing {
       searchDatasets: (query: SearchQuery) => SearchResult[];
       previewDataset: (dataset: Dataset) => DatasetPreview;
     };
-
+    
     loadingProcess: {
       initializeLoading: (dataset: Dataset) => LoadingSession;
       downloadDataset: (dataset: Dataset) => Promise<DownloadResult>;
       validateDataset: (data: RawData) => ValidationResult;
       processDataset: (data: RawData) => ProcessedData;
     };
-
+    
     dataIntegration: {
       integratewithStores: (data: ProcessedData) => Promise<IntegrationResult>;
       updateGlobalState: (data: ProcessedData) => StateUpdateResult;
       configureAnalysisEnvironment: (dataset: Dataset) => EnvironmentConfig;
       setupDefaultViews: (data: ProcessedData) => ViewConfiguration;
     };
-
+    
     postLoadingSetup: {
       generateDataSummary: (data: ProcessedData) => DataSummary;
       suggestAnalyses: (data: ProcessedData) => AnalysisSuggestion[];
@@ -167,7 +165,7 @@ interface DatasetLoadingProcessing {
       enableGuidedMode: (dataset: Dataset) => GuidedModeConfig;
     };
   };
-
+  
   // Data processing pipeline
   dataProcessingPipeline: {
     rawDataProcessing: {
@@ -176,38 +174,29 @@ interface DatasetLoadingProcessing {
       inferDataTypes: (data: ParsedData) => TypeInferenceResult;
       handleMissingValues: (data: ParsedData) => MissingValueResult;
     };
-
+    
     dataValidation: {
       validateDataIntegrity: (data: ParsedData) => IntegrityValidationResult;
       checkDataQuality: (data: ParsedData) => QualityAssessmentResult;
       detectAnomalies: (data: ParsedData) => AnomalyDetectionResult;
       assessCompleteness: (data: ParsedData) => CompletenessAssessment;
     };
-
+    
     dataTransformation: {
       normalizeData: (data: ParsedData) => NormalizedData;
       standardizeVariables: (data: ParsedData) => StandardizedData;
       createDerivedVariables: (data: ParsedData) => DerivedVariableResult;
-      applyDatasetSpecificTransforms: (
-        data: ParsedData,
-        transforms: Transform[],
-      ) => TransformedData;
+      applyDatasetSpecificTransforms: (data: ParsedData, transforms: Transform[]) => TransformedData;
     };
-
+    
     metadataEnrichment: {
       extractMetadata: (data: ProcessedData) => ExtractedMetadata;
-      enhanceWithDomainKnowledge: (
-        metadata: ExtractedMetadata,
-      ) => EnhancedMetadata;
-      generateVariableDescriptions: (
-        variables: Variable[],
-      ) => VariableDescription[];
-      createAnalysisRecommendations: (
-        data: ProcessedData,
-      ) => AnalysisRecommendation[];
+      enhanceWithDomainKnowledge: (metadata: ExtractedMetadata) => EnhancedMetadata;
+      generateVariableDescriptions: (variables: Variable[]) => VariableDescription[];
+      createAnalysisRecommendations: (data: ProcessedData) => AnalysisRecommendation[];
     };
   };
-
+  
   // Quality assurance
   qualityAssurance: {
     dataValidation: {
@@ -216,27 +205,16 @@ interface DatasetLoadingProcessing {
       verifyDatasetIntegrity: (dataset: Dataset) => IntegrityVerificationResult;
       assessDatasetUsability: (dataset: Dataset) => UsabilityAssessment;
     };
-
+    
     loadingVerification: {
-      verifyLoadingSuccess: (
-        loadingResult: LoadingResult,
-      ) => VerificationResult;
-      checkDataLoss: (
-        original: RawData,
-        processed: ProcessedData,
-      ) => DataLossReport;
-      validateTransformations: (
-        transformations: Transformation[],
-      ) => TransformationValidation;
-      confirmStoreIntegration: (
-        integrationResult: IntegrationResult,
-      ) => IntegrationConfirmation;
+      verifyLoadingSuccess: (loadingResult: LoadingResult) => VerificationResult;
+      checkDataLoss: (original: RawData, processed: ProcessedData) => DataLossReport;
+      validateTransformations: (transformations: Transformation[]) => TransformationValidation;
+      confirmStoreIntegration: (integrationResult: IntegrationResult) => IntegrationConfirmation;
     };
-
+    
     userExperienceValidation: {
-      assessLoadingPerformance: (
-        loadingMetrics: LoadingMetrics,
-      ) => PerformanceAssessment;
+      assessLoadingPerformance: (loadingMetrics: LoadingMetrics) => PerformanceAssessment;
       validateUserInterface: (uiState: UIState) => UIValidationResult;
       checkTutorialAccuracy: (tutorial: Tutorial) => TutorialValidation;
       verifyGuidedModeSetup: (guidedMode: GuidedMode) => GuidedModeValidation;
@@ -248,7 +226,6 @@ interface DatasetLoadingProcessing {
 ## 🔧 Hook Implementation
 
 ### useExampleDatasetLogic Hook
-
 ```typescript
 interface UseExampleDatasetLogicHook {
   // Dataset management state
@@ -261,7 +238,7 @@ interface UseExampleDatasetLogicHook {
     searchQuery: string;
     sortOrder: SortOrder;
   };
-
+  
   // Loading state management
   loadingStateManagement: {
     isLoading: boolean;
@@ -271,7 +248,7 @@ interface UseExampleDatasetLogicHook {
     successState: SuccessState | null;
     cancelToken: CancelToken;
   };
-
+  
   // Dataset operations
   datasetOperations: {
     selectDataset: (dataset: Dataset) => void;
@@ -281,7 +258,7 @@ interface UseExampleDatasetLogicHook {
     retryLoading: () => Promise<LoadingResult>;
     refreshDatasetList: () => Promise<void>;
   };
-
+  
   // Filtering and search
   filteringSearch: {
     setSearchQuery: (query: string) => void;
@@ -291,50 +268,38 @@ interface UseExampleDatasetLogicHook {
     setSortOrder: (order: SortOrder) => void;
     clearFilters: () => void;
   };
-
+  
   // Dataset analysis
   datasetAnalysis: {
     analyzeDatasetMetadata: (dataset: Dataset) => DatasetAnalysis;
-    calculateSuitabilityScore: (
-      dataset: Dataset,
-      userProfile: UserProfile,
-    ) => SuitabilityScore;
-    generateRecommendations: (
-      userHistory: UserHistory,
-    ) => DatasetRecommendation[];
+    calculateSuitabilityScore: (dataset: Dataset, userProfile: UserProfile) => SuitabilityScore;
+    generateRecommendations: (userHistory: UserHistory) => DatasetRecommendation[];
     assessLearningValue: (dataset: Dataset) => LearningValueAssessment;
   };
-
+  
   // Advanced features
   advancedFeatures: {
     datasetComparison: {
       compareDatasets: (datasets: Dataset[]) => ComparisonResult;
-      highlightDifferences: (
-        dataset1: Dataset,
-        dataset2: Dataset,
-      ) => DifferenceHighlight;
+      highlightDifferences: (dataset1: Dataset, dataset2: Dataset) => DifferenceHighlight;
       suggestAlternatives: (dataset: Dataset) => AlternativeDataset[];
       createComparisonMatrix: (datasets: Dataset[]) => ComparisonMatrix;
     };
-
+    
     personalizedRecommendations: {
       buildUserProfile: (interactions: UserInteraction[]) => UserProfile;
-      recommendBasedOnHistory: (
-        history: AnalysisHistory,
-      ) => PersonalizedRecommendation[];
+      recommendBasedOnHistory: (history: AnalysisHistory) => PersonalizedRecommendation[];
       suggestProgressionPath: (currentSkill: SkillLevel) => ProgressionPath;
-      adaptToDifficultyPreference: (
-        preference: DifficultyPreference,
-      ) => AdaptedDatasetList;
+      adaptToDifficultyPreference: (preference: DifficultyPreference) => AdaptedDatasetList;
     };
-
+    
     socialFeatures: {
       getPopularDatasets: () => PopularDataset[];
       getCommunityRatings: (dataset: Dataset) => CommunityRating[];
       shareDatasetConfiguration: (config: DatasetConfiguration) => ShareResult;
       joinDatasetDiscussion: (dataset: Dataset) => DiscussionChannel;
     };
-
+    
     analyticsTracking: {
       trackDatasetUsage: (dataset: Dataset, usage: UsageMetrics) => void;
       recordUserInteraction: (interaction: UserInteraction) => void;
@@ -342,7 +307,7 @@ interface UseExampleDatasetLogicHook {
       analyzeLearningProgress: (user: User) => LearningProgressAnalysis;
     };
   };
-
+  
   // Integration management
   integrationManagement: {
     storeIntegration: {
@@ -351,16 +316,14 @@ interface UseExampleDatasetLogicHook {
       updateMetaStore: (metadata: Metadata) => void;
       resetAllStores: () => void;
     };
-
+    
     environmentSetup: {
-      configureAnalysisEnvironment: (
-        dataset: Dataset,
-      ) => EnvironmentConfiguration;
+      configureAnalysisEnvironment: (dataset: Dataset) => EnvironmentConfiguration;
       setupDefaultCharts: (data: ProcessedData) => ChartConfiguration[];
       initializeTutorialMode: (dataset: Dataset) => TutorialConfiguration;
       prepareGuidedAnalysis: (dataset: Dataset) => GuidedAnalysisSetup;
     };
-
+    
     postLoadingActions: {
       generateWelcomeMessage: (dataset: Dataset) => WelcomeMessage;
       showDatasetOverview: (data: ProcessedData) => OverviewDisplay;
@@ -372,21 +335,17 @@ interface UseExampleDatasetLogicHook {
 ```
 
 ### Example Dataset Service
-
 ```typescript
 interface ExampleDatasetService {
   // Dataset catalog management
   datasetCatalogManagement: {
     fetchDatasetCatalog: () => Promise<DatasetCatalog>;
-    updateDatasetMetadata: (
-      datasetId: string,
-      metadata: Metadata,
-    ) => Promise<UpdateResult>;
+    updateDatasetMetadata: (datasetId: string, metadata: Metadata) => Promise<UpdateResult>;
     addNewDataset: (dataset: NewDataset) => Promise<AddResult>;
     removeDataset: (datasetId: string) => Promise<RemoveResult>;
     validateDatasetCatalog: (catalog: DatasetCatalog) => ValidationResult;
   };
-
+  
   // Dataset loading operations
   datasetLoadingOperations: {
     loadDatasetFromUrl: (url: string) => Promise<LoadingResult>;
@@ -394,27 +353,23 @@ interface ExampleDatasetService {
     loadDatasetFromCache: (datasetId: string) => Promise<CachedLoadingResult>;
     streamLargeDataset: (dataset: LargeDataset) => AsyncIterator<DataChunk>;
   };
-
+  
   // Data processing services
   dataProcessingServices: {
     processSavFileFromUrl: (url: string) => Promise<SavProcessingResult>;
     processCsvData: (csvData: string) => Promise<CsvProcessingResult>;
-    processExcelData: (
-      excelData: ArrayBuffer,
-    ) => Promise<ExcelProcessingResult>;
+    processExcelData: (excelData: ArrayBuffer) => Promise<ExcelProcessingResult>;
     processJsonData: (jsonData: object) => Promise<JsonProcessingResult>;
   };
-
+  
   // Quality control services
   qualityControlServices: {
     validateDatasetQuality: (dataset: ProcessedDataset) => QualityControlResult;
     performDatasetHealthCheck: (dataset: ProcessedDataset) => HealthCheckResult;
     generateQualityReport: (dataset: ProcessedDataset) => QualityReport;
-    suggestQualityImprovements: (
-      qualityReport: QualityReport,
-    ) => ImprovementSuggestion[];
+    suggestQualityImprovements: (qualityReport: QualityReport) => ImprovementSuggestion[];
   };
-
+  
   // Caching and optimization
   cachingOptimization: {
     cacheDataset: (dataset: ProcessedDataset) => Promise<CacheResult>;
@@ -422,14 +377,11 @@ interface ExampleDatasetService {
     invalidateCache: (datasetId: string) => Promise<void>;
     optimizeDatasetLoading: (dataset: Dataset) => OptimizationStrategy;
   };
-
+  
   // Analytics and tracking
   analyticsTracking: {
     trackDatasetLoad: (datasetId: string, loadTime: number) => void;
-    recordUserInteraction: (
-      datasetId: string,
-      interaction: Interaction,
-    ) => void;
+    recordUserInteraction: (datasetId: string, interaction: Interaction) => void;
     generateUsageAnalytics: () => Promise<UsageAnalytics>;
     createRecommendationEngine: () => RecommendationEngine;
   };
@@ -439,7 +391,6 @@ interface ExampleDatasetService {
 ## 🎨 UI Components
 
 ### ExampleDatasetModal Component
-
 ```typescript
 interface ExampleDatasetModalProps {
   // Modal state
@@ -451,7 +402,7 @@ interface ExampleDatasetModalProps {
     canNavigateBack: boolean;
     canNavigateForward: boolean;
   };
-
+  
   // Dataset catalog
   datasetCatalog: {
     datasets: Dataset[];
@@ -461,7 +412,7 @@ interface ExampleDatasetModalProps {
     searchQuery: string;
     onSearchChange: (query: string) => void;
   };
-
+  
   // Dataset selection
   datasetSelection: {
     selectedDataset: Dataset | null;
@@ -470,7 +421,7 @@ interface ExampleDatasetModalProps {
     datasetPreview: DatasetPreview | null;
     previewLoading: boolean;
   };
-
+  
   // Loading state
   loadingState: {
     isLoading: boolean;
@@ -479,7 +430,7 @@ interface ExampleDatasetModalProps {
     canCancel: boolean;
     onCancel: () => void;
   };
-
+  
   // Error handling
   errorHandling: {
     error: Error | null;
@@ -488,7 +439,7 @@ interface ExampleDatasetModalProps {
     errorSeverity: ErrorSeverity;
     errorRecoveryOptions: RecoveryOption[];
   };
-
+  
   // Advanced options
   advancedOptions: {
     showAdvancedOptions: boolean;
@@ -497,7 +448,7 @@ interface ExampleDatasetModalProps {
     selectedCustomizations: Customization[];
     onCustomizationChange: (customizations: Customization[]) => void;
   };
-
+  
   // Recommendation system
   recommendationSystem: {
     recommendedDatasets: RecommendedDataset[];
@@ -506,7 +457,7 @@ interface ExampleDatasetModalProps {
     onUpdateProfile: (profile: UserProfile) => void;
     learningPath: LearningPath;
   };
-
+  
   // Social features
   socialFeatures: {
     popularDatasets: PopularDataset[];
@@ -521,60 +472,59 @@ interface ExampleDatasetModalProps {
 ## 🧪 Testing Strategy
 
 ### Test Coverage Areas
-
 ```typescript
 // Example dataset functionality testing
-describe("ExampleDatasetModal", () => {
-  describe("Dataset catalog", () => {
-    it("loads dataset catalog correctly");
-    it("filters datasets by category");
-    it("searches datasets effectively");
-    it("handles catalog errors gracefully");
+describe('ExampleDatasetModal', () => {
+  describe('Dataset catalog', () => {
+    it('loads dataset catalog correctly');
+    it('filters datasets by category');
+    it('searches datasets effectively');
+    it('handles catalog errors gracefully');
   });
-
-  describe("Dataset loading", () => {
-    it("loads datasets from URLs correctly");
-    it("processes SAV files properly");
-    it("handles large datasets efficiently");
-    it("manages loading states appropriately");
+  
+  describe('Dataset loading', () => {
+    it('loads datasets from URLs correctly');
+    it('processes SAV files properly');
+    it('handles large datasets efficiently');
+    it('manages loading states appropriately');
   });
-
-  describe("Data integration", () => {
-    it("integrates with Zustand stores correctly");
-    it("updates global state properly");
-    it("maintains data integrity");
-    it("handles integration errors");
+  
+  describe('Data integration', () => {
+    it('integrates with Zustand stores correctly');
+    it('updates global state properly');
+    it('maintains data integrity');
+    it('handles integration errors');
   });
-
-  describe("User experience", () => {
-    it("provides meaningful loading feedback");
-    it("handles user cancellation gracefully");
-    it("displays helpful error messages");
-    it("guides users through selection process");
+  
+  describe('User experience', () => {
+    it('provides meaningful loading feedback');
+    it('handles user cancellation gracefully');
+    it('displays helpful error messages');
+    it('guides users through selection process');
   });
-
-  describe("Performance", () => {
-    it("loads datasets efficiently");
-    it("manages memory usage properly");
-    it("implements proper caching");
-    it("handles concurrent loading requests");
+  
+  describe('Performance', () => {
+    it('loads datasets efficiently');
+    it('manages memory usage properly');
+    it('implements proper caching');
+    it('handles concurrent loading requests');
   });
 });
 
 // Service testing
-describe("ExampleDatasetService", () => {
-  describe("Dataset processing", () => {
-    it("processes SAV files correctly");
-    it("handles various file formats");
-    it("validates data integrity");
-    it("manages processing errors");
+describe('ExampleDatasetService', () => {
+  describe('Dataset processing', () => {
+    it('processes SAV files correctly');
+    it('handles various file formats');
+    it('validates data integrity');
+    it('manages processing errors');
   });
-
-  describe("Quality control", () => {
-    it("validates dataset quality");
-    it("detects data issues");
-    it("provides quality metrics");
-    it("suggests improvements");
+  
+  describe('Quality control', () => {
+    it('validates dataset quality');
+    it('detects data issues');
+    it('provides quality metrics');
+    it('suggests improvements');
   });
 });
 ```
@@ -582,7 +532,6 @@ describe("ExampleDatasetService", () => {
 ## 📋 Development Guidelines
 
 ### Adding New Example Datasets
-
 ```typescript
 // 1. Define dataset metadata
 interface NewExampleDataset extends Dataset {
@@ -628,7 +577,6 @@ describe('New Example Dataset', () => {
 ```
 
 ### Educational Content Guidelines
-
 ```typescript
 // 1. Learning progression
 const createLearningProgression = (datasets: Dataset[]) => {
@@ -637,7 +585,7 @@ const createLearningProgression = (datasets: Dataset[]) => {
     prerequisites: getPrerequisites(index),
     learningObjectives: getLearningObjectives(dataset),
     skillsRequired: getSkillsRequired(dataset),
-    nextSteps: getNextSteps(dataset),
+    nextSteps: getNextSteps(dataset)
   }));
 };
 
@@ -647,7 +595,7 @@ const integrateTutorialSystem = (dataset: Dataset) => {
     guidedAnalysis: createGuidedAnalysis(dataset),
     interactiveElements: createInteractiveElements(dataset),
     progressTracking: setupProgressTracking(dataset),
-    assessmentQuestions: generateAssessmentQuestions(dataset),
+    assessmentQuestions: generateAssessmentQuestions(dataset)
   };
 };
 ```
@@ -655,10 +603,9 @@ const integrateTutorialSystem = (dataset: Dataset) => {
 ---
 
 Example Dataset modal menyediakan comprehensive demo data management dengan curated dataset library, intelligent processing capabilities, dan seamless educational integration untuk optimal learning experience dalam Statify.
-data_node[Data/Store]:::data
-end
-end
-
+            data_node[Data/Store]:::data
+        end
+    end
 ```
 
 ### Penjelasan Alur
@@ -700,5 +647,4 @@ end
 
 ---
 
-_Last updated: <!-- KEEP THIS COMMENT: the CI tool replaces it with commit SHA & date -->_
-```
+_Last updated: <!-- KEEP THIS COMMENT: the CI tool replaces it with commit SHA & date -->_ 

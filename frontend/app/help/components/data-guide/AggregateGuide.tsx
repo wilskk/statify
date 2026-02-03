@@ -1,32 +1,13 @@
 /* eslint-disable react/no-unescaped-entities */
-<<<<<<< HEAD
-import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert } from '../../ui/HelpLayout';
-=======
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep, HelpSection } from '../../ui/HelpLayout';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Database, Settings, Calculator } from 'lucide-react';
 
 const AggregateGuide = () => {
   const sections = [
     {
       id: 'overview',
-<<<<<<< HEAD
-      title: 'Ringkasan',
-      description: 'Memahami konsep dasar agregasi data',
-      icon: Database,
-      content: (
-        <div className="space-y-4">
-          <p>
-            Fitur Agregasi Data memungkinkan pengguna untuk mengagregasi data dengan membuat
-            statistik ringkasan untuk variabel tertentu dalam kelompok yang didefinisikan oleh
-            variabel break. Ini berguna untuk meringkas informasi, menghitung
-            rata-rata kelompok, mencari nilai maksimum per kelompok, menghitung kejadian,
-            dan banyak lagi.
-          </p>
-=======
       title: 'Cara Menggunakan Agregasi Data',
       description: 'Panduan langkah demi langkah untuk mengagregasi data dalam Statify',
       icon: Database,
@@ -78,7 +59,6 @@ const AggregateGuide = () => {
             </p>
           </HelpCard>
           
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           <HelpAlert variant="tip" title="Kapan Menggunakan Agregasi">
             Gunakan agregasi data ketika Anda ingin:
             <ul className="list-disc list-inside mt-2 space-y-1">
@@ -93,46 +73,6 @@ const AggregateGuide = () => {
     {
       id: 'configuration',
       title: 'Konfigurasi Variabel',
-<<<<<<< HEAD
-      description: 'Cara mengatur variabel untuk agregasi',
-      icon: Settings,
-      steps: [
-        {
-          title: 'Pilih Variabel Break',
-          description: 'Tentukan variabel yang digunakan untuk mengelompokkan data',
-          content: (
-            <div className="space-y-3">
-              <p>
-                Variabel ini mendefinisikan kelompok untuk agregasi.
-                Setiap kombinasi unik dari nilai dalam variabel break akan
-                membuat sebuah kelompok.
-              </p>
-              
-              <HelpCard title="Contoh" variant="step">
-                <p className="text-sm">
-                  Jika "Jenis Kelamin" dan "Wilayah" adalah variabel break, data akan
-                  diagregasi secara terpisah untuk setiap kombinasi Jenis Kelamin-Wilayah
-                  (Laki-laki-Jakarta, Perempuan-Jakarta, Laki-laki-Surabaya, dll.).
-                </p>
-              </HelpCard>
-            </div>
-          )
-        },
-        {
-          title: 'Pilih Variabel yang Diagregasi',
-          description: 'Tentukan variabel yang akan diringkas',
-          content: (
-            <div className="space-y-3">
-              <p>
-                Ini adalah variabel yang akan diringkas. Untuk setiap
-                variabel yang dipilih, Anda dapat menerapkan fungsi agregasi
-                untuk menghitung statistik untuk setiap kelompok yang didefinisikan oleh variabel break.
-              </p>
-            </div>
-          )
-        }
-      ]
-=======
       description: 'Cara mengatur variabel untuk agregasi yang efektif',
       icon: Settings,
       content: (
@@ -162,42 +102,22 @@ const AggregateGuide = () => {
           </HelpSection>
         </div>
       )
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     },
     {
       id: 'ui-variables',
       title: 'Tab: Variabel (Variables)',
-<<<<<<< HEAD
-      description: 'Kontrol utama di tab Variables',
-      icon: Settings,
-      steps: [
-        {
-          title: 'Variabel Pemisah (Break Variable(s))',
-          description: 'Daftar variabel pengelompokan',
-          content: (
-=======
       description: 'Kontrol utama dalam tab Variables untuk konfigurasi agregasi',
       icon: Settings,
       content: (
         <div className="space-y-4">
           <HelpSection title="Variabel Pemisah (Break Variable(s))">
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <div className="text-sm space-y-2">
               <p>Seret variabel dari daftar Available ke daftar <strong>Break Variable(s)</strong> untuk mendefinisikan kelompok.</p>
               <p>Gunakan urutan variabel break sesuai prioritas pengelompokan.</p>
             </div>
-<<<<<<< HEAD
-          )
-        },
-        {
-          title: 'Variabel yang Diagregasi (Aggregated Variables)',
-          description: 'Daftar variabel yang akan diringkas',
-          content: (
-=======
           </HelpSection>
           
           <HelpSection title="Variabel yang Diagregasi (Aggregated Variables)">
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <div className="text-sm space-y-2">
               <p>Seret variabel dari Available ke <strong>Aggregated Variables</strong>.</p>
               <p>Pilih satu item di daftar ini untuk mengaktifkan tombol:</p>
@@ -206,31 +126,16 @@ const AggregateGuide = () => {
                 <li><strong>Name & Label...</strong> — mengatur nama/label variabel hasil.</li>
               </ul>
             </div>
-<<<<<<< HEAD
-          )
-        },
-        {
-          title: 'Jumlah Kasus (Number of cases)',
-          description: 'Opsi pembuatan variabel jumlah kasus per kelompok',
-          content: (
-=======
           </HelpSection>
           
           <HelpSection title="Jumlah Kasus (Number of cases)">
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             <div className="text-sm space-y-1">
               <p>Centang <strong>Number of cases</strong> untuk membuat variabel hitung kasus per kelompok.</p>
               <p>Isikan <strong>Name:</strong> untuk nama variabel output.</p>
             </div>
-<<<<<<< HEAD
-          )
-        }
-      ]
-=======
           </HelpSection>
         </div>
       )
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     },
     {
       id: 'functions',
@@ -319,31 +224,6 @@ const AggregateGuide = () => {
     },
   ];
 
-<<<<<<< HEAD
-
-
-  const prerequisites = [
-    'Data Anda telah dimuat di Statify',
-    'Anda mengetahui variabel mana yang ingin dikelompokkan',
-    'Anda memahami apa yang diwakili setiap variabel'
-  ];
-
-  const tips = [
-    {
-      type: 'tip' as const,
-      title: 'Jaga Kesederhanaan',
-      content: 'Mulai dengan hanya satu variabel break untuk melihat bagaimana agregasi bekerja sebelum menambahkan pengelompokan yang lebih kompleks.'
-    },
-    {
-      type: 'warning' as const,
-      title: 'Periksa Hasil Anda',
-      content: 'Selalu tinjau hasil agregasi Anda untuk memastikan mereka masuk akal untuk analisis Anda.'
-    },
-    {
-      type: 'tip' as const,
-      title: 'Simpan Pekerjaan Anda',
-      content: 'Simpan dataset Anda sebelum menjalankan agregasi, sehingga Anda selalu dapat kembali ke data asli Anda.'
-=======
   const tips = [
     {
       type: 'tip' as const,
@@ -359,38 +239,23 @@ const AggregateGuide = () => {
       type: 'info' as const,
       title: 'Backup Data',
       content: 'Simpan dataset asli sebelum menjalankan agregasi sehingga Anda dapat kembali ke data mentah jika diperlukan.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
-<<<<<<< HEAD
-    { title: 'Impor Data', href: '/help/file-guide/import-sav' },
-    { title: 'Definisi Variabel', href: '/help/data-guide/define-var-props' },
-    { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' }
-=======
     { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
     { title: 'Pilih Kasus', href: '/help/data-guide/select-cases' },
     { title: 'Definisi Properti Variabel', href: '/help/data-guide/define-var-props' },
     { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   ];
 
   return (
     <HelpGuideTemplate
-<<<<<<< HEAD
-      title="Fitur Agregasi Data"
-      description="Dokumen ini menjelaskan fungsionalitas fitur Agregasi Data, yang memungkinkan pengguna untuk menggabungkan data menjadi statistik ringkasan lintas kelompok."
-      lastUpdated="2024-01-15"
-      sections={sections}
-      prerequisites={prerequisites}
-=======
       title="Agregasi Data"
       description="Panduan lengkap untuk mengagregasi data menjadi statistik ringkasan berdasarkan kelompok dalam Statify"
       lastUpdated="2024-01-15"
       sections={sections}
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       tips={tips}
       relatedTopics={relatedTopics}
     />

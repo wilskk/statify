@@ -3,14 +3,6 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-<<<<<<< HEAD
-import {
-    TwoIndependentSamplesTestAnalysisProps,
-    TwoIndependentSamplesTestResults,
-    TwoIndependentSamplesTestResult,
-    DescriptiveStatistics
-} from '../types';
-=======
 import type {
     TwoIndependentSamplesTestAnalysisProps,
     TwoIndependentSamplesTestResult,
@@ -19,7 +11,6 @@ import type {
 import {
     TwoIndependentSamplesTestResults
 } from '../types';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 import {
     formatFrequenciesRanksTable,
@@ -136,11 +127,7 @@ export const useTwoIndependentSamplesAnalysis = ({
             const { variableName, results, status, error: workerError } = event.data;
             // console.log('results', JSON.stringify(results));
             if (status === 'success' && results) {
-<<<<<<< HEAD
-                if (results.metadata && results.metadata.hasInsufficientData) {
-=======
                 if (results.metadata?.hasInsufficientData) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     insufficientDataVarsRef.current.push({ variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficentType: results.metadata.insufficentType });
                     // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}.`);
                 }
@@ -195,11 +182,7 @@ export const useTwoIndependentSamplesAnalysis = ({
                         let mannWhitneyUTestNote = "";
                         let kolmogorovSmirnovZTestNote = "";
                         let note = "";
-<<<<<<< HEAD
-                        let typeToVars: Record<string, string[]> = {};
-=======
                         const typeToVars: Record<string, string[]> = {};
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         if (insufficientDataVarsRef.current.length > 0) {
                             for (const { variableName, variableLabel, insufficentType } of insufficientDataVarsRef.current) {
                                 for (const type of insufficentType) {
@@ -208,11 +191,7 @@ export const useTwoIndependentSamplesAnalysis = ({
                                 }
                             }
                             if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
-<<<<<<< HEAD
-                                let testNames = [];
-=======
                                 const testNames = [];
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                 if (testType.mannWhitneyU) testNames.push("Mann-Whitney U Test");
                                 if (testType.kolmogorovSmirnovZ) testNames.push("Kolmogorov-Smirnov Z Test");
                                 if (testType.mosesExtremeReactions) testNames.push("Moses Extreme Reactions Test");

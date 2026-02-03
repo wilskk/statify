@@ -3,13 +3,6 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-<<<<<<< HEAD
-import {
-    TwoRelatedSamplesAnalysisProps,
-    TwoRelatedSamplesResults,
-    TwoRelatedSamplesResult
-} from '../types';
-=======
 import type {
     TwoRelatedSamplesAnalysisProps,
     TwoRelatedSamplesResult
@@ -17,7 +10,6 @@ import type {
 import {
     TwoRelatedSamplesResults
 } from '../types';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 import {
     formatDescriptiveStatisticsTable,
@@ -112,11 +104,7 @@ export const useTwoRelatedSamplesAnalysis = ({
 
             if (status === 'success' && results) {
                 // Check for insufficient data
-<<<<<<< HEAD
-                if (results.metadata && results.metadata.hasInsufficientData) {
-=======
                 if (results.metadata?.hasInsufficientData) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     insufficientDataVarsRef.current.push({variable1Name: results.metadata.variable1Name, variable1Label: results.metadata.variable1Label, variable2Name: results.metadata.variable2Name, variable2Label: results.metadata.variable2Label, insufficientType: results.metadata.insufficientType});
                     // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                 }
@@ -173,11 +161,7 @@ export const useTwoRelatedSamplesAnalysis = ({
 
                         let twoRelatedSamplesNote = "";
                         let note = "";
-<<<<<<< HEAD
-                        let typeToVars: Record<string, string[]> = {};
-=======
                         const typeToVars: Record<string, string[]> = {};
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         if (insufficientDataVarsRef.current.length > 0) {
                             twoRelatedSamplesNote += "Note: "; 
                             for (const { variable1Name, variable1Label, variable2Name, variable2Label, insufficientType } of insufficientDataVarsRef.current) {
@@ -188,11 +172,7 @@ export const useTwoRelatedSamplesAnalysis = ({
                                 }
                             }
                             if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
-<<<<<<< HEAD
-                                let testNames = [];
-=======
                                 const testNames = [];
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                 if (testType.wilcoxon) testNames.push("Wilcoxon Signed Ranks Test");
                                 if (testType.sign) testNames.push("Sign Test");
                                 if (testNames.length > 0) {

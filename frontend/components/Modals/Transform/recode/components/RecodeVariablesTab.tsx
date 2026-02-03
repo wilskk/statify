@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-import React, { FC, useCallback } from "react";
-import type { Variable } from "@/types/Variable";
-import VariableListManager, {
-  TargetListConfig,
-} from "@/components/Common/VariableListManager";
-=======
 import type { FC} from "react";
 import React, { useCallback } from "react";
 import type { Variable } from "@/types/Variable";
@@ -12,7 +5,6 @@ import type {
   TargetListConfig,
 } from "@/components/Common/VariableListManager";
 import VariableListManager from "@/components/Common/VariableListManager";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 interface RecodeVariablesTabProps {
   availableVariables: Variable[];

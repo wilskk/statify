@@ -11,20 +11,19 @@ import { DataRow } from "@/types/Data";
 export type SyncStatusType = 'idle' | 'syncing' | 'error';
 
 export type CellUpdate = { row: number; col: number; value: string | number };
+
+// ColumnData type for adding variable columns (e.g., factor scores)
+export type ColumnData = {
+    variable_name: string;
+    values: (string | number | null)[];
+};
+
 export type DataStoreError = {
     message: string;
     source: string;
     originalError?: any;
 };
 
-<<<<<<< HEAD
-export interface ColumnData {
-    variable_name: string;
-    values: (string | number | null)[];
-}
-
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 export interface DataStoreState {
     data: DataRow[];
     isLoading: boolean;
@@ -62,17 +61,12 @@ export interface DataStoreState {
 
     ensureColumns: (targetColIndex: number) => Promise<void>;
     checkAndSave: () => Promise<void>;
-<<<<<<< HEAD
-
-    addVariableColumns: (newColumns: ColumnData[]) => Promise<{ startColumnIndex: number; endColumnIndex: number }>;
+    
+    // Add variable columns for factor scores and other computed variables
+    addVariableColumns: (columnDataList: ColumnData[]) => Promise<{ startColumnIndex: number; endColumnIndex: number }>;
 }
 
 const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateCells' | 'setData' | 'saveData' | 'addRow' | 'addRows' | 'deleteRow' | 'deleteRows' | 'sortData' | 'getVariableData' | 'validateVariableData' | 'ensureColumns' | 'checkAndSave' | 'addVariableColumns'> = {
-=======
-}
-
-const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateCells' | 'setData' | 'saveData' | 'addRow' | 'addRows' | 'deleteRow' | 'deleteRows' | 'sortData' | 'getVariableData' | 'validateVariableData' | 'ensureColumns' | 'checkAndSave'> = {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     data: [],
     isLoading: false,
     error: null,
@@ -443,51 +437,47 @@ export const useDataStore = create<DataStoreState>()(
                         }
                     }
                 },
-<<<<<<< HEAD
 
-                addVariableColumns: async (newColumns) => {
-                    if (!newColumns || newColumns.length === 0) {
+                addVariableColumns: async (columnDataList: ColumnData[]) => {
+                    if (!columnDataList || columnDataList.length === 0) {
                         return { startColumnIndex: -1, endColumnIndex: -1 };
                     }
 
-                    const startColumnIndex = get().data.length > 0 ? (get().data[0]?.length ?? 0) : 0;
-                    let endColumnIndex = startColumnIndex - 1;
+                    const currentData = get().data;
+                    const currentColCount = currentData.length > 0 ? (currentData[0]?.length ?? 0) : 0;
+                    const startColumnIndex = currentColCount;
+                    const endColumnIndex = startColumnIndex + columnDataList.length - 1;
+
+                    // Determine the number of rows needed
+                    const maxRowsNeeded = Math.max(
+                        currentData.length,
+                        ...columnDataList.map(col => col.values?.length ?? 0)
+                    );
 
                     set((state) => {
-                        const currentData = state.data;
-                        const rowCount = currentData.length;
+                        // Ensure we have enough rows
+                        while (state.data.length < maxRowsNeeded) {
+                            state.data.push(Array(currentColCount).fill(""));
+                        }
 
-                        // Iterate through each new column and inject values into the data
-                        newColumns.forEach((column, columnOffset) => {
-                            const columnIndex = startColumnIndex + columnOffset;
-                            endColumnIndex = columnIndex;
-
-                            // Ensure all rows have enough columns
-                            for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
-                                if (!currentData[rowIdx]) {
-                                    currentData[rowIdx] = [];
-                                }
-                                // Ensure the row has enough cells up to this column
-                                while (currentData[rowIdx].length <= columnIndex) {
-                                    currentData[rowIdx].push("");
-                                }
-                                // Inject the value from the column data
-                                const value = column.values[rowIdx] ?? "";
-                                currentData[rowIdx][columnIndex] = value;
+                        // Add new columns to each row
+                        for (let rowIndex = 0; rowIndex < state.data.length; rowIndex++) {
+                            for (let colIdx = 0; colIdx < columnDataList.length; colIdx++) {
+                                const colData = columnDataList[colIdx];
+                                const value = colData.values?.[rowIndex] ?? "";
+                                state.data[rowIndex].push(value as string | number);
                             }
-                        });
+                        }
 
-                        state.data = currentData;
-                        state.lastUpdated = new Date();
                         state.hasUnsavedChanges = true;
+                        state.lastUpdated = new Date();
                     });
 
-                    // Automatically save the new data structure
+                    // Save the data
                     try {
                         await get().saveData();
                     } catch (error) {
-                        console.error("Failed to save new variable columns:", error);
-                        throw error;
+                        console.error("Failed to save after adding variable columns:", error);
                     }
 
                     return { startColumnIndex, endColumnIndex };
@@ -496,10 +486,3 @@ export const useDataStore = create<DataStoreState>()(
         })
     )
 );
-
-=======
-            };
-        })
-    )
-);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

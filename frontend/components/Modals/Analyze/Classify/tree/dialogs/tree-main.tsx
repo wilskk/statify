@@ -1,9 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-<<<<<<< HEAD
-import {TreeContainerProps, TreeMainType, TreeType,} from "@/components/Modals/Analyze/Classify/tree/types/tree";
-=======
 import type {TreeContainerProps, TreeMainType, TreeType,} from "@/components/Modals/Analyze/Classify/tree/types/tree";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {TreeDefault} from "@/components/Modals/Analyze/Classify/tree/constants/tree-default";
 import {TreeDialog} from "@/components/Modals/Analyze/Classify/tree/dialogs/dialog";
 import {TreeCategories} from "@/components/Modals/Analyze/Classify/tree/dialogs/categories";
@@ -102,13 +98,8 @@ export const TreeContainer = ({ onClose }: TreeContainerProps) => {
 
             await analyzeTree({
                 configData: newFormData,
-<<<<<<< HEAD
-                dataVariables: dataVariables,
-                variables: variables,
-=======
                 dataVariables,
                 variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             });
         } catch (error) {
             console.error(error);

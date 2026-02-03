@@ -3,16 +3,10 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-<<<<<<< HEAD
-import {
-    BivariateAnalysisProps,
-    BivariateResults,
-=======
 import type {
     BivariateAnalysisProps,
     BivariateResults} from '../types';
 import {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     BivariateTable
 } from '../types';
 
@@ -181,11 +175,7 @@ export const useBivariateAnalysis = ({
                         // console.log('Results ref:', JSON.stringify(resultsRef.current));
                         // Prepare log message
                         const variableNames = testVariables.map(v => v.name).join(" ");
-<<<<<<< HEAD
-                        let logMsg = `CORRELATIONS {VARIABLES=${variableNames}}`;
-=======
                         const logMsg = `CORRELATIONS {VARIABLES=${variableNames}}`;
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
                         // 4. Catat waktu ketika data diubah ke format tabel
                         timingRef.current.dataFormattedToTable = performance.now();
@@ -257,11 +247,7 @@ export const useBivariateAnalysis = ({
                         }
 
                         if (correlationCoefficient.kendallsTauB || correlationCoefficient.spearman) {
-<<<<<<< HEAD
-                            let correlationType = [];
-=======
                             const correlationType = [];
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                             if (correlationCoefficient.kendallsTauB) {
                                 correlationType.push("Kendall's tau_b");
                             }

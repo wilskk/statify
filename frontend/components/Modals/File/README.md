@@ -95,14 +95,12 @@ File/
 ### Operation Categories
 
 #### **Data Import Operations**
-
 - **File Import**: Support untuk multiple file formats (.sav, .csv, .xlsx, .txt, .json)
 - **Database Import**: Direct database connections dan SQL queries
 - **Text Import**: Advanced text file parsing dengan custom delimiters
 - **Validation**: Comprehensive data validation dan error detection
 
 #### **Data Export Operations**
-
 - **Format Export**: Export ke multiple formats dengan format-specific options
 - **Filtered Export**: Export selected data subsets atau filtered results
 - **Statistical Export**: Export analysis results dan statistical summaries
@@ -113,19 +111,18 @@ File/
 ### Import Data Operations (`ImportData/`)
 
 #### Core Features
-
 ```typescript
 interface ImportDataFeatures {
   // File format support
   formatSupport: {
-    spssFiles: boolean; // .sav files
-    csvFiles: boolean; // .csv files
-    excelFiles: boolean; // .xlsx, .xls files
-    textFiles: boolean; // .txt, .dat files
-    jsonFiles: boolean; // .json files
-    xmlFiles: boolean; // .xml files
+    spssFiles: boolean;      // .sav files
+    csvFiles: boolean;       // .csv files
+    excelFiles: boolean;     // .xlsx, .xls files
+    textFiles: boolean;      // .txt, .dat files
+    jsonFiles: boolean;      // .json files
+    xmlFiles: boolean;       // .xml files
   };
-
+  
   // Import options
   importOptions: {
     dataTypeDetection: boolean;
@@ -135,7 +132,7 @@ interface ImportDataFeatures {
     previewMode: boolean;
     partialImport: boolean;
   };
-
+  
   // Validation features
   validationFeatures: {
     dataTypeValidation: boolean;
@@ -144,7 +141,7 @@ interface ImportDataFeatures {
     duplicateDetection: boolean;
     errorReporting: boolean;
   };
-
+  
   // Advanced features
   advancedFeatures: {
     mappingInterface: boolean;
@@ -157,7 +154,6 @@ interface ImportDataFeatures {
 ```
 
 #### Import Logic Implementation
-
 ```typescript
 interface ImportLogic {
   // File processing
@@ -171,7 +167,7 @@ interface ImportLogic {
       spssParser: SPSSParser;
     };
   };
-
+  
   // Data transformation
   dataTransformation: {
     typeConversion: TypeConverter;
@@ -179,7 +175,7 @@ interface ImportLogic {
     valueTransformation: ValueTransformer;
     validationEngine: ValidationEngine;
   };
-
+  
   // Import workflow
   importWorkflow: {
     fileSelection: FileSelectionStep;
@@ -201,7 +197,7 @@ interface ImportFormHook {
     mappingConfiguration: MappingConfig;
     validationResults: ValidationResult[];
   };
-
+  
   // File operations
   fileOperations: {
     selectFile: (file: File) => void;
@@ -209,7 +205,7 @@ interface ImportFormHook {
     previewData: (file: File, options: ImportOptions) => Promise<PreviewData>;
     validateFile: (file: File) => Promise<ValidationResult>;
   };
-
+  
   // Import operations
   importOperations: {
     configureImport: (config: ImportConfig) => void;
@@ -217,7 +213,7 @@ interface ImportFormHook {
     cancelImport: () => void;
     retryImport: (errorCorrections: ErrorCorrection[]) => Promise<ImportResult>;
   };
-
+  
   // Progress tracking
   progressTracking: {
     importProgress: number;
@@ -229,7 +225,6 @@ interface ImportFormHook {
 ```
 
 #### File Format Handlers
-
 ```typescript
 interface FileFormatHandlers {
   // SPSS file handler
@@ -239,7 +234,7 @@ interface FileFormatHandlers {
     readValueLabels: (file: File) => Promise<ValueLabels>;
     readVariableLabels: (file: File) => Promise<VariableLabels>;
   };
-
+  
   // CSV file handler
   csvHandler: {
     detectDelimiter: (file: File) => Promise<string>;
@@ -247,7 +242,7 @@ interface FileFormatHandlers {
     parseHeaders: (file: File, options: CSVOptions) => Promise<string[]>;
     parseData: (file: File, options: CSVOptions) => Promise<CSVData>;
   };
-
+  
   // Excel file handler
   excelHandler: {
     getSheetNames: (file: File) => Promise<string[]>;
@@ -255,14 +250,11 @@ interface FileFormatHandlers {
     detectDataRange: (file: File, sheetName: string) => Promise<Range>;
     parseFormulas: (file: File, sheetName: string) => Promise<Formula[]>;
   };
-
+  
   // Text file handler
   textHandler: {
     detectFormat: (file: File) => Promise<TextFormat>;
-    parseFixedWidth: (
-      file: File,
-      columnSpecs: ColumnSpec[],
-    ) => Promise<TextData>;
+    parseFixedWidth: (file: File, columnSpecs: ColumnSpec[]) => Promise<TextData>;
     parseDelimited: (file: File, delimiter: string) => Promise<TextData>;
     detectColumnTypes: (data: TextData) => Promise<ColumnType[]>;
   };
@@ -272,7 +264,6 @@ interface FileFormatHandlers {
 ### Database Reading (`ReadDatabase/`)
 
 #### Database Connection Features
-
 ```typescript
 interface DatabaseFeatures {
   // Database support
@@ -284,7 +275,7 @@ interface DatabaseFeatures {
     oracle: boolean;
     access: boolean;
   };
-
+  
   // Connection management
   connectionManagement: {
     connectionPool: boolean;
@@ -293,7 +284,7 @@ interface DatabaseFeatures {
     sslSupport: boolean;
     timeoutHandling: boolean;
   };
-
+  
   // Query capabilities
   queryCapabilities: {
     sqlEditor: boolean;
@@ -303,7 +294,7 @@ interface DatabaseFeatures {
     parameterizedQueries: boolean;
     queryHistory: boolean;
   };
-
+  
   // Data handling
   dataHandling: {
     largeDatasetSupport: boolean;
@@ -316,7 +307,6 @@ interface DatabaseFeatures {
 ```
 
 #### Database Logic Implementation
-
 ```typescript
 // useDatabaseForm.ts
 interface DatabaseFormHook {
@@ -328,7 +318,7 @@ interface DatabaseFormHook {
     availableTables: TableInfo[];
     availableColumns: ColumnInfo[];
   };
-
+  
   // Connection operations
   connectionOperations: {
     testConnection: (config: DatabaseConfig) => Promise<ConnectionResult>;
@@ -336,7 +326,7 @@ interface DatabaseFormHook {
     closeConnection: () => void;
     refreshSchema: () => Promise<void>;
   };
-
+  
   // Query operations
   queryOperations: {
     executeQuery: (sql: string, params?: QueryParams) => Promise<QueryResult>;
@@ -344,14 +334,11 @@ interface DatabaseFormHook {
     validateQuery: (sql: string) => Promise<ValidationResult>;
     getQueryHistory: () => QueryHistoryItem[];
   };
-
+  
   // Data operations
   dataOperations: {
     previewTable: (tableName: string, limit?: number) => Promise<PreviewData>;
-    importTable: (
-      tableName: string,
-      options: ImportOptions,
-    ) => Promise<ImportResult>;
+    importTable: (tableName: string, options: ImportOptions) => Promise<ImportResult>;
     importQuery: (sql: string, options: ImportOptions) => Promise<ImportResult>;
   };
 }
@@ -360,7 +347,6 @@ interface DatabaseFormHook {
 ### Text Data Reading (`ReadTextData/`)
 
 #### Text Import Features
-
 ```typescript
 interface TextImportFeatures {
   // File format detection
@@ -371,7 +357,7 @@ interface TextImportFeatures {
     dataTypeDetection: boolean;
     structureAnalysis: boolean;
   };
-
+  
   // Parsing options
   parsingOptions: {
     customDelimiters: boolean;
@@ -381,7 +367,7 @@ interface TextImportFeatures {
     escapeCharacters: boolean;
     commentLines: boolean;
   };
-
+  
   // Data transformation
   dataTransformation: {
     columnMapping: boolean;
@@ -390,7 +376,7 @@ interface TextImportFeatures {
     conditionalLogic: boolean;
     calculatedFields: boolean;
   };
-
+  
   // Quality control
   qualityControl: {
     previewMode: boolean;
@@ -403,7 +389,6 @@ interface TextImportFeatures {
 ```
 
 #### Text Import Logic
-
 ```typescript
 // useTextImportForm.ts
 interface TextImportFormHook {
@@ -414,7 +399,7 @@ interface TextImportFormHook {
     detectEncoding: (file: File) => Promise<EncodingDetection>;
     sampleData: (file: File, sampleSize: number) => Promise<SampleData>;
   };
-
+  
   // Parsing configuration
   parsingConfiguration: {
     delimiter: string;
@@ -425,7 +410,7 @@ interface TextImportFormHook {
     skipRows: number;
     maxRows: number;
   };
-
+  
   // Column configuration
   columnConfiguration: {
     columnNames: string[];
@@ -434,7 +419,7 @@ interface TextImportFormHook {
     includeColumns: boolean[];
     transformations: Transformation[];
   };
-
+  
   // Import execution
   importExecution: {
     previewImport: () => Promise<PreviewResult>;
@@ -450,19 +435,18 @@ interface TextImportFormHook {
 ### Export Operations (`Export/`)
 
 #### Export Features
-
 ```typescript
 interface ExportFeatures {
   // Format support
   formatSupport: {
-    spssExport: boolean; // .sav files
-    csvExport: boolean; // .csv files
-    excelExport: boolean; // .xlsx files
-    textExport: boolean; // .txt files
-    jsonExport: boolean; // .json files
-    pdfExport: boolean; // .pdf reports
+    spssExport: boolean;     // .sav files
+    csvExport: boolean;      // .csv files
+    excelExport: boolean;    // .xlsx files
+    textExport: boolean;     // .txt files
+    jsonExport: boolean;     // .json files
+    pdfExport: boolean;      // .pdf reports
   };
-
+  
   // Export options
   exportOptions: {
     dataSelection: boolean;
@@ -472,7 +456,7 @@ interface ExportFeatures {
     metadataInclusion: boolean;
     batchExport: boolean;
   };
-
+  
   // Quality control
   qualityControl: {
     exportValidation: boolean;
@@ -481,7 +465,7 @@ interface ExportFeatures {
     sizeOptimization: boolean;
     errorReporting: boolean;
   };
-
+  
   // Advanced features
   advancedFeatures: {
     scheduledExports: boolean;
@@ -494,7 +478,6 @@ interface ExportFeatures {
 ```
 
 #### Export Logic Implementation
-
 ```typescript
 // useExportForm.ts
 interface ExportFormHook {
@@ -506,18 +489,15 @@ interface ExportFormHook {
     exportOptions: ExportOptions;
     dataSelection: DataSelection;
   };
-
+  
   // Data preparation
   dataPreparation: {
     selectData: (criteria: SelectionCriteria) => Promise<SelectedData>;
-    prepareData: (
-      data: SelectedData,
-      options: ExportOptions,
-    ) => Promise<PreparedData>;
+    prepareData: (data: SelectedData, options: ExportOptions) => Promise<PreparedData>;
     validateData: (data: PreparedData) => Promise<ValidationResult>;
     optimizeData: (data: PreparedData) => Promise<OptimizedData>;
   };
-
+  
   // Export operations
   exportOperations: {
     previewExport: () => Promise<ExportPreview>;
@@ -525,7 +505,7 @@ interface ExportFormHook {
     cancelExport: () => void;
     retryExport: () => Promise<ExportResult>;
   };
-
+  
   // Progress tracking
   progressTracking: {
     exportProgress: number;
@@ -539,18 +519,17 @@ interface ExportFormHook {
 ### Save Operations (`SaveAs/`)
 
 #### Save Features
-
 ```typescript
 interface SaveFeatures {
   // Save options
   saveOptions: {
-    nativeFormat: boolean; // .statify format
+    nativeFormat: boolean;   // .statify format
     backupCreation: boolean;
     versionHistory: boolean;
     incrementalSave: boolean;
     compressionOptions: boolean;
   };
-
+  
   // File management
   fileManagement: {
     locationSelection: boolean;
@@ -559,7 +538,7 @@ interface SaveFeatures {
     pathOptimization: boolean;
     metadataStorage: boolean;
   };
-
+  
   // Version control
   versionControl: {
     automaticVersioning: boolean;
@@ -568,7 +547,7 @@ interface SaveFeatures {
     rollbackSupport: boolean;
     changeTracking: boolean;
   };
-
+  
   // Integration
   integration: {
     cloudStorage: boolean;
@@ -583,69 +562,67 @@ interface SaveFeatures {
 ## 🧪 Testing Strategy
 
 ### Test Coverage per Feature
-
 ```typescript
 // Import testing
-describe("ImportDataModal", () => {
-  describe("File handling", () => {
-    it("handles various file formats");
-    it("detects file encoding correctly");
-    it("validates file structure");
-    it("handles large files efficiently");
+describe('ImportDataModal', () => {
+  describe('File handling', () => {
+    it('handles various file formats');
+    it('detects file encoding correctly');
+    it('validates file structure');
+    it('handles large files efficiently');
   });
-
-  describe("Data processing", () => {
-    it("parses CSV files correctly");
-    it("handles Excel sheets");
-    it("processes SPSS files");
-    it("validates imported data");
+  
+  describe('Data processing', () => {
+    it('parses CSV files correctly');
+    it('handles Excel sheets');
+    it('processes SPSS files');
+    it('validates imported data');
   });
-
-  describe("useImportForm hook", () => {
-    it("manages import state");
-    it("handles file selection");
-    it("processes import operations");
-    it("tracks progress correctly");
+  
+  describe('useImportForm hook', () => {
+    it('manages import state');
+    it('handles file selection');
+    it('processes import operations');
+    it('tracks progress correctly');
   });
 });
 
 // Export testing
-describe("ExportModal", () => {
-  describe("Export functionality", () => {
-    it("exports to multiple formats");
-    it("handles data selection");
-    it("applies export options");
-    it("validates exported files");
+describe('ExportModal', () => {
+  describe('Export functionality', () => {
+    it('exports to multiple formats');
+    it('handles data selection');
+    it('applies export options');
+    it('validates exported files');
   });
-
-  describe("useExportForm hook", () => {
-    it("configures export settings");
-    it("prepares data for export");
-    it("executes export operations");
-    it("handles export errors");
+  
+  describe('useExportForm hook', () => {
+    it('configures export settings');
+    it('prepares data for export');
+    it('executes export operations');
+    it('handles export errors');
   });
 });
 
 // Database testing
-describe("ReadDatabaseModal", () => {
-  describe("Connection management", () => {
-    it("establishes database connections");
-    it("tests connection validity");
-    it("handles connection errors");
-    it("manages connection pools");
+describe('ReadDatabaseModal', () => {
+  describe('Connection management', () => {
+    it('establishes database connections');
+    it('tests connection validity');
+    it('handles connection errors');
+    it('manages connection pools');
   });
-
-  describe("Query operations", () => {
-    it("executes SQL queries");
-    it("validates query syntax");
-    it("handles query results");
-    it("manages query history");
+  
+  describe('Query operations', () => {
+    it('executes SQL queries');
+    it('validates query syntax');
+    it('handles query results');
+    it('manages query history');
   });
 });
 ```
 
 ### Integration Testing
-
 ```typescript
 interface FileModalIntegrationTests {
   // Cross-modal integration
@@ -654,14 +631,14 @@ interface FileModalIntegrationTests {
     exportWithAnalysisModals: boolean;
     saveWithEditModals: boolean;
   };
-
+  
   // File system integration
   fileSystemIntegration: {
     localFileAccess: boolean;
     networkFileAccess: boolean;
     cloudStorageAccess: boolean;
   };
-
+  
   // Data integrity testing
   dataIntegrityTesting: {
     importExportRoundtrip: boolean;
@@ -674,24 +651,23 @@ interface FileModalIntegrationTests {
 ## 📋 Development Guidelines
 
 ### File Modal Development Standards
-
 ```typescript
 interface FileModalStandards {
   // Architecture
   streamingSupport: boolean;
   progressTracking: boolean;
   errorRecovery: boolean;
-
+  
   // Performance
   largeFileHandling: boolean;
   memoryOptimization: boolean;
   backgroundProcessing: boolean;
-
+  
   // Security
   fileValidation: boolean;
   pathSanitization: boolean;
   accessControl: boolean;
-
+  
   // Quality
   testCoverage: number; // >= 85%
   errorHandling: boolean;
@@ -700,7 +676,6 @@ interface FileModalStandards {
 ```
 
 ### Best Practices
-
 ```typescript
 // 1. Streaming file processing
 const useStreamingFileProcessor = () => {
@@ -708,17 +683,17 @@ const useStreamingFileProcessor = () => {
     const chunkSize = 1024 * 1024; // 1MB chunks
     const fileSize = file.size;
     let processedBytes = 0;
-
+    
     const reader = file.stream().getReader();
-
+    
     try {
       while (processedBytes < fileSize) {
         const { done, value } = await reader.read();
         if (done) break;
-
+        
         await processor.processChunk(value);
         processedBytes += value.length;
-
+        
         // Update progress
         const progress = (processedBytes / fileSize) * 100;
         processor.updateProgress(progress);
@@ -727,7 +702,7 @@ const useStreamingFileProcessor = () => {
       reader.releaseLock();
     }
   };
-
+  
   return { processLargeFile };
 };
 
@@ -736,30 +711,27 @@ const useProgressiveValidation = () => {
   const validateData = async (data: ImportData, validators: Validator[]) => {
     const results: ValidationResult[] = [];
     const totalRows = data.rows.length;
-
+    
     for (let i = 0; i < totalRows; i += VALIDATION_BATCH_SIZE) {
       const batch = data.rows.slice(i, i + VALIDATION_BATCH_SIZE);
-
+      
       const batchResults = await Promise.all(
-        validators.map((validator) => validator.validateBatch(batch)),
+        validators.map(validator => validator.validateBatch(batch))
       );
-
+      
       results.push(...batchResults.flat());
-
+      
       // Update progress
-      const progress = Math.min(
-        ((i + VALIDATION_BATCH_SIZE) / totalRows) * 100,
-        100,
-      );
+      const progress = Math.min(((i + VALIDATION_BATCH_SIZE) / totalRows) * 100, 100);
       updateValidationProgress(progress);
-
+      
       // Allow UI updates
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 0));
     }
-
+    
     return results;
   };
-
+  
   return { validateData };
 };
 
@@ -767,33 +739,33 @@ const useProgressiveValidation = () => {
 const useErrorRecovery = () => {
   const withErrorRecovery = async <T>(
     operation: () => Promise<T>,
-    recovery: ErrorRecoveryStrategy,
+    recovery: ErrorRecoveryStrategy
   ): Promise<T> => {
     let attempts = 0;
     const maxAttempts = recovery.maxAttempts || 3;
-
+    
     while (attempts < maxAttempts) {
       try {
         return await operation();
       } catch (error) {
         attempts++;
-
+        
         if (attempts >= maxAttempts) {
           throw error;
         }
-
+        
         const shouldRetry = await recovery.shouldRetry(error, attempts);
         if (!shouldRetry) {
           throw error;
         }
-
+        
         await recovery.beforeRetry(error, attempts);
       }
     }
-
-    throw new Error("Max attempts exceeded");
+    
+    throw new Error('Max attempts exceeded');
   };
-
+  
   return { withErrorRecovery };
 };
 ```

@@ -1,30 +1,12 @@
 /* eslint-disable react/no-unescaped-entities */
-<<<<<<< HEAD
-import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-=======
 import React from 'react';
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
 import { HelpCard, HelpAlert, HelpStep, HelpSection } from '../../ui/HelpLayout';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Settings, FileText } from 'lucide-react';
 
 const DefineVarPropsGuide = () => {
   const sections = [
     {
-<<<<<<< HEAD
-      id: 'overview',
-      title: 'Ringkasan',
-      description: 'Pengantar fitur Definisi Properti Variabel',
-      icon: Settings,
-      content: (
-        <div className="space-y-4">
-          <p>
-            Fitur Definisi Properti Variabel membantu Anda meninjau dan mengatur 
-            variabel data Anda dengan benar. Ini bekerja dalam dua langkah sederhana:
-          </p>
-          
-=======
       id: 'how-to-steps',
       title: 'Cara Mendefinisikan Properti Variabel',
       description: 'Panduan langkah demi langkah untuk meninjau dan mengatur properti variabel',
@@ -71,7 +53,6 @@ const DefineVarPropsGuide = () => {
       icon: FileText,
       content: (
         <div className="space-y-4">
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           <HelpCard title="Proses Dua Langkah" variant="feature">
             <ol className="list-decimal list-inside space-y-2 text-sm">
               <li>
@@ -96,11 +77,7 @@ const DefineVarPropsGuide = () => {
     },
     {
       id: 'workflow',
-<<<<<<< HEAD
-      title: 'Cara Kerjanya',
-=======
       title: 'Alur Kerja Detail',
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       description: 'Proses langkah demi langkah untuk menggunakan fitur',
       icon: FileText,
       content: (
@@ -170,69 +147,40 @@ const DefineVarPropsGuide = () => {
           </HelpAlert>
         </div>
       )
-<<<<<<< HEAD
-    },
-=======
     }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   ];
 
 
   const tips = [
     {
       type: 'tip' as const,
-<<<<<<< HEAD
-      title: 'Tips Kinerja',
-      content: 'Gunakan batas yang wajar untuk dataset besar agar proses berjalan dengan lancar.'
-=======
       title: 'Optimasi Performa',
       content: 'Gunakan batas yang wajar untuk dataset besar agar proses berjalan dengan lancar dan efisien.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     },
     {
       type: 'info' as const,
       title: 'Saran Otomatis',
-<<<<<<< HEAD
-      content: 'Gunakan fitur "Sarankan Tingkat Pengukuran" untuk mendapatkan rekomendasi yang berguna.'
-    },
-    {
-      type: 'warning' as const,
-      title: 'Periksa Pekerjaan Anda',
-      content: 'Selalu periksa kembali pengaturan nilai yang hilang untuk memastikan analisis yang akurat.'
-=======
       content: 'Gunakan fitur "Sarankan Tingkat Pengukuran" untuk mendapatkan rekomendasi yang berguna berdasarkan pola data Anda.'
     },
     {
       type: 'warning' as const,
       title: 'Validasi Nilai Hilang',
       content: 'Selalu periksa kembali pengaturan nilai yang hilang untuk memastikan analisis yang akurat dan valid.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
-<<<<<<< HEAD
-    { title: 'Manajemen Data', href: '/help/data-guide' },
-    { title: 'Atur Tingkat Pengukuran', href: '/help/data-guide/set-measurement-level' },
-    { title: 'Definisi Tanggal Waktu', href: '/help/data-guide/define-date-time' },
-    { title: 'Pilih Kasus', href: '/help/data-guide/select-cases' }
-=======
     { title: 'Atur Tingkat Pengukuran', href: '/help/data-guide/set-measurement-level' },
     { title: 'Definisi Tanggal Waktu', href: '/help/data-guide/define-datetime' },
     { title: 'Pilih Kasus', href: '/help/data-guide/select-cases' },
     { title: 'Urutkan Variabel', href: '/help/data-guide/sort-vars' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   ];
 
   return (
     <HelpGuideTemplate
       title="Definisi Properti Variabel"
-<<<<<<< HEAD
-      description="Panduan lengkap untuk meninjau dan mengatur variabel data Anda"
-=======
       description="Panduan lengkap untuk meninjau dan mengatur properti variabel data Anda di Statify"
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

@@ -1,9 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { TourStep, HorizontalPosition} from '@/types/tourTypes';
-<<<<<<< HEAD
-import { PopupPosition } from '@/types/tourTypes';
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // Define tour steps for ExportCsv component according to the guide
 const baseTourSteps: TourStep[] = [
@@ -203,8 +199,4 @@ export const useTourGuide = (
     prevStep,
     endTour
   };
-<<<<<<< HEAD
-}; 
-=======
 };
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

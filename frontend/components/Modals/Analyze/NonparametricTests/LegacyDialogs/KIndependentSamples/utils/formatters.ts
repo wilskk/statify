@@ -1,11 +1,3 @@
-<<<<<<< HEAD
-import {
-    KIndependentSamplesTestResults,
-    KIndependentSamplesTestResult,
-    KIndependentSamplesTestTable,
-    TableColumnHeader,
-    TableRow,
-=======
 import type {
     KIndependentSamplesTestTable,
     TableColumnHeader,
@@ -14,18 +6,12 @@ import type {
 import {
     KIndependentSamplesTestResults,
     KIndependentSamplesTestResult,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     Ranks,
     KruskalWallisHTestStatistics,
     Frequencies,
     MedianTestStatistics,
     JonckheereTerpstraTest,
-<<<<<<< HEAD
-    DescriptiveStatistics,
-    DisplayStatisticsOptions,
-=======
     DescriptiveStatistics
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 } from '../types';
 
 /**
@@ -57,11 +43,7 @@ export function formatRanksTable(
         };
     }
     
-<<<<<<< HEAD
-    let columnHeaders: TableColumnHeader[] = [
-=======
     const columnHeaders: TableColumnHeader[] = [
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         { header: "", key: "rowHeader" },
         { header: groupingVariable, key: "groupingVariable" },
         { header: "N", key: "N" },
@@ -134,11 +116,7 @@ export function formatKruskalWallisHTestStatisticsTable(
     if (testResults && testResults.length > 0) {
         // Add a column for each variable
         testResults.forEach((result, index) => {
-<<<<<<< HEAD
-            if (result && result.variable1) {
-=======
             if (result?.variable1) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                 table.columnHeaders.push({
                     header: result.variable1.label || result.variable1.name || `Variable ${index + 1}`,
                     key: `var_${index}`

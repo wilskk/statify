@@ -27,7 +27,6 @@ ExportCsv/
 ## 🎯 Core Functionality
 
 ### CSV Export System
-
 ```typescript
 interface CsvExportSystem {
   // Export configuration
@@ -40,7 +39,7 @@ interface CsvExportSystem {
       includeHeaders: boolean;
       includeVariableProperties: boolean;
     };
-
+    
     advancedSettings: {
       quotingStrategy: QuotingStrategy;
       escapeStrategy: EscapeStrategy;
@@ -49,14 +48,14 @@ interface CsvExportSystem {
       numberFormat: NumberFormat;
       booleanFormat: BooleanFormat;
     };
-
+    
     qualitySettings: {
       dataValidation: DataValidationConfig;
       characterSanitization: CharacterSanitizationConfig;
       compressionOptions: CompressionConfig;
       integrityChecking: IntegrityCheckConfig;
     };
-
+    
     compatibilitySettings: {
       targetApplication: TargetApplication;
       csvDialect: CsvDialect;
@@ -64,7 +63,7 @@ interface CsvExportSystem {
       platformOptimization: PlatformOptimization;
     };
   };
-
+  
   // Data processing pipeline
   dataProcessingPipeline: {
     dataExtraction: {
@@ -73,221 +72,200 @@ interface CsvExportSystem {
       filterRows: (criteria: FilterCriteria) => FilteredData;
       aggregateData: (aggregations: Aggregation[]) => AggregatedData;
     };
-
+    
     dataTransformation: {
       convertDataTypes: (data: RawData) => ConvertedData;
       formatValues: (data: ConvertedData) => FormattedData;
       handleMissingValues: (data: FormattedData) => ProcessedData;
       validateDataIntegrity: (data: ProcessedData) => ValidationResult;
     };
-
+    
     csvGeneration: {
       generateHeaders: (variables: Variable[]) => CsvHeaders;
       generateRows: (data: ProcessedData) => CsvRows;
       assembbleCsv: (headers: CsvHeaders, rows: CsvRows) => CsvContent;
       optimizeCsvSize: (csv: CsvContent) => OptimizedCsv;
     };
-
+    
     qualityAssurance: {
       validateCsvFormat: (csv: CsvContent) => FormatValidationResult;
-      checkDataConsistency: (
-        original: RawData,
-        csv: CsvContent,
-      ) => ConsistencyReport;
+      checkDataConsistency: (original: RawData, csv: CsvContent) => ConsistencyReport;
       performIntegrityCheck: (csv: CsvContent) => IntegrityReport;
-      generateQualityReport: (
-        validationResults: ValidationResult[],
-      ) => QualityReport;
+      generateQualityReport: (validationResults: ValidationResult[]) => QualityReport;
     };
   };
-
+  
   // Advanced export features
   advancedExportFeatures: {
     intelligentFormatting: {
       autoDetectBestFormat: (data: RawData) => FormatRecommendation;
-      optimizeForTarget: (
-        data: RawData,
-        target: TargetApplication,
-      ) => OptimizationResult;
+      optimizeForTarget: (data: RawData, target: TargetApplication) => OptimizationResult;
       preserveDataTypes: (data: RawData) => TypePreservationStrategy;
       minimizeFileSize: (data: RawData) => SizeOptimizationStrategy;
     };
-
+    
     batchExport: {
-      exportMultipleDatasets: (
-        datasets: Dataset[],
-      ) => Promise<BatchExportResult>;
+      exportMultipleDatasets: (datasets: Dataset[]) => Promise<BatchExportResult>;
       splitLargeDatasets: (data: LargeData) => DatasetChunk[];
       mergeExportResults: (results: ExportResult[]) => MergedResult;
       scheduledExport: (schedule: ExportSchedule) => ScheduledExportResult;
     };
-
+    
     customExportFormats: {
       defineCustomDialects: (definition: CsvDialectDefinition) => CustomDialect;
       createExportTemplates: (template: ExportTemplate) => TemplateResult;
       supportLegacyFormats: (format: LegacyFormat) => LegacyFormatSupport;
       enablePluginSupport: (plugin: ExportPlugin) => PluginIntegration;
     };
-
+    
     cloudIntegration: {
-      exportToCloudStorage: (
-        data: ProcessedData,
-        provider: CloudProvider,
-      ) => Promise<CloudExportResult>;
-      syncWithDatabases: (
-        data: ProcessedData,
-        connection: DatabaseConnection,
-      ) => Promise<SyncResult>;
-      apiExport: (
-        data: ProcessedData,
-        apiEndpoint: ApiEndpoint,
-      ) => Promise<ApiExportResult>;
-      collaborativeExport: (
-        data: ProcessedData,
-        workspace: SharedWorkspace,
-      ) => Promise<CollaborativeResult>;
+      exportToCloudStorage: (data: ProcessedData, provider: CloudProvider) => Promise<CloudExportResult>;
+      syncWithDatabases: (data: ProcessedData, connection: DatabaseConnection) => Promise<SyncResult>;
+      apiExport: (data: ProcessedData, apiEndpoint: ApiEndpoint) => Promise<ApiExportResult>;
+      collaborativeExport: (data: ProcessedData, workspace: SharedWorkspace) => Promise<CollaborativeResult>;
     };
   };
 }
 ```
 
 ### CSV Formatting and Dialects
-
 ```typescript
 interface CsvFormattingDialects {
   // Standard CSV dialects
   standardDialects: {
     rfc4180: {
-      description: "Standard RFC 4180 compliant CSV";
-      delimiter: ",";
+      description: 'Standard RFC 4180 compliant CSV';
+      delimiter: ',';
       quoteChar: '"';
       escapeChar: '"';
-      lineTerminator: "\r\n";
-      quoting: "QUOTE_MINIMAL";
+      lineTerminator: '\r\n';
+      quoting: 'QUOTE_MINIMAL';
     };
-
+    
     excel: {
-      description: "Microsoft Excel compatible CSV";
-      delimiter: ",";
+      description: 'Microsoft Excel compatible CSV';
+      delimiter: ',';
       quoteChar: '"';
       escapeChar: '"';
-      lineTerminator: "\r\n";
-      quoting: "QUOTE_NONNUMERIC";
+      lineTerminator: '\r\n';
+      quoting: 'QUOTE_NONNUMERIC';
     };
-
+    
     unix: {
-      description: "Unix/Linux optimized CSV";
-      delimiter: ",";
+      description: 'Unix/Linux optimized CSV';
+      delimiter: ',';
       quoteChar: '"';
-      escapeChar: "\\";
-      lineTerminator: "\n";
-      quoting: "QUOTE_MINIMAL";
+      escapeChar: '\\';
+      lineTerminator: '\n';
+      quoting: 'QUOTE_MINIMAL';
     };
-
+    
     tabSeparated: {
-      description: "Tab-separated values (TSV)";
-      delimiter: "\t";
+      description: 'Tab-separated values (TSV)';
+      delimiter: '\t';
       quoteChar: '"';
-      escapeChar: "\\";
-      lineTerminator: "\n";
-      quoting: "QUOTE_MINIMAL";
+      escapeChar: '\\';
+      lineTerminator: '\n';
+      quoting: 'QUOTE_MINIMAL';
     };
   };
-
+  
   // Regional dialects
   regionalDialects: {
     european: {
-      description: "European locale CSV (semicolon separated)";
-      delimiter: ";";
+      description: 'European locale CSV (semicolon separated)';
+      delimiter: ';';
       quoteChar: '"';
       escapeChar: '"';
-      lineTerminator: "\r\n";
-      decimalSeparator: ",";
-      quoting: "QUOTE_NONNUMERIC";
+      lineTerminator: '\r\n';
+      decimalSeparator: ',';
+      quoting: 'QUOTE_NONNUMERIC';
     };
-
+    
     german: {
-      description: "German locale CSV";
-      delimiter: ";";
+      description: 'German locale CSV';
+      delimiter: ';';
       quoteChar: '"';
       escapeChar: '"';
-      lineTerminator: "\r\n";
-      decimalSeparator: ",";
-      dateFormat: "DD.MM.YYYY";
+      lineTerminator: '\r\n';
+      decimalSeparator: ',';
+      dateFormat: 'DD.MM.YYYY';
     };
-
+    
     french: {
-      description: "French locale CSV";
-      delimiter: ";";
+      description: 'French locale CSV';
+      delimiter: ';';
       quoteChar: '"';
       escapeChar: '"';
-      lineTerminator: "\r\n";
-      decimalSeparator: ",";
-      dateFormat: "DD/MM/YYYY";
+      lineTerminator: '\r\n';
+      decimalSeparator: ',';
+      dateFormat: 'DD/MM/YYYY';
     };
   };
-
+  
   // Application-specific dialects
   applicationDialects: {
     spss: {
-      description: "SPSS-compatible CSV format";
-      delimiter: ",";
+      description: 'SPSS-compatible CSV format';
+      delimiter: ',';
       quoteChar: '"';
       escapeChar: '"';
-      lineTerminator: "\r\n";
+      lineTerminator: '\r\n';
       includeVariableNames: true;
       includeVariableLabels: true;
-      missingValueCode: ".";
+      missingValueCode: '.';
     };
-
+    
     r: {
-      description: "R-compatible CSV format";
-      delimiter: ",";
+      description: 'R-compatible CSV format';
+      delimiter: ',';
       quoteChar: '"';
-      escapeChar: "\\";
-      lineTerminator: "\n";
-      naString: "NA";
-      booleanFormat: ["TRUE", "FALSE"];
+      escapeChar: '\\';
+      lineTerminator: '\n';
+      naString: 'NA';
+      booleanFormat: ['TRUE', 'FALSE'];
     };
-
+    
     python: {
-      description: "Python pandas-compatible CSV";
-      delimiter: ",";
+      description: 'Python pandas-compatible CSV';
+      delimiter: ',';
       quoteChar: '"';
-      escapeChar: "\\";
-      lineTerminator: "\n";
-      naString: "NaN";
+      escapeChar: '\\';
+      lineTerminator: '\n';
+      naString: 'NaN';
       indexColumn: false;
     };
-
+    
     tableau: {
-      description: "Tableau-optimized CSV format";
-      delimiter: ",";
+      description: 'Tableau-optimized CSV format';
+      delimiter: ',';
       quoteChar: '"';
       escapeChar: '"';
-      lineTerminator: "\r\n";
+      lineTerminator: '\r\n';
       includeMetadata: true;
       dataTypeHints: true;
     };
   };
-
+  
   // Custom dialect builder
   customDialectBuilder: {
     createDialect: (
       name: string,
-      configuration: DialectConfiguration,
+      configuration: DialectConfiguration
     ) => CustomDialect;
-
-    validateDialect: (dialect: CustomDialect) => DialectValidationResult;
-
+    
+    validateDialect: (
+      dialect: CustomDialect
+    ) => DialectValidationResult;
+    
     testDialect: (
       dialect: CustomDialect,
-      sampleData: SampleData,
+      sampleData: SampleData
     ) => DialectTestResult;
-
+    
     optimizeDialect: (
       dialect: CustomDialect,
-      data: RawData,
+      data: RawData
     ) => OptimizedDialect;
   };
 }
@@ -296,7 +274,6 @@ interface CsvFormattingDialects {
 ## 🔧 Hook Implementation
 
 ### useExportCsv Hook
-
 ```typescript
 interface UseExportCsvHook {
   // Export configuration state
@@ -309,7 +286,7 @@ interface UseExportCsvHook {
     quotingStrategy: QuotingStrategy;
     customSettings: CustomExportSettings;
   };
-
+  
   // Export configuration management
   exportConfigurationManagement: {
     setFilename: (filename: string) => void;
@@ -320,7 +297,7 @@ interface UseExportCsvHook {
     setQuotingStrategy: (strategy: QuotingStrategy) => void;
     updateCustomSettings: (settings: Partial<CustomExportSettings>) => void;
   };
-
+  
   // Export validation
   exportValidation: {
     validateConfiguration: () => ConfigurationValidationResult;
@@ -328,7 +305,7 @@ interface UseExportCsvHook {
     validateFilename: (filename: string) => FilenameValidationResult;
     validateExportSize: () => SizeValidationResult;
   };
-
+  
   // Export execution
   exportExecution: {
     exportToCsv: () => Promise<ExportResult>;
@@ -337,7 +314,7 @@ interface UseExportCsvHook {
     retryExport: () => Promise<ExportResult>;
     exportWithProgress: (onProgress: ProgressCallback) => Promise<ExportResult>;
   };
-
+  
   // Export state management
   exportStateManagement: {
     isExporting: boolean;
@@ -347,7 +324,7 @@ interface UseExportCsvHook {
     canExport: boolean;
     estimatedTime: number;
   };
-
+  
   // Advanced export features
   advancedExportFeatures: {
     templateManagement: {
@@ -356,21 +333,21 @@ interface UseExportCsvHook {
       deleteExportTemplate: (templateId: string) => void;
       listExportTemplates: () => ExportTemplate[];
     };
-
+    
     batchExport: {
       addToExportQueue: (config: ExportConfiguration) => void;
       removeFromExportQueue: (configId: string) => void;
       processExportQueue: () => Promise<BatchExportResult>;
       clearExportQueue: () => void;
     };
-
+    
     qualityControl: {
       performQualityCheck: () => QualityCheckResult;
       generateQualityReport: () => QualityReport;
       validateExportIntegrity: () => IntegrityValidationResult;
       compareWithOriginal: () => ComparisonResult;
     };
-
+    
     optimization: {
       optimizeExportSettings: () => OptimizationRecommendation[];
       estimateExportTime: () => TimeEstimation;
@@ -378,7 +355,7 @@ interface UseExportCsvHook {
       suggestPerformanceImprovements: () => PerformanceRecommendation[];
     };
   };
-
+  
   // Integration features
   integrationFeatures: {
     storeIntegration: {
@@ -387,7 +364,7 @@ interface UseExportCsvHook {
       accessMetaStore: () => MetaStore;
       syncWithStores: () => void;
     };
-
+    
     tourIntegration: {
       startTour: () => void;
       stopTour: () => void;
@@ -395,7 +372,7 @@ interface UseExportCsvHook {
       previousTourStep: () => void;
       skipTour: () => void;
     };
-
+    
     modalIntegration: {
       closeModal: () => void;
       minimizeModal: () => void;
@@ -407,7 +384,6 @@ interface UseExportCsvHook {
 ```
 
 ### Export CSV Utils
-
 ```typescript
 interface ExportCsvUtils {
   // Core CSV generation
@@ -415,109 +391,124 @@ interface ExportCsvUtils {
     generateCsvFromData: (
       data: DataMatrix,
       variables: Variable[],
-      options: CsvExportOptions,
+      options: CsvExportOptions
     ) => string;
-
+    
     generateHeaders: (
       variables: Variable[],
-      includeProperties: boolean,
+      includeProperties: boolean
     ) => string[];
-
+    
     generateDataRow: (
       row: DataRow,
       variables: Variable[],
-      options: FormattingOptions,
+      options: FormattingOptions
     ) => string;
-
+    
     assembleCsvContent: (
       headers: string[],
       rows: string[],
-      options: AssemblyOptions,
+      options: AssemblyOptions
     ) => string;
   };
-
+  
   // Value formatting
   valueFormatting: {
     formatValue: (
       value: any,
       variable: Variable,
-      options: ValueFormattingOptions,
+      options: ValueFormattingOptions
     ) => string;
-
-    formatNumericValue: (value: number, format: NumberFormat) => string;
-
-    formatDateValue: (value: Date, format: DateFormat) => string;
-
+    
+    formatNumericValue: (
+      value: number,
+      format: NumberFormat
+    ) => string;
+    
+    formatDateValue: (
+      value: Date,
+      format: DateFormat
+    ) => string;
+    
     formatStringValue: (
       value: string,
-      options: StringFormattingOptions,
+      options: StringFormattingOptions
     ) => string;
-
-    formatBooleanValue: (value: boolean, format: BooleanFormat) => string;
+    
+    formatBooleanValue: (
+      value: boolean,
+      format: BooleanFormat
+    ) => string;
   };
-
+  
   // Character handling
   characterHandling: {
     escapeSpecialCharacters: (
       value: string,
       delimiter: string,
-      quoteChar: string,
+      quoteChar: string
     ) => string;
-
+    
     sanitizeText: (
       text: string,
-      sanitizationRules: SanitizationRule[],
+      sanitizationRules: SanitizationRule[]
     ) => string;
-
-    handleLineBreaks: (text: string, strategy: LineBreakStrategy) => string;
-
+    
+    handleLineBreaks: (
+      text: string,
+      strategy: LineBreakStrategy
+    ) => string;
+    
     convertEncoding: (
       text: string,
       fromEncoding: TextEncoding,
-      toEncoding: TextEncoding,
+      toEncoding: TextEncoding
     ) => string;
   };
-
+  
   // Validation utilities
   validationUtilities: {
     validateCsvFormat: (
       csvContent: string,
-      dialect: CsvDialect,
+      dialect: CsvDialect
     ) => ValidationResult;
-
+    
     validateDataConsistency: (
       originalData: DataMatrix,
-      csvContent: string,
+      csvContent: string
     ) => ConsistencyValidationResult;
-
+    
     validateCharacterEncoding: (
       text: string,
-      encoding: TextEncoding,
+      encoding: TextEncoding
     ) => EncodingValidationResult;
-
+    
     validateFileSize: (
       csvContent: string,
-      maxSize: number,
+      maxSize: number
     ) => SizeValidationResult;
   };
-
+  
   // Performance optimization
   performanceOptimization: {
     optimizeCsvGeneration: (
       data: LargeDataMatrix,
-      options: OptimizationOptions,
+      options: OptimizationOptions
     ) => OptimizedGenerationStrategy;
-
-    chunkLargeData: (data: LargeDataMatrix, chunkSize: number) => DataChunk[];
-
+    
+    chunkLargeData: (
+      data: LargeDataMatrix,
+      chunkSize: number
+    ) => DataChunk[];
+    
     streamCsvGeneration: (
       data: DataStream,
-      options: StreamingOptions,
+      options: StreamingOptions
     ) => AsyncGenerator<string>;
-
+    
     compressCsvContent: (
       csvContent: string,
-      compressionOptions: CompressionOptions,
+      compressionOptions: CompressionOptions
     ) => CompressedContent;
   };
 }
@@ -526,7 +517,6 @@ interface ExportCsvUtils {
 ## 🎨 UI Components
 
 ### ExportCsv Component
-
 ```typescript
 interface ExportCsvProps {
   // Basic configuration
@@ -538,7 +528,7 @@ interface ExportCsvProps {
     encoding: TextEncoding;
     onEncodingChange: (encoding: TextEncoding) => void;
   };
-
+  
   // Export options
   exportOptions: {
     includeHeaders: boolean;
@@ -548,7 +538,7 @@ interface ExportCsvProps {
     quotingStrategy: QuotingStrategy;
     onQuotingStrategyChange: (strategy: QuotingStrategy) => void;
   };
-
+  
   // Advanced settings
   advancedSettings: {
     showAdvancedSettings: boolean;
@@ -558,7 +548,7 @@ interface ExportCsvProps {
     qualitySettings: QualitySettings;
     onQualitySettingsChange: (settings: QualitySettings) => void;
   };
-
+  
   // Export execution
   exportExecution: {
     onExport: () => void;
@@ -568,7 +558,7 @@ interface ExportCsvProps {
     isExporting: boolean;
     exportProgress: ExportProgress;
   };
-
+  
   // Preview and validation
   previewValidation: {
     exportPreview: ExportPreview;
@@ -577,7 +567,7 @@ interface ExportCsvProps {
     onTogglePreview: () => void;
     onRefreshPreview: () => void;
   };
-
+  
   // Tour integration
   tourIntegration: {
     tourStep: TourStep;
@@ -587,7 +577,7 @@ interface ExportCsvProps {
     onPreviousTourStep: () => void;
     onSkipTour: () => void;
   };
-
+  
   // Error handling
   errorHandling: {
     errors: ExportError[];
@@ -603,60 +593,59 @@ interface ExportCsvProps {
 ## 🧪 Testing Strategy
 
 ### Test Coverage Areas
-
 ```typescript
 // CSV export functionality testing
-describe("ExportCsvModal", () => {
-  describe("Configuration management", () => {
-    it("manages export configuration correctly");
-    it("validates configuration options");
-    it("handles invalid configurations gracefully");
-    it("preserves user preferences");
+describe('ExportCsvModal', () => {
+  describe('Configuration management', () => {
+    it('manages export configuration correctly');
+    it('validates configuration options');
+    it('handles invalid configurations gracefully');
+    it('preserves user preferences');
   });
-
-  describe("CSV generation", () => {
-    it("generates valid CSV content");
-    it("handles various data types correctly");
-    it("applies formatting options properly");
-    it("manages large datasets efficiently");
+  
+  describe('CSV generation', () => {
+    it('generates valid CSV content');
+    it('handles various data types correctly');
+    it('applies formatting options properly');
+    it('manages large datasets efficiently');
   });
-
-  describe("File output", () => {
-    it("creates downloadable files correctly");
-    it("applies correct file naming");
-    it("handles encoding properly");
-    it("manages file size optimization");
+  
+  describe('File output', () => {
+    it('creates downloadable files correctly');
+    it('applies correct file naming');
+    it('handles encoding properly');
+    it('manages file size optimization');
   });
-
-  describe("Quality assurance", () => {
-    it("validates CSV format correctness");
-    it("ensures data integrity");
-    it("handles special characters properly");
-    it("maintains precision for numeric data");
+  
+  describe('Quality assurance', () => {
+    it('validates CSV format correctness');
+    it('ensures data integrity');
+    it('handles special characters properly');
+    it('maintains precision for numeric data');
   });
-
-  describe("User experience", () => {
-    it("provides meaningful feedback");
-    it("handles user interactions correctly");
-    it("implements tour guide properly");
-    it("manages error states gracefully");
+  
+  describe('User experience', () => {
+    it('provides meaningful feedback');
+    it('handles user interactions correctly');
+    it('implements tour guide properly');
+    it('manages error states gracefully');
   });
 });
 
 // Utility testing
-describe("exportCsvUtils", () => {
-  describe("CSV formatting", () => {
-    it("formats values correctly");
-    it("handles delimiters properly");
-    it("manages quoting strategies");
-    it("processes encoding correctly");
+describe('exportCsvUtils', () => {
+  describe('CSV formatting', () => {
+    it('formats values correctly');
+    it('handles delimiters properly');
+    it('manages quoting strategies');
+    it('processes encoding correctly');
   });
-
-  describe("Performance", () => {
-    it("handles large datasets efficiently");
-    it("optimizes memory usage");
-    it("implements streaming for huge files");
-    it("manages concurrent exports");
+  
+  describe('Performance', () => {
+    it('handles large datasets efficiently');
+    it('optimizes memory usage');
+    it('implements streaming for huge files');
+    it('manages concurrent exports');
   });
 });
 ```
@@ -664,12 +653,11 @@ describe("exportCsvUtils", () => {
 ## 📋 Development Guidelines
 
 ### Adding New CSV Dialects
-
 ```typescript
 // 1. Define dialect configuration
 interface NewCsvDialect extends CsvDialect {
-  name: "newDialect";
-  description: "Description of new dialect";
+  name: 'newDialect';
+  description: 'Description of new dialect';
   delimiter: string;
   quoteChar: string;
   escapeChar: string;
@@ -682,33 +670,32 @@ const newDialectImplementation = {
   formatValue: (value: any, variable: Variable) => {
     // Dialect-specific value formatting
   },
-
+  
   generateHeaders: (variables: Variable[]) => {
     // Dialect-specific header generation
   },
-
+  
   validate: (csvContent: string) => {
     // Dialect-specific validation
-  },
+  }
 };
 
 // 3. Register dialect
 const CSV_DIALECTS = {
   ...existingDialects,
-  newDialect: newDialectImplementation,
+  newDialect: newDialectImplementation
 };
 
 // 4. Add comprehensive tests
-describe("New CSV Dialect", () => {
-  it("formats values correctly");
-  it("generates proper headers");
-  it("validates format properly");
-  it("handles edge cases gracefully");
+describe('New CSV Dialect', () => {
+  it('formats values correctly');
+  it('generates proper headers');
+  it('validates format properly');
+  it('handles edge cases gracefully');
 });
 ```
 
 ### Performance Optimization Guidelines
-
 ```typescript
 // 1. Large dataset handling
 const optimizeLargeDatasetExport = (data: LargeDataMatrix) => {
@@ -716,7 +703,7 @@ const optimizeLargeDatasetExport = (data: LargeDataMatrix) => {
     chunkingStrategy: calculateOptimalChunkSize(data.size),
     streamingEnabled: data.size > STREAMING_THRESHOLD,
     compressionLevel: determineCompressionLevel(data.characteristics),
-    memoryManagement: setupMemoryOptimization(data.estimatedSize),
+    memoryManagement: setupMemoryOptimization(data.estimatedSize)
   };
 };
 
@@ -726,7 +713,7 @@ const monitorExportPerformance = (exportOperation: ExportOperation) => {
     timeTracking: trackExportTime(exportOperation),
     memoryTracking: trackMemoryUsage(exportOperation),
     progressReporting: setupProgressReporting(exportOperation),
-    bottleneckDetection: detectPerformanceBottlenecks(exportOperation),
+    bottleneckDetection: detectPerformanceBottlenecks(exportOperation)
   };
 };
 ```
@@ -734,10 +721,9 @@ const monitorExportPerformance = (exportOperation: ExportOperation) => {
 ---
 
 Export CSV modal menyediakan comprehensive CSV export capabilities dengan advanced formatting options, intelligent dialect support, dan robust quality assurance untuk optimal data export experience dalam Statify.
-
-- Validates user input
-- Interacts with Zustand stores
-- Generates and triggers file download
+  - Validates user input
+  - Interacts with Zustand stores
+  - Generates and triggers file download
 - **Key Implementation Details**:
   - Uses React hooks (`useState`, `useTransition`)
   - Integrates with Zustand stores (`useDataStore`, `useVariableStore`)
@@ -747,7 +733,6 @@ Export CSV modal menyediakan comprehensive CSV export capabilities dengan advanc
   - Uses `useModal` for modal management
 
 #### `hooks/useTourGuide.ts`
-
 - **Role**: Interactive tour management
 - **Responsibilities**:
   - Manages tour state (active, current step)
@@ -756,7 +741,6 @@ Export CSV modal menyediakan comprehensive CSV export capabilities dengan advanc
   - Manages element highlighting
 
 #### `utils/exportCsvUtils.ts`
-
 - **Role**: Data processing utilities
 - **Responsibilities**:
   - Converts data and variables to CSV format
@@ -775,30 +759,30 @@ flowchart TD
 %%{init: {"theme": "base"}}%%
     A[User opens Export Modal] --> B{Initialize State};
     B --> C[Render UI Components];
-
+    
     C --> D[User Configures Options];
     D --> E{Update State via Handlers};
     E --> C;
-
+    
     C --> F[User Clicks Export];
     F --> G{Validate Input};
     G -- Invalid --> H[Show Error Toast];
     G -- Valid --> I[Set Loading State];
-
+    
     I --> J[Sync with Zustand Stores];
     J --> K{Fetch Fresh Data};
     K -- Success --> L[Call generateCsvContent];
     K -- Failure --> M[Show Error Toast];
-
+    
     L --> N[Create CSV Blob];
     N --> O[Generate Download Link];
     O --> P[Trigger File Download];
-
+    
     P --> Q[Show Success Toast];
     Q --> R[Close Modal];
-
+    
     R --> S[Cleanup Resources];
-
+    
     subgraph Legend
         direction LR
         subgraph Node Types
@@ -810,14 +794,14 @@ flowchart TD
             browser[Browser API]:::legend
         end
     end
-
+    
     classDef legend fill:#f9f9f9,stroke:#333,stroke-width:1px;
     classDef ui fill:#cde4ff,stroke:#5a96e6;
     classDef hook fill:#d5e8d4,stroke:#82b366;
     classDef util fill:#e1d5e7,stroke:#9673a6;
     classDef store fill:#fff2cc,stroke:#d6b656;
     classDef browser fill:#ffe6cc,stroke:#d79b00;
-
+    
     class A,C,D,F,C,R ui;
     class B,E,G,I,J,K,L hook;
     class L,N,O,P util;
@@ -890,7 +874,6 @@ The feature implements comprehensive error handling:
 ## 6. Testing Strategy
 
 ### 6.1. Component Testing (`__test__/index.test.tsx`)
-
 - **Focus**: UI rendering and user interactions
 - **Approach**: Mock hooks to isolate component
 - **Coverage**:
@@ -901,7 +884,6 @@ The feature implements comprehensive error handling:
   - Tour guide integration
 
 ### 6.2. Hook Testing (`__test__/useExportCsv.test.ts`)
-
 - **Focus**: Business logic in `useExportCsv` hook
 - **Approach**: Mock Zustand stores and utilities
 - **Coverage**:
@@ -913,7 +895,6 @@ The feature implements comprehensive error handling:
   - Toast notifications
 
 ### 6.3. Utility Testing (`__test__/exportCsvUtils.test.ts`)
-
 - **Focus**: Pure functions in `exportCsvUtils.ts`
 - **Approach**: Test with various mock datasets
 - **Coverage**:

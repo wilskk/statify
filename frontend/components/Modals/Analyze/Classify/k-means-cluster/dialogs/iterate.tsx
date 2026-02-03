@@ -1,20 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     KMeansClusterIterateProps,
     KMeansClusterIterateType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-<<<<<<< HEAD
-import { CheckedState } from "@radix-ui/react-checkbox";
-=======
 import type { CheckedState } from "@radix-ui/react-checkbox";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { HelpCircle } from "lucide-react";

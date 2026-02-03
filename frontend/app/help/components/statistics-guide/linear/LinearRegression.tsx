@@ -7,11 +7,7 @@ import { HelpCircle, Table, Calculator, BarChart3, ClipboardList, SlidersHorizon
  * Help Guide: Linear Regression
  * ----------------------------------------------------------------------------
  * This component provides an end-user guide for the Linear Regression modal
-<<<<<<< HEAD
- * (see `components/Modals/Regression/Linear/ModalLinear.tsx`).
-=======
  * (see `components/Modals/Analyze/Regression/Linear/ModalLinear.tsx`).
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
  *
  * The layout intentionally mirrors the Frequencies help guide to keep the
  * UX consistent across statistical procedures.

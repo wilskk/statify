@@ -327,10 +327,6 @@ pub fn run_analysis(
         }
     }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     // Step 14: Calculate Component Score Covariance Matrix if scores are saved
     let mut component_score_covariance_matrix = None;
     if config.scores.save_var {

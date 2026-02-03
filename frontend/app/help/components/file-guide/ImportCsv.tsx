@@ -52,15 +52,9 @@ export const ImportCsv = () => {
       )
     },
     {
-<<<<<<< HEAD
-      id: 'tips',
-      title: 'Informasi Berguna',
-      description: 'Apa yang perlu Anda ketahui tentang file CSV',
-=======
       id: 'features',
       title: 'Fitur & Informasi',
       description: 'Informasi penting tentang format CSV dan cara kerjanya',
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
@@ -86,14 +80,6 @@ export const ImportCsv = () => {
     {
       type: 'tip' as const,
       title: 'Encoding File',
-<<<<<<< HEAD
-      content: 'Gunakan encoding UTF-8 untuk file dengan karakter khusus atau simbol.'
-    },
-    {
-      type: 'info' as const,
-      title: 'Pemisah Data',
-      content: 'Statify secara otomatis mendeteksi apakah file Anda menggunakan koma, titik koma, atau tab untuk memisahkan data.'
-=======
       content: 'Gunakan encoding UTF-8 untuk file dengan karakter khusus atau simbol untuk memastikan tampilan yang benar.'
     },
     {
@@ -105,17 +91,13 @@ export const ImportCsv = () => {
       type: 'success' as const,
       title: 'Kompatibilitas Luas',
       content: 'Format CSV didukung oleh hampir semua aplikasi spreadsheet dan perangkat lunak analisis data.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
     { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
     { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
-<<<<<<< HEAD
-=======
     { title: 'Impor dari Clipboard', href: '/help/file-guide/import-clipboard' },
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     { title: 'Ekspor ke CSV', href: '/help/file-guide/export-csv' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];

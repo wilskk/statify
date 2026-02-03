@@ -6,6 +6,7 @@ const nextConfig = {
         ignoreDuringBuilds: true,
     },
     distDir: process.env.NODE_ENV === 'production' ? '.next' : '.next-dev',
+    
     webpack: (config, { isServer }) => {
         if (!isServer) {
             config.module.rules.push({
@@ -19,6 +20,12 @@ const nextConfig = {
                 },
             });
         }
+
+        // Add WASM file handling
+        config.experiments = {
+            ...config.experiments,
+            asyncWebAssembly: true,
+        };
 
         config.output.globalObject = 'self';
 
@@ -64,8 +71,4 @@ const nextConfig = {
     },
 }
 
-<<<<<<< HEAD
 module.exports = nextConfig
-=======
-module.exports = nextConfig
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

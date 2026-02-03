@@ -3,13 +3,6 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-<<<<<<< HEAD
-import {
-    KIndependentSamplesTestAnalysisProps,
-    KIndependentSamplesTestResults,
-    KIndependentSamplesTestResult
-} from '../types';
-=======
 import type {
     KIndependentSamplesTestAnalysisProps,
     KIndependentSamplesTestResult
@@ -17,7 +10,6 @@ import type {
 import {
     KIndependentSamplesTestResults
 } from '../types';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 import {
     formatRanksTable,
@@ -113,11 +105,7 @@ export const useKIndependentSamplesAnalysis = ({
             const { variableName, results, status, error: workerError } = event.data;
 
             if (status === 'success' && results) {
-<<<<<<< HEAD
-                if (results.metadata && results.metadata.hasInsufficientData) {
-=======
                 if (results.metadata?.hasInsufficientData) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
                     // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
                 }
@@ -165,11 +153,7 @@ export const useKIndependentSamplesAnalysis = ({
 
                         let kIndependentSamplesNote = "";
                         let note = "";
-<<<<<<< HEAD
-                        let typeToVars: Record<string, string[]> = {};
-=======
                         const typeToVars: Record<string, string[]> = {};
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         if (insufficientDataVarsRef.current.length > 0) {
                             kIndependentSamplesNote += "Note: "; 
                             for (const { variableName, variableLabel, insufficientType } of insufficientDataVarsRef.current) {
@@ -179,11 +163,7 @@ export const useKIndependentSamplesAnalysis = ({
                                 }
                             }
                             if (typeToVars["empty"] && typeToVars["empty"].length > 0) {
-<<<<<<< HEAD
-                                let testNames = [];
-=======
                                 const testNames = [];
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                                 if (testType.kruskalWallisH) testNames.push("Kruskal-Wallis H Test");
                                 if (testNames.length > 0) {
                                     note += `Note: There are not enough valid cases to perform the ${testNames.join(" and ")} for ${typeToVars["empty"].join(", ")}. No statistics are computed.`;

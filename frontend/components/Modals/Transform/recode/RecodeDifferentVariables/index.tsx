@@ -1,10 +1,6 @@
 "use client";
-<<<<<<< HEAD
-import React, { useState, FC, useEffect, useCallback } from "react";
-=======
 import type { FC} from "react";
 import React, { useState, useEffect, useCallback } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,12 +24,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useVariableStore } from "@/stores/useVariableStore";
-<<<<<<< HEAD
-import { useDataStore, CellUpdate } from "@/stores/useDataStore";
-=======
 import type { CellUpdate } from "@/stores/useDataStore";
 import { useDataStore } from "@/stores/useDataStore";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import type { Variable, VariableType } from "@/types/Variable";
 import RecodeVariablesTab from "../components/RecodeVariablesTab";
 import OldNewValuesSetup from "../components/OldNewValuesSetup";
@@ -41,13 +33,8 @@ import { useResultStore } from "@/stores/useResultStore";
 import { X } from "lucide-react";
 import VariableMappingEditor from "./VariableMappingEditor";
 import OutputOptions from "./OutputOptions";
-<<<<<<< HEAD
-import { RecodeRule, RecodeMapping } from "../Types";
-import { BaseModalProps } from "@/types/modalTypes";
-=======
 import type { RecodeRule, RecodeMapping } from "../Types";
 import type { BaseModalProps } from "@/types/modalTypes";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export enum RecodeMode {
   DIFFERENT_VARIABLES = "recodeDifferentVariables",
@@ -475,11 +462,7 @@ export const RecodeDifferentVariablesModal: FC<
         // Apply recode rules to create new data
         const newData = data.map((value) => {
           const safeValue = value === null ? "" : value;
-<<<<<<< HEAD
-          let recodedValue = evaluateValueWithRules(
-=======
           const recodedValue = evaluateValueWithRules(
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             safeValue,
             recodeRules,
             getRecodeType(mapping.sourceVariable.type),
@@ -510,11 +493,7 @@ export const RecodeDifferentVariablesModal: FC<
           bulkUpdates.push({
             row: rowIndex,
             col: columnOffset,
-<<<<<<< HEAD
-            value: value,
-=======
             value,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           });
         });
 
@@ -542,19 +521,11 @@ export const RecodeDifferentVariablesModal: FC<
             case "rangeHighest":
               return `${rule.oldValueDisplay} → ${rule.newValueDisplay}`;
             case "systemMissing":
-<<<<<<< HEAD
-              return "System Missing → " + rule.newValueDisplay;
-            case "systemOrUserMissing":
-              return "System or User Missing → " + rule.newValueDisplay;
-            case "else":
-              return "Else → " + rule.newValueDisplay;
-=======
               return `System Missing → ${  rule.newValueDisplay}`;
             case "systemOrUserMissing":
               return `System or User Missing → ${  rule.newValueDisplay}`;
             case "else":
               return `Else → ${  rule.newValueDisplay}`;
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             default:
               return "";
           }

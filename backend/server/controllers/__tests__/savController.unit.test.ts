@@ -1,10 +1,7 @@
 import type { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
-<<<<<<< HEAD
-=======
 import { getTempDir } from '../../config/constants';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 let throwGeneric = false;
 
@@ -69,12 +66,7 @@ describe('savController unit-level branches', () => {
   });
 
   it('cleanupTempFiles: removes files older than 1h and keeps recent files', () => {
-<<<<<<< HEAD
-    const tempDir = path.join(__dirname, '..', '..', '..', 'temp_cleanup_tests');
-    process.env.TEMP_DIR = tempDir;
-=======
     const tempDir = getTempDir();
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     if (!fs.existsSync(tempDir)) { fs.mkdirSync(tempDir, { recursive: true }); }
 
     const oldFile = path.join(tempDir, 'old.tmp');
@@ -90,14 +82,8 @@ describe('savController unit-level branches', () => {
     expect(fs.existsSync(oldFile)).toBe(false);
     expect(fs.existsSync(newFile)).toBe(true);
 
-<<<<<<< HEAD
-    // cleanup
-    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch { void 0; }
-    delete process.env.TEMP_DIR;
-=======
     // cleanup (remove only the new file if still exists)
     try { if (fs.existsSync(newFile)) { fs.unlinkSync(newFile); } } catch { void 0; }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   });
 
   it('transformRecord: ignores fields not in transformedVariables', () => {

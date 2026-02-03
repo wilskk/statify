@@ -158,11 +158,7 @@ describe('usePrintLogic', () => {
             const error = new Error('PDF generation failed');
             mockPdfPrintService.addDataGridView.mockImplementation(() => { throw error; });
 
-<<<<<<< HEAD
-            const { result, rerender } = renderHook(() => usePrintLogic({ onClose: mockOnClose }));
-=======
             const { result } = renderHook(() => usePrintLogic({ onClose: mockOnClose }));
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
             await act(async () => {
                 await result.current.handlePrint();
@@ -174,8 +170,4 @@ describe('usePrintLogic', () => {
             consoleErrorSpy.mockRestore();
         });
     });
-<<<<<<< HEAD
-}); 
-=======
 });
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

@@ -5,10 +5,6 @@ import { OverviewTab } from './tabs/OverviewTab';
 import { VariablesTab } from './tabs/VariablesTab';
 import { StatisticsTab } from './tabs/StatisticsTab';
 import { ChartsTab } from './tabs/ChartsTab';
-<<<<<<< HEAD
-import { QuickStartGuide } from './tabs/QuickStartGuide';
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const Frequencies: React.FC = () => {
   const tabs = [
@@ -45,15 +41,7 @@ export const Frequencies: React.FC = () => {
       tabs={tabs}
       defaultTab="overview"
     >
-<<<<<<< HEAD
-      <QuickStartGuide />
-    </StandardizedGuideLayout>
-  );
-};
-
-=======
       
     </StandardizedGuideLayout>
   );
 };
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52

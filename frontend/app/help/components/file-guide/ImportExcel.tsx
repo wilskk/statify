@@ -57,11 +57,7 @@ export const ImportExcel = () => {
       )
     },
     {
-<<<<<<< HEAD
-      id: 'features',
-=======
       id: 'formats',
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       title: 'Format Yang Didukung',
       description: 'Jenis file dan fitur yang dapat Anda gunakan',
       icon: FileSpreadsheet,
@@ -83,15 +79,9 @@ export const ImportExcel = () => {
       )
     },
     {
-<<<<<<< HEAD
-      id: 'tips',
-      title: 'Informasi Berguna',
-      description: 'Apa yang perlu Anda ketahui tentang file Excel',
-=======
       id: 'features',
       title: 'Fitur & Informasi',
       description: 'Informasi penting tentang impor file Excel',
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
@@ -111,14 +101,6 @@ export const ImportExcel = () => {
     {
       type: 'tip' as const,
       title: 'Header Kolom',
-<<<<<<< HEAD
-      content: 'Pastikan baris pertama berisi nama variabel yang jelas untuk hasil impor terbaik.'
-    },
-    {
-      type: 'info' as const,
-      title: 'Pemilihan Sheet',
-      content: 'Untuk file dengan beberapa worksheet, Anda dapat memilih sheet mana yang akan diimpor.'
-=======
       content: 'Pastikan baris pertama berisi nama variabel yang jelas untuk hasil impor yang optimal dan mudah dipahami.'
     },
     {
@@ -130,17 +112,13 @@ export const ImportExcel = () => {
       type: 'success' as const,
       title: 'Format Fleksibel',
       content: 'Mendukung format .xlsx (Excel 2007+) dan .xls (Excel 97-2003) dengan preservasi metadata yang baik.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
     { title: 'Impor File CSV', href: '/help/file-guide/import-csv' },
     { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
-<<<<<<< HEAD
-=======
     { title: 'Impor dari Clipboard', href: '/help/file-guide/import-clipboard' },
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     { title: 'Ekspor ke Excel', href: '/help/file-guide/export-excel' },
     { title: 'Panduan Manajemen Data', href: '/help/data-guide' }
   ];

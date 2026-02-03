@@ -1,11 +1,6 @@
 // discriminant-analysis-output.ts
-<<<<<<< HEAD
-import {DiscriminantFinalResultType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
-import {Table} from "@/types/Table";
-=======
 import type {DiscriminantFinalResultType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
 import type {Table} from "@/types/Table";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultDiscriminant({

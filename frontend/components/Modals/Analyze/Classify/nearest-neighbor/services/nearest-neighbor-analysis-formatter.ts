@@ -1,9 +1,5 @@
 import {formatDisplayNumber} from "@/hooks/useFormatter";
-<<<<<<< HEAD
-import {ResultJson, Table} from "@/types/Table";
-=======
 import type {ResultJson, Table} from "@/types/Table";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 // Define an interface for the setting object
 interface SystemSetting {
@@ -180,11 +176,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
             ) {
                 table.rows.push({
                     rowHeader: ["Training", i.toString()],
-<<<<<<< HEAD
-                    ["category_" + i]: formatDisplayNumber(
-=======
                     [`category_${  i}`]: formatDisplayNumber(
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         data.classification_table.training.predicted[i]
                     ),
                     percent_correct: formatDisplayNumber(
@@ -216,11 +208,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
             ) {
                 table.rows.push({
                     rowHeader: ["Holdout", i.toString()],
-<<<<<<< HEAD
-                    ["category_" + i]: formatDisplayNumber(
-=======
                     [`category_${  i}`]: formatDisplayNumber(
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                         data.classification_table.holdout.predicted[i]
                     ),
                     percent_correct: formatDisplayNumber(
@@ -363,11 +351,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     }
 
     // 7. Nearest Neighbors
-<<<<<<< HEAD
-    if (data.nearest_neighbors && data.nearest_neighbors.focal_neighbor_sets) {
-=======
     if (data.nearest_neighbors?.focal_neighbor_sets) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const table: Table = {
             key: "nearest_neighbors",
             title: "k Nearest Neighbors and Distances",
@@ -431,11 +415,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     }
 
     // 8. Peers Chart Data
-<<<<<<< HEAD
-    if (data.peers_chart && data.peers_chart.focal_neighbor_sets) {
-=======
     if (data.peers_chart?.focal_neighbor_sets) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const table: Table = {
             key: "peers_chart",
             title: "Peers Chart Data",
@@ -484,11 +464,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     }
 
     // 9. Quadrant Map Data
-<<<<<<< HEAD
-    if (data.quadrant_map && data.quadrant_map.focal_neighbor_sets) {
-=======
     if (data.quadrant_map?.focal_neighbor_sets) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const table: Table = {
             key: "quadrant_map",
             title: "Quadrant Map Data",

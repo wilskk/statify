@@ -3,11 +3,8 @@
 // Inspired by react-hot-toast library
 import * as React from "react"
 
-<<<<<<< HEAD
-=======
 import { toast as sonnerToast } from "sonner"
 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import type {
   ToastActionElement,
   ToastProps,
@@ -150,15 +147,6 @@ type Toast = Omit<ToasterToast, "id">
 function toast({ ...props }: Toast) {
   const id = genId()
 
-<<<<<<< HEAD
-  const update = (props: ToasterToast) =>
-    dispatch({
-      type: "UPDATE_TOAST",
-      toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
-
-=======
   const message = (props?.title ?? props?.description ?? "") as React.ReactNode
   const options: Record<string, unknown> = {}
   if (props?.title && props?.description) {
@@ -195,7 +183,6 @@ function toast({ ...props }: Toast) {
   }
 
   // Keep legacy memory state updates for compatibility with any listeners
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   dispatch({
     type: "ADD_TOAST",
     toast: {

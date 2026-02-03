@@ -1,11 +1,6 @@
-<<<<<<< HEAD
-import { ExploreAnalysisParams } from '../types';
-import { ColumnHeader, FormattedTable, ExploreAggregatedResults, getFactorLabel, regroupByDepVar, formatNumber } from './helpers';
-=======
 import type { ExploreAnalysisParams } from '../types';
 import type { ColumnHeader, FormattedTable, ExploreAggregatedResults} from './helpers';
 import { getFactorLabel, regroupByDepVar, formatNumber } from './helpers';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 /**
  * Build the "M-Estimators" table for Explore analysis.

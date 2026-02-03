@@ -1,18 +1,11 @@
 /* eslint-disable react/no-unescaped-entities */
 import { HelpGuideTemplate } from '../../ui/HelpGuideTemplate';
-<<<<<<< HEAD
-import { HelpCard, HelpAlert, HelpSection } from '../../ui/HelpLayout';
-import { ArrowUpDown, Settings } from 'lucide-react';
-=======
 import { HelpCard, HelpAlert, HelpSection, HelpStep } from '../../ui/HelpLayout';
 import { ArrowUpDown, Settings, ListOrdered } from 'lucide-react';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 const SortVarsGuide = () => {
   const sections = [
     {
-<<<<<<< HEAD
-=======
       id: 'how-to-steps',
       title: 'Cara Mengurutkan Variabel',
       description: 'Langkah-langkah untuk mengatur ulang urutan variabel dalam dataset',
@@ -62,7 +55,6 @@ const SortVarsGuide = () => {
       )
     },
     {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       id: 'functionality',
       title: 'Ringkasan Fitur',
       description: 'Penjelasan lengkap fitur Urutkan Variabel',
@@ -171,20 +163,6 @@ const SortVarsGuide = () => {
   const tips = [
     {
       type: 'tip' as const,
-<<<<<<< HEAD
-      title: 'Pengurutan Efektif',
-      content: 'Pilih atribut yang paling relevan dengan kebutuhan analisis Anda untuk hasil pengurutan yang optimal.'
-    },
-    {
-      type: 'info' as const,
-      title: 'Integritas Data',
-      content: 'Fitur ini memastikan konsistensi data dengan menata ulang kolom secara fisik.'
-    },
-    {
-      type: 'warning' as const,
-      title: 'Perubahan Permanen',
-      content: 'Pengurutan akan secara permanen mengubah struktur dataset Anda untuk sesi saat ini.'
-=======
       title: 'Pilih Atribut yang Relevan',
       content: 'Pilih atribut yang paling relevan dengan kebutuhan analisis Anda. Pengurutan nama berguna untuk organisasi, sedangkan pengurutan jenis membantu mengelompokkan variabel serupa.'
     },
@@ -202,33 +180,21 @@ const SortVarsGuide = () => {
       type: 'tip' as const,
       title: 'Organisasi Variabel Efektif',
       content: 'Gunakan pengurutan berdasarkan nama untuk kemudahan navigasi, atau berdasarkan jenis untuk mengelompokkan variabel dengan karakteristik serupa.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
-<<<<<<< HEAD
-    { title: 'Tampilan Variabel', href: '/help/data-guide/variable-view' },
-    { title: 'Manajemen Data', href: '/help/data-guide' },
-    { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
-=======
     { title: 'Manajemen Data', href: '/help/data-guide' },
     { title: 'Properti Variabel', href: '/help/data-guide/define-var-props' },
     { title: 'Urutkan Kasus', href: '/help/data-guide/sort-cases' },
     { title: 'Tingkat Pengukuran', href: '/help/data-guide/set-measurement-level' },
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     { title: 'Restrukturisasi Data', href: '/help/data-guide/restructure' }
   ];
 
   return (
     <HelpGuideTemplate
-<<<<<<< HEAD
-      title="Fitur Urutkan Variabel"
-      description="Panduan lengkap untuk menata ulang variabel dalam Tampilan Variabel berdasarkan properti kolom"
-=======
       title="Urutkan Variabel"
       description="Panduan lengkap untuk mengatur ulang urutan variabel dalam dataset berdasarkan berbagai atribut"
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

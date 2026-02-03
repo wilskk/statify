@@ -1,20 +1,12 @@
 "use client";
 
-<<<<<<< HEAD
-import React, { FC, useState, useEffect } from "react";
-=======
 import type { FC} from "react";
 import React, { useState, useEffect } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-<<<<<<< HEAD
-import { Variable } from "@/types/Variable";
-=======
 import type { Variable } from "@/types/Variable";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { useOptionHook } from "@/components/Modals/Analyze/TimeSeries/Smoothing/hooks/optionHook";
 import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeHook";
 import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/Smoothing/hooks/analyzeHook";
@@ -22,11 +14,7 @@ import VariablesTab from "@/components/Modals/Analyze/TimeSeries/Smoothing/Varia
 import OptionTab from "@/components/Modals/Analyze/TimeSeries/Smoothing/OptionTab";
 import TimeTab from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
-<<<<<<< HEAD
-import { DataRow } from "@/types/Data";
-=======
 import type { DataRow } from "@/types/Data";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import {toast} from "sonner";
 
 interface SmoothingProps {
@@ -83,11 +71,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
 
     useEffect(() => {
         if (combinedError) {
-<<<<<<< HEAD
-            toast.error("Error: " + String(combinedError));
-=======
             toast.error(`Error: ${  String(combinedError)}`);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         }
     }, [combinedError]);
 
@@ -98,11 +82,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
                 const savedData = await getFormData("Smoothing", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
 
-<<<<<<< HEAD
-                if (savedData && savedData.prevDataRef) {
-=======
                 if (savedData?.prevDataRef) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // If previous data reference exists, check if it matches current data
                     setPrevDataRef(savedData.prevDataRef);
                     if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
@@ -118,11 +98,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
                     setSaveAsVariable(savedData.saveAsVariable);
                 }
                 
-<<<<<<< HEAD
-                if (savedData && savedData.availableVariables && savedData.selectedVariables) {
-=======
                 if (savedData?.availableVariables && savedData.selectedVariables) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     // Validate that saved variables still exist in current variable store
                     const validAvailableVars = savedData.availableVariables.filter((savedVar: Variable) =>
                         filteredVariables.some(v => v.columnIndex === savedVar.columnIndex)
@@ -169,11 +145,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
                 };
                 const stateToSave = {
                     ...variableToSave,
-<<<<<<< HEAD
-                    saveAsVariable: saveAsVariable,
-=======
                     saveAsVariable,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("Smoothing", stateToSave, "variables");

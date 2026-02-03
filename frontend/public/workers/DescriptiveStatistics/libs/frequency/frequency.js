@@ -305,8 +305,6 @@ class FrequencyCalculator {
         // Always set Mode from our method (ensures date modes are formatted as dd-mm-yyyy)
         stats.Mode = this.getMode();
 
-<<<<<<< HEAD
-=======
         // --- Dynamic Percentiles -------------------------------------------
         // Merge any requested percentiles into stats.Percentiles.
         // Only applicable for numeric-like measures (scale/ordinal).
@@ -371,7 +369,6 @@ class FrequencyCalculator {
             // Do not fail stats if percentile options are malformed; just skip dynamic percentiles
         }
 
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const results = {
             summary: {
                 valid: W,

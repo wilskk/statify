@@ -3,11 +3,7 @@ import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useDataStore } from '@/stores/useDataStore';
 
-<<<<<<< HEAD
-import {
-=======
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   OneSampleTTestAnalysisProps,
   OneSampleTTestResult
 } from '../types';
@@ -107,11 +103,7 @@ export const useOneSampleTTestAnalysis = ({
 
       if (status === 'success' && results) {
         // Check for metadata about insufficient data
-<<<<<<< HEAD
-        if (results.metadata && results.metadata.hasInsufficientData) {
-=======
         if (results.metadata?.hasInsufficientData) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           insufficientDataVarsRef.current.push({variableName: results.metadata.variableName, variableLabel: results.metadata.variableLabel, insufficientType: results.metadata.insufficientType});
           // console.warn(`Insufficient valid data for variable: ${results.metadata.variableLabel || results.metadata.variableName}. Insufficient type: ${results.metadata.insufficientType.join(', ')}`);
         }

@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import React, { FC, useCallback } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import type { Variable } from "@/types/Variable";
-import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
-import { TourStep } from "./hooks/useTourGuide";
-import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { VariableSelectionResult } from "./hooks/useVariableSelection";
-import { DisplaySettingsResult } from "./hooks/useDisplaySettings";
-=======
 import type { FC} from "react";
 import React, { useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,7 +9,6 @@ import type { TourStep } from "./hooks/useTourGuide";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import type { VariableSelectionResult } from "./hooks/useVariableSelection";
 import type { DisplaySettingsResult } from "./hooks/useDisplaySettings";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export interface VariablesTabProps {
     variableSelection: VariableSelectionResult;

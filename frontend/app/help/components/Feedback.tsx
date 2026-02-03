@@ -6,19 +6,12 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
-<<<<<<< HEAD
-import { HelpCard, HelpAlert } from "../ui/HelpLayout";
-import { SendHorizontal, Star, ThumbsUp, MessageSquare, Mail, BookOpen } from "lucide-react";
-=======
 import { HelpCard, HelpAlert, HelpStep } from "../ui/HelpLayout";
 import { SendHorizontal, Star, ThumbsUp, MessageSquare, Mail, BookOpen, ListOrdered } from "lucide-react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export const Feedback = () => {
   const sections = [
     {
-<<<<<<< HEAD
-=======
       id: 'how-to-feedback',
       title: 'Cara Memberikan Umpan Balik',
       description: 'Panduan langkah demi langkah untuk menyampaikan umpan balik yang efektif',
@@ -65,7 +58,6 @@ export const Feedback = () => {
       )
     },
     {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       id: 'overview',
       title: 'Jenis Umpan Balik',
       description: 'Pilih jenis umpan balik yang sesuai dengan kebutuhan Anda',
@@ -190,15 +182,6 @@ export const Feedback = () => {
   const tips = [
     {
       type: 'tip' as const,
-<<<<<<< HEAD
-      title: 'Umpan Balik Efektif',
-      content: 'Berikan detail spesifik dan langkah-langkah untuk mereproduksi masalah saat melaporkan bug.'
-    },
-    {
-      type: 'info' as const,
-      title: 'Waktu Respons',
-      content: 'Tim kami biasanya merespons umpan balik dalam 1-2 hari kerja.'
-=======
       title: 'Umpan Balik Efektif untuk Bug',
       content: 'Berikan detail spesifik dan langkah-langkah untuk mereproduksi masalah. Sertakan screenshot atau video jika memungkinkan untuk memperjelas masalah.'
     },
@@ -216,33 +199,21 @@ export const Feedback = () => {
       type: 'tip' as const,
       title: 'Follow-up Umpan Balik',
       content: 'Jika menyertakan email, Anda akan mendapat notifikasi ketika umpan balik Anda ditindaklanjuti atau butuh klarifikasi tambahan.'
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     }
   ];
 
   const relatedTopics = [
-<<<<<<< HEAD
-    { title: 'Memulai', href: '/help/getting-started' },
-    { title: 'FAQ', href: '/help/faq' },
-    { title: 'Hubungi Dukungan', href: '/help/contact' },
-    { title: 'Panduan Pengguna', href: '/help/user-guide' }
-=======
     { title: 'FAQ - Pertanyaan Umum', href: '/help/faq' },
     { title: 'Memulai', href: '/help/getting-started' },
     { title: 'Panduan Pengguna', href: '/help/user-guide' },
     { title: 'Panduan File', href: '/help/file-guide' },
     { title: 'Panduan Data', href: '/help/data-guide' }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   ];
 
   return (
     <HelpGuideTemplate
       title="Umpan Balik & Dukungan"
-<<<<<<< HEAD
-      description="Bantu kami meningkatkan Statify dengan membagikan pemikiran, saran, atau melaporkan masalah Anda"
-=======
       description="Bantu kami meningkatkan Statify dengan membagikan pengalaman, saran, atau melaporkan masalah yang Anda temui"
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       lastUpdated="2024-01-15"
       sections={sections}
       tips={tips}

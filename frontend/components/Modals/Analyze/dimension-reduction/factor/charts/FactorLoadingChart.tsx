@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import * as echarts from 'echarts';
 import 'echarts-gl';
 
@@ -14,19 +14,49 @@ interface LoadingPlotData {
   points: LoadingPoint[];
 }
 
-interface Props {
+// Wrapper format from factor-analysis-output.ts
+interface LoadingPlotWrapper {
+  type: string;
   data: LoadingPlotData;
+}
+
+interface Props {
+  data: LoadingPlotData | LoadingPlotWrapper | string;
 }
 
 export default function FactorLoadingChart({ data }: Props) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
 
+  // Parse data if it's a JSON string and handle wrapped format
+  const parsedData = useMemo<LoadingPlotData | null>(() => {
+    try {
+      let parsed: any;
+      
+      if (typeof data === "string") {
+        parsed = JSON.parse(data);
+      } else {
+        parsed = data;
+      }
+      
+      // Check if it's wrapped in { type, data } format
+      if (parsed && parsed.type === "PLOTLY_LOADING_PLOT" && parsed.data) {
+        return parsed.data as LoadingPlotData;
+      }
+      
+      // Otherwise return as-is (direct LoadingPlotData format)
+      return parsed as LoadingPlotData;
+    } catch (error) {
+      console.error("Failed to parse LoadingPlot data:", error);
+      return null;
+    }
+  }, [data]);
+
   // Determine if 3D or 2D
-  const is3D = data.axis_labels.length >= 3;
+  const is3D = parsedData?.axis_labels?.length ? parsedData.axis_labels.length >= 3 : false;
 
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current || !parsedData) return;
 
     // Initialize chart
     if (!chartInstanceRef.current) {
@@ -42,8 +72,9 @@ export default function FactorLoadingChart({ data }: Props) {
     }
 
     function createOption3D() {
+      if (!parsedData) return;
       // Prepare 3D scatter plot data
-      const seriesData = data.points.map(point => [
+      const seriesData = parsedData.points.map(point => [
         point.coordinates[0],
         point.coordinates[1],
         point.coordinates[2],
@@ -83,7 +114,7 @@ export default function FactorLoadingChart({ data }: Props) {
           boxHeight: 120,
         },
         xAxis3D: {
-          name: data.axis_labels[0] || 'Component 1',
+          name: parsedData.axis_labels[0] || 'Component 1',
           type: 'value',
           min: -1.1,
           max: 1.1,
@@ -102,7 +133,7 @@ export default function FactorLoadingChart({ data }: Props) {
           },
         },
         yAxis3D: {
-          name: data.axis_labels[1] || 'Component 2',
+          name: parsedData.axis_labels[1] || 'Component 2',
           type: 'value',
           min: -1.1,
           max: 1.1,
@@ -121,7 +152,7 @@ export default function FactorLoadingChart({ data }: Props) {
           },
         },
         zAxis3D: {
-          name: data.axis_labels[2] || 'Component 3',
+          name: parsedData.axis_labels[2] || 'Component 3',
           type: 'value',
           min: -1.1,
           max: 1.1,
@@ -174,8 +205,9 @@ export default function FactorLoadingChart({ data }: Props) {
     }
 
     function createOption2D() {
+      if (!parsedData) return;
       // Prepare 2D scatter plot data
-      const seriesData = data.points.map(point => ({
+      const seriesData = parsedData.points.map(point => ({
         value: [point.coordinates[0], point.coordinates[1]],
         name: point.label,
       }));
@@ -201,7 +233,7 @@ export default function FactorLoadingChart({ data }: Props) {
           },
         },
         xAxis: {
-          name: data.axis_labels[0] || 'Component 1',
+          name: parsedData.axis_labels[0] || 'Component 1',
           type: 'value',
           min: -1.1,
           max: 1.1,
@@ -223,7 +255,7 @@ export default function FactorLoadingChart({ data }: Props) {
           },
         },
         yAxis: {
-          name: data.axis_labels[1] || 'Component 2',
+          name: parsedData.axis_labels[1] || 'Component 2',
           type: 'value',
           min: -1.1,
           max: 1.1,
@@ -294,7 +326,7 @@ export default function FactorLoadingChart({ data }: Props) {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [data, is3D]);
+  }, [parsedData, is3D]);
 
   // Cleanup
   useEffect(() => {
@@ -305,6 +337,23 @@ export default function FactorLoadingChart({ data }: Props) {
       }
     };
   }, []);
+
+  // Error handling for invalid data
+  if (!parsedData) {
+    return (
+      <div className="w-full flex justify-center items-center border rounded-lg p-4 bg-white shadow-sm h-[400px]">
+        <p className="text-destructive">Invalid loading plot data: Failed to parse data</p>
+      </div>
+    );
+  }
+
+  if (!parsedData.axis_labels || !parsedData.points) {
+    return (
+      <div className="w-full flex justify-center items-center border rounded-lg p-4 bg-white shadow-sm h-[400px]">
+        <p className="text-destructive">Invalid loading plot data: Missing axis_labels or points</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex justify-center border rounded-lg p-4 bg-white shadow-sm">

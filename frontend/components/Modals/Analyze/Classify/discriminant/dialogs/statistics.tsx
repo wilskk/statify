@@ -2,19 +2,11 @@ import React, {useEffect, useState} from "react";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Checkbox} from "@/components/ui/checkbox";
-<<<<<<< HEAD
-import {CheckedState} from "@radix-ui/react-checkbox";
-import {ResizableHandle, ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
-import {Label} from "@/components/ui/label";
-import {Separator} from "@/components/ui/separator";
-import {
-=======
 import type {CheckedState} from "@radix-ui/react-checkbox";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
 import {Label} from "@/components/ui/label";
 import {Separator} from "@/components/ui/separator";
 import type {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     DiscriminantStatisticsProps,
     DiscriminantStatisticsType
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";

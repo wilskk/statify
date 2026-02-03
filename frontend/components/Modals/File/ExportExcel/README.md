@@ -27,7 +27,6 @@ ExportExcel/
 ## 🎯 Core Functionality
 
 ### Excel Export System
-
 ```typescript
 interface ExcelExportSystem {
   // Workbook management
@@ -38,7 +37,7 @@ interface ExcelExportSystem {
       setWorkbookMetadata: (metadata: WorkbookMetadata) => void;
       optimizeWorkbookSize: (workbook: ExcelWorkbook) => OptimizedWorkbook;
     };
-
+    
     worksheetManagement: {
       createDataSheet: (data: DataMatrix) => ExcelWorksheet;
       createMetadataSheet: (metadata: DatasetMetadata) => ExcelWorksheet;
@@ -46,20 +45,14 @@ interface ExcelExportSystem {
       createSummarySheet: (summary: DataSummary) => ExcelWorksheet;
       createChartsSheet: (charts: Chart[]) => ExcelWorksheet;
     };
-
+    
     sheetConfiguration: {
       configureSheetLayout: (sheet: ExcelWorksheet) => void;
-      setSheetProperties: (
-        sheet: ExcelWorksheet,
-        properties: SheetProperties,
-      ) => void;
-      setupSheetProtection: (
-        sheet: ExcelWorksheet,
-        protection: SheetProtection,
-      ) => void;
+      setSheetProperties: (sheet: ExcelWorksheet, properties: SheetProperties) => void;
+      setupSheetProtection: (sheet: ExcelWorksheet, protection: SheetProtection) => void;
       optimizeSheetPerformance: (sheet: ExcelWorksheet) => void;
     };
-
+    
     workbookFinalization: {
       finalizeWorkbook: (workbook: ExcelWorkbook) => FinalizedWorkbook;
       generateExcelFile: (workbook: FinalizedWorkbook) => ExcelFile;
@@ -67,7 +60,7 @@ interface ExcelExportSystem {
       validateWorkbook: (workbook: FinalizedWorkbook) => ValidationResult;
     };
   };
-
+  
   // Advanced formatting
   advancedFormatting: {
     cellFormatting: {
@@ -75,102 +68,54 @@ interface ExcelExportSystem {
       formatHeaderCells: (headers: ExcelCell[], format: HeaderFormat) => void;
       formatNumericCells: (cells: ExcelCell[], format: NumericFormat) => void;
       formatDateCells: (cells: ExcelCell[], format: DateFormat) => void;
-      applyConditionalFormatting: (
-        range: ExcelRange,
-        rules: ConditionalFormattingRule[],
-      ) => void;
+      applyConditionalFormatting: (range: ExcelRange, rules: ConditionalFormattingRule[]) => void;
     };
-
+    
     styleManagement: {
       createCustomStyles: (styleDefinition: StyleDefinition) => ExcelStyle;
       applyTheme: (workbook: ExcelWorkbook, theme: ExcelTheme) => void;
-      manageColorScheme: (
-        workbook: ExcelWorkbook,
-        colorScheme: ColorScheme,
-      ) => void;
-      configureFontSettings: (
-        workbook: ExcelWorkbook,
-        fontSettings: FontSettings,
-      ) => void;
+      manageColorScheme: (workbook: ExcelWorkbook, colorScheme: ColorScheme) => void;
+      configureFontSettings: (workbook: ExcelWorkbook, fontSettings: FontSettings) => void;
     };
-
+    
     layoutOptimization: {
       autoFitColumns: (worksheet: ExcelWorksheet) => void;
       adjustRowHeights: (worksheet: ExcelWorksheet) => void;
-      freezePanes: (
-        worksheet: ExcelWorksheet,
-        freezeOptions: FreezeOptions,
-      ) => void;
-      configurePrintSettings: (
-        worksheet: ExcelWorksheet,
-        printSettings: PrintSettings,
-      ) => void;
+      freezePanes: (worksheet: ExcelWorksheet, freezeOptions: FreezeOptions) => void;
+      configurePrintSettings: (worksheet: ExcelWorksheet, printSettings: PrintSettings) => void;
     };
-
+    
     dataVisualization: {
-      createCharts: (
-        data: DataMatrix,
-        chartSpecs: ChartSpecification[],
-      ) => ExcelChart[];
-      insertPivotTables: (
-        data: DataMatrix,
-        pivotSpecs: PivotTableSpecification[],
-      ) => ExcelPivotTable[];
-      addDataValidation: (
-        range: ExcelRange,
-        validationRules: DataValidationRule[],
-      ) => void;
-      createNamedRanges: (
-        worksheet: ExcelWorksheet,
-        ranges: NamedRange[],
-      ) => void;
+      createCharts: (data: DataMatrix, chartSpecs: ChartSpecification[]) => ExcelChart[];
+      insertPivotTables: (data: DataMatrix, pivotSpecs: PivotTableSpecification[]) => ExcelPivotTable[];
+      addDataValidation: (range: ExcelRange, validationRules: DataValidationRule[]) => void;
+      createNamedRanges: (worksheet: ExcelWorksheet, ranges: NamedRange[]) => void;
     };
   };
-
+  
   // Enterprise features
   enterpriseFeatures: {
     securityFeatures: {
       passwordProtection: (workbook: ExcelWorkbook, password: string) => void;
-      documentEncryption: (
-        workbook: ExcelWorkbook,
-        encryption: EncryptionSettings,
-      ) => void;
-      digitalSignatures: (
-        workbook: ExcelWorkbook,
-        signature: DigitalSignature,
-      ) => void;
-      accessControl: (
-        workbook: ExcelWorkbook,
-        permissions: AccessPermissions,
-      ) => void;
+      documentEncryption: (workbook: ExcelWorkbook, encryption: EncryptionSettings) => void;
+      digitalSignatures: (workbook: ExcelWorkbook, signature: DigitalSignature) => void;
+      accessControl: (workbook: ExcelWorkbook, permissions: AccessPermissions) => void;
     };
-
+    
     collaborationFeatures: {
       trackChanges: (workbook: ExcelWorkbook, tracking: ChangeTracking) => void;
       addComments: (cells: ExcelCell[], comments: CellComment[]) => void;
-      shareWorkbook: (
-        workbook: ExcelWorkbook,
-        sharing: SharingSettings,
-      ) => void;
-      versionControl: (
-        workbook: ExcelWorkbook,
-        versioning: VersioningSettings,
-      ) => void;
+      shareWorkbook: (workbook: ExcelWorkbook, sharing: SharingSettings) => void;
+      versionControl: (workbook: ExcelWorkbook, versioning: VersioningSettings) => void;
     };
-
+    
     automationFeatures: {
       addMacros: (workbook: ExcelWorkbook, macros: ExcelMacro[]) => void;
       createFormulas: (cells: ExcelCell[], formulas: ExcelFormula[]) => void;
-      setupDataConnections: (
-        workbook: ExcelWorkbook,
-        connections: DataConnection[],
-      ) => void;
-      configureRefreshSettings: (
-        workbook: ExcelWorkbook,
-        refresh: RefreshSettings,
-      ) => void;
+      setupDataConnections: (workbook: ExcelWorkbook, connections: DataConnection[]) => void;
+      configureRefreshSettings: (workbook: ExcelWorkbook, refresh: RefreshSettings) => void;
     };
-
+    
     performanceOptimization: {
       optimizeFileSize: (workbook: ExcelWorkbook) => OptimizationResult;
       improveCalculationSpeed: (workbook: ExcelWorkbook) => PerformanceResult;
@@ -182,7 +127,6 @@ interface ExcelExportSystem {
 ```
 
 ### Excel Data Processing
-
 ```typescript
 interface ExcelDataProcessing {
   // Data transformation
@@ -193,27 +137,21 @@ interface ExcelDataProcessing {
       convertNumericPrecision: (numbers: number[]) => ExcelNumericValue[];
       formatTextData: (text: string[]) => ExcelTextValue[];
     };
-
+    
     handleMissingValues: {
       identifyMissingValues: (data: RawData) => MissingValueMap;
-      convertMissingToExcel: (
-        missingValues: MissingValue[],
-      ) => ExcelMissingValue[];
-      setupMissingValueRules: (
-        rules: MissingValueRule[],
-      ) => ExcelValidationRule[];
-      documentMissingValueStrategy: (
-        strategy: MissingValueStrategy,
-      ) => ExcelDocumentation;
+      convertMissingToExcel: (missingValues: MissingValue[]) => ExcelMissingValue[];
+      setupMissingValueRules: (rules: MissingValueRule[]) => ExcelValidationRule[];
+      documentMissingValueStrategy: (strategy: MissingValueStrategy) => ExcelDocumentation;
     };
-
+    
     dataValidation: {
       validateDataIntegrity: (data: RawData) => DataIntegrityResult;
       checkDataConsistency: (data: RawData) => ConsistencyCheckResult;
       verifyDataTypes: (data: RawData) => TypeVerificationResult;
       assessDataQuality: (data: RawData) => DataQualityAssessment;
     };
-
+    
     dataOptimization: {
       optimizeDataStructure: (data: RawData) => OptimizedDataStructure;
       compressLargeDatasets: (data: LargeDataMatrix) => CompressedData;
@@ -221,50 +159,33 @@ interface ExcelDataProcessing {
       streamDataProcessing: (data: DataStream) => ProcessedDataStream;
     };
   };
-
+  
   // Excel-specific processing
   excelSpecificProcessing: {
     formatCompatibility: {
       ensureExcelCompatibility: (data: RawData) => ExcelCompatibleData;
-      handleExcelLimitations: (
-        data: LargeDataMatrix,
-      ) => LimitationHandlingResult;
-      optimizeForExcelVersion: (
-        data: RawData,
-        version: ExcelVersion,
-      ) => VersionOptimizedData;
+      handleExcelLimitations: (data: LargeDataMatrix) => LimitationHandlingResult;
+      optimizeForExcelVersion: (data: RawData, version: ExcelVersion) => VersionOptimizedData;
       maintainDataFidelity: (data: RawData) => FidelityPreservationResult;
     };
-
+    
     sheetOptimization: {
       calculateOptimalSheetLayout: (data: DataMatrix) => SheetLayoutPlan;
-      distributeDataAcrossSheets: (
-        data: LargeDataMatrix,
-      ) => SheetDistributionPlan;
-      optimizeSheetNavigation: (
-        sheets: ExcelWorksheet[],
-      ) => NavigationOptimization;
+      distributeDataAcrossSheets: (data: LargeDataMatrix) => SheetDistributionPlan;
+      optimizeSheetNavigation: (sheets: ExcelWorksheet[]) => NavigationOptimization;
       implementCrossSheetReferences: (sheets: ExcelWorksheet[]) => ReferenceMap;
     };
-
+    
     formulaGeneration: {
       generateSummaryFormulas: (data: DataMatrix) => ExcelFormula[];
-      createDataValidationFormulas: (
-        validation: ValidationRule[],
-      ) => ExcelFormula[];
-      buildConditionalFormulas: (
-        conditions: ConditionalRule[],
-      ) => ExcelFormula[];
-      optimizeFormulaPerformance: (
-        formulas: ExcelFormula[],
-      ) => OptimizedFormula[];
+      createDataValidationFormulas: (validation: ValidationRule[]) => ExcelFormula[];
+      buildConditionalFormulas: (conditions: ConditionalRule[]) => ExcelFormula[];
+      optimizeFormulaPerformance: (formulas: ExcelFormula[]) => OptimizedFormula[];
     };
-
+    
     metadataIntegration: {
       embedDatasetMetadata: (metadata: DatasetMetadata) => ExcelMetadata;
-      createVariableDocumentation: (
-        variables: Variable[],
-      ) => ExcelDocumentation;
+      createVariableDocumentation: (variables: Variable[]) => ExcelDocumentation;
       generateDataDictionary: (variables: Variable[]) => ExcelDataDictionary;
       addAnalysisHistory: (history: AnalysisHistory) => ExcelHistorySheet;
     };
@@ -275,7 +196,6 @@ interface ExcelDataProcessing {
 ## 🔧 Hook Implementation
 
 ### useExportExcelLogic Hook
-
 ```typescript
 interface UseExportExcelLogicHook {
   // Export configuration state
@@ -288,7 +208,7 @@ interface UseExportExcelLogicHook {
     createSeparateSheets: boolean;
     customFormatting: ExcelFormattingOptions;
   };
-
+  
   // Configuration management
   configurationManagement: {
     setFilename: (filename: string) => void;
@@ -299,7 +219,7 @@ interface UseExportExcelLogicHook {
     setCreateSeparateSheets: (create: boolean) => void;
     updateFormattingOptions: (options: Partial<ExcelFormattingOptions>) => void;
   };
-
+  
   // Export validation
   exportValidation: {
     validateConfiguration: () => ConfigurationValidationResult;
@@ -308,18 +228,16 @@ interface UseExportExcelLogicHook {
     estimateFileSize: () => FileSizeEstimation;
     checkExcelLimitations: () => LimitationCheckResult;
   };
-
+  
   // Export execution
   exportExecution: {
     exportToExcel: () => Promise<ExcelExportResult>;
     previewExcelStructure: () => ExcelStructurePreview;
     cancelExport: () => void;
     retryExport: () => Promise<ExcelExportResult>;
-    exportWithProgress: (
-      onProgress: ProgressCallback,
-    ) => Promise<ExcelExportResult>;
+    exportWithProgress: (onProgress: ProgressCallback) => Promise<ExcelExportResult>;
   };
-
+  
   // Advanced features
   advancedFeatures: {
     templateManagement: {
@@ -328,21 +246,21 @@ interface UseExportExcelLogicHook {
       deleteExportTemplate: (templateId: string) => void;
       listAvailableTemplates: () => ExcelExportTemplate[];
     };
-
+    
     customization: {
       configureWorkbookProperties: (properties: WorkbookProperties) => void;
       setupCustomStyles: (styles: CustomExcelStyle[]) => void;
       configureChartGeneration: (chartConfig: ChartGenerationConfig) => void;
       setupDataValidation: (validationRules: ExcelValidationRule[]) => void;
     };
-
+    
     qualityControl: {
       performQualityCheck: () => ExcelQualityCheckResult;
       validateExcelOutput: () => ExcelOutputValidationResult;
       compareWithOriginal: () => DataComparisonResult;
       generateQualityReport: () => ExcelQualityReport;
     };
-
+    
     performanceOptimization: {
       optimizeExportSettings: () => OptimizationRecommendation[];
       estimateExportTime: () => TimeEstimation;
@@ -350,7 +268,7 @@ interface UseExportExcelLogicHook {
       suggestPerformanceImprovements: () => PerformanceRecommendation[];
     };
   };
-
+  
   // State management
   stateManagement: {
     exportState: {
@@ -360,14 +278,14 @@ interface UseExportExcelLogicHook {
       exportSuccess: boolean;
       canExport: boolean;
     };
-
+    
     uiState: {
       showAdvancedOptions: boolean;
       activeTab: ExportTab;
       previewMode: boolean;
       tourActive: boolean;
     };
-
+    
     dataState: {
       dataSize: number;
       variableCount: number;
@@ -379,7 +297,6 @@ interface UseExportExcelLogicHook {
 ```
 
 ### Excel Exporter Utility
-
 ```typescript
 interface ExcelExporterUtility {
   // Core export functions
@@ -387,86 +304,91 @@ interface ExcelExporterUtility {
     createExcelWorkbook: (
       data: DataMatrix,
       variables: Variable[],
-      options: ExcelExportOptions,
+      options: ExcelExportOptions
     ) => Promise<ExcelWorkbook>;
-
+    
     generateDataSheet: (
       data: DataMatrix,
       variables: Variable[],
-      sheetOptions: DataSheetOptions,
+      sheetOptions: DataSheetOptions
     ) => ExcelWorksheet;
-
+    
     generateMetadataSheet: (
       metadata: DatasetMetadata,
-      sheetOptions: MetadataSheetOptions,
+      sheetOptions: MetadataSheetOptions
     ) => ExcelWorksheet;
-
+    
     finalizeAndSave: (
       workbook: ExcelWorkbook,
-      filename: string,
+      filename: string
     ) => Promise<ExcelFile>;
   };
-
+  
   // Formatting utilities
   formattingUtilities: {
     applyHeaderFormatting: (
       headers: ExcelRange,
-      format: HeaderFormatting,
+      format: HeaderFormatting
     ) => void;
-
-    formatDataColumns: (columns: ExcelColumn[], variables: Variable[]) => void;
-
+    
+    formatDataColumns: (
+      columns: ExcelColumn[],
+      variables: Variable[]
+    ) => void;
+    
     applyConditionalFormatting: (
       range: ExcelRange,
-      rules: ConditionalFormattingRule[],
+      rules: ConditionalFormattingRule[]
     ) => void;
-
+    
     setupCellValidation: (
       cells: ExcelCell[],
-      validationRules: CellValidationRule[],
+      validationRules: CellValidationRule[]
     ) => void;
   };
-
+  
   // Advanced features
   advancedFeatures: {
     createPivotTables: (
       data: DataMatrix,
-      pivotConfig: PivotTableConfiguration[],
+      pivotConfig: PivotTableConfiguration[]
     ) => ExcelPivotTable[];
-
+    
     generateCharts: (
       data: DataMatrix,
-      chartConfig: ChartConfiguration[],
+      chartConfig: ChartConfiguration[]
     ) => ExcelChart[];
-
+    
     addFormulas: (
       worksheet: ExcelWorksheet,
-      formulas: FormulaDefinition[],
+      formulas: FormulaDefinition[]
     ) => void;
-
+    
     setupNamedRanges: (
       workbook: ExcelWorkbook,
-      namedRanges: NamedRangeDefinition[],
+      namedRanges: NamedRangeDefinition[]
     ) => void;
   };
-
+  
   // Quality assurance
   qualityAssurance: {
-    validateExcelOutput: (excelFile: ExcelFile) => ExcelValidationResult;
-
+    validateExcelOutput: (
+      excelFile: ExcelFile
+    ) => ExcelValidationResult;
+    
     checkDataIntegrity: (
       originalData: DataMatrix,
-      excelWorkbook: ExcelWorkbook,
+      excelWorkbook: ExcelWorkbook
     ) => DataIntegrityCheckResult;
-
+    
     verifyFormatting: (
       excelWorkbook: ExcelWorkbook,
-      expectedFormatting: FormattingExpectation[],
+      expectedFormatting: FormattingExpectation[]
     ) => FormattingVerificationResult;
-
+    
     performCompatibilityCheck: (
       excelFile: ExcelFile,
-      targetVersion: ExcelVersion,
+      targetVersion: ExcelVersion
     ) => CompatibilityCheckResult;
   };
 }
@@ -475,60 +397,59 @@ interface ExcelExporterUtility {
 ## 🧪 Testing Strategy
 
 ### Test Coverage Areas
-
 ```typescript
 // Excel export functionality testing
-describe("ExportExcelModal", () => {
-  describe("Configuration management", () => {
-    it("manages export configuration correctly");
-    it("validates Excel-specific settings");
-    it("handles format selection properly");
-    it("preserves user preferences");
+describe('ExportExcelModal', () => {
+  describe('Configuration management', () => {
+    it('manages export configuration correctly');
+    it('validates Excel-specific settings');
+    it('handles format selection properly');
+    it('preserves user preferences');
   });
-
-  describe("Excel generation", () => {
-    it("creates valid Excel workbooks");
-    it("generates properly formatted worksheets");
-    it("handles various data types correctly");
-    it("manages large datasets efficiently");
+  
+  describe('Excel generation', () => {
+    it('creates valid Excel workbooks');
+    it('generates properly formatted worksheets');
+    it('handles various data types correctly');
+    it('manages large datasets efficiently');
   });
-
-  describe("Advanced formatting", () => {
-    it("applies custom styles correctly");
-    it("creates charts and pivot tables");
-    it("implements conditional formatting");
-    it("manages named ranges properly");
+  
+  describe('Advanced formatting', () => {
+    it('applies custom styles correctly');
+    it('creates charts and pivot tables');
+    it('implements conditional formatting');
+    it('manages named ranges properly');
   });
-
-  describe("Quality assurance", () => {
-    it("validates Excel output format");
-    it("ensures data integrity");
-    it("checks Excel compatibility");
-    it("maintains formatting accuracy");
+  
+  describe('Quality assurance', () => {
+    it('validates Excel output format');
+    it('ensures data integrity');
+    it('checks Excel compatibility');
+    it('maintains formatting accuracy');
   });
-
-  describe("Performance optimization", () => {
-    it("handles large datasets efficiently");
-    it("optimizes file size");
-    it("manages memory usage properly");
-    it("implements streaming for huge datasets");
+  
+  describe('Performance optimization', () => {
+    it('handles large datasets efficiently');
+    it('optimizes file size');
+    it('manages memory usage properly');
+    it('implements streaming for huge datasets');
   });
 });
 
 // Excel utility testing
-describe("excelExporter", () => {
-  describe("Workbook creation", () => {
-    it("creates workbooks correctly");
-    it("manages worksheets properly");
-    it("applies formatting accurately");
-    it("handles metadata integration");
+describe('excelExporter', () => {
+  describe('Workbook creation', () => {
+    it('creates workbooks correctly');
+    it('manages worksheets properly');
+    it('applies formatting accurately');
+    it('handles metadata integration');
   });
-
-  describe("Data processing", () => {
-    it("converts data types correctly");
-    it("handles missing values properly");
-    it("maintains data precision");
-    it("validates data integrity");
+  
+  describe('Data processing', () => {
+    it('converts data types correctly');
+    it('handles missing values properly');
+    it('maintains data precision');
+    it('validates data integrity');
   });
 });
 ```
@@ -536,50 +457,55 @@ describe("excelExporter", () => {
 ## 📋 Development Guidelines
 
 ### Adding Excel Features
-
 ```typescript
 // 1. Define Excel feature interface
 interface NewExcelFeature extends ExcelFeature {
-  id: "newFeature";
-  name: "New Excel Feature";
-  description: "Feature description";
-  type: "formatting" | "data" | "visualization" | "automation";
+  id: 'newFeature';
+  name: 'New Excel Feature';
+  description: 'Feature description';
+  type: 'formatting' | 'data' | 'visualization' | 'automation';
   compatibility: ExcelVersion[];
   implementation: FeatureImplementation;
 }
 
 // 2. Implement feature logic
 const newExcelFeatureImplementation = {
-  apply: (workbook: ExcelWorkbook, options: FeatureOptions) => {
+  apply: (
+    workbook: ExcelWorkbook,
+    options: FeatureOptions
+  ) => {
     // Feature implementation
   },
-
-  validate: (workbook: ExcelWorkbook) => {
+  
+  validate: (
+    workbook: ExcelWorkbook
+  ) => {
     // Feature validation
   },
-
-  optimize: (workbook: ExcelWorkbook) => {
+  
+  optimize: (
+    workbook: ExcelWorkbook
+  ) => {
     // Performance optimization
-  },
+  }
 };
 
 // 3. Register feature
 const EXCEL_FEATURES = {
   ...existingFeatures,
-  newFeature: newExcelFeatureImplementation,
+  newFeature: newExcelFeatureImplementation
 };
 
 // 4. Add comprehensive tests
-describe("New Excel Feature", () => {
-  it("applies feature correctly");
-  it("validates properly");
-  it("optimizes performance");
-  it("maintains compatibility");
+describe('New Excel Feature', () => {
+  it('applies feature correctly');
+  it('validates properly');
+  it('optimizes performance');
+  it('maintains compatibility');
 });
 ```
 
 ### Excel Performance Guidelines
-
 ```typescript
 // 1. Large dataset optimization
 const optimizeExcelPerformance = (data: LargeDataMatrix) => {
@@ -587,7 +513,7 @@ const optimizeExcelPerformance = (data: LargeDataMatrix) => {
     sheetPartitioning: calculateOptimalSheetSplit(data.size),
     streamingStrategy: implementStreamingExport(data.characteristics),
     memoryManagement: setupMemoryOptimization(data.estimatedSize),
-    compressionLevel: determineCompressionSettings(data.type),
+    compressionLevel: determineCompressionSettings(data.type)
   };
 };
 
@@ -597,7 +523,7 @@ const ensureExcelQuality = (exportOperation: ExcelExportOperation) => {
     dataIntegrityCheck: validateDataIntegrity(exportOperation.data),
     formatValidation: validateExcelFormat(exportOperation.output),
     compatibilityCheck: validateExcelCompatibility(exportOperation.settings),
-    performanceAssessment: assessExportPerformance(exportOperation.metrics),
+    performanceAssessment: assessExportPerformance(exportOperation.metrics)
   };
 };
 ```
@@ -605,11 +531,10 @@ const ensureExcelQuality = (exportOperation: ExcelExportOperation) => {
 ---
 
 Export Excel modal menyediakan comprehensive Excel export capabilities dengan advanced formatting options, enterprise-grade features, dan professional workbook generation untuk optimal Excel integration dalam Statify.
-
-- Handles export process execution
-- Validates user input
-- Interacts with Zustand stores
-- Generates and triggers file download
+  - Handles export process execution
+  - Validates user input
+  - Interacts with Zustand stores
+  - Generates and triggers file download
 - **Key Implementation Details**:
   - Uses React hooks (`useState`, `useTransition`)
   - Integrates with Zustand stores (`useDataStore`, `useVariableStore`, `useMetaStore`)
@@ -618,7 +543,6 @@ Export Excel modal menyediakan comprehensive Excel export capabilities dengan ad
   - Handles asynchronous operations with proper error boundaries
 
 #### `hooks/useTourGuide.ts`
-
 - **Role**: Interactive tour management
 - **Responsibilities**:
   - Manages tour state (active, current step)
@@ -627,7 +551,6 @@ Export Excel modal menyediakan comprehensive Excel export capabilities dengan ad
   - Manages element highlighting
 
 #### `utils/excelExporter.ts`
-
 - **Role**: Data processing utilities
 - **Responsibilities**:
   - Converts data and variables to Excel workbook format
@@ -642,30 +565,30 @@ Export Excel modal menyediakan comprehensive Excel export capabilities dengan ad
 flowchart TD
     A[User opens Export Modal] --> B{Initialize State};
     B --> C[Render UI Components];
-
+    
     C --> D[User Configures Options];
     D --> E{Update State via Handlers};
     E --> C;
-
+    
     C --> F[User Clicks Export];
     F --> G{Validate Input};
     G -- Invalid --> H[Show Error Toast];
     G -- Valid --> I[Set Loading State];
-
+    
     I --> J[Sync with Zustand Stores];
     J --> K{Fetch Fresh Data};
     K -- Success --> L[Call generateExcelWorkbook];
     K -- Failure --> M[Show Error Toast];
-
+    
     L --> N[Create Excel Workbook];
     N --> O[Generate Download Link];
     O --> P[Trigger File Download];
-
+    
     P --> Q[Show Success Toast];
     Q --> R[Close Modal];
-
+    
     R --> S[Cleanup Resources];
-
+    
     subgraph Legend
         direction LR
         subgraph Node Types
@@ -677,14 +600,14 @@ flowchart TD
             browser[Browser API]:::legend
         end
     end
-
+    
     classDef legend fill:#f9f9f9,stroke:#333,stroke-width:1px;
     classDef ui fill:#cde4ff,stroke:#5a96e6;
     classDef hook fill:#d5e8d4,stroke:#82b366;
     classDef util fill:#e1d5e7,stroke:#9673a6;
     classDef store fill:#fff2cc,stroke:#d6b656;
     classDef browser fill:#ffe6cc,stroke:#d79b00;
-
+    
     class A,C,D,F,C,R ui;
     class B,E,G,I,J,K,L hook;
     class L,N,O,P util;
@@ -748,7 +671,6 @@ The feature implements comprehensive error handling:
 ## 6. Testing Strategy
 
 ### 6.1. Component Testing (`__tests__/index.test.tsx`)
-
 - **Focus**: UI rendering and user interactions
 - **Approach**: Mock hooks to isolate component
 - **Coverage**:
@@ -759,7 +681,6 @@ The feature implements comprehensive error handling:
   - Tour guide integration
 
 ### 6.2. Hook Testing (`__tests__/useExportExcelLogic.test.ts`)
-
 - **Focus**: Business logic in `useExportExcelLogic` hook
 - **Approach**: Mock Zustand stores and utilities
 - **Coverage**:
@@ -771,7 +692,6 @@ The feature implements comprehensive error handling:
   - Toast notifications
 
 ### 6.3. Utility Testing (`__tests__/excelExporter.test.ts`)
-
 - **Focus**: Pure functions in `excelExporter.ts`
 - **Approach**: Test with various mock datasets
 - **Coverage**:

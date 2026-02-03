@@ -1,20 +1,11 @@
-<<<<<<< HEAD
-import React, { FC, useCallback } from "react";
-=======
 import type { FC} from "react";
 import React, { useCallback } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowBigLeft, ArrowBigRight, Ruler, Shapes, BarChartHorizontal, InfoIcon, ArrowBigUp, ArrowBigDown, MoveHorizontal, FileQuestion } from "lucide-react";
-<<<<<<< HEAD
-import { Variable } from "@/types/Variable";
-import { VariablesTabProps } from "../types";
-=======
 import type { Variable } from "@/types/Variable";
 import type { VariablesTabProps } from "../types";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 const VariablesTab: FC<VariablesTabProps> = ({

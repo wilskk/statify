@@ -2,11 +2,7 @@
 
 self.onmessage = function (event) {
   console.log("[Worker] Data diterima:", event.data);
-<<<<<<< HEAD
-  const { dependent, independent } = event.data;
-=======
   const { dependent, independent, independentVariableInfos } = event.data;
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
   // Validasi input
   if (!Array.isArray(dependent)) {
@@ -274,27 +270,12 @@ self.onmessage = function (event) {
     return 1 - incBeta;
   }
 
-<<<<<<< HEAD
-  const sigFChange = fPvalue(fChange, df1, df2);
-  console.log("[Worker] Sig. F Change:", sigFChange);
-=======
   const pValue = fPvalue(fChange, df1, df2);
   console.log("[Worker] p-value F Change:", pValue);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
   // Format nilai R Square Change (.058a)
   const rSquareChange = rSquared.toFixed(3).replace(/^0/, "") + "a";
   const fChangeRounded = parseFloat(fChange.toFixed(3));
-<<<<<<< HEAD
-  const sigFChangeRounded = parseFloat(sigFChange.toFixed(3));
-
-  // Buat catatan kaki untuk prediktor
-  const predictorVariables = [];
-  for (let i = k; i > 0; i--) {
-    predictorVariables.push(`VAR0000${i+1}`);
-  }
-  const footnoteText = `a. Predictors: (Constant), ${predictorVariables.join(', ')}`;
-=======
   const pValueRounded = parseFloat(pValue.toFixed(3));
 
   // Buat catatan kaki untuk prediktor dengan label jika tersedia
@@ -308,7 +289,6 @@ self.onmessage = function (event) {
     }
   }
   const footnoteText = `a. Predictors: (Constant), ${predictorsDisplay.join(', ')}`;
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
   // Susun output JSON sesuai format yang diinginkan
   const result = {
@@ -324,11 +304,7 @@ self.onmessage = function (event) {
               { header: "F Change", key: "fChange" },
               { header: "df1", key: "df1" },
               { header: "df2", key: "df2" },
-<<<<<<< HEAD
-              { header: "Sig. F Change", key: "sigFChange" }
-=======
               { header: "p-value F Change", key: "pValue" }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             ]
           }
         ],
@@ -339,11 +315,7 @@ self.onmessage = function (event) {
             fChange: fChangeRounded,
             df1: df1,
             df2: df2,
-<<<<<<< HEAD
-            sigFChange: sigFChangeRounded
-=======
             pValue: pValueRounded
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           }
         ],
         footnotes: [footnoteText]

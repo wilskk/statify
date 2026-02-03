@@ -1,28 +1,17 @@
 import React from 'react';
-<<<<<<< HEAD
-import { HelpCircle, FileText } from 'lucide-react';
-import { 
-  IntroSection, 
-  FeatureGrid 
-=======
 import { BarChart3, HelpCircle, BookOpen, Target } from 'lucide-react';
 import { 
   IntroSection,
   FeatureGrid,
   ConceptSection,
   StepList
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 } from '../../shared/StandardizedContentLayout';
 
 export const OverviewTab = () => (
   <div className="space-y-6">
     <IntroSection
       title="Apa itu Analisis Frekuensi?"
-<<<<<<< HEAD
-      description="Analisis frekuensi menghitung seberapa sering setiap nilai unik muncul dalam data Anda. Ini membantu Anda memahami distribusi nilai dan mengidentifikasi pola."
-=======
       description="Analisis frekuensi menghitung seberapa sering setiap nilai unik muncul dalam data Anda. Ini membantu Anda memahami distribusi nilai dan mengidentifikasi pola dalam data kategorikal maupun numerik."
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       variant="info"
     />
 
@@ -35,28 +24,13 @@ export const OverviewTab = () => (
             "Memahami distribusi data kategorikal",
             "Mengidentifikasi nilai yang paling umum",
             "Memeriksa kualitas data dan nilai yang hilang",
-<<<<<<< HEAD
-            "Mempersiapkan data untuk analisis lebih lanjut"
-=======
             "Mempersiapkan data untuk analisis lebih lanjut",
             "Validasi data entry dan deteksi anomali",
             "Eksplorasi awal sebelum analisis kompleks"
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
           ]
         },
         {
           title: "Yang Akan Anda Pelajari",
-<<<<<<< HEAD
-          icon: FileText,
-          items: [
-            "Cara memilih variabel untuk analisis",
-            "Opsi statistik yang tersedia",
-            "Opsi kustomisasi grafik",
-            "Cara menginterpretasi hasil"
-          ]
-        }
-      ]}
-=======
           icon: BookOpen,
           items: [
             "Cara memilih variabel untuk analisis",
@@ -121,7 +95,6 @@ export const OverviewTab = () => (
           description: "Klik Run untuk mendapatkan tabel frekuensi lengkap dengan statistik dan visualisasi yang dipilih."
         }
       ]}
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     />
   </div>
 );

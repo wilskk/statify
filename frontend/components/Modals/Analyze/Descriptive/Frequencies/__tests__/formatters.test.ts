@@ -1,10 +1,7 @@
 import { formatStatisticsTable, formatFrequencyTable } from '../utils/formatters';
 import type { FrequenciesResult, FrequencyTable } from '../types';
 import type { Variable } from '@/types/Variable';
-<<<<<<< HEAD
-=======
 import { spssSecondsToDateString } from '@/lib/spssDateConverter';
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 const mockVar1: Variable = { name: 'var1', label: 'Variable 1', columnIndex: 0, type: 'NUMERIC' } as Variable;
 const mockVar2: Variable = { name: 'var2', label: 'Variable 2', columnIndex: 1, type: 'NUMERIC' } as Variable;
@@ -38,11 +35,7 @@ describe('Frequencies Formatters', () => {
       expect(nValidRow.var1).toBe('100');
     });
 
-<<<<<<< HEAD
-    it('should handle date variables correctly by hiding numerical statistics', () => {
-=======
     it('should handle date variables by hiding Mean/StdDev but showing Median and Percentiles as dates', () => {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       const mockResults: FrequenciesResult[] = [
         {
           variable: mockVar1,
@@ -70,26 +63,18 @@ describe('Frequencies Formatters', () => {
       // Find Mode row
       const modeRow = table.rows.find((r: any) => r.rowHeader[0] === 'Mode');
       expect(modeRow.var1).toBe('25.00'); // Numeric variable should show formatted mode
-<<<<<<< HEAD
-      expect(modeRow.datevar).toBe('18628'); // Date variable should show unformatted mode
-=======
       expect(modeRow.datevar).toBe(spssSecondsToDateString(18628)); // Date variable should show formatted date mode
 
       // Median row for date variable formatted as date
       const medianRow = table.rows.find((r: any) => r.rowHeader[0] === 'Median');
       expect(medianRow.datevar).toBe(spssSecondsToDateString(18628));
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       
       // Check percentiles
       const percentilesRow = table.rows.find((r: any) => r.rowHeader[0] === 'Percentiles');
       if (percentilesRow && percentilesRow.children) {
         const p25Row = percentilesRow.children.find((r: any) => r.rowHeader[1] === '25');
         expect(p25Row.var1).toBe('40.00'); // Numeric variable should show percentile
-<<<<<<< HEAD
-        expect(p25Row.datevar).toBe('.'); // Date variable should not show percentile
-=======
         expect(p25Row.datevar).toBe(spssSecondsToDateString(18500)); // Date variable should show formatted percentile
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       }
 
       // Check percentiles
@@ -97,10 +82,7 @@ describe('Frequencies Formatters', () => {
       expect(percentilesRowBasic.children).toHaveLength(3);
       const medianChild = percentilesRowBasic.children.find((r:any) => r.rowHeader[1] === "50");
       expect(medianChild.var1).toBe('50.00');
-<<<<<<< HEAD
-=======
       expect(medianChild.datevar).toBe(spssSecondsToDateString(18628));
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     });
 
     it('should return null if no statistics results are provided', () => {

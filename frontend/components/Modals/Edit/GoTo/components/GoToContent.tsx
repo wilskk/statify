@@ -1,10 +1,6 @@
 "use client";
 
-<<<<<<< HEAD
-import React, { useState, FC, useEffect, useMemo, useCallback, useRef } from "react";
-=======
 import React, { useState, useEffect, useMemo, useCallback } from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,19 +12,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-<<<<<<< HEAD
-import { BaseModalProps } from "@/types/modalTypes";
-import { X, HelpCircle, CheckCircle, AlertCircle, Info, ChevronLeft, ChevronRight } from "lucide-react";
-import type { GoToModalProps } from "../types";
-import { GoToMode } from "../types";
-import { useGoToForm } from "../hooks/useGoToForm";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-=======
 import { CheckCircle, AlertCircle } from "lucide-react";
 import type { GoToModalProps } from "../types";
 import { GoToMode } from "../types";
 import { useGoToForm } from "../hooks/useGoToForm";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AnimatePresence } from "framer-motion";
@@ -71,11 +58,7 @@ export const GoToContent: React.FC<GoToModalProps & { onClose: () => void }> = (
             : [...commonPrefix, ...variableSteps, ...commonSuffix];
     }, [activeTab]);
 
-<<<<<<< HEAD
-    const startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
-=======
     const _startTour = useCallback(() => { setCurrentStep(0); setTourActive(true); }, []);
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     const nextStep = useCallback(() => { if (currentStep < tourSteps.length - 1) setCurrentStep(prev => prev + 1); }, [currentStep, tourSteps.length]);
     const prevStep = useCallback(() => { if (currentStep > 0) setCurrentStep(prev => prev - 1); }, [currentStep]);
     const endTour = useCallback(() => { setTourActive(false); }, []);

@@ -1,10 +1,6 @@
 import React from "react";
 import { HelpGuideTemplate } from "../ui/HelpGuideTemplate";
-<<<<<<< HEAD
-import { HelpCard, HelpAlert } from "../ui/HelpLayout";
-=======
 import { HelpCard, HelpAlert, HelpStep } from "../ui/HelpLayout";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { 
   FileVideo, 
   Database, 
@@ -12,19 +8,13 @@ import {
   LayoutDashboard, 
   Play,
   BookOpen,
-<<<<<<< HEAD
-  TrendingUp
-=======
   TrendingUp,
   ListOrdered
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 } from "lucide-react";
 
 export const GettingStarted = () => {
   const sections = [
     {
-<<<<<<< HEAD
-=======
       id: 'how-to-start',
       title: 'Cara Memulai dengan Statify',
       description: 'Langkah-langkah awal untuk menggunakan Statify secara efektif',
@@ -66,7 +56,6 @@ export const GettingStarted = () => {
       )
     },
     {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       id: 'overview',
       title: 'Selamat Datang di Statify',
       description: 'Pengantar singkat tentang Statify',
@@ -92,124 +81,6 @@ export const GettingStarted = () => {
     },
     {
       id: 'quick-start',
-<<<<<<< HEAD
-      title: 'Langkah Memulai Cepat',
-      description: 'Panduan langkah demi langkah untuk memulai',
-      icon: Play,
-      steps: [
-        {
-          title: 'Impor Data Anda',
-          description: 'Mulai dengan mengimpor file data Anda ke Statify',
-          content: (
-            <div className="space-y-3">
-              <p>
-                Mulai dengan mengimpor file SPSS (.sav) atau format data lain yang didukung langsung ke Statify.
-              </p>
-              
-              <HelpCard title="Format Yang Didukung" variant="step">
-                <ul className="text-sm space-y-1">
-                  <li>• SPSS (.sav) - Format utama</li>
-                  <li>• Excel (.xlsx, .xls)</li>
-                  <li>• CSV (.csv)</li>
-                  <li>• Data clipboard</li>
-                </ul>
-              </HelpCard>
-            </div>
-          )
-        },
-        {
-          title: 'Jelajahi Dashboard',
-          description: 'Familiarisasi dengan antarmuka dan fitur utama',
-          content: (
-            <div className="space-y-3">
-              <p>
-                Setelah mengimpor data, jelajahi dashboard untuk memahami struktur data dan fitur yang tersedia.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <HelpCard title="Panel Variabel" icon={Database}>
-                  <p className="text-sm">Lihat dan kelola semua variabel dalam dataset Anda</p>
-                </HelpCard>
-                
-                <HelpCard title="Tampilan Data" icon={LayoutDashboard}>
-                  <p className="text-sm">Tampilkan dan edit data dalam format tabel</p>
-                </HelpCard>
-              </div>
-            </div>
-          )
-        },
-        {
-          title: 'Mulai Analisis',
-          description: 'Lakukan analisis statistik pertama Anda',
-          content: (
-            <div className="space-y-3">
-              <p>
-                Pilih jenis analisis yang sesuai dengan kebutuhan penelitian Anda.
-              </p>
-              
-              <HelpCard title="Analisis Yang Tersedia" variant="feature">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <HelpCard title="Descriptive Statistics" icon={BarChart} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• Frequencies</li>
-                      <li>• Descriptives</li>
-                      <li>• Explore</li>
-                      <li>• Crosstabs</li>
-                    </ul>
-                  </HelpCard>
-                  <HelpCard title="Compare Means" icon={LayoutDashboard} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• One-Sample T Test</li>
-                      <li>• Independent-Samples T Test</li>
-                      <li>• Paired-Samples T Test</li>
-                      <li>• One-Way ANOVA</li>
-                    </ul>
-                  </HelpCard>
-                  <HelpCard title="Regression & Correlate" icon={TrendingUp} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• Linear Regression</li>
-                      <li>• Curve Estimation</li>
-                      <li>• Correlate (Bivariate)</li>
-                    </ul>
-                  </HelpCard>
-
-                  <HelpCard title="General Linear Model" icon={BookOpen} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• General Linear Model</li>
-                    </ul>
-                  </HelpCard>
-                  <HelpCard title="Classify" icon={Database} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• Classify</li>
-                    </ul>
-                  </HelpCard>
-                  <HelpCard title="Dimension Reduction" icon={LayoutDashboard} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• Dimension Reduction</li>
-                    </ul>
-                  </HelpCard>
-                  <HelpCard title="Nonparametric Tests" icon={FileVideo} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• Legacy Dialogs: Chi-square, Runs, 2 Independent, K Independent, 2 Related, K Related</li>
-                    </ul>
-                  </HelpCard>
-                  <HelpCard title="Time Series" icon={TrendingUp} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• Smoothing, Decomposition, Autocorrelation, Unit Root Test, Box-Jenkins</li>
-                    </ul>
-                  </HelpCard>
-                  <HelpCard title="Graphs" icon={BarChart} variant="feature">
-                    <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>• Chart Builder</li>
-                    </ul>
-                  </HelpCard>
-                </div>
-              </HelpCard>
-            </div>
-          )
-        }
-      ]
-=======
       title: 'Panduan Memulai Cepat',
       description: 'Panduan langkah demi langkah untuk memulai',
       icon: Play,
@@ -289,7 +160,6 @@ export const GettingStarted = () => {
           </div>
         </div>
       )
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
     },
     {
       id: 'key-features',
@@ -330,20 +200,6 @@ export const GettingStarted = () => {
 
   const tips = [
     {
-<<<<<<< HEAD
-  type: 'tip' as const,
-  title: 'Tip',
-      content: 'Mulai dengan dataset kecil untuk memahami alur kerja Statify sebelum menggunakan dataset yang lebih besar.'
-    },
-
-  ];
-
-  const relatedTopics = [
-    { title: 'Impor File SPSS', href: '/help/file-guide/import-sav' },
-    { title: 'Impor File Excel', href: '/help/file-guide/import-excel' },
-    { title: 'Statistik Deskriptif', href: '/help/statistics-guide/descriptive' },
-    { title: 'Manajemen Data', href: '/help/data-guide' }
-=======
       type: 'tip' as const,
       title: 'Mulai dengan Dataset Kecil',
       content: 'Mulai dengan dataset kecil untuk memahami alur kerja Statify sebelum menggunakan dataset yang lebih besar atau kompleks.'
@@ -371,7 +227,6 @@ export const GettingStarted = () => {
     { title: 'Panduan Statistik', href: '/help/statistics-guide' },
     { title: 'FAQ - Pertanyaan Umum', href: '/help/faq' },
     { title: 'Umpan Balik & Dukungan', href: '/help/feedback' }
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
   ];
 
   return (
@@ -380,10 +235,6 @@ export const GettingStarted = () => {
       description="Panduan lengkap untuk mulai menggunakan Statify - alat analisis statistik yang kompatibel dengan SPSS"
       lastUpdated="2024-01-15"
       sections={sections}
-<<<<<<< HEAD
-
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
       tips={tips}
       relatedTopics={relatedTopics}
     />

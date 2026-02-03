@@ -84,7 +84,6 @@ Modals/
 ### Core Modal Infrastructure
 
 #### ModalManager.tsx
-
 **Purpose**: Central modal state management dan lifecycle control
 
 ```typescript
@@ -93,17 +92,17 @@ interface ModalManagerFeatures {
   modalStack: Modal[];
   activeModals: Map<string, Modal>;
   modalHistory: ModalHistoryEntry[];
-
+  
   // Modal lifecycle
   openModal: (type: ModalType, props?: ModalProps) => void;
   closeModal: (modalId?: string) => void;
   closeAllModals: () => void;
-
+  
   // Stack management
   pushModal: (modal: Modal) => void;
   popModal: () => void;
   replaceModal: (modal: Modal) => void;
-
+  
   // State persistence
   persistModalState: boolean;
   restoreModalState: () => void;
@@ -111,7 +110,6 @@ interface ModalManagerFeatures {
 ```
 
 #### ModalRegistry.tsx
-
 **Purpose**: Modal registration dan discovery system
 
 ```typescript
@@ -119,15 +117,15 @@ interface ModalRegistrySystem {
   // Registration
   registerModal: (type: ModalType, component: ModalComponent) => void;
   registerModalGroup: (group: ModalGroup) => void;
-
+  
   // Discovery
   getModal: (type: ModalType) => ModalComponent;
   getModalsByCategory: (category: ModalCategory) => ModalComponent[];
-
+  
   // Validation
   validateModalType: (type: ModalType) => boolean;
   validateModalProps: (type: ModalType, props: ModalProps) => boolean;
-
+  
   // Categories
   categories: {
     analyze: AnalyzeModals;
@@ -142,22 +140,21 @@ interface ModalRegistrySystem {
 ```
 
 #### ModalRenderer.tsx
-
 **Purpose**: Dynamic modal rendering dengan lazy loading
 
 ```typescript
 interface ModalRenderingSystem {
   // Dynamic rendering
   renderModal: (modal: Modal) => ReactElement;
-
+  
   // Lazy loading
   lazyLoadModal: (type: ModalType) => Promise<ModalComponent>;
   preloadModals: (types: ModalType[]) => Promise<void>;
-
+  
   // Performance
   modalCaching: boolean;
   componentPool: ComponentPool;
-
+  
   // Error handling
   errorBoundary: boolean;
   fallbackComponent: FallbackComponent;
@@ -169,15 +166,14 @@ interface ModalRenderingSystem {
 ### Analysis Categories
 
 #### Descriptive Statistics
-
 ```typescript
 interface DescriptiveModals {
   // Basic descriptives
-  "analyze.descriptive.frequencies": FrequenciesModal;
-  "analyze.descriptive.descriptives": DescriptivesModal;
-  "analyze.descriptive.explore": ExploreModal;
-  "analyze.descriptive.crosstabs": CrosstabsModal;
-
+  'analyze.descriptive.frequencies': FrequenciesModal;
+  'analyze.descriptive.descriptives': DescriptivesModal;
+  'analyze.descriptive.explore': ExploreModal;
+  'analyze.descriptive.crosstabs': CrosstabsModal;
+  
   // Configuration
   variableSelection: VariableSelectionPanel;
   statisticsOptions: StatisticsOptionsPanel;
@@ -187,17 +183,16 @@ interface DescriptiveModals {
 ```
 
 #### Compare Means Analysis
-
 ```typescript
 interface CompareMeansModals {
   // T-tests
-  "analyze.compare-means.one-sample-t-test": OneSampleTTestModal;
-  "analyze.compare-means.independent-samples-t-test": IndependentSamplesTTestModal;
-  "analyze.compare-means.paired-samples-t-test": PairedSamplesTTestModal;
-
+  'analyze.compare-means.one-sample-t-test': OneSampleTTestModal;
+  'analyze.compare-means.independent-samples-t-test': IndependentSamplesTTestModal;
+  'analyze.compare-means.paired-samples-t-test': PairedSamplesTTestModal;
+  
   // ANOVA
-  "analyze.compare-means.one-way-anova": OneWayAnovaModal;
-
+  'analyze.compare-means.one-way-anova': OneWayAnovaModal;
+  
   // Common features
   confidenceIntervals: boolean;
   effectSizeCalculation: boolean;
@@ -207,13 +202,12 @@ interface CompareMeansModals {
 ```
 
 #### Correlation Analysis
-
 ```typescript
 interface CorrelationModals {
   // Correlation types
-  "analyze.correlate.bivariate": BivariateCorrelationModal;
-  "analyze.correlate.partial": PartialCorrelationModal;
-
+  'analyze.correlate.bivariate': BivariateCorrelationModal;
+  'analyze.correlate.partial': PartialCorrelationModal;
+  
   // Features
   correlationMatrix: boolean;
   significanceTesting: boolean;
@@ -223,18 +217,17 @@ interface CorrelationModals {
 ```
 
 #### Classification Analysis
-
 ```typescript
 interface ClassificationModals {
   // Classification methods
-  "analyze.classify.discriminant": DiscriminantAnalysisModal;
-  "analyze.classify.hierarchical-cluster": HierarchicalClusterModal;
-  "analyze.classify.k-means-cluster": KMeansClusterModal;
-  "analyze.classify.nearest-neighbor": NearestNeighborModal;
-  "analyze.classify.roc-analysis": ROCAnalysisModal;
-  "analyze.classify.decision-tree": DecisionTreeModal;
-  "analyze.classify.two-step-cluster": TwoStepClusterModal;
-
+  'analyze.classify.discriminant': DiscriminantAnalysisModal;
+  'analyze.classify.hierarchical-cluster': HierarchicalClusterModal;
+  'analyze.classify.k-means-cluster': KMeansClusterModal;
+  'analyze.classify.nearest-neighbor': NearestNeighborModal;
+  'analyze.classify.roc-analysis': ROCAnalysisModal;
+  'analyze.classify.decision-tree': DecisionTreeModal;
+  'analyze.classify.two-step-cluster': TwoStepClusterModal;
+  
   // Common features
   validationMethods: ValidationMethod[];
   performanceMetrics: PerformanceMetric[];
@@ -243,14 +236,13 @@ interface ClassificationModals {
 ```
 
 #### Dimension Reduction
-
 ```typescript
 interface DimensionReductionModals {
   // Methods
-  "analyze.dimension-reduction.factor": FactorAnalysisModal;
-  "analyze.dimension-reduction.correspondence": CorrespondenceAnalysisModal;
-  "analyze.dimension-reduction.optimal-scaling": OptimalScalingModal;
-
+  'analyze.dimension-reduction.factor': FactorAnalysisModal;
+  'analyze.dimension-reduction.correspondence': CorrespondenceAnalysisModal;
+  'analyze.dimension-reduction.optimal-scaling': OptimalScalingModal;
+  
   // Features
   extractionMethods: ExtractionMethod[];
   rotationMethods: RotationMethod[];
@@ -260,15 +252,14 @@ interface DimensionReductionModals {
 ```
 
 #### General Linear Model
-
 ```typescript
 interface GeneralLinearModelModals {
   // GLM types
-  "analyze.glm.univariate": UnivariateGLMModal;
-  "analyze.glm.multivariate": MultivariateGLMModal;
-  "analyze.glm.repeated-measures": RepeatedMeasuresModal;
-  "analyze.glm.variance-components": VarianceComponentsModal;
-
+  'analyze.glm.univariate': UnivariateGLMModal;
+  'analyze.glm.multivariate': MultivariateGLMModal;
+  'analyze.glm.repeated-measures': RepeatedMeasuresModal;
+  'analyze.glm.variance-components': VarianceComponentsModal;
+  
   // Features
   customContrasts: boolean;
   postHocTests: boolean;
@@ -278,18 +269,17 @@ interface GeneralLinearModelModals {
 ```
 
 #### Nonparametric Tests
-
 ```typescript
 interface NonparametricModals {
   // Test types
-  "analyze.nonparametric.chi-square": ChiSquareModal;
-  "analyze.nonparametric.binomial": BinomialModal;
-  "analyze.nonparametric.runs": RunsTestModal;
-  "analyze.nonparametric.mann-whitney": MannWhitneyModal;
-  "analyze.nonparametric.wilcoxon": WilcoxonModal;
-  "analyze.nonparametric.kruskal-wallis": KruskalWallisModal;
-  "analyze.nonparametric.friedman": FriedmanModal;
-
+  'analyze.nonparametric.chi-square': ChiSquareModal;
+  'analyze.nonparametric.binomial': BinomialModal;
+  'analyze.nonparametric.runs': RunsTestModal;
+  'analyze.nonparametric.mann-whitney': MannWhitneyModal;
+  'analyze.nonparametric.wilcoxon': WilcoxonModal;
+  'analyze.nonparametric.kruskal-wallis': KruskalWallisModal;
+  'analyze.nonparametric.friedman': FriedmanModal;
+  
   // Features
   exactTests: boolean;
   monteCarloEstimation: boolean;
@@ -298,15 +288,14 @@ interface NonparametricModals {
 ```
 
 #### Time Series Analysis
-
 ```typescript
 interface TimeSeriesModals {
   // Analysis types
-  "analyze.time-series.seasonal-decomposition": SeasonalDecompositionModal;
-  "analyze.time-series.exponential-smoothing": ExponentialSmoothingModal;
-  "analyze.time-series.arima": ARIMAModal;
-  "analyze.time-series.spectral-analysis": SpectralAnalysisModal;
-
+  'analyze.time-series.seasonal-decomposition': SeasonalDecompositionModal;
+  'analyze.time-series.exponential-smoothing': ExponentialSmoothingModal;
+  'analyze.time-series.arima': ARIMAModal;
+  'analyze.time-series.spectral-analysis': SpectralAnalysisModal;
+  
   // Features
   trendAnalysis: boolean;
   seasonalityDetection: boolean;
@@ -320,20 +309,19 @@ interface TimeSeriesModals {
 ### Data Operations Categories
 
 #### Data Import/Export
-
 ```typescript
 interface DataIOModals {
   // Import operations
-  "data.import.csv": ImportCsvModal;
-  "data.import.excel": ImportExcelModal;
-  "data.import.spss": ImportSpssModal;
-  "data.import.clipboard": ImportClipboardModal;
-
+  'data.import.csv': ImportCsvModal;
+  'data.import.excel': ImportExcelModal;
+  'data.import.spss': ImportSpssModal;
+  'data.import.clipboard': ImportClipboardModal;
+  
   // Export operations
-  "data.export.csv": ExportCsvModal;
-  "data.export.excel": ExportExcelModal;
-  "data.export.spss": ExportSpssModal;
-
+  'data.export.csv': ExportCsvModal;
+  'data.export.excel': ExportExcelModal;
+  'data.export.spss': ExportSpssModal;
+  
   // Features
   encodingSupport: string[];
   delimiters: string[];
@@ -343,21 +331,20 @@ interface DataIOModals {
 ```
 
 #### Data Transformation
-
 ```typescript
 interface DataTransformationModals {
   // Case operations
-  "data.select-cases": SelectCasesModal;
-  "data.weight-cases": WeightCasesModal;
-  "data.duplicate-cases": DuplicateCasesModal;
-  "data.sort-cases": SortCasesModal;
-
+  'data.select-cases': SelectCasesModal;
+  'data.weight-cases': WeightCasesModal;
+  'data.duplicate-cases': DuplicateCasesModal;
+  'data.sort-cases': SortCasesModal;
+  
   // Variable operations
-  "data.sort-variables": SortVariablesModal;
-  "data.transpose": TransposeModal;
-  "data.aggregate": AggregateModal;
-  "data.restructure": RestructureModal;
-
+  'data.sort-variables': SortVariablesModal;
+  'data.transpose': TransposeModal;
+  'data.aggregate': AggregateModal;
+  'data.restructure': RestructureModal;
+  
   // Features
   conditionalLogic: boolean;
   expressionBuilder: boolean;
@@ -367,18 +354,17 @@ interface DataTransformationModals {
 ```
 
 #### Variable Definition
-
 ```typescript
 interface VariableDefinitionModals {
   // Variable properties
-  "data.define-variable-properties": DefineVariablePropertiesModal;
-  "data.set-measurement-level": SetMeasurementLevelModal;
-  "data.define-datetime": DefineDateTimeModal;
-
+  'data.define-variable-properties': DefineVariablePropertiesModal;
+  'data.set-measurement-level': SetMeasurementLevelModal;
+  'data.define-datetime': DefineDateTimeModal;
+  
   // Data quality
-  "data.unusual-cases": UnusualCasesModal;
-  "data.missing-values": MissingValuesModal;
-
+  'data.unusual-cases': UnusualCasesModal;
+  'data.missing-values': MissingValuesModal;
+  
   // Features
   bulkOperations: boolean;
   validationRules: ValidationRule[];
@@ -389,18 +375,17 @@ interface VariableDefinitionModals {
 ## 🗂 File Operations (File/)
 
 ### File Management
-
 ```typescript
 interface FileOperationModals {
   // File operations
-  "file.open": OpenFileModal;
-  "file.save": SaveFileModal;
-  "file.save-as": SaveAsModal;
-  "file.print": PrintModal;
-
+  'file.open': OpenFileModal;
+  'file.save': SaveFileModal;
+  'file.save-as': SaveAsModal;
+  'file.print': PrintModal;
+  
   // Data examples
-  "file.example-dataset": ExampleDatasetModal;
-
+  'file.example-dataset': ExampleDatasetModal;
+  
   // Features
   fileFormatSupport: FileFormat[];
   compressionSupport: boolean;
@@ -412,13 +397,12 @@ interface FileOperationModals {
 ## 🎨 Chart Creation (Graphs/)
 
 ### Chart Builder System
-
 ```typescript
 interface ChartModals {
   // Chart builder
-  "graphs.chart-builder": ChartBuilderModal;
-  "graphs.legacy-dialogs": LegacyChartModal;
-
+  'graphs.chart-builder': ChartBuilderModal;
+  'graphs.legacy-dialogs': LegacyChartModal;
+  
   // Chart types
   chartTypes: {
     histogram: HistogramOptions;
@@ -428,7 +412,7 @@ interface ChartModals {
     lineChart: LineChartOptions;
     pieChart: PieChartOptions;
   };
-
+  
   // Features
   interactiveBuilder: boolean;
   templateLibrary: boolean;
@@ -440,16 +424,15 @@ interface ChartModals {
 ## 🔄 Data Transformation (Transform/)
 
 ### Transformation Operations
-
 ```typescript
 interface TransformationModals {
   // Variable computation
-  "transform.compute-variable": ComputeVariableModal;
-
+  'transform.compute-variable': ComputeVariableModal;
+  
   // Recoding operations
-  "transform.recode-same-variables": RecodeSameVariablesModal;
-  "transform.recode-different-variables": RecodeDifferentVariablesModal;
-
+  'transform.recode-same-variables': RecodeSameVariablesModal;
+  'transform.recode-different-variables': RecodeDifferentVariablesModal;
+  
   // Features
   expressionEditor: boolean;
   functionLibrary: FunctionLibrary;
@@ -461,57 +444,55 @@ interface TransformationModals {
 ## 🏗 Modal Development Architecture
 
 ### Feature-Sliced Design Pattern
-
 Setiap modal feature mengikuti structure yang consistent:
 
 ```typescript
 // Standard modal feature structure
 interface ModalFeatureStructure {
   // Entry point
-  "index.tsx": MainModalComponent;
-
+  'index.tsx': MainModalComponent;
+  
   // Core logic
-  "hooks/": {
-    "useModalLogic.ts": CoreBusinessLogic;
-    "useValidation.ts": ValidationLogic;
-    "useFormState.ts": FormStateManagement;
+  'hooks/': {
+    'useModalLogic.ts': CoreBusinessLogic;
+    'useValidation.ts': ValidationLogic;
+    'useFormState.ts': FormStateManagement;
   };
-
+  
   // Services
-  "services/": {
-    "modalService.ts": APIIntegration;
-    "workerService.ts": WorkerCommunication;
+  'services/': {
+    'modalService.ts': APIIntegration;
+    'workerService.ts': WorkerCommunication;
   };
-
+  
   // Components
-  "components/": {
-    "ModalTabs.tsx": TabComponents;
-    "OptionsPanel.tsx": OptionsPanels;
-    "PreviewPanel.tsx": PreviewComponents;
+  'components/': {
+    'ModalTabs.tsx': TabComponents;
+    'OptionsPanel.tsx': OptionsPanels;
+    'PreviewPanel.tsx': PreviewComponents;
   };
-
+  
   // Types & utilities
-  "types.ts": TypeDefinitions;
-  "utils/": UtilityFunctions;
-  "__tests__/": TestFiles;
-  "README.md": FeatureDocumentation;
+  'types.ts': TypeDefinitions;
+  'utils/': UtilityFunctions;
+  '__tests__/': TestFiles;
+  'README.md': FeatureDocumentation;
 }
 ```
 
 ### State Management Pattern
-
 ```typescript
 interface ModalStatePattern {
   // Local state
   formState: FormState;
   validationState: ValidationState;
   uiState: UIState;
-
+  
   // Global state integration
   dataStore: DataStoreIntegration;
   resultStore: ResultStoreIntegration;
   modalStore: ModalStoreIntegration;
-
+  
   // Actions
   actions: {
     updateForm: (updates: Partial<FormState>) => void;
@@ -523,20 +504,19 @@ interface ModalStatePattern {
 ```
 
 ### Validation System
-
 ```typescript
 interface ModalValidationSystem {
   // Validation types
   synchronousValidation: SyncValidator[];
   asynchronousValidation: AsyncValidator[];
   crossFieldValidation: CrossFieldValidator[];
-
+  
   // Validation rules
   required: RequiredFieldRule[];
   dataType: DataTypeRule[];
   range: RangeRule[];
   custom: CustomRule[];
-
+  
   // Error handling
   errorDisplay: ErrorDisplayStrategy;
   errorRecovery: ErrorRecoveryStrategy;
@@ -547,23 +527,22 @@ interface ModalValidationSystem {
 ## 🧪 Testing Strategy
 
 ### Modal Testing Categories
-
 ```typescript
 interface ModalTestingStrategy {
   // Unit tests
   hookTesting: HookTestStrategy;
   serviceTesting: ServiceTestStrategy;
   utilityTesting: UtilityTestStrategy;
-
+  
   // Integration tests
   modalIntegration: ModalIntegrationTest;
   storeIntegration: StoreIntegrationTest;
   workerIntegration: WorkerIntegrationTest;
-
+  
   // E2E tests
   userWorkflows: WorkflowTest[];
   crossModalWorkflows: CrossModalTest[];
-
+  
   // Performance tests
   loadTesting: LoadTestStrategy;
   memoryTesting: MemoryTestStrategy;
@@ -571,28 +550,27 @@ interface ModalTestingStrategy {
 ```
 
 ### Test Examples
-
 ```typescript
 // Modal logic testing
 describe('AnalysisModalLogic', () => {
   it('validates variable selection requirements', () => {
     const { result } = renderHook(() => useAnalysisLogic());
-
+    
     act(() => {
       result.current.selectVariables(['var1', 'var2']);
     });
-
+    
     expect(result.current.isValid).toBe(true);
   });
-
+  
   it('handles analysis submission', async () => {
     const mockService = jest.fn().mockResolvedValue(mockResult);
     const { result } = renderHook(() => useAnalysisLogic({ service: mockService }));
-
+    
     await act(async () => {
       await result.current.submitAnalysis();
     });
-
+    
     expect(mockService).toHaveBeenCalledWith(expectedConfig);
   });
 });
@@ -601,17 +579,17 @@ describe('AnalysisModalLogic', () => {
 describe('ModalSystem Integration', () => {
   it('handles modal stack management', () => {
     render(<ModalRenderer />);
-
+    
     act(() => {
       modalStore.openModal('analyze.descriptives');
     });
-
+    
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-
+    
     act(() => {
       modalStore.openModal('analyze.frequencies');
     });
-
+    
     expect(screen.getAllByRole('dialog')).toHaveLength(2);
   });
 });
@@ -620,34 +598,33 @@ describe('ModalSystem Integration', () => {
 ## 📋 Development Guidelines
 
 ### Modal Development Checklist
-
 ```typescript
 interface ModalDevelopmentChecklist {
   // Architecture
   featureSlicedStructure: boolean;
   consistentNaming: boolean;
   properTypeDefinitions: boolean;
-
+  
   // Functionality
   validationImplemented: boolean;
   errorHandlingImplemented: boolean;
   loadingStatesImplemented: boolean;
-
+  
   // Integration
   storeIntegration: boolean;
   workerIntegration: boolean;
   routingIntegration: boolean;
-
+  
   // Quality
   unitTestsCoverage: number; // >= 80%
   integrationTests: boolean;
   documentation: boolean;
-
+  
   // Performance
   lazyLoading: boolean;
   memoization: boolean;
   virtualScrolling: boolean; // for large lists
-
+  
   // Accessibility
   keyboardNavigation: boolean;
   screenReaderSupport: boolean;
@@ -656,7 +633,6 @@ interface ModalDevelopmentChecklist {
 ```
 
 ### Best Practices
-
 ```typescript
 // 1. Consistent modal props interface
 interface StandardModalProps {
@@ -678,7 +654,7 @@ const ModalWithErrorBoundary = ({ children }) => (
 const OptimizedModal = React.memo(({ isOpen, ...props }) => {
   // Only render when open
   if (!isOpen) return null;
-
+  
   return <ModalContent {...props} />;
 });
 
@@ -699,7 +675,6 @@ const AccessibleModal = ({ isOpen, onClose, title, children }) => (
 ```
 
 ### Code Quality Standards
-
 ```typescript
 // Type safety
 interface StrictModalConfiguration {
@@ -722,10 +697,10 @@ const robustModalHandler = async (operation: () => Promise<void>) => {
 // Performance monitoring
 const performanceOptimizedModal = () => {
   const startTime = performance.now();
-
+  
   useEffect(() => {
     const endTime = performance.now();
-    trackModalPerformance("modal-load-time", endTime - startTime);
+    trackModalPerformance('modal-load-time', endTime - startTime);
   }, []);
 };
 ```

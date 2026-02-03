@@ -1,9 +1,5 @@
 import { formatDisplayNumber } from "@/hooks/useFormatter";
-<<<<<<< HEAD
-import { ResultJson, Table } from "@/types/Table";
-=======
 import type { ResultJson, Table } from "@/types/Table";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export function transformKMeansResult(
     data: any,
@@ -115,11 +111,7 @@ export function transformKMeansResult(
     }
 
     // 3. Cluster Membership
-<<<<<<< HEAD
-    if (data.cluster_membership && data.cluster_membership.data) {
-=======
     if (data.cluster_membership?.data) {
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         const membershipData = data.cluster_membership.data;
 
         // Check if any case has a name
@@ -376,11 +368,7 @@ export function transformKMeansResult(
                 title: "Cluster Plot",
                 subtitle: `${plot.y_label} vs ${plot.x_label}`,
             },
-<<<<<<< HEAD
-            chartData: chartData,
-=======
             chartData,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             chartConfig: {
                 width: 600,
                 height: 400,
@@ -442,11 +430,7 @@ export function transformKMeansResult(
                     table.rows.push({
                         rowHeader: [],
                         context: isFirstRowForContext ? currentContext : "",
-<<<<<<< HEAD
-                        message: message,
-=======
                         message,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
                     });
                     isFirstRowForContext = false;
                 }

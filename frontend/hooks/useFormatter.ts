@@ -47,22 +47,6 @@ export function formatDisplayNumber(
     return num.toFixed(4).replace(/\.?0+$/, "");
 }
 
-<<<<<<< HEAD
-export function formatCorrelationValue(
-    num: number | undefined | null
-): string | null {
-    if (typeof num === "undefined") return "undefined";
-    if (num === null || typeof num === "undefined" || isNaN(num)) {
-        return null;
-    }
-    if (!isFinite(num)) return num > 0 ? "Infinity" : "-Infinity";
-
-    // Untuk nilai korelasi matriks pada output correlation matrix biar ditampilkan 3 digit dibelakang koma
-    return num.toFixed(3);
-}
-
-=======
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 // Helper function to ensure columnHeaders are sufficient for all rows
 export function ensureEnoughHeaders(table: Table): Table {
     if (!table.rows || table.rows.length === 0) return table;

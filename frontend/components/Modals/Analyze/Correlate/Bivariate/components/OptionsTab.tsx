@@ -1,12 +1,3 @@
-<<<<<<< HEAD
-import React, { FC, useCallback } from "react";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { OptionsTabProps } from "../types";
-import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Variable } from "@/types/Variable";
-=======
 import type { FC} from "react";
 import React, { useCallback } from "react";
 import { Label } from "@/components/ui/label";
@@ -15,7 +6,6 @@ import type { OptionsTabProps } from "../types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { Variable } from "@/types/Variable";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Ruler, Shapes, BarChartHorizontal, FileQuestion, ArrowBigLeft, ArrowBigRight } from "lucide-react";
 import { Button } from "@/components/ui/button";

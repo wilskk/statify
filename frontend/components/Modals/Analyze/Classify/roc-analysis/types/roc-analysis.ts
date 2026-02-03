@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import React from "react";
-=======
 import type React from "react";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export type RocAnalysisMainType = {
     TestTargetVariable: string[] | null;

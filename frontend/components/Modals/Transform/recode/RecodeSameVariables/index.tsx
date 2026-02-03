@@ -16,19 +16,11 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import type { Variable, VariableType } from "@/types/Variable";
-<<<<<<< HEAD
-import { BaseModalProps } from "@/types/modalTypes";
-import RecodeVariablesTab from "../components/RecodeVariablesTab";
-import OldNewValuesSetup from "../components/OldNewValuesSetup";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RecodeRule } from "../Types";
-=======
 import type { BaseModalProps } from "@/types/modalTypes";
 import RecodeVariablesTab from "../components/RecodeVariablesTab";
 import OldNewValuesSetup from "../components/OldNewValuesSetup";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RecodeRule } from "../Types";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 
 export enum RecodeMode {
   SAME_VARIABLES = "recodeSameVariables",
@@ -520,19 +512,11 @@ export const RecodeSameVariablesModal: React.FC<
             case "rangeHighest":
               return `${rule.oldValueDisplay} → ${rule.newValueDisplay}`;
             case "systemMissing":
-<<<<<<< HEAD
-              return "System Missing → " + rule.newValueDisplay;
-            case "systemOrUserMissing":
-              return "System or User Missing → " + rule.newValueDisplay;
-            case "else":
-              return "Else → " + rule.newValueDisplay;
-=======
               return `System Missing → ${  rule.newValueDisplay}`;
             case "systemOrUserMissing":
               return `System or User Missing → ${  rule.newValueDisplay}`;
             case "else":
               return `Else → ${  rule.newValueDisplay}`;
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
             default:
               return "";
           }

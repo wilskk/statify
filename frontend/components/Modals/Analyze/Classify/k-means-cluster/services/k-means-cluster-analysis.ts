@@ -1,9 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-<<<<<<< HEAD
-import { KMeansClusterAnalysisType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
-=======
 import type { KMeansClusterAnalysisType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
 import { transformKMeansResult } from "./k-means-cluster-analysis-formatter";
 import { resultKMeans } from "./k-means-cluster-analysis-output";
 import init, {
@@ -22,24 +18,14 @@ export async function analyzeKMeansCluster({
         : [];
 
     const slicedDataForTarget = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: TargetVariables,
     });
 
     const slicedDataForCaseTarget = getSlicedData({
-<<<<<<< HEAD
-        dataVariables: dataVariables,
-        variables: variables,
-=======
         dataVariables,
         variables,
->>>>>>> 5fc4eb2c1a6bb3a519ea978df15d69574d811c52
         selectedVariables: CaseTargetVariable,
     });
 
