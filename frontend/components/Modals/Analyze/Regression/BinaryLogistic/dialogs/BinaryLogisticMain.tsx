@@ -984,7 +984,7 @@ export const BinaryLogisticMain = () => {
         // --- Option Params ---
         max_iterations: optParams.maxIterations,
         include_constant: optParams.includeConstant,
-        convergence_threshold: 1e-6, // Fixed value for now
+        convergence_threshold: 1e-9, // Fixed value for now
         confidence_level: optParams.ciLevel,
         cutoff: optParams.classificationCutoff,
 

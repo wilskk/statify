@@ -99,7 +99,7 @@ self.onmessage = async (event) => {
 
           // Algoritma Core
           max_iterations: configObj.max_iterations || 20,
-          convergence_threshold: 1e-6,
+          convergence_threshold: 1e-9,
           include_constant: configObj.include_constant !== false,
           // confidence_level: value like 95 or 0.95. Rust handles both.
           confidence_level: configObj.confidence_level || 95,
