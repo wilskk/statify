@@ -785,9 +785,30 @@ fn calculate_step_snapshot(
     
     // Tambahkan Constant hanya jika include_constant = true
     if config.include_constant {
-        let b_int = model.beta[0];
-        let se_int = model.covariance_matrix[(0, 0)].sqrt();
-        let wald_int = if se_int > 1e-12 { (b_int / se_int).powi(2) } else { 0.0 };
+        // PERBAIKAN: Untuk Step 0 (Null Model), gunakan formula ANALITIK untuk Wald
+        // yang lebih presisi daripada covariance matrix dari IRLS
+        let (b_int, se_int, wald_int) = if step == 0 && included_indices.is_empty() {
+            // Block 0: Null Model - gunakan formula analitik
+            let n_positive: f64 = y_vector.iter().filter(|&&y| y > 0.5).count() as f64;
+            let n_total: f64 = y_vector.len() as f64;
+            let p = (n_positive / n_total).clamp(1e-10, 1.0 - 1e-10);
+            
+            // Beta0 = ln(p / (1-p))
+            let beta_0 = (p / (1.0 - p)).ln();
+            // Var(β₀) = 1 / (n × p × (1-p)) - Fisher Information exact formula
+            let variance_beta0 = 1.0 / (n_total * p * (1.0 - p));
+            let se_0 = variance_beta0.sqrt();
+            let wald_0 = if se_0 > 1e-12 { (beta_0 / se_0).powi(2) } else { 0.0 };
+            
+            (beta_0, se_0, wald_0)
+        } else {
+            // Block 1+: Gunakan hasil dari IRLS
+            let b = model.beta[0];
+            let se = model.covariance_matrix[(0, 0)].sqrt();
+            let wald = if se > 1e-12 { (b / se).powi(2) } else { 0.0 };
+            (b, se, wald)
+        };
+        
         variables_in.push(VariableRow {
             label: "Constant".to_string(),
             b: b_int,

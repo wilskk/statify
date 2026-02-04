@@ -575,10 +575,10 @@ pub fn fit_with_history(
         let (neg2ll_converged, param_converged) = if iteration_history.len() > 1 {
             let prev_record = &iteration_history[iteration_history.len() - 2];
             
-            // Cek -2LL change - gunakan threshold lebih ketat (< 0.0005)
+            // Cek -2LL change - gunakan threshold lebih ketat (< 1e-6)
             // untuk menghindari false positive ketika change = 0.001
             let neg2ll_change = (neg2ll_new - prev_record.neg2_log_likelihood).abs();
-            let neg2ll_conv = neg2ll_change < 0.0005;
+            let neg2ll_conv = neg2ll_change < 1e-6;
             
             // Cek parameter change (max absolute change across all coefficients)
             let param_change = beta.iter()

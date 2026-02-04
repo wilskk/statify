@@ -88,17 +88,34 @@ pub fn run(
         crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
     // --- 1. Constant Statistics (Null Model) ---
-    let block_0_constant = if config.include_constant && null_model.beta.len() > 0 {
-        let se_const0 = if null_model.covariance_matrix.nrows() > 0 {
-            null_model.covariance_matrix[(0, 0)].sqrt()
-        } else {
-            0.0
-        };
+    // SPSS menggunakan formula ANALITIK untuk Wald statistic di Block 0
+    // Ini memberikan hasil yang lebih presisi daripada menggunakan covariance matrix dari IRLS
+    let block_0_constant = if config.include_constant {
+        // Hitung proporsi kasus positif
+        let n_positive: f64 = y_vector.iter().filter(|&&y| y > 0.5).count() as f64;
+        let n_total: f64 = y_vector.len() as f64;
+        let p = n_positive / n_total;
+        
+        // Clamp p untuk menghindari edge cases (complete separation)
+        let p_safe = p.clamp(1e-10, 1.0 - 1e-10);
+        
+        // Beta0 (Constant) = ln(p / (1-p)) = logit(p)
+        let beta_0 = (p_safe / (1.0 - p_safe)).ln();
+        
+        // SPSS Formula untuk Variance dari Constant di Null Model:
+        // Var(β₀) = 1 / (n × p × (1-p))
+        // Ini adalah inverse dari Fisher Information untuk intercept-only model
+        let variance_beta0 = 1.0 / (n_total * p_safe * (1.0 - p_safe));
+        let se_const0 = variance_beta0.sqrt();
+        
+        // Wald statistic: Wald = β₀² / Var(β₀) = (β₀ / SE)²
         let wald_const0 = if se_const0 > 1e-12 {
-            (null_model.beta[0] / se_const0).powi(2)
+            (beta_0 / se_const0).powi(2)
         } else {
             0.0
         };
+        
+        // P-value dari Chi-Square distribution dengan df=1
         let sig_const0 = if wald_const0 > 0.0 {
             1.0 - ChiSquared::new(1.0)
                 .unwrap_or_else(|_| ChiSquared::new(1.0).unwrap())
@@ -109,14 +126,14 @@ pub fn run(
 
         VariableRow {
             label: "Constant".to_string(),
-            b: null_model.beta[0],
+            b: beta_0,
             error: se_const0,
             wald: wald_const0,
             df: 1,
             sig: sig_const0,
-            exp_b: null_model.beta[0].exp(),
-            lower_ci: (null_model.beta[0] - z_score_block0 * se_const0).exp(),
-            upper_ci: (null_model.beta[0] + z_score_block0 * se_const0).exp(),
+            exp_b: beta_0.exp(),
+            lower_ci: (beta_0 - z_score_block0 * se_const0).exp(),
+            upper_ci: (beta_0 + z_score_block0 * se_const0).exp(),
         }
     } else {
         VariableRow {
