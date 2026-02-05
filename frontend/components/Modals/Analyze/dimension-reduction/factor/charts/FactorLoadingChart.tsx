@@ -7,11 +7,14 @@ import 'echarts-gl';
 interface LoadingPoint {
   label: string;
   coordinates: number[];
+  is_cross_loading?: boolean; // Flag untuk cross-loading detection
+  loading_gap?: number; // Gap antara primary dan secondary loading
 }
 
 interface LoadingPlotData {
   axis_labels: string[];
   points: LoadingPoint[];
+  has_cross_loading_issues?: boolean; // Flag global untuk ada tidaknya cross-loading
 }
 
 // Wrapper format from factor-analysis-output.ts
@@ -73,12 +76,27 @@ export default function FactorLoadingChart({ data }: Props) {
 
     function createOption3D() {
       if (!parsedData) return;
-      // Prepare 3D scatter plot data
-      const seriesData = parsedData.points.map(point => [
+      
+      // Separate normal points and cross-loading points for 3D
+      const normalPoints = parsedData.points.filter(point => !point.is_cross_loading);
+      const crossLoadingPoints = parsedData.points.filter(point => point.is_cross_loading);
+      
+      // Prepare 3D scatter plot data for normal points
+      const normalSeriesData = normalPoints.map(point => [
         point.coordinates[0],
         point.coordinates[1],
         point.coordinates[2],
-        point.label
+        point.label,
+        false // is_cross_loading flag
+      ]);
+      
+      // Prepare 3D scatter plot data for cross-loading points
+      const crossLoadingSeriesData = crossLoadingPoints.map(point => [
+        point.coordinates[0],
+        point.coordinates[1],
+        point.coordinates[2],
+        point.label,
+        true // is_cross_loading flag
       ]);
 
       const option: any = {
@@ -95,8 +113,12 @@ export default function FactorLoadingChart({ data }: Props) {
         tooltip: {
           formatter: (params: any) => {
             if (params.componentSubType === 'scatter3D') {
-              const [x, y, z, label] = params.value;
-              return `${label}<br/>Component 1: ${x.toFixed(3)}<br/>Component 2: ${y.toFixed(3)}<br/>Component 3: ${z.toFixed(3)}`;
+              const [x, y, z, label, isCrossLoading] = params.value;
+              let tooltip = `${label}<br/>Component 1: ${x.toFixed(3)}<br/>Component 2: ${y.toFixed(3)}<br/>Component 3: ${z.toFixed(3)}`;
+              if (isCrossLoading) {
+                tooltip += '<br/><span style="color: #dc2626; font-weight: bold;">⚠️ Cross-loading detected</span>';
+              }
+              return tooltip;
             }
             return '';
           },
@@ -171,11 +193,12 @@ export default function FactorLoadingChart({ data }: Props) {
           },
         },
         series: [
+          // Normal points (blue)
           {
             name: 'Loading',
             type: 'scatter3D',
             symbolSize: 8,
-            data: seriesData,
+            data: normalSeriesData,
             itemStyle: {
               color: '#1f77b4',
               borderColor: '#000',
@@ -198,6 +221,37 @@ export default function FactorLoadingChart({ data }: Props) {
               position: 'top',
             },
           },
+          // Cross-loading points (red with visual distinction)
+          {
+            name: 'Cross-Loading',
+            type: 'scatter3D',
+            symbolSize: 12, // Larger size for cross-loading points
+            symbol: 'rect', // Use rectangle symbol to simulate box effect
+            data: crossLoadingSeriesData,
+            itemStyle: {
+              color: '#dc2626', // Red color
+              borderColor: '#991b1b',
+              borderWidth: 2,
+            },
+            emphasis: {
+              itemStyle: {
+                color: '#ef4444',
+              },
+              label: {
+                show: true,
+                formatter: (params: any) => params.value[3] || '',
+                fontSize: 10,
+              },
+            },
+            label: {
+              show: true,
+              formatter: (params: any) => params.value[3] || '',
+              fontSize: 10,
+              position: 'top',
+              color: '#dc2626',
+              fontWeight: 'bold',
+            },
+          },
         ],
       };
 
@@ -206,11 +260,40 @@ export default function FactorLoadingChart({ data }: Props) {
 
     function createOption2D() {
       if (!parsedData) return;
-      // Prepare 2D scatter plot data
-      const seriesData = parsedData.points.map(point => ({
+      
+      // Separate normal points and cross-loading points
+      const normalPoints = parsedData.points.filter(point => !point.is_cross_loading);
+      const crossLoadingPoints = parsedData.points.filter(point => point.is_cross_loading);
+      
+      // Prepare 2D scatter plot data for normal points
+      const normalSeriesData = normalPoints.map(point => ({
         value: [point.coordinates[0], point.coordinates[1]],
         name: point.label,
       }));
+      
+      // Prepare 2D scatter plot data for cross-loading points
+      const crossLoadingSeriesData = crossLoadingPoints.map(point => ({
+        value: [point.coordinates[0], point.coordinates[1]],
+        name: point.label,
+      }));
+
+      // Create markArea data for cross-loading points (red boxes)
+      const crossLoadingMarkArea = crossLoadingPoints.map(point => {
+        const x = point.coordinates[0];
+        const y = point.coordinates[1];
+        const boxSize = 0.08; // Size of the red box around the point
+        return [
+          {
+            name: point.label,
+            xAxis: x - boxSize,
+            yAxis: y - boxSize,
+          },
+          {
+            xAxis: x + boxSize,
+            yAxis: y + boxSize,
+          }
+        ];
+      });
 
       const option: any = {
         title: {
@@ -227,7 +310,12 @@ export default function FactorLoadingChart({ data }: Props) {
           formatter: (params: any) => {
             if (Array.isArray(params.value)) {
               const [x, y] = params.value;
-              return `${params.name}<br/>Component 1: ${x.toFixed(3)}<br/>Component 2: ${y.toFixed(3)}`;
+              const isCrossLoading = crossLoadingPoints.some(p => p.label === params.name);
+              let tooltip = `${params.name}<br/>Component 1: ${x.toFixed(3)}<br/>Component 2: ${y.toFixed(3)}`;
+              if (isCrossLoading) {
+                tooltip += '<br/><span style="color: #dc2626; font-weight: bold;">⚠️ Cross-loading detected</span>';
+              }
+              return tooltip;
             }
             return '';
           },
@@ -283,11 +371,12 @@ export default function FactorLoadingChart({ data }: Props) {
           bottom: 60,
         },
         series: [
+          // Normal points (blue)
           {
             name: 'Loading',
             type: 'scatter',
             symbolSize: 8,
-            data: seriesData,
+            data: normalSeriesData,
             itemStyle: {
               color: '#1f77b4',
               borderColor: '#000',
@@ -308,6 +397,46 @@ export default function FactorLoadingChart({ data }: Props) {
               label: {
                 show: true,
               },
+            },
+          },
+          // Cross-loading points (with red box highlight)
+          {
+            name: 'Cross-Loading',
+            type: 'scatter',
+            symbolSize: 8,
+            data: crossLoadingSeriesData,
+            itemStyle: {
+              color: '#dc2626', // Red color for cross-loading points
+              borderColor: '#000',
+              borderWidth: 0.5,
+            },
+            label: {
+              show: true,
+              formatter: (params: any) => params.name || '',
+              fontSize: 10,
+              position: 'top',
+              color: '#dc2626', // Red label for cross-loading
+              fontWeight: 'bold',
+            },
+            emphasis: {
+              itemStyle: {
+                color: '#ef4444',
+                borderWidth: 1,
+              },
+              label: {
+                show: true,
+              },
+            },
+            // Red boxes around cross-loading points
+            markArea: {
+              silent: true,
+              itemStyle: {
+                color: 'rgba(220, 38, 38, 0.1)', // Light red fill
+                borderColor: '#dc2626', // Red border
+                borderWidth: 2,
+                borderType: 'solid',
+              },
+              data: crossLoadingMarkArea,
             },
           },
         ],
@@ -355,8 +484,12 @@ export default function FactorLoadingChart({ data }: Props) {
     );
   }
 
+  // Check if there are any cross-loading issues
+  const hasCrossLoadingIssues = parsedData.has_cross_loading_issues || 
+    parsedData.points.some(point => point.is_cross_loading);
+
   return (
-    <div className="w-full flex justify-center border rounded-lg p-4 bg-white shadow-sm">
+    <div className="w-full flex flex-col border rounded-lg p-4 bg-white shadow-sm">
       <div
         ref={chartContainerRef}
         style={{
@@ -365,6 +498,23 @@ export default function FactorLoadingChart({ data }: Props) {
           minHeight: '500px',
         }}
       />
+      
+      {/* Cross-Loading Detection Warning */}
+      {hasCrossLoadingIssues && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-start gap-2">
+            <span className="text-red-600 text-lg">⚠️</span>
+            <div className="flex-1">
+              <p className="text-red-700 font-medium text-sm">
+                Warning: Variables in red boxes show signs of cross-loading.
+              </p>
+              <p className="text-red-600 text-sm mt-1">
+                Consider reviewing these items to improve the overall validity of your model.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

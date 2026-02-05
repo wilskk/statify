@@ -1,63 +1,69 @@
 // Ini file Service Layer utama yang bertugas sebagai orkestrator atau jembatan antara Frontend Next.js dan logika Rust WASM
+// Refactored to use the same data processing pattern as Linear Regression
 
-import {getSlicedData, getVarDefs} from "@/hooks/useVariable"; // getSlicedData: Mengambil hanya data variabel yang dipilih oleh pengguna dari dataset besar di UI.
 import {FactorAnalysisType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor-worker";
 import {transformFactorAnalysisResult} from "./factor-analysis-formatter";
 import {resultFactorAnalysis} from "./factor-analysis-output";
 import init, {
     FactorAnalysis,
 } from "@/components/Modals/Analyze/dimension-reduction/factor/rust/pkg";
+import {Variable} from "@/types/Variable";
+import {DataRow} from "@/types/Data";
 
-// Fungsi memastikan kolom seperti columnIndex, width, dan decimals benar-benar bertipe Number. 
-// Tanpa ini, jika JavaScript mengirimkan angka dalam bentuk string, Rust akan mengalami error karena Rust sangat ketat terhadap tipe data (strongly typed).
+// Helper function to extract data for selected variables using column indices
+// Similar to how Linear Regression extracts data
+function extractVariableData(
+    dataRows: DataRow[],
+    variables: Variable[],
+    selectedVarNames: string[]
+): { data: Record<string, number | null>[], varDefs: any[][] } {
+    const selectedVars = selectedVarNames
+        .map(name => variables.find(v => v.name === name))
+        .filter((v): v is Variable => v !== undefined);
 
-function sanitizeVarDefs(varDefs: any[][]): any[][] {
-    return varDefs.map((varDefGroup) =>
-        varDefGroup.map((varDef: any) => ({
-            ...varDef,
-            columnIndex: Number(varDef.columnIndex ?? 0),
-            width: Number(varDef.width ?? 0),
-            decimals: Number(varDef.decimals ?? 0),
-            columns: Number(varDef.columns ?? 0),
-            id: varDef.id ? Number(varDef.id) : undefined,
-            // Ensure enum-like fields are strings in the correct format
-            type: String(varDef.type ?? "STRING"),
-            align: String(varDef.align ?? "left").toLowerCase(),
-            measure: String(varDef.measure ?? "unknown").toLowerCase(),
-            role: String(varDef.role ?? "none").toLowerCase(),
-        }))
-    );
-}
+    if (selectedVars.length === 0) {
+        return { data: [], varDefs: [[]] };
+    }
 
-// Helper function to create synthetic variable definitions when metadata is missing
-// This parses variable names like "VAR1", "VAR2", etc. to extract the column index
-function createSyntheticVariables(varNames: string[], dataRow: string[] | null): { name: string; columnIndex: number; type: string; width: number; decimals: number; label: string; values: any[]; missing: any; columns: number; align: string; measure: string; role: string }[] {
-    return varNames.map((name) => {
-        // Try to extract column index from variable name (e.g., "VAR1" -> 0, "VAR2" -> 1)
-        const match = name.match(/^VAR(\d+)$/i);
-        // columnIndex is 0-based, so VAR1 -> 0, VAR2 -> 1, etc.
-        const columnIndex = match ? parseInt(match[1], 10) - 1 : 0;
-        
-        return {
-            name,
-            columnIndex,
-            type: "NUMERIC",
-            width: 8,
-            decimals: 2,
-            label: "",
-            values: [],
-            missing: null,
-            columns: 64,
-            align: "right",
-            measure: "unknown",
-            role: "input",
-        };
+    // Extract data for each row, creating records with variable names as keys
+    const data: Record<string, number | null>[] = dataRows.map(row => {
+        const record: Record<string, number | null> = {};
+        for (const variable of selectedVars) {
+            const rawValue = row[variable.columnIndex];
+            if (rawValue === null || rawValue === undefined || rawValue === "") {
+                record[variable.name] = null;
+            } else {
+                const numValue = typeof rawValue === 'number' 
+                    ? rawValue 
+                    : parseFloat(String(rawValue).replace(",", "."));
+                record[variable.name] = isNaN(numValue) ? null : numValue;
+            }
+        }
+        return record;
     });
+
+    // Create variable definitions in the format expected by WASM
+    const varDefs = [selectedVars.map(v => ({
+        columnIndex: Number(v.columnIndex ?? 0),
+        name: v.name,
+        type: String(v.type ?? "NUMERIC").toUpperCase(),
+        width: Number(v.width ?? 8),
+        decimals: Number(v.decimals ?? 2),
+        label: v.label || "",
+        values: v.values || [],
+        missing: v.missing || [],
+        columns: Number(v.columns ?? 64),
+        align: String(v.align ?? "right").toLowerCase(),
+        measure: String(v.measure ?? "scale").toLowerCase(),
+        role: String(v.role ?? "input").toLowerCase(),
+    }))];
+
+    return { data, varDefs };
 }
 
 export async function analyzeFactor({
     configData,
-    dataVariables,
+    dataRows,
     variables,
 }: FactorAnalysisType) {
     const targetVariables = configData.main.TargetVar || [];
@@ -65,57 +71,65 @@ export async function analyzeFactor({
         ? [configData.main.ValueTarget]
         : [];
 
-    // If variables metadata is missing, create synthetic variables from the target variable names
-    // This handles the case when variables table in IndexedDB is empty but data exists
-    let effectiveVariables = variables;
-    if (!variables || variables.length === 0) {
-        console.warn("[analyzeFactor] Variables metadata is empty! Creating synthetic variables from target variable names.");
-        const allVarNames = [...targetVariables, ...(valueTarget.length > 0 ? valueTarget : [])];
-        effectiveVariables = createSyntheticVariables(allVarNames, dataVariables?.[0] ?? null) as any;
-        console.log("[analyzeFactor] Created synthetic variables:", effectiveVariables);
-    }
-
-    const slicedDataForTarget = getSlicedData({
-        dataVariables: dataVariables,
-        variables: effectiveVariables,
-        selectedVariables: targetVariables,
-    });
-
-    const slicedDataForValue = getSlicedData({
-        dataVariables: dataVariables,
-        variables: effectiveVariables,
-        selectedVariables: valueTarget,
-    });
-
-    const varDefsForTarget = sanitizeVarDefs(
-        getVarDefs(effectiveVariables, targetVariables)
-    );
-    const varDefsForValue = sanitizeVarDefs(
-        getVarDefs(effectiveVariables, valueTarget)
-    );
-
     console.log("=== FACTOR ANALYSIS DEBUG START ===");
     console.log("configData:", JSON.stringify(configData, null, 2));
-    console.log("dataVariables length:", dataVariables?.length);
-    console.log("dataVariables first row:", dataVariables?.[0]);
+    console.log("dataRows length:", dataRows?.length);
+    console.log("dataRows first row:", dataRows?.[0]);
     console.log("variables count:", variables?.length);
     console.log("variables names:", variables?.map(v => v.name));
     console.log("targetVariables:", targetVariables);
-    console.log("slicedDataForTarget:", JSON.stringify(slicedDataForTarget?.slice(0, 2), null, 2)); // First 2 vars
+
+    // Validation
+    if (!variables || variables.length === 0) {
+        throw new Error("No variable definitions found. Please ensure variables are loaded.");
+    }
+
+    if (!dataRows || dataRows.length === 0) {
+        throw new Error("No data available. Please ensure data is loaded.");
+    }
+
+    if (targetVariables.length === 0) {
+        throw new Error("No target variables selected for factor analysis.");
+    }
+
+    // Extract data for target variables (similar to Linear Regression pattern)
+    const { data: targetData, varDefs: varDefsForTarget } = extractVariableData(
+        dataRows,
+        variables,
+        targetVariables
+    );
+
+    // Extract data for value target (if specified)
+    const { data: valueData, varDefs: varDefsForValue } = extractVariableData(
+        dataRows,
+        variables,
+        valueTarget
+    );
+
+    // Wrap data in the format expected by WASM (Vec<Vec<DataRecord>>)
+    const slicedDataForTarget = [targetData];
+    const slicedDataForValue = valueTarget.length > 0 ? [valueData] : [[]];
+
     console.log("slicedDataForTarget structure:");
-    slicedDataForTarget?.forEach((varData, idx) => {
-        console.log(`  Variable ${idx}: ${varData?.length} records, first record:`, varData?.[0]);
-    });
+    console.log(`  Dataset 0: ${targetData.length} records`);
+    if (targetData.length > 0) {
+        console.log(`  First record keys: ${Object.keys(targetData[0]).join(", ")}`);
+        console.log(`  First record:`, targetData[0]);
+    }
     console.log("varDefsForTarget:", JSON.stringify(varDefsForTarget, null, 2));
     console.log("=== FACTOR ANALYSIS DEBUG END ===");
 
     // Validation before WASM call
-    if (!slicedDataForTarget || slicedDataForTarget.length === 0) {
+    if (targetData.length === 0) {
         throw new Error("No data available for selected variables. Please ensure data is loaded and variables are selected.");
     }
-    
-    if (slicedDataForTarget[0]?.length === 0) {
-        throw new Error("Selected variables have no valid data records. Please check if data is loaded correctly.");
+
+    // Check if we have valid numeric data
+    const hasValidData = targetData.some(record => 
+        Object.values(record).some(val => val !== null && typeof val === 'number')
+    );
+    if (!hasValidData) {
+        throw new Error("Selected variables have no valid numeric data. Please check if the data contains numeric values.");
     }
 
     // Di dalam blok try, file ini menjalankan await init (fungsi dari paket rust/pkg yang memuat modul WebAssembly 

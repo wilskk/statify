@@ -272,3 +272,24 @@ pub struct LoadingPoint {
     /// Koordinat: [x, y] atau [x, y, z]
     pub coordinates: Vec<f64>, 
 }
+
+
+
+// perbaikan 4/2/2026
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LoadingPlot {
+    pub axis_labels: Vec<String>,
+    pub points: Vec<LoadingPoint>,
+    // Tambahkan field ini agar frontend tahu ada warning secara global
+    pub has_cross_loading_issues: bool, 
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LoadingPoint {
+    pub label: String,
+    pub coordinates: Vec<f64>, 
+    // Field baru untuk flagging status cross loading
+    pub is_cross_loading: bool,
+    pub loading_gap: f64, // Opsional: untuk debug/tooltip
+}

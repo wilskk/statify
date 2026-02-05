@@ -1,9 +1,3 @@
-
-
-// perbaikan 14/1/2026
-// perbaikan (10/1/2026)
-// PERBAIKAN 4/1/2026
-
 import {formatDisplayNumber} from "@/hooks/useFormatter";
 import {ResultJson, Table} from "@/types/Table";
 import {FactorType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
@@ -1371,11 +1365,26 @@ function getExtractionMethodDisplayName(methodValue: string): string {
         resultJson.screePlotChart = data.scree_plot;
     }
 
+    // // 15. Loading Plot Data
+    // if (data.loading_plot) {
+    //     // Kita teruskan objek loading_plot dari Rust ke UI
+    //     resultJson.loadingPlotChart = data.loading_plot;
+    // }
+
+
+    // Update interface (jika Anda menggunakan interface explisit, jika any tidak perlu)
+    // Namun pastikan bagian ini di fungsi transformFactorAnalysisResult:
+
     // 15. Loading Plot Data
     if (data.loading_plot) {
-        // Kita teruskan objek loading_plot dari Rust ke UI
-        resultJson.loadingPlotChart = data.loading_plot;
+        // Pass-through data lengkap termasuk flag is_cross_loading
+        resultJson.loadingPlotChart = {
+            axis_labels: data.loading_plot.axis_labels,
+            points: data.loading_plot.points, // Points sekarang punya flag is_cross_loading
+            has_cross_loading_issues: data.loading_plot.has_cross_loading_issues // Flag global
+        };
     }
+
 
     // 16. Factor Scores (untuk Save as Variables)
     // Ekstrak factor_scores dari respons WASM jika ada
