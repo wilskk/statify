@@ -51,6 +51,12 @@ pub struct BoxTidwellRow {
     pub b: f64,                   // Koefisien
     pub sig: f64,                 // P-value (signifikansi)
     pub is_significant: bool,     // Helper flag (p < 0.05)
+    #[serde(default)]
+    pub skipped: bool,            // Apakah test di-skip (misal: variabel biner/kategorik)
+    #[serde(default)]
+    pub skip_reason: String,      // Alasan skip (misal: "Binary variable")
+    #[serde(default)]
+    pub note: String,             // Catatan tambahan (misal: transformasi yang diterapkan)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -208,7 +208,7 @@ fn default_max_iter() -> usize {
     20
 }
 fn default_tol() -> f64 {
-    1e-9
+    0.001
 }
 fn default_confidence() -> f64 {
     0.95
