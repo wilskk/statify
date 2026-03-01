@@ -369,11 +369,14 @@ pub fn fit(
         // 8. Cek Separation
         detect_separation(&beta, &predictions, &mut warnings);
 
-        // 9. Cek Konvergensi (SPSS style: -2LL ATAU parameter change)
-        // Konvergensi jika SALAH SATU kriteria terpenuhi
+        // 9. Cek Konvergensi
+        // Ref: SPSS Algorithm Specification — "Estimation terminated because
+        // parameter estimates changed by less than .001"
+        // Kriteria UTAMA: max|Δβ| < tol (default 0.001)
+        // Parameter convergence WAJIB terpenuhi. -2LL change saja TIDAK cukup
+        // karena likelihood surface bisa flat meski parameter belum stabil.
         let param_change = delta.iter().map(|d| d.abs()).fold(0.0_f64, f64::max);
-        let ll_change = (ll_new - log_likelihood_prev).abs();
-        if (param_change < tol || ll_change < 0.0005) && iter > 0 {
+        if param_change < tol && iter > 0 {
             converged = true;
             log_likelihood_prev = ll_new;
             break;
@@ -568,33 +571,26 @@ pub fn fit_with_history(
         });
 
         // 9. Cek Konvergensi SETELAH mencatat iterasi
-        // SPSS berhenti ketika SALAH SATU kriteria terpenuhi:
-        // - Parameter change < threshold (default 0.001) untuk SEMUA parameter
-        // - -2LL change < threshold (model sudah stabil)
-        // PENTING: Gunakan strictly less than dengan threshold sedikit lebih ketat untuk -2LL
-        let (neg2ll_converged, param_converged) = if iteration_history.len() > 1 {
+        // Ref: SPSS Algorithm Specification — "Estimation terminated because
+        // parameter estimates changed by less than .001"
+        // Kriteria UTAMA: max|Δβ| < tol (default 0.001)
+        // Parameter convergence WAJIB terpenuhi. -2LL change saja TIDAK cukup
+        // karena likelihood surface bisa flat meski parameter belum stabil.
+        let param_converged = if iteration_history.len() > 1 {
             let prev_record = &iteration_history[iteration_history.len() - 2];
-            
-            // Cek -2LL change - gunakan threshold lebih ketat (< 1e-6)
-            // untuk menghindari false positive ketika change = 0.001
-            let neg2ll_change = (neg2ll_new - prev_record.neg2_log_likelihood).abs();
-            let neg2ll_conv = neg2ll_change < 1e-6;
             
             // Cek parameter change (max absolute change across all coefficients)
             let param_change = beta.iter()
                 .zip(prev_record.coefficients.iter())
                 .map(|(b_new, b_old)| (b_new - b_old).abs())
                 .fold(0.0_f64, f64::max);
-            let param_conv = param_change < tol;
-            
-            (neg2ll_conv, param_conv)
+            param_change < tol
         } else {
-            (false, false)
+            false
         };
 
-        // Konvergensi jika SALAH SATU kriteria terpenuhi (-2LL ATAU parameter change)
         // iter > 0 untuk memastikan minimal 2 iterasi tercatat
-        if (neg2ll_converged || param_converged) && iter > 0 {
+        if param_converged && iter > 0 {
             converged = true;
             log_likelihood_prev = ll_new;
             break;

@@ -100,9 +100,11 @@ pub fn calculate_vif(x: &DMatrix<f64>, feature_names: &[String]) -> Result<Vec<V
 /// Jika p-value < 0.05, maka asumsi linearitas dilanggar.
 /// 
 /// CATATAN PENTING:
-/// - Variabel dengan nilai <= 0 memerlukan transformasi: tambah 0.001 HANYA untuk nilai <= 0
-/// - Variabel biner (hanya 2 nilai unik) akan menghasilkan B ≈ 0, p = 1 (tidak informatif)
-/// - Ini konsisten dengan implementasi R
+/// - Variabel biner/kategorik (≤ 2 nilai unik) di-SKIP karena Box-Tidwell tidak berlaku
+/// - Variabel dengan sedikit nilai unik (3-4) di-SKIP karena kemungkinan kategorik/ordinal
+/// - Variabel dengan nilai ≤ 0 ditangani dengan UNIFORM SHIFT: X_shifted = X - min(X) + 1
+///   Shift seragam ke SEMUA nilai menjaga urutan relatif & menghindari log(0)
+/// - Variabel konstan di-SKIP
 pub fn calculate_box_tidwell(
     x: &DMatrix<f64>,
     y: &DVector<f64>,
@@ -125,59 +127,150 @@ pub fn calculate_box_tidwell(
         let x_min = x_vals.iter().cloned().fold(f64::INFINITY, f64::min);
         let x_max = x_vals.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         
-        // Cek apakah variabel memiliki variasi
+        // ================================================================
+        // KASUS 1: Variabel konstan (tidak ada variasi) → Skip
+        // ================================================================
         if (x_max - x_min).abs() < 1e-10 {
-            // Variabel konstan, skip
             results.push(BoxTidwellRow {
                 variable: name.clone(),
                 interaction_term: format!("{} by ln({})", name, name),
                 b: 0.0,
                 sig: 1.0,
                 is_significant: false,
+                skipped: true,
+                skip_reason: "Constant variable (no variation)".to_string(),
+                note: String::new(),
             });
             continue;
         }
         
-        // ================================================================
-        // DETEKSI VARIABEL BINER: Jika hanya 2 nilai unik, return 0, 1.0
-        // Box-Tidwell tidak informatif untuk variabel biner
-        // ================================================================
+        // Hitung unique values
         let mut unique_vals: Vec<f64> = x_vals.clone();
         unique_vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         unique_vals.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
+        let n_unique = unique_vals.len();
         
-        if unique_vals.len() <= 2 {
-            // Variabel biner atau hampir biner - tidak informatif untuk Box-Tidwell
+        // ================================================================
+        // KASUS 2: Variabel biner (≤ 2 nilai unik) → Skip
+        // Box-Tidwell TIDAK berlaku untuk variabel biner/dikotomi.
+        // X*ln(X) pada variabel biner tidak punya interpretasi linearitas.
+        // ================================================================
+        if n_unique <= 2 {
             results.push(BoxTidwellRow {
                 variable: name.clone(),
                 interaction_term: format!("{} by ln({})", name, name),
                 b: 0.0,
                 sig: 1.0,
                 is_significant: false,
+                skipped: true,
+                skip_reason: "Binary variable — Box-Tidwell test is not applicable for dichotomous variables. The test only applies to continuous predictors.".to_string(),
+                note: String::new(),
             });
             continue;
         }
         
         // ================================================================
-        // KONSISTEN DENGAN R: Offset 0.001 HANYA untuk nilai <= 0
+        // KASUS 3: Variabel dengan sedikit nilai unik (3–4) → Skip
+        // Kemungkinan besar variabel ordinal/kategorik yang dibiarkan numerik.
+        // Box-Tidwell secara teori hanya untuk kontinu, dan X*ln(X) pada 
+        // variabel diskrit dengan sangat sedikit level bisa misleading.
         // ================================================================
-        // Untuk nilai > 0: gunakan nilai asli
-        // Untuk nilai <= 0: tambah 0.001 (untuk menghindari log(0))
+        if n_unique <= 4 {
+            results.push(BoxTidwellRow {
+                variable: name.clone(),
+                interaction_term: format!("{} by ln({})", name, name),
+                b: 0.0,
+                sig: 1.0,
+                is_significant: false,
+                skipped: true,
+                skip_reason: format!(
+                    "Only {} unique values detected — likely a categorical/ordinal variable. Box-Tidwell test only applies to continuous predictors.",
+                    n_unique
+                ),
+                note: String::new(),
+            });
+            continue;
+        }
+        
+        // ================================================================
+        // KASUS 4: Variabel kontinu — jalankan Box-Tidwell
+        // ================================================================
+        
+        // --- Handling Nilai ≤ 0: Uniform Shift ---
+        // Jika ada nilai ≤ 0, kita terapkan shift seragam ke SEMUA nilai:
+        //   X_shifted = X - min(X) + 1
+        // Ini menjaga urutan relatif data dan memastikan semua X_shifted ≥ 1,
+        // sehingga ln(X_shifted) terdefinisi dengan baik.
+        // Kita menggunakan shift = 1 (bukan 0.001) agar ln(X_shifted) bernilai
+        // reasonable (minimal ln(1) = 0) dan tidak membuat interaction term
+        // mendekati konstan.
+        
+        let has_non_positive = x_min <= 0.0;
+        let shift = if has_non_positive { -x_min + 1.0 } else { 0.0 };
+        let note_text = if has_non_positive {
+            format!(
+                "Variable contains values ≤ 0 (min={:.3}). A uniform shift of {:.3} was applied to all values (X' = X + {:.3}) before computing X'·ln(X'). This preserves relative ordering.",
+                x_min, shift, shift
+            )
+        } else {
+            String::new()
+        };
+        
+        // Hitung interaction term: (X + shift) * ln(X + shift)
         let mut interaction_vec = Vec::with_capacity(rows);
         for &val in col_x.iter() {
-            if val <= 0.0 {
-                let x_safe = val + 0.001;
-                interaction_vec.push(x_safe * x_safe.ln());
-            } else {
-                interaction_vec.push(val * val.ln());
-            }
+            let x_shifted = val + shift;
+            // Setelah shift, semua x_shifted >= 1.0 (jika has_non_positive)
+            // atau x_shifted > 0 (jika semua asli positif).
+            // Safety clamp terhadap floating point edge cases.
+            let x_safe = x_shifted.max(1e-10);
+            interaction_vec.push(x_safe * x_safe.ln());
         }
-        let interaction_col = DVector::from_vec(interaction_vec);
+        let interaction_col = DVector::from_vec(interaction_vec.clone());
+        
+        // --- Cek variasi interaction term ---
+        // Jika interaction term hampir konstan (misal semua nol), 
+        // model augmented akan singular.
+        let int_min = interaction_vec.iter().cloned().fold(f64::INFINITY, f64::min);
+        let int_max = interaction_vec.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        if (int_max - int_min).abs() < 1e-10 {
+            results.push(BoxTidwellRow {
+                variable: name.clone(),
+                interaction_term: format!("{} by ln({})", name, name),
+                b: 0.0,
+                sig: 1.0,
+                is_significant: false,
+                skipped: true,
+                skip_reason: "Interaction term X·ln(X) has no variation after transformation. Test cannot be computed.".to_string(),
+                note: note_text,
+            });
+            continue;
+        }
+        
+        // --- Cek kolinieritas antara X dan X*ln(X) ---
+        // Jika korelasi hampir sempurna (|r| > 0.999), model augmented
+        // akan nearly singular dan hasil tidak reliable.
+        let corr = pearson_correlation(&x_vals, &interaction_vec);
+        if corr.abs() > 0.999 {
+            results.push(BoxTidwellRow {
+                variable: name.clone(),
+                interaction_term: format!("{} by ln({})", name, name),
+                b: 0.0,
+                sig: 1.0,
+                is_significant: false,
+                skipped: true,
+                skip_reason: format!(
+                    "Near-perfect collinearity (r={:.4}) between X and X·ln(X). The augmented model is numerically unstable. This typically happens when the variable range is very narrow.",
+                    corr
+                ),
+                note: note_text,
+            });
+            continue;
+        }
         
         // ================================================================
         // FULL MODEL: [Intercept, X₁, X₂, ..., Xₖ, interaction_term]
         // ================================================================
-        // Total kolom = 1 (intercept) + cols (semua variabel) + 1 (interaction)
         let total_cols = 1 + cols + 1;
         let mut x_design = DMatrix::zeros(rows, total_cols);
         
@@ -193,7 +286,7 @@ pub fn calculate_box_tidwell(
             }
         }
         
-        // Kolom terakhir: Interaction term X*ln(X) untuk variabel ke-i
+        // Kolom terakhir: Interaction term (X+shift)*ln(X+shift) untuk variabel ke-i
         for r in 0..rows {
             x_design[(r, total_cols - 1)] = interaction_col[r];
         }
@@ -204,26 +297,60 @@ pub fn calculate_box_tidwell(
                 let sig_threshold = 0.05;
                 results.push(BoxTidwellRow {
                     variable: name.clone(),
-                    interaction_term: format!("{} by ln({})", name, name),
+                    interaction_term: if has_non_positive {
+                        format!("{} by ln({}+{:.1})", name, name, shift)
+                    } else {
+                        format!("{} by ln({})", name, name)
+                    },
                     b: coeff,
                     sig: p_value,
                     is_significant: p_value < sig_threshold,
+                    skipped: false,
+                    skip_reason: String::new(),
+                    note: note_text,
                 });
             }
-            Err(_e) => {
-                // Jika gagal konvergen atau ada masalah numerik
+            Err(e) => {
+                // Jika gagal konvergen atau ada masalah numerik — report error, don't hide it
                 results.push(BoxTidwellRow {
                     variable: name.clone(),
                     interaction_term: format!("{} by ln({})", name, name),
                     b: 0.0,
                     sig: 1.0,
                     is_significant: false,
+                    skipped: true,
+                    skip_reason: format!("Computation failed: {}", e),
+                    note: note_text,
                 });
             }
         }
     }
 
     Ok(results)
+}
+
+/// Pearson correlation antara dua vector
+fn pearson_correlation(a: &[f64], b: &[f64]) -> f64 {
+    let n = a.len() as f64;
+    if n < 2.0 { return 0.0; }
+    
+    let mean_a: f64 = a.iter().sum::<f64>() / n;
+    let mean_b: f64 = b.iter().sum::<f64>() / n;
+    
+    let mut cov = 0.0;
+    let mut var_a = 0.0;
+    let mut var_b = 0.0;
+    
+    for i in 0..a.len() {
+        let da = a[i] - mean_a;
+        let db = b[i] - mean_b;
+        cov += da * db;
+        var_a += da * da;
+        var_b += db * db;
+    }
+    
+    let denom = (var_a * var_b).sqrt();
+    if denom < 1e-15 { 0.0 } else { cov / denom }
 }
 
 /// Helper Privat: Melakukan regresi logistik untuk Box-Tidwell test

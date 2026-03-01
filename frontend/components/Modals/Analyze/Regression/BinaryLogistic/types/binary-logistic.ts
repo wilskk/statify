@@ -178,6 +178,9 @@ export interface BoxTidwellRow {
   b: number;
   sig: number;
   is_significant: boolean;
+  skipped?: boolean;       // Whether the test was skipped (e.g., binary/categorical)
+  skip_reason?: string;    // Reason for skipping
+  note?: string;           // Additional note (e.g., transformation applied)
 }
 
 export interface AssumptionResult {

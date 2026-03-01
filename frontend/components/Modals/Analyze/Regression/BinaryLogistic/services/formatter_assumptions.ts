@@ -58,16 +58,40 @@ const generateAssumptionDescription = (
 const generateBoxTidwellDescription = (boxTidwellData: any[]): string => {
   if (!boxTidwellData || boxTidwellData.length === 0) return "";
 
-  // Cari variabel yang interaksinya signifikan (p < 0.05)
-  // Signifikan berarti HUBUNGANNYA TIDAK LINEAR (Asumsi Dilanggar)
-  const violatedVars = boxTidwellData.filter((row) => row.is_significant);
+  // Pisahkan variabel yang di-test vs yang di-skip
+  const testedVars = boxTidwellData.filter((row) => !row.skipped);
+  const skippedVars = boxTidwellData.filter((row) => row.skipped);
 
-  if (violatedVars.length > 0) {
-    const varNames = violatedVars.map((v) => v.variable).join(", ");
-    return `Linearity assumption likely violated. The Box-Tidwell test indicates non-linear relationships for the following variable(s): ${varNames} (Sig. < 0.05). You may need to transform these variables or treat them as categorical.`;
-  } else {
-    return "Linearity assumption met. None of the interaction terms were statistically significant (Sig. > 0.05), indicating a linear relationship between the continuous predictors and the logit of the outcome.";
+  const parts: string[] = [];
+
+  // Laporan hasil test untuk variabel yang benar-benar diuji
+  if (testedVars.length > 0) {
+    const violatedVars = testedVars.filter((row) => row.is_significant);
+    if (violatedVars.length > 0) {
+      const varNames = violatedVars.map((v: any) => v.variable).join(", ");
+      parts.push(
+        `Linearity assumption likely violated. The Box-Tidwell test indicates non-linear relationships for the following variable(s): ${varNames} (Sig. < 0.05). You may need to transform these variables or treat them as categorical.`
+      );
+    } else {
+      parts.push(
+        "Linearity assumption met for all tested continuous predictors. None of the interaction terms were statistically significant (Sig. > 0.05), indicating a linear relationship between the continuous predictors and the logit of the outcome."
+      );
+    }
   }
+
+  // Laporan variabel yang di-skip
+  if (skippedVars.length > 0) {
+    const skippedNames = skippedVars.map((v: any) => v.variable).join(", ");
+    parts.push(
+      `Note: ${skippedVars.length} variable(s) were excluded from the Box-Tidwell test (${skippedNames}). The Box-Tidwell test only applies to continuous predictors with sufficient variation. See the 'Status' column for details.`
+    );
+  }
+
+  if (parts.length === 0) {
+    parts.push("No continuous predictors were eligible for the Box-Tidwell test.");
+  }
+
+  return parts.join(" ");
 };
 
 export const formatAssumptionTests = (
@@ -223,18 +247,32 @@ export const formatAssumptionTests = (
         { header: "Interaction Term", key: "term" },
         { header: "Coeff (B)", key: "b" },
         { header: "Sig.", key: "sig" },
-        { header: "Result", key: "res" },
+        { header: "Status", key: "res" },
+        { header: "Note", key: "note" },
       ],
-      rows: assumptions.box_tidwell.map((row) => ({
-        rowHeader: [row.variable],
-        var: row.variable,
-        term: row.interaction_term,
-        b: safeFixed(row.b),
-        sig: fmtSig(row.sig),
-        res: row.is_significant
-          ? "Assumption Violated (Non-Linear)"
-          : "Assumption Met (Linear)",
-      })),
+      rows: assumptions.box_tidwell.map((row) => {
+        // Jika variabel di-skip, tampilkan alasan skip alih-alih "Assumption Met"
+        const isSkipped = row.skipped === true;
+        let statusText: string;
+        if (isSkipped) {
+          // Tampilkan alasan skip sebagai status
+          statusText = row.skip_reason || "Not Applicable";
+        } else if (row.is_significant) {
+          statusText = "Assumption Violated (Non-Linear)";
+        } else {
+          statusText = "Assumption Met (Linear)";
+        }
+
+        return {
+          rowHeader: [row.variable],
+          var: row.variable,
+          term: isSkipped ? "—" : row.interaction_term,
+          b: isSkipped ? "—" : safeFixed(row.b),
+          sig: isSkipped ? "—" : fmtSig(row.sig),
+          res: statusText,
+          note: row.note || "",
+        };
+      }),
     };
 
     // Buat Deskripsi Dinamis Box-Tidwell
