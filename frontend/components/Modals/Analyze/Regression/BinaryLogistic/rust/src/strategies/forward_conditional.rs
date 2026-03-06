@@ -881,10 +881,11 @@ fn calculate_step_snapshot(
         sig: sig_model,
     };
 
-    let chi_sq_step = 2.0 * (model.final_log_likelihood - prev_ll).abs();
+    // SPSS convention: positive when variable entered, negative when removed
+    let chi_sq_step = 2.0 * (model.final_log_likelihood - prev_ll);
     let df_step = (included_indices.len() as i32 - prev_n_vars as i32).abs();
-    let sig_step = if df_step > 0 && chi_sq_step > 1e-9 {
-        1.0 - ChiSquared::new(df_step as f64).unwrap().cdf(chi_sq_step)
+    let sig_step = if df_step > 0 && chi_sq_step.abs() > 1e-9 {
+        1.0 - ChiSquared::new(df_step as f64).unwrap().cdf(chi_sq_step.abs())
     } else {
         1.0
     };

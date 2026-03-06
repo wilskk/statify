@@ -344,6 +344,7 @@ export const formatBlock1 = (
     const varsInRows: any[] = [];
     const varsOutRows: any[] = [];
     const modelIfTermRemovedRows: any[] = [];
+    let hasNegativeStepChi = false;
 
     block1Steps.forEach((stepDetail: StepDetail) => {
       // Adjustment: Jika Backward, Step 0 ditampilkan sebagai "Step 0" atau "Step 1" tergantung selera.
@@ -372,21 +373,24 @@ export const formatBlock1 = (
       const blockSig = omniModel ? fmtSig(omniModel.sig) : "";
 
       // 1. Omnibus Rows
+      // SPSS convention: negative step chi-square means model worsened (variable removed)
+      const stepLabel = stepChi < 0 ? `Step ${currentStepNum}ᵃ` : `Step ${currentStepNum}`;
+      if (stepChi < 0) hasNegativeStepChi = true;
       omnibusRows.push(
         {
-          rowHeader: [currentStepLabel, "Step"],
+          rowHeader: [stepLabel, "Step"],
           chi: safeFixed(stepChi),
           df: dfStep.toString(),
           sig: stepSig,
         },
         {
-          rowHeader: [currentStepLabel, "Block"],
+          rowHeader: [stepLabel, "Block"],
           chi: safeFixed(blockChi),
           df: blockDf.toString(),
           sig: blockSig,
         },
         {
-          rowHeader: [currentStepLabel, "Model"],
+          rowHeader: [stepLabel, "Model"],
           chi: safeFixed(blockChi),
           df: blockDf.toString(),
           sig: blockSig,
@@ -494,6 +498,10 @@ export const formatBlock1 = (
           ? generateOmnibusDescription(omni.chi_square, omni.df, omni.sig)
           : "Omnibus tests of model coefficients.";
 
+        const omniNote = hasNegativeStepChi
+          ? "a. A negative Chi-squares value indicates that the Chi-squares value has decreased from the previous step."
+          : undefined;
+
         sections.push(
           createSection(
             "block1_omnibus",
@@ -514,6 +522,7 @@ export const formatBlock1 = (
               rows: omnibusRows,
             },
             {
+              note: omniNote,
               description: `History of model fit significance. Final step: ${omniDesc}`,
             }
           )
@@ -667,7 +676,7 @@ export const formatBlock1 = (
             },
             {
               description:
-                "Tests for removal of variables at each step (Backward Elimination).",
+                "Tests for removal of variables at each step.",
             }
           )
         );
