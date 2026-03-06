@@ -767,7 +767,9 @@ export const BinaryLogisticMain = () => {
                   .replace(/<[^>]*>?/gm, " ")
                   .trim();
 
-                if (section.id.includes("case_processing")) {
+                if (section.id.includes("fitting_warnings")) {
+                  componentCategory = "Warnings";
+                } else if (section.id.includes("case_processing")) {
                   componentCategory = "Case Processing Summary";
                 } else if (section.id.includes("encoding")) {
                   componentCategory = "Dependent Variable Encoding";

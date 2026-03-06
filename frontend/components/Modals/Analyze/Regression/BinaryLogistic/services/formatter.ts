@@ -13,6 +13,7 @@ import { formatCorrelationOfEstimates } from "./formatter_correlation_estimates"
 import { formatIterationHistory, hasIterationHistory } from "./formatter_iteration_history";
 import { formatStepSummary, hasStepSummary } from "./formatter_step_summary";
 import { formatClassificationPlot, hasClassificationPlot } from "./formatter_classification_plot";
+import { formatFittingWarnings, hasFittingWarnings } from "./formatter_warnings";
 import { Variable } from "@/types/Variable";
 
 /**
@@ -38,6 +39,17 @@ export const formatBinaryLogisticResult = (
   const ciLevel = options?.ciLevel ?? 95;
   const cutoff = options?.cutoff ?? 0.5;
   const casewiseOutliers = options?.casewiseOutliers ?? 2.0;
+
+  // 0. Fitting Warnings (SPSS displays warnings at the very top of output)
+  // Jika ada warning kritis (singular Hessian, separation, dll),
+  // hanya tampilkan tabel Warnings saja — hasil selanjutnya tidak relevan.
+  if (hasFittingWarnings(result)) {
+    const warningsOutput = formatFittingWarnings(result);
+    if (warningsOutput.sections && warningsOutput.sections.length > 0) {
+      allSections.push(...warningsOutput.sections);
+      return { sections: allSections };
+    }
+  }
 
   // 1. Case Processing & Encoding
   const summaryOutput = formatSummaryTables(

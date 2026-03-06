@@ -280,7 +280,17 @@ export const formatBlock0 = (
     }
   }
 
-  // Jika remainderTest belum diambil (misal dari steps_detail[0] diatas), coba ambil global
+  // FIX: Selalu coba ambil remainderTest dari steps_detail[0] (Block 0) terlebih dahulu.
+  // Sebelumnya, jika block_0_variables_not_in ada (kasus stepwise methods),
+  // remainderTest tetap null dan jatuh ke overall_remainder_test yang berisi
+  // data dari FINAL step (bukan Block 0). Ini menyebabkan Overall Statistics
+  // menampilkan df dan chi-square dari step terakhir, bukan dari joint score test
+  // semua variabel kandidat di Block 0.
+  if (!remainderTest && result.steps_detail && result.steps_detail.length > 0) {
+    remainderTest = result.steps_detail[0].remainder_test;
+  }
+
+  // Fallback terakhir: ambil dari overall_remainder_test (root level)
   if (!remainderTest) {
     remainderTest = (result as any).overall_remainder_test;
   }

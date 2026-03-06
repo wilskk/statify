@@ -55,40 +55,52 @@ const generateAssumptionDescription = (
 };
 
 // Helper untuk membuat deskripsi dinamis Box-Tidwell
+// References: Box & Tidwell (1962), Fox (1997), Fox & Weisberg (2011)
 const generateBoxTidwellDescription = (boxTidwellData: any[]): string => {
   if (!boxTidwellData || boxTidwellData.length === 0) return "";
 
-  // Pisahkan variabel yang di-test vs yang di-skip
-  const testedVars = boxTidwellData.filter((row) => !row.skipped);
-  const skippedVars = boxTidwellData.filter((row) => row.skipped);
+  const testedVars = boxTidwellData.filter((row: any) => !row.skipped);
+  const skippedVars = boxTidwellData.filter((row: any) => row.skipped);
 
   const parts: string[] = [];
 
-  // Laporan hasil test untuk variabel yang benar-benar diuji
   if (testedVars.length > 0) {
-    const violatedVars = testedVars.filter((row) => row.is_significant);
+    const violatedVars = testedVars.filter((row: any) => row.is_significant);
     if (violatedVars.length > 0) {
-      const varNames = violatedVars.map((v: any) => v.variable).join(", ");
+      const details = violatedVars
+        .map((v: any) => {
+          const lambdaStr =
+            v.mle_lambda != null && isFinite(v.mle_lambda)
+              ? `λ̂=${safeFixed(v.mle_lambda, 3)}`
+              : "";
+          return `${v.variable} (${lambdaStr}, p=${fmtSig(v.sig)})`;
+        })
+        .join(", ");
       parts.push(
-        `Linearity assumption likely violated. The Box-Tidwell test indicates non-linear relationships for the following variable(s): ${varNames} (Sig. < 0.05). You may need to transform these variables or treat them as categorical.`
+        `Linearity assumption violated for: ${details}. ` +
+          `The MLE of λ indicates the estimated power transformation; λ=1 implies linearity. ` +
+          `Consider applying a power transformation or treating these variables as categorical.`
       );
     } else {
       parts.push(
-        "Linearity assumption met for all tested continuous predictors. None of the interaction terms were statistically significant (Sig. > 0.05), indicating a linear relationship between the continuous predictors and the logit of the outcome."
+        "Linearity assumption met for all tested continuous predictors (all p > 0.05). " +
+          "The MLE of λ is close to 1 for all variables, consistent with a linear relationship in the logit."
       );
     }
   }
 
-  // Laporan variabel yang di-skip
   if (skippedVars.length > 0) {
     const skippedNames = skippedVars.map((v: any) => v.variable).join(", ");
     parts.push(
-      `Note: ${skippedVars.length} variable(s) were excluded from the Box-Tidwell test (${skippedNames}). The Box-Tidwell test only applies to continuous predictors with sufficient variation. See the 'Status' column for details.`
+      `Note: ${skippedVars.length} variable(s) were excluded (${skippedNames}). ` +
+        `The Box-Tidwell test only applies to continuous predictors with sufficient variation.`
     );
   }
 
   if (parts.length === 0) {
-    parts.push("No continuous predictors were eligible for the Box-Tidwell test.");
+    parts.push(
+      "No continuous predictors were eligible for the Box-Tidwell test."
+    );
   }
 
   return parts.join(" ");
@@ -239,57 +251,91 @@ export const formatAssumptionTests = (
     );
   }
 
-  // --- 4. Box-Tidwell Test ---
+  // --- 4. Box-Tidwell Test (R-style output: Fox & Weisberg 2011) ---
   if (assumptions.box_tidwell && assumptions.box_tidwell.length > 0) {
-    const btData = {
-      columnHeaders: [
-        { header: "Original Variable", key: "var" },
-        { header: "Interaction Term", key: "term" },
-        { header: "Coeff (B)", key: "b" },
-        { header: "Sig.", key: "sig" },
-        { header: "Status", key: "res" },
-        { header: "Note", key: "note" },
-      ],
-      rows: assumptions.box_tidwell.map((row) => {
-        // Jika variabel di-skip, tampilkan alasan skip alih-alih "Assumption Met"
-        const isSkipped = row.skipped === true;
-        let statusText: string;
-        if (isSkipped) {
-          // Tampilkan alasan skip sebagai status
-          statusText = row.skip_reason || "Not Applicable";
-        } else if (row.is_significant) {
-          statusText = "Assumption Violated (Non-Linear)";
-        } else {
-          statusText = "Assumption Met (Linear)";
-        }
+    // Separate tested vs skipped for cleaner output
+    const testedRows = assumptions.box_tidwell.filter(
+      (row: any) => !row.skipped
+    );
+    const skippedRows = assumptions.box_tidwell.filter(
+      (row: any) => row.skipped
+    );
 
-        return {
+    // --- Main results table (matches R's car::boxTidwell output) ---
+    if (testedRows.length > 0) {
+      const btData = {
+        columnHeaders: [
+          { header: "Variable", key: "var" },
+          { header: "Interaction Term", key: "interaction" },
+          { header: "MLE of λ", key: "lambda" },
+          { header: "Score Statistic (z)", key: "score_z" },
+          { header: "df", key: "df" },
+          { header: "Sig.", key: "sig" },
+        ],
+        rows: testedRows.map((row: any) => {
+          const sig = row.sig ?? 1.0;
+
+          const lambdaVal =
+            row.mle_lambda != null && isFinite(row.mle_lambda)
+              ? safeFixed(row.mle_lambda, 5)
+              : "—";
+
+          return {
+            rowHeader: [row.variable],
+            var: row.variable,
+            interaction: row.interaction_term || `${row.variable} × ln(${row.variable})`,
+            lambda: lambdaVal,
+            score_z: safeFixed(row.score_z ?? 0, 4),
+            df: String(row.df ?? 1),
+            sig: fmtSig(sig),
+          };
+        }),
+      };
+
+      const btDescription = generateBoxTidwellDescription(
+        assumptions.box_tidwell
+      );
+
+      sections.push(
+        createSection(
+          "assumption_box_tidwell",
+          "Box-Tidwell Test for Linearity of the Logit",
+          btData,
+          {
+            description: btDescription,
+          }
+        )
+      );
+    }
+
+    // --- Skipped variables table ---
+    if (skippedRows.length > 0) {
+      const skippedData = {
+        columnHeaders: [
+          { header: "Variable", key: "var" },
+          { header: "Reason", key: "reason" },
+          { header: "Note", key: "note" },
+        ],
+        rows: skippedRows.map((row: any) => ({
           rowHeader: [row.variable],
           var: row.variable,
-          term: isSkipped ? "—" : row.interaction_term,
-          b: isSkipped ? "—" : safeFixed(row.b),
-          sig: isSkipped ? "—" : fmtSig(row.sig),
-          res: statusText,
+          reason: row.skip_reason || "Not Applicable",
           note: row.note || "",
-        };
-      }),
-    };
+        })),
+      };
 
-    // Buat Deskripsi Dinamis Box-Tidwell
-    const btDescription = generateBoxTidwellDescription(
-      assumptions.box_tidwell,
-    );
-
-    sections.push(
-      createSection(
-        "assumption_box_tidwell",
-        "Linearity of the Logit (Box-Tidwell Test)",
-        btData,
-        {
-          description: btDescription,
-        },
-      ),
-    );
+      sections.push(
+        createSection(
+          "assumption_box_tidwell_excluded",
+          "Variables Excluded from Box-Tidwell Test",
+          skippedData,
+          {
+            description:
+              "The following variables were excluded because the Box-Tidwell test only applies to continuous predictors with sufficient variation.",
+          }
+        )
+      );
+    }
   }
 
   return { sections };

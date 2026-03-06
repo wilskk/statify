@@ -53,48 +53,40 @@ pub fn calculate(
     data.sort_by(|a, b| a.prob.partial_cmp(&b.prob).unwrap());
 
     // ====================================================================
-    // 2. Greedy sequential grouping with dynamic target
+    // 2. Greedy sequential grouping — exactly g groups (SPSS-compatible)
     // ====================================================================
     //
     // Key principles (Hosmer & Lemeshow, 2000):
     //   - Groups are formed sequentially by ranked predicted probability.
     //   - All cases with identical predicted probabilities must reside in
-    //     the same group.
+    //     the same group (ties are never split across groups).
     //   - Groups should be approximately equal in size.
+    //   - The result MUST have at most g groups.
     //
-    // When a large tie block causes a group to consume more than one
-    // "ideal slot" (e.g. 171 cases vs target 92), the remaining group
-    // count is adjusted proportionally so that subsequent groups are
-    // still balanced — no tiny leftover groups are created.
+    // Algorithm:
+    //   - Use a FIXED target size = round(N/g) for every group (NTILE-like).
+    //     This ensures groups 1..g-1 get consistent boundaries regardless
+    //     of how ties shift earlier groups.
+    //   - The loop creates at most g−1 groups.
+    //   - After the loop, all remaining cases form the g-th (final) group,
+    //     absorbing any surplus from tie-induced group size changes.
 
     let g = g_groups;
     let mut group_ranges: Vec<(usize, usize)> = Vec::new(); // (start_incl, end_excl)
     let mut start = 0;
 
-    loop {
-        // How many ideal group slots have been consumed by cases 0..start?
-        // Using round() (not ceil()) to avoid premature termination.
-        // Example: 740 cases consumed out of 920 with g=10 →
-        //   ceil(8.04)=9 → groups_left=1 → breaks too early (wrong)
-        //   round(8.04)=8 → groups_left=2 → continues correctly
-        // Meanwhile 814/920 → round(8.85)=9 → groups_left=1 → correct break.
-        let groups_consumed = if start == 0 {
-            0usize
-        } else {
-            ((start as f64 * g as f64) / n as f64).round() as usize
-        };
-        let groups_left = g.saturating_sub(groups_consumed);
+    // Fixed target: always aim for the ideal group size N/g.
+    // This replicates NTILE behavior: each group targets the same size
+    // regardless of how previous groups were affected by ties.
+    // Any deficit from oversized/undersized groups accumulates in the last group.
+    let target = ((n as f64) / (g as f64)).round().max(1.0) as usize;
 
-        // Last group slot (or all slots consumed): break out, assign remainder
-        if groups_left <= 1 || start >= n {
+    loop {
+        // Stop when we have created g−1 groups: all remaining cases
+        // go into the final (g-th) group after the loop.
+        if group_ranges.len() >= g - 1 || start >= n {
             break;
         }
-
-        // Fixed target: always aim for the ideal group size N/g.
-        // This replicates NTILE behavior: each group targets the same size
-        // regardless of how previous groups were affected by ties.
-        // Any deficit from oversized groups accumulates in the last group.
-        let target = ((n as f64) / (g as f64)).round().max(1.0) as usize;
 
         // Planned end (exclusive)
         let planned_end = (start + target).min(n);
@@ -161,7 +153,7 @@ pub fn calculate(
         start = final_end;
     }
 
-    // Final group: all remaining cases
+    // Final group: all remaining cases (the g-th group)
     if start < n {
         group_ranges.push((start, n));
     }
