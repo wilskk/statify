@@ -956,24 +956,28 @@ export const BinaryLogisticMain = () => {
         "Backward: LR": "BackwardLR",
       };
 
-      // --- PERUBAHAN: Mapping Konfigurasi Kategorik ---
+      // --- PERUBAHAN: Mapping Konfigurasi Kategorik (Per-Variable) ---
       // Mengubah state UI (catParams) menjadi format config untuk Rust
-      // Use ACTUAL variables with correct IDs
+      // Setiap variabel memiliki contrast & reference sendiri (SPSS style)
       const categoricalConfig = actualCovariates
         .filter((v) => catParams.covariates.includes(v.name))
-        .map((v) => ({
-          id: v.id,
-          method: catParams.contrast,
-          reference: catParams.referenceCategory,
-        }));
+        .map((v) => {
+          const setting = catParams.variableSettings[v.name];
+          return {
+            id: v.id,
+            method: setting?.contrast ?? "Indicator",
+            reference: setting?.referenceCategory ?? "Last",
+          };
+        });
 
-      // Tambahkan factors otomatis
+      // Tambahkan factors otomatis (default: Indicator/Last)
       actualFactors.forEach((f) => {
         if (!categoricalConfig.find((c) => c.id === f.id)) {
+          const setting = catParams.variableSettings[f.name];
           categoricalConfig.push({
             id: f.id,
-            method: catParams.contrast,
-            reference: catParams.referenceCategory,
+            method: setting?.contrast ?? "Indicator",
+            reference: setting?.referenceCategory ?? "Last",
           });
         }
       });

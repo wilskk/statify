@@ -212,7 +212,16 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
       const prevHeaders = prevRow ? prevRow.rowHeader || [] : [];
       const prev = prevHeaders[colIdx] ?? null;
 
-      const renderCell = rowIndex === 0 || current !== prev;
+      // Check if any parent header changed — if so, must render new cell
+      // even if this level's text is the same (e.g. same variable in different steps)
+      const parentChanged =
+        colIdx > 0 &&
+        prevRow != null &&
+        Array.from({ length: colIdx }, (_, k) => k).some(
+          (k) => (currentHeaders[k] ?? "") !== (prevHeaders[k] ?? "")
+        );
+
+      const renderCell = rowIndex === 0 || current !== prev || parentChanged;
       if (!renderCell) {
         return null;
       }
@@ -221,7 +230,13 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
         const nextRow = flatRows[next];
         const nextHeaders = nextRow.rowHeader || [];
         const nextVal = nextHeaders[colIdx] ?? "";
-        if (nextVal === current) rowSpan++;
+        // Stop merging when any parent header changes
+        const nextParentSame =
+          colIdx === 0 ||
+          Array.from({ length: colIdx }, (_, k) => k).every(
+            (k) => (nextHeaders[k] ?? "") === (currentHeaders[k] ?? "")
+          );
+        if (nextVal === current && nextParentSame) rowSpan++;
         else break;
       }
       return (

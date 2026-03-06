@@ -130,6 +130,8 @@ const mapMethodToSpssFormat = (method: BinaryLogisticOptions["method"]): string 
  *
  * Format: /CONTRAST (varname)=Indicator(1)
  * where 1 = First reference, omit = Last reference
+ * 
+ * Now supports per-variable contrast & reference settings (SPSS style).
  */
 const generateContrastStatements = (
   catParams: BinaryLogisticCategoricalParams,
@@ -143,7 +145,7 @@ const generateContrastStatements = (
   }
 
   // Map contrast names to SPSS format
-  const contrastMap: Record<BinaryLogisticCategoricalParams["contrast"], string> = {
+  const contrastMap: Record<string, string> = {
     Indicator: "Indicator",
     Simple: "Simple",
     Difference: "Difference",
@@ -153,18 +155,21 @@ const generateContrastStatements = (
     Deviation: "Deviation",
   };
 
-  const contrastName = contrastMap[catParams.contrast] || "Indicator";
+  // Contrasts that do not support a reference parameter
+  const noRefContrasts = ["Difference", "Helmert", "Repeated", "Polynomial"];
 
-  // Check if reference is First (1) or Last (omit)
-  const refParam = catParams.referenceCategory === "First" ? "(1)" : "";
-
-  // Generate contrast statement for each categorical variable
+  // Generate contrast statement for each categorical variable using its own settings
   catParams.covariates.forEach((varName) => {
-    // Contrasts without reference: Difference, Helmert, Repeated, Polynomial
-    const noRefContrasts = ["Difference", "Helmert", "Repeated", "Polynomial"];
-    if (noRefContrasts.includes(catParams.contrast)) {
+    const setting = catParams.variableSettings[varName];
+    const contrast = setting?.contrast ?? "Indicator";
+    const reference = setting?.referenceCategory ?? "Last";
+
+    const contrastName = contrastMap[contrast] || "Indicator";
+
+    if (noRefContrasts.includes(contrast)) {
       statements.push(`/CONTRAST (${varName})=${contrastName}`);
     } else {
+      const refParam = reference === "First" ? "(1)" : "";
       statements.push(`/CONTRAST (${varName})=${contrastName}${refParam}`);
     }
   });

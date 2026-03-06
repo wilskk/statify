@@ -67,24 +67,36 @@ export const DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS: BinaryLogisticOptionsParams
     includeConstant: true,
   };
 
+export type ContrastMethodType =
+  | "Indicator"
+  | "Simple"
+  | "Difference"
+  | "Helmert"
+  | "Repeated"
+  | "Polynomial"
+  | "Deviation";
+
+export type ReferenceCategoryType = "Last" | "First";
+
+export interface CategoricalVarSetting {
+  name: string;
+  contrast: ContrastMethodType;
+  referenceCategory: ReferenceCategoryType;
+}
+
 export interface BinaryLogisticCategoricalParams {
   covariates: string[];
-  contrast:
-    | "Indicator"
-    | "Simple"
-    | "Difference"
-    | "Helmert"
-    | "Repeated"
-    | "Polynomial"
-    | "Deviation";
-  referenceCategory: "Last" | "First";
+  /** Per-variable contrast/reference settings (SPSS style) */
+  variableSettings: Record<string, CategoricalVarSetting>;
 }
+
+export const DEFAULT_CONTRAST: ContrastMethodType = "Indicator";
+export const DEFAULT_REFERENCE: ReferenceCategoryType = "Last";
 
 export const DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS: BinaryLogisticCategoricalParams =
   {
     covariates: [],
-    contrast: "Indicator",
-    referenceCategory: "Last",
+    variableSettings: {},
   };
 
 export interface BinaryLogisticAssumptionParams {
