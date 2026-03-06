@@ -1,11 +1,12 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    CategoricalCoding, ClassificationTable, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
+    CategoricalCoding, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
     IterationHistoryBlock, IterationHistoryRow, LogisticResult, ModelIfTermRemovedRow, ModelInfo, ModelSummary, OmniTests, RemainderTest,
     StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, fit_with_history, FittedModel, FittingWarnings, IterationRecord};
-use crate::stats::score_test::calculate_score_test;
+use crate::stats::score_test::{calculate_score_test, calculate_single_score_test, calculate_global_score_test_with_constant};
+use crate::stats::table;
 // --- TAMBAHAN IMPORT ---
 use crate::stats::hosmer_lemeshow;
 use crate::stats::casewise;
@@ -104,7 +105,7 @@ pub fn run(
     };
 
     // CAPTURE STEP 0
-    let step0_detail = calculate_step_snapshot(
+    let mut step0_detail = calculate_step_snapshot(
         0,
         "Start".to_string(),
         None,
@@ -119,6 +120,70 @@ pub fn run(
         config,
         block_0_iter_history, // BARU: Iteration history
     );
+
+    // --- FIX: Override Block 0 score tests with ANALYTICAL computation ---
+    // Menggunakan calculate_single_score_test() dan calculate_global_score_test_with_constant()
+    // yang sama dengan metode Enter, agar hasilnya konsisten dengan SPSS.
+    //
+    // KUNCI: Menggunakan prob_null ANALITIK (n1/N) bukan dari IRLS predictions.
+    // Untuk global score test, formula mengasumsikan U_0 = sum(y_i - p) = 0 (score
+    // intercept di MLE = 0). Ini hanya tepat jika p = n1/N PERSIS.
+    // Jika p dari IRLS sedikit berbeda (akibat convergence tolerance 0.001),
+    // maka U_0 ≠ 0 dan error-nya teramplifikasi melalui matrix inversion di joint test.
+    // Ref: Hosmer & Lemeshow (2000), Section 2.4 — Score test evaluated at MLE under H0.
+    {
+        let prob_null = if config.include_constant {
+            // ANALYTICAL: p_null = n1/N (exact MLE of intercept-only model)
+            let n_positive = y_vector.iter().filter(|&&y| y > 0.5).count() as f64;
+            let n_total = y_vector.len() as f64;
+            let p = n_positive / n_total;
+            p.clamp(1e-15, 1.0 - 1e-15)
+        } else {
+            0.5
+        };
+
+        let mut analytical_vars_not_in = Vec::new();
+        for i in 0..n_total_vars {
+            let col = x_matrix.column(i);
+            let col_vec: DVector<f64> = col.into();
+
+            let (score_stat, _, sig_val) = calculate_single_score_test(
+                &col_vec,
+                y_vector,
+                prob_null,
+                config.include_constant,
+            );
+
+            let label = if i < feature_names.len() {
+                feature_names[i].clone()
+            } else {
+                format!("Var_{}", i + 1)
+            };
+
+            analytical_vars_not_in.push(VariableNotInEquation {
+                label,
+                score: score_stat,
+                df: 1,
+                sig: sig_val,
+            });
+        }
+
+        // Global score test (Overall Statistics)
+        let (g_chi, g_df, g_sig) = calculate_global_score_test_with_constant(
+            x_matrix,
+            y_vector,
+            prob_null,
+            config.include_constant,
+        );
+
+        step0_detail.variables_not_in_equation = analytical_vars_not_in;
+        step0_detail.remainder_test = Some(RemainderTest {
+            chi_square: g_chi,
+            df: g_df,
+            sig: g_sig,
+        });
+    }
+
     steps_details.push(step0_detail);
 
     // Ambil data Block 0 Constant dari snapshot yang baru dibuat (dengan pengecekan)
@@ -207,7 +272,7 @@ pub fn run(
                     action: "Entered".to_string(),
                     variable: feature_names[idx_in].clone(),
                     score_statistic: best_score_stat,
-                    improvement_chi_sq: best_score_stat,
+                    improvement_chi_sq: 2.0 * (new_model.final_log_likelihood - current_model.final_log_likelihood).abs(),
                     model_log_likelihood: new_model.final_log_likelihood,
                     nagelkerke_r2: calculate_nagelkerke(
                         null_log_likelihood,
@@ -247,7 +312,7 @@ pub fn run(
                                 neg2_log_likelihood: rec.neg2_log_likelihood,
                                 coefficients: rec.coefficients.clone(),
                             }).collect(),
-                            initial_neg2ll: Some(-2.0 * current_model.final_log_likelihood),
+                            initial_neg2ll: Some(-2.0 * prev_log_likelihood),
                             converged: current_model.converged,
                             final_iteration: current_model.iterations,
                         }
@@ -275,25 +340,46 @@ pub fn run(
             }
         }
 
-        // B. BACKWARD REMOVAL
+        // B. BACKWARD REMOVAL (Conditional LR Test)
+        // Forward: Conditional uses the conditional parameter estimate (change in -2LL)
+        // as the removal criterion, NOT the Wald statistic.
+        // Reference: Hosmer & Lemeshow (2000), Applied Logistic Regression, Ch. 4
         if variable_added && included_indices.len() > 1 {
             let chi_dist_1df = ChiSquared::new(1.0).unwrap();
             let mut worst_idx_loc = None;
             let mut max_p_val = 0.0;
-            let beta_offset = if config.include_constant { 1 } else { 0 };
 
             for (k, &original_idx) in included_indices.iter().enumerate() {
-                let beta_idx = k + beta_offset;
-                let b = current_model.beta[beta_idx];
-                let se = current_model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
-                let wald = (b / se).powi(2);
-                let p_val_remove = 1.0 - chi_dist_1df.cdf(wald);
+                // Skip the just-entered variable
+                if Some(original_idx) == best_candidate_idx {
+                    continue;
+                }
 
-                if Some(original_idx) != best_candidate_idx {
-                    if p_val_remove > config.p_removal && p_val_remove > max_p_val {
-                        max_p_val = p_val_remove;
-                        worst_idx_loc = Some(k);
+                // Fit reduced model without this variable to compute conditional LR
+                let mut subset_indices = included_indices.clone();
+                subset_indices.remove(k);
+
+                let reduced_ll = if subset_indices.is_empty() {
+                    null_log_likelihood
+                } else {
+                    let x_reduced = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
+                    match fit(&x_reduced, y_vector, config.max_iterations, config.convergence_threshold) {
+                        Ok(reduced_model) => reduced_model.final_log_likelihood,
+                        Err(_) => continue,
                     }
+                };
+
+                // Conditional LR statistic = change in -2LL
+                let change_in_neg2ll = 2.0 * (current_model.final_log_likelihood - reduced_ll).abs();
+                let p_val_remove = if change_in_neg2ll > 1e-9 {
+                    1.0 - chi_dist_1df.cdf(change_in_neg2ll)
+                } else {
+                    1.0
+                };
+
+                if p_val_remove > config.p_removal && p_val_remove > max_p_val {
+                    max_p_val = p_val_remove;
+                    worst_idx_loc = Some(k);
                 }
             }
 
@@ -370,7 +456,7 @@ pub fn run(
                                     neg2_log_likelihood: rec.neg2_log_likelihood,
                                     coefficients: rec.coefficients.clone(),
                                 }).collect(),
-                                initial_neg2ll: Some(-2.0 * current_model.final_log_likelihood),
+                                initial_neg2ll: Some(-2.0 * prev_log_likelihood),
                                 converged: current_model.converged,
                                 final_iteration: current_model.iterations,
                             }
@@ -465,8 +551,19 @@ pub fn run(
         })
         .collect();
 
+    // Extract Block 0 data before steps_details is moved into the result
+    let block_0_vars_not_in = steps_details.first().map(|s| s.variables_not_in_equation.clone());
+
     Ok(LogisticResult {
-        model_info: ModelInfo::default(),
+        model_info: ModelInfo {
+            variables: feature_names.to_vec(),
+            n_total: n_samples,
+            n_missing: 0,
+            n_selected: n_samples,
+            y_encoding: std::collections::HashMap::new(),
+            x_encodings: None,
+            include_constant: config.include_constant,
+        },
         summary: final_step.summary,
         classification_table: final_step.classification_table,
         variables: final_step.variables_in_equation,
@@ -475,7 +572,7 @@ pub fn run(
         step_history: Some(steps_history),
         steps_detail: Some(steps_details),
         block_0_constant: block_0_row,
-        block_0_variables_not_in: None,
+        block_0_variables_not_in: block_0_vars_not_in,
         method_used: "Forward Conditional".to_string(),
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
@@ -641,6 +738,10 @@ fn calculate_overall_remainder_stats(
 }
 
 // --- HELPER UNTUK MODEL IF TERM REMOVED ---
+// Ref: Hosmer & Lemeshow (2000), Table 4.4
+// SPSS shows:
+//   - Model Log Likelihood: LL of the model WITHOUT the variable (raw LL, negative)
+//   - Change in -2 Log Likelihood: (-2LL_reduced) - (-2LL_full) = 2*(LL_full - LL_reduced)
 fn calculate_model_if_term_removed(
     current_model_ll: f64,
     x_matrix: &DMatrix<f64>,
@@ -655,6 +756,20 @@ fn calculate_model_if_term_removed(
         return None;
     }
 
+    // Compute ANALYTICAL null LL for intercept-only model (used when subset is empty)
+    // This gives EXACT precision: LL_null = n1*ln(n1/N) + n0*ln(n0/N)
+    // instead of using IRLS-fitted value which may have convergence imprecision.
+    let analytical_null_ll = if config.include_constant {
+        let n_positive = y_vector.iter().filter(|&&y| y > 0.5).count() as f64;
+        let n_total = y_vector.len() as f64;
+        let n_negative = n_total - n_positive;
+        let p = (n_positive / n_total).clamp(1e-15, 1.0 - 1e-15);
+        n_positive * p.ln() + n_negative * (1.0 - p).ln()
+    } else {
+        // Without constant: null model has p=0.5 → LL = n*ln(0.5)
+        null_log_likelihood
+    };
+
     let mut rows = Vec::new();
     let chi_dist = ChiSquared::new(1.0).unwrap();
 
@@ -664,7 +779,9 @@ fn calculate_model_if_term_removed(
 
         let reduced_ll;
         if subset_indices.is_empty() {
-            reduced_ll = null_log_likelihood;
+            // Removing the last variable → intercept-only model
+            // Use ANALYTICAL null LL for exact precision
+            reduced_ll = analytical_null_ll;
         } else {
             let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
             if let Ok(reduced_model) = fit(
@@ -679,7 +796,12 @@ fn calculate_model_if_term_removed(
             }
         }
 
-        let change_val = 2.0 * (current_model_ll - reduced_ll).abs();
+        // Change in -2LL = (-2LL_reduced) - (-2LL_full)
+        //                = 2*(LL_full - LL_reduced)
+        // This should always be >= 0 for nested models.
+        // Using signed computation (no .abs()) to preserve mathematical correctness.
+        let change_val = 2.0 * (current_model_ll - reduced_ll);
+        // Clamp to 0 for rare numerical edge cases where reduced_ll > current_model_ll
         let change_val_clean = if change_val < 1e-9 { 0.0 } else { change_val };
 
         let sig = if change_val_clean > 0.0 {
@@ -780,37 +902,7 @@ fn calculate_step_snapshot(
         n,
     );
 
-    let mut tn = 0;
-    let mut fp = 0;
-    let mut fn_ = 0;
-    let mut tp = 0;
-    for (i, &pred) in model.predictions.iter().enumerate() {
-        let actual = y_vector[i] > 0.5;
-        let predicted = pred > 0.5;
-        match (actual, predicted) {
-            (false, false) => tn += 1,
-            (false, true) => fp += 1,
-            (true, false) => fn_ += 1,
-            (true, true) => tp += 1,
-        }
-    }
-    let class_table = ClassificationTable {
-        observed_0_predicted_0: tn,
-        observed_0_predicted_1: fp,
-        percentage_correct_0: if (tn + fp) > 0 {
-            tn as f64 / (tn + fp) as f64 * 100.0
-        } else {
-            0.0
-        },
-        observed_1_predicted_0: fn_,
-        observed_1_predicted_1: tp,
-        percentage_correct_1: if (tp + fn_) > 0 {
-            tp as f64 / (tp + fn_) as f64 * 100.0
-        } else {
-            0.0
-        },
-        overall_percentage: (tn + tp) as f64 / n as f64 * 100.0,
-    };
+    let class_table = table::calculate_classification_table(&model.predictions, y_vector, config.cutoff);
 
     // 5. Variables In Equation
     let mut variables_in = Vec::new();

@@ -39,9 +39,9 @@ export const AssumptionChecksTab: React.FC<AssumptionChecksTabProps> = ({
       setVifError(null);
       setVifSuccess(false);
 
-      if (!dependent || covariates.length < 2) {
+      if (covariates.length < 2) {
         throw new Error(
-          "Please select a dependent variable and at least two independent variables (covariates) for VIF testing."
+          "Please select at least two independent variables (covariates) for VIF testing."
         );
       }
 
@@ -154,7 +154,7 @@ export const AssumptionChecksTab: React.FC<AssumptionChecksTabProps> = ({
                 </div>
                 <Button
                   onClick={handleTestVIFClick}
-                  disabled={isTestingVIF || !dependent || covariates.length < 2}
+                  disabled={isTestingVIF || covariates.length < 2}
                   size="sm"
                   className="min-w-[140px]"
                 >
