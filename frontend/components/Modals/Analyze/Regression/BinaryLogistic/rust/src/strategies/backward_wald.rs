@@ -1,6 +1,6 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    CategoricalCoding, ClassificationTable, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
+    CategoricalCoding, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
     IterationHistoryBlock, IterationHistoryRow, LogisticResult, ModelInfo, ModelSummary, OmniTests, RemainderTest,
     StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
@@ -12,6 +12,7 @@ use crate::stats::casewise;
 use crate::stats::correlation_of_estimates;
 use crate::stats::classification_plot;
 use crate::stats::saved_predictions;
+use crate::stats::table;
 
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
@@ -664,38 +665,7 @@ fn calculate_step_snapshot(
     let model_if_term_removed = None;
 
     // 5. Classification Table
-    let mut tn = 0;
-    let mut fp = 0;
-    let mut fn_ = 0;
-    let mut tp = 0;
-    let cutoff = config.cutoff;
-    for (i, &pred) in model.predictions.iter().enumerate() {
-        let actual = y_vector[i] > 0.5;
-        let predicted = pred > cutoff;
-        match (actual, predicted) {
-            (false, false) => tn += 1,
-            (false, true) => fp += 1,
-            (true, false) => fn_ += 1,
-            (true, true) => tp += 1,
-        }
-    }
-    let class_table = ClassificationTable {
-        observed_0_predicted_0: tn,
-        observed_0_predicted_1: fp,
-        percentage_correct_0: if (tn + fp) > 0 {
-            tn as f64 / (tn + fp) as f64 * 100.0
-        } else {
-            0.0
-        },
-        observed_1_predicted_0: fn_,
-        observed_1_predicted_1: tp,
-        percentage_correct_1: if (tp + fn_) > 0 {
-            tp as f64 / (tp + fn_) as f64 * 100.0
-        } else {
-            0.0
-        },
-        overall_percentage: (tn + tp) as f64 / n_samples as f64 * 100.0,
-    };
+    let class_table = table::calculate_classification_table(&model.predictions, y_vector, config.cutoff);
 
     // 6. Variables In Equation
     let mut variables_in = Vec::new();

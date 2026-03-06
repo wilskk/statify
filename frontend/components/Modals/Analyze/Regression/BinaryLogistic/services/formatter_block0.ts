@@ -190,7 +190,7 @@ export const formatBlock0 = (
         description: `Initial classification (Null Model). ${classDesc}`,
         note: hasConstantInBlock0
           ? `a. Constant is included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`
-          : `a. Constant is not included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`,
+          : `a. No terms in the model.\nb. Initial Log-likelihood Function: -2 Log Likelihood = ${(block0Step?.summary?.log_likelihood != null ? (-2 * block0Step.summary.log_likelihood).toFixed(3) : 'N/A')}\nc. The cut value is ${cutoff.toFixed(3)}`,
       }
     )
   );
