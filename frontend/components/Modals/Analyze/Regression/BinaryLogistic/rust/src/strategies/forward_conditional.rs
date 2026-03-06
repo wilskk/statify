@@ -214,9 +214,11 @@ pub fn run(
 
         let mut best_candidate_idx = None;
         let mut best_score_stat = 0.0;
-        let mut min_p_value = 1.0;
 
         // A. FORWARD ENTRY
+        // SPSS selects the variable with the LARGEST Score statistic among
+        // those meeting the p_entry threshold.  Using p-value as the sole
+        // selection criterion fails when multiple candidates have p ≈ 0.
         let current_x_for_score = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
 
         for i in 0..n_total_vars {
@@ -230,8 +232,7 @@ pub fn run(
                     &current_model.covariance_matrix,
                 );
 
-                if p_val < config.p_entry && p_val < min_p_value {
-                    min_p_value = p_val;
+                if p_val < config.p_entry && stat > best_score_stat {
                     best_score_stat = stat;
                     best_candidate_idx = Some(i);
                 }
