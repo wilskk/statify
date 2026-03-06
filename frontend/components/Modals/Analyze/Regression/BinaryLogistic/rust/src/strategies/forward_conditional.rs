@@ -385,6 +385,9 @@ pub fn run(
             }
 
             if let Some(loc) = worst_idx_loc {
+                // SPSS assigns each action (entry/removal) its own step number
+                step_count += 1;
+
                 let removed_var_idx = included_indices[loc];
 
                 prev_log_likelihood = current_model.final_log_likelihood;

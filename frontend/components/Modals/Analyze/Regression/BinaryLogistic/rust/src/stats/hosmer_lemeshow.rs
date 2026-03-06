@@ -203,12 +203,20 @@ pub fn calculate(
     // 4. Degrees of freedom and p-value
     // ====================================================================
     let actual_groups = groups_result.len();
-    let df = if actual_groups > 2 {
-        actual_groups - 2
-    } else {
-        1
-    };
 
+    // SPSS behavior: when actual groups ≤ 2, df = g' - 2 = 0 (or negative),
+    // the test is undefined. SPSS reports chi-square = .000, df = 0, sig = "."
+    // We use NaN for sig so the formatter displays "." (matching SPSS).
+    if actual_groups <= 2 {
+        return Ok(HosmerLemeshowResult {
+            chi_square: 0.0,
+            df: 0,
+            sig: f64::NAN,
+            contingency_table: groups_result,
+        });
+    }
+
+    let df = actual_groups - 2;
     let sig = crate::utils::probability::chi_square_significance(chi_square_stat, df as i32);
 
     Ok(HosmerLemeshowResult {
