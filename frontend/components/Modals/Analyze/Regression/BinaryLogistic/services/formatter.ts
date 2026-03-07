@@ -183,7 +183,7 @@ export const formatBinaryLogisticResult = (
       }
     }
 
-    // 5b. Step Summary (SPSS Style - setelah semua tabel Block 1)
+    // 5b. Step Summary (SPSS Style)
     // Display only if "Display at last step" is selected, effectively summarizing the steps hidden from view.
     if (displayAtLastStep && hasStepSummary(result)) {
       const stepSummaryOutput = formatStepSummary(result, dependentVariable.name);
@@ -191,23 +191,23 @@ export const formatBinaryLogisticResult = (
         allSections.push(...stepSummaryOutput.sections);
       }
     }
+
+    // 5c. Classification Plot (last item in Block 1, after Step Summary)
+    if (hasClassificationPlot(result)) {
+      const classificationPlotOutput = formatClassificationPlot(result, dependentVariable.name, { displayAtLastStep });
+      if (classificationPlotOutput.sections && classificationPlotOutput.sections.length > 0) {
+        allSections.push(...classificationPlotOutput.sections);
+      }
+    }
   }
 
-  // 4. Casewise Listing of Residuals (setelah Block 1)
+  // 6. Casewise Listing of Residuals (terpisah dari Block 1)
   const casewiseOutput = formatCasewiseListing(result, dependentVariable.name, casewiseOutliers);
   if (casewiseOutput.sections && casewiseOutput.sections.length > 0) {
     allSections.push(...casewiseOutput.sections);
   }
 
-  // 5. Classification Plot (setelah Casewise Listing)
-  if (hasClassificationPlot(result)) {
-    const classificationPlotOutput = formatClassificationPlot(result, dependentVariable.name, { displayAtLastStep });
-    if (classificationPlotOutput.sections && classificationPlotOutput.sections.length > 0) {
-      allSections.push(...classificationPlotOutput.sections);
-    }
-  }
-
-  // 6. Assumption Tests (VIF/Box-Tidwell) - Biasanya tabel terpisah di paling bawah
+  // 7. Assumption Tests (VIF/Box-Tidwell) - Biasanya tabel terpisah di paling bawah
   const assumptionOutput = formatAssumptionTests(result);
   if (assumptionOutput.sections) {
     allSections.push(...assumptionOutput.sections);

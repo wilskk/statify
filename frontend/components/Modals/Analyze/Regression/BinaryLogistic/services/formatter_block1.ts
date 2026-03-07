@@ -338,13 +338,14 @@ export const formatBlock1 = (
     const lastStep = block1Steps[block1Steps.length - 1];
 
     // Accumulators
+    let hasNegativeStepChi = false;
     const omnibusRows: any[] = [];
     const summaryRows: any[] = [];
     const classificationRows: any[] = [];
     const varsInRows: any[] = [];
     const varsOutRows: any[] = [];
     const modelIfTermRemovedRows: any[] = [];
-    let hasNegativeStepChi = false;
+
 
     block1Steps.forEach((stepDetail: StepDetail) => {
       // Adjustment: Jika Backward, Step 0 ditampilkan sebagai "Step 0" atau "Step 1" tergantung selera.
@@ -373,24 +374,24 @@ export const formatBlock1 = (
       const blockSig = omniModel ? fmtSig(omniModel.sig) : "";
 
       // 1. Omnibus Rows
-      // SPSS convention: negative step chi-square means model worsened (variable removed)
-      const stepLabel = stepChi < 0 ? `Step ${currentStepNum}ᵃ` : `Step ${currentStepNum}`;
       if (stepChi < 0) hasNegativeStepChi = true;
+      // Prevent "-0.000" display: if rounded value is 0, use absolute value
+      const stepChiDisplay = safeFixed(stepChi) === "-0.000" ? "0.000" : safeFixed(stepChi);
       omnibusRows.push(
         {
-          rowHeader: [stepLabel, "Step"],
-          chi: safeFixed(stepChi),
+          rowHeader: [currentStepLabel, "Step"],
+          chi: stepChiDisplay,
           df: dfStep.toString(),
           sig: stepSig,
         },
         {
-          rowHeader: [stepLabel, "Block"],
+          rowHeader: [currentStepLabel, "Block"],
           chi: safeFixed(blockChi),
           df: blockDf.toString(),
           sig: blockSig,
         },
         {
-          rowHeader: [stepLabel, "Model"],
+          rowHeader: [currentStepLabel, "Model"],
           chi: safeFixed(blockChi),
           df: blockDf.toString(),
           sig: blockSig,
@@ -499,7 +500,7 @@ export const formatBlock1 = (
           : "Omnibus tests of model coefficients.";
 
         const omniNote = hasNegativeStepChi
-          ? "a. A negative Chi-squares value indicates that the Chi-squares value has decreased from the previous step."
+          ? "A negative Chi-squares value indicates that the Chi-squares value has decreased from the previous step."
           : undefined;
 
         sections.push(

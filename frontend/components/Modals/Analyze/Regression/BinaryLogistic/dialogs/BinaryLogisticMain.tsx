@@ -777,8 +777,16 @@ export const BinaryLogisticMain = () => {
                   componentCategory = "Categorical Variables Codings";
                 } else if (section.id.includes("block0")) {
                   componentCategory = "Block 0: Beginning Block";
-                } else if (section.id.includes("block1") || section.id.includes("hosmer")) {
+                } else if (
+                  section.id.includes("block1") ||
+                  section.id.includes("hosmer") ||
+                  section.id.startsWith("classification_plot")
+                ) {
                   componentCategory = `Block 1: Method = ${options.method}`;
+                } else if (section.id.includes("casewise")) {
+                  componentCategory = "Casewise Diagnostics";
+                } else if (section.id.startsWith("assumption_")) {
+                  componentCategory = "Assumption Tests";
                 } else {
                   componentCategory = cleanTitle;
                 }
@@ -990,7 +998,7 @@ export const BinaryLogisticMain = () => {
         // --- Option Params ---
         max_iterations: optParams.maxIterations,
         include_constant: optParams.includeConstant,
-        convergence_threshold: 1e-9, // Fixed value for now
+        convergence_threshold: 0.001,
         confidence_level: optParams.ciLevel,
         cutoff: optParams.classificationCutoff,
 

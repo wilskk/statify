@@ -31,11 +31,12 @@ pub fn run(
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
     // ========================================================================
-    // BLOCK 0: NULL MODEL (ANALYTICAL APPROACH)
+    // BLOCK 0: NULL MODEL
     // ========================================================================
     let sum_y: f64 = y_vector.sum();
     let n_1 = sum_y;
     let n_0 = n_samples as f64 - n_1;
+    let n_f64 = n_samples as f64;
 
     if n_1 == 0.0 || n_0 == 0.0 {
         return Err(JsValue::from_str(
@@ -43,49 +44,54 @@ pub fn run(
         ));
     }
 
-    // B0 = ln(n_1 / n_0)
-    let b0_val = (n_1 / n_0).ln();
-    // SE = sqrt( 1/n1 + 1/n0 )
-    let b0_se = (1.0 / n_1 + 1.0 / n_0).sqrt();
-    let b0_wald = (b0_val / b0_se).powi(2);
-    let b0_sig = 1.0 - chi_dist_1df.cdf(b0_wald);
-
-    // LL0
-    let p_null = n_1 / (n_samples as f64);
-    let null_log_likelihood = n_1 * p_null.ln() + n_0 * (1.0 - p_null).ln();
-
-    // Block 0 Row
-    let block_0_row = VariableRow {
-        label: "Constant".to_string(),
-        b: b0_val,
-        error: b0_se,
-        wald: b0_wald,
-        df: 1,
-        sig: b0_sig,
-        exp_b: b0_val.exp(),
-        lower_ci: (b0_val - z_score * b0_se).exp(),
-        upper_ci: (b0_val + z_score * b0_se).exp(),
+    // Null model depends on include_constant:
+    // - With constant: p_null = n1/n (MLE), LL = n1*ln(p) + n0*ln(1-p)
+    // - Without constant: p_null = 0.5, LL = n*ln(0.5)
+    let (p_null, null_log_likelihood, block_0_row) = if config.include_constant {
+        let p = n_1 / n_f64;
+        let ll = n_1 * p.ln() + n_0 * (1.0 - p).ln();
+        let b0_val = (n_1 / n_0).ln();
+        let b0_se = (1.0 / n_1 + 1.0 / n_0).sqrt();
+        let b0_wald = (b0_val / b0_se).powi(2);
+        let b0_sig = 1.0 - chi_dist_1df.cdf(b0_wald);
+        let row = VariableRow {
+            label: "Constant".to_string(),
+            b: b0_val,
+            error: b0_se,
+            wald: b0_wald,
+            df: 1,
+            sig: b0_sig,
+            exp_b: b0_val.exp(),
+            lower_ci: (b0_val - z_score * b0_se).exp(),
+            upper_ci: (b0_val + z_score * b0_se).exp(),
+        };
+        (p, ll, row)
+    } else {
+        let ll = n_f64 * 0.5_f64.ln();
+        let row = VariableRow {
+            label: "(No Constant)".to_string(),
+            b: 0.0,
+            error: 0.0,
+            wald: 0.0,
+            df: 0,
+            sig: 1.0,
+            exp_b: 1.0,
+            lower_ci: 1.0,
+            upper_ci: 1.0,
+        };
+        (0.5, ll, row)
     };
 
     // Variables Not in Equation Block 0 (Score Tests)
-    let null_residuals = y_vector.map(|y| y - p_null);
-    let null_weight_scalar = p_null * (1.0 - p_null);
-    let null_weights = DVector::from_element(n_samples, null_weight_scalar);
-    let null_design_matrix = DMatrix::from_element(n_samples, 1, 1.0);
-    let null_cov_scalar = b0_se.powi(2);
-    let null_cov_matrix = DMatrix::from_element(1, 1, null_cov_scalar);
-
     let mut block_0_vars_not_in = Vec::new();
-    let mut overall_score_stat = 0.0;
 
     for i in 0..n_total_vars {
-        let candidate_col = x_matrix.column(i).into_owned();
-        let (stat, p_val) = calculate_score_test(
-            &null_residuals,
-            &null_weights,
-            &null_design_matrix,
-            &candidate_col,
-            &null_cov_matrix,
+        let col = x_matrix.column(i).into_owned();
+        let (stat, _, p_val) = crate::stats::score_test::calculate_single_score_test(
+            &col,
+            y_vector,
+            p_null,
+            config.include_constant,
         );
         let label = if i < feature_names.len() {
             feature_names[i].clone()
@@ -101,48 +107,60 @@ pub fn run(
     }
 
     // Overall Stats Block 0
-    let dummy_null_model_struct = FittedModel {
-        beta: DVector::from_element(1, b0_val),
-        covariance_matrix: null_cov_matrix.clone(),
-        final_log_likelihood: null_log_likelihood,
-        iterations: 0,
-        converged: true,
-        residuals: null_residuals.clone(),
-        weights: null_weights.clone(),
-        predictions: DVector::from_element(n_samples, p_null),
-        warnings: FittingWarnings::default(),
-    };
-    let empty_indices: Vec<usize> = Vec::new();
-    if let Some(test) = calculate_overall_remainder_stats(
+    let (g_chi, g_df, g_sig) = crate::stats::score_test::calculate_global_score_test_with_constant(
         x_matrix,
         y_vector,
-        &empty_indices,
-        &dummy_null_model_struct,
+        p_null,
         config.include_constant,
-    ) {
-        overall_score_stat = test.chi_square;
-    }
+    );
     block_0_vars_not_in.push(VariableNotInEquation {
         label: "Overall Statistics".to_string(),
-        score: overall_score_stat,
-        df: n_total_vars as i32,
-        sig: if overall_score_stat > 1e-9 {
-            1.0 - ChiSquared::new(n_total_vars as f64)
-                .unwrap()
-                .cdf(overall_score_stat)
-        } else {
-            1.0
-        },
+        score: g_chi,
+        df: g_df,
+        sig: g_sig,
     });
+
+    // Build dummy null model struct for step0 snapshot
+    let null_residuals = y_vector.map(|y| y - p_null);
+    let null_weight_scalar = p_null * (1.0 - p_null);
+    let null_weights = DVector::from_element(n_samples, null_weight_scalar);
+    let dummy_null_model_struct = if config.include_constant {
+        let b0_val = (n_1 / n_0).ln();
+        let b0_se = (1.0 / n_1 + 1.0 / n_0).sqrt();
+        let null_cov_matrix = DMatrix::from_element(1, 1, b0_se.powi(2));
+        FittedModel {
+            beta: DVector::from_element(1, b0_val),
+            covariance_matrix: null_cov_matrix,
+            final_log_likelihood: null_log_likelihood,
+            iterations: 0,
+            converged: true,
+            residuals: null_residuals.clone(),
+            weights: null_weights.clone(),
+            predictions: DVector::from_element(n_samples, p_null),
+            warnings: FittingWarnings::default(),
+        }
+    } else {
+        FittedModel {
+            beta: DVector::zeros(0),
+            covariance_matrix: DMatrix::zeros(0, 0),
+            final_log_likelihood: null_log_likelihood,
+            iterations: 0,
+            converged: true,
+            residuals: null_residuals.clone(),
+            weights: null_weights.clone(),
+            predictions: DVector::from_element(n_samples, 0.5),
+            warnings: FittingWarnings::default(),
+        }
+    };
 
     // ========================================================================
     // BLOCK 0: STEP 0 (NULL MODEL) - untuk Iteration History
     // ========================================================================
-    let null_x = DMatrix::from_element(n_samples, 1, 1.0);
     let null_model_for_step0: FittedModel;
     let block_0_iter_history: Option<IterationHistoryBlock>;
 
     if config.iteration_history && config.include_constant {
+        let null_x = DMatrix::from_element(n_samples, 1, 1.0);
         let result = fit_with_history(
             &null_x,
             y_vector,
@@ -164,12 +182,8 @@ pub fn run(
             final_iteration: result.model.iterations,
         });
         null_model_for_step0 = result.model;
-    } else if config.iteration_history {
-        // iteration_history enabled but no constant - skip block 0
-        null_model_for_step0 = dummy_null_model_struct.clone();
-        block_0_iter_history = None;
     } else {
-        // Use analytical model for step0
+        // Use analytical/dummy model for step0
         null_model_for_step0 = dummy_null_model_struct.clone();
         block_0_iter_history = None;
     }

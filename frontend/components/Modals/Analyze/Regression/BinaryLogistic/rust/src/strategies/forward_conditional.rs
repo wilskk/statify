@@ -341,14 +341,15 @@ pub fn run(
             }
         }
 
-        // B. BACKWARD REMOVAL (Conditional LR Test)
-        // Forward: Conditional uses the conditional parameter estimate (change in -2LL)
-        // as the removal criterion, NOT the Wald statistic.
-        // Reference: Hosmer & Lemeshow (2000), Applied Logistic Regression, Ch. 4
+        // B. BACKWARD REMOVAL (Conditional Parameter Estimate)
+        // SPSS "Conditional" adjusts remaining parameters using the covariance matrix
+        // when setting β_j = 0, giving a better approximation than simply zeroing.
         if variable_added && included_indices.len() > 1 {
             let chi_dist_1df = ChiSquared::new(1.0).unwrap();
             let mut worst_idx_loc = None;
             let mut max_p_val = 0.0;
+
+            let full_x_design = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
 
             for (k, &original_idx) in included_indices.iter().enumerate() {
                 // Skip the just-entered variable
@@ -356,22 +357,15 @@ pub fn run(
                     continue;
                 }
 
-                // Fit reduced model without this variable to compute conditional LR
-                let mut subset_indices = included_indices.clone();
-                subset_indices.remove(k);
+                // Conditional: use covariance-adjusted parameter estimates
+                let beta_idx = if config.include_constant { k + 1 } else { k };
+                let conditional_ll = compute_conditional_ll(
+                    &full_x_design, y_vector, &current_model.beta,
+                    &current_model.covariance_matrix, beta_idx,
+                );
 
-                let reduced_ll = if subset_indices.is_empty() {
-                    null_log_likelihood
-                } else {
-                    let x_reduced = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
-                    match fit(&x_reduced, y_vector, config.max_iterations, config.convergence_threshold) {
-                        Ok(reduced_model) => reduced_model.final_log_likelihood,
-                        Err(_) => continue,
-                    }
-                };
-
-                // Conditional LR statistic = change in -2LL
-                let change_in_neg2ll = 2.0 * (current_model.final_log_likelihood - reduced_ll).abs();
+                let change_raw = 2.0 * (current_model.final_log_likelihood - conditional_ll);
+                let change_in_neg2ll = if change_raw < 1e-9 { 0.0 } else { change_raw };
                 let p_val_remove = if change_in_neg2ll > 1e-9 {
                     1.0 - chi_dist_1df.cdf(change_in_neg2ll)
                 } else {
@@ -648,6 +642,57 @@ fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize
     }
 }
 
+/// Compute log-likelihood using conditional parameter estimates.
+///
+/// SPSS "Conditional" method: when testing removal of variable j,
+/// all other parameters are adjusted using the covariance matrix:
+///   β_k_cond = β̂_k - (Cov_{k,j} / Cov_{j,j}) × β̂_j   for k ≠ j
+///   β_j_cond = 0
+///
+/// This is a one-step approximation based on the multivariate normal
+/// distribution of the MLEs. It is more accurate than simply zeroing
+/// the coefficient but cheaper than full refitting (LR test).
+///
+/// Reference: Hosmer & Lemeshow (2000), SPSS Algorithms documentation.
+fn compute_conditional_ll(
+    design_matrix: &DMatrix<f64>,
+    y_vector: &DVector<f64>,
+    beta: &DVector<f64>,
+    covariance_matrix: &DMatrix<f64>,
+    beta_idx_to_zero: usize,
+) -> f64 {
+    let mut beta_cond = beta.clone();
+    let cov_jj = covariance_matrix[(beta_idx_to_zero, beta_idx_to_zero)];
+    let beta_j = beta[beta_idx_to_zero];
+
+    // Adjust remaining parameters using the covariance partition
+    if cov_jj.abs() > 1e-15 {
+        for k in 0..beta.len() {
+            if k != beta_idx_to_zero {
+                let cov_kj = covariance_matrix[(k, beta_idx_to_zero)];
+                beta_cond[k] = beta[k] - (cov_kj / cov_jj) * beta_j;
+            }
+        }
+    }
+    beta_cond[beta_idx_to_zero] = 0.0;
+
+    let linear_pred = design_matrix * &beta_cond;
+    let mut ll = 0.0;
+    for i in 0..y_vector.len() {
+        let eta = linear_pred[i];
+        let p = if eta > 0.0 {
+            1.0 / (1.0 + (-eta).exp())
+        } else {
+            let e = eta.exp();
+            e / (1.0 + e)
+        };
+        let p_clamped = p.clamp(1e-15, 1.0 - 1e-15);
+        let y = y_vector[i];
+        ll += y * p_clamped.ln() + (1.0 - y) * (1.0 - p_clamped).ln();
+    }
+    ll
+}
+
 fn calculate_nagelkerke(null_ll: f64, model_ll: f64, n: usize) -> f64 {
     let diff = null_ll - model_ll;
     let cox_snell = 1.0 - (diff * (2.0 / n as f64)).exp();
@@ -741,17 +786,14 @@ fn calculate_overall_remainder_stats(
     })
 }
 
-// --- HELPER UNTUK MODEL IF TERM REMOVED ---
-// Ref: Hosmer & Lemeshow (2000), Table 4.4
-// SPSS shows:
-//   - Model Log Likelihood: LL of the model WITHOUT the variable (raw LL, negative)
-//   - Change in -2 Log Likelihood: (-2LL_reduced) - (-2LL_full) = 2*(LL_full - LL_reduced)
+// --- HELPER UNTUK MODEL IF TERM REMOVED (Conditional Parameter Estimates) ---
+// SPSS "Conditional" method: adjusts remaining betas using covariance matrix
+// when setting β_j = 0. Footnote: "Based on conditional parameter estimates"
 fn calculate_model_if_term_removed(
-    current_model_ll: f64,
+    model: &FittedModel,
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
     included_indices: &[usize],
-    null_log_likelihood: f64,
     config: &LogisticConfig,
     feature_names: &[String],
     n_samples: usize,
@@ -760,56 +802,25 @@ fn calculate_model_if_term_removed(
         return None;
     }
 
-    // Compute ANALYTICAL null LL for intercept-only model (used when subset is empty)
-    // This gives EXACT precision: LL_null = n1*ln(n1/N) + n0*ln(n0/N)
-    // instead of using IRLS-fitted value which may have convergence imprecision.
-    let analytical_null_ll = if config.include_constant {
-        let n_positive = y_vector.iter().filter(|&&y| y > 0.5).count() as f64;
-        let n_total = y_vector.len() as f64;
-        let n_negative = n_total - n_positive;
-        let p = (n_positive / n_total).clamp(1e-15, 1.0 - 1e-15);
-        n_positive * p.ln() + n_negative * (1.0 - p).ln()
-    } else {
-        // Without constant: null model has p=0.5 → LL = n*ln(0.5)
-        null_log_likelihood
-    };
+    // Build the full design matrix for conditional LL computation
+    let full_design = build_design_matrix(x_matrix, included_indices, n_samples, config.include_constant);
 
     let mut rows = Vec::new();
     let chi_dist = ChiSquared::new(1.0).unwrap();
 
     for (i, &idx_to_remove) in included_indices.iter().enumerate() {
-        let mut subset_indices = included_indices.to_vec();
-        subset_indices.remove(i);
+        // Conditional: use covariance-adjusted parameter estimates
+        let beta_idx = if config.include_constant { i + 1 } else { i };
+        let conditional_ll = compute_conditional_ll(
+            &full_design, y_vector, &model.beta,
+            &model.covariance_matrix, beta_idx,
+        );
 
-        let reduced_ll;
-        if subset_indices.is_empty() {
-            // Removing the last variable → intercept-only model
-            // Use ANALYTICAL null LL for exact precision
-            reduced_ll = analytical_null_ll;
-        } else {
-            let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
-            if let Ok(reduced_model) = fit(
-                &x_subset,
-                y_vector,
-                config.max_iterations,
-                config.convergence_threshold,
-            ) {
-                reduced_ll = reduced_model.final_log_likelihood;
-            } else {
-                continue;
-            }
-        }
+        let change_raw = 2.0 * (model.final_log_likelihood - conditional_ll);
+        let change_val = if change_raw < 1e-9 { 0.0 } else { change_raw };
 
-        // Change in -2LL = (-2LL_reduced) - (-2LL_full)
-        //                = 2*(LL_full - LL_reduced)
-        // This should always be >= 0 for nested models.
-        // Using signed computation (no .abs()) to preserve mathematical correctness.
-        let change_val = 2.0 * (current_model_ll - reduced_ll);
-        // Clamp to 0 for rare numerical edge cases where reduced_ll > current_model_ll
-        let change_val_clean = if change_val < 1e-9 { 0.0 } else { change_val };
-
-        let sig = if change_val_clean > 0.0 {
-            1.0 - chi_dist.cdf(change_val_clean)
+        let sig = if change_val > 0.0 {
+            1.0 - chi_dist.cdf(change_val)
         } else {
             1.0
         };
@@ -822,13 +833,12 @@ fn calculate_model_if_term_removed(
 
         rows.push(ModelIfTermRemovedRow {
             label,
-            model_log_likelihood: reduced_ll,
-            change_in_neg2ll: change_val_clean,
+            model_log_likelihood: conditional_ll,
+            change_in_neg2ll: change_val,
             df: 1,
             sig_change: sig,
         });
     }
-
     if rows.is_empty() {
         None
     } else {
@@ -897,11 +907,10 @@ fn calculate_step_snapshot(
     };
 
     let model_if_term_removed = calculate_model_if_term_removed(
-        model.final_log_likelihood,
+        model,
         full_x,
         y_vector,
         included_indices,
-        null_ll,
         config,
         feature_names,
         n,
