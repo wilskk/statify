@@ -338,12 +338,14 @@ export const formatBlock1 = (
     const lastStep = block1Steps[block1Steps.length - 1];
 
     // Accumulators
+    let hasNegativeStepChi = false;
     const omnibusRows: any[] = [];
     const summaryRows: any[] = [];
     const classificationRows: any[] = [];
     const varsInRows: any[] = [];
     const varsOutRows: any[] = [];
     const modelIfTermRemovedRows: any[] = [];
+
 
     block1Steps.forEach((stepDetail: StepDetail) => {
       // Adjustment: Jika Backward, Step 0 ditampilkan sebagai "Step 0" atau "Step 1" tergantung selera.
@@ -372,10 +374,13 @@ export const formatBlock1 = (
       const blockSig = omniModel ? fmtSig(omniModel.sig) : "";
 
       // 1. Omnibus Rows
+      if (stepChi < 0) hasNegativeStepChi = true;
+      // Prevent "-0.000" display: if rounded value is 0, use absolute value
+      const stepChiDisplay = safeFixed(stepChi) === "-0.000" ? "0.000" : safeFixed(stepChi);
       omnibusRows.push(
         {
           rowHeader: [currentStepLabel, "Step"],
-          chi: safeFixed(stepChi),
+          chi: stepChiDisplay,
           df: dfStep.toString(),
           sig: stepSig,
         },
@@ -494,6 +499,10 @@ export const formatBlock1 = (
           ? generateOmnibusDescription(omni.chi_square, omni.df, omni.sig)
           : "Omnibus tests of model coefficients.";
 
+        const omniNote = hasNegativeStepChi
+          ? "A negative Chi-squares value indicates that the Chi-squares value has decreased from the previous step."
+          : undefined;
+
         sections.push(
           createSection(
             "block1_omnibus",
@@ -514,6 +523,7 @@ export const formatBlock1 = (
               rows: omnibusRows,
             },
             {
+              note: omniNote,
               description: `History of model fit significance. Final step: ${omniDesc}`,
             }
           )
@@ -667,7 +677,7 @@ export const formatBlock1 = (
             },
             {
               description:
-                "Tests for removal of variables at each step (Backward Elimination).",
+                "Tests for removal of variables at each step.",
             }
           )
         );

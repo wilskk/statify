@@ -81,28 +81,40 @@ pub fn calculate_vif(x: &DMatrix<f64>, feature_names: &[String]) -> Result<Vec<V
     Ok(results)
 }
 
-/// Menghitung Box-Tidwell Test untuk asumsi linearitas logit
-/// 
-/// Box-Tidwell test menguji apakah hubungan antara variabel kontinu X dan logit(Y)
-/// bersifat linear. Test ini dilakukan dengan menambahkan term X*ln(X) ke model
-/// dan menguji signifikansi koefisiennya.
-/// 
-/// **FULL MODEL APPROACH** (Sesuai teori Box & Tidwell 1962):
-/// Model: logit(Y) = β₀ + β₁X₁ + β₂X₂ + ... + βₖXₖ + βᵢₙₜ(Xᵢ*ln(Xᵢ))
-/// 
-/// Untuk setiap variabel Xᵢ, kita:
-/// 1. Fit model dengan SEMUA variabel X + interaction term untuk Xᵢ
-/// 2. Uji signifikansi koefisien interaction term
-/// 
-/// H0: βᵢₙₜ = 0 (hubungan linear untuk variabel Xᵢ)
-/// H1: βᵢₙₜ ≠ 0 (hubungan non-linear)
-/// 
-/// Jika p-value < 0.05, maka asumsi linearitas dilanggar.
-/// 
-/// CATATAN PENTING:
-/// - Variabel dengan nilai <= 0 memerlukan transformasi: tambah 0.001 HANYA untuk nilai <= 0
-/// - Variabel biner (hanya 2 nilai unik) akan menghasilkan B ≈ 0, p = 1 (tidak informatif)
-/// - Ini konsisten dengan implementasi R
+/// Box-Tidwell Test for Linearity of the Logit
+///
+/// Implementation based on:
+/// - Box, G. E. P. & Tidwell, P. W. (1962). Transformation of the independent
+///   variables. Technometrics, 4, 531–550.
+/// - Fox, J. (1997). Applied Regression, Linear Models, and Related Methods. Sage.
+/// - Fox, J. & Weisberg, S. (2011). An R Companion to Applied Regression (2nd ed.). Sage.
+///
+/// The test checks whether the relationship between each continuous predictor X
+/// and the logit of Y is linear. Under H₀ the power transformation parameter
+/// λ = 1 (i.e., no transformation needed). The procedure:
+///
+/// 1. For each eligible continuous predictor Xⱼ compute the "constructed variable"
+///    Xⱼ·ln(Xⱼ).
+/// 2. Fit the augmented logistic model simultaneously containing ALL original
+///    covariates plus ALL constructed variables (R-style simultaneous approach).
+/// 3. For each constructed variable γ̂ⱼ (coefficient of Xⱼ·ln(Xⱼ)), compute:
+///    - Score z = γ̂ⱼ / SE(γ̂ⱼ)
+///    - p-value = 2·Φ(−|z|)   (two-tailed)
+///    - MLE of λⱼ = 1 + γ̂ⱼ / β̂ⱼ   (one-step approximation; Hosmer & Lemeshow 2000)
+/// 4. If significant (p < α) → the linearity-in-the-logit assumption is violated
+///    for Xⱼ and a power transformation X^λ̂ should be considered.
+///
+/// **Simultaneous vs per-variable:**
+/// R's `car::boxTidwell()` adds ALL constructed variables at once so that the
+/// covariance matrix accounts for inter-correlations between constructed
+/// variables. This implementation follows the same approach. If the simultaneous
+/// model is numerically unstable, it falls back to per-variable testing.
+///
+/// **Eligibility rules:**
+/// - Binary / dichotomous variables (≤ 2 unique values): SKIP
+/// - Variables with very few unique values (≤ 4): SKIP (likely ordinal)
+/// - Constant variables: SKIP
+/// - Variables with values ≤ 0: a uniform shift X' = X − min(X) + 1 is applied
 pub fn calculate_box_tidwell(
     x: &DMatrix<f64>,
     y: &DVector<f64>,
@@ -114,165 +126,382 @@ pub fn calculate_box_tidwell(
         return Err("Dimensi X dan Y tidak sesuai.".to_string());
     }
 
-    let mut results = Vec::new();
+    // ================================================================
+    // PHASE 1: Classify each variable as eligible or skipped
+    // ================================================================
+    struct EligibleVar {
+        col_idx: usize,
+        name: String,
+        shift: f64,
+        interaction_col: DVector<f64>,
+        note: String,
+    }
 
-    // Loop untuk setiap variabel independen
+    let mut eligible_vars: Vec<EligibleVar> = Vec::new();
+    let mut skipped_results: Vec<BoxTidwellRow> = Vec::new();
+    // Each entry: Ok(index into eligible_vars) or Err(index into skipped_results)
+    let mut order: Vec<Result<usize, usize>> = Vec::new();
+
     for (i, name) in feature_names.iter().enumerate() {
         let col_x = x.column(i);
-        
-        // Hitung statistik dasar untuk variabel ini
         let x_vals: Vec<f64> = col_x.iter().cloned().collect();
         let x_min = x_vals.iter().cloned().fold(f64::INFINITY, f64::min);
         let x_max = x_vals.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        
-        // Cek apakah variabel memiliki variasi
+
+        // --- Constant variable ---
         if (x_max - x_min).abs() < 1e-10 {
-            // Variabel konstan, skip
-            results.push(BoxTidwellRow {
-                variable: name.clone(),
-                interaction_term: format!("{} by ln({})", name, name),
-                b: 0.0,
-                sig: 1.0,
-                is_significant: false,
-            });
+            let idx = skipped_results.len();
+            skipped_results.push(make_skipped_row(
+                name,
+                "Constant variable (no variation)",
+                "",
+            ));
+            order.push(Err(idx));
             continue;
         }
-        
-        // ================================================================
-        // DETEKSI VARIABEL BINER: Jika hanya 2 nilai unik, return 0, 1.0
-        // Box-Tidwell tidak informatif untuk variabel biner
-        // ================================================================
+
+        // Unique values
         let mut unique_vals: Vec<f64> = x_vals.clone();
         unique_vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         unique_vals.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
-        
-        if unique_vals.len() <= 2 {
-            // Variabel biner atau hampir biner - tidak informatif untuk Box-Tidwell
-            results.push(BoxTidwellRow {
-                variable: name.clone(),
-                interaction_term: format!("{} by ln({})", name, name),
-                b: 0.0,
-                sig: 1.0,
-                is_significant: false,
-            });
+        let n_unique = unique_vals.len();
+
+        // --- Binary variable ---
+        if n_unique <= 2 {
+            let idx = skipped_results.len();
+            skipped_results.push(make_skipped_row(
+                name,
+                "Binary variable — Box-Tidwell test is not applicable for dichotomous variables. The test only applies to continuous predictors.",
+                "",
+            ));
+            order.push(Err(idx));
             continue;
         }
-        
-        // ================================================================
-        // KONSISTEN DENGAN R: Offset 0.001 HANYA untuk nilai <= 0
-        // ================================================================
-        // Untuk nilai > 0: gunakan nilai asli
-        // Untuk nilai <= 0: tambah 0.001 (untuk menghindari log(0))
+
+        // --- Few unique values (likely ordinal/categorical) ---
+        if n_unique <= 4 {
+            let idx = skipped_results.len();
+            skipped_results.push(make_skipped_row(
+                name,
+                &format!(
+                    "Only {} unique values detected — likely a categorical/ordinal variable. Box-Tidwell test only applies to continuous predictors.",
+                    n_unique
+                ),
+                "",
+            ));
+            order.push(Err(idx));
+            continue;
+        }
+
+        // --- Handle non-positive values with uniform shift ---
+        let has_non_positive = x_min <= 0.0;
+        let shift = if has_non_positive { -x_min + 1.0 } else { 0.0 };
+        let note_text = if has_non_positive {
+            format!(
+                "Variable contains values ≤ 0 (min={:.3}). A uniform shift of {:.3} was applied (X' = X + {:.3}) before computing X'·ln(X').",
+                x_min, shift, shift
+            )
+        } else {
+            String::new()
+        };
+
+        // --- Compute constructed variable: (X + shift) · ln(X + shift) ---
         let mut interaction_vec = Vec::with_capacity(rows);
         for &val in col_x.iter() {
-            if val <= 0.0 {
-                let x_safe = val + 0.001;
-                interaction_vec.push(x_safe * x_safe.ln());
-            } else {
-                interaction_vec.push(val * val.ln());
-            }
+            let x_shifted = (val + shift).max(1e-10);
+            interaction_vec.push(x_shifted * x_shifted.ln());
         }
-        let interaction_col = DVector::from_vec(interaction_vec);
-        
-        // ================================================================
-        // FULL MODEL: [Intercept, X₁, X₂, ..., Xₖ, interaction_term]
-        // ================================================================
-        // Total kolom = 1 (intercept) + cols (semua variabel) + 1 (interaction)
-        let total_cols = 1 + cols + 1;
-        let mut x_design = DMatrix::zeros(rows, total_cols);
-        
-        // Kolom 0: Intercept
+        let interaction_col = DVector::from_vec(interaction_vec.clone());
+
+        // Check interaction term has variation
+        let int_min = interaction_vec.iter().cloned().fold(f64::INFINITY, f64::min);
+        let int_max = interaction_vec.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        if (int_max - int_min).abs() < 1e-10 {
+            let idx = skipped_results.len();
+            skipped_results.push(make_skipped_row(
+                name,
+                "Interaction term X·ln(X) has no variation after transformation. Test cannot be computed.",
+                &note_text,
+            ));
+            order.push(Err(idx));
+            continue;
+        }
+
+        let elig_idx = eligible_vars.len();
+        eligible_vars.push(EligibleVar {
+            col_idx: i,
+            name: name.clone(),
+            shift,
+            interaction_col,
+            note: note_text,
+        });
+        order.push(Ok(elig_idx));
+    }
+
+    // If no eligible variables, return the skipped results
+    if eligible_vars.is_empty() {
+        return Ok(reassemble_results(&order, &skipped_results, &[]));
+    }
+
+    // ================================================================
+    // PHASE 2: Build augmented design matrix (SIMULTANEOUS approach)
+    //
+    //   [Intercept, X₁, X₂, ..., Xₖ, X_{e1}·ln(X_{e1}), ..., X_{em}·ln(X_{em})]
+    //
+    // where e1..em are the eligible variable indices.
+    // ================================================================
+    let n_eligible = eligible_vars.len();
+    let total_cols = 1 + cols + n_eligible;
+
+    let mut x_design = DMatrix::zeros(rows, total_cols);
+
+    // Column 0: Intercept
+    for r in 0..rows {
+        x_design[(r, 0)] = 1.0;
+    }
+
+    // Columns 1..=cols: All original X variables
+    for j in 0..cols {
         for r in 0..rows {
-            x_design[(r, 0)] = 1.0;
-        }
-        
-        // Kolom 1 sampai cols: Semua variabel X (original, tanpa shift)
-        for j in 0..cols {
-            for r in 0..rows {
-                x_design[(r, 1 + j)] = x[(r, j)];
-            }
-        }
-        
-        // Kolom terakhir: Interaction term X*ln(X) untuk variabel ke-i
-        for r in 0..rows {
-            x_design[(r, total_cols - 1)] = interaction_col[r];
-        }
-        
-        // Fit model logistik dan uji signifikansi koefisien interaksi
-        match fit_logit_box_tidwell(&x_design, y) {
-            Ok((coeff, p_value)) => {
-                let sig_threshold = 0.05;
-                results.push(BoxTidwellRow {
-                    variable: name.clone(),
-                    interaction_term: format!("{} by ln({})", name, name),
-                    b: coeff,
-                    sig: p_value,
-                    is_significant: p_value < sig_threshold,
-                });
-            }
-            Err(_e) => {
-                // Jika gagal konvergen atau ada masalah numerik
-                results.push(BoxTidwellRow {
-                    variable: name.clone(),
-                    interaction_term: format!("{} by ln({})", name, name),
-                    b: 0.0,
-                    sig: 1.0,
-                    is_significant: false,
-                });
-            }
+            x_design[(r, 1 + j)] = x[(r, j)];
         }
     }
 
-    Ok(results)
+    // Columns (1+cols)...: Interaction terms for eligible variables
+    for (eidx, evar) in eligible_vars.iter().enumerate() {
+        let col_offset = 1 + cols + eidx;
+        for r in 0..rows {
+            x_design[(r, col_offset)] = evar.interaction_col[r];
+        }
+    }
+
+    // ================================================================
+    // PHASE 3: Fit the augmented logistic model via IRLS
+    // ================================================================
+    match fit_logit_augmented(&x_design, y) {
+        Ok(fit_result) => {
+            let mut eligible_results = Vec::with_capacity(n_eligible);
+
+            for (eidx, evar) in eligible_vars.iter().enumerate() {
+                let interaction_coeff_idx = 1 + cols + eidx;
+                let original_coeff_idx = 1 + evar.col_idx;
+
+                let gamma = fit_result.beta[interaction_coeff_idx];
+                let beta_orig = fit_result.beta[original_coeff_idx];
+                let se_gamma = fit_result.se[interaction_coeff_idx];
+
+                let z_score = if se_gamma > 1e-12 { gamma / se_gamma } else { 0.0 };
+                let p_value = 2.0 * standard_normal_cdf(-z_score.abs());
+
+                // MLE of λ = 1 + γ̂ / β̂ (Box & Tidwell 1962, Fox 1997)
+                let mle_lambda = if beta_orig.abs() > 1e-12 {
+                    1.0 + gamma / beta_orig
+                } else {
+                    f64::NAN
+                };
+
+                let interaction_label = if evar.shift > 0.0 {
+                    format!("{} by ln({}+{:.1})", evar.name, evar.name, evar.shift)
+                } else {
+                    format!("{} by ln({})", evar.name, evar.name)
+                };
+
+                eligible_results.push(BoxTidwellRow {
+                    variable: evar.name.clone(),
+                    mle_lambda,
+                    score_z: z_score,
+                    df: 1,
+                    sig: p_value,
+                    b_original: beta_orig,
+                    b_interaction: gamma,
+                    se_interaction: se_gamma,
+                    is_significant: p_value < 0.05,
+                    skipped: false,
+                    skip_reason: String::new(),
+                    note: evar.note.clone(),
+                    interaction_term: interaction_label,
+                    b: gamma,
+                });
+            }
+
+            Ok(reassemble_results(&order, &skipped_results, &eligible_results))
+        }
+        Err(_) => {
+            // Simultaneous model failed → fall back to per-variable testing
+            let mut eligible_results = Vec::with_capacity(n_eligible);
+
+            for evar in eligible_vars.iter() {
+                match fit_per_variable(x, y, cols, rows, &evar.interaction_col, evar.col_idx) {
+                    Ok(pvr) => {
+                        let z_score = if pvr.se_gamma > 1e-12 { pvr.gamma / pvr.se_gamma } else { 0.0 };
+                        let p_value = 2.0 * standard_normal_cdf(-z_score.abs());
+                        let mle_lambda = if pvr.beta_orig.abs() > 1e-12 {
+                            1.0 + pvr.gamma / pvr.beta_orig
+                        } else {
+                            f64::NAN
+                        };
+
+                        let interaction_label = if evar.shift > 0.0 {
+                            format!("{} by ln({}+{:.1})", evar.name, evar.name, evar.shift)
+                        } else {
+                            format!("{} by ln({})", evar.name, evar.name)
+                        };
+
+                        eligible_results.push(BoxTidwellRow {
+                            variable: evar.name.clone(),
+                            mle_lambda,
+                            score_z: z_score,
+                            df: 1,
+                            sig: p_value,
+                            b_original: pvr.beta_orig,
+                            b_interaction: pvr.gamma,
+                            se_interaction: pvr.se_gamma,
+                            is_significant: p_value < 0.05,
+                            skipped: false,
+                            skip_reason: String::new(),
+                            note: if evar.note.is_empty() {
+                                "Per-variable testing used (simultaneous model did not converge).".to_string()
+                            } else {
+                                format!("{} Per-variable testing used (simultaneous model did not converge).", evar.note)
+                            },
+                            interaction_term: interaction_label,
+                            b: pvr.gamma,
+                        });
+                    }
+                    Err(e) => {
+                        eligible_results.push(BoxTidwellRow {
+                            variable: evar.name.clone(),
+                            mle_lambda: f64::NAN,
+                            score_z: 0.0,
+                            df: 1,
+                            sig: 1.0,
+                            b_original: 0.0,
+                            b_interaction: 0.0,
+                            se_interaction: 0.0,
+                            is_significant: false,
+                            skipped: true,
+                            skip_reason: format!("Computation failed: {}", e),
+                            note: evar.note.clone(),
+                            interaction_term: format!("{} by ln({})", evar.name, evar.name),
+                            b: 0.0,
+                        });
+                    }
+                }
+            }
+
+            Ok(reassemble_results(&order, &skipped_results, &eligible_results))
+        }
+    }
 }
 
-/// Helper Privat: Melakukan regresi logistik untuk Box-Tidwell test
-/// Mengembalikan koefisien dan p-value untuk term interaksi (kolom terakhir)
-/// 
-/// Model: logit(Y) = β₀ + β₁X + β₂(X*ln(X))
-/// Kita menguji H0: β₂ = 0
-fn fit_logit_box_tidwell(
+// ============================================================================
+// HELPER: Pearson correlation between two vectors
+// ============================================================================
+fn pearson_correlation(a: &[f64], b: &[f64]) -> f64 {
+    let n = a.len() as f64;
+    if n < 2.0 { return 0.0; }
+
+    let mean_a: f64 = a.iter().sum::<f64>() / n;
+    let mean_b: f64 = b.iter().sum::<f64>() / n;
+
+    let mut cov = 0.0;
+    let mut var_a = 0.0;
+    let mut var_b = 0.0;
+
+    for i in 0..a.len() {
+        let da = a[i] - mean_a;
+        let db = b[i] - mean_b;
+        cov += da * db;
+        var_a += da * da;
+        var_b += db * db;
+    }
+
+    let denom = (var_a * var_b).sqrt();
+    if denom < 1e-15 { 0.0 } else { cov / denom }
+}
+
+// ============================================================================
+// HELPER: Create a skipped BoxTidwellRow
+// ============================================================================
+fn make_skipped_row(name: &str, reason: &str, note: &str) -> BoxTidwellRow {
+    BoxTidwellRow {
+        variable: name.to_string(),
+        mle_lambda: f64::NAN,
+        score_z: 0.0,
+        df: 1,
+        sig: 1.0,
+        b_original: 0.0,
+        b_interaction: 0.0,
+        se_interaction: 0.0,
+        is_significant: false,
+        skipped: true,
+        skip_reason: reason.to_string(),
+        note: note.to_string(),
+        interaction_term: format!("{} by ln({})", name, name),
+        b: 0.0,
+    }
+}
+
+// ============================================================================
+// HELPER: Reassemble results in original variable order
+// ============================================================================
+fn reassemble_results(
+    order: &[Result<usize, usize>],
+    skipped: &[BoxTidwellRow],
+    eligible: &[BoxTidwellRow],
+) -> Vec<BoxTidwellRow> {
+    order
+        .iter()
+        .map(|entry| match entry {
+            Err(idx) => skipped[*idx].clone(),
+            Ok(idx) => eligible[*idx].clone(),
+        })
+        .collect()
+}
+
+// ============================================================================
+// Fit result structures
+// ============================================================================
+struct AugmentedFitResult {
+    beta: DVector<f64>,
+    se: DVector<f64>,
+}
+
+struct PerVariableFitResult {
+    gamma: f64,
+    beta_orig: f64,
+    se_gamma: f64,
+}
+
+// ============================================================================
+// SIMULTANEOUS AUGMENTED MODEL FIT via IRLS
+// ============================================================================
+fn fit_logit_augmented(
     x_design: &DMatrix<f64>,
     y: &DVector<f64>,
-) -> Result<(f64, f64), String> {
+) -> Result<AugmentedFitResult, String> {
     let rows = x_design.nrows();
     let total_cols = x_design.ncols();
-    
-    // Index untuk koefisien interaksi (kolom terakhir)
-    let interaction_idx = total_cols - 1;
 
-    // Newton-Raphson / IRLS
     let mut beta = DVector::zeros(total_cols);
-    let max_iter = 25;
+    let max_iter = 30;
     let tolerance = 1e-6;
-    
-    // Clamping untuk mencegah overflow/underflow
     let prob_min = 1e-10;
     let prob_max = 1.0 - 1e-10;
 
     for iter in 0..max_iter {
-        // Linear predictor: η = Xβ
         let linear_pred = x_design * &beta;
-        
-        // Probabilities: π = 1 / (1 + exp(-η))
+
         let pi: DVector<f64> = linear_pred.map(|val| {
-            let p = 1.0 / (1.0 + (-val).exp());
-            p.max(prob_min).min(prob_max)
+            (1.0 / (1.0 + (-val).exp())).max(prob_min).min(prob_max)
         });
 
-        // Weights: W = π(1-π)
-        let w_diag: DVector<f64> = pi.map(|p| {
-            let w = p * (1.0 - p);
-            w.max(1e-10)  // Prevent zero weights
-        });
-        
-        // Residuals: y - π
+        let w_diag: DVector<f64> = pi.map(|p| (p * (1.0 - p)).max(1e-10));
+
         let residuals = y - &pi;
-        
-        // Gradient (Score): X'(y - π)
+
         let gradient = x_design.transpose() * &residuals;
 
-        // Hessian (Information Matrix): X'WX
         let mut hessian = DMatrix::zeros(total_cols, total_cols);
         for r in 0..total_cols {
             for c in r..total_cols {
@@ -286,77 +515,85 @@ fn fit_logit_box_tidwell(
                 }
             }
         }
-        
-        // Add small ridge for numerical stability
+
+        // Ridge for numerical stability
         for j in 0..total_cols {
             hessian[(j, j)] += 1e-8;
         }
 
-        // Solve for step: (X'WX)^{-1} X'(y-π)
         match hessian.clone().try_inverse() {
             Some(inv_hessian) => {
                 let step = &inv_hessian * &gradient;
-                
-                // Update beta
                 beta = &beta + &step;
 
-                // Check convergence
                 let max_step = step.iter().map(|v| v.abs()).fold(0.0f64, f64::max);
-                
-                if max_step < tolerance || iter == max_iter - 1 {
-                    // Ekstrak koefisien dan SE untuk term interaksi
-                    let coeff = beta[interaction_idx];
-                    let variance = inv_hessian[(interaction_idx, interaction_idx)];
-                    
-                    if variance <= 0.0 {
-                        return Err("Negative variance for interaction term".into());
-                    }
-                    
-                    let se = variance.sqrt();
-                    
-                    // Wald test: z = β / SE(β)
-                    let z_score = if se > 1e-9 { coeff / se } else { 0.0 };
-                    
-                    // Two-tailed p-value
-                    let p_value = calculate_p_value_from_z(z_score);
 
-                    return Ok((coeff, p_value));
+                if max_step < tolerance || iter == max_iter - 1 {
+                    let se: DVector<f64> = DVector::from_iterator(
+                        total_cols,
+                        (0..total_cols).map(|j| {
+                            let v = inv_hessian[(j, j)];
+                            if v > 0.0 { v.sqrt() } else { f64::NAN }
+                        }),
+                    );
+                    return Ok(AugmentedFitResult { beta, se });
                 }
             }
             None => {
-                // Try pseudo-inverse or return error
-                return Err("Singular Hessian matrix".into());
+                return Err("Singular Hessian matrix in augmented model".into());
             }
         }
     }
 
-    Err("Did not converge after max iterations".into())
+    Err("Augmented model did not converge".into())
 }
 
-/// Legacy function for backward compatibility
-fn fit_logit_interaction(
-    x_base: &DMatrix<f64>,
+// ============================================================================
+// PER-VARIABLE FALLBACK FIT
+// ============================================================================
+fn fit_per_variable(
+    x: &DMatrix<f64>,
     y: &DVector<f64>,
+    cols: usize,
+    rows: usize,
     interaction_col: &DVector<f64>,
-) -> Result<(f64, f64), String> {
-    let rows = x_base.nrows();
-    let base_cols = x_base.ncols();
-    let total_cols = base_cols + 1;
+    original_var_idx: usize,
+) -> Result<PerVariableFitResult, String> {
+    let total_cols = 1 + cols + 1;
+    let mut x_design = DMatrix::zeros(rows, total_cols);
 
-    let x_interaction = DMatrix::from_iterator(rows, 1, interaction_col.iter().cloned());
-
-    // Gabungkan matriks: [x_base | x_interaction]
-    let mut x_augmented = DMatrix::zeros(rows, total_cols);
-    for c in 0..base_cols {
-        x_augmented.set_column(c, &x_base.column(c));
+    for r in 0..rows {
+        x_design[(r, 0)] = 1.0;
     }
-    x_augmented.set_column(base_cols, &x_interaction.column(0));
+    for j in 0..cols {
+        for r in 0..rows {
+            x_design[(r, 1 + j)] = x[(r, j)];
+        }
+    }
+    for r in 0..rows {
+        x_design[(r, total_cols - 1)] = interaction_col[r];
+    }
 
-    fit_logit_box_tidwell(&x_augmented, y)
+    let interaction_idx = total_cols - 1;
+    let original_idx = 1 + original_var_idx;
+
+    let fit = fit_logit_augmented(&x_design, y)?;
+
+    Ok(PerVariableFitResult {
+        gamma: fit.beta[interaction_idx],
+        beta_orig: fit.beta[original_idx],
+        se_gamma: fit.se[interaction_idx],
+    })
 }
 
-fn calculate_p_value_from_z(z: f64) -> f64 {
-    let z_abs = z.abs();
+// ============================================================================
+// Standard Normal CDF (Abramowitz & Stegun approximation)
+// ============================================================================
+fn standard_normal_cdf(x: f64) -> f64 {
+    if x < -8.0 { return 0.0; }
+    if x > 8.0 { return 1.0; }
+
+    let z_abs = x.abs();
     let t = 1.0 / (1.0 + 0.2316419 * z_abs);
     let d = 0.3989422804014337 * (-z_abs * z_abs / 2.0).exp();
     let prob = d
@@ -364,7 +601,7 @@ fn calculate_p_value_from_z(z: f64) -> f64 {
         * (0.319381530
             + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
 
-    2.0 * prob
+    if x >= 0.0 { 1.0 - prob } else { prob }
 }
 
 /// Menghitung Pearson Correlation Matrix

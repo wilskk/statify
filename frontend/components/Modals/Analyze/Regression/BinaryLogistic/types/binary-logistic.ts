@@ -67,24 +67,36 @@ export const DEFAULT_BINARY_LOGISTIC_OPTIONS_PARAMS: BinaryLogisticOptionsParams
     includeConstant: true,
   };
 
+export type ContrastMethodType =
+  | "Indicator"
+  | "Simple"
+  | "Difference"
+  | "Helmert"
+  | "Repeated"
+  | "Polynomial"
+  | "Deviation";
+
+export type ReferenceCategoryType = "Last" | "First";
+
+export interface CategoricalVarSetting {
+  name: string;
+  contrast: ContrastMethodType;
+  referenceCategory: ReferenceCategoryType;
+}
+
 export interface BinaryLogisticCategoricalParams {
   covariates: string[];
-  contrast:
-    | "Indicator"
-    | "Simple"
-    | "Difference"
-    | "Helmert"
-    | "Repeated"
-    | "Polynomial"
-    | "Deviation";
-  referenceCategory: "Last" | "First";
+  /** Per-variable contrast/reference settings (SPSS style) */
+  variableSettings: Record<string, CategoricalVarSetting>;
 }
+
+export const DEFAULT_CONTRAST: ContrastMethodType = "Indicator";
+export const DEFAULT_REFERENCE: ReferenceCategoryType = "Last";
 
 export const DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS: BinaryLogisticCategoricalParams =
   {
     covariates: [],
-    contrast: "Indicator",
-    referenceCategory: "Last",
+    variableSettings: {},
   };
 
 export interface BinaryLogisticAssumptionParams {
@@ -174,10 +186,21 @@ export interface VifRow {
 
 export interface BoxTidwellRow {
   variable: string;
-  interaction_term: string;
-  b: number;
-  sig: number;
+  // R-style output fields (Fox & Weisberg 2011)
+  mle_lambda?: number;       // MLE of power transformation λ
+  score_z?: number;          // Score Statistic z = γ̂ / SE(γ̂)
+  df?: number;               // Degrees of freedom (always 1)
+  sig: number;               // Pr(>|z|)
+  b_original?: number;       // β̂ of X in augmented model
+  b_interaction?: number;    // γ̂ of X·ln(X) in augmented model
+  se_interaction?: number;   // SE(γ̂)
   is_significant: boolean;
+  skipped?: boolean;
+  skip_reason?: string;
+  note?: string;
+  // Backward compat
+  interaction_term?: string;
+  b?: number;
 }
 
 export interface AssumptionResult {
@@ -407,6 +430,18 @@ export interface SavedPredictions {
   variable_names?: SavedVariableNames;
 }
 
+// Fitting Warnings dari IRLS solver
+export interface FittingWarnings {
+  possible_separation?: boolean;
+  quasi_separation?: boolean;
+  step_halving_used?: boolean;
+  step_halving_count?: number;
+  ridge_increased?: boolean;
+  final_lambda?: number;
+  near_singular_hessian?: boolean;
+  messages?: string[];
+}
+
 // Struktur utama hasil analisis yang dikirim dari Worker
 export interface LogisticResult {
   method_used?: string;
@@ -471,6 +506,9 @@ export interface LogisticResult {
 
   // --- BARU: Saved Predictions (Tab Save output) ---
   saved_predictions?: SavedPredictions;
+
+  // --- BARU: Fitting Warnings (dari IRLS robust solver) ---
+  fitting_warnings?: FittingWarnings;
 }
 
 // =========================================================================

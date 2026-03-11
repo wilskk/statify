@@ -1,6 +1,6 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    CategoricalCoding, ClassificationTable, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
+    CategoricalCoding, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
     IterationHistoryBlock, IterationHistoryRow, LogisticResult, ModelIfTermRemovedRow, ModelInfo, ModelSummary, OmniTests, RemainderTest,
     StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
@@ -12,6 +12,7 @@ use crate::stats::casewise;
 use crate::stats::correlation_of_estimates;
 use crate::stats::classification_plot;
 use crate::stats::saved_predictions;
+use crate::stats::table;
 
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
@@ -30,11 +31,12 @@ pub fn run(
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
     // ========================================================================
-    // BLOCK 0: NULL MODEL (ANALYTICAL APPROACH for SPSS PRECISION)
+    // BLOCK 0: NULL MODEL
     // ========================================================================
     let sum_y: f64 = y_vector.sum();
     let n_1 = sum_y;
     let n_0 = n_samples as f64 - n_1;
+    let n_f64 = n_samples as f64;
 
     if n_1 == 0.0 || n_0 == 0.0 {
         return Err(JsValue::from_str(
@@ -42,50 +44,56 @@ pub fn run(
         ));
     }
 
-    // B0 = ln(n_1 / n_0)
-    let b0_val = (n_1 / n_0).ln();
-    // SE = sqrt( 1/n1 + 1/n0 )
-    let b0_se = (1.0 / n_1 + 1.0 / n_0).sqrt();
-    let b0_wald = (b0_val / b0_se).powi(2);
-    let b0_sig = 1.0 - chi_dist_1df.cdf(b0_wald);
-
-    // LL0 = n1 * ln(p) + n0 * ln(1-p)
-    let p_null = n_1 / (n_samples as f64);
-    let null_log_likelihood = n_1 * p_null.ln() + n_0 * (1.0 - p_null).ln();
-
-    // Classification Table Block 0 (Majority Class)
-    let _predicted_class_null = if n_1 > n_0 { 1.0 } else { 0.0 };
-    let block_0_row = VariableRow {
-        label: "Constant".to_string(),
-        b: b0_val,
-        error: b0_se,
-        wald: b0_wald,
-        df: 1,
-        sig: b0_sig,
-        exp_b: b0_val.exp(),
-        lower_ci: (b0_val - z_score * b0_se).exp(),
-        upper_ci: (b0_val + z_score * b0_se).exp(),
+    // Null model depends on include_constant:
+    // - With constant: p_null = n1/n (MLE), LL = n1*ln(p) + n0*ln(1-p)
+    // - Without constant: p_null = 0.5, LL = n*ln(0.5)
+    let (p_null, null_log_likelihood, block_0_row) = if config.include_constant {
+        let p = n_1 / n_f64;
+        let ll = n_1 * p.ln() + n_0 * (1.0 - p).ln();
+        let b0_val = (n_1 / n_0).ln();
+        let b0_se = (1.0 / n_1 + 1.0 / n_0).sqrt();
+        let b0_wald = (b0_val / b0_se).powi(2);
+        let b0_sig = 1.0 - chi_dist_1df.cdf(b0_wald);
+        let row = VariableRow {
+            label: "Constant".to_string(),
+            b: b0_val,
+            error: b0_se,
+            wald: b0_wald,
+            df: 1,
+            sig: b0_sig,
+            exp_b: b0_val.exp(),
+            lower_ci: (b0_val - z_score * b0_se).exp(),
+            upper_ci: (b0_val + z_score * b0_se).exp(),
+        };
+        (p, ll, row)
+    } else {
+        // No constant: empty model, all predictions = 0.5
+        let ll = n_f64 * 0.5_f64.ln();
+        let row = VariableRow {
+            label: "(No Constant)".to_string(),
+            b: 0.0,
+            error: 0.0,
+            wald: 0.0,
+            df: 0,
+            sig: 1.0,
+            exp_b: 1.0,
+            lower_ci: 1.0,
+            upper_ci: 1.0,
+        };
+        (0.5, ll, row)
     };
 
     // Variables Not in Equation Block 0 (Score Tests)
-    let null_residuals = y_vector.map(|y| y - p_null);
-    let null_weight_scalar = p_null * (1.0 - p_null);
-    let null_weights = DVector::from_element(n_samples, null_weight_scalar);
-    let null_design_matrix = DMatrix::from_element(n_samples, 1, 1.0);
-    let null_cov_scalar = b0_se.powi(2);
-    let null_cov_matrix = DMatrix::from_element(1, 1, null_cov_scalar);
-
+    // Use analytical single score test (matching Enter/Forward strategies)
     let mut block_0_vars_not_in = Vec::new();
-    let mut overall_score_stat = 0.0;
 
     for i in 0..n_total_vars {
-        let candidate_col = x_matrix.column(i).into_owned();
-        let (stat, p_val) = calculate_score_test(
-            &null_residuals,
-            &null_weights,
-            &null_design_matrix,
-            &candidate_col,
-            &null_cov_matrix,
+        let col = x_matrix.column(i).into_owned();
+        let (stat, _, p_val) = crate::stats::score_test::calculate_single_score_test(
+            &col,
+            y_vector,
+            p_null,
+            config.include_constant,
         );
 
         let label = if i < feature_names.len() {
@@ -101,49 +109,61 @@ pub fn run(
         });
     }
 
-    // Overall Stats Block 0
-    let dummy_null_model_struct = FittedModel {
-        beta: DVector::from_element(1, b0_val),
-        covariance_matrix: null_cov_matrix.clone(),
-        final_log_likelihood: null_log_likelihood,
-        iterations: 0,
-        converged: true,
-        residuals: null_residuals.clone(),
-        weights: null_weights.clone(),
-        predictions: DVector::from_element(n_samples, p_null),
-        warnings: FittingWarnings::default(),
-    };
-    let empty_indices: Vec<usize> = Vec::new();
-    if let Some(test) = calculate_overall_remainder_stats(
+    // Overall Stats Block 0 (Global Score Test)
+    let (g_chi, g_df, g_sig) = crate::stats::score_test::calculate_global_score_test_with_constant(
         x_matrix,
         y_vector,
-        &empty_indices,
-        &dummy_null_model_struct,
+        p_null,
         config.include_constant,
-    ) {
-        overall_score_stat = test.chi_square;
-    }
+    );
     block_0_vars_not_in.push(VariableNotInEquation {
         label: "Overall Statistics".to_string(),
-        score: overall_score_stat,
-        df: n_total_vars as i32,
-        sig: if overall_score_stat > 1e-9 {
-            1.0 - ChiSquared::new(n_total_vars as f64)
-                .unwrap()
-                .cdf(overall_score_stat)
-        } else {
-            1.0
-        },
+        score: g_chi,
+        df: g_df,
+        sig: g_sig,
     });
+
+    // Build dummy null model struct for step0 snapshot
+    let null_residuals = y_vector.map(|y| y - p_null);
+    let null_weight_scalar = p_null * (1.0 - p_null);
+    let null_weights = DVector::from_element(n_samples, null_weight_scalar);
+    let dummy_null_model_struct = if config.include_constant {
+        let b0_val = (n_1 / n_0).ln();
+        let b0_se = (1.0 / n_1 + 1.0 / n_0).sqrt();
+        let null_cov_matrix = DMatrix::from_element(1, 1, b0_se.powi(2));
+        FittedModel {
+            beta: DVector::from_element(1, b0_val),
+            covariance_matrix: null_cov_matrix,
+            final_log_likelihood: null_log_likelihood,
+            iterations: 0,
+            converged: true,
+            residuals: null_residuals.clone(),
+            weights: null_weights.clone(),
+            predictions: DVector::from_element(n_samples, p_null),
+            warnings: FittingWarnings::default(),
+        }
+    } else {
+        FittedModel {
+            beta: DVector::zeros(0),
+            covariance_matrix: DMatrix::zeros(0, 0),
+            final_log_likelihood: null_log_likelihood,
+            iterations: 0,
+            converged: true,
+            residuals: null_residuals.clone(),
+            weights: null_weights.clone(),
+            predictions: DVector::from_element(n_samples, 0.5),
+            warnings: FittingWarnings::default(),
+        }
+    };
 
     // ========================================================================
     // BLOCK 0: STEP 0 (NULL MODEL) - untuk Iteration History
     // ========================================================================
-    let null_x = DMatrix::from_element(n_samples, 1, 1.0);
     let null_model_for_step0: FittedModel;
     let block_0_iter_history: Option<IterationHistoryBlock>;
 
     if config.iteration_history && config.include_constant {
+        let null_x = DMatrix::from_element(n_samples, 1, 1.0);
         let result = fit_with_history(
             &null_x,
             y_vector,
@@ -166,7 +186,7 @@ pub fn run(
         });
         null_model_for_step0 = result.model;
     } else {
-        // Use analytical model for step0
+        // Use analytical/dummy model for step0
         null_model_for_step0 = dummy_null_model_struct.clone();
         block_0_iter_history = None;
     }
@@ -285,31 +305,22 @@ pub fn run(
         let mut max_p_val = -1.0;
         let mut worst_change_val = 0.0;
 
-        // 1. Cek Candidate Removal (Likelihood Ratio Test)
+        // 1. Cek Candidate Removal (Conditional Parameter Estimate)
+        // SPSS "Conditional" adjusts remaining parameters using the covariance matrix
+        // when setting β_j = 0, giving a better approximation than simply zeroing.
+        let full_x_design = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
+
         if included_indices.len() > 0 {
             for (loc, &_original_idx) in included_indices.iter().enumerate() {
-                let mut temp_indices = included_indices.clone();
-                temp_indices.remove(loc);
+                // Beta index: skip constant if present
+                let beta_idx = if config.include_constant { loc + 1 } else { loc };
+                let conditional_ll = compute_conditional_ll(
+                    &full_x_design, y_vector, &current_model.beta,
+                    &current_model.covariance_matrix, beta_idx,
+                );
 
-                let reduced_ll;
-                if temp_indices.is_empty() {
-                    reduced_ll = null_log_likelihood;
-                } else {
-                    let reduced_x = build_design_matrix(x_matrix, &temp_indices, n_samples, config.include_constant);
-                    if let Ok(temp_model) = fit(
-                        &reduced_x,
-                        y_vector,
-                        config.max_iterations,
-                        config.convergence_threshold,
-                    ) {
-                        reduced_ll = temp_model.final_log_likelihood;
-                    } else {
-                        continue;
-                    }
-                }
-
-                // Change = 2 * (Full_LL - Reduced_LL).abs()
-                let change_abs = 2.0 * (current_model.final_log_likelihood - reduced_ll).abs();
+                let change_raw = 2.0 * (current_model.final_log_likelihood - conditional_ll);
+                let change_abs = if change_raw < 1e-9 { 0.0 } else { change_raw };
 
                 let p_val_remove = if change_abs < 1e-9 {
                     1.0
@@ -584,6 +595,57 @@ pub fn run(
 
 // --- HELPER FUNCTIONS ---
 
+/// Compute log-likelihood using conditional parameter estimates.
+///
+/// SPSS "Conditional" method: when testing removal of variable j,
+/// all other parameters are adjusted using the covariance matrix:
+///   β_k_cond = β̂_k - (Cov_{k,j} / Cov_{j,j}) × β̂_j   for k ≠ j
+///   β_j_cond = 0
+///
+/// This is a one-step approximation based on the multivariate normal
+/// distribution of the MLEs. It is more accurate than simply zeroing
+/// the coefficient but cheaper than full refitting (LR test).
+///
+/// Reference: Hosmer & Lemeshow (2000), SPSS Algorithms documentation.
+fn compute_conditional_ll(
+    design_matrix: &DMatrix<f64>,
+    y_vector: &DVector<f64>,
+    beta: &DVector<f64>,
+    covariance_matrix: &DMatrix<f64>,
+    beta_idx_to_zero: usize,
+) -> f64 {
+    let mut beta_cond = beta.clone();
+    let cov_jj = covariance_matrix[(beta_idx_to_zero, beta_idx_to_zero)];
+    let beta_j = beta[beta_idx_to_zero];
+
+    // Adjust remaining parameters using the covariance partition
+    if cov_jj.abs() > 1e-15 {
+        for k in 0..beta.len() {
+            if k != beta_idx_to_zero {
+                let cov_kj = covariance_matrix[(k, beta_idx_to_zero)];
+                beta_cond[k] = beta[k] - (cov_kj / cov_jj) * beta_j;
+            }
+        }
+    }
+    beta_cond[beta_idx_to_zero] = 0.0;
+
+    let linear_pred = design_matrix * &beta_cond;
+    let mut ll = 0.0;
+    for i in 0..y_vector.len() {
+        let eta = linear_pred[i];
+        let p = if eta > 0.0 {
+            1.0 / (1.0 + (-eta).exp())
+        } else {
+            let e = eta.exp();
+            e / (1.0 + e)
+        };
+        let p_clamped = p.clamp(1e-15, 1.0 - 1e-15);
+        let y = y_vector[i];
+        ll += y * p_clamped.ln() + (1.0 - y) * (1.0 - p_clamped).ln();
+    }
+    ll
+}
+
 fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize, include_constant: bool) -> DMatrix<f64> {
     let mut columns: Vec<DVector<f64>> = Vec::new();
     
@@ -685,51 +747,19 @@ fn calculate_step_snapshot(
         sig: final_step_sig,
     };
 
-    // 4. Model If Term Removed
+    // 4. Model If Term Removed (Conditional Parameter Estimates)
     let model_if_term_removed = calculate_model_if_term_removed(
-        model.final_log_likelihood,
+        model,
         full_x,
         y_vector,
         included_indices,
-        null_ll,
         config,
         feature_names,
         n_samples,
     );
 
     // 5. Classification Table
-    let mut tn = 0;
-    let mut fp = 0;
-    let mut fn_ = 0;
-    let mut tp = 0;
-    let cutoff = config.cutoff;
-    for (i, &pred) in model.predictions.iter().enumerate() {
-        let actual = y_vector[i] > 0.5;
-        let predicted = pred > cutoff;
-        match (actual, predicted) {
-            (false, false) => tn += 1,
-            (false, true) => fp += 1,
-            (true, false) => fn_ += 1,
-            (true, true) => tp += 1,
-        }
-    }
-    let class_table = ClassificationTable {
-        observed_0_predicted_0: tn,
-        observed_0_predicted_1: fp,
-        percentage_correct_0: if (tn + fp) > 0 {
-            tn as f64 / (tn + fp) as f64 * 100.0
-        } else {
-            0.0
-        },
-        observed_1_predicted_0: fn_,
-        observed_1_predicted_1: tp,
-        percentage_correct_1: if (tp + fn_) > 0 {
-            tp as f64 / (tp + fn_) as f64 * 100.0
-        } else {
-            0.0
-        },
-        overall_percentage: (tn + tp) as f64 / n_samples as f64 * 100.0,
-    };
+    let class_table = table::calculate_classification_table(&model.predictions, y_vector, config.cutoff);
 
     // 6. Variables In Equation
     let mut variables_in = Vec::new();
@@ -906,13 +936,15 @@ fn calculate_step_snapshot(
     }
 }
 
-// --- HELPER UNTUK MODEL IF TERM REMOVED ---
+// --- HELPER UNTUK MODEL IF TERM REMOVED (Conditional Parameter Estimates) ---
+// SPSS "Conditional" method: sets β_j = 0 and computes LL with remaining betas unchanged.
+// This is an approximation that does NOT refit the model.
+// Footnote: "Based on conditional parameter estimates"
 fn calculate_model_if_term_removed(
-    current_model_ll: f64,
+    model: &FittedModel,
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
     included_indices: &[usize],
-    null_log_likelihood: f64,
     config: &LogisticConfig,
     feature_names: &[String],
     n_samples: usize,
@@ -920,35 +952,28 @@ fn calculate_model_if_term_removed(
     if included_indices.is_empty() {
         return None;
     }
+
+    // Build the full design matrix for conditional LL computation
+    let full_design = build_design_matrix(x_matrix, included_indices, n_samples, config.include_constant);
+
     let mut rows = Vec::new();
     let chi_dist = ChiSquared::new(1.0).unwrap();
 
     for (i, &idx_to_remove) in included_indices.iter().enumerate() {
-        let mut subset_indices = included_indices.to_vec();
-        subset_indices.remove(i);
+        // Conditional: use covariance-adjusted parameter estimates
+        let beta_idx = if config.include_constant { i + 1 } else { i };
+        let conditional_ll = compute_conditional_ll(
+            &full_design, y_vector, &model.beta,
+            &model.covariance_matrix, beta_idx,
+        );
 
-        let reduced_ll;
-        if subset_indices.is_empty() {
-            reduced_ll = null_log_likelihood;
-        } else {
-            let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
-            if let Ok(reduced_model) = fit(
-                &x_subset,
-                y_vector,
-                config.max_iterations,
-                config.convergence_threshold,
-            ) {
-                reduced_ll = reduced_model.final_log_likelihood;
-            } else {
-                continue;
-            }
-        }
+        let change_raw = 2.0 * (model.final_log_likelihood - conditional_ll);
+        let change_val = if change_raw < 1e-9 { 0.0 } else { change_raw };
 
-        let change_val = 2.0 * (current_model_ll - reduced_ll).abs();
-        let sig = if change_val < 1e-9 {
-            1.0
-        } else {
+        let sig = if change_val > 0.0 {
             1.0 - chi_dist.cdf(change_val)
+        } else {
+            1.0
         };
 
         let label = if idx_to_remove < feature_names.len() {
@@ -959,7 +984,7 @@ fn calculate_model_if_term_removed(
 
         rows.push(ModelIfTermRemovedRow {
             label,
-            model_log_likelihood: reduced_ll,
+            model_log_likelihood: conditional_ll,
             change_in_neg2ll: change_val,
             df: 1,
             sig_change: sig,

@@ -1,6 +1,6 @@
 use crate::models::config::LogisticConfig;
 use crate::models::result::{
-    CategoricalCoding, ClassificationTable, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
+    CategoricalCoding, CorrelationOfEstimatesRow, FittingWarnings as ResultFittingWarnings,
     IterationHistoryBlock, IterationHistoryRow, LogisticResult, ModelInfo, ModelSummary, OmniTests, RemainderTest,
     StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
@@ -12,6 +12,7 @@ use crate::stats::casewise;
 use crate::stats::correlation_of_estimates;
 use crate::stats::classification_plot;
 use crate::stats::saved_predictions;
+use crate::stats::table;
 
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF};
@@ -63,7 +64,7 @@ pub fn run(
     } else {
         // Tanpa constant: Null model log-likelihood adalah -n*ln(2) (prediksi 0.5 untuk semua)
         let n = n_samples as f64;
-        let null_ll = n * 0.5_f64.ln() + n * 0.5_f64.ln();
+        let null_ll = n * 0.5_f64.ln(); // = n * ln(0.5) = -n * ln(2)
         
         let predictions = DVector::from_element(n_samples, 0.5);
         let residuals = y_vector - &predictions;
@@ -156,10 +157,11 @@ pub fn run(
 
         let mut best_candidate_idx = None;
         let mut best_score_stat = 0.0;
-        let mut min_p_value = 1.0;
 
         // ---------------------------------------------------------
         // A. FORWARD ENTRY: Score Test (Standard)
+        // SPSS selects the variable with the LARGEST Score statistic
+        // among those meeting the p_entry threshold.
         // ---------------------------------------------------------
         let design_matrix = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
 
@@ -175,8 +177,7 @@ pub fn run(
                     &current_model.covariance_matrix,
                 );
 
-                if p_val < config.p_entry && p_val < min_p_value {
-                    min_p_value = p_val;
+                if p_val < config.p_entry && stat > best_score_stat {
                     best_score_stat = stat;
                     best_candidate_idx = Some(i);
                 }
@@ -320,6 +321,9 @@ pub fn run(
 
             // Eksekusi Penghapusan
             if let Some(loc) = worst_idx_loc {
+                // SPSS assigns each action (entry/removal) its own step number
+                step_count += 1;
+
                 let removed_var_idx = included_indices[loc];
 
                 // Update tracker sebelum update current
@@ -723,10 +727,11 @@ fn calculate_step_snapshot(
     };
 
     // 3. STEP OMNIBUS (Vs Previous Step)
+    // SPSS convention: positive when variable entered, negative when removed
     let chi_sq_step = if step == 0 {
         chi_sq_model
     } else {
-        2.0 * (model.final_log_likelihood - prev_ll).abs()
+        2.0 * (model.final_log_likelihood - prev_ll)
     };
 
     let df_step = if step == 0 {
@@ -735,8 +740,8 @@ fn calculate_step_snapshot(
         (included_indices.len() as i32 - prev_n_vars as i32).abs()
     };
 
-    let sig_step = if df_step > 0 {
-        1.0 - ChiSquared::new(df_step as f64).unwrap().cdf(chi_sq_step)
+    let sig_step = if df_step > 0 && chi_sq_step.abs() > 1e-9 {
+        1.0 - ChiSquared::new(df_step as f64).unwrap().cdf(chi_sq_step.abs())
     } else {
         1.0
     };
@@ -748,37 +753,7 @@ fn calculate_step_snapshot(
     };
 
     // 4. Classification Table
-    let mut tn = 0;
-    let mut fp = 0;
-    let mut fn_ = 0;
-    let mut tp = 0;
-    for (i, &pred) in model.predictions.iter().enumerate() {
-        let actual = y_vector[i] > 0.5;
-        let predicted = pred > 0.5;
-        match (actual, predicted) {
-            (false, false) => tn += 1,
-            (false, true) => fp += 1,
-            (true, false) => fn_ += 1,
-            (true, true) => tp += 1,
-        }
-    }
-    let class_table = ClassificationTable {
-        observed_0_predicted_0: tn,
-        observed_0_predicted_1: fp,
-        percentage_correct_0: if (tn + fp) > 0 {
-            tn as f64 / (tn + fp) as f64 * 100.0
-        } else {
-            0.0
-        },
-        observed_1_predicted_0: fn_,
-        observed_1_predicted_1: tp,
-        percentage_correct_1: if (tp + fn_) > 0 {
-            tp as f64 / (tp + fn_) as f64 * 100.0
-        } else {
-            0.0
-        },
-        overall_percentage: (tn + tp) as f64 / n as f64 * 100.0,
-    };
+    let class_table = table::calculate_classification_table(&model.predictions, y_vector, config.cutoff);
 
     // 5. Variables In Equation
     let mut variables_in = Vec::new();

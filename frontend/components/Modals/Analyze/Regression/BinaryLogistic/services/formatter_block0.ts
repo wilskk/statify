@@ -190,7 +190,7 @@ export const formatBlock0 = (
         description: `Initial classification (Null Model). ${classDesc}`,
         note: hasConstantInBlock0
           ? `a. Constant is included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`
-          : `a. Constant is not included in the model.\nb. The cut value is ${cutoff.toFixed(3)}`,
+          : `a. No terms in the model.\nb. Initial Log-likelihood Function: -2 Log Likelihood = ${(block0Step?.summary?.log_likelihood != null ? (-2 * block0Step.summary.log_likelihood).toFixed(3) : 'N/A')}\nc. The cut value is ${cutoff.toFixed(3)}`,
       }
     )
   );
@@ -280,7 +280,17 @@ export const formatBlock0 = (
     }
   }
 
-  // Jika remainderTest belum diambil (misal dari steps_detail[0] diatas), coba ambil global
+  // FIX: Selalu coba ambil remainderTest dari steps_detail[0] (Block 0) terlebih dahulu.
+  // Sebelumnya, jika block_0_variables_not_in ada (kasus stepwise methods),
+  // remainderTest tetap null dan jatuh ke overall_remainder_test yang berisi
+  // data dari FINAL step (bukan Block 0). Ini menyebabkan Overall Statistics
+  // menampilkan df dan chi-square dari step terakhir, bukan dari joint score test
+  // semua variabel kandidat di Block 0.
+  if (!remainderTest && result.steps_detail && result.steps_detail.length > 0) {
+    remainderTest = result.steps_detail[0].remainder_test;
+  }
+
+  // Fallback terakhir: ambil dari overall_remainder_test (root level)
   if (!remainderTest) {
     remainderTest = (result as any).overall_remainder_test;
   }

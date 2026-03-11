@@ -767,7 +767,9 @@ export const BinaryLogisticMain = () => {
                   .replace(/<[^>]*>?/gm, " ")
                   .trim();
 
-                if (section.id.includes("case_processing")) {
+                if (section.id.includes("fitting_warnings")) {
+                  componentCategory = "Warnings";
+                } else if (section.id.includes("case_processing")) {
                   componentCategory = "Case Processing Summary";
                 } else if (section.id.includes("encoding")) {
                   componentCategory = "Dependent Variable Encoding";
@@ -775,8 +777,16 @@ export const BinaryLogisticMain = () => {
                   componentCategory = "Categorical Variables Codings";
                 } else if (section.id.includes("block0")) {
                   componentCategory = "Block 0: Beginning Block";
-                } else if (section.id.includes("block1") || section.id.includes("hosmer")) {
+                } else if (
+                  section.id.includes("block1") ||
+                  section.id.includes("hosmer") ||
+                  section.id.startsWith("classification_plot")
+                ) {
                   componentCategory = `Block 1: Method = ${options.method}`;
+                } else if (section.id.includes("casewise")) {
+                  componentCategory = "Casewise Diagnostics";
+                } else if (section.id.startsWith("assumption_")) {
+                  componentCategory = "Assumption Tests";
                 } else {
                   componentCategory = cleanTitle;
                 }
@@ -954,24 +964,28 @@ export const BinaryLogisticMain = () => {
         "Backward: LR": "BackwardLR",
       };
 
-      // --- PERUBAHAN: Mapping Konfigurasi Kategorik ---
+      // --- PERUBAHAN: Mapping Konfigurasi Kategorik (Per-Variable) ---
       // Mengubah state UI (catParams) menjadi format config untuk Rust
-      // Use ACTUAL variables with correct IDs
+      // Setiap variabel memiliki contrast & reference sendiri (SPSS style)
       const categoricalConfig = actualCovariates
         .filter((v) => catParams.covariates.includes(v.name))
-        .map((v) => ({
-          id: v.id,
-          method: catParams.contrast,
-          reference: catParams.referenceCategory,
-        }));
+        .map((v) => {
+          const setting = catParams.variableSettings[v.name];
+          return {
+            id: v.id,
+            method: setting?.contrast ?? "Indicator",
+            reference: setting?.referenceCategory ?? "Last",
+          };
+        });
 
-      // Tambahkan factors otomatis
+      // Tambahkan factors otomatis (default: Indicator/Last)
       actualFactors.forEach((f) => {
         if (!categoricalConfig.find((c) => c.id === f.id)) {
+          const setting = catParams.variableSettings[f.name];
           categoricalConfig.push({
             id: f.id,
-            method: catParams.contrast,
-            reference: catParams.referenceCategory,
+            method: setting?.contrast ?? "Indicator",
+            reference: setting?.referenceCategory ?? "Last",
           });
         }
       });
@@ -984,7 +998,7 @@ export const BinaryLogisticMain = () => {
         // --- Option Params ---
         max_iterations: optParams.maxIterations,
         include_constant: optParams.includeConstant,
-        convergence_threshold: 1e-9, // Fixed value for now
+        convergence_threshold: 0.001,
         confidence_level: optParams.ciLevel,
         cutoff: optParams.classificationCutoff,
 

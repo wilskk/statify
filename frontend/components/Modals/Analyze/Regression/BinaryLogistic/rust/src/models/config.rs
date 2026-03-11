@@ -208,7 +208,7 @@ fn default_max_iter() -> usize {
     20
 }
 fn default_tol() -> f64 {
-    1e-9
+    0.001
 }
 fn default_confidence() -> f64 {
     0.95
@@ -231,7 +231,7 @@ impl Default for LogisticConfig {
             include_constant: true,
             cutoff: 0.5,
             max_iterations: 20,
-            convergence_threshold: 1e-9,
+            convergence_threshold: 0.001, // SPSS default BCON = 0.001
             confidence_level: 0.95,
             method: RegressionMethod::Enter,
             p_entry: 0.05,

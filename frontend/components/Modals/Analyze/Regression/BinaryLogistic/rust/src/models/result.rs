@@ -44,13 +44,43 @@ pub struct VifRow {
 }
 
 // Struktur untuk satu baris hasil Box-Tidwell
+// Output format mengacu pada R's car::boxTidwell() (Fox & Weisberg, 2011)
+// dan teori asli Box & Tidwell (1962)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BoxTidwellRow {
     pub variable: String,         // Nama variabel asli
-    pub interaction_term: String, // Nama interaksi (misal: Age * ln(Age))
-    pub b: f64,                   // Koefisien
-    pub sig: f64,                 // P-value (signifikansi)
+
+    // --- Kolom utama (sesuai R output) ---
+    #[serde(default)]
+    pub mle_lambda: f64,          // MLE of λ (power transformation): λ̂ = 1 + γ̂/β̂
+    #[serde(default)]
+    pub score_z: f64,             // Score Statistic z = γ̂ / SE(γ̂)
+    #[serde(default)]
+    pub df: i32,                  // Degrees of freedom (always 1)
+    pub sig: f64,                 // P-value Pr(>|z|)
+
+    // --- Detail koefisien ---
+    #[serde(default)]
+    pub b_original: f64,          // β̂ of X in augmented model
+    #[serde(default)]
+    pub b_interaction: f64,       // γ̂ of X·ln(X) in augmented model
+    #[serde(default)]
+    pub se_interaction: f64,      // SE(γ̂)
+
+    // --- Flags ---
     pub is_significant: bool,     // Helper flag (p < 0.05)
+    #[serde(default)]
+    pub skipped: bool,
+    #[serde(default)]
+    pub skip_reason: String,
+    #[serde(default)]
+    pub note: String,
+
+    // --- Backward compat (deprecated but kept for serialization) ---
+    #[serde(default)]
+    pub interaction_term: String,
+    #[serde(default)]
+    pub b: f64,                   // Same as b_interaction
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

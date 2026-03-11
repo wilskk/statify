@@ -226,15 +226,42 @@ fn solve_linear_system(
         warnings.ridge_increased = true;
 
         if attempt == 4 {
+            warnings.near_singular_hessian = true;
             warnings.messages.push(
                 "Warning: Hessian matrix is severely ill-conditioned. \
-                 Results may be unreliable.".to_string()
+                 Results may be unreliable. This often indicates perfect \
+                 multicollinearity among predictors.".to_string()
             );
+
+            // LAST RESORT: Use pseudo-inverse with heavy regularization
+            // like SPSS, we still produce results even with singular Hessian
+            let heavy_reg = hessian + identity.scale(MAX_LAMBDA);
+            let svd = heavy_reg.svd(true, true);
+            if let Ok(delta) = svd.solve(&gradient, 1e-8) {
+                if !delta.iter().any(|x| x.is_nan() || x.is_infinite()) {
+                    warnings.final_lambda = MAX_LAMBDA;
+                    return Ok((delta, MAX_LAMBDA));
+                }
+            }
+
+            // ABSOLUTE LAST RESORT: Return zero delta (no update)
+            // This effectively freezes the current iteration's parameters
+            warnings.messages.push(
+                "Warning: Could not solve linear system even with heavy regularization. \
+                 Using last available parameter estimates.".to_string()
+            );
+            warnings.final_lambda = MAX_LAMBDA;
+            return Ok((DVector::zeros(p), MAX_LAMBDA));
         }
     }
 
-    Err("Failed to solve linear system: Hessian matrix is singular or severely ill-conditioned. \
-         This often indicates perfect multicollinearity among predictors.".to_string())
+    // This should be unreachable due to the attempt == 4 block above,
+    // but as a safety net, return zero delta instead of an error
+    warnings.near_singular_hessian = true;
+    warnings.messages.push(
+        "Warning: Hessian matrix is singular. Using last available parameter estimates.".to_string()
+    );
+    Ok((DVector::zeros(p), MAX_LAMBDA))
 }
 
 /// Step-halving line search untuk memastikan log-likelihood meningkat
@@ -299,6 +326,7 @@ pub fn fit(
 
     // Inisialisasi
     let mut beta = DVector::zeros(p);
+    let mut beta_prev = beta.clone(); // Track previous beta for convergence check
     let mut log_likelihood_prev = f64::NEG_INFINITY;
     let mut current_lambda = INITIAL_LAMBDA;
     let identity = DMatrix::identity(p, p);
@@ -369,16 +397,23 @@ pub fn fit(
         // 8. Cek Separation
         detect_separation(&beta, &predictions, &mut warnings);
 
-        // 9. Cek Konvergensi (SPSS style: -2LL ATAU parameter change)
-        // Konvergensi jika SALAH SATU kriteria terpenuhi
-        let param_change = delta.iter().map(|d| d.abs()).fold(0.0_f64, f64::max);
-        let ll_change = (ll_new - log_likelihood_prev).abs();
-        if (param_change < tol || ll_change < 0.0005) && iter > 0 {
+        // 9. Cek Konvergensi
+        // Ref: SPSS Algorithm Specification — "Estimation terminated because
+        // parameter estimates changed by less than .001"
+        // Kriteria UTAMA: max|Δβ_actual| < tol (default 0.001)
+        // Menggunakan ACTUAL parameter change (setelah step-halving),
+        // bukan delta (proposed Newton step) — konsisten dengan fit_with_history().
+        let param_change = beta.iter()
+            .zip(beta_prev.iter())
+            .map(|(b_new, b_old)| (b_new - b_old).abs())
+            .fold(0.0_f64, f64::max);
+        if param_change < tol && iter > 0 {
             converged = true;
             log_likelihood_prev = ll_new;
             break;
         }
         log_likelihood_prev = ll_new;
+        beta_prev = beta.clone();
 
         // Early stopping jika separation terdeteksi dan sudah banyak iterasi
         if warnings.possible_separation && iter > max_iter / 2 {
@@ -463,13 +498,19 @@ pub fn fit(
 
     warnings.final_lambda = current_lambda;
 
+    // FINAL: Recompute LL from actual final beta for maximum precision.
+    // During IRLS, LL comes from step_halving_search which should already be
+    // consistent, but recomputing eliminates any floating-point drift from
+    // intermediate cached values.
+    let final_ll = calculate_log_likelihood_safe(y, &predictions);
+
     Ok(FittedModel {
         beta,
         covariance_matrix,
         predictions,
         residuals,
         weights: weights_diag,
-        final_log_likelihood: log_likelihood_prev,
+        final_log_likelihood: final_ll,
         iterations: final_iter,
         converged,
         warnings,
@@ -556,53 +597,10 @@ pub fn fit_with_history(
         beta = beta_new;
         predictions = mu_new;
 
-        // 7. Hitung -2LL untuk iterasi ini
-        let neg2ll_new = -2.0 * ll_new;
-
-        // 8. Catat iteration history TERLEBIH DAHULU (SPSS-style)
-        // SPSS mencatat iterasi TERMASUK iterasi di mana konvergensi terdeteksi
-        iteration_history.push(IterationRecord {
-            iteration: final_iter,
-            neg2_log_likelihood: neg2ll_new,
-            coefficients: beta.iter().cloned().collect(),
-        });
-
-        // 9. Cek Konvergensi SETELAH mencatat iterasi
-        // SPSS berhenti ketika SALAH SATU kriteria terpenuhi:
-        // - Parameter change < threshold (default 0.001) untuk SEMUA parameter
-        // - -2LL change < threshold (model sudah stabil)
-        // PENTING: Gunakan strictly less than dengan threshold sedikit lebih ketat untuk -2LL
-        let (neg2ll_converged, param_converged) = if iteration_history.len() > 1 {
-            let prev_record = &iteration_history[iteration_history.len() - 2];
-            
-            // Cek -2LL change - gunakan threshold lebih ketat (< 1e-6)
-            // untuk menghindari false positive ketika change = 0.001
-            let neg2ll_change = (neg2ll_new - prev_record.neg2_log_likelihood).abs();
-            let neg2ll_conv = neg2ll_change < 1e-6;
-            
-            // Cek parameter change (max absolute change across all coefficients)
-            let param_change = beta.iter()
-                .zip(prev_record.coefficients.iter())
-                .map(|(b_new, b_old)| (b_new - b_old).abs())
-                .fold(0.0_f64, f64::max);
-            let param_conv = param_change < tol;
-            
-            (neg2ll_conv, param_conv)
-        } else {
-            (false, false)
-        };
-
-        // Konvergensi jika SALAH SATU kriteria terpenuhi (-2LL ATAU parameter change)
-        // iter > 0 untuk memastikan minimal 2 iterasi tercatat
-        if (neg2ll_converged || param_converged) && iter > 0 {
-            converged = true;
-            log_likelihood_prev = ll_new;
-            break;
-        }
-
-        log_likelihood_prev = ll_new;
-
-        // 10. Update residuals dan weights setelah step
+        // 7. IMMEDIATELY update residuals dan weights agar sinkron dengan beta/predictions baru
+        // FIX: Sebelumnya update ini ada SETELAH convergence check, sehingga saat break
+        // terjadi, residuals/weights masih dari iterasi sebelumnya (stale data).
+        // Ini menyebabkan covariance matrix dan score test menjadi sedikit off.
         residuals = y - &predictions;
         let w_diag_new = predictions.map(|pi| {
             let w = pi * (1.0 - pi);
@@ -610,10 +608,47 @@ pub fn fit_with_history(
         });
         weights_diag = w_diag_new;
 
-        // 11. Cek Separation
-        detect_separation(&beta, &predictions, &mut warnings);
+        // 8. Hitung -2LL untuk iterasi ini
+        let neg2ll_new = -2.0 * ll_new;
+
+        // 9. Catat iteration history TERLEBIH DAHULU (SPSS-style)
+        // SPSS mencatat iterasi TERMASUK iterasi di mana konvergensi terdeteksi
+        iteration_history.push(IterationRecord {
+            iteration: final_iter,
+            neg2_log_likelihood: neg2ll_new,
+            coefficients: beta.iter().cloned().collect(),
+        });
+
+        // 10. Cek Konvergensi SETELAH mencatat iterasi
+        // Ref: SPSS Algorithm Specification — "Estimation terminated because
+        // parameter estimates changed by less than .001"
+        // Kriteria UTAMA: max|Δβ_actual| < tol (default 0.001)
+        // Parameter convergence WAJIB terpenuhi. -2LL change saja TIDAK cukup
+        // karena likelihood surface bisa flat meski parameter belum stabil.
+        let param_converged = if iteration_history.len() > 1 {
+            let prev_record = &iteration_history[iteration_history.len() - 2];
+            
+            // Cek parameter change (max absolute change across all coefficients)
+            let param_change = beta.iter()
+                .zip(prev_record.coefficients.iter())
+                .map(|(b_new, b_old)| (b_new - b_old).abs())
+                .fold(0.0_f64, f64::max);
+            param_change < tol
+        } else {
+            false
+        };
+
+        // iter > 0 untuk memastikan minimal 2 iterasi tercatat
+        if param_converged && iter > 0 {
+            converged = true;
+            log_likelihood_prev = ll_new;
+            break;
+        }
 
         log_likelihood_prev = ll_new;
+
+        // 11. Cek Separation
+        detect_separation(&beta, &predictions, &mut warnings);
 
         // Early stopping jika separation terdeteksi dan sudah banyak iterasi
         if warnings.possible_separation && iter > max_iter / 2 {
@@ -706,13 +741,16 @@ pub fn fit_with_history(
         final_iter
     };
 
+    // FINAL: Recompute LL from actual final beta for maximum precision.
+    let final_ll = calculate_log_likelihood_safe(y, &predictions);
+
     let model = FittedModel {
         beta,
         covariance_matrix,
         predictions,
         residuals,
         weights: weights_diag,
-        final_log_likelihood: log_likelihood_prev,
+        final_log_likelihood: final_ll,
         iterations: actual_iterations,
         converged,
         warnings,
