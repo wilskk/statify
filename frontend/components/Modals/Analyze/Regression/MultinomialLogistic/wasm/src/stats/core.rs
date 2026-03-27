@@ -7,8 +7,10 @@ pub struct PrimaryResults {
     pub category_map: Vec<f64>, // List kategori unik
     pub reference_index: usize, // Indeks kategori referensi
     pub n_cases: usize,
-    pub n_params: usize,     // Jumlah parameter per kategori
-    pub n_categories: usize, // Jumlah kategori (J)
+    pub n_params: usize,             // Jumlah parameter per kategori
+    pub n_categories: usize,         // Jumlah kategori (J)
+    pub weights: Vec<f64>,           // Case weights
+    pub variable_names: Vec<String>, // Nama variabel untuk LR tests
 }
 
 pub fn perform_primary_calculation(
@@ -61,6 +63,24 @@ pub fn perform_primary_calculation(
     };
     let x_matrix = DMatrix::from_row_slice(n_rows, n_cols_x, &x_elements);
 
+    // Handle case weights (default to 1.0 if not provided)
+    let weights = data.weights.clone().unwrap_or_else(|| vec![1.0; n_rows]);
+
+    // Generate variable names for LR tests
+    let mut var_names = Vec::new();
+    if config.include_intercept {
+        var_names.push("Intercept".to_string());
+    }
+
+    // Use provided variable names or generate defaults
+    if let Some(ref names) = data.variable_names {
+        var_names.extend_from_slice(names);
+    } else {
+        for i in 0..n_vars {
+            var_names.push(format!("X{}", i + 1));
+        }
+    }
+
     Ok(PrimaryResults {
         design_matrix: x_matrix,
         y_categories: data.dependent.clone(),
@@ -69,5 +89,7 @@ pub fn perform_primary_calculation(
         n_cases: n_rows,
         n_params: n_cols_x,
         n_categories: j_count,
+        weights,
+        variable_names: var_names,
     })
 }

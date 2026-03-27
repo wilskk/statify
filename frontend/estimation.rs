@@ -1,4 +1,4 @@
-use crate::models::config::MultinomialConfig;
+﻿use crate::models::config::MultinomialConfig;
 use crate::models::result::MultinomialResult;
 use crate::stats::classification::calculate_classification_table;
 use crate::stats::core::PrimaryResults;
@@ -19,9 +19,8 @@ pub fn estimate_parameters(
     let J = primary.n_categories;
     let ref_idx = primary.reference_index;
 
-    // Initialize beta with SPSS initial values
-    // beta_j0 = log(p_j / p_ref) where p_j = sum_i n_ij / sum_i n_i
-    // All slope coefficients = 0
+    // Initialize beta with SPSS initial values:
+    // beta_j0 = log(p_j / p_ref), slope coefficients = 0
     let mut beta = DVector::zeros((J - 1) * p);
 
     // Calculate marginal probabilities for intercept initialization
@@ -55,8 +54,7 @@ pub fn estimate_parameters(
     }
 
     // Newton-Raphson dengan step-halving
-    let (beta, hessian, iter_count, converged) =
-        run_newton_raphson(X, primary, config, beta)?;
+    let (beta, hessian, iter_count, converged) = run_newton_raphson(X, primary, config, beta)?;
 
     // Variance-covariance = inverse of observed information matrix (-H at MLE)
     let var_covar = hessian

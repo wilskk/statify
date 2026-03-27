@@ -1,12 +1,17 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct MultinomialResult {
     pub coefficients: Vec<Vec<f64>>, // [kategori][parameter]
     pub std_errors: Vec<Vec<f64>>,
     pub wald_stats: Vec<Vec<f64>>, // Z-stats atau Wald
     pub p_values: Vec<Vec<f64>>,
-    pub exp_beta: Vec<Vec<f64>>, // Odds Ratio
+    pub exp_beta: Vec<Vec<f64>>,     // Odds Ratio
+    pub ci_lower: Vec<Vec<f64>>,     // Confidence interval lower bound
+    pub ci_upper: Vec<Vec<f64>>,     // Confidence interval upper bound
+    pub exp_ci_lower: Vec<Vec<f64>>, // Exp(B) CI lower
+    pub exp_ci_upper: Vec<Vec<f64>>, // Exp(B) CI upper
     pub log_likelihood: f64,
     pub null_log_likelihood: f64, // Untuk R-Square
     pub chi_square: f64,          // Model Fitting Information
@@ -15,11 +20,45 @@ pub struct MultinomialResult {
     pub iterations: u32,
     pub converged: bool,
     pub pseudo_r_square: PseudoRSquare,
+    pub goodness_of_fit: GoodnessOfFit,
+    pub classification_table: ClassificationTable,
+    pub likelihood_ratio_tests: Vec<LikelihoodRatioTest>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct PseudoRSquare {
     pub cox_snell: f64,
     pub nagelkerke: f64,
     pub mcfadden: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GoodnessOfFit {
+    pub pearson_chi_square: f64,
+    pub pearson_df: u32,
+    pub pearson_p_value: f64,
+    pub deviance: f64,
+    pub deviance_df: u32,
+    pub deviance_p_value: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ClassificationTable {
+    pub observed: Vec<usize>,
+    pub predicted: Vec<usize>,
+    pub confusion_matrix: Vec<Vec<usize>>, // [observed][predicted]
+    pub overall_percentage: f64,
+    pub category_percentages: Vec<f64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LikelihoodRatioTest {
+    pub effect: String, // nama variable
+    pub chi_square: f64,
+    pub df: u32,
+    pub p_value: f64,
 }

@@ -33,7 +33,7 @@ export const MultinomialLogisticMain = () => {
     const variables = useVariableStore((state) => state.variables);
     const [isLoading, setIsLoading] = useState(false);
     const { data } = useDataStore();
-    const addResult = useResultStore((state) => state.addResult);
+    const { addLog, addAnalytic, addStatistic, loadResults } = useResultStore();
 
 
     // State untuk opsi Multinomial Logistic (Sesuai SPSS)
@@ -71,93 +71,430 @@ export const MultinomialLogisticMain = () => {
         setIsLoading(true);
 
         try {
-            // [EDIT: Algoritma pengambilan data mengikuti Binary Logistic]
             console.log("Struktur Baris Data:", data[0]);
             console.log("ID Variabel Dependen:", options.dependent.id);
             console.log("Nama Variabel Dependen:", options.dependent.name);
-            const dependentName = options.dependent.name;
-            const factorNames = options.factors.map(v => v.name);
-            const covariateNames = options.covariates.map(v => v.name);
 
-            const allSelectedNames = [dependentName, ...factorNames, ...covariateNames];
+            const dependentVar = options.dependent;
+            const factorVars = options.factors;
+            const covariateVars = options.covariates;
 
-            // 2. Listwise Deletion menggunakan .name
-            const validData = data.filter((row: any) => {
-                return allSelectedNames.every(name => {
-                    const val = row[name];
+            const dependentIndex = dependentVar.columnIndex;
+            const factorIndices = factorVars.map(v => v.columnIndex);
+            const covariateIndices = covariateVars.map(v => v.columnIndex);
+
+            const allSelectedIndices = [dependentIndex, ...factorIndices, ...covariateIndices];
+
+            // Validasi keberadaan kolom berdasarkan index
+            const availableColumns = (data[0] || []).map((_: any, idx: number) => idx);
+            const missingVars = [dependentVar, ...factorVars, ...covariateVars]
+                .filter(v => v.columnIndex >= (data[0]?.length ?? 0))
+                .map(v => v.name);
+
+            if (missingVars.length > 0) {
+                throw new Error(
+                    `Kolom tidak ditemukan di data: ${missingVars.join(", ")}. Kolom yang tersedia: ${availableColumns.join(", ")}`
+                );
+            }
+
+            // 2. Listwise Deletion menggunakan index kolom
+            const validData = data.filter((row: any[]) => {
+                return allSelectedIndices.every((idx) => {
+                    const val = row[idx];
                     return val !== null && val !== undefined && String(val).trim() !== "";
                 });
             });
 
             console.log("Debug Data Access:", {
                 sampleRow: data[0],
-                lookingFor: allSelectedNames,
+                lookingFor: allSelectedIndices,
                 foundCount: validData.length
             });
 
             if (validData.length === 0) {
-                throw new Error("Tidak ada data valid. Pastikan nama variabel sesuai dengan header di tabel data.");
+                throw new Error("Tidak ada data valid. Pastikan variabel yang dipilih memiliki nilai pada semua baris.");
             }
 
-            // 3. Formatting data (Hanya memproses angka jika memungkinkan)
             const formattedData = {
-                // Jika variabel dependen adalah kategori string, biarkan tetap string/diubah di Rust
-                dependent: validData.map((row: any) => {
-                    const val = row[dependentName];
-                    return isNaN(parseFloat(val)) ? val : parseFloat(val);
+                dependent: validData.map((row: any[]) => {
+                    const val = row[dependentIndex];
+                    const num = parseFloat(String(val));
+                    return isNaN(num) ? val : num;
                 }),
-                // Independent dipisah antara factor (kategori) dan covariate (numerik)
                 independent: [
-                    ...factorNames.map(name => validData.map((row: any) => row[name])),
-                    ...covariateNames.map(name => validData.map((row: any) => parseFloat(row[name])))
+                    ...factorIndices.map(idx => validData.map((row: any[]) => row[idx])),
+                    ...covariateIndices.map(idx => validData.map((row: any[]) => parseFloat(String(row[idx]))))
                 ],
                 weights: null
             };
 
-            // 4. Inisialisasi Worker (Sesuai Binary Logistic)
-            const worker = new Worker(
-                new URL("/workers/Regression/multinomialLogistic.worker.js", window.location.origin),
-                { type: "module" }
-            );
+            console.log("[Multinomial UI] Formatted data sample:", {
+                dependent: formattedData.dependent.slice(0, 5),
+                independentCount: formattedData.independent.length,
+                independent0Sample: formattedData.independent[0]?.slice(0, 5),
+                independent1Sample: formattedData.independent[1]?.slice(0, 5)
+            });
+
+            const worker = new Worker('/workers/MultinomialLogistic/multinomial_logistic.js', { type: 'module' });
+
+            const workerOptions = {
+                referenceCategory: options.referenceCategory,
+                confidenceInterval: options.statistics.confidenceInterval / 100,
+                iterations: options.criteria.iterations,
+                tolerance: options.criteria.convergence,
+                singularity: options.criteria.singularity,
+                includeIntercept: true
+            };
+
+            console.log("[Multinomial UI] Worker options:", workerOptions);
 
             worker.postMessage({
                 data: formattedData,
-                options: {
-                    reference_category: options.referenceCategory,
-                    confidence_interval: options.statistics.confidenceInterval / 100,
-                    iterations: options.criteria.iterations,
-                    convergence: options.criteria.convergence,
-                    singularity: options.criteria.singularity,
-                    include_intercept: true
-                }
+                options: workerOptions
             });
 
             worker.onmessage = (e) => {
                 const { type, payload, error } = e.data;
+                console.log("[Multinomial UI] Worker response:", { type, hasPayload: !!payload, error });
+
                 if (type === "SUCCESS") {
-                    addResult({
-                        id: Date.now().toString(),
-                        type: 'MULTINOMIAL_LOGISTIC',
-                        label: `Multinomial Logistic: ${options.dependent!.name}`,
-                        data: payload,
-                    });
-                    closeModal("MULTINOMIAL_LOGISTIC");
-                    worker.terminate();
+                    (async () => {
+                        try {
+                            const result = typeof payload === "string" ? JSON.parse(payload) : payload;
+                            console.log("[Multinomial UI] Parsed result:", result);
+                            console.log("[Multinomial UI] Result keys:", Object.keys(result));
+
+                            // DEBUG: Check new fields
+                            console.log("[Multinomial UI] NEW FIELDS CHECK:", {
+                                hasClassificationTable: !!result?.classificationTable,
+                                classificationTable: result?.classificationTable,
+                                hasGoodnessOfFit: !!result?.goodnessOfFit,
+                                goodnessOfFit: result?.goodnessOfFit,
+                                hasLikelihoodRatioTests: !!result?.likelihoodRatioTests,
+                                likelihoodRatioTests: result?.likelihoodRatioTests,
+                                hasCIs: !!(result?.ciLower && result?.ciUpper),
+                            });
+
+                            console.log("[Multinomial UI] Result structure:", {
+                                logLikelihood: result?.logLikelihood,
+                                chiSquare: result?.chiSquare,
+                                df: result?.df,
+                                pValueModel: result?.pValueModel,
+                                pseudoRSquare: result?.pseudoRSquare,
+                                coefficients: result?.coefficients,
+                                stdErrors: result?.stdErrors,
+                                waldStats: result?.waldStats,
+                                pValues: result?.pValues,
+                                expBeta: result?.expBeta
+                            });
+
+                            const logMessage = `NOMREG ${options.dependent!.name}
+/METHOD=ENTER ${[...options.factors, ...options.covariates].map(v => v.name).join(" ")}
+/CRITERIA=ITERATE(${options.criteria.iterations}) CONVERGE(${options.criteria.convergence})`;
+
+                            console.log("[Multinomial UI] Creating log entry...");
+                            const logId = await addLog({ log: logMessage });
+                            console.log("[Multinomial UI] Log ID:", logId);
+
+                            const analyticId = await addAnalytic(logId, {
+                                title: "Multinomial Logistic Regression",
+                                note: "",
+                            });
+                            console.log("[Multinomial UI] Analytic ID:", analyticId);
+
+                            const paramNames = [
+                                "Intercept",
+                                ...options.factors.map(v => v.name),
+                                ...options.covariates.map(v => v.name),
+                            ];
+
+                            const coeffs: number[][] = result?.coefficients || [];
+                            const stdErrors: number[][] = result?.stdErrors || [];
+                            const waldStats: number[][] = result?.waldStats || [];
+                            const pValues: number[][] = result?.pValues || [];
+                            const expBeta: number[][] = result?.expBeta || [];
+                            const ciLower: number[][] = result?.ciLower || [];
+                            const ciUpper: number[][] = result?.ciUpper || [];
+                            const expCiLower: number[][] = result?.expCiLower || [];
+                            const expCiUpper: number[][] = result?.expCiUpper || [];
+
+                            console.log("[Multinomial UI] Extracted data:", {
+                                coeffsLength: coeffs.length,
+                                stdErrorsLength: stdErrors.length,
+                                waldStatsLength: waldStats.length,
+                                pValuesLength: pValues.length,
+                                expBetaLength: expBeta.length,
+                                hasCIs: ciLower.length > 0
+                            });
+
+                            const nParams = coeffs[0]?.length ?? 0;
+                            const usedParamNames = paramNames.slice(0, nParams);
+
+                            // Parameter table with Confidence Intervals
+                            const parameterRows = coeffs.flatMap((row, catIdx) =>
+                                row.map((coef, pIdx) => ({
+                                    rowHeader: [
+                                        `Category ${catIdx + 1}`,
+                                        usedParamNames[pIdx] ?? `Param ${pIdx + 1}`,
+                                    ],
+                                    "B": coef?.toFixed(3) ?? "",
+                                    "Std. Error": stdErrors[catIdx]?.[pIdx]?.toFixed(3) ?? "",
+                                    "Wald": waldStats[catIdx]?.[pIdx]?.toFixed(3) ?? "",
+                                    "Sig.": (() => {
+                                        const p = pValues[catIdx]?.[pIdx];
+                                        return p !== undefined ? (p < 0.001 ? "< .001" : p.toFixed(3)) : "";
+                                    })(),
+                                    "Exp(B)": expBeta[catIdx]?.[pIdx]?.toFixed(3) ?? "",
+                                    [`${options.statistics.confidenceInterval}% CI for B`]:
+                                        ciLower[catIdx]?.[pIdx] !== undefined && ciUpper[catIdx]?.[pIdx] !== undefined
+                                            ? `[${ciLower[catIdx][pIdx].toFixed(3)}, ${ciUpper[catIdx][pIdx].toFixed(3)}]`
+                                            : "",
+                                    [`${options.statistics.confidenceInterval}% CI for Exp(B)`]:
+                                        expCiLower[catIdx]?.[pIdx] !== undefined && expCiUpper[catIdx]?.[pIdx] !== undefined
+                                            ? `[${expCiLower[catIdx][pIdx].toFixed(3)}, ${expCiUpper[catIdx][pIdx].toFixed(3)}]`
+                                            : "",
+                                }))
+                            );
+
+                            const modelFittingTable = {
+                                title: "Model Fitting Information",
+                                columnHeaders: [
+                                    { header: "" },
+                                    { header: "-2 Log Likelihood" },
+                                    { header: "Chi-Square" },
+                                    { header: "df" },
+                                    { header: "Sig." },
+                                ],
+                                rows: [
+                                    {
+                                        rowHeader: ["Final"],
+                                        "-2 Log Likelihood": (result?.logLikelihood !== undefined ? (-2 * result.logLikelihood).toFixed(3) : ""),
+                                        "Chi-Square": (result?.chiSquare?.toFixed(3) ?? ""),
+                                        "df": (result?.df ?? ""),
+                                        "Sig.": (result?.pValueModel < 0.001 ? "< .001" : result?.pValueModel?.toFixed(3) ?? ""),
+                                    },
+                                ],
+                            };
+
+                            const pseudoRSquareTable = {
+                                title: "Pseudo R-Square",
+                                columnHeaders: [
+                                    { header: "" },
+                                    { header: "Value" },
+                                ],
+                                rows: [
+                                    { rowHeader: ["Cox & Snell"], "Value": (result?.pseudoRSquare?.coxSnell?.toFixed(3) ?? "") },
+                                    { rowHeader: ["Nagelkerke"], "Value": (result?.pseudoRSquare?.nagelkerke?.toFixed(3) ?? "") },
+                                    { rowHeader: ["McFadden"], "Value": (result?.pseudoRSquare?.mcfadden?.toFixed(3) ?? "") },
+                                ],
+                            };
+
+                            const parameterEstimatesTable = {
+                                title: "Parameter Estimates",
+                                columnHeaders: [
+                                    { header: "Category" },
+                                    { header: "" },
+                                    { header: "B" },
+                                    { header: "Std. Error" },
+                                    { header: "Wald" },
+                                    { header: "Sig." },
+                                    { header: "Exp(B)" },
+                                    { header: `${options.statistics.confidenceInterval}% CI for B` },
+                                    { header: `${options.statistics.confidenceInterval}% CI for Exp(B)` },
+                                ],
+                                rows: parameterRows,
+                            };
+
+                            // NEW: Classification Table
+                            const classificationTable = result?.classificationTable ? {
+                                title: "Classification Table",
+                                columnHeaders: [
+                                    { header: "Observed" },
+                                    ...Array.from({ length: result.classificationTable.confusionMatrix.length }, (_, i) => ({ header: `Predicted ${i}` })),
+                                    { header: "Percent Correct" },
+                                ],
+                                rows: result.classificationTable.confusionMatrix.map((row: number[], idx: number) => ({
+                                    rowHeader: [`Category ${idx}`],
+                                    ...row.reduce((acc, val, predIdx) => {
+                                        acc[`Predicted ${predIdx}`] = String(val);
+                                        return acc;
+                                    }, {} as Record<string, string>),
+                                    "Percent Correct": `${result.classificationTable.categoryPercentages[idx].toFixed(1)}%`,
+                                })).concat([{
+                                    rowHeader: ["Overall"],
+                                    ...Array.from({ length: result.classificationTable.confusionMatrix.length }, () => "").reduce((acc, _, i) => {
+                                        acc[`Predicted ${i}`] = "";
+                                        return acc;
+                                    }, {} as Record<string, string>),
+                                    "Percent Correct": `${result.classificationTable.overallPercentage.toFixed(1)}%`,
+                                }]),
+                            } : null;
+
+                            // NEW: Goodness-of-Fit Tests
+                            const goodnessOfFitTable = result?.goodnessOfFit ? {
+                                title: "Goodness-of-Fit Tests",
+                                columnHeaders: [
+                                    { header: "" },
+                                    { header: "Chi-Square" },
+                                    { header: "df" },
+                                    { header: "Sig." },
+                                ],
+                                rows: [
+                                    {
+                                        rowHeader: ["Pearson"],
+                                        "Chi-Square": result.goodnessOfFit.pearsonChiSquare.toFixed(3),
+                                        "df": String(result.goodnessOfFit.pearsonDf),
+                                        "Sig.": result.goodnessOfFit.pearsonPValue < 0.001 ? "< .001" : result.goodnessOfFit.pearsonPValue.toFixed(3),
+                                    },
+                                    {
+                                        rowHeader: ["Deviance"],
+                                        "Chi-Square": result.goodnessOfFit.deviance.toFixed(3),
+                                        "df": String(result.goodnessOfFit.devianceDf),
+                                        "Sig.": result.goodnessOfFit.deviancePValue < 0.001 ? "< .001" : result.goodnessOfFit.deviancePValue.toFixed(3),
+                                    },
+                                ],
+                            } : null;
+
+                            // NEW: Likelihood Ratio Tests
+                            const likelihoodRatioTable = result?.likelihoodRatioTests && result.likelihoodRatioTests.length > 0 ? {
+                                title: "Likelihood Ratio Tests",
+                                columnHeaders: [
+                                    { header: "Effect" },
+                                    { header: "Chi-Square" },
+                                    { header: "df" },
+                                    { header: "Sig." },
+                                ],
+                                rows: result.likelihoodRatioTests.map((test: any) => ({
+                                    rowHeader: [test.effect],
+                                    "Chi-Square": test.chiSquare.toFixed(3),
+                                    "df": String(test.df),
+                                    "Sig.": test.pValue < 0.001 ? "< .001" : test.pValue.toFixed(3),
+                                })),
+                            } : null;
+
+                            console.log("[Multinomial UI] Creating statistics with tables:", {
+                                modelFitting: modelFittingTable,
+                                pseudoRSquare: pseudoRSquareTable,
+                                parameterEstimates: parameterEstimatesTable,
+                                classificationTable,
+                                goodnessOfFit: goodnessOfFitTable,
+                                likelihoodRatio: likelihoodRatioTable,
+                            });
+
+                            // DEBUG: Check what will be saved
+                            console.log("[Multinomial UI] Statistics to save:", {
+                                modelFitting: options.statistics.modelFitting,
+                                pseudoRSquare: options.statistics.pseudoRSquare,
+                                parameterEstimates: options.statistics.parameterEstimates,
+                                classificationTable: options.statistics.classificationTable,
+                                goodnessOfFit: options.statistics.goodnessOfFit,
+                                likelihoodRatioTests: options.statistics.likelihoodRatioTests,
+                            });
+
+                            console.log("[Multinomial UI] Tables availability:", {
+                                hasClassificationTable: !!classificationTable,
+                                hasGoodnessOfFit: !!goodnessOfFitTable,
+                                hasLikelihoodRatio: !!likelihoodRatioTable,
+                            });
+
+                            // Save Model Fitting Information (always)
+                            if (options.statistics.modelFitting) {
+                                await addStatistic(analyticId, {
+                                    title: "Model Fitting Information",
+                                    description: "Model fit summary.",
+                                    output_data: JSON.stringify({ tables: [modelFittingTable] }),
+                                    components: "Model Fitting Information",
+                                });
+                                console.log("[Multinomial UI] Model Fitting statistic added");
+                            }
+
+                            // Save Pseudo R-Square (if enabled)
+                            if (options.statistics.pseudoRSquare) {
+                                await addStatistic(analyticId, {
+                                    title: "Pseudo R-Square",
+                                    description: "Pseudo R-Square measures.",
+                                    output_data: JSON.stringify({ tables: [pseudoRSquareTable] }),
+                                    components: "Pseudo R-Square",
+                                });
+                                console.log("[Multinomial UI] Pseudo R-Square statistic added");
+                            }
+
+                            // Save Parameter Estimates (if enabled)
+                            if (options.statistics.parameterEstimates) {
+                                await addStatistic(analyticId, {
+                                    title: "Parameter Estimates",
+                                    description: "Parameter estimates for each category with confidence intervals.",
+                                    output_data: JSON.stringify({ tables: [parameterEstimatesTable] }),
+                                    components: "Parameter Estimates",
+                                });
+                                console.log("[Multinomial UI] Parameter Estimates statistic added");
+                            }
+
+                            // NEW: Save Classification Table (if enabled)
+                            if (options.statistics.classificationTable && classificationTable) {
+                                await addStatistic(analyticId, {
+                                    title: "Classification Table",
+                                    description: "Observed vs Predicted categories with accuracy percentages.",
+                                    output_data: JSON.stringify({ tables: [classificationTable] }),
+                                    components: "Classification Table",
+                                });
+                                console.log("[Multinomial UI] Classification Table statistic added");
+                            }
+
+                            // NEW: Save Goodness-of-Fit Tests (if enabled)
+                            if (options.statistics.goodnessOfFit && goodnessOfFitTable) {
+                                await addStatistic(analyticId, {
+                                    title: "Goodness-of-Fit Tests",
+                                    description: "Pearson Chi-Square and Deviance tests for model fit.",
+                                    output_data: JSON.stringify({ tables: [goodnessOfFitTable] }),
+                                    components: "Goodness-of-Fit",
+                                });
+                                console.log("[Multinomial UI] Goodness-of-Fit statistic added");
+                            }
+
+                            // NEW: Save Likelihood Ratio Tests (if enabled)
+                            if (options.statistics.likelihoodRatioTests && likelihoodRatioTable) {
+                                await addStatistic(analyticId, {
+                                    title: "Likelihood Ratio Tests",
+                                    description: "Likelihood ratio tests for predictor effects.",
+                                    output_data: JSON.stringify({ tables: [likelihoodRatioTable] }),
+                                    components: "Likelihood Ratio Tests",
+                                });
+                                console.log("[Multinomial UI] Likelihood Ratio Tests statistic added");
+                            }
+
+                            console.log("[Multinomial UI] Loading results...");
+                            await loadResults();
+                            console.log("[Multinomial UI] Results loaded, closing modal");
+
+                            closeModal("MULTINOMIAL_LOGISTIC");
+                            worker.terminate();
+                            setIsLoading(false);
+                        } catch (saveError: any) {
+                            console.error("[Multinomial UI] Failed to save result:", saveError);
+                            alert("Gagal menyimpan hasil: " + saveError.message);
+                            setIsLoading(false);
+                            worker.terminate();
+                        }
+                    })();
                 } else {
-                    alert(`Analysis Error: ${error}`);
+                    console.error("[Multinomial UI] Analysis Error:", error);
+                    alert(`Analysis Error: ${error || "Unknown error"}`);
                     setIsLoading(false);
                     worker.terminate();
                 }
             };
 
             worker.onerror = (err) => {
-                console.error("Worker Execution Error:", err);
+                console.error("[Multinomial UI] Worker Execution Error:", err);
+                alert(`Worker Error: ${err.message || String(err)}`);
                 setIsLoading(false);
                 worker.terminate();
             };
 
         } catch (error: any) {
-            alert(error.message);
+            console.error("[Multinomial UI] Exception in handleAnalyze:", error);
+            alert(error.message || String(error));
             setIsLoading(false);
         }
     };
