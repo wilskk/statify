@@ -23,6 +23,8 @@ pub struct MultinomialResult {
     pub goodness_of_fit: GoodnessOfFit,
     pub classification_table: ClassificationTable,
     pub likelihood_ratio_tests: Vec<LikelihoodRatioTest>,
+    pub asymptotic_covariance: Vec<Vec<f64>>,
+    pub asymptotic_correlation: Vec<Vec<f64>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

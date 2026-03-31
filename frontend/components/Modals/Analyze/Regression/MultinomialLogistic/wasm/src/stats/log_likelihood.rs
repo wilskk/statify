@@ -56,17 +56,29 @@ pub fn calculate_ll(
 }
 
 /// Null model (intercept-only) log-likelihood untuk Pseudo R-Square
+/// MODIFIED: Gunakan weighted calculation untuk konsistensi dengan weighted LL
 pub fn calculate_null_log_likelihood(primary: &PrimaryResults) -> f64 {
-    let n = primary.n_cases as f64;
+    // First, calculate total weighted sum
+    let mut n_total = 0.0;
+    let mut n_j = vec![0.0f64; primary.category_map.len()];
+
+    // Sum using weights (consistent with weighted LL calculation)
+    for i in 0..primary.n_cases {
+        let weight = primary.weights[i];
+        n_total += weight;
+        for (j, &cat_val) in primary.category_map.iter().enumerate() {
+            if (primary.y_categories[i] - cat_val).abs() < f64::EPSILON {
+                n_j[j] += weight;
+                break;
+            }
+        }
+    }
+
+    // Calculate null LL using weighted counts
     let mut null_ll = 0.0;
-    for &cat_val in &primary.category_map {
-        let count = primary
-            .y_categories
-            .iter()
-            .filter(|&&y| y == cat_val)
-            .count() as f64;
-        if count > 0.0 {
-            null_ll += count * (count / n).ln();
+    for count in n_j {
+        if count > 0.0 && n_total > 0.0 {
+            null_ll += count * (count / n_total).ln();
         }
     }
     null_ll

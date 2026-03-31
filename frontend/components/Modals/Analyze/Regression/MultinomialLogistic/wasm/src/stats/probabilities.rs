@@ -1,9 +1,8 @@
 use nalgebra::{DMatrix, DVector};
 
 /// Hitung probabilitas softmax dengan log-sum-exp trick untuk stabilitas numerik.
-/// Tidak menggunakan clamp — logit dibiarkan tumbuh bebas seperti SPSS.
 /// Stabilitas numerik dijamin sepenuhnya oleh log-sum-exp shift.
-/// Mengembalikan DMatrix(n_cases x J).
+
 pub fn compute_probabilities(
     X: &DMatrix<f64>,
     beta: &DVector<f64>,

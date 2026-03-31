@@ -7,7 +7,61 @@ use crate::stats::goodness_of_fit::calculate_goodness_of_fit;
 use crate::stats::likelihood_ratio::calculate_likelihood_ratio_tests;
 use crate::stats::log_likelihood::{calculate_ll, calculate_null_log_likelihood};
 use crate::stats::newton_raphson::run_newton_raphson;
-use nalgebra::DVector;
+use nalgebra::{DMatrix, DVector};
+
+fn invert_information_matrix(
+    info: &DMatrix<f64>,
+    singularity: f64,
+) -> Result<DMatrix<f64>, String> {
+    let n = info.nrows();
+    if n == 0 || info.ncols() != n {
+        return Err("Matriks informasi tidak valid untuk inversi.".to_string());
+    }
+
+    // 1) Symmetrize observed information to reduce floating-point asymmetry.
+    let info_sym = (info + info.transpose()) * 0.5;
+
+    // 2) Try stable symmetric decomposition first.
+    if let Some(chol) = info_sym.clone().cholesky() {
+        return Ok(chol.inverse());
+    }
+
+    // 3) Fallback to ordinary inverse.
+    if let Some(inv) = info_sym.clone().try_inverse() {
+        return Ok(inv);
+    }
+
+    // 4) Last resort: SVD generalized inverse with relative SPSS-like cutoff.
+    let rel_cutoff = if singularity > 0.0 { singularity } else { 1e-8 };
+    let svd = info_sym.clone().svd(true, true);
+    let u = svd
+        .u
+        .ok_or_else(|| "Gagal menghitung SVD (U tidak tersedia).".to_string())?;
+    let vt = svd
+        .v_t
+        .ok_or_else(|| "Gagal menghitung SVD (V^T tidak tersedia).".to_string())?;
+    let s = svd.singular_values;
+    let s_max = s.iter().copied().fold(0.0_f64, f64::max);
+
+    if !s_max.is_finite() || s_max <= 0.0 {
+        return Err("Matriks informasi singular total (nilai singular tidak valid).".to_string());
+    }
+
+    let cutoff = rel_cutoff * s_max;
+    let mut s_inv = DMatrix::<f64>::zeros(n, n);
+    for i in 0..s.len() {
+        let sv = s[i];
+        if sv > cutoff {
+            s_inv[(i, i)] = 1.0 / sv;
+        }
+    }
+
+    // For SVD: A = U * S * V^T => A^+ = V * S^+ * U^T
+    let v = vt.transpose();
+    let u_t = u.transpose();
+    let inv = v * s_inv * u_t;
+    Ok((inv.clone() + inv.transpose()) * 0.5)
+}
 
 pub fn estimate_parameters(
     primary: &PrimaryResults,
@@ -55,14 +109,11 @@ pub fn estimate_parameters(
     }
 
     // Newton-Raphson dengan step-halving
-    let (beta, hessian, iter_count, converged) =
-        run_newton_raphson(X, primary, config, beta)?;
+    let (beta, hessian, iter_count, converged) = run_newton_raphson(X, primary, config, beta)?;
 
-    // Variance-covariance = inverse of observed information matrix (-H at MLE)
-    let var_covar = hessian
-        .map(|x| -x)
-        .try_inverse()
-        .ok_or("Gagal menghitung matriks varians-kovarians")?;
+    // Variance-covariance = inverse / generalized inverse of observed information matrix (-H at MLE)
+    let information = hessian.map(|x| -x);
+    let var_covar = invert_information_matrix(&information, config.singularity)?;
 
     let current_log_likelihood = calculate_ll(
         X,

@@ -139,8 +139,9 @@ pub fn run_newton_raphson(
             p,
         );
 
+        let mut accepted_step = new_ll >= current_ll;
         for _ in 0..MAX_STEP_HALVINGS {
-            if new_ll >= current_ll {
+            if accepted_step {
                 break;
             }
             step_size *= 0.5;
@@ -154,6 +155,12 @@ pub fn run_newton_raphson(
                 ref_idx,
                 p,
             );
+            accepted_step = new_ll >= current_ll;
+        }
+
+        // SPSS-like safeguard: never accept a step that decreases LL.
+        if !accepted_step {
+            break;
         }
 
         // Kriteria konvergensi SPSS
@@ -175,13 +182,54 @@ pub fn run_newton_raphson(
         let param_converged = param_change < pconv;
         let score_converged = max_score < pconv;
 
+        // SPSS NOMREG practical convergence: parameter and score stabilization.
         if iter_count > 1 && (ll_converged || param_converged || score_converged) {
             converged = true;
             break;
         }
     }
 
-    Ok((beta, hessian, iter_count, converged))
+    // === SOLUSI #1: Explicit Hessian Recomputation at Final β ===
+    // SPSS recomputes Hessian at final converged coefficients
+    // This ensures SE, Wald, and p-values match SPSS exactly
+    let pi_final = compute_probabilities(X, &beta, n_cases, J, p, ref_idx);
+    let mut hessian_final = DMatrix::zeros((J - 1) * p, (J - 1) * p);
+
+    for j in 0..J {
+        if j == ref_idx {
+            continue;
+        }
+        let j_idx = if j < ref_idx { j } else { j - 1 };
+
+        for j_prime in 0..J {
+            if j_prime == ref_idx {
+                continue;
+            }
+            let j_prime_idx = if j_prime < ref_idx {
+                j_prime
+            } else {
+                j_prime - 1
+            };
+
+            for s in 0..p {
+                for t in 0..p {
+                    let mut hess_val = 0.0;
+                    for i in 0..n_cases {
+                        let n_i = primary.weights[i];
+                        let delta_jj_prime = if j == j_prime { 1.0 } else { 0.0 };
+                        hess_val -= n_i
+                            * pi_final[(i, j)]
+                            * (delta_jj_prime - pi_final[(i, j_prime)])
+                            * X[(i, s)]
+                            * X[(i, t)];
+                    }
+                    hessian_final[(j_idx * p + s, j_prime_idx * p + t)] = hess_val;
+                }
+            }
+        }
+    }
+
+    Ok((beta, hessian_final, iter_count, converged))
 }
 
 /// Versi internal Newton-Raphson tanpa step-halving (digunakan oleh likelihood ratio tests).
@@ -198,7 +246,6 @@ pub fn run_newton_raphson_internal(
 
     let mut beta = DVector::zeros((J - 1) * p);
     let mut gradient = DVector::zeros((J - 1) * p);
-    let mut hessian = DMatrix::zeros((J - 1) * p, (J - 1) * p);
     let mut converged = false;
     let mut iter_count = 0u32;
 
@@ -284,9 +331,7 @@ pub fn run_newton_raphson_internal(
             }
             j_idx += 1;
         }
-        hessian = new_hessian;
-
-        let delta_beta_vec = hessian
+        let delta_beta_vec = new_hessian
             .clone()
             .try_inverse()
             .map(|inv_h| inv_h * &gradient)
@@ -315,8 +360,9 @@ pub fn run_newton_raphson_internal(
             ref_idx,
             p,
         );
+        let mut accepted_step_int = new_ll_int >= current_ll_int;
         for _ in 0..5usize {
-            if new_ll_int >= current_ll_int {
+            if accepted_step_int {
                 break;
             }
             step *= 0.5;
@@ -330,6 +376,11 @@ pub fn run_newton_raphson_internal(
                 ref_idx,
                 p,
             );
+            accepted_step_int = new_ll_int >= current_ll_int;
+        }
+
+        if !accepted_step_int {
+            break;
         }
 
         // Konvergensi SPSS: max absolute parameter change
@@ -354,7 +405,66 @@ pub fn run_newton_raphson_internal(
         }
     }
 
-    let var_covar = hessian
+    // === SOLUSI #1: Explicit Hessian Recomputation at Final β (for LR tests) ===
+    let pi_final_int = DMatrix::from_fn(n_cases, J, |i, j| {
+        let mut logits = vec![0.0f64; J];
+        let mut b_offset = 0;
+        let mut max_l: f64 = 0.0;
+        for jj in 0..J {
+            if jj == ref_idx {
+                logits[jj] = 0.0;
+            } else {
+                let b_j = beta.rows(b_offset, p);
+                logits[jj] = b_j.dot(&X.row(i).transpose());
+                b_offset += p;
+            }
+            if logits[jj] > max_l {
+                max_l = logits[jj];
+            }
+        }
+        let mut sum_exp = 0.0;
+        for jj in 0..J {
+            sum_exp += (logits[jj] - max_l).exp();
+        }
+        (logits[j] - max_l).exp() / sum_exp
+    });
+
+    let mut hessian_final_int = DMatrix::zeros((J - 1) * p, (J - 1) * p);
+    for j in 0..J {
+        if j == ref_idx {
+            continue;
+        }
+        let j_idx = if j < ref_idx { j } else { j - 1 };
+
+        for j_prime in 0..J {
+            if j_prime == ref_idx {
+                continue;
+            }
+            let j_prime_idx = if j_prime < ref_idx {
+                j_prime
+            } else {
+                j_prime - 1
+            };
+
+            for s in 0..p {
+                for t in 0..p {
+                    let mut hess_val = 0.0;
+                    for i in 0..n_cases {
+                        let n_i = primary.weights[i];
+                        let delta_jj_prime = if j == j_prime { 1.0 } else { 0.0 };
+                        hess_val -= n_i
+                            * pi_final_int[(i, j)]
+                            * (delta_jj_prime - pi_final_int[(i, j_prime)])
+                            * X[(i, s)]
+                            * X[(i, t)];
+                    }
+                    hessian_final_int[(j_idx * p + s, j_prime_idx * p + t)] = hess_val;
+                }
+            }
+        }
+    }
+
+    let var_covar = hessian_final_int
         .map(|x| -x)
         .try_inverse()
         .ok_or("Gagal menghitung matriks varians-kovarians")?;

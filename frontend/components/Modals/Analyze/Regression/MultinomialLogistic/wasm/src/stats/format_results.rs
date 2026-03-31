@@ -6,6 +6,9 @@ use crate::stats::core::PrimaryResults;
 use nalgebra::{DMatrix, DVector};
 use statrs::distribution::{ChiSquared, ContinuousCDF, Normal};
 
+const LOG_F64_MAX: f64 = 709.782712893384;
+const SPSS_UNSTABLE_SE_THRESHOLD: f64 = 1.0e4;
+
 /// Format hasil estimasi ke dalam struct output UI MultinomialResult.
 pub fn format_results(
     beta: DVector<f64>,
@@ -22,7 +25,7 @@ pub fn format_results(
 ) -> MultinomialResult {
     let J = primary.n_categories;
     let p = primary.n_params;
-    let n = primary.n_cases as f64;
+    let n = primary.weights.iter().copied().sum::<f64>().max(1.0);
     let normal = Normal::new(0.0, 1.0).unwrap();
 
     // Z critical value untuk confidence intervals
@@ -45,34 +48,51 @@ pub fn format_results(
         for k in 0..p {
             let idx = j * p + k;
             let coef = beta[idx];
-            let se = var_covar[(idx, idx)].sqrt();
-            let z = coef / se;
-            let wald = z * z; // SPSS uses Wald = (β/SE)² ~ χ²(1)
+            let base_var = var_covar[(idx, idx)];
+            let se = if base_var.is_finite() && base_var >= 0.0 {
+                base_var.sqrt()
+            } else {
+                f64::NAN
+            };
+            let z = if se.is_finite() && se > 0.0 {
+                coef / se
+            } else {
+                0.0
+            };
+            let wald = if z.is_finite() { z * z } else { 0.0 }; // SPSS uses Wald = (β/SE)² ~ χ²(1)
 
             let ci_low = coef - z_crit * se;
             let ci_high = coef + z_crit * se;
+            let unstable_estimate = !se.is_finite()
+                || se > SPSS_UNSTABLE_SE_THRESHOLD
+                || !ci_high.is_finite()
+                || ci_high > LOG_F64_MAX
+                || ci_low < -LOG_F64_MAX;
 
             coefficients[j][k] = coef;
             std_errors[j][k] = se;
             wald_stats[j][k] = wald;
             p_values[j][k] = 1.0 - chi_sq_1.cdf(wald.abs());
-            // Handle overflow dari complete separation (koefisien sangat besar)
-            // SPSS menampilkan ini sebagai "." (system missing) / floating point overflow
+            // Kembalikan perilaku Exp(B) seperti sebelumnya (sesuai permintaan pengguna).
             let exp_val = coef.exp();
-            exp_beta[j][k] = if exp_val.is_finite() {
-                exp_val
-            } else {
+            exp_beta[j][k] = if !exp_val.is_finite() {
                 f64::INFINITY
+            } else {
+                exp_val
             };
             ci_lower[j][k] = ci_low;
             ci_upper[j][k] = ci_high;
             let exp_low = ci_low.exp();
             let exp_high = ci_high.exp();
-            exp_ci_lower[j][k] = if exp_low.is_finite() { exp_low } else { 0.0 };
-            exp_ci_upper[j][k] = if exp_high.is_finite() {
-                exp_high
+            exp_ci_lower[j][k] = if unstable_estimate || !exp_low.is_finite() {
+                0.0
             } else {
+                exp_low
+            };
+            exp_ci_upper[j][k] = if unstable_estimate || !exp_high.is_finite() {
                 f64::INFINITY
+            } else {
+                exp_high
             };
         }
     }
@@ -81,6 +101,26 @@ pub fn format_results(
     let cox_snell = 1.0 - (null_ll - ll).exp().powf(2.0 / n);
     let nagelkerke = cox_snell / (1.0 - (2.0 * null_ll / n).exp());
     let mcfadden = 1.0 - (ll / null_ll);
+
+    let dim = var_covar.nrows();
+    let mut asymptotic_covariance = vec![vec![0.0f64; dim]; dim];
+    for r in 0..dim {
+        for c in 0..dim {
+            asymptotic_covariance[r][c] = var_covar[(r, c)];
+        }
+    }
+
+    let mut asymptotic_correlation = vec![vec![0.0f64; dim]; dim];
+    for r in 0..dim {
+        for c in 0..dim {
+            let denom = (var_covar[(r, r)] * var_covar[(c, c)]).sqrt();
+            asymptotic_correlation[r][c] = if denom > 0.0 {
+                var_covar[(r, c)] / denom
+            } else {
+                0.0
+            };
+        }
+    }
 
     MultinomialResult {
         coefficients,
@@ -110,5 +150,7 @@ pub fn format_results(
         goodness_of_fit,
         classification_table: classification,
         likelihood_ratio_tests: lr_tests,
+        asymptotic_covariance,
+        asymptotic_correlation,
     }
 }
