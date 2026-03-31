@@ -1,12 +1,10 @@
 // Ini file Service Layer utama yang bertugas sebagai orkestrator atau jembatan antara Frontend Next.js dan logika Rust WASM
+// Komputasi berat dijalankan di Web Worker agar tidak memblokir main thread UI.
 
 import {getSlicedData, getVarDefs} from "@/hooks/useVariable"; // getSlicedData: Mengambil hanya data variabel yang dipilih oleh pengguna dari dataset besar di UI.
 import {FactorAnalysisType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor-worker";
 import {transformFactorAnalysisResult} from "./factor-analysis-formatter";
 import {resultFactorAnalysis} from "./factor-analysis-output";
-import init, {
-    FactorAnalysis,
-} from "@/components/Modals/Analyze/dimension-reduction/factor/rust/pkg";
 
 // Fungsi memastikan kolom seperti columnIndex, width, dan decimals benar-benar bertipe Number. 
 // Tanpa ini, jika JavaScript mengirimkan angka dalam bentuk string, Rust akan mengalami error karena Rust sangat ketat terhadap tipe data (strongly typed).
@@ -118,37 +116,69 @@ export async function analyzeFactor({
         throw new Error("Selected variables have no valid data records. Please check if data is loaded correctly.");
     }
 
-    // Di dalam blok try, file ini menjalankan await init (fungsi dari paket rust/pkg yang memuat modul WebAssembly 
-    // ke dalam memori browser agar fungsi-fungsi Rust bisa dipanggil oleh JavaScript)
-    try {
-        await init();
-        const factor = new FactorAnalysis(
-            slicedDataForTarget, 
+    // Komputasi WASM dijalankan di Web Worker agar tidak memblokir main thread UI.
+    // Worker file: public/workers/FactorAnalysis/factorAnalysis.worker.js
+    return new Promise<void>((resolve, reject) => {
+        const worker = new Worker(
+            new URL("/workers/FactorAnalysis/factorAnalysis.worker.js", window.location.origin),
+            { type: "module" }
+        );
+
+        worker.postMessage({
+            action: "run_factor_analysis",
+            slicedDataForTarget,
             slicedDataForValue,
             varDefsForTarget,
             varDefsForValue,
-            configData
-        );
-
-        const results = factor.get_formatted_results();
-        const error = factor.get_all_errors();
-
-        console.log("WASM results", results);
-        console.log("WASM error", error);
-
-        // Teruskan configData ke formatter agar bisa mengakses extraction.Method
-        const formattedResults = transformFactorAnalysisResult(results, configData);
-        console.log("formattedResults", formattedResults);
-
-        /*
-         * 🎉 Final Result Process 🎯
-         * */
-        await resultFactorAnalysis({
-            formattedResult: formattedResults ?? [],
             configData,
         });
-    } catch (error) {
-        console.error("Error in analyzeFactor:", error);
-        throw error;
-    }
+
+        worker.onmessage = async (event: MessageEvent) => {
+            const { type, payload, action } = event.data;
+
+            if (type === "PROGRESS") {
+                console.log(`[FactorAnalysis Worker] Progress: ${payload.stage} (${payload.percent}%)`);
+                return;
+            }
+
+            if (type === "SUCCESS" && action === "run_factor_analysis") {
+                try {
+                    const { results, errors } = payload;
+                    console.log("WASM results (from worker)", results);
+                    console.log("WASM errors (from worker)", errors);
+
+                    // Teruskan configData ke formatter agar bisa mengakses extraction.Method
+                    const formattedResults = transformFactorAnalysisResult(results, configData);
+                    console.log("formattedResults", formattedResults);
+
+                    /*
+                     * 🎉 Final Result Process 🎯
+                     * */
+                    await resultFactorAnalysis({
+                        formattedResult: formattedResults ?? [],
+                        configData,
+                    });
+
+                    worker.terminate();
+                    resolve();
+                } catch (err) {
+                    worker.terminate();
+                    console.error("Error processing factor analysis results:", err);
+                    reject(err);
+                }
+            }
+
+            if (type === "ERROR") {
+                worker.terminate();
+                console.error("Factor analysis worker error:", payload);
+                reject(new Error(payload?.message || "Factor analysis computation failed in worker."));
+            }
+        };
+
+        worker.onerror = (err) => {
+            worker.terminate();
+            console.error("Factor analysis worker uncaught error:", err);
+            reject(new Error(err.message || "Factor analysis worker failed."));
+        };
+    });
 }

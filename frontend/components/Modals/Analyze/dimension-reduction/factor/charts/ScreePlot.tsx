@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import React, { useMemo } from "react";
+import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
 
 interface ScreePlotData {
   component_numbers: number[];
@@ -43,39 +36,40 @@ export function ScreePlot({ data }: ScreePlotProps) {
     return <p className="text-destructive">Invalid scree plot data: Missing component_numbers or eigenvalues</p>;
   }
 
+  // Transform data to Line Chart format: { category: string, value: number }[]
   const chartData = parsedData.component_numbers.map((c, i) => ({
-    component: c,
-    eigenvalue: parsedData.eigenvalues[i] ?? 0,
+    category: String(c),
+    value: parsedData.eigenvalues[i] ?? 0,
   }));
+
+  const chartJSON = {
+    charts: [{
+      chartType: "Line Chart",
+      chartData,
+      chartConfig: {
+        width: 800,
+        height: 400,
+        useAxis: true,
+        axisLabels: {
+          x: "Component Number",
+          y: "Eigenvalue",
+        },
+      },
+      chartMetadata: {
+        title: "Scree Plot",
+        subtitle: "Eigenvalues vs Component Number",
+        description: "Scree Plot showing eigenvalues for each component",
+        axisInfo: {
+          category: "Component Number",
+          value: "Eigenvalue",
+        },
+      },
+    }],
+  };
 
   return (
     <div className="w-full h-[400px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="component"
-            label={{ value: "Component Number", position: "insideBottom", offset: -10 }}
-            tick={{ fontSize: 12 }}
-          />
-          <YAxis
-            label={{ value: "Eigenvalue", angle: -90, position: "insideLeft", offset: 10 }}
-            tick={{ fontSize: 12 }}
-          />
-          <Tooltip 
-            formatter={(value: number) => [value.toFixed(3), "Eigenvalue"]}
-            labelFormatter={(label) => `Component ${label}`}
-          />
-          <Line
-            type="monotone"
-            dataKey="eigenvalue"
-            stroke="#8884d8"
-            strokeWidth={2}
-            dot={{ fill: "#8884d8", strokeWidth: 2, r: 5 }}
-            activeDot={{ r: 8 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      <GeneralChartContainer data={chartJSON} />
     </div>
   );
 }
