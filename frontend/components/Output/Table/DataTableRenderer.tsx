@@ -198,7 +198,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
           key={`rowheader-${rowIndex}-${colIdx}`}
           rowSpan={rowSpan}
           colSpan={2}
-          className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal whitespace-nowrap"
+          className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal whitespace-nowrap align-top"
         >
           {renderContent(current)}
         </th>
@@ -243,7 +243,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
         <th
           key={`rowheader-${rowIndex}-${colIdx}`}
           rowSpan={rowSpan}
-          className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal whitespace-nowrap"
+          className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal whitespace-nowrap align-top"
         >
           {renderContent(current)}
         </th>

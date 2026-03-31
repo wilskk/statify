@@ -69,7 +69,7 @@ function getExtractionMethodDisplayName(methodValue: string): string {
         resultJson.tables.push(table);
     }
 
-    // 2. Correlation Matrix
+    // 2. Correlation Matrix - SPSS Style with grouped row headers
     if (data.correlation_matrix) {
         const variables = data.correlation_matrix.correlations.map(
             (entry: any) => entry.variable
@@ -79,7 +79,8 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             key: "correlation_matrix",
             title: "Correlation Matrix",
             columnHeaders: [
-                { header: "", key: "var" },
+                { header: "", key: "var_level1" },
+                { header: "", key: "var_level2" },
                 ...variables.map((variable: string, index: number) => ({
                     header: variable,
                     key: `var_${index}`,
@@ -88,11 +89,11 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             rows: [],
         };
 
-        // Correlation values
+        // Correlation values with 2-level row header: ["Correlation", "VAR_NAME"]
         data.correlation_matrix.correlations.forEach(
             (entry: any, rowIndex: number) => {
                 const rowData: any = {
-                    rowHeader: [entry.variable],
+                    rowHeader: ["Correlation", entry.variable],
                 };
 
                 entry.values.forEach((val: any, colIndex: number) => {
@@ -108,13 +109,11 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             data.correlation_matrix.sig_values &&
             data.correlation_matrix.sig_values.length > 0
         ) {
-            // Add "Sig. (1-tailed)" row header
-            table.columnHeaders[0] = { header: "Sig. (1-tailed)", key: "var" };
-
+            // Add significance values with 2-level row header: ["Sig. (1-tailed)", "VAR_NAME"]
             data.correlation_matrix.sig_values.forEach(
                 (entry: any, rowIndex: number) => {
                     const rowData: any = {
-                        rowHeader: [entry.variable],
+                        rowHeader: ["Sig. (1-tailed)", entry.variable],
                     };
 
                     entry.values.forEach((val: any, colIndex: number) => {
@@ -291,7 +290,7 @@ function getExtractionMethodDisplayName(methodValue: string): string {
         resultJson.tables.push(table);
     }
 
-    // 5. Anti-image Matrices
+    // 5. Anti-image Matrices - SPSS Style with grouped row headers
     if (data.anti_image_matrices) {
         const variables = data.anti_image_matrices.anti_image_covariance.map(
             (entry: any) => entry.variable
@@ -301,7 +300,8 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             key: "anti_image_matrices",
             title: "Anti-image Matrices",
             columnHeaders: [
-                { header: "", key: "var" },
+                { header: "", key: "var_level1" },
+                { header: "", key: "var_level2" },
                 ...variables.map((variable: string, index: number) => ({
                     header: variable,
                     key: `var_${index}`,
@@ -310,13 +310,10 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             rows: [],
         };
 
-        // Anti-image Covariance
-        const covarianceHeader = { rowHeader: ["Anti-image Covariance"] };
-        table.rows.push(covarianceHeader);
-
+        // Anti-image Covariance with 2-level row header: ["Anti-image Covariance", "VAR_NAME"]
         data.anti_image_matrices.anti_image_covariance.forEach((entry: any) => {
             const rowData: any = {
-                rowHeader: [entry.variable],
+                rowHeader: ["Anti-image Covariance", entry.variable],
             };
 
             entry.values.forEach((val: any, colIndex: number) => {
@@ -326,14 +323,11 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             table.rows.push(rowData);
         });
 
-        // Anti-image Correlation
-        const correlationHeader = { rowHeader: ["Anti-image Correlation"] };
-        table.rows.push(correlationHeader);
-
+        // Anti-image Correlation with 2-level row header: ["Anti-image Correlation", "VAR_NAME"]
         data.anti_image_matrices.anti_image_correlation.forEach(
             (entry: any) => {
                 const rowData: any = {
-                    rowHeader: [entry.variable],
+                    rowHeader: ["Anti-image Correlation", entry.variable],
                 };
 
                 entry.values.forEach((val: any, colIndex: number) => {
@@ -765,7 +759,7 @@ function getExtractionMethodDisplayName(methodValue: string): string {
         resultJson.tables.push(table);
     }
 
-    // 9. Reproduced Correlations
+    // 9. Reproduced Correlations - SPSS Style with grouped row headers
     if (data.reproduced_correlations) {
         const variables =
             data.reproduced_correlations.reproduced_correlation.map(
@@ -776,7 +770,8 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             key: "reproduced_correlations",
             title: "Reproduced Correlations",
             columnHeaders: [
-                { header: "", key: "var" },
+                { header: "", key: "var_level1" },
+                { header: "", key: "var_level2" },
                 ...variables.map((variable: string, index: number) => ({
                     header: variable,
                     key: `var_${index}`,
@@ -785,14 +780,11 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             rows: [],
         };
 
-        // Reproduced Correlation header
-        table.rows.push({ rowHeader: ["Reproduced Correlation"] });
-
-        // Reproduced correlation values
+        // Reproduced correlation values with 2-level row header: ["Reproduced Correlation", "VAR_NAME"]
         data.reproduced_correlations.reproduced_correlation.forEach(
             (entry: any) => {
                 const rowData: any = {
-                    rowHeader: [entry.variable],
+                    rowHeader: ["Reproduced Correlation", entry.variable],
                 };
 
                 entry.values.forEach((val: any, colIndex: number) => {
@@ -811,13 +803,10 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             }
         );
 
-        // Residual header
-        table.rows.push({ rowHeader: ["Residualᵇ"] });
-
-        // Residual values
+        // Residual values with 2-level row header: ["Residualᵇ", "VAR_NAME"]
         data.reproduced_correlations.residual.forEach((entry: any) => {
             const rowData: any = {
-                rowHeader: [entry.variable],
+                rowHeader: ["Residualᵇ", entry.variable],
             };
 
             entry.values.forEach((val: any, colIndex: number) => {
@@ -845,7 +834,7 @@ function getExtractionMethodDisplayName(methodValue: string): string {
         resultJson.tables.push(table);
     }
 
-    // 9b. Reproduced Covariances
+    // 9b. Reproduced Covariances - SPSS Style with grouped row headers
     if (data.reproduced_covariances) {
         const variables =
             data.reproduced_covariances.reproduced_covariance.map(
@@ -856,7 +845,8 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             key: "reproduced_covariances",
             title: "Reproduced Covariances",
             columnHeaders: [
-                { header: "", key: "var" },
+                { header: "", key: "var_level1" },
+                { header: "", key: "var_level2" },
                 ...variables.map((variable: string, index: number) => ({
                     header: variable,
                     key: `var_${index}`,
@@ -865,14 +855,11 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             rows: [],
         };
 
-        // Reproduced Covariance header
-        table.rows.push({ rowHeader: ["Reproduced Covariance"] });
-
-        // Reproduced covariance values
+        // Reproduced covariance values with 2-level row header: ["Reproduced Covariance", "VAR_NAME"]
         data.reproduced_covariances.reproduced_covariance.forEach(
             (entry: any) => {
                 const rowData: any = {
-                    rowHeader: [entry.variable],
+                    rowHeader: ["Reproduced Covariance", entry.variable],
                 };
 
                 entry.values.forEach((val: any, colIndex: number) => {
@@ -891,13 +878,10 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             }
         );
 
-        // Residual header
-        table.rows.push({ rowHeader: ["Residualᵇ"] });
-
-        // Residual values
+        // Residual values with 2-level row header: ["Residualᵇ", "VAR_NAME"]
         data.reproduced_covariances.residual.forEach((entry: any) => {
             const rowData: any = {
-                rowHeader: [entry.variable],
+                rowHeader: ["Residualᵇ", entry.variable],
             };
 
             entry.values.forEach((val: any, colIndex: number) => {
