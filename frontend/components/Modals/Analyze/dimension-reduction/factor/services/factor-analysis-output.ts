@@ -483,7 +483,7 @@ export async function resultFactorAnalysis({
                         label: `Factor Score: ${column.variable_name}`,
                         values: [],
                         missing: null,
-                        columns: 8,
+                        columns: 64,
                         align: 'right' as const,
                         measure: 'scale' as const,
                         role: 'input' as const,
