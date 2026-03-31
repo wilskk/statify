@@ -9,6 +9,47 @@ import {useDataStore, ColumnData} from "@/stores/useDataStore";
 import {useVariableStore} from "@/stores/useVariableStore";
 import {generateFactorAnalysisLog} from "./factor-log-generator";
 
+// fungsi untuk membantu muncul variables baru dengan nama unik saat save as variables 
+function generateUniqueFactorNames(
+    existingVariableNames: string[],
+    factorScores: Array<{ variable_name: string; values: number[] }>
+): Map<string, string> {
+    const nameMap = new Map<string, string>();
+    
+    // Extract suffix numbers dari kolom existing yang match pattern FACx_y
+    const factorPattern = /^FAC(\d+)_(\d+)$/;
+    const maxSuffixByFactor = new Map<number, number>();
+    
+    for (const varName of existingVariableNames) {
+        const match = varName.match(factorPattern);
+        if (match) {
+            const factorNum = parseInt(match[1]);
+            const suffix = parseInt(match[2]);
+            const currentMax = maxSuffixByFactor.get(factorNum) || 0;
+            maxSuffixByFactor.set(factorNum, Math.max(currentMax, suffix));
+        }
+    }
+    
+    // Cari suffix tertinggi across all factors untuk consistency
+    const maxSuffix = Math.max(0, ...Array.from(maxSuffixByFactor.values()));
+    const newSuffix = maxSuffix + 1;
+    
+    // Generate new unique names dengan suffix yang sama untuk semua factor scores
+    for (const score of factorScores) {
+        const match = score.variable_name.match(factorPattern);
+        if (match) {
+            const factorNum = parseInt(match[1]);
+            const newName = `FAC${factorNum}_${newSuffix}`;
+            nameMap.set(score.variable_name, newName);
+        } else {
+            // Jika tidak match pattern (shouldn't happen), keep original name
+            nameMap.set(score.variable_name, score.variable_name);
+        }
+    }
+    
+    return nameMap;
+}
+
 export async function resultFactorAnalysis({
     formattedResult,
     configData,
@@ -412,11 +453,20 @@ export async function resultFactorAnalysis({
                 const dataStore = useDataStore.getState();
                 const variableStore = useVariableStore.getState();
 
-                // Convert factor scores to ColumnData format
-                const columnDataList: ColumnData[] = formattedResult.factorScores.map((score: any) => ({
-                    variable_name: score.variable_name,
-                    values: score.values,
-                }));
+                // Step 0: Generate unique factor variable names following SPSS convention (FAC1_1, FAC2_1, FAC1_2, etc)
+                const existingVariableNames = variableStore.variables.map(v => v.name);
+                const uniqueFactorNames = generateUniqueFactorNames(existingVariableNames, formattedResult.factorScores);
+                
+                console.log("Generated unique factor names:", Array.from(uniqueFactorNames.entries()));
+
+                // Convert factor scores to ColumnData format with unique names applied
+                const columnDataList: ColumnData[] = formattedResult.factorScores.map((score: any) => {
+                    const uniqueName = uniqueFactorNames.get(score.variable_name) || score.variable_name;
+                    return {
+                        variable_name: uniqueName,
+                        values: score.values,
+                    };
+                });
 
                 // Step 1: Inject data values into the grid
                 const { startColumnIndex, endColumnIndex } = await dataStore.addVariableColumns(columnDataList);
@@ -443,7 +493,11 @@ export async function resultFactorAnalysis({
                     // registerVariableMetadata only updates the metadata, preserving the data structure
                     await variableStore.registerVariableMetadata(newVariablesData);
 
+                    // Save variable metadata to database
+                    await variableStore.saveVariables();
+
                     console.log(`Successfully added ${newVariablesData.length} factor score columns to the data grid with proper headers`);
+                    console.log("Factor score variable names saved:", newVariablesData.map(v => v.name));
                 }
             } catch (error) {
                 console.error("Failed to inject factor scores into data grid:", error);

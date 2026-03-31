@@ -28,7 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CheckedState } from "@radix-ui/react-checkbox";
 
-// Pastikan string value ini SAMA PERSIS dengan value yang ada di file constants/factor-method.ts Anda
+// Pastikan string value ini SAMA PERSIS dengan value yang ada di file constants/factor-method.ts 
 const RESTRICTED_METHODS = [
     "UnweightLeastSqr",
     "GeneralizedLeastSqr",

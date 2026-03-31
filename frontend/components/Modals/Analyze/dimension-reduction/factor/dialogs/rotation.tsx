@@ -146,6 +146,7 @@ export const FactorRotation = ({
                                             <Label htmlFor="Equimax">Equimax</Label>
                                         </div>
 
+                                  
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="Promax" id="Promax" />
                                             <Label htmlFor="Promax">Promax</Label>

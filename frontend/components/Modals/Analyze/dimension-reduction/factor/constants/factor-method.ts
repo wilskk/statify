@@ -19,12 +19,12 @@ export const EXTRACTIONMETHOD = [
         name: "Principal Axis Factoring",
         value: "PrincipalAxisFactoring",
     },
-    {
-        name: "Alpha Factoring",
-        value: "AlphaFactoring",
-    },
-    {
-        name: "Image Factoring",
-        value: "ImageFactoring",
-    },
+    // {
+    //     name: "Alpha Factoring",
+    //     value: "AlphaFactoring",
+    // },
+    // {
+    //     name: "Image Factoring",
+    //     value: "ImageFactoring",
+    // },
 ];
