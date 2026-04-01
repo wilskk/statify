@@ -1,5 +1,3 @@
-
-
 // perbaikan 14/1/2026
 // perbaikan (10/1/2026)
 // PERBAIKAN 4/1/2026
@@ -7,6 +5,20 @@
 import {formatDisplayNumber} from "@/hooks/useFormatter";
 import {ResultJson, Table} from "@/types/Table";
 import {FactorType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
+import {
+    generateKMODescription,
+    generateCommunalitiesDescription,
+    generateTotalVarianceDescription,
+    generateRotatedMatrixDescription,
+    generateComponentMatrixDescription,
+    generateDescriptiveDescription,
+    generateCorrelationMatrixDescription,
+    generateInverseCorrelationDescription,
+    generateAntiImageRefinedDescription,
+    generateReproducedRefinedDescription,
+    generateComponentTransformationDescription,
+    fmtSig,
+} from "./formatter_utils";
 
 // Helper function untuk mapping value extraction method ke nama tampilan
 const EXTRACTION_METHOD_MAP: Record<string, string> = {
@@ -65,6 +77,10 @@ function getExtractionMethodDisplayName(methodValue: string): string {
                 analysis_n: formatDisplayNumber(stat.analysis_n),
             });
         });
+
+        const numVariables = data.descriptive_statistics.length;
+        const sampleSize = data.descriptive_statistics[0]?.analysis_n || 0;
+        table.interpretation = generateDescriptiveDescription(numVariables, sampleSize);
 
         resultJson.tables.push(table);
     }
@@ -127,6 +143,9 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             );
         }
 
+        const correlationDeterminant = (data.correlation_matrix as any).determinant || data.covariance_matrix?.determinant || 0;
+        table.interpretation = generateCorrelationMatrixDescription(correlationDeterminant);
+
         resultJson.tables.push(table);
     }
 
@@ -163,6 +182,8 @@ function getExtractionMethodDisplayName(methodValue: string): string {
                 table.rows.push(rowData);
             }
         );
+
+        table.interpretation = generateInverseCorrelationDescription();
 
         resultJson.tables.push(table);
     }
@@ -248,6 +269,14 @@ function getExtractionMethodDisplayName(methodValue: string): string {
 
     // 4. KMO and Bartlett's Test
     if (data.kmo_bartletts_test) {
+        const kmoValue = data.kmo_bartletts_test.kaiser_meyer_olkin || 0;
+        const bartlettSig = data.kmo_bartletts_test.significance || 1;
+        const bartlettChiSquare = data.kmo_bartletts_test.bartletts_test_chi_square;
+        const bartlettDf = data.kmo_bartletts_test.df;
+
+        // Generate description menggunakan formatter_utils
+        const kmoDescription = generateKMODescription(kmoValue, bartlettSig, bartlettChiSquare, bartlettDf);
+
         const table: Table = {
             key: "kmo_bartletts_test",
             title: "KMO and Bartlett's Test",
@@ -285,6 +314,7 @@ function getExtractionMethodDisplayName(methodValue: string): string {
                     ),
                 },
             ],
+            interpretation: kmoDescription, // ← ADD INTERPRETASI
         };
 
         resultJson.tables.push(table);
@@ -344,6 +374,8 @@ function getExtractionMethodDisplayName(methodValue: string): string {
                 table.rows.push(rowData);
             }
         );
+
+        table.interpretation = generateAntiImageRefinedDescription();
 
         resultJson.tables.push(table);
     }
@@ -478,6 +510,21 @@ function getExtractionMethodDisplayName(methodValue: string): string {
 
         const methodDisplayNameComm = getExtractionMethodDisplayName(extractionMethod);
         table.rows.push({ rowHeader: [`Extraction Method: ${methodDisplayNameComm}.`] });
+        
+        // Generate description untuk Communalities
+        const communalitiesData = variables.map((v: string) => ({
+            name: v,
+            value: extractionMap.get(v) || rescaledExtractionMap.get(v) || 0
+        })).filter(c => c.value > 0);
+        
+        const lowestComm = communalitiesData.reduce((min, curr) => 
+            curr.value < min.value ? curr : min,
+            { name: '', value: 1 }
+        );
+        
+        const commDescription = generateCommunalitiesDescription(communalitiesData, methodDisplayNameComm);
+        table.interpretation = commDescription;
+        
         resultJson.tables.push(table);
     }
 
@@ -525,6 +572,15 @@ function getExtractionMethodDisplayName(methodValue: string): string {
                         table.rows.push(rowData);
                     });
                 });
+                
+                // Generate description untuk Total Variance Explained
+                const lastRowValues = varianceBlocks[0][1]?.initial?.rows?.[varianceBlocks[0][1]?.initial?.rows?.length - 1];
+                const cumulativeVarExplained = lastRowValues?.[2] || 0; // cumulative percentage
+                const numComponentsExtr = varianceBlocks[0][1]?.initial?.rows?.length || 0;
+                const methodDisplayNameVar = getExtractionMethodDisplayName(extractionMethod);
+                const varianceDesc = generateTotalVarianceDescription(numComponentsExtr, cumulativeVarExplained / 100, methodDisplayNameVar);
+                table.interpretation = varianceDesc;
+                
                 resultJson.tables.push(table);
 
             } else {
@@ -602,6 +658,14 @@ function getExtractionMethodDisplayName(methodValue: string): string {
                 // Footer dinamis berdasarkan metode ekstraksi
                 const methodDisplayName = getExtractionMethodDisplayName(extractionMethod);
                 table.rows.push({ rowHeader: [`Extraction Method: ${methodDisplayName}.`] });
+                
+                // Generate description untuk Total Variance Explained (Correlation case)
+                const lastInitialRow = blockData.initial.rows?.[blockData.initial.rows.length - 1];
+                const cumulativePctCorr = lastInitialRow?.[2] || 0;
+                const numComponentsCorr = blockData.initial.rows?.length || 0;
+                const varianceDescCorr = generateTotalVarianceDescription(numComponentsCorr, cumulativePctCorr / 100, methodDisplayName);
+                table.interpretation = varianceDescCorr;
+                
                 resultJson.tables.push(table);
             }
         } catch (error) {
@@ -756,6 +820,10 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             });
         }
 
+        // Generate description untuk Component Matrix
+        const componentMatrixDesc = generateComponentMatrixDescription(extractedComponents, data.component_matrix.components?.[0]?.values?.length || 0);
+        table.interpretation = componentMatrixDesc;
+
         resultJson.tables.push(table);
     }
 
@@ -830,6 +898,19 @@ function getExtractionMethodDisplayName(methodValue: string): string {
                 "b. Residuals are computed between observed and reproduced correlations. There are X (X%) nonredundant residuals with absolute values greater than 0.05.",
             ],
         });
+
+        // Calculate residual count and percentage
+        let residualCount = 0;
+        data.reproduced_correlations.residual.forEach((entry: any) => {
+            entry.values.forEach((val: any) => {
+                if (Math.abs(val.value) > 0.05) {
+                    residualCount++;
+                }
+            });
+        });
+        const totalNonredundant = variables.length * (variables.length - 1) / 2;
+        const residualPct = totalNonredundant > 0 ? (residualCount / totalNonredundant * 100) : 0;
+        table.interpretation = generateReproducedRefinedDescription(residualCount, residualPct);
 
         resultJson.tables.push(table);
     }
@@ -984,6 +1065,11 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             rowHeader: ["a. Rotation converged in X iterations."],
         });
 
+        // Generate description untuk Rotated Component Matrix
+        const rotationMethod = "Varimax"; // Default atau bisa dari config
+        const rotatedMatrixDesc = generateRotatedMatrixDescription(rotationMethod, extractedComponents);
+        table.interpretation = rotatedMatrixDesc;
+
         resultJson.tables.push(table);
     }
 
@@ -1034,6 +1120,17 @@ function getExtractionMethodDisplayName(methodValue: string): string {
         table.rows.push({
             rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."],
         });
+
+        // Determine rotation method from configData
+        let rotationMethod = "Varimax"; // Default
+        if (configData?.rotation) {
+            if (configData.rotation.Quartimax) rotationMethod = "Quartimax";
+            if (configData.rotation.Varimax) rotationMethod = "Varimax";
+            if (configData.rotation.Equimax) rotationMethod = "Equimax";
+            if (configData.rotation.Oblimin) rotationMethod = "Oblimin";
+            if (configData.rotation.Promax) rotationMethod = "Promax";
+        }
+        table.interpretation = generateComponentTransformationDescription(rotationMethod);
 
         resultJson.tables.push(table);
     }

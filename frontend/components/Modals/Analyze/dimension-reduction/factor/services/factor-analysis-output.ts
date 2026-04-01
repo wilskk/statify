@@ -78,6 +78,12 @@ export async function resultFactorAnalysis({
     return table;
 };
 
+        // Helper untuk extract description dari table interpretation
+        const getTableDescription = (key: string, defaultText: string): string => {
+            const rawTable = findRawTable(key);
+            return rawTable?.interpretation || defaultText;
+        };
+
 
         const factorAnalysisResult = async () => {
             /*
@@ -102,7 +108,7 @@ export async function resultFactorAnalysis({
             if (descriptiveStatistics) {
                 await addStatistic(analyticId, {
                     title: `Descriptive Statistics`,
-                    description: `Descriptive Statistics`,
+                    description: getTableDescription("descriptive_statistics", "Descriptive Statistics"),
                     output_data: descriptiveStatistics,
                     components: `Descriptive Statistics`,
                 });
@@ -115,7 +121,7 @@ export async function resultFactorAnalysis({
             if (correlationMatrix) {
                 await addStatistic(analyticId, {
                     title: `Correlation Matrix`,
-                    description: `Correlation Matrix`,
+                    description: getTableDescription("correlation_matrix", "Correlation Matrix"),
                     output_data: correlationMatrix,
                     components: `Correlation Matrix`,
                 });
@@ -130,7 +136,7 @@ export async function resultFactorAnalysis({
             if (inverseCorrelationMatrix) {
                 await addStatistic(analyticId, {
                     title: `Inverse of Correlation Matrix`,
-                    description: `Inverse of Correlation Matrix`,
+                    description: getTableDescription("inverse_correlation_matrix", "Inverse of Correlation Matrix"),
                     output_data: inverseCorrelationMatrix,
                     components: `Inverse of Correlation Matrix`,
                 });
@@ -171,7 +177,7 @@ export async function resultFactorAnalysis({
             if (kmoBartlettsTest) {
                 await addStatistic(analyticId, {
                     title: `KMO and Bartlett's Test`,
-                    description: `KMO and Bartlett's Test`,
+                    description: getTableDescription("kmo_bartletts_test", "KMO and Bartlett's Test"),
                     output_data: kmoBartlettsTest,
                     components: `KMO and Bartlett's Test`,
                 });
@@ -184,7 +190,7 @@ export async function resultFactorAnalysis({
             if (antiImageMatrices) {
                 await addStatistic(analyticId, {
                     title: `Anti-image Matrices`,
-                    description: `Anti-image Matrices`,
+                    description: getTableDescription("anti_image_matrices", "Anti-image Matrices"),
                     output_data: antiImageMatrices,
                     components: `Anti-image Matrices`,
                 });
@@ -197,7 +203,7 @@ export async function resultFactorAnalysis({
             if (communalities) {
                 await addStatistic(analyticId, {
                     title: `Communalities`,
-                    description: `Communalities`,
+                    description: getTableDescription("communalities", "Communalities"),
                     output_data: communalities,
                     components: `Communalities`,
                 });
@@ -213,7 +219,7 @@ export async function resultFactorAnalysis({
                 console.log("Total Variance Explained table found and processing...");
                 await addStatistic(analyticId, {
                     title: `Total Variance Explained`,
-                    description: `Total Variance Explained`,
+                    description: getTableDescription("total_variance_explained", "Total Variance Explained"),
                     output_data: totalVarianceExplained,
                     components: `Total Variance Explained`,
                 });
@@ -232,7 +238,7 @@ export async function resultFactorAnalysis({
                 const tableTitle = componentMatrixRaw.title;
                 await addStatistic(analyticId, {
                     title: tableTitle,
-                    description: tableTitle,
+                    description: getTableDescription("component_matrix", tableTitle),
                     output_data: componentMatrix,
                     components: tableTitle,
                 });
@@ -245,7 +251,7 @@ export async function resultFactorAnalysis({
             if (reproducedCorrelations) {
                 await addStatistic(analyticId, {
                     title: `Reproduced Correlations`,
-                    description: `Reproduced Correlations`,
+                    description: getTableDescription("reproduced_correlations", "Reproduced Correlations"),
                     output_data: reproducedCorrelations,
                     components: `Reproduced Correlations`,
                 });
@@ -277,7 +283,7 @@ export async function resultFactorAnalysis({
                 const tableTitle = rotatedComponentMatrixRaw.title;
                 await addStatistic(analyticId, {
                     title: tableTitle,
-                    description: tableTitle,
+                    description: getTableDescription("rotated_component_matrix", tableTitle),
                     output_data: rotatedComponentMatrix,
                     components: tableTitle,
                 });
@@ -296,7 +302,7 @@ export async function resultFactorAnalysis({
                 const tableTitle = componentTransformationMatrixRaw.title;
                 await addStatistic(analyticId, {
                     title: tableTitle,
-                    description: tableTitle,
+                    description: getTableDescription("component_transformation_matrix", tableTitle),
                     output_data: componentTransformationMatrix,
                     components: tableTitle,
                 });

@@ -554,6 +554,9 @@ pub fn calculate_anti_image_matrices(
 }
 
 
+
+
+
 /// Menghitung standar deviasi sampel untuk kolom tertentu
 pub fn calculate_std_dev(data: &DMatrix<f64>, col_index: usize) -> f64 {
     let n_rows = data.nrows();
