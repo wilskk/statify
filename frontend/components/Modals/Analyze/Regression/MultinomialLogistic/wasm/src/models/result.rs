@@ -8,8 +8,6 @@ pub struct MultinomialResult {
     pub wald_stats: Vec<Vec<f64>>, // Z-stats atau Wald
     pub p_values: Vec<Vec<f64>>,
     pub exp_beta: Vec<Vec<f64>>,     // Odds Ratio
-    pub ci_lower: Vec<Vec<f64>>,     // Confidence interval lower bound
-    pub ci_upper: Vec<Vec<f64>>,     // Confidence interval upper bound
     pub exp_ci_lower: Vec<Vec<f64>>, // Exp(B) CI lower
     pub exp_ci_upper: Vec<Vec<f64>>, // Exp(B) CI upper
     pub log_likelihood: f64,
@@ -60,7 +58,11 @@ pub struct ClassificationTable {
 #[serde(rename_all = "camelCase")]
 pub struct LikelihoodRatioTest {
     pub effect: String, // nama variable
+    pub aic_reduced: f64,
+    pub bic_reduced: f64,
+    pub neg2_log_likelihood_reduced: f64,
     pub chi_square: f64,
     pub df: u32,
     pub p_value: f64,
+    pub equivalent_to_final: bool,
 }

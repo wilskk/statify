@@ -138,19 +138,6 @@ export const MultinomialLogisticMain = () => {
                 if (aIsNum && bIsNum) return aNum - bNum;
                 return a.localeCompare(b, undefined, { numeric: true });
             };
-            const getFactorValueLabel = (variable: Variable, rawCategory: string) => {
-                if (!Array.isArray(variable.values)) return rawCategory;
-                const rawNum = Number(rawCategory);
-                const hasRawNum = Number.isFinite(rawNum);
-                const matched = variable.values.find((item) => {
-                    const itemStr = String(item.value).trim();
-                    if (itemStr === rawCategory) return true;
-                    const itemNum = Number(item.value);
-                    return hasRawNum && Number.isFinite(itemNum) && itemNum === rawNum;
-                });
-                return matched?.label ?? rawCategory;
-            };
-
             // SPSS-like factor handling: indicator (dummy) coding with one reference level omitted.
             const encodedFactorColumns = factorVars.flatMap((factorVar) => {
                 const idx = factorVar.columnIndex;
@@ -166,9 +153,8 @@ export const MultinomialLogisticMain = () => {
                 const nonReferenceCategories = categories.filter((cat) => cat !== referenceCategory);
 
                 return nonReferenceCategories.map((category) => {
-                    const label = getFactorValueLabel(factorVar, category);
                     return {
-                        name: `${factorVar.name}=${label}`,
+                        name: `${factorVar.name}=${category}`,
                         values: validData.map((row: any[]) =>
                             normalizeCategory(row[idx]) === category ? 1.0 : 0.0
                         ),
@@ -181,7 +167,7 @@ export const MultinomialLogisticMain = () => {
                 values: validData.map((row: any[]) => parseFloat(String(row[idx]))),
             }));
 
-            const allPredictorColumns = [...encodedFactorColumns, ...covariateColumns];
+            const allPredictorColumns = [...covariateColumns, ...encodedFactorColumns];
 
             const formattedData = {
                 dependent: validData.map((row: any[]) => {
@@ -268,19 +254,11 @@ export const MultinomialLogisticMain = () => {
                             });
                             console.log("[Multinomial UI] Analytic ID:", analyticId);
 
-                            const paramNames = [
-                                "Intercept",
-                                ...options.factors.map(v => v.name),
-                                ...options.covariates.map(v => v.name),
-                            ];
-
                             const coeffs: number[][] = result?.coefficients || [];
                             const stdErrors: number[][] = result?.stdErrors || [];
                             const waldStats: number[][] = result?.waldStats || [];
                             const pValues: number[][] = result?.pValues || [];
                             const expBeta: number[][] = result?.expBeta || [];
-                            const ciLower: number[][] = result?.ciLower || [];
-                            const ciUpper: number[][] = result?.ciUpper || [];
                             const expCiLower: number[][] = result?.expCiLower || [];
                             const expCiUpper: number[][] = result?.expCiUpper || [];
                             const asymptoticCovariance: number[][] = result?.asymptoticCovariance || [];
@@ -296,13 +274,27 @@ export const MultinomialLogisticMain = () => {
                                 waldStatsLength: waldStats.length,
                                 pValuesLength: pValues.length,
                                 expBetaLength: expBeta.length,
-                                hasCIs: ciLower.length > 0
+                                hasExpCIs: expCiLower.length > 0
                             });
 
                             const nParams = coeffs[0]?.length ?? 0;
-                            const usedParamNames = paramNames.slice(0, nParams);
+                            const usedParamNames = ["Intercept", ...allPredictorColumns.map((col) => col.name)].slice(0, nParams);
                             const kParams = coeffs.reduce((sum, row) => sum + row.length, 0);
                             const finalNeg2LL = result?.logLikelihood !== undefined ? (-2 * result.logLikelihood) : NaN;
+
+                            const formatSpssNumber = (value: number | undefined, digits = 3) => {
+                                if (value === undefined || Number.isNaN(value) || !Number.isFinite(value)) {
+                                    return ".";
+                                }
+                                const fixed = value.toFixed(digits);
+                                if (fixed.startsWith("-0.")) {
+                                    return `-${fixed.slice(2)}`;
+                                }
+                                if (fixed.startsWith("0.")) {
+                                    return fixed.slice(1);
+                                }
+                                return fixed;
+                            };
 
                             const formatCategoryValue = (value: number | string | undefined) => {
                                 if (value === undefined || value === null) return "";
@@ -363,7 +355,8 @@ export const MultinomialLogisticMain = () => {
 
                             const formatPValue = (p: number | undefined) => {
                                 if (p === undefined || Number.isNaN(p)) return "";
-                                return p < 0.001 ? "< .001" : p.toFixed(3);
+                                if (p < 0.001) return "< .001";
+                                return formatSpssNumber(p, 3);
                             };
 
                             const formatFixed = (value: number | undefined, digits = 3) => {
@@ -373,68 +366,28 @@ export const MultinomialLogisticMain = () => {
                                 return value.toFixed(digits);
                             };
 
-                            const formatExpValueForDisplay = (value: number | undefined) => {
-                                if (value === undefined || Number.isNaN(value)) return "";
-                                if (!Number.isFinite(value)) return ".";
-                                if (value <= 0.0) return "0.000";
-                                return value.toExponential(3).replace("e", "E");
-                            };
+                            const formatExpValueForDisplay = (value: number | undefined) => formatSpssNumber(value, 3);
 
-                            const formatExpIntervalForDisplay = (low?: number, high?: number) => {
-                                if (low === undefined || high === undefined || Number.isNaN(low) || Number.isNaN(high)) {
-                                    return "";
-                                }
-                                const lowText = !Number.isFinite(low) || low <= 0.0
-                                    ? "0.000"
-                                    : low.toExponential(3).replace("e", "E");
-                                const highText = !Number.isFinite(high) || high >= 1e130
-                                    ? "."
-                                    : high.toExponential(3).replace("e", "E");
-                                return `[${lowText}, ${highText}]`;
-                            };
-
-                            const formatBIntervalForDisplay = (low?: number, high?: number, se?: number) => {
-                                if (
-                                    low === undefined ||
-                                    high === undefined ||
-                                    se === undefined ||
-                                    !Number.isFinite(low) ||
-                                    !Number.isFinite(high) ||
-                                    !Number.isFinite(se) ||
-                                    se > 1e4
-                                ) {
-                                    return "";
-                                }
-                                return `[${low.toFixed(3)}, ${high.toFixed(3)}]`;
-                            };
-
-                            // Parameter table with Confidence Intervals
+                            // Parameter table with Exp(B) confidence intervals
                             const parameterRows = coeffs.flatMap((row, catIdx) =>
                                 row.map((coef, pIdx) => ({
                                     rowHeader: [
                                         formatCategoryWithLabel(dependentVar, nonReferenceCategories[catIdx]),
-                                        usedParamNames[pIdx] ?? `Param ${pIdx + 1}`,
+                                        usedParamNames[pIdx]?.includes("=")
+                                            ? `[${usedParamNames[pIdx]}]`
+                                            : (usedParamNames[pIdx] ?? `Param ${pIdx + 1}`),
                                     ],
-                                    "B": formatFixed(coef),
-                                    "Std. Error": formatFixed(stdErrors[catIdx]?.[pIdx]),
-                                    "Wald": formatFixed(waldStats[catIdx]?.[pIdx]),
+                                    "B": formatSpssNumber(coef),
+                                    "Std. Error": formatSpssNumber(stdErrors[catIdx]?.[pIdx]),
+                                    "Wald": formatSpssNumber(waldStats[catIdx]?.[pIdx]),
                                     "df": "1",
                                     "Sig.": (() => {
                                         const p = pValues[catIdx]?.[pIdx];
-                                        return p !== undefined ? (p < 0.001 ? "< .001" : p.toFixed(3)) : "";
+                                        return p !== undefined ? formatPValue(p) : "";
                                     })(),
                                     "Exp(B)": formatExpValueForDisplay(expBeta[catIdx]?.[pIdx]),
-                                    [`${options.statistics.confidenceInterval}% CI for B`]:
-                                        formatBIntervalForDisplay(
-                                            ciLower[catIdx]?.[pIdx],
-                                            ciUpper[catIdx]?.[pIdx],
-                                            stdErrors[catIdx]?.[pIdx]
-                                        ),
-                                    [`${options.statistics.confidenceInterval}% CI for Exp(B)`]:
-                                        formatExpIntervalForDisplay(
-                                            expCiLower[catIdx]?.[pIdx],
-                                            expCiUpper[catIdx]?.[pIdx]
-                                        ),
+                                    "Lower Bound": formatSpssNumber(expCiLower[catIdx]?.[pIdx]),
+                                    "Upper Bound": formatSpssNumber(expCiUpper[catIdx]?.[pIdx]),
                                 }))
                             );
 
@@ -527,6 +480,13 @@ export const MultinomialLogisticMain = () => {
                                     n: String(totalCases),
                                     percent: "100.0%",
                                 },
+                                {
+                                    rowHeader: ["Overall", "Subpopulation"],
+                                    N: String(validCases),
+                                    Percent: "",
+                                    n: String(validCases),
+                                    percent: "",
+                                },
                             ];
 
                             if (categoryBreakdownRows.length === 0) {
@@ -577,21 +537,26 @@ export const MultinomialLogisticMain = () => {
                             const parameterEstimatesTable = {
                                 title: "Parameter Estimates",
                                 columnHeaders: [
-                                    { header: "Category" },
-                                    { header: "" },
-                                    { header: "B" },
-                                    { header: "Std. Error" },
-                                    { header: "Wald" },
-                                    { header: "df" },
-                                    { header: "Sig." },
-                                    { header: "Exp(B)" },
-                                    { header: `${options.statistics.confidenceInterval}% CI for B` },
-                                    { header: `${options.statistics.confidenceInterval}% CI for Exp(B)` },
+                                    { header: "Category", key: "row_header_col_1" },
+                                    { header: "", key: "row_header_col_2" },
+                                    { header: "B", key: "B" },
+                                    { header: "Std. Error", key: "Std. Error" },
+                                    { header: "Wald", key: "Wald" },
+                                    { header: "df", key: "df" },
+                                    { header: "Sig.", key: "Sig." },
+                                    { header: "Exp(B)", key: "Exp(B)" },
+                                    {
+                                        header: `${options.statistics.confidenceInterval}% Confidence Interval for Exp(B)`,
+                                        children: [
+                                            { header: "Lower Bound", key: "Lower Bound" },
+                                            { header: "Upper Bound", key: "Upper Bound" },
+                                        ],
+                                    },
                                 ],
                                 rows: parameterRows,
                                 footer: [
                                     `a. The reference category is: ${formatCategoryWithLabel(dependentVar, referenceCategoryValue)}.`,
-                                    "b. Floating point overflow occurred while computing this statistic. Its value is therefore set to system missing.",
+                                    "b. This parameter is set to zero because it is redundant.",
                                 ],
                             };
 
@@ -675,17 +640,39 @@ export const MultinomialLogisticMain = () => {
                             const likelihoodRatioTable = result?.likelihoodRatioTests && result.likelihoodRatioTests.length > 0 ? {
                                 title: "Likelihood Ratio Tests",
                                 columnHeaders: [
-                                    { header: "Effect" },
-                                    { header: "Chi-Square" },
-                                    { header: "df" },
-                                    { header: "Sig." },
+                                    { header: "Effect", key: "row_header_col_1" },
+                                    {
+                                        header: "Model Fit",
+                                        children: [
+                                            { header: "AIC", key: "AIC" },
+                                            { header: "BIC", key: "BIC" },
+                                            { header: "-2LL", key: "-2LL" },
+                                        ],
+                                    },
+                                    {
+                                        header: "LR Test",
+                                        children: [
+                                            { header: "Chi-Square", key: "Chi-Square" },
+                                            { header: "df", key: "df" },
+                                            { header: "Sig.", key: "Sig." },
+                                        ],
+                                    },
                                 ],
                                 rows: result.likelihoodRatioTests.map((test: any) => ({
                                     rowHeader: [test.effect],
-                                    "Chi-Square": test.chiSquare.toFixed(3),
+                                    "AIC": formatSpssNumber(test.aicReduced),
+                                    "BIC": formatSpssNumber(test.bicReduced),
+                                    "-2LL": test.equivalentToFinal
+                                        ? `${formatSpssNumber(test.neg2LogLikelihoodReduced)}<sup>a</sup>`
+                                        : formatSpssNumber(test.neg2LogLikelihoodReduced),
+                                    "Chi-Square": formatSpssNumber(test.chiSquare),
                                     "df": String(test.df),
-                                    "Sig.": formatPValue(test.pValue),
+                                    "Sig.": Number.isFinite(test.pValue) ? formatPValue(test.pValue) : ".",
                                 })),
+                                footer: [
+                                    "The chi-square statistic is the difference in -2 log-likelihoods between the final model and a reduced model. The reduced model is formed by omitting an effect from the final model. The null hypothesis is that all parameters of that effect are 0.",
+                                    "a. This reduced model is equivalent to the final model because omitting the effect does not increase the degrees of freedom.",
+                                ],
                             } : null;
 
                             const monotonicityTable = result?.classificationTable?.observed && result?.classificationTable?.predicted
@@ -723,34 +710,70 @@ export const MultinomialLogisticMain = () => {
                                 })()
                                 : null;
 
-                            const asymptoticCovariancesTable = asymptoticCovariance.length > 0 ? {
-                                title: "Asymptotic Covariances",
-                                columnHeaders: [
-                                    { header: "Parameter" },
-                                    ...Array.from({ length: asymptoticCovariance.length }, (_, i) => ({ header: `P${i + 1}` })),
-                                ],
-                                rows: asymptoticCovariance.map((row: number[], rowIdx: number) => ({
-                                    rowHeader: [`P${rowIdx + 1}`],
-                                    ...row.reduce((acc, val, colIdx) => {
-                                        acc[`P${colIdx + 1}`] = Number.isFinite(val) ? val.toFixed(6) : "";
-                                        return acc;
-                                    }, {} as Record<string, string>),
+                            const parameterDisplayNames = usedParamNames.map((name, idx) =>
+                                name?.includes("=") ? `[${name}]` : (name ?? `Param ${idx + 1}`)
+                            );
+
+                            const matrixColumnKeys = nonReferenceCategories.flatMap((cat) =>
+                                parameterDisplayNames.map((paramName) => `${formatCategoryWithLabel(dependentVar, cat)}||${paramName}`)
+                            );
+
+                            const matrixColumnGroups = nonReferenceCategories.map((cat) => ({
+                                header: formatCategoryWithLabel(dependentVar, cat),
+                                children: parameterDisplayNames.map((paramName) => ({
+                                    header: paramName,
+                                    key: `${formatCategoryWithLabel(dependentVar, cat)}||${paramName}`,
                                 })),
+                            }));
+
+                            const buildAsymptoticRows = (matrix: number[][]) => {
+                                const paramsPerCategory = parameterDisplayNames.length;
+                                return matrix.map((row: number[], rowIdx: number) => {
+                                    const catIdx = paramsPerCategory > 0 ? Math.floor(rowIdx / paramsPerCategory) : 0;
+                                    const paramIdx = paramsPerCategory > 0 ? rowIdx % paramsPerCategory : rowIdx;
+                                    return {
+                                        rowHeader: [
+                                            formatCategoryWithLabel(dependentVar, nonReferenceCategories[catIdx]),
+                                            parameterDisplayNames[paramIdx] ?? `Param ${paramIdx + 1}`,
+                                        ],
+                                        ...matrixColumnKeys.reduce((acc, colKey, colIdx) => {
+                                            const val = row[colIdx];
+                                            acc[colKey] = Number.isFinite(val) ? val.toFixed(4) : "";
+                                            return acc;
+                                        }, {} as Record<string, string>),
+                                    };
+                                });
+                            };
+
+                            const asymptoticCovariancesTable = asymptoticCovariance.length > 0 ? {
+                                title: "Asymptotic Covariance Matrix<sup>a</sup>",
+                                columnHeaders: [
+                                    { header: "", key: "row_header_col_1" },
+                                    { header: "", key: "row_header_col_2" },
+                                    {
+                                        header: dependentVar.name,
+                                        children: matrixColumnGroups,
+                                    },
+                                ],
+                                rows: buildAsymptoticRows(asymptoticCovariance),
+                                footer: [
+                                    "a. There is no overdispersion adjustment.",
+                                    `b. The reference category is: ${formatCategoryWithLabel(dependentVar, referenceCategoryValue)}.`,
+                                ],
                             } : null;
 
                             const asymptoticCorrelationsTable = asymptoticCorrelation.length > 0 ? {
-                                title: "Asymptotic Correlations",
+                                title: "Asymptotic Correlation Matrix",
                                 columnHeaders: [
-                                    { header: "Parameter" },
-                                    ...Array.from({ length: asymptoticCorrelation.length }, (_, i) => ({ header: `P${i + 1}` })),
+                                    { header: "", key: "row_header_col_1" },
+                                    { header: "", key: "row_header_col_2" },
+                                    {
+                                        header: dependentVar.name,
+                                        children: matrixColumnGroups,
+                                    },
                                 ],
-                                rows: asymptoticCorrelation.map((row: number[], rowIdx: number) => ({
-                                    rowHeader: [`P${rowIdx + 1}`],
-                                    ...row.reduce((acc, val, colIdx) => {
-                                        acc[`P${colIdx + 1}`] = Number.isFinite(val) ? val.toFixed(4) : "";
-                                        return acc;
-                                    }, {} as Record<string, string>),
-                                })),
+                                rows: buildAsymptoticRows(asymptoticCorrelation),
+                                footer: `The reference category is: ${formatCategoryWithLabel(dependentVar, referenceCategoryValue)}.`,
                             } : null;
 
                             console.log("[Multinomial UI] Creating statistics with tables:", {
@@ -945,7 +968,10 @@ export const MultinomialLogisticMain = () => {
 
             worker.onerror = (err) => {
                 console.error("[Multinomial UI] Worker Execution Error:", err);
-                alert(`Worker Error: ${err.message || String(err)}`);
+                const detail = err.message
+                    ? `${err.message} (${err.filename || "unknown"}:${err.lineno || 0}:${err.colno || 0})`
+                    : `${String(err)} (${err.filename || "unknown"}:${err.lineno || 0}:${err.colno || 0})`;
+                alert(`Worker Error: ${detail}`);
                 setIsLoading(false);
                 worker.terminate();
             };

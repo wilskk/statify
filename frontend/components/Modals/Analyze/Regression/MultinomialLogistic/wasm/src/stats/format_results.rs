@@ -37,8 +37,6 @@ pub fn format_results(
     let mut wald_stats = vec![vec![0.0f64; p]; J - 1];
     let mut p_values = vec![vec![0.0f64; p]; J - 1];
     let mut exp_beta = vec![vec![0.0f64; p]; J - 1];
-    let mut ci_lower = vec![vec![0.0f64; p]; J - 1];
-    let mut ci_upper = vec![vec![0.0f64; p]; J - 1];
     let mut exp_ci_lower = vec![vec![0.0f64; p]; J - 1];
     let mut exp_ci_upper = vec![vec![0.0f64; p]; J - 1];
 
@@ -80,8 +78,6 @@ pub fn format_results(
             } else {
                 exp_val
             };
-            ci_lower[j][k] = ci_low;
-            ci_upper[j][k] = ci_high;
             let exp_low = ci_low.exp();
             let exp_high = ci_high.exp();
             exp_ci_lower[j][k] = if unstable_estimate || !exp_low.is_finite() {
@@ -128,8 +124,6 @@ pub fn format_results(
         wald_stats,
         p_values,
         exp_beta,
-        ci_lower,
-        ci_upper,
         exp_ci_lower,
         exp_ci_upper,
         log_likelihood: ll,

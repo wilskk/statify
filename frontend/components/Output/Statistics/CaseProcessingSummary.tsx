@@ -1,4 +1,6 @@
 import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type ColumnHeader = { header: string; key?: string };
 type TableRow = { rowHeader?: (string | null)[];[key: string]: unknown };
@@ -6,6 +8,7 @@ type TableData = {
     title?: string;
     columnHeaders?: ColumnHeader[];
     rows?: TableRow[];
+    note?: string;
 };
 
 interface CaseProcessingSummaryProps {
@@ -31,86 +34,105 @@ const CaseProcessingSummary: React.FC<CaseProcessingSummaryProps> = ({ data }) =
 
     const colKeys = headers.map((h) => h.key || h.header);
 
+    const displayHeader = (header: string): string => {
+        if (/percent/i.test(header)) return "Marginal Percentage";
+        return header;
+    };
+
+    const shouldRenderFirstHeader = (rowIndex: number): boolean => {
+        const current = rows[rowIndex]?.rowHeader?.[0] ?? "";
+        if (current === "Overall") return true;
+        if (rowIndex === 0) return true;
+        const prev = rows[rowIndex - 1]?.rowHeader?.[0] ?? "";
+        return current !== prev;
+    };
+
     const getRowSpanForFirstHeader = (startIndex: number): number => {
-        const startHeaders = rows[startIndex]?.rowHeader || ["", ""];
-        const startValue = startHeaders[0] ?? "";
-        if (!startValue) return 1;
+        const startValue = rows[startIndex]?.rowHeader?.[0] ?? "";
+        if (!startValue || startValue === "Overall") return 1;
 
         let span = 1;
-        for (let i = startIndex + 1; i < rows.length; i++) {
-            const nextHeaders = rows[i]?.rowHeader || ["", ""];
-            const nextValue = nextHeaders[0] ?? "";
-            if (nextValue !== startValue) break;
+        for (let i = startIndex + 1; i < rows.length; i += 1) {
+            const nextValue = rows[i]?.rowHeader?.[0] ?? "";
+            if (nextValue !== startValue || nextValue === "Overall") break;
             span += 1;
         }
         return span;
     };
 
-    const shouldRenderFirstHeader = (rowIndex: number): boolean => {
-        if (rowIndex === 0) return true;
-        const current = (rows[rowIndex]?.rowHeader || ["", ""])[0] ?? "";
-        const prev = (rows[rowIndex - 1]?.rowHeader || ["", ""])[0] ?? "";
-        return current !== prev;
+    const getFirstLabel = (row: TableRow): string => {
+        const first = row.rowHeader?.[0] ?? "";
+        const second = row.rowHeader?.[1] ?? "";
+        return first === "Overall" ? second : first;
+    };
+
+    const getSecondLabel = (row: TableRow): string => {
+        const first = row.rowHeader?.[0] ?? "";
+        const second = row.rowHeader?.[1] ?? "";
+        return first === "Overall" ? "" : second;
     };
 
     return (
-        <div className="w-full overflow-x-auto">
-            <table className="w-full border-collapse border border-border">
-                <thead>
-                    <tr>
-                        <th
-                            colSpan={Math.max(3, headers.length + 2)}
-                            className="border border-border bg-muted px-2 py-2 text-center text-sm font-semibold"
-                        >
-                            {table?.title || "Case Processing Summary"}
-                        </th>
-                    </tr>
-                    <tr>
-                        <th className="border border-border bg-muted px-2 py-1 text-left text-sm font-medium"></th>
-                        <th className="border border-border bg-muted px-2 py-1 text-left text-sm font-medium"></th>
-                        {headers.map((h) => (
-                            <th
-                                key={h.key || h.header}
-                                className="border border-border bg-muted px-2 py-1 text-center text-sm font-medium"
-                            >
-                                {h.header}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((row, idx) => {
-                        const rh = row.rowHeader || ["", ""];
-                        const renderFirstHeader = shouldRenderFirstHeader(idx);
-                        const firstHeaderRowSpan = renderFirstHeader ? getRowSpanForFirstHeader(idx) : 0;
-
-                        return (
-                            <tr key={idx}>
-                                {renderFirstHeader && (
-                                    <th
-                                        rowSpan={firstHeaderRowSpan}
-                                        className="border border-border bg-muted px-2 py-1 text-center align-middle text-sm font-normal whitespace-nowrap"
+        <Card className="border-border shadow-none">
+            <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-foreground">
+                    {table?.title || "Case Processing Summary"}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <div className="w-fit max-w-full overflow-auto">
+                    <Table className="w-max border-collapse text-sm">
+                        <TableHeader>
+                            <TableRow className="border-b border-border bg-muted/40 hover:bg-muted/40">
+                                <TableHead className="w-44 whitespace-nowrap text-left font-medium text-muted-foreground" colSpan={2}>
+                                    &nbsp;
+                                </TableHead>
+                                {headers.map((h) => (
+                                    <TableHead
+                                        key={h.key || h.header}
+                                        className="whitespace-nowrap text-center font-medium text-muted-foreground"
                                     >
-                                        {rh[0] ?? ""}
-                                    </th>
-                                )}
-                                <th className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal whitespace-nowrap">
-                                    {rh[1] ?? ""}
-                                </th>
-                                {colKeys.map((k) => (
-                                    <td
-                                        key={`${idx}-${k}`}
-                                        className="border border-border px-2 py-1 text-center text-sm whitespace-nowrap"
-                                    >
-                                        {String(row[k] ?? "")}
-                                    </td>
+                                        {displayHeader(h.header)}
+                                    </TableHead>
                                 ))}
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {rows.map((row, idx) => {
+                                const renderFirstHeader = shouldRenderFirstHeader(idx);
+                                const firstHeaderRowSpan = renderFirstHeader ? getRowSpanForFirstHeader(idx) : 0;
+
+                                return (
+                                    <TableRow key={idx} className="border-b border-border hover:bg-transparent">
+                                        {renderFirstHeader ? (
+                                            <TableCell
+                                                rowSpan={firstHeaderRowSpan}
+                                                className="whitespace-nowrap bg-muted/40 text-left align-middle font-medium text-foreground"
+                                            >
+                                                {getFirstLabel(row)}
+                                            </TableCell>
+                                        ) : null}
+                                        <TableCell className="whitespace-nowrap bg-muted/40 text-left font-medium text-foreground">
+                                            {getSecondLabel(row)}
+                                        </TableCell>
+                                        {colKeys.map((k) => (
+                                            <TableCell key={`${idx}-${k}`} className="whitespace-nowrap text-center">
+                                                {String(row[k] ?? "")}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+                {table?.note ? (
+                    <div className="px-6 py-3 text-xs leading-5 text-muted-foreground">
+                        {table.note}
+                    </div>
+                ) : null}
+            </CardContent>
+        </Card>
     );
 };
 

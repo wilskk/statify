@@ -12,15 +12,63 @@ pub fn calculate_likelihood_ratio_tests(
     X: &DMatrix<f64>,
     primary: &PrimaryResults,
     config: &MultinomialConfig,
-    full_beta: &DVector<f64>,
+    _full_beta: &DVector<f64>,
     full_ll: f64,
 ) -> Vec<LikelihoodRatioTest> {
     let mut tests = Vec::new();
     let p = primary.n_params;
     let J = primary.n_categories;
+    let j_minus_1 = (J.saturating_sub(1)) as u32;
 
+    if p == 0 || J < 2 {
+        return tests;
+    }
+
+    let full_neg2ll = -2.0 * full_ll;
+    let k_full = (J - 1) * p;
+    let n_eff = primary.weights.iter().copied().sum::<f64>().max(1.0);
+
+    // Group columns by SPSS-like effect names:
+    // - "Intercept" remains its own effect.
+    // - Dummy-coded factors like "Map=1", "Map=2" are grouped into "Map".
+    // - Continuous covariates stay as-is.
+    let mut grouped_effects: Vec<(String, Vec<usize>)> = Vec::new();
     for var_idx in 0..p {
-        if p == 1 {
+        let raw_name = primary
+            .variable_names
+            .get(var_idx)
+            .cloned()
+            .unwrap_or_else(|| format!("X{}", var_idx));
+        let effect_name = if raw_name == "Intercept" {
+            "Intercept".to_string()
+        } else if let Some((base, _)) = raw_name.split_once('=') {
+            base.trim().to_string()
+        } else {
+            raw_name
+        };
+
+        if let Some((_, idxs)) = grouped_effects
+            .iter_mut()
+            .find(|(name, _)| *name == effect_name)
+        {
+            idxs.push(var_idx);
+        } else {
+            grouped_effects.push((effect_name, vec![var_idx]));
+        }
+    }
+
+    for (effect_name, remove_indices) in grouped_effects {
+        if effect_name == "Intercept" {
+            tests.push(LikelihoodRatioTest {
+                effect: effect_name,
+                aic_reduced: full_neg2ll + 2.0 * (k_full as f64),
+                bic_reduced: full_neg2ll + n_eff.ln() * (k_full as f64),
+                neg2_log_likelihood_reduced: full_neg2ll,
+                chi_square: 0.0,
+                df: 0,
+                p_value: f64::NAN,
+                equivalent_to_final: true,
+            });
             continue;
         }
 
@@ -28,13 +76,14 @@ pub fn calculate_likelihood_ratio_tests(
         let mut reduced_elements = Vec::new();
         for i in 0..primary.n_cases {
             for j in 0..p {
-                if j != var_idx {
+                if !remove_indices.contains(&j) {
                     reduced_elements.push(X[(i, j)]);
                 }
             }
         }
 
-        let reduced_cols = p - 1;
+        let removed_count = remove_indices.len();
+        let reduced_cols = p.saturating_sub(removed_count);
         if reduced_cols == 0 {
             continue;
         }
@@ -67,25 +116,34 @@ pub fn calculate_likelihood_ratio_tests(
         };
 
         // LR statistic: -2(LL_reduced - LL_full)
-        let lr_chi2 = -2.0 * (reduced_ll - full_ll);
+        let lr_chi2 = (-2.0 * (reduced_ll - full_ll)).max(0.0);
 
-        if lr_chi2.is_nan() || lr_chi2.is_infinite() || lr_chi2 < 0.0 {
+        if lr_chi2.is_nan() || lr_chi2.is_infinite() {
             continue;
         }
 
-        let df = (J - 1) as u32;
-        let chi_dist = ChiSquared::new(df as f64).unwrap();
-        let p_value = 1.0 - chi_dist.cdf(lr_chi2);
+        let df = j_minus_1;
+        let p_value = if df == 0 {
+            f64::NAN
+        } else {
+            let chi_dist = ChiSquared::new(df as f64).unwrap();
+            1.0 - chi_dist.cdf(lr_chi2)
+        };
+
+        let k_reduced = (J - 1) * reduced_cols;
+        let neg2ll_reduced = -2.0 * reduced_ll;
+        let aic_reduced = neg2ll_reduced + 2.0 * (k_reduced as f64);
+        let bic_reduced = neg2ll_reduced + n_eff.ln() * (k_reduced as f64);
 
         tests.push(LikelihoodRatioTest {
-            effect: primary
-                .variable_names
-                .get(var_idx)
-                .unwrap_or(&format!("X{}", var_idx))
-                .clone(),
+            effect: effect_name,
+            aic_reduced,
+            bic_reduced,
+            neg2_log_likelihood_reduced: neg2ll_reduced,
             chi_square: lr_chi2,
             df,
             p_value,
+            equivalent_to_final: false,
         });
     }
 
