@@ -1,0 +1,131 @@
+/**
+ * K-Medoids Summary Cards Component
+ * Displays key metrics in card format following existing UI design
+ */
+
+import React from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { KMedoidsSummary } from "../types/output";
+import { TrendingUp, TrendingDown, Target, BarChart3, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
+
+interface SummaryCardsProps {
+    summary: KMedoidsSummary;
+}
+
+export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
+    const avgScore = summary.averageSilhouetteScore ?? 0;
+    const silhouetteQuality = 
+        avgScore >= 0.7 ? { label: "Very Strong", color: "text-green-600" } :
+        avgScore >= 0.5 ? { label: "Strong", color: "text-blue-600" } :
+        avgScore >= 0.3 ? { label: "Moderate", color: "text-yellow-600" } :
+        { label: "Weak", color: "text-red-600" };
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {/* Number of Clusters */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Number of Clusters</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{summary.numClusters}</div>
+                    <p className="text-xs text-muted-foreground">
+                        {summary.numCases} cases analyzed
+                    </p>
+                </CardContent>
+            </Card>
+
+            {/* Total Cost — BUILD vs SWAP breakdown */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Cost (SWAP)</CardTitle>
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">
+                        {summary.swapCost != null ? summary.swapCost.toFixed(2) : summary.totalCost != null ? summary.totalCost.toFixed(2) : 'N/A'}
+                    </div>
+                    {summary.buildCost != null ? (
+                        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span>BUILD: {summary.buildCost.toFixed(2)}</span>
+                            <ArrowRight className="h-3 w-3" />
+                            <span>SWAP: {(summary.swapCost ?? summary.totalCost).toFixed(2)}</span>
+                            {summary.buildCost > 0 && (
+                                <span className="ml-1 text-green-600 font-medium">
+                                    ({(((summary.buildCost - (summary.swapCost ?? summary.totalCost)) / summary.buildCost) * 100).toFixed(1)}% ↓)
+                                </span>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-muted-foreground">Sum of distances to medoids</p>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Silhouette Score */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Silhouette Score</CardTitle>
+                    {avgScore >= 0.5 ? (
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                    ) : (
+                        <TrendingDown className="h-4 w-4 text-yellow-600" />
+                    )}
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{avgScore.toFixed(3)}</div>
+                    <p className={`text-xs ${silhouetteQuality.color}`}>
+                        Quality: {silhouetteQuality.label}
+                    </p>
+                </CardContent>
+            </Card>
+
+            {/* Convergence Status */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Convergence</CardTitle>
+                    {summary.converged ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    ) : (
+                        <XCircle className="h-4 w-4 text-yellow-600" />
+                    )}
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{summary.totalIterations}</div>
+                    <p className="text-xs text-muted-foreground">
+                        {summary.converged ? "Converged successfully" : "Max iterations reached"}
+                    </p>
+                </CardContent>
+            </Card>
+
+            {/* Largest Cluster */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Largest Cluster</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">Cluster {summary.largestCluster?.id ?? 'N/A'}</div>
+                    <p className="text-xs text-muted-foreground">
+                        {summary.largestCluster?.size ?? 0} cases ({summary.largestCluster && summary.numCases ? ((summary.largestCluster.size / summary.numCases) * 100).toFixed(1) : '0'}%)
+                    </p>
+                </CardContent>
+            </Card>
+
+            {/* Smallest Cluster */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Smallest Cluster</CardTitle>
+                    <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">Cluster {summary.smallestCluster?.id ?? 'N/A'}</div>
+                    <p className="text-xs text-muted-foreground">
+                        {summary.smallestCluster?.size ?? 0} cases ({summary.smallestCluster && summary.numCases ? ((summary.smallestCluster.size / summary.numCases) * 100).toFixed(1) : '0'}%)
+                    </p>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};

@@ -23,12 +23,10 @@ export enum KMedoidsMethod {
  * Ukuran jarak (distance measure) untuk menghitung dissimilarity
  * - Euclidean: Jarak geometris standar, sensitif terhadap magnitude
  * - Manhattan: City-block distance, lebih robust terhadap outlier
- * - Gower: Untuk data campuran (numeric + categorical) - optional advanced
  */
 export enum DistanceMetric {
     Euclidean = "euclidean",
     Manhattan = "manhattan",
-    Gower = "gower", // Optional: untuk mixed data types
 }
 
 /**
@@ -58,6 +56,26 @@ export enum EvaluationMetric {
 }
 
 /**
+ * Mode pemilihan jumlah cluster (k)
+ * - Manual: user menentukan k secara eksplisit
+ * - Automatic: sistem mencari k optimal dalam rentang [kMin, kMax]
+ */
+export enum ClusterMode {
+    Manual = "manual",
+    Automatic = "automatic",
+}
+
+/**
+ * Metode pencarian k optimal (hanya relevan jika ClusterMode = Automatic)
+ * - Silhouette: pilih k dengan rata-rata Silhouette tertinggi
+ * - Elbow: pilih k di titik "siku" kurva total within-cluster distance (SSE/inertia)
+ */
+export enum AutoKMethod {
+    Silhouette = "silhouette",
+    Elbow = "elbow",
+}
+
+/**
  * ========================================
  * MAIN DIALOG - Variable Selection & Basic Config
  * ========================================
@@ -67,23 +85,30 @@ export type KMedoidsClusterMainType = {
     CaseTarget: string | null;
     IterateClassify: boolean;
     ClassifyOnly: boolean;
-    Cluster: number | null; // k = jumlah cluster yang diinginkan
+    /** Mode pemilihan k: Manual (user tentukan) atau Automatic (sistem cari optimal) */
+    ClusterMode: ClusterMode;
+    /** k eksplisit — hanya dipakai jika ClusterMode = Manual */
+    Cluster: number | null;
+    /** k minimum untuk pencarian otomatis (ClusterMode = Automatic) */
+    AutoKMin: number | null;
+    /** k maksimum untuk pencarian otomatis (ClusterMode = Automatic) */
+    AutoKMax: number | null;
+    /** Metode pencarian k optimal (ClusterMode = Automatic) */
+    AutoKMethod: AutoKMethod;
+    /** Ukuran jarak untuk menghitung dissimilarity - mempengaruhi hasil clustering */
+    DistanceMetric: DistanceMetric;
     OpenDataset: boolean;
     ExternalDatafile: boolean;
     NewDataset: boolean;
     DataFile: boolean;
-    ReadInitial: boolean;
-    WriteFinal: boolean;
     OpenDatasetMethod: string | null;
     NewData: string | null;
-    InitialData: string | null;
-    FinalData: string | null;
 };
 
 export type KMedoidsClusterDialogProps = {
     updateFormData: (
         field: keyof KMedoidsClusterMainType,
-        value: string[] | string | boolean | number | null
+        value: string[] | string | boolean | number | ClusterMode | AutoKMethod | DistanceMetric | null
     ) => void;
     data: KMedoidsClusterMainType;
     globalVariables: string[];
@@ -99,9 +124,6 @@ export type KMedoidsClusterIterateType = {
     /** Metode K-Medoids: PAM, CLARA, atau CLARANS */
     Method: KMedoidsMethod;
     
-    /** Ukuran jarak untuk menghitung dissimilarity */
-    DistanceMetric: DistanceMetric;
-    
     /** Strategi pemilihan medoid awal */
     InitialStrategy: InitialMedoidsStrategy;
     
@@ -111,11 +133,30 @@ export type KMedoidsClusterIterateType = {
     /** Convergence criterion: stop jika perubahan cost < threshold (default: 0) */
     ConvergenceCriterion: number | null;
     
+    /** Random seed untuk reproducibility (null = random) */
+    RandomSeed: number | null;
+    
+    /** Number of initializations untuk mencari hasil terbaik (default: 10) */
+    NumberOfInitializations: number | null;
+    
     /** CLARA only: ukuran sample (default: 40 + 2k) */
     SampleSize: number | null;
     
     /** CLARA only: jumlah sampling iterations (default: 5) */
     NumSamples: number | null;
+    
+    /** CLARANS only: jumlah local minima yang dicari (default: 2) */
+    NumLocal: number | null;
+    
+    /** CLARANS only: maksimum neighbors yang diperiksa (default: max(250, 1.25% of n*(k-1))) */
+    MaxNeighbor: number | null;
+
+    /**
+     * Standardize variables before clustering (setara R pam stand=TRUE).
+     * Setiap variabel dikurangi mean-nya lalu dibagi mean absolute deviation-nya.
+     * Wajib diaktifkan agar total cost sebanding dengan output R.
+     */
+    Standardize: boolean;
 };
 
 export type KMedoidsClusterIterateProps = {
@@ -167,14 +208,15 @@ export type KMedoidsClusterEvaluationType = {
     /** Silhouette Coefficient (range: -1 to 1, higher is better) */
     ComputeSilhouette: boolean;
     
-    /** Davies-Bouldin Index (lower is better) */
-    ComputeDaviesBouldin: boolean;
-    
-    /** Dunn Index (higher is better) */
-    ComputeDunnIndex: boolean;
-    
     /** Tampilkan silhouette plot per case */
     ShowSilhouettePlot: boolean;
+
+    /** Elbow Method — grafik SSE vs k untuk menentukan titik siku optimal */
+    ShowElbowPlot: boolean;
+
+    /** Grafik evaluasi k — menampilkan Silhouette dan/atau Elbow dalam satu panel
+     *  hanya relevan jika ClusterMode = Automatic */
+    ShowOptimalKChart: boolean;
 };
 
 export type KMedoidsClusterEvaluationProps = {

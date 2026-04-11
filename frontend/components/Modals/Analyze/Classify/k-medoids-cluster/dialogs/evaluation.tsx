@@ -9,7 +9,7 @@ import type {
 import { Checkbox } from "@/components/ui/checkbox";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 import { Label } from "@/components/ui/label";
-import { HelpCircle, AlertCircle } from "lucide-react";
+import { HelpCircle, AlertCircle, TrendingDown, BarChart2 } from "lucide-react";
 import {
     TooltipProvider,
     Tooltip,
@@ -24,8 +24,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  * ========================================
  * Metrik evaluasi kualitas clustering:
  * - Silhouette Coefficient (WAJIB - pengganti ANOVA)
- * - Davies-Bouldin Index (Optional)
- * - Dunn Index (Optional)
  * - Silhouette Plot (Visualization)
  */
 export const KMedoidsClusterEvaluation = ({
@@ -148,10 +146,21 @@ export const KMedoidsClusterEvaluation = ({
                     </div>
                 </div>
 
-                {/* ========== ADDITIONAL METRICS (OPTIONAL) ========== */}
-                <div className="flex flex-col gap-3 w-full">
+                {/* ========== INFO BOX ========== */}
+                <div className="w-full bg-muted/50 p-3 rounded text-xs">
+                    <p className="font-semibold mb-1">📊 Statistical Interpretation:</p>
+                    <p className="text-muted-foreground">
+                        Silhouette Coefficient is the standard metric for validating clustering quality.
+                        Compare Silhouette values across different k to determine optimal number of clusters.
+                        Values closer to +1 indicate well-separated, cohesive clusters.
+                    </p>
+                </div>
+
+                {/* ========== ELBOW METHOD ========== */}
+                <div className="flex flex-col gap-3 w-full border-b pb-4">
                     <div className="flex items-center gap-2">
-                        <Label className="font-semibold">Additional Metrics (Optional)</Label>
+                        <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                        <Label className="font-semibold">Elbow Method</Label>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger>
@@ -159,76 +168,81 @@ export const KMedoidsClusterEvaluation = ({
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-sm">
                                     <p className="text-xs">
-                                        Metrik tambahan untuk analisis lebih mendalam.
-                                        Tidak wajib, tapi berguna untuk penelitian.
+                                        Elbow Method memplot total within-cluster distance (SSE/Inertia)
+                                        untuk setiap nilai k. Titik "siku" pada kurva mengindikasikan k optimal:
+                                        penambahan k lebih lanjut tidak memberi penurunan signifikan.
                                     </p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
-                    
-                    <div className="flex items-start space-x-2">
-                        <Checkbox
-                            id="ComputeDaviesBouldin"
-                            checked={evaluationState.ComputeDaviesBouldin}
-                            onCheckedChange={(checked) =>
-                                handleChange("ComputeDaviesBouldin", checked)
-                            }
-                        />
-                        <div className="flex-1">
-                            <label
-                                htmlFor="ComputeDaviesBouldin"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                                Davies-Bouldin Index
-                            </label>
-                            <div className="mt-1 space-y-1">
-                                <p className="text-xs text-muted-foreground">
-                                    Range: <strong>0 to ∞</strong> (lower is better)
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    Measures average similarity ratio between clusters.
-                                    Good clusters: low intra-cluster similarity, high inter-cluster separation.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
 
                     <div className="flex items-start space-x-2">
                         <Checkbox
-                            id="ComputeDunnIndex"
-                            checked={evaluationState.ComputeDunnIndex}
+                            id="ShowElbowPlot"
+                            checked={evaluationState.ShowElbowPlot}
                             onCheckedChange={(checked) =>
-                                handleChange("ComputeDunnIndex", checked)
+                                handleChange("ShowElbowPlot", checked)
                             }
                         />
                         <div className="flex-1">
                             <label
-                                htmlFor="ComputeDunnIndex"
+                                htmlFor="ShowElbowPlot"
                                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                             >
-                                Dunn Index
+                                Show Elbow Plot
                             </label>
-                            <div className="mt-1 space-y-1">
-                                <p className="text-xs text-muted-foreground">
-                                    Range: <strong>0 to ∞</strong> (higher is better)
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    Ratio of minimum inter-cluster distance to maximum intra-cluster distance.
-                                    Good for identifying well-separated clusters.
-                                </p>
-                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Grafik SSE (Sum of Squared Errors) vs k. Identifikasi titik siku
+                                sebagai indikator k optimal.
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* ========== INFO BOX ========== */}
-                <div className="w-full bg-muted/50 p-3 rounded text-xs">
-                    <p className="font-semibold mb-1">📊 Statistical Interpretation:</p>
-                    <p className="text-muted-foreground">
-                        These metrics help determine optimal k and validate clustering quality.
-                        Use multiple metrics for robust evaluation. Compare results across different k values.
-                    </p>
+                {/* ========== OPTIMAL K CHART ========== */}
+                <div className="flex flex-col gap-3 w-full border-b pb-4">
+                    <div className="flex items-center gap-2">
+                        <BarChart2 className="h-4 w-4 text-muted-foreground" />
+                        <Label className="font-semibold">Optimal k Evaluation Chart</Label>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-sm">
+                                    <p className="text-xs">
+                                        Grafik gabungan yang menampilkan Silhouette Score dan/atau Elbow
+                                        untuk setiap k dalam rentang yang ditentukan. Sangat berguna
+                                        jika mode Automatic dipilih di tab Variables.
+                                    </p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+
+                    <div className="flex items-start space-x-2">
+                        <Checkbox
+                            id="ShowOptimalKChart"
+                            checked={evaluationState.ShowOptimalKChart}
+                            disabled={!evaluationState.ComputeSilhouette && !evaluationState.ShowElbowPlot}
+                            onCheckedChange={(checked) =>
+                                handleChange("ShowOptimalKChart", checked)
+                            }
+                        />
+                        <div className="flex-1">
+                            <label
+                                htmlFor="ShowOptimalKChart"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                                Show Optimal k Chart
+                            </label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Panel grafik evaluasi k: Silhouette bar-chart + Elbow line chart
+                                dalam satu tampilan. Aktifkan minimal satu metrik di atas.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
             

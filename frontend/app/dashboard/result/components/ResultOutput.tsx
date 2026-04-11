@@ -5,6 +5,10 @@ import { Card } from "@/components/ui/card";
 import dynamic from "next/dynamic";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
+const KMedoidsOutputRenderer = dynamic(
+  () => import("@/components/Modals/Analyze/Classify/k-medoids-cluster/components/OutputRenderer").then(m => ({ default: m.KMedoidsOutputRenderer })),
+  { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading...</div> }
+);
 const TiptapEditor = dynamic(
   () => import("@/components/Output/Editor/TiptapEditor"),
   {
@@ -250,6 +254,15 @@ const ResultOutput: React.FC = () => {
                                   return (
                                     <div data-testid={`result-text-${stat.id}`}>
                                       <TextRenderer textData={parsedData.text} />
+                                    </div>
+                                  );
+                                } else if (parsedData.customRenderer === "KMedoidsOutputRenderer" && parsedData.data) {
+                                  return (
+                                    <div data-testid={`result-kmedoids-${stat.id}`}>
+                                      <KMedoidsOutputRenderer
+                                        output={parsedData.data}
+                                        variables={parsedData.data.variables ?? []}
+                                      />
                                     </div>
                                   );
                                 } else {
