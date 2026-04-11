@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use nalgebra::DMatrix;
 use statrs::distribution::{StudentsT, ContinuousCDF}; // ini untuk p-value (significant value)s
+use web_sys::console;
 use crate::models::{
     config::FactorAnalysisConfig,
     data::AnalysisData,
@@ -504,7 +505,8 @@ pub fn calculate_anti_image_matrices(
     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
     let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
 
-    let inverse = match corr_matrix.try_inverse() {
+    // 1. Invers matriks (dengan .clone() untuk menghindari error ownership)
+    let inverse = match corr_matrix.clone().try_inverse() {
         Some(inv) => inv,
         None => {
             return Err("Could not invert correlation matrix".to_string());
@@ -512,9 +514,56 @@ pub fn calculate_anti_image_matrices(
     };
 
     let n_vars = var_names.len();
+    
+    console::log_1(&format!("DEBUG: Inverse matrix diagonal: {:?}", 
+        (0..n_vars).map(|i| inverse[(i, i)]).collect::<Vec<_>>()
+    ).into());
+    
+    // 2. Hitung off-diagonal Anti-image Correlation
+    // (Ini akan digunakan untuk off-diagonal entries saja)
+    let mut anti_img_corr_matrix = nalgebra::DMatrix::zeros(n_vars, n_vars);
+    for i in 0..n_vars {
+        for j in 0..n_vars {
+            if i != j {
+                // Partial correlation dari inverse matrix
+                anti_img_corr_matrix[(i, j)] = inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)]).sqrt();
+            }
+        }
+    }
+
+    // 3. Hitung Individual KMO / Measure of Sampling Adequacy (MSA)
+    // Formula: MSA_i = sum(r_ij^2) / (sum(r_ij^2) + sum(a_ij^2))
+    // where r_ij = correlation off-diagonal, a_ij = partial correlation off-diagonal
+    let mut msa_values = Vec::new();
+    for i in 0..n_vars {
+        let mut sum_squared_correlation = 0.0;
+        let mut sum_squared_partial = 0.0;
+
+        for j in 0..n_vars {
+            if i != j {
+                let corr_val = corr_matrix[(i, j)];
+                let partial_val = anti_img_corr_matrix[(i, j)];
+                
+                sum_squared_correlation += corr_val * corr_val;
+                sum_squared_partial += partial_val * partial_val;
+            }
+        }
+
+        let msa = if (sum_squared_correlation + sum_squared_partial) > 0.0 {
+            sum_squared_correlation / (sum_squared_correlation + sum_squared_partial)
+        } else {
+            0.0
+        };
+
+        msa_values.push(msa);
+    }
+    
+    console::log_1(&format!("DEBUG: Calculated MSA values = {:?}", msa_values).into());
+
     let mut anti_image_covariance = HashMap::new();
     let mut anti_image_correlation = HashMap::new();
 
+    // 4. Susun ke dalam HashMap untuk hasil akhir
     for i in 0..n_vars {
         let var_name = &var_names[i];
         let mut var_cov = HashMap::new();
@@ -523,28 +572,35 @@ pub fn calculate_anti_image_matrices(
         for j in 0..n_vars {
             let other_var = &var_names[j];
 
-            // Anti-image covariance: -partial covariances (negative of off-diagonal elements of inverse)
-            let cov_value = if i == j {
-                1.0 / inverse[(i, j)]
-            } else {
-                inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)])
-            };
-
+            // Anti-image covariance: elemen dari inverse correlation matrix
+            let cov_value = inverse[(i, j)];
             var_cov.insert(other_var.clone(), cov_value);
 
-            // Anti-image correlation: partial correlations with sign reversed
+            // Anti-image correlation
             let corr_value = if i == j {
-                1.0
+                // Diagonal: MSA value untuk variable ini
+                msa_values[i]
             } else {
-               inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)]).sqrt()
+                anti_img_corr_matrix[(i, j)]
             };
-
             var_corr.insert(other_var.clone(), corr_value);
         }
 
         anti_image_covariance.insert(var_name.clone(), var_cov);
         anti_image_correlation.insert(var_name.clone(), var_corr);
+        
+        // Verify what was actually stored
+        if let Some(stored_corr_row) = anti_image_correlation.get(var_name) {
+            if let Some(diagonal_val) = stored_corr_row.get(var_name) {
+                console::log_1(&format!(
+                    "DEBUG VERIFY: {} diagonal in HashMap = {:.10}",
+                    var_name, diagonal_val
+                ).into());
+            }
+        }
     }
+
+    console::log_1(&format!("DEBUG FINAL: MSA values before return: {:?}", msa_values).into());
 
     Ok(AntiImageMatrices {
         anti_image_covariance,
@@ -552,8 +608,6 @@ pub fn calculate_anti_image_matrices(
         variable_order: var_names,
     })
 }
-
-
 
 
 

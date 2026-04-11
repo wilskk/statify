@@ -438,6 +438,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                     const value = val.value;
                     // Add 'a' superscript to diagonal elements (MSA values)
                     if (entry.variable === val.variable) {
+                        console.log(`[DEBUG TS FORMATTER] Diagonal ${entry.variable} value from Rust = ${value}`);
                         rowData[`var_${colIndex}`] =
                             formatDisplayNumber(value) + "ᵃ";
                     } else {

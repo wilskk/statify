@@ -2,6 +2,7 @@
 
 use wasm_bindgen::JsValue;
 use serde::Serialize;
+use web_sys::console;
 use crate::models::config::OptionsConfig;
 use crate::stats::display_format::format_factor_matrix;
 use crate::models::result::{
@@ -376,12 +377,21 @@ impl FormatResult {
                     let values = matrices.anti_image_correlation
                         .get(var_name)
                         .map(|var_values| {
+                            console::log_1(&format!("DEBUG CONVERTER: Processing {} row, HashMap keys: {:?}", var_name, var_values.keys().collect::<Vec<_>>()).into());
+                            
                             matrices.variable_order
                                 .iter()
                                 .map(|other_var| {
+                                    let val = *var_values.get(other_var).unwrap_or(&0.0);
+                                    
+                                    // Log diagonal values specifically
+                                    if var_name == other_var {
+                                        console::log_1(&format!("DEBUG CONVERTER: Diagonal {} = {:.10}", var_name, val).into());
+                                    }
+                                    
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: val,
                                     }
                                 })
                                 .collect()
