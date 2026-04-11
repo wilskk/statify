@@ -2,6 +2,7 @@
 // perbaikan (10/1/2026)
 // PERBAIKAN 4/1/2026
 
+import * as math from "mathjs";
 import {formatDisplayNumber} from "@/hooks/useFormatter";
 import {ResultJson, Table} from "@/types/Table";
 import {FactorType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
@@ -13,11 +14,13 @@ import {
     generateComponentMatrixDescription,
     generateDescriptiveDescription,
     generateCorrelationMatrixDescription,
+    generateCovarianceMatrixDescription,
     generateInverseCorrelationDescription,
     generateAntiImageRefinedDescription,
     generateReproducedRefinedDescription,
     generateComponentTransformationDescription,
     fmtSig,
+    formatScientificNotationSPSSStyle,
 } from "./formatter_utils";
 
 // Helper function untuk mapping value extraction method ke nama tampilan
@@ -33,6 +36,63 @@ const EXTRACTION_METHOD_MAP: Record<string, string> = {
 
 function getExtractionMethodDisplayName(methodValue: string): string {
     return EXTRACTION_METHOD_MAP[methodValue] || methodValue;
+}
+
+/**
+ * Calculate determinant from correlation matrix data
+ * Rebuilds the correlation matrix from the raw correlation values and computes its determinant
+ */
+function calculateDeterminantFromCorrelationMatrix(correlationData: any): number | undefined {
+    try {
+        if (
+            !correlationData ||
+            !Array.isArray(correlationData.correlations) ||
+            correlationData.correlations.length === 0
+        ) {
+            console.log("[FA] Cannot calculate determinant: invalid correlation data");
+            return undefined;
+        }
+
+        // Get variable count
+        const varCount = correlationData.correlations.length;
+        console.log("[FA] Building correlation matrix for determinant calculation with", varCount, "variables");
+
+        // Rebuild correlation matrix
+        const matrix: number[][] = [];
+
+        for (let i = 0; i < varCount; i++) {
+            matrix[i] = [];
+            const row = correlationData.correlations[i];
+
+            if (!row || !Array.isArray(row.values)) {
+                console.log("[FA] Invalid row structure at index", i);
+                return undefined;
+            }
+
+            for (let j = 0; j < varCount; j++) {
+                // Get correlation value from row, defaulting to 1.0 for diagonal
+                const valueObj = row.values[j];
+                if (typeof valueObj === "object" && valueObj !== null && "value" in valueObj) {
+                    matrix[i][j] = valueObj.value;
+                } else if (typeof valueObj === "number") {
+                    matrix[i][j] = valueObj;
+                } else {
+                    matrix[i][j] = i === j ? 1.0 : 0.0;
+                }
+            }
+        }
+
+        console.log("[FA] Correlation matrix rebuilt:", matrix);
+
+        // Calculate determinant using mathjs
+        const det = math.det(matrix as any);
+        console.log("[FA] Calculated determinant from correlation matrix:", det);
+
+        return typeof det === "number" ? det : undefined;
+    } catch (error) {
+        console.error("[FA] Error calculating determinant from correlation matrix:", error);
+        return undefined;
+    }
 }
 
         export function transformFactorAnalysisResult(data: any, configData?: FactorType): ResultJson & {
@@ -105,6 +165,9 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             rows: [],
         };
 
+        // Debug: Log full correlation_matrix to understand structure
+        console.log("[FA-Formatter] Full correlation_matrix:", JSON.stringify(data.correlation_matrix).substring(0, 500));
+        
         // Correlation values with 2-level row header: ["Correlation", "VAR_NAME"]
         data.correlation_matrix.correlations.forEach(
             (entry: any, rowIndex: number) => {
@@ -143,7 +206,10 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             );
         }
 
-        const correlationDeterminant = (data.correlation_matrix as any).determinant || data.covariance_matrix?.determinant || 0;
+        // Try to find determinant value
+        // Note: Determinant will be added in post-processing from covariance_matrix
+        let correlationDeterminant: any = undefined;
+        
         table.interpretation = generateCorrelationMatrixDescription(correlationDeterminant);
 
         resultJson.tables.push(table);
@@ -206,6 +272,7 @@ function getExtractionMethodDisplayName(methodValue: string): string {
                 })),
             ],
             rows: [],
+            interpretation: "", // Will be set in post-processing if determinant checkbox is checked
         };
 
         data.covariance_matrix.covariances.forEach(
@@ -222,9 +289,16 @@ function getExtractionMethodDisplayName(methodValue: string): string {
             }
         );
 
-        // Add determinant note
+        // Add determinant note with SPSS-style formatting
+        const determinantValue = data.covariance_matrix.determinant;
+        const determinantDisplay = determinantValue !== undefined 
+            ? (Math.abs(determinantValue) < 0.001 
+                ? formatScientificNotationSPSSStyle(determinantValue)
+                : formatDisplayNumber(determinantValue))
+            : "N/A";
+        
         table.rows.push({
-            rowHeader: [`a. Determinant = ${formatDisplayNumber(data.covariance_matrix.determinant)}`],
+            rowHeader: [`a. Determinant = ${determinantDisplay}`],
         });
 
         resultJson.tables.push(table);
@@ -1462,6 +1536,124 @@ function getExtractionMethodDisplayName(methodValue: string): string {
     // Ekstrak factor_scores dari respons WASM jika ada
     if (data.factor_scores && Array.isArray(data.factor_scores)) {
         resultJson.factorScores = data.factor_scores;
+    }
+
+    // ==================================================================================
+    // POST-PROCESSING: Update correlation/covariance matrix description with determinant
+    // ==================================================================================
+    // Display determinant based on:
+    // 1. User checked "Determinant" checkbox in Descriptives tab
+    // 2. Extraction method selected (Correlation Matrix vs Covariance Matrix)
+    const shouldShowDeterminant = configData?.descriptives?.Determinant === true;
+    const isCorrelationExtraction = configData?.extraction?.Correlation === true;
+    const isCovarianceExtraction = configData?.extraction?.Covariance === true;
+    
+    console.log("[FA] POST-PROCESSING: Starting");
+    console.log("[FA] shouldShowDeterminant =", shouldShowDeterminant);
+    console.log("[FA] isCorrelationExtraction =", isCorrelationExtraction);
+    console.log("[FA] isCovarianceExtraction =", isCovarianceExtraction);
+    console.log("[FA] configData?.descriptives?.Determinant =", configData?.descriptives?.Determinant);
+    console.log("[FA] configData?.extraction?.Covariance =", configData?.extraction?.Covariance);
+    console.log("[FA] configData?.extraction?.Correlation =", configData?.extraction?.Correlation);
+
+    if (shouldShowDeterminant) {
+        // Try to find determinant from different sources
+        let determinantValue = data.covariance_matrix?.determinant;
+        console.log("[FA] data.covariance_matrix?.determinant =", determinantValue);
+
+        // If covariance_matrix determinant not found, try other sources
+        if (!determinantValue) {
+            // Try correlation_matrix.determinant
+            determinantValue = (data.correlation_matrix as any)?.determinant;
+            console.log("[FA] Covariance determinant not found, trying correlation_matrix:", determinantValue);
+        }
+
+        // If still not found, try top-level
+        if (!determinantValue) {
+            determinantValue = (data as any)?.determinant;
+            console.log("[FA] Correlation determinant not found, trying top-level:", determinantValue);
+        }
+
+        // If STILL not found, calculate from correlation matrix data if available
+        if (!determinantValue && data.correlation_matrix) {
+            console.log("[FA] Determinant not in data, attempting to calculate from correlation matrix");
+            determinantValue = calculateDeterminantFromCorrelationMatrix(data.correlation_matrix);
+            console.log("[FA] Calculated determinant result:", determinantValue);
+        }
+
+        console.log("[FA] Final determinantValue:", determinantValue);
+
+        if (determinantValue !== undefined) {
+            let targetTable: Table | undefined;
+            let tableName: string = "";
+
+            // Determine which table should receive the determinant info based on extraction method
+            if (isCorrelationExtraction) {
+                // Correlation Matrix extraction → update correlation_matrix table
+                targetTable = resultJson.tables.find((table: Table) => table.key === "correlation_matrix");
+                tableName = "correlation_matrix";
+                console.log("[FA] Routing to correlation_matrix table");
+            } else if (isCovarianceExtraction) {
+                // Covariance Matrix extraction → update covariance_matrix table
+                targetTable = resultJson.tables.find((table: Table) => table.key === "covariance_matrix");
+                tableName = "covariance_matrix";
+                console.log("[FA] Routing to covariance_matrix table");
+            }
+
+            console.log(`[FA] Determined target table: ${tableName}`);
+            console.log(`[FA] Found ${tableName} table?`, !!targetTable);
+            console.log(`[FA] resultJson.tables keys:`, resultJson.tables.map((t: Table) => t.key));
+
+            if (targetTable) {
+                console.log(`[FA] POST-PROCESSING: Updating ${tableName} with determinant:`, determinantValue);
+
+                // Regenerate description with determinant using appropriate generator
+                if (tableName === "correlation_matrix") {
+                    targetTable.interpretation = generateCorrelationMatrixDescription(determinantValue);
+                } else if (tableName === "covariance_matrix") {
+                    // Use covariance-specific description generator
+                    targetTable.interpretation = generateCovarianceMatrixDescription(determinantValue);
+                }
+
+                console.log(`[FA] Updated ${tableName} interpretation:`, targetTable.interpretation);
+                console.log(`[FA] Updated ${tableName} interpretation length:`, targetTable.interpretation?.length);
+            } else {
+                console.log(`[FA] WARNING: Target table ${tableName} not found in resultJson.tables`);
+            }
+        } else {
+            console.log("[FA] POST-PROCESSING: determinant not available");
+            console.log("[FA] data.covariance_matrix:", data.covariance_matrix);
+            console.log("[FA] data.correlation_matrix:", data.correlation_matrix);
+        }
+    } else {
+        console.log("[FA] POST-PROCESSING: Determinant checkbox NOT checked, setting base descriptions");
+        
+        // Even when determinant is OFF, set base description for the active matrix type
+        let targetTable: Table | undefined;
+        let tableName: string = "";
+
+        if (isCorrelationExtraction) {
+            targetTable = resultJson.tables.find((table: Table) => table.key === "correlation_matrix");
+            tableName = "correlation_matrix";
+            console.log("[FA] Routing to correlation_matrix table (no determinant)");
+        } else if (isCovarianceExtraction) {
+            targetTable = resultJson.tables.find((table: Table) => table.key === "covariance_matrix");
+            tableName = "covariance_matrix";
+            console.log("[FA] Routing to covariance_matrix table (no determinant)");
+        }
+
+        if (targetTable) {
+            console.log(`[FA] POST-PROCESSING: Setting base description for ${tableName}`);
+            
+            // Set base description without determinant using appropriate generator
+            if (tableName === "correlation_matrix") {
+                targetTable.interpretation = generateCorrelationMatrixDescription();
+            } else if (tableName === "covariance_matrix") {
+                targetTable.interpretation = generateCovarianceMatrixDescription();
+            }
+            
+            console.log(`[FA] Updated ${tableName} interpretation (no determinant):`, targetTable.interpretation);
+        }
     }
 
     return resultJson;

@@ -95,7 +95,7 @@ export async function resultFactorAnalysis({
             console.log("[Factor Analysis] Generated SPSS-style log:", logMessage);
             const logId = await addLog({ log: logMessage });
             
-            // Satu analyticId untuk semua statistik output (seperti Linear Regression)
+            // Satu analyticId untuk semua statistik output 
             const analyticId = await addAnalytic(logId, {
                 title: `Factor Analysis`,
                 note: "",
@@ -119,9 +119,12 @@ export async function resultFactorAnalysis({
              * */
             const correlationMatrix = findTable("correlation_matrix");
             if (correlationMatrix) {
+                const tableDescription = getTableDescription("correlation_matrix", "Correlation Matrix");
+                console.log("[FA-Output] Correlation Matrix description being saved:", tableDescription);
+                
                 await addStatistic(analyticId, {
                     title: `Correlation Matrix`,
-                    description: getTableDescription("correlation_matrix", "Correlation Matrix"),
+                    description: tableDescription,
                     output_data: correlationMatrix,
                     components: `Correlation Matrix`,
                 });
@@ -147,9 +150,12 @@ export async function resultFactorAnalysis({
              * */
             const covarianceMatrix = findTable("covariance_matrix");
             if (covarianceMatrix) {
+                const tableDescription = getTableDescription("covariance_matrix", "Covariance Matrix");
+                console.log("[FA-Output] Covariance Matrix description being saved:", tableDescription);
+                
                 await addStatistic(analyticId, {
                     title: `Covariance Matrix`,
-                    description: `Covariance Matrix`,
+                    description: tableDescription,
                     output_data: covarianceMatrix,
                     components: `Covariance Matrix`,
                 });

@@ -443,27 +443,80 @@ export const generateDescriptiveDescription = (
 };
 
 /**
+ * Format notasi ilmiah dengan gaya SPSS
+ * Mengganti decimal point dengan comma dan memastikan exponent 3-digit
+ * Contoh: 4.53e-6 → 4,53E-006
+ * Export: Dapat digunakan di berbagai tempat untuk formatting determinant dll
+ */
+export const formatScientificNotationSPSSStyle = (num: number): string => {
+  if (num === 0 || !isFinite(num)) return "0";
+  
+  // Hitung exponent
+  const exponent = Math.floor(Math.log10(Math.abs(num)));
+  const mantissa = num / Math.pow(10, exponent);
+  
+  // Format mantissa dengan 2 digit desimal (untuk presisi seperti SPSS)
+  const mantissaStr = mantissa.toFixed(2).replace(".", ",");
+  
+  // Format exponent dengan 3-digit (±XXX) - jangan lupakan minus sign untuk negative exponent
+  const expSign = exponent >= 0 ? "+" : "-";
+  const expStr = String(Math.abs(exponent)).padStart(3, "0");
+  
+  return `${mantissaStr}E${expSign}${expStr}`;
+};
+
+/**
  * Menghasilkan deskripsi untuk Correlation Matrix
- * Sangat penting untuk mengecek nilai Determinant untuk mendeteksi multikolinearitas.
+ * Determinant hanya ditampilkan jika checkbox "Determinant" dicentang di tab Descriptives.
  */
 export const generateCorrelationMatrixDescription = (
   determinant?: number
 ): string => {
-  let detInterpretation = "";
+  let fullDescription = "";
   
+  // Tampilkan determinant info jika nilai tersedia
   if (determinant !== undefined) {
-    // Format scientific notation jika angkanya sangat kecil
-    const detStr = determinant < 0.001 ? determinant.toExponential(3) : determinant.toFixed(5);
-    const hasMulticollinearity = determinant < 0.00001;
+    console.log("[DESC] Correlation Matrix Determinant:", determinant);
+    // Format scientific notation jika angkanya sangat kecil dengan gaya SPSS
+    const detStr = determinant < 0.001 
+      ? formatScientificNotationSPSSStyle(determinant)
+      : determinant.toFixed(5);
     
-    detInterpretation = ` The determinant of the correlation matrix is ${detStr}. ${
-      hasMulticollinearity 
-        ? "A value less than 0.00001 indicates potential severe multicollinearity or singularity, suggesting some variables should be removed." 
-        : "A value greater than 0.00001 indicates an absence of severe multicollinearity, which is good for factor analysis."
-    }`;
+    fullDescription = `The determinant of the correlation matrix is ${detStr}. The correlation matrix shows the bivariate relationships between all variables.`;
+  } else {
+    console.log("[DESC] No determinant provided for correlation matrix");
+    // Tanpa determinant - hanya base description
+    fullDescription = "The correlation matrix shows the bivariate relationships between all variables.";
   }
 
-  return `The correlation matrix shows the bivariate relationships between all variables. For factor analysis to be appropriate, there should ideally be several correlations of 0.30 or greater.${detInterpretation}`;
+  return fullDescription;
+};
+
+/**
+ * Menghasilkan deskripsi untuk Covariance Matrix
+ * Determinant hanya ditampilkan jika checkbox "Determinant" dicentang di tab Descriptives.
+ */
+export const generateCovarianceMatrixDescription = (
+  determinant?: number
+): string => {
+  let fullDescription = "";
+  
+  // Tampilkan determinant info jika nilai tersedia
+  if (determinant !== undefined) {
+    console.log("[DESC] Covariance Matrix Determinant:", determinant);
+    // Format scientific notation jika angkanya sangat kecil dengan gaya SPSS
+    const detStr = determinant < 0.001 
+      ? formatScientificNotationSPSSStyle(determinant)
+      : determinant.toFixed(5);
+    
+    fullDescription = `The determinant of the covariance matrix is ${detStr}. The diagonal elements represent the variance of each individual variable, while the off-diagonal elements show the covariance between pairs.`;
+  } else {
+    console.log("[DESC] No determinant provided for covariance matrix");
+    // Tanpa determinant - hanya base description
+    fullDescription = "The diagonal elements represent the variance of each individual variable, while the off-diagonal elements show the covariance between pairs.";
+  }
+
+  return fullDescription;
 };
 
 /**
