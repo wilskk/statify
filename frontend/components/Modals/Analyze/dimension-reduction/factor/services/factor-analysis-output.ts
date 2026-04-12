@@ -372,7 +372,7 @@ export async function resultFactorAnalysis({
                 const tableTitle = componentScoreCoefficientMatrixRaw.title;
                 await addStatistic(analyticId, {
                     title: tableTitle,
-                    description: tableTitle,
+                    description: getTableDescription("component_score_coefficient_matrix", tableTitle),
                     output_data: componentScoreCoefficientMatrix,
                     components: tableTitle,
                 });
@@ -391,7 +391,7 @@ export async function resultFactorAnalysis({
                 const tableTitle = componentScoreCovarianceMatrixRaw.title;
                 await addStatistic(analyticId, {
                     title: tableTitle,
-                    description: tableTitle,
+                    description: getTableDescription("component_score_covariance_matrix", tableTitle),
                     output_data: componentScoreCovarianceMatrix,
                     components: tableTitle,
                 });

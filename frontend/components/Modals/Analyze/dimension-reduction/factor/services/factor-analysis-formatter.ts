@@ -1406,6 +1406,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         const table: Table = {
             key: "component_score_coefficient_matrix",
             title: tableTitle,
+            interpretation: "This matrix displays the coefficient weights used to calculate the standardized factor scores for each observation.",
             columnHeaders: [
                 { header: "", key: "var" },
                 {
@@ -1464,6 +1465,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         const table: Table = {
             key: "component_score_covariance_matrix",
             title: tableTitle,
+            interpretation: "For orthogonal rotation, the components must be uncorrelated, indicated by an off-diagonal value of 0, or close to 0, and an on-diagonal value of 1.",
             columnHeaders: [
                 { header: columnRowHeader, key: "component" },
                 ...Array.from({ length: components }, (_, i) => ({

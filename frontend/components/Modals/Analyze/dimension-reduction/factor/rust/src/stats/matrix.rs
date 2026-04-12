@@ -123,8 +123,7 @@ use super::core::extract_data_matrix;
 
 
 
-// perbaikan untuk mendukung menu options
-// ... imports tetap sama ...
+
 
 pub fn calculate_matrix(
     data_matrix: &DMatrix<f64>,
@@ -497,6 +496,66 @@ pub fn calculate_raw_variances(data_matrix: &DMatrix<f64>) -> Result<Vec<f64>, S
 
     Ok(variances)
 }
+
+
+
+
+// pub fn calculate_anti_image_matrices(
+//     data: &AnalysisData,
+//     config: &FactorAnalysisConfig
+// ) -> Result<AntiImageMatrices, String> {
+//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+//     let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+
+//     let inverse = match corr_matrix.try_inverse() {
+//         Some(inv) => inv,
+//         None => {
+//             return Err("Could not invert correlation matrix".to_string());
+//         }
+//     };
+
+//     let n_vars = var_names.len();
+//     let mut anti_image_covariance = HashMap::new();
+//     let mut anti_image_correlation = HashMap::new();
+
+//     for i in 0..n_vars {
+//         let var_name = &var_names[i];
+//         let mut var_cov = HashMap::new();
+//         let mut var_corr = HashMap::new();
+
+//         for j in 0..n_vars {
+//             let other_var = &var_names[j];
+
+//             // Anti-image covariance: -partial covariances (negative of off-diagonal elements of inverse)
+//             let cov_value = if i == j {
+//                 1.0 / inverse[(i, j)]
+//             } else {
+//                 inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)])
+//             };
+
+//             var_cov.insert(other_var.clone(), cov_value);
+
+//             // Anti-image correlation: partial correlations with sign reversed
+//             let corr_value = if i == j {
+//                 1.0
+//             } else {
+//                inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)]).sqrt()
+//             };
+
+//             var_corr.insert(other_var.clone(), corr_value);
+//         }
+
+//         anti_image_covariance.insert(var_name.clone(), var_cov);
+//         anti_image_correlation.insert(var_name.clone(), var_corr);
+//     }
+
+//     Ok(AntiImageMatrices {
+//         anti_image_covariance,
+//         anti_image_correlation,
+//         variable_order: var_names,
+//     })
+// }
+
 
 pub fn calculate_anti_image_matrices(
     data: &AnalysisData,
