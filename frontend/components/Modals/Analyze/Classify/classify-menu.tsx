@@ -24,24 +24,6 @@ const ClassifyMenu: React.FC = () => {
                     TwoStep Cluster
                 </MenubarItem>
                 <MenubarItem
-                    onClick={() => openModal(ModalType.ModalKMeansCluster)}
-                >
-                    K-Means Cluster
-                </MenubarItem>
-                <MenubarItem
-                    onClick={() => openModal(ModalType.ModalKMedoidsCluster)}
-                >
-                    K-Medoids Cluster
-                </MenubarItem>
-                <MenubarItem
-                    // disabled={true}
-                    onClick={() =>
-                        openModal(ModalType.ModalHierarchicalCluster)
-                    }
-                >
-                    Hierarchical Cluster
-                </MenubarItem>
-                <MenubarItem
                     disabled={true}
                     onClick={() => openModal(ModalType.ModalClusterSilhouettes)}
                 >   

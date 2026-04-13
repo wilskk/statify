@@ -92,7 +92,6 @@ export async function resultFactorAnalysis({
              *  Generate SPSS-style syntax log berdasarkan konfigurasi yang dipilih user
              * */
             const logMessage = generateFactorAnalysisLog(configData);
-            console.log("[Factor Analysis] Generated SPSS-style log:", logMessage);
             const logId = await addLog({ log: logMessage });
             
             // Satu analyticId untuk semua statistik output 
@@ -120,7 +119,6 @@ export async function resultFactorAnalysis({
             const correlationMatrix = findTable("correlation_matrix");
             if (correlationMatrix) {
                 const tableDescription = getTableDescription("correlation_matrix", "Correlation Matrix");
-                console.log("[FA-Output] Correlation Matrix description being saved:", tableDescription);
                 
                 await addStatistic(analyticId, {
                     title: `Correlation Matrix`,
@@ -151,7 +149,6 @@ export async function resultFactorAnalysis({
             const covarianceMatrix = findTable("covariance_matrix");
             if (covarianceMatrix) {
                 const tableDescription = getTableDescription("covariance_matrix", "Covariance Matrix");
-                console.log("[FA-Output] Covariance Matrix description being saved:", tableDescription);
                 
                 await addStatistic(analyticId, {
                     title: `Covariance Matrix`,
@@ -219,17 +216,14 @@ export async function resultFactorAnalysis({
              *  Total Variance Explained Result 
              * */
             const totalVarianceExplained = findTable("total_variance_explained");
-            console.log("Looking for Total Variance Explained table...", "Found:", totalVarianceExplained);
 
             if (totalVarianceExplained) {
-                console.log("Total Variance Explained table found and processing...");
                 await addStatistic(analyticId, {
                     title: `Total Variance Explained`,
                     description: getTableDescription("total_variance_explained", "Total Variance Explained"),
                     output_data: totalVarianceExplained,
                     components: `Total Variance Explained`,
                 });
-                console.log("Total Variance Explained table saved to result store.");
             } else {
                 console.warn("Total Variance Explained table not found in formatted results!");
             }
@@ -459,8 +453,6 @@ export async function resultFactorAnalysis({
          * */
         if (configData.scores.SaveVar && formattedResult.factorScores && formattedResult.factorScores.length > 0) {
             try {
-                console.log("Injecting factor scores into data grid...", formattedResult.factorScores);
-
                 // Get stores
                 const dataStore = useDataStore.getState();
                 const variableStore = useVariableStore.getState();
@@ -468,8 +460,6 @@ export async function resultFactorAnalysis({
                 // Step 0: Generate unique factor variable names following SPSS convention (FAC1_1, FAC2_1, FAC1_2, etc)
                 const existingVariableNames = variableStore.variables.map(v => v.name);
                 const uniqueFactorNames = generateUniqueFactorNames(existingVariableNames, formattedResult.factorScores);
-                
-                console.log("Generated unique factor names:", Array.from(uniqueFactorNames.entries()));
 
                 // Convert factor scores to ColumnData format with unique names applied
                 const columnDataList: ColumnData[] = formattedResult.factorScores.map((score: any) => {
@@ -507,9 +497,6 @@ export async function resultFactorAnalysis({
 
                     // Save variable metadata to database
                     await variableStore.saveVariables();
-
-                    console.log(`Successfully added ${newVariablesData.length} factor score columns to the data grid with proper headers`);
-                    console.log("Factor score variable names saved:", newVariablesData.map(v => v.name));
                 }
             } catch (error) {
                 console.error("Failed to inject factor scores into data grid:", error);

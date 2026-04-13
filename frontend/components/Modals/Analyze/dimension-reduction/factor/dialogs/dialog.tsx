@@ -45,6 +45,7 @@ interface FactorDialogExtendedProps extends Omit<FactorDialogProps, 'setIsValueO
     containerType?: "dialog" | "sidebar";
     onClose?: () => void;
     formData: FactorType;
+    isAnalyzing: boolean;
     setIsValueOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
@@ -55,6 +56,7 @@ export const FactorDialog = ({
     updateFormData,
     data,
     formData,
+    isAnalyzing,
     globalVariables,
     onContinue,
     onReset,
@@ -169,7 +171,6 @@ export const FactorDialog = ({
             updateFormData("main", key as keyof FactorMainType, value);
         });
 
-        setIsMainOpen(false);
         onContinue(mainState);
     };
 
@@ -280,14 +281,15 @@ export const FactorDialog = ({
 
                 {/* Right: Action buttons */}
                 <div className="flex items-center space-x-4">
-                    <Button onClick={handleContinue}>
+                    <Button onClick={handleContinue} disabled={isAnalyzing}>
                         OK
                     </Button>
-                    <Button variant="outline" onClick={onReset}>
+                    <Button variant="outline" onClick={onReset} disabled={isAnalyzing}>
                         Reset
                     </Button>
                     <Button
                         variant="outline"
+                        disabled={isAnalyzing}
                         onClick={() => {
                             setIsMainOpen(false);
                             if (onClose) onClose();

@@ -26,4 +26,10 @@ wasm-pack build --target web --release
 echo "✓ Univariate WASM module built successfully"
 
 echo ""
+echo "Building K-Medoids Cluster WASM module..."
+cd ../../Classify/k-medoids-cluster/rust
+wasm-pack build --target web --release
+echo "✓ K-Medoids Cluster WASM module built successfully"
+
+echo ""
 echo "All WASM modules built successfully!"

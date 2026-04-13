@@ -6,6 +6,20 @@ import {FactorAnalysisType} from "@/components/Modals/Analyze/dimension-reductio
 import {transformFactorAnalysisResult} from "./factor-analysis-formatter";
 import {resultFactorAnalysis} from "./factor-analysis-output";
 
+type FactorWorkerAction = "warmup_factor_analysis" | "run_factor_analysis";
+
+type PendingWorkerRequest = {
+    action: FactorWorkerAction;
+    resolve: (payload: any) => void;
+    reject: (error: Error) => void;
+    timeoutId: ReturnType<typeof setTimeout>;
+};
+
+let factorWorker: Worker | null = null;
+let requestCounter = 0;
+let warmupPromise: Promise<void> | null = null;
+const pendingRequests = new Map<string, PendingWorkerRequest>();
+
 // Fungsi memastikan kolom seperti columnIndex, width, dan decimals benar-benar bertipe Number. 
 // Tanpa ini, jika JavaScript mengirimkan angka dalam bentuk string, Rust akan mengalami error karena Rust sangat ketat terhadap tipe data (strongly typed).
 
@@ -29,7 +43,7 @@ function sanitizeVarDefs(varDefs: any[][]): any[][] {
 
 // Helper function to create synthetic variable definitions when metadata is missing
 // This parses variable names like "VAR1", "VAR2", etc. to extract the column index
-function createSyntheticVariables(varNames: string[], dataRow: string[] | null): { name: string; columnIndex: number; type: string; width: number; decimals: number; label: string; values: any[]; missing: any; columns: number; align: string; measure: string; role: string }[] {
+function createSyntheticVariables(varNames: string[]): { name: string; columnIndex: number; type: string; width: number; decimals: number; label: string; values: any[]; missing: any; columns: number; align: string; measure: string; role: string }[] {
     return varNames.map((name) => {
         // Try to extract column index from variable name (e.g., "VAR1" -> 0, "VAR2" -> 1)
         const match = name.match(/^VAR(\d+)$/i);
@@ -53,6 +67,153 @@ function createSyntheticVariables(varNames: string[], dataRow: string[] | null):
     });
 }
 
+function toErrorMessage(error: unknown, fallback: string): string {
+    if (!error) return fallback;
+    if (typeof error === "string") return error;
+    if (error instanceof Error) return error.message || fallback;
+    if (typeof (error as any).message === "string") return (error as any).message;
+    try {
+        return JSON.stringify(error);
+    } catch {
+        return fallback;
+    }
+}
+
+function buildRequestId(action: FactorWorkerAction): string {
+    requestCounter += 1;
+    return `${action}-${Date.now()}-${requestCounter}`;
+}
+
+function clearPendingRequest(requestId: string): PendingWorkerRequest | undefined {
+    const pendingRequest = pendingRequests.get(requestId);
+    if (!pendingRequest) return undefined;
+
+    clearTimeout(pendingRequest.timeoutId);
+    pendingRequests.delete(requestId);
+    return pendingRequest;
+}
+
+function rejectAllPendingRequests(message: string) {
+    pendingRequests.forEach((pendingRequest) => {
+        clearTimeout(pendingRequest.timeoutId);
+        pendingRequest.reject(new Error(message));
+    });
+    pendingRequests.clear();
+}
+
+function terminateFactorWorker() {
+    if (!factorWorker) return;
+
+    factorWorker.terminate();
+    factorWorker = null;
+    warmupPromise = null;
+}
+
+function handleWorkerMessage(event: MessageEvent) {
+    const { type, payload, requestId } = event.data || {};
+
+    if (!requestId || !pendingRequests.has(requestId)) {
+        return;
+    }
+
+    if (type === "PROGRESS") {
+        return;
+    }
+
+    const pendingRequest = clearPendingRequest(requestId);
+    if (!pendingRequest) return;
+
+    if (type === "SUCCESS") {
+        pendingRequest.resolve(payload);
+        return;
+    }
+
+    const errorMessage = toErrorMessage(
+        payload,
+        `Factor analysis worker failed during ${pendingRequest.action}.`
+    );
+    pendingRequest.reject(new Error(errorMessage));
+}
+
+function handleWorkerError(error: ErrorEvent) {
+    const errorMessage = toErrorMessage(
+        error,
+        "Factor analysis worker encountered an unrecoverable error."
+    );
+
+    rejectAllPendingRequests(errorMessage);
+    terminateFactorWorker();
+}
+
+function getOrCreateWorker(): Worker {
+    if (factorWorker) return factorWorker;
+
+    factorWorker = new Worker(
+        new URL("/workers/FactorAnalysis/factorAnalysis.worker.js", window.location.origin),
+        { type: "module" }
+    );
+
+    factorWorker.onmessage = handleWorkerMessage;
+    factorWorker.onerror = handleWorkerError;
+
+    return factorWorker;
+}
+
+function runWorkerAction(
+    action: FactorWorkerAction,
+    payload: Record<string, unknown> = {},
+    timeoutMs = 120000
+): Promise<any> {
+    return new Promise((resolve, reject) => {
+        const worker = getOrCreateWorker();
+        const requestId = buildRequestId(action);
+
+        const timeoutId = setTimeout(() => {
+            clearPendingRequest(requestId);
+            reject(new Error(`Factor analysis worker timed out while running '${action}'.`));
+            terminateFactorWorker();
+        }, timeoutMs);
+
+        pendingRequests.set(requestId, {
+            action,
+            resolve,
+            reject,
+            timeoutId,
+        });
+
+        try {
+            worker.postMessage({
+                action,
+                requestId,
+                ...payload,
+            });
+        } catch (postMessageError) {
+            clearPendingRequest(requestId);
+            reject(
+                new Error(
+                    toErrorMessage(
+                        postMessageError,
+                        `Failed to post message '${action}' to factor analysis worker.`
+                    )
+                )
+            );
+        }
+    });
+}
+
+export async function warmupFactorAnalysisWorker(): Promise<void> {
+    if (warmupPromise) return warmupPromise;
+
+    warmupPromise = runWorkerAction("warmup_factor_analysis", {}, 60000)
+        .then(() => undefined)
+        .catch((error) => {
+            warmupPromise = null;
+            throw error;
+        });
+
+    return warmupPromise;
+}
+
 export async function analyzeFactor({
     configData,
     dataVariables,
@@ -69,8 +230,7 @@ export async function analyzeFactor({
     if (!variables || variables.length === 0) {
         console.warn("[analyzeFactor] Variables metadata is empty! Creating synthetic variables from target variable names.");
         const allVarNames = [...targetVariables, ...(valueTarget.length > 0 ? valueTarget : [])];
-        effectiveVariables = createSyntheticVariables(allVarNames, dataVariables?.[0] ?? null) as any;
-        console.log("[analyzeFactor] Created synthetic variables:", effectiveVariables);
+        effectiveVariables = createSyntheticVariables(allVarNames) as any;
     }
 
     const slicedDataForTarget = getSlicedData({
@@ -92,21 +252,6 @@ export async function analyzeFactor({
         getVarDefs(effectiveVariables, valueTarget)
     );
 
-    console.log("=== FACTOR ANALYSIS DEBUG START ===");
-    console.log("configData:", JSON.stringify(configData, null, 2));
-    console.log("dataVariables length:", dataVariables?.length);
-    console.log("dataVariables first row:", dataVariables?.[0]);
-    console.log("variables count:", variables?.length);
-    console.log("variables names:", variables?.map(v => v.name));
-    console.log("targetVariables:", targetVariables);
-    console.log("slicedDataForTarget:", JSON.stringify(slicedDataForTarget?.slice(0, 2), null, 2)); // First 2 vars
-    console.log("slicedDataForTarget structure:");
-    slicedDataForTarget?.forEach((varData, idx) => {
-        console.log(`  Variable ${idx}: ${varData?.length} records, first record:`, varData?.[0]);
-    });
-    console.log("varDefsForTarget:", JSON.stringify(varDefsForTarget, null, 2));
-    console.log("=== FACTOR ANALYSIS DEBUG END ===");
-
     // Validation before WASM call
     if (!slicedDataForTarget || slicedDataForTarget.length === 0) {
         throw new Error("No data available for selected variables. Please ensure data is loaded and variables are selected.");
@@ -118,67 +263,35 @@ export async function analyzeFactor({
 
     // Komputasi WASM dijalankan di Web Worker agar tidak memblokir main thread UI.
     // Worker file: public/workers/FactorAnalysis/factorAnalysis.worker.js
-    return new Promise<void>((resolve, reject) => {
-        const worker = new Worker(
-            new URL("/workers/FactorAnalysis/factorAnalysis.worker.js", window.location.origin),
-            { type: "module" }
-        );
+    try {
+        if (!warmupPromise) {
+            warmupPromise = warmupFactorAnalysisWorker();
+        }
+        await warmupPromise;
+    } catch {
+        // Tetap lanjutkan eksekusi. Action run_factor_analysis akan mencoba init ulang di worker.
+    }
 
-        worker.postMessage({
-            action: "run_factor_analysis",
+    const { results } = await runWorkerAction(
+        "run_factor_analysis",
+        {
             slicedDataForTarget,
             slicedDataForValue,
             varDefsForTarget,
             varDefsForValue,
             configData,
-        });
+        },
+        180000
+    );
 
-        worker.onmessage = async (event: MessageEvent) => {
-            const { type, payload, action } = event.data;
+    // Teruskan configData ke formatter agar bisa mengakses extraction.Method
+    const formattedResults = transformFactorAnalysisResult(results, configData);
 
-            if (type === "PROGRESS") {
-                console.log(`[FactorAnalysis Worker] Progress: ${payload.stage} (${payload.percent}%)`);
-                return;
-            }
-
-            if (type === "SUCCESS" && action === "run_factor_analysis") {
-                try {
-                    const { results, errors } = payload;
-                    console.log("WASM results (from worker)", results);
-                    console.log("WASM errors (from worker)", errors);
-
-                    // Teruskan configData ke formatter agar bisa mengakses extraction.Method
-                    const formattedResults = transformFactorAnalysisResult(results, configData);
-                    console.log("formattedResults", formattedResults);
-
-                    /*
-                     * 🎉 Final Result Process 🎯
-                     * */
-                    await resultFactorAnalysis({
-                        formattedResult: formattedResults ?? [],
-                        configData,
-                    });
-
-                    worker.terminate();
-                    resolve();
-                } catch (err) {
-                    worker.terminate();
-                    console.error("Error processing factor analysis results:", err);
-                    reject(err);
-                }
-            }
-
-            if (type === "ERROR") {
-                worker.terminate();
-                console.error("Factor analysis worker error:", payload);
-                reject(new Error(payload?.message || "Factor analysis computation failed in worker."));
-            }
-        };
-
-        worker.onerror = (err) => {
-            worker.terminate();
-            console.error("Factor analysis worker uncaught error:", err);
-            reject(new Error(err.message || "Factor analysis worker failed."));
-        };
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    await resultFactorAnalysis({
+        formattedResult: formattedResults ?? [],
+        configData,
     });
 }

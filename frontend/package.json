@@ -83,7 +83,7 @@
     "react-dropzone": "^14.2.3",
     "react-katex": "^3.1.0",
     "react-resizable-panels": "^2.1.9",
-    "recharts": "^3.7.0",
+    "recharts": "^3.8.0",
     "simple-statistics": "^7.8.7",
     "sonner": "^2.0.5",
     "tailwind-merge": "^2.5.4",

@@ -1,15 +1,17 @@
 /**
  * Factor Analysis Web Worker
- * 
+ *
  * Menjalankan komputasi analisis faktor (WASM) di thread terpisah
  * agar tidak memblokir main thread UI saat memproses data besar.
- * 
+ *
  * Supported actions:
+ *   - "warmup_factor_analysis": Memuat dan inisialisasi WASM lebih awal
  *   - "run_factor_analysis": Menjalankan full factor analysis via WASM
- * 
+ *
  * Message format:
  *   {
  *     action: "run_factor_analysis",
+ *     requestId: string,
  *     slicedDataForTarget: any[],
  *     slicedDataForValue: any[],
  *     varDefsForTarget: any[][],
@@ -17,143 +19,158 @@
  *     configData: object,
  *   }
  * 
- * Response format:
- *   SUCCESS: { type: "SUCCESS", payload: { results, errors }, action }
- *   ERROR:   { type: "ERROR",   payload: string, action }
- *   PROGRESS:{ type: "PROGRESS", payload: { stage, message, percent }, action }
+ * Response format (semua membawa requestId):
+ *   SUCCESS: { type: "SUCCESS", payload: { ... }, action, requestId }
+ *   ERROR:   { type: "ERROR", payload: string, action, requestId }
+ *   PROGRESS:{ type: "PROGRESS", payload: { stage, message, percent }, action, requestId }
  */
+let initWasm = null;
+let FactorAnalysisClass = null;
+let wasmInitPromise = null;
+let wasmReady = false;
 
-import init, { FactorAnalysis } from "./pkg/wasm.js";
+function stringifyWorkerError(error) {
+  if (!error) return "Unknown worker error.";
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error.message === "string") return error.message;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
 
-// Pantau apakah WASM telah diinisialisasi (hindari inisialisasi berlebihan saat digunakan kembali dari pool)
-let wasmInitialized = false;
+function postMessageSafe(type, action, requestId, payload) {
+  self.postMessage({
+    type,
+    action,
+    requestId,
+    payload,
+  });
+}
+
+async function ensureWasmReady(action, requestId) {
+  if (wasmReady) return;
+
+  if (!wasmInitPromise) {
+    wasmInitPromise = (async () => {
+      const wasmModule = await import("./pkg/wasm.js");
+      initWasm = wasmModule.default;
+      FactorAnalysisClass = wasmModule.FactorAnalysis;
+
+      if (typeof initWasm !== "function" || !FactorAnalysisClass) {
+        throw new Error(
+          "Invalid WASM module exports. Expected default init and FactorAnalysis class."
+        );
+      }
+
+      const wasmUrl = new URL("./pkg/wasm_bg.wasm", import.meta.url);
+      await initWasm(wasmUrl);
+      wasmReady = true;
+    })().catch((error) => {
+      wasmInitPromise = null;
+      wasmReady = false;
+      initWasm = null;
+      FactorAnalysisClass = null;
+      throw error;
+    });
+  }
+
+  postMessageSafe("PROGRESS", action, requestId, {
+    stage: "init",
+    message: "Initializing WASM module...",
+    percent: 10,
+  });
+
+  await wasmInitPromise;
+}
 
 self.onmessage = async (event) => {
   const {
     action,
+    requestId,
     slicedDataForTarget,
     slicedDataForValue,
     varDefsForTarget,
     varDefsForValue,
     configData,
-  } = event.data;
+  } = event.data || {};
 
-  console.log("[FactorAnalysis Worker] Received action:", action);
-
-  const validActions = ["run_factor_analysis"];
-  if (!action || !validActions.includes(action)) {
-    self.postMessage({
-      type: "ERROR",
-      payload: `Unknown action: ${action}`,
-      action,
-    });
+  if (!action) {
+    postMessageSafe(
+      "ERROR",
+      "unknown",
+      requestId,
+      "Missing action in worker message."
+    );
     return;
   }
 
   try {
-    // =================================================================
-    // 1. Inisialisasi WASM  
-    // =================================================================
-    if (!wasmInitialized) {
-      self.postMessage({
-        type: "PROGRESS",
-        payload: { stage: "init", message: "Initializing WASM module...", percent: 5 },
-        action,
-      });
-      await init();
-      wasmInitialized = true;
-      console.log("[FactorAnalysis Worker] WASM initialized successfully.");
+    if (action === "warmup_factor_analysis") {
+      await ensureWasmReady(action, requestId);
+      postMessageSafe("SUCCESS", action, requestId, { warmedUp: true });
+      return;
     }
 
-    switch (action) {
-      case "run_factor_analysis": {
-        // =================================================================
-        // 2. Validasi  
-        // =================================================================
-        if (!slicedDataForTarget || slicedDataForTarget.length === 0) {
-          throw new Error("No target data provided to worker.");
-        }
+    if (action !== "run_factor_analysis") {
+      postMessageSafe("ERROR", action, requestId, `Unknown action: ${action}`);
+      return;
+    }
 
-        if (!configData) {
-          throw new Error("No configuration data provided to worker.");
-        }
+    if (!slicedDataForTarget || slicedDataForTarget.length === 0) {
+      throw new Error("No target data provided to worker.");
+    }
 
-        self.postMessage({
-          type: "PROGRESS",
-          payload: {
-            stage: "computing",
-            message: "Running Factor Analysis computation...",
-            percent: 20,
-          },
-          action,
-        });
+    if (!configData) {
+      throw new Error("No configuration data provided to worker.");
+    }
 
-        // =================================================================
-        // 3. Komputasi WASM
-        // =================================================================
-        console.log("[FactorAnalysis Worker] Creating FactorAnalysis instance...");
-        console.log("[FactorAnalysis Worker] slicedDataForTarget vars:", slicedDataForTarget?.length);
-        console.log("[FactorAnalysis Worker] slicedDataForTarget[0] length:", slicedDataForTarget?.[0]?.length);
-        console.log("[FactorAnalysis Worker] configData:", JSON.stringify(configData, null, 2));
+    await ensureWasmReady(action, requestId);
 
-        const factor = new FactorAnalysis(
-          slicedDataForTarget,
-          slicedDataForValue,
-          varDefsForTarget,
-          varDefsForValue,
-          configData
-        );
+    postMessageSafe("PROGRESS", action, requestId, {
+      stage: "computing",
+      message: "Running Factor Analysis computation...",
+      percent: 45,
+    });
 
-        self.postMessage({
-          type: "PROGRESS",
-          payload: {
-            stage: "formatting",
-            message: "Retrieving formatted results...",
-            percent: 70,
-          },
-          action,
-        });
+    let factor = null;
 
-        const results = factor.get_formatted_results();
-        const errors = factor.get_all_errors();
+    try {
+      factor = new FactorAnalysisClass(
+        slicedDataForTarget,
+        slicedDataForValue,
+        varDefsForTarget,
+        varDefsForValue,
+        configData
+      );
 
-        console.log("[FactorAnalysis Worker] WASM results obtained.");
-        console.log("[FactorAnalysis Worker] WASM errors:", errors);
+      postMessageSafe("PROGRESS", action, requestId, {
+        stage: "formatting",
+        message: "Retrieving formatted results...",
+        percent: 80,
+      });
 
-        // Free WASM memory
+      const results = factor.get_formatted_results();
+      const errors = factor.get_all_errors();
+
+      postMessageSafe("PROGRESS", action, requestId, {
+        stage: "done",
+        message: "Factor Analysis completed.",
+        percent: 100,
+      });
+
+      postMessageSafe("SUCCESS", action, requestId, {
+        results,
+        errors,
+      });
+    } finally {
+      if (factor && typeof factor.free === "function") {
         factor.free();
-
-        self.postMessage({
-          type: "PROGRESS",
-          payload: {
-            stage: "done",
-            message: "Factor Analysis completed.",
-            percent: 100,
-          },
-          action,
-        });
-
-        // =================================================================
-        // 4. KIRIM HASIL KEMBALI
-        // =================================================================
-        self.postMessage({
-          type: "SUCCESS",
-          payload: {
-            results,
-            errors,
-          },
-          action,
-        });
-
-        break;
       }
     }
   } catch (error) {
-    console.error("[FactorAnalysis Worker] Error:", error);
-    self.postMessage({
-      type: "ERROR",
-      payload: error.message || "An unexpected error occurred in the Factor Analysis worker.",
-      action,
-    });
+    postMessageSafe("ERROR", action, requestId, stringifyWorkerError(error));
   }
 };
