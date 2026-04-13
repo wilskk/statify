@@ -10,6 +10,8 @@ import { Loader2, HelpCircle } from "lucide-react";
 // Stores & Hooks
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useModalStore } from "@/stores/useModalStore";
+import { useDataStore } from "@/stores/useDataStore";
+import { useResultStore } from "@/stores/useResultStore";
 
 // Components
 import { VariablesTab } from "./VariablesTab";
@@ -17,6 +19,9 @@ import { LocationTab } from "./LocationTab";
 import { ScaleTab } from "./ScaleTab";
 import { OptionsTab } from "./OptionsTab";
 import { OutputTab } from "./OutputTab";
+
+// Services
+import { formatOrdinalResult } from "../services/formatter";
 
 // Types
 import {
@@ -85,109 +90,205 @@ const OrdinalMain: React.FC = () => {
     return variablesFromStore.filter((v) => !selectedIds.has(v.id));
   }, [variablesFromStore, options]);
 
+  const { data } = useDataStore();
+  const { addLog, addAnalytic, addStatistic } = useResultStore();
+
   // --- HANDLERS ---
-  // Fungsi ini akan diisi nanti, untuk sekarang hanya UI
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!options.dependent) {
-      setErrorMsg("Mohon pilih satu variabel dependen.");
+      setErrorMsg("Mohon pilih variabel dependen.");
       return;
     }
+
+    if (!data || data.length === 0) {
+      setErrorMsg("Dataset kosong atau tidak tersedia.");
+      return;
+    }
+
+    const features = [...options.factors, ...options.covariates];
+
+    if (features.length === 0) {
+      setErrorMsg("Minimal 1 variabel independen.");
+      return;
+    }
+
     setIsLoading(true);
-    console.log("Ordinal Regression Analyze Clicked");
-    console.log("Options:", options);
-    console.log("Location Params:", locationParams);
-    console.log("Scale Params:", scaleParams);
-    console.log("Options Params:", optParams);
-    console.log("Output Params:", outputParams);
+    setErrorMsg(null);
 
-    // Simulasi loading
-    setTimeout(() => {
+    try {
+      const worker = new Worker(
+        new URL("../worker/ordinal-worker.js", import.meta.url),
+        { type: "module" }
+      );
+
+      worker.onmessage = async (event) => {
+        const { type, payload } = event.data;
+
+        if (type === "SUCCESS") {
+          try {
+            // 🔥 1. FORMAT HASIL (WAJIB PERTAMA)
+            const formattedResult = formatOrdinalResult(payload);
+
+            // 🔥 2. BUAT LOG & ANALYTIC (SEBELUM LOOP)
+            const logId = await addLog({
+              log: `ORDINAL REGRESSION VARIABLES ${options.dependent!.name}`,
+            });
+
+            const analyticId = await addAnalytic(logId, {
+              title: "Ordinal Logistic Regression",
+              note: `Link: ${optParams.linkFunction}`,
+            });
+
+            // 🔥 3. LOOP HASIL FORMATTER
+            if (
+              formattedResult.sections &&
+              Array.isArray(formattedResult.sections)
+            ) {
+              const tableObjectForRenderer = {
+                columns: section.data.columnHeaders, // 🔥 INI KUNCI
+                rows: section.data.rows,
+                title: section.title,
+                note: section.note,
+              };
+
+              const payloadForRenderer = {
+                tables: [tableObjectForRenderer],
+              };
+
+              await addStatistic(analyticId, {
+                title: section.title,
+                description: section.description || "",
+                output_data: JSON.stringify(payloadForRenderer),
+                components: "Parameter Estimates",
+              });
+            }
+          }
+
+          worker.terminate();
+          setIsLoading(false);
+          closeModal("ORDINAL_REGRESSION");
+        } catch (err) {
+          console.error(err);
+          setErrorMsg("Gagal menyimpan hasil.");
+          setIsLoading(false);
+          worker.terminate();
+        }
+      } else {
+        setErrorMsg(payload);
+        setIsLoading(false);
+        worker.terminate();
+      }
+    };
+
+    worker.onerror = (err) => {
+      console.error(err);
+      setErrorMsg("Worker error");
       setIsLoading(false);
-      alert("Fitur analisis belum diimplementasikan. Ini hanya UI.");
-      // close top modal
-      // closeModal(); // uncomment jika ingin modal otomatis tutup
-    }, 1500);
-  };
+      worker.terminate();
+    };
 
-  // --- RENDER ---
-  return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="px-6 py-4 flex-shrink-0">
-        <h2 className="text-lg font-semibold tracking-tight">
-          Ordinal Regression
-        </h2>
-      </div>
-      <Separator />
-      <div className="flex-grow px-6 overflow-y-auto min-h-0">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
-            <TabsTrigger value="variables">Variables</TabsTrigger>
-            <TabsTrigger value="location">Location</TabsTrigger>
-            <TabsTrigger value="scale">Scale</TabsTrigger>
-            <TabsTrigger value="options">Options</TabsTrigger>
-            <TabsTrigger value="output">Output</TabsTrigger>
-          </TabsList>
-          <div className="flex-grow min-h-0 overflow-hidden">
-            <TabsContent value="variables" className="h-full mt-0">
-              <VariablesTab
-                availableVariables={availableVariables}
-                selectedDependent={options.dependent}
-                selectedFactors={options.factors}
-                selectedCovariates={options.covariates}
-                onOptionsChange={setOptions}
-              />
-            </TabsContent>
-            <TabsContent value="location" className="h-full mt-0">
-              <LocationTab
-                factors={options.factors}
-                covariates={options.covariates}
-                params={locationParams}
-                onChange={setLocationParams}
-              />
-            </TabsContent>
-            <TabsContent value="scale" className="h-full mt-0">
-              <ScaleTab
-                factors={options.factors}
-                covariates={options.covariates}
-                params={scaleParams}
-                onChange={setScaleParams}
-              />
-            </TabsContent>
-            <TabsContent value="options" className="h-full mt-0">
-              <OptionsTab params={optParams} onChange={(p) => setOptParams(prev => ({ ...prev, ...p }))} />
-            </TabsContent>
-            <TabsContent value="output" className="h-full mt-0">
-              <OutputTab params={outputParams} onChange={(p) => setOutputParams(prev => ({ ...prev, ...p }))} />
-            </TabsContent>
-          </div>
-        </Tabs>
-        {errorMsg && (
-          <div className="mt-4">
-            <Alert variant="destructive">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{errorMsg}</AlertDescription>
-            </Alert>
-          </div>
-        )}
-      </div>
-      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <Button variant="ghost" size="icon">
-          <HelpCircle className="h-4 w-4" />
-        </Button>
-        <div className="flex items-center space-x-4">
-          <Button onClick={handleAnalyze} disabled={isLoading || !options.dependent}>
-            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> OK</> : "OK"}
-          </Button>
-          <Button variant="outline" onClick={() => setOptions({ dependent: null, factors: [], covariates: [] })} disabled={isLoading}>
-            Reset
-          </Button>
-          <Button variant="outline" onClick={() => closeModal()} disabled={isLoading}>
-            Cancel
-          </Button>
+    // 🔥 PREPARE DATA
+    const depName = options.dependent.name;
+
+    const categories = Array.from(
+      new Set(data.map((d: any) => d[depName]))
+    );
+
+    const dataset = data.map((row: any) => ({
+      y: categories.indexOf(row[depName]) + 1,
+      x: features.map((f) => Number(row[f.name]) || 0),
+    }));
+
+    worker.postMessage({
+      data: dataset,
+      featureNames: features.map((f) => f.name),
+      iterations: optParams.maxIterations,
+    });
+  } catch (err: any) {
+    setErrorMsg(err.message);
+    setIsLoading(false);
+  }
+};
+
+// --- RENDER ---
+return (
+  <div className="flex flex-col h-full bg-background">
+    <div className="px-6 py-4 flex-shrink-0">
+      <h2 className="text-lg font-semibold tracking-tight">
+        Ordinal Regression
+      </h2>
+    </div>
+    <Separator />
+    <div className="flex-grow px-6 overflow-y-auto min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+        <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+          <TabsTrigger value="variables">Variables</TabsTrigger>
+          <TabsTrigger value="location">Location</TabsTrigger>
+          <TabsTrigger value="scale">Scale</TabsTrigger>
+          <TabsTrigger value="options">Options</TabsTrigger>
+          <TabsTrigger value="output">Output</TabsTrigger>
+        </TabsList>
+        <div className="flex-grow min-h-0 overflow-hidden">
+          <TabsContent value="variables" className="h-full mt-0">
+            <VariablesTab
+              availableVariables={availableVariables}
+              selectedDependent={options.dependent}
+              selectedFactors={options.factors}
+              selectedCovariates={options.covariates}
+              onOptionsChange={setOptions}
+            />
+          </TabsContent>
+          <TabsContent value="location" className="h-full mt-0">
+            <LocationTab
+              factors={options.factors}
+              covariates={options.covariates}
+              params={locationParams}
+              onChange={setLocationParams}
+            />
+          </TabsContent>
+          <TabsContent value="scale" className="h-full mt-0">
+            <ScaleTab
+              factors={options.factors}
+              covariates={options.covariates}
+              params={scaleParams}
+              onChange={setScaleParams}
+            />
+          </TabsContent>
+          <TabsContent value="options" className="h-full mt-0">
+            <OptionsTab params={optParams} onChange={(p) => setOptParams(prev => ({ ...prev, ...p }))} />
+          </TabsContent>
+          <TabsContent value="output" className="h-full mt-0">
+            <OutputTab params={outputParams} onChange={(p) => setOutputParams(prev => ({ ...prev, ...p }))} />
+          </TabsContent>
         </div>
+      </Tabs>
+      {errorMsg && (
+        <div className="mt-4">
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{errorMsg}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+    </div>
+    <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+      <Button variant="ghost" size="icon">
+        <HelpCircle className="h-4 w-4" />
+      </Button>
+      <div className="flex items-center space-x-4">
+        <Button onClick={handleAnalyze} disabled={isLoading || !options.dependent}>
+          {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> OK</> : "OK"}
+        </Button>
+        <Button variant="outline" onClick={() => setOptions({ dependent: null, factors: [], covariates: [] })} disabled={isLoading}>
+          Reset
+        </Button>
+        <Button variant="outline" onClick={() => closeModal()} disabled={isLoading}>
+          Cancel
+        </Button>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default OrdinalMain;

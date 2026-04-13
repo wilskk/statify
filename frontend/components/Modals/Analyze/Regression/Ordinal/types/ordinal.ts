@@ -47,4 +47,14 @@ export interface OrdinalOutputParams {
     actualProbability: boolean; // Akan meminta input untuk kategori
   };
   printLogLikelihood: "Including" | "Excluding";
+
+}
+
+export interface AnalysisSection {
+  id: string;
+  title: string;
+  data: any;
+  description?: string;
+  type: "table" | "text";
+  note?: string;
 }

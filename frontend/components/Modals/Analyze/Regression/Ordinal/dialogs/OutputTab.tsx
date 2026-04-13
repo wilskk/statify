@@ -34,6 +34,11 @@ export const OutputTab: React.FC<Props> = ({ params, onChange }) => {
                         <Checkbox id="parallel" checked={params.display.testOfParallelLines} onCheckedChange={(c) => handleDisplayChange('testOfParallelLines', !!c)} />
                             <Label htmlFor="parallel">Test of parallel lines</Label>
                     </div>
+                    {/* blom diganti nih sop */}
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="parallel" checked={params.display.testOfParallelLines} onCheckedChange={(c) => handleDisplayChange('testOfParallelLines', !!c)} />
+                            <Label htmlFor="parallel">Multicolinearity</Label>
+                    </div>
             </div>
             <div className="space-y-6">
                 <h4 className="font-semibold text-sm border-b pb-1 mb-2">
@@ -46,14 +51,6 @@ export const OutputTab: React.FC<Props> = ({ params, onChange }) => {
                     <div className="flex items-center space-x-2">
                     <Checkbox id="predProb" checked={params.savedVariables.predictedProbability} onCheckedChange={(c) => handleSavedChange('predictedProbability', !!c)} />
                         <Label htmlFor="predProb">Predicted Probability</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                         <Checkbox id="param" checked={params.display.parameterEstimates} onCheckedChange={(c) => handleDisplayChange('parameterEstimates', !!c)} />
-                            <Label htmlFor="param">Parameter estimates</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="parallel" checked={params.display.testOfParallelLines} onCheckedChange={(c) => handleDisplayChange('testOfParallelLines', !!c)} />
-                            <Label htmlFor="parallel">Test of parallel lines</Label>
                     </div>
                 <h4 className="font-semibold text-sm border-b pb-1 mb-2">
                       Print Log-Likelihood
