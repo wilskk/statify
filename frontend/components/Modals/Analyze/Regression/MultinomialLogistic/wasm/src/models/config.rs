@@ -1,18 +1,108 @@
-use serde::{Deserialize, Serialize};
+use serde::de::Error as DeError;
+use serde::{Deserialize, Deserializer, Serialize};
 
-#[derive(Deserialize, Serialize, Clone)]
-pub struct MultinomialConfig {
-    pub reference_category: String, // "first", "last", atau value tertentu
-    pub confidence_interval: f64,   // default 0.95
-    pub iterations: u32,            // default 100
-    pub convergence: f64,           // default 1e-6
-    pub singularity: f64,           // default 1e-8
-    pub include_intercept: bool,    // default true
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum NumberLike {
+    F64(f64),
+    I64(i64),
+    U64(u64),
+    Str(String),
 }
 
-#[derive(Deserialize, Serialize)]
+impl NumberLike {
+    fn into_f64(self) -> Result<f64, String> {
+        match self {
+            NumberLike::F64(v) => Ok(v),
+            NumberLike::I64(v) => Ok(v as f64),
+            NumberLike::U64(v) => Ok(v as f64),
+            NumberLike::Str(s) => s
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| format!("invalid numeric string: '{}'", s)),
+        }
+    }
+}
+
+fn deserialize_vec_f64<'de, D>(deserializer: D) -> Result<Vec<f64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw: Vec<NumberLike> = Vec::deserialize(deserializer)?;
+    raw.into_iter()
+        .map(|v| v.into_f64().map_err(D::Error::custom))
+        .collect()
+}
+
+fn deserialize_matrix_f64<'de, D>(deserializer: D) -> Result<Vec<Vec<f64>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw: Vec<Vec<NumberLike>> = Vec::deserialize(deserializer)?;
+    raw.into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|v| v.into_f64().map_err(D::Error::custom))
+                .collect()
+        })
+        .collect()
+}
+
+fn deserialize_option_vec_f64<'de, D>(deserializer: D) -> Result<Option<Vec<f64>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw: Option<Vec<NumberLike>> = Option::deserialize(deserializer)?;
+    raw.map(|vals| {
+        vals.into_iter()
+            .map(|v| v.into_f64().map_err(D::Error::custom))
+            .collect()
+    })
+    .transpose()
+}
+
+fn default_pconverge() -> f64 {
+    1e-6 // SPSS NOMREG default PCONVERGE = 1e-6
+}
+fn default_lconverge() -> f64 {
+    0.0 // SPSS NOMREG default LCONVERGE = 0 (disabled)
+}
+fn default_iterations() -> u32 {
+    100 // SPSS NOMREG default MXITER = 100
+}
+fn default_singularity() -> f64 {
+    1e-8 // SPSS-like singularity threshold for generalized inverse fallback
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MultinomialConfig {
+    pub reference_category: String,
+    pub confidence_interval: f64,
+    #[serde(default = "default_iterations")]
+    pub iterations: u32,
+    pub tolerance: f64,
+    /// SPSS PCONVERGE: max absolute parameter change threshold (default 1e-6)
+    #[serde(default = "default_pconverge")]
+    pub pconverge: f64,
+    /// SPSS LCONVERGE: log-likelihood change threshold (default 0.0 = disabled)
+    #[serde(default = "default_lconverge")]
+    pub lconverge: f64,
+    /// Singularity criterion for matrix inversion fallback
+    #[serde(default = "default_singularity")]
+    pub singularity: f64,
+    pub include_intercept: bool,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct AnalysisData {
-    pub dependent: Vec<f64>,        // Data kolom dependen (Y)
-    pub independent: Vec<Vec<f64>>, // Matriks kolom independen (X)
-    pub weights: Option<Vec<f64>>,  // Bobot jika ada (Weight Cases)
+    #[serde(deserialize_with = "deserialize_vec_f64")]
+    pub dependent: Vec<f64>,
+    #[serde(deserialize_with = "deserialize_matrix_f64")]
+    pub independent: Vec<Vec<f64>>,
+    // Option::unwrap_or digunakan nanti jika null
+    #[serde(default, deserialize_with = "deserialize_option_vec_f64")]
+    pub weights: Option<Vec<f64>>,
+    pub variable_names: Option<Vec<String>>,
 }
