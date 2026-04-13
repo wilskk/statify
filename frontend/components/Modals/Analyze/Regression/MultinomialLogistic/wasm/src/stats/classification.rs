@@ -16,9 +16,16 @@ pub fn calculate_classification_table(
 
     let mut observed = Vec::new();
     let mut predicted = Vec::new();
-    let mut confusion = vec![vec![0usize; J]; J];
+    let mut confusion = vec![vec![0.0f64; J]; J];
+    let mut total_weight = 0.0f64;
+    let mut correct_weight = 0.0f64;
 
     for i in 0..n {
+        let weight = primary.weights.get(i).copied().unwrap_or(1.0);
+        if !weight.is_finite() || weight <= 0.0 {
+            continue;
+        }
+
         // Find observed category index
         let obs_cat = primary.y_categories[i];
         let obs_idx = primary
@@ -39,22 +46,25 @@ pub fn calculate_classification_table(
 
         observed.push(obs_idx);
         predicted.push(pred_idx);
-        confusion[obs_idx][pred_idx] += 1;
+        confusion[obs_idx][pred_idx] += weight;
+        total_weight += weight;
+        if obs_idx == pred_idx {
+            correct_weight += weight;
+        }
     }
 
-    // Hitung overall percentage
-    let correct = observed
-        .iter()
-        .zip(predicted.iter())
-        .filter(|(o, p)| o == p)
-        .count();
-    let overall_pct = (correct as f64 / n as f64) * 100.0;
+    // Hitung overall percentage berbasis weight
+    let overall_pct = if total_weight > 0.0 {
+        (correct_weight / total_weight) * 100.0
+    } else {
+        0.0
+    };
 
     let mut category_pcts = vec![0.0f64; J];
     for j in 0..J {
-        let row_sum: usize = confusion[j].iter().sum();
-        if row_sum > 0 {
-            category_pcts[j] = (confusion[j][j] as f64 / row_sum as f64) * 100.0;
+        let row_sum: f64 = confusion[j].iter().sum();
+        if row_sum > 0.0 {
+            category_pcts[j] = (confusion[j][j] / row_sum) * 100.0;
         }
     }
 

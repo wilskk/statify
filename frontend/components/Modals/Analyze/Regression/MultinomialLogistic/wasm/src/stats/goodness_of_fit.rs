@@ -26,6 +26,11 @@ pub fn calculate_goodness_of_fit(
     let mut pattern_map: HashMap<Vec<i64>, (f64, Vec<f64>)> = HashMap::new();
 
     for i in 0..n {
+        let weight = primary.weights.get(i).copied().unwrap_or(1.0);
+        if !weight.is_finite() || weight <= 0.0 {
+            continue;
+        }
+
         let key: Vec<i64> = (0..X.ncols()).map(|j| (X[(i, j)] * 1e6) as i64).collect();
         let obs_cat = primary.y_categories[i];
         let obs_idx = primary
@@ -34,8 +39,8 @@ pub fn calculate_goodness_of_fit(
             .position(|&c| c == obs_cat)
             .unwrap();
         let entry = pattern_map.entry(key).or_insert((0.0, vec![0.0; J]));
-        entry.0 += 1.0;
-        entry.1[obs_idx] += 1.0;
+        entry.0 += weight;
+        entry.1[obs_idx] += weight;
     }
 
     let mut pearson_chi2 = 0.0;

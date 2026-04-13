@@ -93,10 +93,24 @@ pub fn format_results(
         }
     }
 
-    // Pseudo R-Square (Formula SPSS)
-    let cox_snell = 1.0 - (null_ll - ll).exp().powf(2.0 / n);
-    let nagelkerke = cox_snell / (1.0 - (2.0 * null_ll / n).exp());
-    let mcfadden = 1.0 - (ll / null_ll);
+    // Pseudo R-Square (SPSS-style), computed in numerically stable form.
+    // Cox-Snell: 1 - exp((2/n)*(LL0 - LLM))
+    // Nagelkerke: Cox-Snell / (1 - exp((2/n)*LL0))
+    let cox_exp_term = ((2.0 / n) * (null_ll - ll)).exp();
+    let cox_snell = (1.0 - cox_exp_term).clamp(0.0, 1.0);
+
+    let nagelkerke_denom = 1.0 - ((2.0 * null_ll) / n).exp();
+    let nagelkerke = if nagelkerke_denom.abs() > 1e-12 {
+        (cox_snell / nagelkerke_denom).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+
+    let mcfadden = if null_ll.abs() > 1e-12 {
+        (1.0 - (ll / null_ll)).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
 
     let dim = var_covar.nrows();
     let mut asymptotic_covariance = vec![vec![0.0f64; dim]; dim];

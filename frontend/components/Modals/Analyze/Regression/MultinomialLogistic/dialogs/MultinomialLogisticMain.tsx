@@ -15,8 +15,8 @@ import { Loader2, HelpCircle, RotateCcw } from "lucide-react";
 // Stores & Hooks
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useModalStore } from "@/stores/useModalStore";
-import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
+import { useAnalysisData } from "@/hooks/useAnalysisData";
 
 // Komponen Tab (Pastikan Anda membuat file-file ini di folder yang sama)
 import { VariablesTab } from "./VariablesTab";
@@ -32,7 +32,7 @@ export const MultinomialLogisticMain = () => {
     const { closeModal } = useModalStore();
     const variables = useVariableStore((state) => state.variables);
     const [isLoading, setIsLoading] = useState(false);
-    const { data } = useDataStore();
+    const { data, weights, weightVariable } = useAnalysisData();
     const { addLog, addAnalytic, addStatistic, loadResults } = useResultStore();
 
 
@@ -104,20 +104,30 @@ export const MultinomialLogisticMain = () => {
             }
 
             // 2. Case base: abaikan baris yang benar-benar kosong pada semua variabel terpilih.
-            const analysisBaseData = data.filter((row: any[]) => {
-                return allSelectedIndices.some((idx) => {
+            const analysisBaseRows = data
+                .map((row: any[], rowIndex: number) => ({
+                    row,
+                    weight: weights[rowIndex] ?? 1,
+                }))
+                .filter(({ row }) => {
+                    return allSelectedIndices.some((idx) => {
+                        const val = row[idx];
+                        return val !== null && val !== undefined && String(val).trim() !== "";
+                    });
+                });
+
+            // 3. Listwise Deletion + valid positive weight if Weight Cases is active
+            const validRows = analysisBaseRows.filter(({ row, weight }) => {
+                const hasCompleteData = allSelectedIndices.every((idx) => {
                     const val = row[idx];
                     return val !== null && val !== undefined && String(val).trim() !== "";
                 });
+                const hasValidWeight = !weightVariable || (Number.isFinite(weight) && weight > 0);
+                return hasCompleteData && hasValidWeight;
             });
 
-            // 3. Listwise Deletion menggunakan index kolom
-            const validData = analysisBaseData.filter((row: any[]) => {
-                return allSelectedIndices.every((idx) => {
-                    const val = row[idx];
-                    return val !== null && val !== undefined && String(val).trim() !== "";
-                });
-            });
+            const validData = validRows.map(({ row }) => row);
+            const validWeights = validRows.map(({ weight }) => Number(weight));
 
             console.log("Debug Data Access:", {
                 sampleRow: data[0],
@@ -169,14 +179,39 @@ export const MultinomialLogisticMain = () => {
 
             const allPredictorColumns = [...covariateColumns, ...encodedFactorColumns];
 
+            // SPSS-like behavior: internally recode dependent categories (including strings)
+            // into numeric IDs required by the WASM layer.
+            const dependentCategories = Array.from(
+                new Set(validData.map((row: any[]) => normalizeCategory(row[dependentIndex])))
+            ).sort(compareCategory);
+
+            if (dependentCategories.length < 2) {
+                throw new Error("Variabel dependen harus memiliki minimal 2 kategori unik.");
+            }
+
+            const dependentValueToCode = new Map<string, number>();
+            dependentCategories.forEach((category, idx) => {
+                dependentValueToCode.set(category, idx + 1);
+            });
+
+            const dependentCodeToValue = new Map<number, string>();
+            dependentValueToCode.forEach((code, value) => {
+                dependentCodeToValue.set(code, value);
+            });
+
+            const encodedDependent = validData.map((row: any[]) => {
+                const normalized = normalizeCategory(row[dependentIndex]);
+                const encoded = dependentValueToCode.get(normalized);
+                if (encoded === undefined) {
+                    throw new Error(`Kategori dependen tidak dikenali: ${normalized}`);
+                }
+                return encoded;
+            });
+
             const formattedData = {
-                dependent: validData.map((row: any[]) => {
-                    const val = row[dependentIndex];
-                    const num = parseFloat(String(val));
-                    return isNaN(num) ? val : num;
-                }),
+                dependent: encodedDependent,
                 independent: allPredictorColumns.map((col) => col.values),
-                weights: null,
+                weights: validWeights,
                 variableNames: allPredictorColumns.map((col) => col.name),
             };
 
@@ -187,10 +222,34 @@ export const MultinomialLogisticMain = () => {
                 independent1Sample: formattedData.independent[1]?.slice(0, 5)
             });
 
-            const worker = new Worker('/workers/MultinomialLogistic/multinomial_logistic.js', { type: 'module' });
+            const worker = new Worker('/workers/Regression/multinomialLogistic.worker.js', { type: 'module' });
+
+            const encodedReferenceCategory = (() => {
+                const encodedCategories = dependentCategories
+                    .map((cat) => dependentValueToCode.get(cat))
+                    .filter((value): value is number => value !== undefined)
+                    .sort((a, b) => a - b);
+
+                if (encodedCategories.length === 0) return undefined;
+                if (options.referenceCategory === "first") return encodedCategories[0];
+                if (options.referenceCategory === "last") return encodedCategories[encodedCategories.length - 1];
+
+                const normalizedCustom = normalizeCategory(options.referenceCategory);
+                const customEncoded = dependentValueToCode.get(normalizedCustom);
+                if (customEncoded !== undefined) return customEncoded;
+
+                const parsedCustom = Number(options.referenceCategory);
+                if (Number.isFinite(parsedCustom) && encodedCategories.includes(parsedCustom)) {
+                    return parsedCustom;
+                }
+
+                return encodedCategories[encodedCategories.length - 1];
+            })();
 
             const workerOptions = {
-                referenceCategory: options.referenceCategory,
+                referenceCategory: ["first", "last"].includes(options.referenceCategory)
+                    ? options.referenceCategory
+                    : String(encodedReferenceCategory ?? "last"),
                 confidenceInterval: options.statistics.confidenceInterval / 100,
                 iterations: options.criteria.iterations,
                 tolerance: options.criteria.convergence,
@@ -240,9 +299,12 @@ export const MultinomialLogisticMain = () => {
                                 expBeta: result?.expBeta
                             });
 
+                            const weightSyntax = weightVariable?.name
+                                ? `\n/WEIGHT=${weightVariable.name}`
+                                : "";
                             const logMessage = `NOMREG ${options.dependent!.name}
 /METHOD=ENTER ${[...options.factors, ...options.covariates].map(v => v.name).join(" ")}
-/CRITERIA=ITERATE(${options.criteria.iterations}) CONVERGE(${options.criteria.convergence})`;
+/CRITERIA=ITERATE(${options.criteria.iterations}) CONVERGE(${options.criteria.convergence})${weightSyntax}`;
 
                             console.log("[Multinomial UI] Creating log entry...");
                             const logId = await addLog({ log: logMessage });
@@ -263,9 +325,13 @@ export const MultinomialLogisticMain = () => {
                             const expCiUpper: number[][] = result?.expCiUpper || [];
                             const asymptoticCovariance: number[][] = result?.asymptoticCovariance || [];
                             const asymptoticCorrelation: number[][] = result?.asymptoticCorrelation || [];
-                            const sampleSize = validData.length;
+                            const weightedSampleSize = validWeights.reduce(
+                                (sum, weight) => sum + (Number.isFinite(weight) && weight > 0 ? weight : 0),
+                                0
+                            );
+                            const sampleSize = weightVariable ? weightedSampleSize : validData.length;
                             const validCases = validData.length;
-                            const totalCases = analysisBaseData.length;
+                            const totalCases = analysisBaseRows.length;
                             const missingCases = totalCases - validCases;
 
                             console.log("[Multinomial UI] Extracted data:", {
@@ -281,6 +347,39 @@ export const MultinomialLogisticMain = () => {
                             const usedParamNames = ["Intercept", ...allPredictorColumns.map((col) => col.name)].slice(0, nParams);
                             const kParams = coeffs.reduce((sum, row) => sum + row.length, 0);
                             const finalNeg2LL = result?.logLikelihood !== undefined ? (-2 * result.logLikelihood) : NaN;
+
+                            // SPSS-style grouped multinomial likelihood constant:
+                            // C = 2 * Σ_g [ lnΓ(n_g + 1) - Σ_j lnΓ(y_gj + 1) ]
+                            // where g = predictor pattern, y_gj = weighted count for category j.
+                            const logGamma = (z: number): number => {
+                                if (!Number.isFinite(z) || z <= 0) return NaN;
+                                const p = [
+                                    676.5203681218851,
+                                    -1259.1392167224028,
+                                    771.32342877765313,
+                                    -176.61502916214059,
+                                    12.507343278686905,
+                                    -0.13857109526572012,
+                                    9.9843695780195716e-6,
+                                    1.5056327351493116e-7,
+                                ];
+                                const g = 7;
+
+                                if (z < 0.5) {
+                                    const reflected = Math.PI / (Math.sin(Math.PI * z) * Math.exp(logGamma(1 - z)));
+                                    return Math.log(reflected);
+                                }
+
+                                let x = 0.99999999999980993;
+                                const zm1 = z - 1;
+                                for (let i = 0; i < p.length; i += 1) {
+                                    x += p[i] / (zm1 + i + 1);
+                                }
+
+                                const t = zm1 + g + 0.5;
+                                return 0.5 * Math.log(2 * Math.PI) + (zm1 + 0.5) * Math.log(t) - t + Math.log(x);
+                            };
+                            let groupedNeg2LLCorrection = 0;
 
                             const formatSpssNumber = (value: number | undefined, digits = 3) => {
                                 if (value === undefined || Number.isNaN(value) || !Number.isFinite(value)) {
@@ -339,10 +438,81 @@ export const MultinomialLogisticMain = () => {
                                 )
                             ).sort((a, b) => a - b);
 
+                            groupedNeg2LLCorrection = (() => {
+                                try {
+                                    if (validData.length === 0 || dependentCategoryMap.length === 0) return 0;
+
+                                    const categoryToIndex = new Map<number, number>();
+                                    dependentCategoryMap.forEach((cat, idx) => {
+                                        categoryToIndex.set(Number(cat), idx);
+                                    });
+
+                                    const grouped = new Map<string, number[]>();
+                                    for (let rowIdx = 0; rowIdx < validData.length; rowIdx += 1) {
+                                        const key = allPredictorColumns
+                                            .map((col) => String(col.values[rowIdx]))
+                                            .join("\u0001");
+
+                                        if (!grouped.has(key)) {
+                                            grouped.set(key, new Array(dependentCategoryMap.length).fill(0));
+                                        }
+
+                                        const category = Number(formattedData.dependent[rowIdx]);
+                                        const catIdx = categoryToIndex.get(category);
+                                        if (catIdx === undefined) continue;
+
+                                        const weight = Number.isFinite(validWeights[rowIdx]) && validWeights[rowIdx] > 0
+                                            ? validWeights[rowIdx]
+                                            : 0;
+                                        grouped.get(key)![catIdx] += weight;
+                                    }
+
+                                    let correction = 0;
+                                    grouped.forEach((counts) => {
+                                        const nGroup = counts.reduce((sum, c) => sum + c, 0);
+                                        if (!(nGroup > 0)) return;
+
+                                        const lgN = logGamma(nGroup + 1);
+                                        if (!Number.isFinite(lgN)) return;
+
+                                        const lgParts = counts.reduce((sum, c) => {
+                                            if (!(c > 0)) return sum;
+                                            const lg = logGamma(c + 1);
+                                            return Number.isFinite(lg) ? sum + lg : sum;
+                                        }, 0);
+
+                                        correction += 2 * (lgN - lgParts);
+                                    });
+
+                                    return Number.isFinite(correction) && correction > 0 ? correction : 0;
+                                } catch {
+                                    return 0;
+                                }
+                            })();
+
+                            const decodeDependentCategory = (encodedValue: number | string | undefined) => {
+                                if (encodedValue === undefined || encodedValue === null) return undefined;
+                                const asNumber = Number(encodedValue);
+                                if (!Number.isFinite(asNumber)) return String(encodedValue);
+                                return dependentCodeToValue.get(asNumber) ?? String(encodedValue);
+                            };
+
+                            const formatDependentCategory = (encodedValue: number | string | undefined) => {
+                                const rawValue = decodeDependentCategory(encodedValue);
+                                return formatCategoryWithLabel(dependentVar, rawValue);
+                            };
+
                             const referenceCategoryValue = (() => {
                                 if (dependentCategoryMap.length === 0) return undefined;
                                 if (options.referenceCategory === "first") return dependentCategoryMap[0];
                                 if (options.referenceCategory === "last") return dependentCategoryMap[dependentCategoryMap.length - 1];
+
+                                const normalizedCustom = normalizeCategory(options.referenceCategory);
+                                const customEncoded = dependentValueToCode.get(normalizedCustom);
+                                if (customEncoded !== undefined && dependentCategoryMap.includes(customEncoded)) {
+                                    return customEncoded;
+                                }
+
                                 const parsed = Number(options.referenceCategory);
                                 return Number.isFinite(parsed) && dependentCategoryMap.includes(parsed)
                                     ? parsed
@@ -372,7 +542,7 @@ export const MultinomialLogisticMain = () => {
                             const parameterRows = coeffs.flatMap((row, catIdx) =>
                                 row.map((coef, pIdx) => ({
                                     rowHeader: [
-                                        formatCategoryWithLabel(dependentVar, nonReferenceCategories[catIdx]),
+                                        formatDependentCategory(nonReferenceCategories[catIdx]),
                                         usedParamNames[pIdx]?.includes("=")
                                             ? `[${usedParamNames[pIdx]}]`
                                             : (usedParamNames[pIdx] ?? `Param ${pIdx + 1}`),
@@ -394,6 +564,12 @@ export const MultinomialLogisticMain = () => {
                             const nullNeg2LL = result?.nullLogLikelihood !== undefined
                                 ? (-2 * result.nullLogLikelihood)
                                 : NaN;
+                            const displayFinalNeg2LL = Number.isFinite(finalNeg2LL)
+                                ? Math.max(finalNeg2LL - groupedNeg2LLCorrection, 0)
+                                : NaN;
+                            const displayNullNeg2LL = Number.isFinite(nullNeg2LL)
+                                ? Math.max(nullNeg2LL - groupedNeg2LLCorrection, 0)
+                                : NaN;
                             const interceptOnlyParams = Math.max((dependentCategoryMap.length || 1) - 1, 1);
 
                             const modelFittingTable = {
@@ -410,22 +586,22 @@ export const MultinomialLogisticMain = () => {
                                 rows: [
                                     {
                                         rowHeader: ["Intercept Only"],
-                                        "AIC": Number.isFinite(nullNeg2LL) ? (nullNeg2LL + 2 * interceptOnlyParams).toFixed(3) : "",
-                                        "BIC": Number.isFinite(nullNeg2LL) && sampleSize > 0
-                                            ? (nullNeg2LL + Math.log(sampleSize) * interceptOnlyParams).toFixed(3)
+                                        "AIC": Number.isFinite(displayNullNeg2LL) ? (displayNullNeg2LL + 2 * interceptOnlyParams).toFixed(3) : "",
+                                        "BIC": Number.isFinite(displayNullNeg2LL) && sampleSize > 0
+                                            ? (displayNullNeg2LL + Math.log(sampleSize) * interceptOnlyParams).toFixed(3)
                                             : "",
-                                        "-2 Log Likelihood": Number.isFinite(nullNeg2LL) ? nullNeg2LL.toFixed(3) : "",
+                                        "-2 Log Likelihood": Number.isFinite(displayNullNeg2LL) ? displayNullNeg2LL.toFixed(3) : "",
                                         "Chi-Square": "",
                                         "df": "",
                                         "Sig.": "",
                                     },
                                     {
                                         rowHeader: ["Final"],
-                                        "AIC": Number.isFinite(finalNeg2LL) ? (finalNeg2LL + 2 * kParams).toFixed(3) : "",
-                                        "BIC": Number.isFinite(finalNeg2LL) && sampleSize > 0
-                                            ? (finalNeg2LL + Math.log(sampleSize) * kParams).toFixed(3)
+                                        "AIC": Number.isFinite(displayFinalNeg2LL) ? (displayFinalNeg2LL + 2 * kParams).toFixed(3) : "",
+                                        "BIC": Number.isFinite(displayFinalNeg2LL) && sampleSize > 0
+                                            ? (displayFinalNeg2LL + Math.log(sampleSize) * kParams).toFixed(3)
                                             : "",
-                                        "-2 Log Likelihood": Number.isFinite(finalNeg2LL) ? finalNeg2LL.toFixed(3) : "",
+                                        "-2 Log Likelihood": Number.isFinite(displayFinalNeg2LL) ? displayFinalNeg2LL.toFixed(3) : "",
                                         "Chi-Square": (result?.chiSquare?.toFixed(3) ?? ""),
                                         "df": (result?.df ?? ""),
                                         "Sig.": formatPValue(result?.pValueModel),
@@ -438,11 +614,34 @@ export const MultinomialLogisticMain = () => {
                                 ...factorVars.map((factor) => ({ label: factor.name, index: factor.columnIndex, variable: factor })),
                             ];
 
+                            const isWeightedAnalysis = !!weightVariable;
+                            const validBaseN = isWeightedAnalysis
+                                ? validWeights.reduce((sum, weight) => sum + (Number.isFinite(weight) && weight > 0 ? weight : 0), 0)
+                                : validCases;
+                            const totalBaseN = isWeightedAnalysis
+                                ? analysisBaseRows.reduce(
+                                    (sum, item) => sum + (Number.isFinite(item.weight) && item.weight > 0 ? item.weight : 0),
+                                    0
+                                )
+                                : totalCases;
+                            const missingBaseN = Math.max(totalBaseN - validBaseN, 0);
+
+                            const formatCaseN = (value: number) => {
+                                if (!Number.isFinite(value)) return "0";
+                                if (Math.abs(value - Math.round(value)) < 1e-9) {
+                                    return String(Math.round(value));
+                                }
+                                return value.toFixed(3);
+                            };
+
                             const categoryBreakdownRows = categoricalEntries.flatMap((entry) => {
-                                const freq = validData.reduce((acc, row) => {
+                                const freq = validData.reduce((acc, row, rowIdx) => {
                                     const raw = row[entry.index];
                                     const key = String(raw);
-                                    acc[key] = (acc[key] || 0) + 1;
+                                    const increment = isWeightedAnalysis
+                                        ? (Number.isFinite(validWeights[rowIdx]) && validWeights[rowIdx] > 0 ? validWeights[rowIdx] : 0)
+                                        : 1;
+                                    acc[key] = (acc[key] || 0) + increment;
                                     return acc;
                                 }, {} as Record<string, number>);
 
@@ -450,10 +649,10 @@ export const MultinomialLogisticMain = () => {
                                     .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
                                     .map(([category, count]) => ({
                                         rowHeader: [entry.label, formatCategoryWithLabel(entry.variable, category)],
-                                        N: String(count),
-                                        Percent: validCases > 0 ? `${((count / validCases) * 100).toFixed(1)}%` : "0.0%",
-                                        n: String(count),
-                                        percent: validCases > 0 ? `${((count / validCases) * 100).toFixed(1)}%` : "0.0%",
+                                        N: formatCaseN(count),
+                                        Percent: validBaseN > 0 ? `${((count / validBaseN) * 100).toFixed(1)}%` : "0.0%",
+                                        n: formatCaseN(count),
+                                        percent: validBaseN > 0 ? `${((count / validBaseN) * 100).toFixed(1)}%` : "0.0%",
                                     }));
                             });
 
@@ -461,30 +660,30 @@ export const MultinomialLogisticMain = () => {
                                 ...categoryBreakdownRows,
                                 {
                                     rowHeader: ["Overall", "Valid"],
-                                    N: String(validCases),
-                                    Percent: totalCases > 0 ? `${((validCases / totalCases) * 100).toFixed(1)}%` : "0.0%",
-                                    n: String(validCases),
-                                    percent: totalCases > 0 ? `${((validCases / totalCases) * 100).toFixed(1)}%` : "0.0%",
+                                    N: formatCaseN(validBaseN),
+                                    Percent: totalBaseN > 0 ? `${((validBaseN / totalBaseN) * 100).toFixed(1)}%` : "0.0%",
+                                    n: formatCaseN(validBaseN),
+                                    percent: totalBaseN > 0 ? `${((validBaseN / totalBaseN) * 100).toFixed(1)}%` : "0.0%",
                                 },
                                 {
                                     rowHeader: ["Overall", "Missing"],
-                                    N: String(missingCases),
-                                    Percent: totalCases > 0 ? `${((missingCases / totalCases) * 100).toFixed(1)}%` : "0.0%",
-                                    n: String(missingCases),
-                                    percent: totalCases > 0 ? `${((missingCases / totalCases) * 100).toFixed(1)}%` : "0.0%",
+                                    N: formatCaseN(missingBaseN),
+                                    Percent: totalBaseN > 0 ? `${((missingBaseN / totalBaseN) * 100).toFixed(1)}%` : "0.0%",
+                                    n: formatCaseN(missingBaseN),
+                                    percent: totalBaseN > 0 ? `${((missingBaseN / totalBaseN) * 100).toFixed(1)}%` : "0.0%",
                                 },
                                 {
                                     rowHeader: ["Overall", "Total"],
-                                    N: String(totalCases),
+                                    N: formatCaseN(totalBaseN),
                                     Percent: "100.0%",
-                                    n: String(totalCases),
+                                    n: formatCaseN(totalBaseN),
                                     percent: "100.0%",
                                 },
                                 {
                                     rowHeader: ["Overall", "Subpopulation"],
-                                    N: String(validCases),
+                                    N: formatCaseN(validBaseN),
                                     Percent: "",
-                                    n: String(validCases),
+                                    n: formatCaseN(validBaseN),
                                     percent: "",
                                 },
                             ];
@@ -517,7 +716,9 @@ export const MultinomialLogisticMain = () => {
                                 rows: [
                                     { rowHeader: ["Iterations"], "Value": String(result?.iterations ?? "") },
                                     { rowHeader: ["Converged"], "Value": result?.converged ? "Yes" : "No" },
-                                    { rowHeader: ["Final -2 Log Likelihood"], "Value": Number.isFinite(finalNeg2LL) ? finalNeg2LL.toFixed(3) : "" },
+                                    { rowHeader: ["Weight Variable"], "Value": weightVariable?.name || "(None)" },
+                                    { rowHeader: ["Effective N (Model)"], "Value": Number.isFinite(sampleSize) ? sampleSize.toFixed(3) : "" },
+                                    { rowHeader: ["Final -2 Log Likelihood"], "Value": Number.isFinite(displayFinalNeg2LL) ? displayFinalNeg2LL.toFixed(3) : "" },
                                 ],
                             };
 
@@ -555,7 +756,7 @@ export const MultinomialLogisticMain = () => {
                                 ],
                                 rows: parameterRows,
                                 footer: [
-                                    `a. The reference category is: ${formatCategoryWithLabel(dependentVar, referenceCategoryValue)}.`,
+                                    `a. The reference category is: ${formatDependentCategory(referenceCategoryValue)}.`,
                                     "b. This parameter is set to zero because it is redundant.",
                                 ],
                             };
@@ -567,25 +768,47 @@ export const MultinomialLogisticMain = () => {
                                     { header: "Observed" },
                                     ...Array.from(
                                         { length: result.classificationTable.confusionMatrix.length },
-                                        (_, i) => ({ header: `Predicted ${formatCategoryWithLabel(dependentVar, dependentCategoryMap[i])}` })
+                                        (_, i) => ({ header: `Predicted ${formatDependentCategory(dependentCategoryMap[i])}` })
                                     ),
                                     { header: "Percent Correct" },
                                 ],
-                                rows: result.classificationTable.confusionMatrix.map((row: number[], idx: number) => ({
-                                    rowHeader: [formatCategoryWithLabel(dependentVar, dependentCategoryMap[idx])],
-                                    ...row.reduce((acc, val, predIdx) => {
-                                        acc[`Predicted ${formatCategoryWithLabel(dependentVar, dependentCategoryMap[predIdx])}`] = String(val);
-                                        return acc;
-                                    }, {} as Record<string, string>),
-                                    "Percent Correct": `${result.classificationTable.categoryPercentages[idx].toFixed(1)}%`,
-                                })).concat([{
-                                    rowHeader: ["Overall"],
-                                    ...Array.from({ length: result.classificationTable.confusionMatrix.length }, () => "").reduce((acc, _, i) => {
-                                        acc[`Predicted ${formatCategoryWithLabel(dependentVar, dependentCategoryMap[i])}`] = "";
-                                        return acc;
-                                    }, {} as Record<string, string>),
-                                    "Percent Correct": `${result.classificationTable.overallPercentage.toFixed(1)}%`,
-                                }]),
+                                rows: (() => {
+                                    const matrix = result.classificationTable.confusionMatrix;
+                                    const nCols = matrix.length;
+                                    const totalN = matrix.reduce(
+                                        (sumRow: number, row: number[]) =>
+                                            sumRow + row.reduce((sumCell: number, val: number) => sumCell + val, 0),
+                                        0
+                                    );
+
+                                    const predictedOverallPct = Array.from({ length: nCols }, (_, predIdx) => {
+                                        const colTotal = matrix.reduce(
+                                            (sum: number, row: number[]) => sum + (row[predIdx] ?? 0),
+                                            0
+                                        );
+                                        return totalN > 0 ? `${((colTotal / totalN) * 100).toFixed(1)}%` : "0.0%";
+                                    });
+
+                                    const bodyRows = matrix.map((row: number[], idx: number) => ({
+                                        rowHeader: [formatDependentCategory(dependentCategoryMap[idx])],
+                                        ...row.reduce((acc, val, predIdx) => {
+                                            acc[`Predicted ${formatDependentCategory(dependentCategoryMap[predIdx])}`] = String(val);
+                                            return acc;
+                                        }, {} as Record<string, string>),
+                                        "Percent Correct": `${result.classificationTable.categoryPercentages[idx].toFixed(1)}%`,
+                                    }));
+
+                                    const overallRow = {
+                                        rowHeader: ["Overall Percentage"],
+                                        ...predictedOverallPct.reduce((acc, val, i) => {
+                                            acc[`Predicted ${formatDependentCategory(dependentCategoryMap[i])}`] = val;
+                                            return acc;
+                                        }, {} as Record<string, string>),
+                                        "Percent Correct": `${result.classificationTable.overallPercentage.toFixed(1)}%`,
+                                    };
+
+                                    return bodyRows.concat([overallRow]);
+                                })(),
                             } : null;
 
                             const cellProbabilitiesTable = result?.classificationTable ? {
@@ -594,15 +817,15 @@ export const MultinomialLogisticMain = () => {
                                     { header: "Observed" },
                                     ...Array.from(
                                         { length: result.classificationTable.confusionMatrix.length },
-                                        (_, i) => ({ header: `Predicted ${formatCategoryWithLabel(dependentVar, dependentCategoryMap[i])}` })
+                                        (_, i) => ({ header: `Predicted ${formatDependentCategory(dependentCategoryMap[i])}` })
                                     ),
                                 ],
                                 rows: result.classificationTable.confusionMatrix.map((row: number[], idx: number) => {
                                     const total = row.reduce((sum, value) => sum + value, 0);
                                     return {
-                                        rowHeader: [formatCategoryWithLabel(dependentVar, dependentCategoryMap[idx])],
+                                        rowHeader: [formatDependentCategory(dependentCategoryMap[idx])],
                                         ...row.reduce((acc, value, predIdx) => {
-                                            acc[`Predicted ${formatCategoryWithLabel(dependentVar, dependentCategoryMap[predIdx])}`] = total > 0
+                                            acc[`Predicted ${formatDependentCategory(dependentCategoryMap[predIdx])}`] = total > 0
                                                 ? (value / total).toFixed(4)
                                                 : "0.0000";
                                             return acc;
@@ -652,26 +875,38 @@ export const MultinomialLogisticMain = () => {
                                     {
                                         header: "LR Test",
                                         children: [
-                                            { header: "Chi-Square", key: "Chi-Square" },
+                                            { header: "Chi2", key: "Chi2" },
                                             { header: "df", key: "df" },
                                             { header: "Sig.", key: "Sig." },
                                         ],
                                     },
                                 ],
-                                rows: result.likelihoodRatioTests.map((test: any) => ({
-                                    rowHeader: [test.effect],
-                                    "AIC": formatSpssNumber(test.aicReduced),
-                                    "BIC": formatSpssNumber(test.bicReduced),
-                                    "-2LL": test.equivalentToFinal
-                                        ? `${formatSpssNumber(test.neg2LogLikelihoodReduced)}<sup>a</sup>`
-                                        : formatSpssNumber(test.neg2LogLikelihoodReduced),
-                                    "Chi-Square": formatSpssNumber(test.chiSquare),
-                                    "df": String(test.df),
-                                    "Sig.": Number.isFinite(test.pValue) ? formatPValue(test.pValue) : ".",
-                                })),
+                                rows: result.likelihoodRatioTests.map((test: any) => {
+                                    const adjustedNeg2 = Number.isFinite(test.neg2LogLikelihoodReduced)
+                                        ? Math.max(test.neg2LogLikelihoodReduced - groupedNeg2LLCorrection, 0)
+                                        : test.neg2LogLikelihoodReduced;
+                                    const adjustedAic = Number.isFinite(test.aicReduced)
+                                        ? test.aicReduced - groupedNeg2LLCorrection
+                                        : test.aicReduced;
+                                    const adjustedBic = Number.isFinite(test.bicReduced)
+                                        ? test.bicReduced - groupedNeg2LLCorrection
+                                        : test.bicReduced;
+
+                                    return {
+                                        rowHeader: [test.effect],
+                                        "AIC": formatSpssNumber(adjustedAic),
+                                        "BIC": formatSpssNumber(adjustedBic),
+                                        "-2LL": test.equivalentToFinal
+                                            ? `${formatSpssNumber(adjustedNeg2)}<sup>a</sup>`
+                                            : formatSpssNumber(adjustedNeg2),
+                                        "Chi2": formatSpssNumber(test.chiSquare),
+                                        "df": String(test.df),
+                                        "Sig.": Number.isFinite(test.pValue) ? formatPValue(test.pValue) : ".",
+                                    };
+                                }),
                                 footer: [
-                                    "The chi-square statistic is the difference in -2 log-likelihoods between the final model and a reduced model. The reduced model is formed by omitting an effect from the final model. The null hypothesis is that all parameters of that effect are 0.",
-                                    "a. This reduced model is equivalent to the final model because omitting the effect does not increase the degrees of freedom.",
+                                    "Chi2 = difference in -2LL between final and reduced model.",
+                                    "a. Reduced model equals final model (no df increase).",
                                 ],
                             } : null;
 
@@ -715,14 +950,14 @@ export const MultinomialLogisticMain = () => {
                             );
 
                             const matrixColumnKeys = nonReferenceCategories.flatMap((cat) =>
-                                parameterDisplayNames.map((paramName) => `${formatCategoryWithLabel(dependentVar, cat)}||${paramName}`)
+                                parameterDisplayNames.map((paramName) => `${formatDependentCategory(cat)}||${paramName}`)
                             );
 
                             const matrixColumnGroups = nonReferenceCategories.map((cat) => ({
-                                header: formatCategoryWithLabel(dependentVar, cat),
+                                header: formatDependentCategory(cat),
                                 children: parameterDisplayNames.map((paramName) => ({
                                     header: paramName,
-                                    key: `${formatCategoryWithLabel(dependentVar, cat)}||${paramName}`,
+                                    key: `${formatDependentCategory(cat)}||${paramName}`,
                                 })),
                             }));
 
@@ -733,7 +968,7 @@ export const MultinomialLogisticMain = () => {
                                     const paramIdx = paramsPerCategory > 0 ? rowIdx % paramsPerCategory : rowIdx;
                                     return {
                                         rowHeader: [
-                                            formatCategoryWithLabel(dependentVar, nonReferenceCategories[catIdx]),
+                                            formatDependentCategory(nonReferenceCategories[catIdx]),
                                             parameterDisplayNames[paramIdx] ?? `Param ${paramIdx + 1}`,
                                         ],
                                         ...matrixColumnKeys.reduce((acc, colKey, colIdx) => {
@@ -758,7 +993,7 @@ export const MultinomialLogisticMain = () => {
                                 rows: buildAsymptoticRows(asymptoticCovariance),
                                 footer: [
                                     "a. There is no overdispersion adjustment.",
-                                    `b. The reference category is: ${formatCategoryWithLabel(dependentVar, referenceCategoryValue)}.`,
+                                    `b. The reference category is: ${formatDependentCategory(referenceCategoryValue)}.`,
                                 ],
                             } : null;
 
@@ -773,7 +1008,7 @@ export const MultinomialLogisticMain = () => {
                                     },
                                 ],
                                 rows: buildAsymptoticRows(asymptoticCorrelation),
-                                footer: `The reference category is: ${formatCategoryWithLabel(dependentVar, referenceCategoryValue)}.`,
+                                footer: `The reference category is: ${formatDependentCategory(referenceCategoryValue)}.`,
                             } : null;
 
                             console.log("[Multinomial UI] Creating statistics with tables:", {

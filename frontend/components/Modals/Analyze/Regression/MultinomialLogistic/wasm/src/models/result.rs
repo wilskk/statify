@@ -49,7 +49,7 @@ pub struct GoodnessOfFit {
 pub struct ClassificationTable {
     pub observed: Vec<usize>,
     pub predicted: Vec<usize>,
-    pub confusion_matrix: Vec<Vec<usize>>, // [observed][predicted]
+    pub confusion_matrix: Vec<Vec<f64>>, // [observed][predicted], weighted counts
     pub overall_percentage: f64,
     pub category_percentages: Vec<f64>,
 }
