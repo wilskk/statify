@@ -108,17 +108,19 @@ pub fn calculate_casewise_list(
             -((-2.0 * log_term).max(0.0)).sqrt()
         };
         
-        // 8. Cook's Distance — Pregibon (1981) influence diagnostic
+        // 8. Cook's Distance — Pregibon (1981) ΔX² influence diagnostic
         //
-        // Formula: D_i = r_std^2 * h / (1 - h)^2
+        // Formula: D_i = r_std^2 * h / (1 - h)
         //
-        // NOTE: No 1/k normalization — matches SPSS output.
+        // Measures approximate change in Pearson chi-squared when case i
+        // is removed. Uses (1-h) to the FIRST power, not (1-h)².
+        // Verified against IBM SPSS Statistics output.
         //
         // References:
         //   - Pregibon, D. (1981). Logistic Regression Diagnostics.
         //   - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression.
         let cooks = if (1.0 - leverage) > 1e-12 {
-            (resid_zresid.powi(2) * leverage) / (1.0 - leverage).powi(2)
+            (resid_zresid.powi(2) * leverage) / (1.0 - leverage)
         } else {
             0.0
         };
