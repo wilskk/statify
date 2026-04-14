@@ -45,10 +45,11 @@
 //! ### Influence Statistics
 //! 
 //! 6. **Cook's Distance (COO_1)**
-//!    - Formula: `D_i = (r_std^2 * h_i) / (1 - h_i)^2`
+//!    - Formula: `D_i = (r_std^2 * h_i) / (1 - h_i)`
 //!    - Where r_std = standardized Pearson residual, h = leverage
-//!    - This is the Pregibon (1981) dbeta statistic without 1/k normalization,
-//!      which matches IBM SPSS Statistics output
+//!    - This is Pregibon's (1981) ΔX² statistic: the approximate change
+//!      in Pearson chi-squared when observation i is deleted
+//!    - Note: uses `(1-h)` NOT `(1-h)²` — verified against IBM SPSS output
 //!    - Reference: Pregibon (1981), Hosmer & Lemeshow (2000)
 //!
 //! 7. **Leverage (LEV_1)**
@@ -243,18 +244,20 @@ pub fn calculate_saved_predictions(
 
             // Cook's Distance for Logistic Regression
             //
-            // Pregibon (1981) influence diagnostic.
+            // Pregibon (1981) ΔX² influence diagnostic.
             //
-            // Formula: D_i = r_std^2 * h_i / (1 - h_i)^2
+            // Formula: D_i = r_std^2 * h_i / (1 - h_i)
             //
             // Where:
             //   r_std = standardized Pearson residual = (Y-P)/sqrt(P(1-P))
             //   h_i = leverage (hat value)
             //
-            // NOTE: This formulation does NOT include the 1/k normalization.
-            // While some textbooks include 1/k (number of parameters), SPSS
-            // uses this un-normalized form. Verified empirically against
-            // IBM SPSS Statistics output.
+            // This measures the approximate change in the Pearson chi-squared
+            // statistic when observation i is removed. It uses (1-h) to the
+            // FIRST power (not squared), unlike classic Cook's D from linear
+            // regression which uses (1-h)².
+            //
+            // Verified against IBM SPSS Statistics output.
             //
             // References:
             //   - Pregibon, D. (1981). Logistic Regression Diagnostics.
@@ -262,7 +265,7 @@ pub fn calculate_saved_predictions(
             if config.save_influence_cooks {
                 let one_minus_h = 1.0 - h_i;
                 let cooks = if one_minus_h > 1e-12 {
-                    (std_resid.powi(2) * h_i) / one_minus_h.powi(2)
+                    (std_resid.powi(2) * h_i) / one_minus_h
                 } else {
                     0.0
                 };
@@ -344,11 +347,6 @@ fn calculate_leverage(
 /// - x_i = predictor vector for observation i  
 /// - r_i = y_i - p_i = raw residual (NOT weighted)
 /// - h_i = leverage (hat value) for observation i
-/// 
-/// **Important Note**: 
-/// We do NOT multiply by w_i = p(1-p) here because:
-/// 1. The covariance matrix (X'WX)^{-1} already incorporates the weight structure
-/// 2. This matches SPSS output exactly
 /// 
 /// Reference: 
 /// - Pregibon, D. (1981). Logistic Regression Diagnostics. The Annals of Statistics.
@@ -812,7 +810,7 @@ mod tests {
             
             // Verify formula: D = r^2 * h / (1-h)^2
             if h < 1.0 - 1e-12 {
-                let expected_cooks = (std_resid.powi(2) * h) / (1.0 - h).powi(2);
+                let expected_cooks = (std_resid.powi(2) * h) / (1.0 - h);
                 assert!((cooks - expected_cooks).abs() < 1e-6,
                     "Cook's distance mismatch: got {}, expected {}", cooks, expected_cooks);
             }
