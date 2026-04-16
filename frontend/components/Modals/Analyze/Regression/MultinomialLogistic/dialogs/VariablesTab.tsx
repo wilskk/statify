@@ -21,8 +21,8 @@ interface MultinomialOptions {
 
 interface VariablesTabProps {
     variables: Variable[];
-    options: MultinomialOptions;
-    setOptions: React.Dispatch<React.SetStateAction<MultinomialOptions>>;
+    options: MultinomialOptions & Record<string, any>;
+    setOptions: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export const VariablesTab: React.FC<VariablesTabProps> = ({
@@ -52,8 +52,8 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
 
     const moveToFactors = () => {
         if (!selectedVar) return;
-        setOptions((prev) => {
-            if (prev.factors.some((f) => f.id === selectedVar.id)) return prev;
+        setOptions((prev: MultinomialOptions & Record<string, any>) => {
+            if (prev.factors.some((f: Variable) => f.id === selectedVar.id)) return prev;
             return { ...prev, factors: [...prev.factors, selectedVar] };
         });
         setSelectedVar(null);
@@ -61,8 +61,8 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
 
     const moveToCovariates = () => {
         if (!selectedVar) return;
-        setOptions((prev) => {
-            if (prev.covariates.some((c) => c.id === selectedVar.id)) return prev;
+        setOptions((prev: MultinomialOptions & Record<string, any>) => {
+            if (prev.covariates.some((c: Variable) => c.id === selectedVar.id)) return prev;
             return { ...prev, covariates: [...prev.covariates, selectedVar] };
         });
         setSelectedVar(null);

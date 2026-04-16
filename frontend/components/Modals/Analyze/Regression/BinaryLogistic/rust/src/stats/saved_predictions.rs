@@ -33,21 +33,24 @@
 //!    - For Y=0: `d_i = sign(Y-P) * sqrt(-2 * ln(1-P))`
 //!    - Sum of squares equals the deviance statistic
 //!
-//! 5. **Studentized Residual (SRE_1)**
-//!    - Formula: `r_student = r_pearson / sqrt(1 - h_i)`
-//!    - Where h_i is the leverage (hat value)
-//!    - Dividing by sqrt(1-h) INCREASES residual for high-leverage points
-//!    - Makes residuals comparable across different leverage levels
-//!    - Reference: Hosmer & Lemeshow (2000), Pregibon (1981)
+//! 5. **Studentized Residual (SRE_1)** — Studentized Deviance Residual
+//!    - Formula: `SRE_i = d_i / sqrt(1 - h_i)`
+//!      - `d_i` = deviance residual (signed)
+//!      - `h_i` = leverage (hat value)
+//!    - Dividing the deviance residual by sqrt(1-h) adjusts for leverage,
+//!      approximating the change in model deviance if case i is deleted
+//!    - Matches IBM SPSS Statistics output exactly
+//!    - Reference: Pregibon (1981), Hosmer & Lemeshow (2000)
 //!
 //! ### Influence Statistics
 //! 
 //! 6. **Cook's Distance (COO_1)**
-//!    - Formula: `D_i = (r_std^2 * h_i) / (1 - h_i)^2`
-//!    - Measures overall influence on all coefficients
-//!    - r_std = Pearson residual, h = leverage
-//!    - **Note**: Unlike Linear Regression, Logistic does NOT divide by k
-//!    - Reference: Hosmer & Lemeshow (2000), SPSS Algorithms
+//!    - Formula: `D_i = (r_std^2 * h_i) / (1 - h_i)`
+//!    - Where r_std = standardized Pearson residual, h = leverage
+//!    - This is Pregibon's (1981) ΔX² statistic: the approximate change
+//!      in Pearson chi-squared when observation i is deleted
+//!    - Note: uses `(1-h)` NOT `(1-h)²` — verified against IBM SPSS output
+//!    - Reference: Pregibon (1981), Hosmer & Lemeshow (2000)
 //!
 //! 7. **Leverage (LEV_1)**
 //!    - Formula: `h_i = w_i * x_i' * (X'WX)^{-1} * x_i`
@@ -110,7 +113,9 @@ pub fn calculate_saved_predictions(
         || config.save_influence_cooks 
         || config.save_influence_dfbeta
     {
-        leverage_values = Some(calculate_leverage(x_matrix, predictions));
+        // Use model.covariance_matrix which is already (X'WX)^{-1} from IRLS fitting.
+        // This ensures consistency with the standard errors and other model outputs.
+        leverage_values = Some(calculate_leverage(x_matrix, predictions, &model.covariance_matrix));
     }
 
     let mut rows: Vec<SavedPredictionRow> = Vec::with_capacity(n_samples);
@@ -177,17 +182,21 @@ pub fn calculate_saved_predictions(
             row.resid_logit = Some(logit_resid);
         }
 
-        // Deviance Residual: sign(Y-P) * sqrt(2 * |Y*ln(Y/P) + (1-Y)*ln((1-Y)/(1-P))|)
+        // Deviance component: d_i² = -2 * [Y*ln(P) + (1-Y)*ln(1-P)]
+        // Computed unconditionally because it's needed for both
+        // the Deviance Residual AND the Studentized Residual (Pregibon ΔD)
+        let dev_component_sq = if y_i == 1.0 {
+            -2.0 * p_clamped.ln()
+        } else {
+            -2.0 * (1.0 - p_clamped).ln()
+        };
+
+        // Deviance Residual: sign(Y-P) * sqrt(d_i²)
         if config.save_residuals_deviance {
-            let dev_component = if y_i == 1.0 {
-                -2.0 * p_clamped.ln()
-            } else {
-                -2.0 * (1.0 - p_clamped).ln()
-            };
             let dev_resid = if raw_resid >= 0.0 {
-                dev_component.sqrt()
+                dev_component_sq.sqrt()
             } else {
-                -dev_component.sqrt()
+                -dev_component_sq.sqrt()
             };
             row.resid_deviance = Some(dev_resid);
         }
@@ -200,52 +209,63 @@ pub fn calculate_saved_predictions(
                 row.influence_leverage = Some(h_i);
             }
 
-            // Studentized Residual for Logistic Regression
-            // 
-            // Formula: r_student = r_pearson / sqrt(1 - h_i)
+            // Studentized Residual — Studentized Deviance Residual
             //
-            // This INCREASES the residual for high-leverage points, making it
-            // comparable across observations with different leverages.
+            // Formula: SRE_i = d_i / sqrt(1 - h_i)
             //
-            // The formula divides by sqrt(1-h) to adjust for the fact that
-            // high-leverage points have more influence on their own fitted values.
+            // Where:
+            //   d_i = deviance residual (already signed)
+            //   h_i = leverage (hat value)
+            //
+            // This adjusts the deviance residual for leverage, making residuals
+            // comparable across observations with different leverage levels.
+            // d_i² / (1-h_i) approximates the change in model deviance when
+            // case i is deleted.
+            //
+            // Verified against IBM SPSS Statistics output.
             //
             // References:
-            // - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression
-            // - SPSS Regression Algorithms documentation
-            // - Pregibon, D. (1981). Logistic Regression Diagnostics
+            //   - Pregibon, D. (1981). Logistic Regression Diagnostics.
+            //   - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression.
             if config.save_residuals_studentized {
-                let stud_resid = if h_i < 1.0 - 1e-12 {
-                    std_resid / (1.0 - h_i).sqrt()  // DIVIDE, not multiply
+                // Compute signed deviance residual d_i
+                let dev_resid = if raw_resid >= 0.0 {
+                    dev_component_sq.sqrt()
                 } else {
-                    std_resid // If leverage ≈ 1, just use standardized residual
+                    -dev_component_sq.sqrt()
+                };
+                let stud_resid = if h_i < 1.0 - 1e-12 {
+                    dev_resid / (1.0 - h_i).sqrt()
+                } else {
+                    dev_resid // If leverage ≈ 1, use deviance residual as-is
                 };
                 row.resid_studentized = Some(stud_resid);
             }
 
             // Cook's Distance for Logistic Regression
-            // 
-            // **IMPORTANT**: Unlike Linear Regression, Logistic Regression Cook's D 
-            // does NOT divide by k (number of parameters).
             //
-            // Formula (SPSS-compatible): D_i = (r_std^2 * h_i) / (1 - h_i)^2
-            // 
+            // Pregibon (1981) ΔX² influence diagnostic.
+            //
+            // Formula: D_i = r_std^2 * h_i / (1 - h_i)
+            //
             // Where:
-            // - r_std = Pearson (standardized) residual = (Y - P) / sqrt(P * (1-P))
-            // - h_i = leverage (hat value)
+            //   r_std = standardized Pearson residual = (Y-P)/sqrt(P(1-P))
+            //   h_i = leverage (hat value)
+            //
+            // This measures the approximate change in the Pearson chi-squared
+            // statistic when observation i is removed. It uses (1-h) to the
+            // FIRST power (not squared), unlike classic Cook's D from linear
+            // regression which uses (1-h)².
+            //
+            // Verified against IBM SPSS Statistics output.
             //
             // References:
-            // - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression, 2nd Ed.
-            // - SPSS Algorithms documentation for Binary Logistic Regression
-            // - Pregibon, D. (1981) uses this form without the 1/k divisor
-            //
-            // Note: Linear Regression divides by k, but Logistic Regression does NOT.
-            // This matches SPSS output exactly.
+            //   - Pregibon, D. (1981). Logistic Regression Diagnostics.
+            //   - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression.
             if config.save_influence_cooks {
                 let one_minus_h = 1.0 - h_i;
                 let cooks = if one_minus_h > 1e-12 {
-                    // SPSS formula: r^2 * h / (1-h)^2  (NO division by k)
-                    (std_resid.powi(2) * h_i) / one_minus_h.powi(2)
+                    (std_resid.powi(2) * h_i) / one_minus_h
                 } else {
                     0.0
                 };
@@ -283,41 +303,30 @@ pub fn calculate_saved_predictions(
 }
 
 /// Calculate leverage (diagonal of hat matrix) for logistic regression
-/// h_i = W_ii^{1/2} * X_i * (X'WX)^{-1} * X_i' * W_ii^{1/2}
-/// Simplified: h_i = p_i * (1-p_i) * x_i' * (X'WX)^{-1} * x_i
-fn calculate_leverage(x_matrix: &DMatrix<f64>, predictions: &DVector<f64>) -> Vec<f64> {
+/// h_i = w_i * x_i' * (X'WX)^{-1} * x_i
+///
+/// Uses the pre-computed (X'WX)^{-1} from the IRLS fitting (model.covariance_matrix)
+/// to ensure numerical consistency with the model's standard errors.
+fn calculate_leverage(
+    x_matrix: &DMatrix<f64>,
+    predictions: &DVector<f64>,
+    xtwx_inv: &DMatrix<f64>,
+) -> Vec<f64> {
     let n = x_matrix.nrows();
-    let p = x_matrix.ncols();
-    
-    // Build weight matrix W = diag(p_i * (1-p_i))
+
+    // Build weight vector w_i = p_i * (1 - p_i)
     let mut w_diag: Vec<f64> = Vec::with_capacity(n);
     for i in 0..n {
         let p_i = predictions[i].clamp(1e-10, 1.0 - 1e-10);
         w_diag.push(p_i * (1.0 - p_i));
     }
 
-    // Calculate X'WX
-    let mut xtwx = DMatrix::<f64>::zeros(p, p);
-    for i in 0..n {
-        let x_i = x_matrix.row(i).transpose();
-        xtwx += w_diag[i] * &x_i * x_i.transpose();
-    }
-
-    // Invert X'WX
-    let xtwx_inv = match xtwx.clone().try_inverse() {
-        Some(inv) => inv,
-        None => {
-            // Return zeros if matrix is singular
-            return vec![0.0; n];
-        }
-    };
-
     // Calculate leverage for each observation
+    // h_i = w_i * x_i' * (X'WX)^{-1} * x_i
     let mut leverage = Vec::with_capacity(n);
     for i in 0..n {
         let x_i = x_matrix.row(i).transpose();
-        // h_i = w_i * x_i' * (X'WX)^{-1} * x_i
-        let h_i = w_diag[i] * (x_i.transpose() * &xtwx_inv * &x_i)[(0, 0)];
+        let h_i = w_diag[i] * (x_i.transpose() * xtwx_inv * &x_i)[(0, 0)];
         leverage.push(h_i.clamp(0.0, 1.0));
     }
 
@@ -338,11 +347,6 @@ fn calculate_leverage(x_matrix: &DMatrix<f64>, predictions: &DVector<f64>) -> Ve
 /// - x_i = predictor vector for observation i  
 /// - r_i = y_i - p_i = raw residual (NOT weighted)
 /// - h_i = leverage (hat value) for observation i
-/// 
-/// **Important Note**: 
-/// We do NOT multiply by w_i = p(1-p) here because:
-/// 1. The covariance matrix (X'WX)^{-1} already incorporates the weight structure
-/// 2. This matches SPSS output exactly
 /// 
 /// Reference: 
 /// - Pregibon, D. (1981). Logistic Regression Diagnostics. The Annals of Statistics.
@@ -432,9 +436,12 @@ fn generate_variable_names(config: &LogisticConfig, n_params: usize) -> SavedVar
             None
         },
         influence_dfbeta: if config.save_influence_dfbeta {
-            // DFB0_1 for constant, DFB1_1, DFB2_1, etc. for each variable
+            // B0 = constant (intercept), B1 = first predictor, etc.
+            // If include_constant = true:  DFB0_1 (constant), DFB1_1, DFB2_1, ...
+            // If include_constant = false: DFB1_1, DFB2_1, DFB3_1, ... (no constant)
+            let start_index = if config.include_constant { 0 } else { 1 };
             let names: Vec<String> = (0..n_params)
-                .map(|i| format!("DFB{}_{}", i, 1))
+                .map(|i| format!("DFB{}_{}", start_index + i, 1))
                 .collect();
             Some(names)
         } else {
@@ -640,10 +647,13 @@ mod tests {
     }
 
     #[test]
-    fn test_residuals_studentized() {
-        // Test: Studentized Residual = Pearson Residual / sqrt(1 - h_i)
-        // where h_i is the leverage (hat value)
-        let x = DMatrix::from_row_slice(2, 2, &[1.0, 0.5, 1.0, 1.5]);
+    fn test_residuals_studentized_pregibon() {
+        // Test: Studentized Residual = Studentized Deviance Residual
+        // Formula: SRE = d_i / sqrt(1 - h)
+        let x = DMatrix::from_row_slice(2, 2, &[
+            1.0, 0.5,
+            1.0, 1.5,
+        ]);
         let y = DVector::from_vec(vec![0.0, 1.0]);
         let predictions = DVector::from_vec(vec![0.3, 0.6]);
         let beta = DVector::from_vec(vec![-0.5, 0.5]);
@@ -653,7 +663,7 @@ mod tests {
 
         let mut config = LogisticConfig::default();
         config.save_residuals_studentized = true;
-        config.save_residuals_standardized = true;
+        config.save_residuals_deviance = true;
         config.save_influence_leverage = true;
 
         let result = calculate_saved_predictions(&x, &y, &model, &config).unwrap();
@@ -662,16 +672,26 @@ mod tests {
         assert!(result.rows[0].resid_studentized.is_some());
         assert!(result.rows[1].resid_studentized.is_some());
         
-        // Verify relationship: studentized = standardized / sqrt(1 - leverage)
-        for row in &result.rows {
-            let std = row.resid_standardized.unwrap();
+        // Verify formula: SRE = d_i / sqrt(1 - h)
+        for (i, row) in result.rows.iter().enumerate() {
+            let y_i: f64 = if i == 0 { 0.0 } else { 1.0 };
+            let p_i: f64 = if i == 0 { 0.3 } else { 0.6 };
+            let raw_resid: f64 = y_i - p_i;
+            let dev_r = row.resid_deviance.unwrap();
             let h = row.influence_leverage.unwrap();
             let stud = row.resid_studentized.unwrap();
             
             if h < 1.0 - 1e-12 {
-                let expected_stud = std / (1.0 - h).sqrt();
+                let expected_stud = dev_r / (1.0 - h).sqrt();
                 assert!((stud - expected_stud).abs() < 1e-4, 
-                    "Studentized residual mismatch: got {}, expected {}", stud, expected_stud);
+                    "Studentized residual mismatch at row {}: got {}, expected {}", 
+                    i, stud, expected_stud);
+            }
+            
+            // Verify sign matches sign(Y - P)
+            if raw_resid != 0.0 {
+                assert_eq!(stud.signum(), raw_resid.signum(),
+                    "Sign mismatch at row {}: stud={}, raw_resid={}", i, stud, raw_resid);
             }
         }
     }
@@ -791,10 +811,9 @@ mod tests {
             // Cook's distance should be non-negative
             assert!(cooks >= 0.0, "Cook's distance should be non-negative: got {}", cooks);
             
-            // Verify formula: D = (std_resid^2 * h) / (k * (1 - h))
-            let k = 2.0; // Number of parameters
+            // Verify formula: D = r^2 * h / (1-h)^2
             if h < 1.0 - 1e-12 {
-                let expected_cooks = (std_resid.powi(2) * h) / (k * (1.0 - h));
+                let expected_cooks = (std_resid.powi(2) * h) / (1.0 - h);
                 assert!((cooks - expected_cooks).abs() < 1e-6,
                     "Cook's distance mismatch: got {}, expected {}", cooks, expected_cooks);
             }

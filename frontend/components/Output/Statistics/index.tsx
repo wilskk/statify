@@ -7,6 +7,7 @@ import MulticollinearityTest from './MulticollinearityTest';
 import GarchAnalysis from './GarchAnalysis';
 import EcmAnalysis from './EcmAnalysis';
 import ArdlAnalysis from './ArdlAnalysis';
+import CaseProcessingSummary from './CaseProcessingSummary';
 
 // Import Factor Analysis chart components
 import { ScreePlot } from '@/components/Modals/Analyze/dimension-reduction/factor/charts/ScreePlot';
@@ -37,6 +38,9 @@ export const StatisticsComponents: StatisticsComponentsRegistry = {
 
   // Add ArdlAnalysis component
   ArdlAnalysis,
+
+  // Dedicated renderer for multinomial output
+  "Case Processing Summary": CaseProcessingSummary,
 
   // Add Factor Analysis ScreePlot component
   ScreePlot,

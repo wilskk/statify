@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
     TooltipProvider,
@@ -21,6 +21,7 @@ import type {
     KMedoidsClusterSaveType,
     KMedoidsClusterOptionsType,
 } from "@/components/Modals/Analyze/Classify/k-medoids-cluster/types/k-medoids-cluster";
+import { ClusterMode } from "@/components/Modals/Analyze/Classify/k-medoids-cluster/types/k-medoids-cluster";
 import { KMedoidsClusterDialog } from "@/components/Modals/Analyze/Classify/k-medoids-cluster/dialogs/dialog";
 import { KMedoidsClusterIterate } from "@/components/Modals/Analyze/Classify/k-medoids-cluster/dialogs/iterate";
 import { KMedoidsClusterResults } from "@/components/Modals/Analyze/Classify/k-medoids-cluster/dialogs/results";
@@ -33,6 +34,7 @@ import { useDataStore } from "@/stores/useDataStore";
 import { analyzeKMedoidsCluster } from "@/components/Modals/Analyze/Classify/k-medoids-cluster/services/k-medoids-cluster-analysis";
 import { clearFormData, getFormData, saveFormData } from "@/hooks/useIndexedDB";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export const KMedoidsClusterContainer = ({
     onClose,
@@ -50,6 +52,7 @@ export const KMedoidsClusterContainer = ({
     const [activeTab, setActiveTab] = useState("variables");
 
     const { closeModal } = useModal();
+    const router = useRouter();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -62,24 +65,10 @@ export const KMedoidsClusterContainer = ({
             }
         };
 
-        toast.promise(loadFormData, {
-            loading: "Loading K-Medoids Cluster settings...",
-            success: () => {
-                return "K-Medoids Cluster settings loaded successfully.";
-            },
-            error: (err) => {
-                return (
-                    <span>
-                        An error occurred while loading settings.
-                        <br />
-                        Error: {String(err)}
-                    </span>
-                );
-            },
-        });
+        loadFormData();
     }, []);
 
-    const updateFormData = <T extends keyof typeof formData>(
+    const updateFormData = useCallback(<T extends keyof typeof formData>(
         section: T,
         field: keyof (typeof formData)[T],
         value: unknown
@@ -91,7 +80,7 @@ export const KMedoidsClusterContainer = ({
                 [field]: value,
             },
         }));
-    };
+    }, []);
 
     const executeKMedoidsCluster = async (mainData: KMedoidsClusterMainType) => {
         closeModal();
@@ -105,11 +94,47 @@ export const KMedoidsClusterContainer = ({
 
             await saveFormData("KMedoidsCluster", newFormData);
 
-            await analyzeKMedoidsCluster({
-                configData: newFormData,
-                dataVariables,
-                variables,
-            });
+            // Add progress tracking
+            const n_init = newFormData.iterate.NumberOfInitializations || 10;
+            const dataSize = dataVariables.length;
+            const progressToast = toast.loading(
+                `Initializing clustering... (${dataSize} cases, ${n_init} runs)`
+            );
+            
+            try {
+                // Filter only variables selected by the user (TargetVar)
+                const selectedVarNames = new Set(newFormData.main.TargetVar || []);
+                const selectedVariables = variables.filter(v => selectedVarNames.has(v.name));
+
+                const result = await analyzeKMedoidsCluster({
+                    configData: newFormData,
+                    dataVariables,
+                    variables: selectedVariables,
+                    allVariables: variables,
+                    useWorker: true, // Try to use web worker (auto-fallback to direct if not available)
+                    onProgress: (progress) => {
+                        // Update toast with progress
+                        const statusMsg = progress.stage === "clustering" 
+                            ? `${progress.message} (running in background)`
+                            : progress.message;
+                        toast.loading(statusMsg, { id: progressToast });
+                    },
+                });
+                
+                toast.dismiss(progressToast);
+
+                if (result.success) {
+                    // All data is in the store now — navigate immediately to result page.
+                    // Read the latest log id from the store so we can scroll to it.
+                    const { logs } = (await import("@/stores/useResultStore")).useResultStore.getState();
+                    const latestLog = logs[logs.length - 1];
+                    const hash = latestLog?.id ? `#log-${latestLog.id}` : "";
+                    router.push(`/dashboard/result${hash}`);
+                }
+            } catch (error) {
+                toast.dismiss(progressToast);
+                throw error;
+            }
         };
 
         toast.promise(promise, {
@@ -256,7 +281,12 @@ export const KMedoidsClusterContainer = ({
                 <div className="flex items-center space-x-4">
                     <Button
                         onClick={() => executeKMedoidsCluster(formData.main)}
-                        disabled={!formData.main.TargetVar || formData.main.TargetVar.length === 0}
+                        disabled={
+                            !formData.main.TargetVar || 
+                            formData.main.TargetVar.length === 0 ||
+                            (formData.main.ClusterMode === ClusterMode.Manual && (!formData.main.Cluster || formData.main.Cluster < 2)) ||
+                            (formData.main.ClusterMode === ClusterMode.Automatic && (!formData.main.AutoKMin || !formData.main.AutoKMax || formData.main.AutoKMin >= formData.main.AutoKMax))
+                        }
                     >
                         OK
                     </Button>
