@@ -436,9 +436,12 @@ fn generate_variable_names(config: &LogisticConfig, n_params: usize) -> SavedVar
             None
         },
         influence_dfbeta: if config.save_influence_dfbeta {
-            // DFB0_1 for constant, DFB1_1, DFB2_1, etc. for each variable
+            // B0 = constant (intercept), B1 = first predictor, etc.
+            // If include_constant = true:  DFB0_1 (constant), DFB1_1, DFB2_1, ...
+            // If include_constant = false: DFB1_1, DFB2_1, DFB3_1, ... (no constant)
+            let start_index = if config.include_constant { 0 } else { 1 };
             let names: Vec<String> = (0..n_params)
-                .map(|i| format!("DFB{}_{}", i, 1))
+                .map(|i| format!("DFB{}_{}", start_index + i, 1))
                 .collect();
             Some(names)
         } else {
