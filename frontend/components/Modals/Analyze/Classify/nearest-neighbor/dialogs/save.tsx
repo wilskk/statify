@@ -28,19 +28,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
 export const KNNSave = ({
-  isSaveOpen,
-  setIsSaveOpen,
   updateFormData,
   data,
 }: KNNSaveProps) => {
   const [saveState, setSaveState] = useState<KNNSaveType>({ ...data });
-  const [isContinueDisabled, setIsContinueDisabled] = useState(false);
 
   useEffect(() => {
-    if (isSaveOpen) {
       setSaveState({ ...data });
-    }
-  }, [isSaveOpen, data]);
+  }, [data]);
 
   const handleChange = (
     field: keyof KNNSaveType,
@@ -59,14 +54,6 @@ export const KNNSave = ({
       CustomName: value === "CustomName",
     }));
   };
-
-  const handleContinue = () => {
-    Object.entries(saveState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNSaveType, value);
-    });
-    setIsSaveOpen(false);
-  };
-  if (!isSaveOpen) return null;
 
   return (
     <div className="flex flex-col h-full">
@@ -222,45 +209,6 @@ export const KNNSave = ({
               onChange={(e) => handleChange("MaxCatsToSave", e.target.value)}
             />
           </div>
-        </div>
-      </div>
-      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <div>
-          {/* <TooltipProvider>
-                                                                                                     <Tooltip>
-                                                                                                       <TooltipTrigger asChild>
-                                                                                                         <Button
-                                                                                                           variant="ghost"
-                                                                                                           size="icon"
-                                                                                                           onClick={startTour}
-                                                                                                           className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                                                                                         >
-                                                                                                           <HelpCircle className="h-4 w-4" />
-                                                                                                         </Button>
-                                                                                                       </TooltipTrigger>
-                                                                                                       <TooltipContent side="top">
-                                                                                                         <p className="text-xs">Start feature tour</p>
-                                                                                                       </TooltipContent>
-                                                                                                     </Tooltip>
-                                                                                                   </TooltipProvider> */}
-        </div>
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsSaveOpen(false)}
-            className="mr-2"
-          >
-            Cancel
-          </Button>
-          <Button
-            id="knn-save-continue-button"
-            disabled={isContinueDisabled}
-            type="button"
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
         </div>
       </div>
     </div>

@@ -1,13 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type {
   KNNPartitionProps,
   KNNPartitionType,
@@ -26,23 +17,17 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const KNNPartition = ({
-  isPartitionOpen,
-  setIsPartitionOpen,
   updateFormData,
   data,
 }: KNNPartitionProps) => {
   const [partitionState, setPartitionState] = useState<KNNPartitionType>({
     ...data,
   });
-  const [isContinueDisabled, setIsContinueDisabled] = useState(false);
-  const [availableVariables, setAvailableVariables] = useState<string[]>([]);
+const [availableVariables, setAvailableVariables] = useState<string[]>([]);
 
   useEffect(() => {
-    if (isPartitionOpen) {
       setPartitionState({ ...data });
-      setAvailableVariables(data.SrcVar ?? []);
-    }
-  }, [isPartitionOpen, data]);
+  }, [data]);
 
   useEffect(() => {
     const usedVariables = [
@@ -108,21 +93,13 @@ export const KNNPartition = ({
     }));
   };
 
-  const handleContinue = () => {
-    Object.entries(partitionState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNPartitionType, value);
-    });
-    setIsPartitionOpen(false);
-  };
-  if (!isPartitionOpen) return null;
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-col items-start gap-2 p-4">
           <ResizablePanelGroup
             direction="horizontal"
-            className="min-h-[615px] max-w-xl rounded-lg border md:min-w-[200px]"
+            className="min-h-[650px] max-w-xl rounded-lg border md:min-w-[200px]"
           >
             <ResizablePanel defaultSize={40}>
               <ScrollArea>
@@ -381,45 +358,6 @@ export const KNNPartition = ({
               </ResizablePanelGroup>
             </ResizablePanel>
           </ResizablePanelGroup>
-        </div>
-      </div>
-      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <div>
-          {/* <TooltipProvider>
-                                                                                                    <Tooltip>
-                                                                                                      <TooltipTrigger asChild>
-                                                                                                        <Button
-                                                                                                          variant="ghost"
-                                                                                                          size="icon"
-                                                                                                          onClick={startTour}
-                                                                                                          className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                                                                                        >
-                                                                                                          <HelpCircle className="h-4 w-4" />
-                                                                                                        </Button>
-                                                                                                      </TooltipTrigger>
-                                                                                                      <TooltipContent side="top">
-                                                                                                        <p className="text-xs">Start feature tour</p>
-                                                                                                      </TooltipContent>
-                                                                                                    </Tooltip>
-                                                                                                  </TooltipProvider> */}
-        </div>
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsPartitionOpen(false)}
-            className="mr-2"
-          >
-            Cancel
-          </Button>
-          <Button
-            id="knn-partition-continue-button"
-            disabled={isContinueDisabled}
-            type="button"
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
         </div>
       </div>
     </div>

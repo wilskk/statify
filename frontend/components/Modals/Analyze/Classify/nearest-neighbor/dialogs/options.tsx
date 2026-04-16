@@ -1,13 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type {
   KNNOptionsProps,
   KNNOptionsType,
@@ -17,8 +8,6 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export const KNNOptions = ({
-  isOptionsOpen,
-  setIsOptionsOpen,
   updateFormData,
   data,
 }: KNNOptionsProps) => {
@@ -28,10 +17,8 @@ export const KNNOptions = ({
   const [isContinueDisabled, setIsContinueDisabled] = useState(false);
 
   useEffect(() => {
-    if (isOptionsOpen) {
       setOptionsState({ ...data });
-    }
-  }, [isOptionsOpen, data]);
+  }, [data]);
 
   const handleTreatGrp = (value: string) => {
     setOptionsState((prevState) => ({
@@ -40,15 +27,6 @@ export const KNNOptions = ({
       Include: value === "Include",
     }));
   };
-
-  const handleContinue = () => {
-    Object.entries(optionsState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNOptionsType, value);
-    });
-    setIsOptionsOpen(false);
-  };
-
-  if (!isOptionsOpen) return null;
 
   return (
     <div className="flex flex-col h-full">
@@ -90,45 +68,6 @@ export const KNNOptions = ({
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
-        </div>
-      </div>
-      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <div>
-          {/* <TooltipProvider>
-                                                                                                                        <Tooltip>
-                                                                                                                          <TooltipTrigger asChild>
-                                                                                                                            <Button
-                                                                                                                              variant="ghost"
-                                                                                                                              size="icon"
-                                                                                                                              onClick={startTour}
-                                                                                                                              className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                                                                                                            >
-                                                                                                                              <HelpCircle className="h-4 w-4" />
-                                                                                                                            </Button>
-                                                                                                                          </TooltipTrigger>
-                                                                                                                          <TooltipContent side="top">
-                                                                                                                            <p className="text-xs">Start feature tour</p>
-                                                                                                                          </TooltipContent>
-                                                                                                                        </Tooltip>
-                                                                                                                      </TooltipProvider> */}
-        </div>
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsOptionsOpen(false)}
-            className="mr-2"
-          >
-            Cancel
-          </Button>
-          <Button
-            id="knn-options-continue-button"
-            disabled={isContinueDisabled}
-            type="button"
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
         </div>
       </div>
     </div>

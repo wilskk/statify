@@ -1,10 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import type {
-  KNNNeighborsProps,
-  KNNNeighborsType,
-} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -13,77 +7,89 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import type { CheckedState } from "@radix-ui/react-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { CheckedState } from "@radix-ui/react-checkbox";
 
-export const KNNNeighbors = ({
-  isNeighborsOpen,
-  setIsNeighborsOpen,
-  updateFormData,
-  data,
-}: KNNNeighborsProps) => {
+import type {
+  KNNNeighborsProps,
+  KNNNeighborsType,
+} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
+
+export const KNNNeighbors = ({ updateFormData, data }: KNNNeighborsProps) => {
   const [neighborsState, setNeighborsState] = useState<KNNNeighborsType>({
     ...data,
   });
-  const [isContinueDisabled, setIsContinueDisabled] = useState(false);
 
   useEffect(() => {
-    if (isNeighborsOpen) {
-      setNeighborsState({ ...data });
-    }
-  }, [isNeighborsOpen, data]);
+    setNeighborsState({ ...data });
+  }, [data]);
 
   const handleChange = (
     field: keyof KNNNeighborsType,
-    value: CheckedState | number | boolean | string | null,
+    value: CheckedState | number | boolean | string | null
   ) => {
-    setNeighborsState((prevState) => ({
-      ...prevState,
+    setNeighborsState((prev) => ({
+      ...prev,
       [field]: value,
     }));
+
+    updateFormData(field, value as any);
   };
 
   const handleSpecifyGrp = (value: string) => {
-    setNeighborsState((prevState) => ({
-      ...prevState,
+    const newState = {
       Specify: value === "Specify",
       AutoSelection: value === "AutoSelection",
+    };
+
+    setNeighborsState((prev) => ({
+      ...prev,
+      ...newState,
     }));
+
+    updateFormData("Specify", newState.Specify);
+    updateFormData("AutoSelection", newState.AutoSelection);
   };
 
   const handleDistanceGrp = (value: string) => {
-    setNeighborsState((prevState) => ({
-      ...prevState,
+    const newState = {
       MetricEucli: value === "MetricEucli",
-      MetricCityBlock: value === "MetricCityBlock",
+      MetricManhattan: value === "MetricManhattan",
+    };
+
+    setNeighborsState((prev) => ({
+      ...prev,
+      ...newState,
     }));
+
+    updateFormData("MetricEucli", newState.MetricEucli);
+    updateFormData("MetricManhattan", newState.MetricManhattan);
   };
 
   const handlePredictionsGrp = (value: string) => {
-    setNeighborsState((prevState) => ({
-      ...prevState,
+    const newState = {
       PredictionsMean: value === "PredictionsMean",
       PredictionsMedian: value === "PredictionsMedian",
+    };
+
+    setNeighborsState((prev) => ({
+      ...prev,
+      ...newState,
     }));
-  };
 
-  const handleContinue = () => {
-    Object.entries(neighborsState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNNeighborsType, value);
-    });
-    setIsNeighborsOpen(false);
+    updateFormData("PredictionsMean", newState.PredictionsMean);
+    updateFormData("PredictionsMedian", newState.PredictionsMedian);
   };
-
-  if (!isNeighborsOpen) return null;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div className="flex flex-col items-start gap-2 p-4">
           <ResizablePanelGroup
             direction="vertical"
-            className="min-h-[450px] max-w-md rounded-lg border md:min-w-[200px]"
+            className="h-full min-h-[450px] max-w-md rounded-lg border md:min-w-[200px]"
           >
+            {/* K Selection */}
             <ResizablePanel defaultSize={50}>
               <div className="flex flex-col gap-2 w-full p-2">
                 <RadioGroup
@@ -94,29 +100,29 @@ export const KNNNeighbors = ({
                     <Label className="font-bold">
                       Number of Nearest Neighbors (k)
                     </Label>
+
+                    {/* Fixed K */}
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Specify" id="Specify" />
                         <Label htmlFor="Specify">Specify Fixed K</Label>
                       </div>
-                      <div className="flex flex-col space-x-2 pl-4">
-                        <div className="flex items-center space-x-2 pl-2">
-                          <Label className="w-[75px]">k:</Label>
-                          <div className="w-[75px]">
-                            <Input
-                              id="SpecifyK"
-                              type="number"
-                              placeholder=""
-                              value={neighborsState.SpecifyK ?? ""}
-                              disabled={!neighborsState.Specify}
-                              onChange={(e) =>
-                                handleChange("SpecifyK", Number(e.target.value))
-                              }
-                            />
-                          </div>
-                        </div>
+
+                      <div className="flex items-center space-x-2 pl-6">
+                        <Label className="w-[75px]">k:</Label>
+                        <Input
+                          type="number"
+                          className="w-[80px]"
+                          value={neighborsState.SpecifyK ?? ""}
+                          disabled={!neighborsState.Specify}
+                          onChange={(e) =>
+                            handleChange("SpecifyK", Number(e.target.value))
+                          }
+                        />
                       </div>
                     </div>
+
+                    {/* Auto K */}
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem
@@ -127,36 +133,32 @@ export const KNNNeighbors = ({
                           Automatically Select K
                         </Label>
                       </div>
-                      <div className="flex flex-col space-x-2 pl-4 gap-1">
-                        <div className="flex items-center space-x-2 pl-2">
+
+                      <div className="flex flex-col gap-2 pl-6">
+                        <div className="flex items-center space-x-2">
                           <Label className="w-[75px]">Minimum:</Label>
-                          <div className="w-[75px]">
-                            <Input
-                              id="MinK"
-                              type="number"
-                              placeholder=""
-                              value={neighborsState.MinK ?? ""}
-                              disabled={!neighborsState.AutoSelection}
-                              onChange={(e) =>
-                                handleChange("MinK", Number(e.target.value))
-                              }
-                            />
-                          </div>
+                          <Input
+                            type="number"
+                            className="w-[80px]"
+                            value={neighborsState.MinK ?? ""}
+                            disabled={!neighborsState.AutoSelection}
+                            onChange={(e) =>
+                              handleChange("MinK", Number(e.target.value))
+                            }
+                          />
                         </div>
+
                         <div className="flex items-center space-x-2">
                           <Label className="w-[75px]">Maximum:</Label>
-                          <div className="w-[75px]">
-                            <Input
-                              id="MaxK"
-                              type="number"
-                              placeholder=""
-                              value={neighborsState.MaxK ?? ""}
-                              disabled={!neighborsState.AutoSelection}
-                              onChange={(e) =>
-                                handleChange("MaxK", Number(e.target.value))
-                              }
-                            />
-                          </div>
+                          <Input
+                            type="number"
+                            className="w-[80px]"
+                            value={neighborsState.MaxK ?? ""}
+                            disabled={!neighborsState.AutoSelection}
+                            onChange={(e) =>
+                              handleChange("MaxK", Number(e.target.value))
+                            }
+                          />
                         </div>
                       </div>
                     </div>
@@ -164,46 +166,55 @@ export const KNNNeighbors = ({
                 </RadioGroup>
               </div>
             </ResizablePanel>
+
             <ResizableHandle />
+
+            {/* Distance */}
             <ResizablePanel defaultSize={30}>
               <RadioGroup
                 value={
-                  neighborsState.MetricEucli ? "MetricEucli" : "MetricCityBlock"
+                  neighborsState.MetricEucli
+                    ? "MetricEucli"
+                    : "MetricManhattan"
                 }
                 onValueChange={handleDistanceGrp}
               >
                 <div className="flex flex-col gap-2 p-2">
                   <Label className="font-bold">Distance Computation</Label>
+
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="MetricEucli" id="MetricEucli" />
                     <Label htmlFor="MetricEucli">Euclidean Metric</Label>
                   </div>
+
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem
-                      value="MetricCityBlock"
-                      id="MetricCityBlock"
+                      value="MetricManhattan"
+                      id="MetricManhattan"
                     />
-                    <Label htmlFor="MetricCityBlock">City Block Metric</Label>
+                    <Label htmlFor="MetricManhattan">
+                      Manhattan (City Block) Metric
+                    </Label>
                   </div>
+
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="Weight"
                       checked={neighborsState.Weight}
                       onCheckedChange={(checked) =>
                         handleChange("Weight", checked)
                       }
                     />
-                    <label
-                      htmlFor="Weight"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Weight Features by importance when computing distances
-                    </label>
+                    <Label>
+                      Weight features by importance when computing distances
+                    </Label>
                   </div>
                 </div>
               </RadioGroup>
             </ResizablePanel>
+
             <ResizableHandle />
+
+            {/* Prediction */}
             <ResizablePanel defaultSize={20}>
               <RadioGroup
                 value={
@@ -217,6 +228,7 @@ export const KNNNeighbors = ({
                   <Label className="font-bold">
                     Predictions for Scale Target
                   </Label>
+
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem
                       value="PredictionsMean"
@@ -226,6 +238,7 @@ export const KNNNeighbors = ({
                       Mean of nearest neighbors values
                     </Label>
                   </div>
+
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem
                       value="PredictionsMedian"
@@ -239,45 +252,6 @@ export const KNNNeighbors = ({
               </RadioGroup>
             </ResizablePanel>
           </ResizablePanelGroup>
-        </div>
-      </div>
-      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <div>
-          {/* <TooltipProvider>
-                                                            <Tooltip>
-                                                              <TooltipTrigger asChild>
-                                                                <Button
-                                                                  variant="ghost"
-                                                                  size="icon"
-                                                                  onClick={startTour}
-                                                                  className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                                                >
-                                                                  <HelpCircle className="h-4 w-4" />
-                                                                </Button>
-                                                              </TooltipTrigger>
-                                                              <TooltipContent side="top">
-                                                                <p className="text-xs">Start feature tour</p>
-                                                              </TooltipContent>
-                                                            </Tooltip>
-                                                          </TooltipProvider> */}
-        </div>
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsNeighborsOpen(false)}
-            className="mr-2"
-          >
-            Cancel
-          </Button>
-          <Button
-            id="knn-neighbors-continue-button"
-            disabled={isContinueDisabled}
-            type="button"
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
         </div>
       </div>
     </div>

@@ -1,13 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type {
   KNNOutputProps,
   KNNOutputType,
@@ -24,19 +15,14 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export const KNNOutput = ({
-  isOutputOpen,
-  setIsOutputOpen,
   updateFormData,
   data,
 }: KNNOutputProps) => {
   const [outputState, setOutputState] = useState<KNNOutputType>({ ...data });
-  const [isContinueDisabled, setIsContinueDisabled] = useState(false);
 
   useEffect(() => {
-    if (isOutputOpen) {
       setOutputState({ ...data });
-    }
-  }, [isOutputOpen, data]);
+  }, [data]);
 
   const handleChange = (
     field: keyof KNNOutputType,
@@ -55,15 +41,6 @@ export const KNNOutput = ({
       WriteDataFile: value === "WriteDataFile",
     }));
   };
-
-  const handleContinue = () => {
-    Object.entries(outputState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNOutputType, value);
-    });
-    setIsOutputOpen(false);
-  };
-
-  if (!isOutputOpen) return null;
 
   return (
     <div className="flex flex-col h-full">
@@ -224,45 +201,6 @@ export const KNNOutput = ({
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
-        </div>
-      </div>
-      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <div>
-          {/* <TooltipProvider>
-                                                                                                                        <Tooltip>
-                                                                                                                          <TooltipTrigger asChild>
-                                                                                                                            <Button
-                                                                                                                              variant="ghost"
-                                                                                                                              size="icon"
-                                                                                                                              onClick={startTour}
-                                                                                                                              className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                                                                                                            >
-                                                                                                                              <HelpCircle className="h-4 w-4" />
-                                                                                                                            </Button>
-                                                                                                                          </TooltipTrigger>
-                                                                                                                          <TooltipContent side="top">
-                                                                                                                            <p className="text-xs">Start feature tour</p>
-                                                                                                                          </TooltipContent>
-                                                                                                                        </Tooltip>
-                                                                                                                      </TooltipProvider> */}
-        </div>
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsOutputOpen(false)}
-            className="mr-2"
-          >
-            Cancel
-          </Button>
-          <Button
-            id="knn-output-continue-button"
-            disabled={isContinueDisabled}
-            type="button"
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
         </div>
       </div>
     </div>

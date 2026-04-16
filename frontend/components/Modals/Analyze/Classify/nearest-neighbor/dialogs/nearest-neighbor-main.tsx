@@ -1,60 +1,67 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KNNDialog } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/dialog";
-import type {
-  KNNContainerProps,
-  KNNMainType,
-  KNNType,
-} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
-import { KNNDefault } from "@/components/Modals/Analyze/Classify/nearest-neighbor/constants/nearest-neighbor-default";
 import { KNNNeighbors } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/neighbors";
 import { KNNFeatures } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/features";
 import { KNNPartition } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/partition";
 import { KNNSave } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/save";
 import { KNNOutput } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/output";
 import { KNNOptions } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/options";
+
+import type {
+  KNNContainerProps,
+  KNNMainType,
+  KNNType,
+} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
+
+import { KNNDefault } from "@/components/Modals/Analyze/Classify/nearest-neighbor/constants/nearest-neighbor-default";
+
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
+
 import { analyzeKNN } from "@/components/Modals/Analyze/Classify/nearest-neighbor/services/nearest-neighbor-analysis";
 import { clearFormData, getFormData, saveFormData } from "@/hooks/useIndexedDB";
+
+import { toast } from "sonner";
 
 export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const variables = useVariableStore((state) => state.variables);
   const dataVariables = useDataStore((state) => state.data);
+
   const tempVariables = useMemo(
     () => variables.map((variable) => variable.name),
     [variables],
   );
 
-  const [formData, setFormData] = useState<KNNType>({ ...KNNDefault });
-  const [isMainOpen, setIsMainOpen] = useState(true);
-  const [isNeighborsOpen, setIsNeighborsOpen] = useState(false);
-  const [isFeaturesOpen, setIsFeaturesOpen] = useState(false);
-  const [isPartitionOpen, setIsPartitionOpen] = useState(false);
-  const [isSaveOpen, setIsSaveOpen] = useState(false);
-  const [isOutputOpen, setIsOutputOpen] = useState(false);
-  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [formData, setFormData] = useState<KNNType>({
+    ...KNNDefault,
+  });
+
+  const [activeTab, setActiveTab] = useState("variables");
 
   const { closeModal } = useModal();
-  const { addLog, addAnalytic, addStatistic } = useResultStore();
 
   useEffect(() => {
     const loadFormData = async () => {
-      try {
-        const savedData = await getFormData("NearestNeighbor");
-        if (savedData) {
-          const { id, ...formDataWithoutId } = savedData;
-          setFormData(formDataWithoutId);
-        } else {
-          setFormData({ ...KNNDefault });
-        }
-      } catch (error) {
-        console.error("Failed to load form data:", error);
+      const savedData = await getFormData("NearestNeighbor");
+
+      if (savedData) {
+        const { id, ...formDataWithoutId } = savedData;
+        setFormData(formDataWithoutId);
+      } else {
+        setFormData({ ...KNNDefault });
       }
     };
 
-    loadFormData();
+    toast.promise(loadFormData, {
+      loading: "Loading KNN settings...",
+      success: "KNN settings loaded successfully.",
+      error: "Failed to load KNN settings.",
+    });
   }, []);
 
   useEffect(() => {
@@ -90,7 +97,10 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   };
 
   const executeKNN = async (mainData: KNNMainType) => {
-    try {
+    closeModal();
+    onClose();
+
+    const promise = async () => {
       const newFormData = {
         ...formData,
         main: mainData,
@@ -103,186 +113,156 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
         dataVariables,
         variables,
       });
-    } catch (error) {
-      console.error(error);
-    }
+    };
 
-    closeModal();
-    onClose();
+    toast.promise(promise, {
+      loading: "Running KNN analysis...",
+      success: "KNN analysis completed successfully.",
+      error: "An error occurred during KNN analysis.",
+    });
   };
 
   const resetFormData = async () => {
     try {
-      await clearFormData("NearestNeighbor");
       setFormData({ ...KNNDefault });
-    } catch (error) {
-      console.error("Failed to clear form data:", error);
+      await clearFormData("NearestNeighbor");
+
+      toast.success("Form data cleared successfully");
+    } catch {
+      toast.error("Failed to clear form data");
     }
   };
 
-  const handleClose = () => {
-    closeModal();
-    onClose();
-  };
-
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto">
-      {isMainOpen && (
-        <KNNDialog
-          isMainOpen={isMainOpen}
-          setIsMainOpen={(value) => {
-            if (value) {
-              setIsMainOpen(true);
-            } else {
-              setIsMainOpen(false);
-            }
-          }}
-          setIsNeighborsOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsNeighborsOpen(true);
-            }
-          }}
-          setIsFeaturesOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsFeaturesOpen(true);
-            }
-          }}
-          setIsPartitionOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsPartitionOpen(true);
-            }
-          }}
-          setIsSaveOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsSaveOpen(true);
-            }
-          }}
-          setIsOutputOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsOutputOpen(true);
-            }
-          }}
-          setIsOptionsOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsOptionsOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("main", field, value)
-          }
-          data={formData.main}
-          globalVariables={tempVariables}
-          onContinue={(mainData) => executeKNN(mainData)}
-          onReset={resetFormData}
-        />
-      )}
+    <div className="flex flex-col h-full">
+      <div className="flex-grow px-6 min-h-0">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full h-full flex flex-col"
+        >
+          <TabsList className="grid w-full grid-cols-7 flex-shrink-0">
+            <TabsTrigger value="variables" className="min-w-0">
+              <span className="truncate block w-full">Variables</span>
+            </TabsTrigger>
 
-      {isNeighborsOpen && (
-        <KNNNeighbors
-          isNeighborsOpen={isNeighborsOpen}
-          setIsNeighborsOpen={(value) => {
-            if (!value) {
-              setIsNeighborsOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("neighbors", field, value)
-          }
-          data={formData.neighbors}
-        />
-      )}
+            <TabsTrigger value="neighbors" className="min-w-0">
+              <span className="truncate block w-full">Neighbors</span>
+            </TabsTrigger>
 
-      {/* Features */}
-      {isFeaturesOpen && (
-        <KNNFeatures
-          isFeaturesOpen={isFeaturesOpen}
-          setIsFeaturesOpen={(value) => {
-            if (!value) {
-              setIsFeaturesOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("features", field, value)
-          }
-          data={formData.features}
-        />
-      )}
+            <TabsTrigger value="features" className="min-w-0">
+              <span className="truncate block w-full">Features</span>
+            </TabsTrigger>
 
-      {/* Partition */}
-      {isPartitionOpen && (
-        <KNNPartition
-          isPartitionOpen={isPartitionOpen}
-          setIsPartitionOpen={(value) => {
-            if (!value) {
-              setIsPartitionOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("partition", field, value)
-          }
-          data={formData.partition}
-        />
-      )}
+            <TabsTrigger value="partition" className="min-w-0">
+              <span className="truncate block w-full">Partition</span>
+            </TabsTrigger>
 
-      {/* Save */}
-      {isSaveOpen && (
-        <KNNSave
-          isSaveOpen={isSaveOpen}
-          setIsSaveOpen={(value) => {
-            if (!value) {
-              setIsSaveOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("save", field, value)
-          }
-          data={formData.save}
-        />
-      )}
+            <TabsTrigger value="save" className="min-w-0">
+              <span className="truncate block w-full">Save</span>
+            </TabsTrigger>
 
-      {/* Output */}
-      {isOutputOpen && (
-        <KNNOutput
-          isOutputOpen={isOutputOpen}
-          setIsOutputOpen={(value) => {
-            if (!value) {
-              setIsOutputOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("output", field, value)
-          }
-          data={formData.output}
-        />
-      )}
+            <TabsTrigger value="output" className="min-w-0">
+              <span className="truncate block w-full">Output</span>
+            </TabsTrigger>
 
-      {/* Options */}
-      {isOptionsOpen && (
-        <KNNOptions
-          isOptionsOpen={isOptionsOpen}
-          setIsOptionsOpen={(value) => {
-            if (!value) {
-              setIsOptionsOpen(false);
-              setIsMainOpen(true);
-            }
+            <TabsTrigger value="options" className="min-w-0">
+              <span className="truncate block w-full">Options</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex-grow min-h-0">
+            <TabsContent value="variables" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+              <KNNDialog
+                data={formData.main}
+                globalVariables={tempVariables}
+                updateFormData={(field, value) =>
+                  updateFormData("main", field, value)
+                }
+              />
+            </TabsContent>
+
+            <TabsContent value="neighbors" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex">
+              <KNNNeighbors
+                data={formData.neighbors}
+                updateFormData={(field, value) =>
+                  updateFormData("neighbors", field, value)
+                }
+              />
+            </TabsContent>
+
+            <TabsContent value="features" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+              <KNNFeatures
+                data={formData.features}
+                updateFormData={(field, value) =>
+                  updateFormData("features", field, value)
+                }
+              />
+            </TabsContent>
+
+            <TabsContent value="partition" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+              <KNNPartition
+                data={formData.partition}
+                updateFormData={(field, value) =>
+                  updateFormData("partition", field, value)
+                }
+              />
+            </TabsContent>
+
+            <TabsContent value="save" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+              <KNNSave
+                data={formData.save}
+                updateFormData={(field, value) =>
+                  updateFormData("save", field, value)
+                }
+              />
+            </TabsContent>
+
+            <TabsContent value="output" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+              <KNNOutput
+                data={formData.output}
+                updateFormData={(field, value) =>
+                  updateFormData("output", field, value)
+                }
+              />
+            </TabsContent>
+
+            <TabsContent value="options" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+              <KNNOptions
+                data={formData.options}
+                updateFormData={(field, value) =>
+                  updateFormData("options", field, value)
+                }
+              />
+            </TabsContent>
+          </div>
+        </Tabs>
+      </div>
+
+      <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-4 bg-secondary">
+        <Button
+          onClick={() => executeKNN(formData.main)}
+          disabled={!formData.main.TargetVar}
+        >
+          OK
+        </Button>
+
+        <Button variant="outline" onClick={resetFormData}>
+          Reset
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={() => {
+            closeModal();
+            onClose();
           }}
-          updateFormData={(field, value) =>
-            updateFormData("options", field, value)
-          }
-          data={formData.options}
-        />
-      )}
+        >
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 };
+
+export default KNNContainer;
