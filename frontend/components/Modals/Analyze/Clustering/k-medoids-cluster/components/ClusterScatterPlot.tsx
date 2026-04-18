@@ -304,9 +304,9 @@ export const ClusterScatterPlot: React.FC<ClusterScatterPlotProps> = ({
             .attr("transform", (d) =>
                 `translate(${xScale(d.x)},${yScale(d.y)})`
             )
-            .attr("fill", (d) => colorMap.get(d.cluster) ?? "#888")
-            .attr("stroke", "hsl(var(--background))")
-            .attr("stroke-width", 1.5)
+            .attr("fill", "#fbbf24")
+            .attr("stroke", "#78350f")
+            .attr("stroke-width", 1.8)
             .style("cursor", "pointer")
             .attr("filter", "drop-shadow(0 1px 2px rgba(0,0,0,.35))")
             .on("mouseover", (event, d) => {
@@ -369,10 +369,9 @@ export const ClusterScatterPlot: React.FC<ClusterScatterPlotProps> = ({
         legendG.append("path")
             .attr("d", STAR)
             .attr("transform", `translate(7,${medoidLegendY + 6})`)
-            .attr("fill", "hsl(var(--foreground))")
-            .attr("fill-opacity", 0.7)
-            .attr("stroke", "hsl(var(--background))")
-            .attr("stroke-width", 1);
+            .attr("fill", "#fbbf24")
+            .attr("stroke", "#78350f")
+            .attr("stroke-width", 1.4);
 
         legendG.append("text")
             .attr("x", 17).attr("y", medoidLegendY + 6 + 4)

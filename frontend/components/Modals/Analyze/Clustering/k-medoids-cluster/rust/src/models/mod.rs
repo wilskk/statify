@@ -31,6 +31,9 @@ pub struct KMedoidsOutput {
     pub medoids: Vec<Vec<f64>>,
     pub distances_to_medoids: Vec<f64>,
     pub total_distance: f64,
+    /// Objective value (average distance): total_distance / n.
+    #[serde(default)]
+    pub avg_cost: f64,
     /// Total cost setelah fase BUILD.
     #[serde(default)]
     pub total_cost_build: f64,

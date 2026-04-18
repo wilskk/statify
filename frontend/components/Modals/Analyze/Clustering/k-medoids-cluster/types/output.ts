@@ -11,6 +11,8 @@ import type { Table } from "@/types/Table";
 export interface KMedoidsSummary {
     numClusters: number;
     totalCost: number;
+    /** Objective average cost shown as primary metric: totalCost / numCases. */
+    avgCost: number;
     /** Cost after the BUILD phase (initial medoid selection), before any SWAP. */
     buildCost?: number;
     /** Cost after the SWAP phase converges — same as totalCost. */

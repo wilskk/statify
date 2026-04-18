@@ -48,6 +48,7 @@ export const SilhouetteBarChart: React.FC<SilhouetteBarChartProps> = ({
     height = 380,
 }) => {
     const svgRef = useRef<SVGSVGElement>(null);
+    const chartHeight = Math.max(height, perCluster.length * 90 + 120);
 
     useEffect(() => {
         if (!svgRef.current || !perCluster || perCluster.length === 0) return;
@@ -56,9 +57,9 @@ export const SilhouetteBarChart: React.FC<SilhouetteBarChartProps> = ({
         svg.selectAll("*").remove();
 
         // --- Margins ---
-        const margin = { top: 24, right: 32, bottom: 64, left: 72 };
+        const margin = { top: 24, right: 32, bottom: 92, left: 72 };
         const innerW = width - margin.left - margin.right;
-        const innerH = height - margin.top - margin.bottom;
+        const innerH = chartHeight - margin.top - margin.bottom;
 
         const style = getComputedStyle(svgRef.current);
         const fgColor = style.getPropertyValue("--foreground").trim()
@@ -272,36 +273,35 @@ export const SilhouetteBarChart: React.FC<SilhouetteBarChartProps> = ({
             { label: "Overall avg", opacity: 1 },
         ];
         const legendG = svg.append("g")
-            .attr("transform", `translate(${margin.left},${height - 18})`);
+            .attr("transform", `translate(${margin.left},${chartHeight - 30})`);
 
-        let lx = 0;
         legendData.forEach(({ label, opacity }, i) => {
+            const ly = i * 18;
             if (i === 3) {
                 // dashed reference line swatch
                 legendG.append("line")
-                    .attr("x1", lx).attr("x2", lx + 18)
-                    .attr("y1", -5).attr("y2", -5)
+                    .attr("x1", 0).attr("x2", 18)
+                    .attr("y1", ly).attr("y2", ly)
                     .attr("stroke", "#6366f1")
                     .attr("stroke-width", 2)
                     .attr("stroke-dasharray", "5,3");
             } else {
                 legendG.append("rect")
-                    .attr("x", lx).attr("y", -12)
+                    .attr("x", 0).attr("y", ly - 7)
                     .attr("width", 13).attr("height", 10)
                     .attr("rx", 2)
                     .attr("fill", "#4e9af1")
                     .attr("opacity", opacity);
             }
             legendG.append("text")
-                .attr("x", lx + 17)
-                .attr("y", -3)
+                .attr("x", 22)
+                .attr("y", ly + 4)
                 .attr("font-size", "11")
                 .attr("fill", mutedColor)
                 .text(label);
-            lx += label.length * 7 + 28;
         });
 
-    }, [perCluster, overall, width, height]);
+    }, [perCluster, overall, width, chartHeight]);
 
     if (!perCluster || perCluster.length === 0) {
         return (
@@ -311,16 +311,13 @@ export const SilhouetteBarChart: React.FC<SilhouetteBarChartProps> = ({
         );
     }
 
-    // Grow height for many clusters
-    const dynamicH = Math.max(height, perCluster.length * 90 + 88);
-
     return (
         <div className="relative w-full flex justify-center">
             <svg
                 ref={svgRef}
                 width={width}
-                height={dynamicH}
-                viewBox={`0 0 ${width} ${dynamicH}`}
+                height={chartHeight}
+                viewBox={`0 0 ${width} ${chartHeight}`}
                 style={{ maxWidth: "100%", overflow: "visible" }}
             />
         </div>

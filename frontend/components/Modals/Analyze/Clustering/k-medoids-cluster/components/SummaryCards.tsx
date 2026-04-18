@@ -6,7 +6,7 @@
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { KMedoidsSummary } from "../types/output";
-import { TrendingUp, TrendingDown, Target, BarChart3, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, BarChart3, CheckCircle2, XCircle } from "lucide-react";
 
 interface SummaryCardsProps {
     summary: KMedoidsSummary;
@@ -14,6 +14,10 @@ interface SummaryCardsProps {
 
 export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
     const avgScore = summary.averageSilhouetteScore ?? 0;
+    const averageSwapCost = summary.avgCost ?? (summary.numCases > 0 ? summary.totalCost / summary.numCases : 0);
+    const averageBuildCost = summary.buildCost != null && summary.numCases > 0
+        ? summary.buildCost / summary.numCases
+        : null;
     const silhouetteQuality = 
         avgScore >= 0.7 ? { label: "Very Strong", color: "text-green-600" } :
         avgScore >= 0.5 ? { label: "Strong", color: "text-blue-600" } :
@@ -36,30 +40,27 @@ export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({ summary }) =
                 </CardContent>
             </Card>
 
-            {/* Total Cost — BUILD vs SWAP breakdown */}
+            {/* Average Cost (objective) with total-cost detail */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Cost (SWAP)</CardTitle>
+                    <CardTitle className="text-sm font-medium">Average Cost (Objective)</CardTitle>
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">
-                        {summary.swapCost != null ? summary.swapCost.toFixed(2) : summary.totalCost != null ? summary.totalCost.toFixed(2) : 'N/A'}
-                    </div>
-                    {summary.buildCost != null ? (
-                        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <span>BUILD: {summary.buildCost.toFixed(2)}</span>
-                            <ArrowRight className="h-3 w-3" />
-                            <span>SWAP: {(summary.swapCost ?? summary.totalCost).toFixed(2)}</span>
-                            {summary.buildCost > 0 && (
-                                <span className="ml-1 text-green-600 font-medium">
-                                    ({(((summary.buildCost - (summary.swapCost ?? summary.totalCost)) / summary.buildCost) * 100).toFixed(1)}% ↓)
-                                </span>
-                            )}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="min-w-0">
+                            <div className="text-2xl font-bold">
+                                {averageBuildCost != null && isFinite(averageBuildCost) ? averageBuildCost.toFixed(6) : 'N/A'}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Average Cost (BUILD)</p>
                         </div>
-                    ) : (
-                        <p className="text-xs text-muted-foreground">Sum of distances to medoids</p>
-                    )}
+                        <div className="min-w-0">
+                            <div className="text-2xl font-bold">
+                                {isFinite(averageSwapCost) ? averageSwapCost.toFixed(6) : 'N/A'}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Average Cost (SWAP)</p>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 

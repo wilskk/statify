@@ -465,10 +465,21 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                 ? explicitIterations
                 : inferredIterations;
 
+        const totalCost = result.total_distance || result.total_cost || result.cost || 0;
+        const avgCost =
+            typeof result.avg_cost === "number"
+                ? result.avg_cost
+                : typeof result.avgCost === "number"
+                ? result.avgCost
+                : labels.length > 0
+                ? totalCost / labels.length
+                : 0;
+
         const mappedResult = {
             labels,
             medoids,
-            cost: result.total_distance || result.total_cost || result.cost || 0,
+            cost: totalCost,
+            avgCost,
             total_cost_build:
                 result.total_cost_build ??
                 (Array.isArray(result.cost_history) && result.cost_history.length > 0

@@ -9,9 +9,10 @@ import type { MedoidDistanceMatrix } from "../types/output";
 
 interface DistanceMatrixProps {
     matrix: MedoidDistanceMatrix;
+    actions?: React.ReactNode;
 }
 
-export const DistanceMatrixHeatmap: React.FC<DistanceMatrixProps> = ({ matrix }) => {
+export const DistanceMatrixHeatmap: React.FC<DistanceMatrixProps> = ({ matrix, actions }) => {
     // Find min and max values for color scaling
     const flatDistances = matrix.distances
         .flat()
@@ -50,6 +51,7 @@ export const DistanceMatrixHeatmap: React.FC<DistanceMatrixProps> = ({ matrix })
                 </CardDescription>
             </CardHeader>
             <CardContent>
+                {actions && <div className="mb-3 flex items-center justify-end gap-2">{actions}</div>}
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
