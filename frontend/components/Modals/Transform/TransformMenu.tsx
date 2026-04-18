@@ -40,6 +40,12 @@ const TransformMenu: React.FC = () => {
         <MenubarSeparator />
         <MenubarItem disabled>Rank Cases</MenubarItem>
         <MenubarSeparator />
+        <MenubarItem
+          onClick={() => openModal(ModalType.StringToWordVector)}
+        >
+          String to Word Vector
+        </MenubarItem>
+        <MenubarSeparator />
         <MenubarItem disabled>Date and Time Wizard</MenubarItem>
         <MenubarItem disabled>Create Time Series</MenubarItem>
         <MenubarItem disabled>Replace Missing Values</MenubarItem>
