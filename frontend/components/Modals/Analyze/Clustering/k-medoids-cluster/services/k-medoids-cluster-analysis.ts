@@ -444,10 +444,23 @@ function mapWasmOutputToResult(wasmOutput: any): ClusteringResult {
             ? rawDistances
             : undefined;
 
+    const labels = wasmOutput.cluster_assignments || wasmOutput.labels || [];
+    const totalCost = wasmOutput.total_distance || wasmOutput.total_cost || wasmOutput.cost || 0;
+    const n = Array.isArray(labels) ? labels.length : 0;
+    const avgCost =
+        typeof wasmOutput.avg_cost === "number"
+            ? wasmOutput.avg_cost
+            : typeof wasmOutput.avgCost === "number"
+            ? wasmOutput.avgCost
+            : n > 0
+            ? totalCost / n
+            : 0;
+
     return {
-        labels: wasmOutput.cluster_assignments || wasmOutput.labels || [],
+        labels,
         medoids: wasmOutput.medoids_indices || wasmOutput.medoid_indices || wasmOutput.medoids || [],
-        cost: wasmOutput.total_distance || wasmOutput.total_cost || wasmOutput.cost || 0,
+        cost: totalCost,
+        avgCost,
         total_cost_build:
             wasmOutput.total_cost_build ??
             (Array.isArray(costHistory) && costHistory.length > 0 ? costHistory[0] : undefined),

@@ -4,10 +4,11 @@
  * Integrates with existing ResultOutput infrastructure
  */
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download } from "lucide-react";
 import type { KMedoidsOutput } from "../types/output";
 import { KMedoidsSummaryCards } from "./SummaryCards";
 import { ClusterProfilesComponent } from "./ClusterProfiles";
@@ -62,7 +63,48 @@ function samplePoints<T extends { cluster: number }>(pts: T[], max: number): T[]
     return result;
 }
 
+type ExportFormat = "svg" | "png";
+
+function cloneNodeWithInlineStyles(source: HTMLElement): HTMLElement {
+    const clone = source.cloneNode(true) as HTMLElement;
+
+    const applyStyles = (src: Element, dst: Element) => {
+        if (!(dst instanceof HTMLElement)) return;
+        const computed = window.getComputedStyle(src);
+        const dstStyle = dst.style as CSSStyleDeclaration;
+        for (const prop of Array.from(computed)) {
+            try {
+                dstStyle.setProperty(prop, computed.getPropertyValue(prop));
+            } catch {
+                // Ignore non-writable computed properties
+            }
+        }
+
+        const srcChildren = Array.from(src.children);
+        const dstChildren = Array.from(dst.children);
+        for (let i = 0; i < srcChildren.length; i++) {
+            if (dstChildren[i]) applyStyles(srcChildren[i], dstChildren[i]);
+        }
+    };
+
+    applyStyles(source, clone);
+    return clone;
+}
+
+function sanitizeFilename(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ output, variables }) => {
+    const pcaChartRef = useRef<HTMLDivElement>(null);
+    const scatterChartRef = useRef<HTMLDivElement>(null);
+    const sizeDistChartRef = useRef<HTMLDivElement>(null);
+    const radarChartRef = useRef<HTMLDivElement>(null);
+    const distanceMatrixRef = useRef<HTMLDivElement>(null);
+    const silhouetteObjRef = useRef<HTMLDivElement>(null);
+    const silhouetteClusterRef = useRef<HTMLDivElement>(null);
+    const convergenceChartRef = useRef<HTMLDivElement>(null);
+
     // Use variables from output if not provided as prop
     const effectiveVariables = (variables && variables.length > 0
         ? variables
@@ -244,6 +286,148 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         return JSON.stringify({ tables: output.tables.filter(t => t.key === "medoids") });
     }, [output?.tables]);
 
+    const buildSvgFromContainer = useCallback((container: HTMLDivElement): { svgText: string; width: number; height: number } | null => {
+        const svgElement = container.querySelector("svg");
+
+        if (svgElement) {
+            const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+            if (!clonedSvg.getAttribute("xmlns")) {
+                clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            }
+
+            const rect = svgElement.getBoundingClientRect();
+            const viewBox = clonedSvg.viewBox?.baseVal;
+            const width = Math.ceil(
+                (viewBox && viewBox.width > 0 ? viewBox.width : rect.width) || Number(clonedSvg.getAttribute("width")) || 800
+            );
+            const height = Math.ceil(
+                (viewBox && viewBox.height > 0 ? viewBox.height : rect.height) || Number(clonedSvg.getAttribute("height")) || 500
+            );
+
+            clonedSvg.setAttribute("width", String(width));
+            clonedSvg.setAttribute("height", String(height));
+            if (!clonedSvg.getAttribute("viewBox")) {
+                clonedSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+            }
+
+            return {
+                svgText: new XMLSerializer().serializeToString(clonedSvg),
+                width,
+                height,
+            };
+        }
+
+        const rect = container.getBoundingClientRect();
+        const width = Math.max(320, Math.ceil(rect.width));
+        const height = Math.max(200, Math.ceil(rect.height));
+        const clonedContainer = cloneNodeWithInlineStyles(container);
+        const wrapper = document.createElement("div");
+        wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+        wrapper.style.width = `${width}px`;
+        wrapper.style.height = `${height}px`;
+        wrapper.style.background = "#ffffff";
+        wrapper.style.boxSizing = "border-box";
+        wrapper.appendChild(clonedContainer);
+
+        const svgText =
+            `<?xml version="1.0" encoding="UTF-8"?>` +
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+            `<foreignObject width="100%" height="100%">${wrapper.outerHTML}</foreignObject>` +
+            `</svg>`;
+
+        return { svgText, width, height };
+    }, []);
+
+    const handleDownloadVisualization = useCallback(async (
+        containerRef: React.RefObject<HTMLDivElement | null>,
+        baseFileName: string,
+        format: ExportFormat
+    ) => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const built = buildSvgFromContainer(container);
+        if (!built) return;
+
+        const safeName = sanitizeFilename(baseFileName);
+
+        if (format === "svg") {
+            const blob = new Blob([built.svgText], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${safeName}.svg`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            return;
+        }
+
+        const svgBlob = new Blob([built.svgText], { type: "image/svg+xml;charset=utf-8" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+
+        try {
+            const img = new Image();
+            await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error("Failed to load SVG for PNG export"));
+                img.src = svgUrl;
+            });
+
+            const canvas = document.createElement("canvas");
+            canvas.width = built.width;
+            canvas.height = built.height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return;
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            const pngBlob = await new Promise<Blob | null>((resolve) => {
+                canvas.toBlob((blob) => resolve(blob), "image/png");
+            });
+            if (!pngBlob) return;
+
+            const pngUrl = URL.createObjectURL(pngBlob);
+            const a = document.createElement("a");
+            a.href = pngUrl;
+            a.download = `${safeName}.png`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(pngUrl);
+        } finally {
+            URL.revokeObjectURL(svgUrl);
+        }
+    }, [buildSvgFromContainer]);
+
+    const renderDownloadActions = useCallback((
+        targetRef: React.RefObject<HTMLDivElement | null>,
+        fileName: string
+    ) => (
+        <div className="mb-3 flex items-center justify-end gap-2">
+            <button
+                className="p-2 bg-white rounded-md shadow-sm hover:bg-gray-100"
+                onClick={() => void handleDownloadVisualization(targetRef, fileName, "svg")}
+                title="Download as SVG"
+                type="button"
+            >
+                <Download className="w-4 h-4 inline-block mr-1" />
+                <span className="text-xs">SVG</span>
+            </button>
+            <button
+                className="p-2 bg-white rounded-md shadow-sm hover:bg-gray-100"
+                onClick={() => void handleDownloadVisualization(targetRef, fileName, "png")}
+                title="Download as PNG"
+                type="button"
+            >
+                <Download className="w-4 h-4 inline-block mr-1" />
+                <span className="text-xs">PNG</span>
+            </button>
+        </div>
+    ), [handleDownloadVisualization]);
+
     // Validate input
     if (!output) {
         return (
@@ -290,32 +474,35 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                 {/* VISUALIZATION TAB */}
                 {hasVisualizationContent && <TabsContent value="visualization" className="space-y-4">
 
-                    {/* PCA PROJECTION — full-width, shown first (only when variables > 2) */}
-                    {showPCAProjection && <Card className="col-span-full">
-                        <CardHeader>
-                            <CardTitle>PCA Projection</CardTitle>
-                            <CardDescription>
-                                Seluruh variabel direduksi ke 2D menggunakan PCA.
-                                Setiap titik diwarnai sesuai klasternya; bintang (★) menandai medoid.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {output.assignments.length > MAX_DISPLAY_POINTS && (
-                                <p className="text-xs text-muted-foreground mb-2">
-                                    Menampilkan sampel {MAX_DISPLAY_POINTS} dari {output.assignments.length} observasi (proporsi per klaster).
-                                </p>
-                            )}
-                            <PCAClusterPlot
-                                points={pcaPoints}
-                                medoids={pcaMedoids}
-                                variableNames={effectiveVariables.map(v => v.label || v.name)}
-                                title="PCA Projection of K-Medoids Clusters"
-                                height={460}
-                            />
-                        </CardContent>
-                    </Card>}
-
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* PCA Projection */}
+                        {showPCAProjection && <Card>
+                            <CardHeader>
+                                <CardTitle>PCA Projection</CardTitle>
+                                <CardDescription>
+                                    Seluruh variabel direduksi ke 2D menggunakan PCA.
+                                    Setiap titik diwarnai sesuai klasternya; bintang (★) menandai medoid.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {renderDownloadActions(pcaChartRef, "pca-projection")}
+                                {output.assignments.length > MAX_DISPLAY_POINTS && (
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                        Menampilkan sampel {MAX_DISPLAY_POINTS} dari {output.assignments.length} observasi (proporsi per klaster).
+                                    </p>
+                                )}
+                                <div ref={pcaChartRef}>
+                                    <PCAClusterPlot
+                                        points={pcaPoints}
+                                        medoids={pcaMedoids}
+                                        variableNames={effectiveVariables.map(v => v.label || v.name)}
+                                        title="PCA Projection of K-Medoids Clusters"
+                                        height={420}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>}
+
                         {/* Scatter Plot */}
                         {showClusterScatterPlot && <Card>
                             <CardHeader>
@@ -325,6 +512,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
+                                {renderDownloadActions(scatterChartRef, "cluster-scatter-plot")}
                                 {/* Variable selectors */}
                                 <div className="flex gap-2 mb-4">
                                     <select
@@ -354,15 +542,17 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                     </p>
                                 )}
                                 {/* Cluster Scatter Plot */}
-                                <ClusterScatterPlot
-                                    points={scatterPoints}
-                                    medoids={scatterMedoids}
-                                    xLabel={effectiveVariables.find(v => v.name === selectedXVar)?.label || selectedXVar}
-                                    yLabel={effectiveVariables.find(v => v.name === selectedYVar)?.label || selectedYVar}
-                                    title="K-Medoids Cluster Visualization"
-                                    subtitle={`${output.summary.numClusters} cluster(s) — ${output.assignments.length} observations`}
-                                    height={420}
-                                />
+                                <div ref={scatterChartRef}>
+                                    <ClusterScatterPlot
+                                        points={scatterPoints}
+                                        medoids={scatterMedoids}
+                                        xLabel={effectiveVariables.find(v => v.name === selectedXVar)?.label || selectedXVar}
+                                        yLabel={effectiveVariables.find(v => v.name === selectedYVar)?.label || selectedYVar}
+                                        title="K-Medoids Cluster Visualization"
+                                        subtitle={`${output.summary.numClusters} cluster(s) — ${output.assignments.length} observations`}
+                                        height={420}
+                                    />
+                                </div>
                             </CardContent>
                         </Card>}
 
@@ -375,11 +565,14 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <ClusterSizeDistribution
-                                    profiles={output.clusterProfiles}
-                                    width={480}
-                                    height={400}
-                                />
+                                {renderDownloadActions(sizeDistChartRef, "cluster-size-distribution")}
+                                <div ref={sizeDistChartRef}>
+                                    <ClusterSizeDistribution
+                                        profiles={output.clusterProfiles}
+                                        width={480}
+                                        height={400}
+                                    />
+                                </div>
                             </CardContent>
                         </Card>}
 
@@ -392,14 +585,17 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
+                                {renderDownloadActions(radarChartRef, "profil-atribut-klaster")}
                                 <div className="flex items-center justify-center">
                                     {effectiveVariables.length >= 2 ? (
-                                        <KMedoidsRadarChart
-                                            output={output}
-                                            variables={effectiveVariables}
-                                            width={520}
-                                            height={480}
-                                        />
+                                        <div ref={radarChartRef}>
+                                            <KMedoidsRadarChart
+                                                output={output}
+                                                variables={effectiveVariables}
+                                                width={520}
+                                                height={480}
+                                            />
+                                        </div>
                                     ) : (
                                         <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground">
                                             Radar chart membutuhkan minimal 2 variabel.
@@ -411,7 +607,12 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
 
                         {/* Distance Matrix */}
                         {showDistanceMatrixBetweenMedoids && <div>
-                            <DistanceMatrixHeatmap matrix={output.medoidDistanceMatrix} />
+                            <div ref={distanceMatrixRef}>
+                                <DistanceMatrixHeatmap
+                                    matrix={output.medoidDistanceMatrix}
+                                    actions={renderDownloadActions(distanceMatrixRef, "distance-matrix-between-medoids")}
+                                />
+                            </div>
                         </div>}
                     </div>
                 </TabsContent>}
@@ -432,7 +633,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <DataTableRenderer data={medoidsTableJson} />
+                            <DataTableRenderer data={medoidsTableJson} align="left" />
                         </CardContent>
                     </Card>}
 
@@ -445,12 +646,12 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-                                <span>
+                            <div className="mb-3 flex flex-col items-center gap-2 text-xs text-muted-foreground">
+                                <span className="text-center">
                                     Rows {totalAssignmentsRows === 0 ? 0 : (currentAssignmentsPage - 1) * ASSIGNMENTS_PAGE_SIZE + 1}
                                     -{Math.min(currentAssignmentsPage * ASSIGNMENTS_PAGE_SIZE, totalAssignmentsRows)} of {totalAssignmentsRows}
                                 </span>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-center gap-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -493,11 +694,14 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <SilhouettePerObjectChart
-                                    assignments={output.assignments}
-                                    overall={output.silhouetteScores?.overall ?? 0}
-                                    width={520}
-                                />
+                                {renderDownloadActions(silhouetteObjRef, "silhouette-score-per-objek")}
+                                <div ref={silhouetteObjRef}>
+                                    <SilhouettePerObjectChart
+                                        assignments={output.assignments}
+                                        overall={output.silhouetteScores?.overall ?? 0}
+                                        width={520}
+                                    />
+                                </div>
                             </CardContent>
                         </Card>}
 
@@ -510,12 +714,15 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <SilhouetteBarChart
-                                    perCluster={output.silhouetteScores?.perCluster ?? []}
-                                    overall={output.silhouetteScores?.overall ?? 0}
-                                    width={520}
-                                    height={Math.max(300, (output.silhouetteScores?.perCluster?.length ?? 1) * 90 + 88)}
-                                />
+                                {renderDownloadActions(silhouetteClusterRef, "silhouette-scores-by-cluster")}
+                                <div ref={silhouetteClusterRef}>
+                                    <SilhouetteBarChart
+                                        perCluster={output.silhouetteScores?.perCluster ?? []}
+                                        overall={output.silhouetteScores?.overall ?? 0}
+                                        width={520}
+                                        height={Math.max(300, (output.silhouetteScores?.perCluster?.length ?? 1) * 90 + 88)}
+                                    />
+                                </div>
                             </CardContent>
                         </Card>}
 
@@ -602,12 +809,15 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <ConvergenceChart
-                                        data={output.iterationHistory}
-                                        converged={output.summary.converged}
-                                        width={580}
-                                        height={340}
-                                    />
+                                    {renderDownloadActions(convergenceChartRef, "grafik-konvergensi")}
+                                    <div ref={convergenceChartRef}>
+                                        <ConvergenceChart
+                                            data={output.iterationHistory}
+                                            converged={output.summary.converged}
+                                            width={580}
+                                            height={340}
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         )}

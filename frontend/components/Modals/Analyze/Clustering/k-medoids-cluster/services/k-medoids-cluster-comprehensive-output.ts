@@ -9,6 +9,8 @@ interface ClusteringResult {
     labels: number[];
     medoids: number[];
     cost: number;
+    avgCost?: number;
+    avg_cost?: number;
     total_cost_build?: number;
     total_cost_swap?: number;
     iterations: number;
@@ -431,6 +433,14 @@ export async function generateComprehensiveKMedoidsOutput(
             ? result.cost
             : 0;
 
+        const avgCost: number = typeof result.avgCost === "number"
+            ? result.avgCost
+            : typeof result.avg_cost === "number"
+            ? result.avg_cost
+            : n > 0
+            ? swapCost / n
+            : 0;
+
         // Prefer explicit iteration count, but infer from history when absent.
         // History shape is [init, iter1, iter2, ...], so subtract 1 for swap iterations.
         const inferredIterations = Array.isArray(result.cost_history) && result.cost_history.length > 0
@@ -447,6 +457,7 @@ export async function generateComprehensiveKMedoidsOutput(
         const summary: KMedoidsSummary = {
             numClusters: k,
             totalCost: swapCost,
+            avgCost,
             buildCost,
             swapCost,
             convergenceTolerance:
@@ -734,6 +745,8 @@ export async function generateComprehensiveKMedoidsOutput(
             rows: [
                 { rowHeader: [], Metric: "Number of Clusters", Value: k.toString() },
                 { rowHeader: [], Metric: "Total Cases", Value: n.toString() },
+                { rowHeader: [], Metric: "Average Cost (BUILD)", Value: buildCost != null && n > 0 ? (buildCost / n).toFixed(6) : "N/A" },
+                { rowHeader: [], Metric: "Average Cost (Objective)", Value: avgCost.toFixed(6) },
                 { rowHeader: [], Metric: "Total Cost (BUILD)", Value: buildCost != null ? buildCost.toFixed(4) : "N/A" },
                 { rowHeader: [], Metric: "Total Cost (SWAP)", Value: swapCost.toFixed(4) },
                 { rowHeader: [], Metric: "Average Silhouette Score", Value: averageSilhouette.toFixed(4) },

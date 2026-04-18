@@ -144,6 +144,11 @@ fn run_pam_clustering(
         medoids,
         distances_to_medoids,
         total_distance: result.total_cost,
+        avg_cost: if input.data.is_empty() {
+            0.0
+        } else {
+            result.total_cost / input.data.len() as f64
+        },
         total_cost_build: result.total_cost_build,
         total_cost_swap: result.total_cost_swap,
         iterations: result.iterations,
@@ -202,6 +207,11 @@ fn run_clara_clustering(
         medoids,
         distances_to_medoids,
         total_distance: result.total_cost,
+        avg_cost: if input.data.is_empty() {
+            0.0
+        } else {
+            result.total_cost / input.data.len() as f64
+        },
         total_cost_build: result.total_cost,
         total_cost_swap: result.total_cost,
         iterations: result.samples_tried,
@@ -248,6 +258,11 @@ fn run_clarans_clustering(
         medoids,
         distances_to_medoids,
         total_distance: result.total_cost,
+        avg_cost: if input.data.is_empty() {
+            0.0
+        } else {
+            result.total_cost / input.data.len() as f64
+        },
         total_cost_build: result.total_cost,
         total_cost_swap: result.total_cost,
         iterations: result.local_searches,
@@ -479,6 +494,14 @@ pub fn run_k_medoids_typed(
     set("total_cost_build",      &JsValue::from_f64(result.total_cost_build));
     set("total_cost_swap",       &JsValue::from_f64(result.total_cost_swap));
     set("total_distance",        &JsValue::from_f64(result.total_cost));
+    set(
+        "avg_cost",
+        &JsValue::from_f64(if n_rows == 0 {
+            0.0
+        } else {
+            result.total_cost / n_rows as f64
+        }),
+    );
     set("iterations",            &JsValue::from_f64(result.iterations as f64));
     set("converged",             &JsValue::from_bool(result.converged));
 

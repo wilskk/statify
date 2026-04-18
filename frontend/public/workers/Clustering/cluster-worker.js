@@ -320,10 +320,13 @@ async function runClustering(input, requestId) {
     const wcssScore = computeWCSS(resolvedData, labels, medoids);
     const rawDist = result.distances_to_medoids;
     const distances_to_medoids = rawDist instanceof Float64Array ? Array.from(rawDist) : Array.isArray(rawDist) && rawDist.length > 0 ? rawDist : void 0;
+    const totalCost = result.total_distance || result.total_cost || result.cost || 0;
+    const avgCost = typeof result.avg_cost === "number" ? result.avg_cost : typeof result.avgCost === "number" ? result.avgCost : labels.length > 0 ? totalCost / labels.length : 0;
     const mappedResult = {
       labels,
       medoids,
-      cost: result.total_distance || result.total_cost || result.cost || 0,
+      cost: totalCost,
+      avgCost,
       total_cost_build: result.total_cost_build ?? (Array.isArray(result.cost_history) && result.cost_history.length > 0 ? result.cost_history[0] : void 0),
       total_cost_swap: result.total_cost_swap ?? (Array.isArray(result.cost_history) && result.cost_history.length > 0 ? result.cost_history[result.cost_history.length - 1] : void 0),
       iterations: result.iterations || 0,

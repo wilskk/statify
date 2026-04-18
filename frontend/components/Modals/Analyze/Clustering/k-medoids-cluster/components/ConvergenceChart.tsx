@@ -24,6 +24,7 @@ export const ConvergenceChart: React.FC<ConvergenceChartProps> = ({
     height = 420,
 }) => {
     const svgRef = useRef<SVGSVGElement>(null);
+    const chartHeight = Math.max(height, 460);
 
     useEffect(() => {
         if (!svgRef.current || !data || data.length === 0) return;
@@ -32,9 +33,9 @@ export const ConvergenceChart: React.FC<ConvergenceChartProps> = ({
         svg.selectAll("*").remove();
 
         // ── Margins ──────────────────────────────────────────────────────────
-        const margin = { top: 36, right: 64, bottom: 60, left: 72 };
+        const margin = { top: 36, right: 64, bottom: 92, left: 72 };
         const innerW = width - margin.left - margin.right;
-        const innerH = height - margin.top - margin.bottom;
+        const innerH = chartHeight - margin.top - margin.bottom;
 
         // ── CSS tokens ────────────────────────────────────────────────────────
         const style = getComputedStyle(svgRef.current);
@@ -305,28 +306,27 @@ export const ConvergenceChart: React.FC<ConvergenceChartProps> = ({
 
         // ── Legend ────────────────────────────────────────────────────────────
         const legendG = svg.append("g")
-            .attr("transform", `translate(${margin.left + 8},${height - 14})`);
+            .attr("transform", `translate(${margin.left + 8},${chartHeight - 28})`);
 
         const items = [
             { color: costColor, dash: "none", label: "Total Cost" },
             { color: impColor,  dash: "7,4",  label: "Improvement" },
             ...(converged ? [{ color: convColor, dash: "5,4", label: "Converged" }] : []),
         ];
-        let lx = 0;
-        items.forEach(({ color, dash, label }) => {
+        items.forEach(({ color, dash, label }, idx) => {
+            const ly = idx * 18;
             legendG.append("line")
-                .attr("x1", lx).attr("x2", lx + 20)
-                .attr("y1", -5).attr("y2", -5)
+                .attr("x1", 0).attr("x2", 20)
+                .attr("y1", ly).attr("y2", ly)
                 .attr("stroke", color).attr("stroke-width", 2.5)
                 .attr("stroke-dasharray", dash);
             legendG.append("text")
-                .attr("x", lx + 25).attr("y", -1)
+                .attr("x", 25).attr("y", ly + 4)
                 .attr("font-size", "11").attr("fill", mutedColor)
                 .text(label);
-            lx += label.length * 7 + 36;
         });
 
-    }, [data, converged, width, height]);
+    }, [data, converged, width, chartHeight]);
 
     if (!data || data.length === 0) {
         return (
@@ -341,8 +341,8 @@ export const ConvergenceChart: React.FC<ConvergenceChartProps> = ({
             <svg
                 ref={svgRef}
                 width={width}
-                height={height}
-                viewBox={`0 0 ${width} ${height}`}
+                height={chartHeight}
+                viewBox={`0 0 ${width} ${chartHeight}`}
                 style={{ maxWidth: "100%", overflow: "visible" }}
             />
         </div>

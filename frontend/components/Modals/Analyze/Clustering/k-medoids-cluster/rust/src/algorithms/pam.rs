@@ -13,6 +13,27 @@ use ndarray::Array2;
 #[cfg(target_arch = "wasm32")]
 use web_sys::console;
 
+/// Numeric tolerance for distance comparisons in SWAP-phase logic.
+///
+/// This tolerance is intentionally separate from `config.epsilon` (convergence
+/// threshold) because equality/tie checks need a much smaller, stable value.
+const DIST_TIE_EPS: f64 = 1e-12;
+
+#[cfg(target_arch = "wasm32")]
+fn pam_debug_enabled() -> bool {
+    // Toggle from JS with: globalThis.__PAM_DEBUG__ = true
+    let g = js_sys::global();
+    js_sys::Reflect::get(&g, &wasm_bindgen::JsValue::from_str("__PAM_DEBUG__"))
+        .ok()
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn pam_debug_enabled() -> bool {
+    false
+}
+
 /// Konfigurasi algoritma PAM
 #[derive(Debug, Clone)]
 pub struct PAMConfig {
@@ -679,13 +700,23 @@ fn compute_nearest_and_second(
     for j in 0..n {
         for (m_pos, &m_idx) in medoids.iter().enumerate() {
             let d = dist[[j, m_idx]];
-            if d < d_nearest[j] {
+            // Epsilon-aware comparisons are required to keep tie handling stable
+            // when distances are numerically almost equal.
+            if d + DIST_TIE_EPS < d_nearest[j] {
                 d_second[j] = d_nearest[j];
                 d_nearest[j] = d;
                 nearest_pos[j] = m_pos;
-            } else if d < d_second[j] {
+            } else if m_pos != nearest_pos[j] && d <= d_second[j] + DIST_TIE_EPS {
+                // Keep the second-nearest from a different medoid position.
+                // In exact/near ties this correctly allows E_j == D_j.
                 d_second[j] = d;
             }
+        }
+
+        // Degenerate fallback: if k==1 second stays INF, but PAM swap is used
+        // with k>=2. Keep it safe for malformed states.
+        if !d_second[j].is_finite() {
+            d_second[j] = d_nearest[j];
         }
     }
 
@@ -704,6 +735,7 @@ fn compute_nearest_and_second(
 #[inline]
 fn evaluate_swap_delta_exact(
     dist: &Array2<f64>,
+    medoids: &[usize],
     n: usize,
     remove_pos: usize,
     candidate: usize,
@@ -712,18 +744,54 @@ fn evaluate_swap_delta_exact(
     nearest_pos: &[usize],
 ) -> f64 {
     let mut t_ih = 0.0_f64;
+    let debug = pam_debug_enabled();
 
     for j in 0..n {
         let d_jh = dist[[j, candidate]];
         let d_j = d_nearest[j];
+        let d_ji = dist[[j, medoids[remove_pos]]];
 
-        let c_jih = if nearest_pos[j] == remove_pos {
+        // IMPORTANT: use epsilon-aware comparison for "d(j,i) = D_j".
+        // nearest_pos alone is insufficient under ties because a medoid can be
+        // equally-nearest without being selected as the canonical nearest index.
+        let removed_is_nearest = d_ji <= d_j + DIST_TIE_EPS;
+
+        let c_jih = if removed_is_nearest {
             d_jh.min(d_second[j]) - d_j
         } else {
             d_jh.min(d_j) - d_j
         };
 
+        if debug {
+            #[cfg(target_arch = "wasm32")]
+            console::log_1(
+                &format!(
+                    "[PAM DEBUG] j={} remove_pos={} nearest_pos={} D_j={:.12} E_j={:.12} d(j,i)={:.12} d(j,h)={:.12} C_jih={:.12}",
+                    j,
+                    remove_pos,
+                    nearest_pos[j],
+                    d_j,
+                    d_second[j],
+                    d_ji,
+                    d_jh,
+                    c_jih,
+                )
+                .into(),
+            );
+        }
+
         t_ih += c_jih;
+    }
+
+    if debug {
+        #[cfg(target_arch = "wasm32")]
+        console::log_1(
+            &format!(
+                "[PAM DEBUG] T_ih(remove_pos={}, candidate={}) = {:.12}",
+                remove_pos, candidate, t_ih
+            )
+            .into(),
+        );
     }
 
     t_ih
@@ -753,6 +821,7 @@ fn find_best_swap(dist: &Array2<f64>, medoids: &[usize], n: usize) -> (usize, us
 
             let delta = evaluate_swap_delta_exact(
                 dist,
+                medoids,
                 n,
                 remove_pos,
                 candidate,

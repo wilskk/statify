@@ -1,13 +1,10 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import DataTableRenderer from "@/components/Output/Table/DataTableRenderer";
 
-type ColumnHeader = { header: string; key?: string };
-type TableRow = { rowHeader?: (string | null)[];[key: string]: unknown };
 type TableData = {
     title?: string;
-    columnHeaders?: ColumnHeader[];
-    rows?: TableRow[];
+    columnHeaders?: Array<{ header: string; key?: string; children?: unknown[] }>;
+    rows?: Array<{ rowHeader?: (string | null)[]; [key: string]: unknown }>;
     note?: string;
 };
 
@@ -25,115 +22,11 @@ const CaseProcessingSummary: React.FC<CaseProcessingSummaryProps> = ({ data }) =
     }
 
     const table = parsed?.tables?.[0];
-    const headers = table?.columnHeaders ?? [];
-    const rows = table?.rows ?? [];
-
-    if (!headers.length) {
+    if (!table?.columnHeaders?.length) {
         return <div className="text-destructive">Case Processing Summary has no headers</div>;
     }
 
-    const colKeys = headers.map((h) => h.key || h.header);
-
-    const displayHeader = (header: string): string => {
-        if (/percent/i.test(header)) return "Marginal Percentage";
-        return header;
-    };
-
-    const shouldRenderFirstHeader = (rowIndex: number): boolean => {
-        const current = rows[rowIndex]?.rowHeader?.[0] ?? "";
-        if (current === "Overall") return true;
-        if (rowIndex === 0) return true;
-        const prev = rows[rowIndex - 1]?.rowHeader?.[0] ?? "";
-        return current !== prev;
-    };
-
-    const getRowSpanForFirstHeader = (startIndex: number): number => {
-        const startValue = rows[startIndex]?.rowHeader?.[0] ?? "";
-        if (!startValue || startValue === "Overall") return 1;
-
-        let span = 1;
-        for (let i = startIndex + 1; i < rows.length; i += 1) {
-            const nextValue = rows[i]?.rowHeader?.[0] ?? "";
-            if (nextValue !== startValue || nextValue === "Overall") break;
-            span += 1;
-        }
-        return span;
-    };
-
-    const getFirstLabel = (row: TableRow): string => {
-        const first = row.rowHeader?.[0] ?? "";
-        const second = row.rowHeader?.[1] ?? "";
-        return first === "Overall" ? second : first;
-    };
-
-    const getSecondLabel = (row: TableRow): string => {
-        const first = row.rowHeader?.[0] ?? "";
-        const second = row.rowHeader?.[1] ?? "";
-        return first === "Overall" ? "" : second;
-    };
-
-    return (
-        <Card className="border-border shadow-none">
-            <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-foreground">
-                    {table?.title || "Case Processing Summary"}
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-                <div className="w-fit max-w-full overflow-auto">
-                    <Table className="w-max border-collapse text-sm">
-                        <TableHeader>
-                            <TableRow className="border-b border-border bg-muted/40 hover:bg-muted/40">
-                                <TableHead className="w-44 whitespace-nowrap text-left font-medium text-muted-foreground" colSpan={2}>
-                                    &nbsp;
-                                </TableHead>
-                                {headers.map((h) => (
-                                    <TableHead
-                                        key={h.key || h.header}
-                                        className="whitespace-nowrap text-center font-medium text-muted-foreground"
-                                    >
-                                        {displayHeader(h.header)}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rows.map((row, idx) => {
-                                const renderFirstHeader = shouldRenderFirstHeader(idx);
-                                const firstHeaderRowSpan = renderFirstHeader ? getRowSpanForFirstHeader(idx) : 0;
-
-                                return (
-                                    <TableRow key={idx} className="border-b border-border hover:bg-transparent">
-                                        {renderFirstHeader ? (
-                                            <TableCell
-                                                rowSpan={firstHeaderRowSpan}
-                                                className="whitespace-nowrap bg-muted/40 text-left align-middle font-medium text-foreground"
-                                            >
-                                                {getFirstLabel(row)}
-                                            </TableCell>
-                                        ) : null}
-                                        <TableCell className="whitespace-nowrap bg-muted/40 text-left font-medium text-foreground">
-                                            {getSecondLabel(row)}
-                                        </TableCell>
-                                        {colKeys.map((k) => (
-                                            <TableCell key={`${idx}-${k}`} className="whitespace-nowrap text-center">
-                                                {String(row[k] ?? "")}
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </div>
-                {table?.note ? (
-                    <div className="px-6 py-3 text-xs leading-5 text-muted-foreground">
-                        {table.note}
-                    </div>
-                ) : null}
-            </CardContent>
-        </Card>
-    );
+    return <DataTableRenderer data={JSON.stringify({ tables: [table] })} align="left" />;
 };
 
 export default CaseProcessingSummary;

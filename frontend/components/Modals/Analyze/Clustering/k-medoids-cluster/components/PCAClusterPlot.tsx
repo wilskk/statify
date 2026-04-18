@@ -399,9 +399,9 @@ export const PCAClusterPlot: React.FC<PCAClusterPlotProps> = ({
             .attr("transform", d =>
                 `translate(${xScale(d.proj[0])},${yScale(d.proj[1])})`
             )
-            .attr("fill", d => colorMap.get(d.src.cluster) ?? "#888")
-            .attr("stroke", "hsl(var(--background))")
-            .attr("stroke-width", 1.5)
+            .attr("fill", "#fbbf24")
+            .attr("stroke", "#78350f")
+            .attr("stroke-width", 1.8)
             .attr("filter", "drop-shadow(0 1px 3px rgba(0,0,0,.4))")
             .style("cursor", "pointer")
             .on("mouseover", function (event, d) {
@@ -465,10 +465,9 @@ export const PCAClusterPlot: React.FC<PCAClusterPlotProps> = ({
         lg.append("path")
             .attr("d", STAR_D)
             .attr("transform", `translate(7,${mly + 4}) scale(0.85)`)
-            .attr("fill", "hsl(var(--foreground))")
-            .attr("fill-opacity", 0.6)
-            .attr("stroke", "hsl(var(--background))")
-            .attr("stroke-width", 1);
+            .attr("fill", "#fbbf24")
+            .attr("stroke", "#78350f")
+            .attr("stroke-width", 1.4);
         lg.append("text")
             .attr("x", 18).attr("y", mly + 8)
             .attr("font-size", "11px").attr("fill", "hsl(var(--foreground))")

@@ -62,6 +62,8 @@ export interface ClusteringResult {
     labels: number[];
     medoids: number[];
     cost: number;
+    /** Objective average cost: total cost / n. */
+    avgCost?: number;
     /** Total cost after BUILD phase (before any SWAP). */
     total_cost_build?: number;
     /** Total cost after SWAP phase (final). */
