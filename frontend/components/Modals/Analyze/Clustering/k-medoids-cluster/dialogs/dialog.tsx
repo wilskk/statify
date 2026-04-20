@@ -31,6 +31,7 @@ import {
     TooltipTrigger,
     TooltipContent,
 } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 export const KMedoidsClusterDialog = ({
     updateFormData,
@@ -66,23 +67,13 @@ export const KMedoidsClusterDialog = ({
         [setAvailableVars, setTargetVars, setCaseVars]
     );
 
+    const isNumericVariable = useCallback((variable: Variable) => {
+        return variable.type !== "STRING";
+    }, []);
+
     useEffect(() => {
         setMainState({ ...data });
-        const allVariables: Variable[] = globalVariables.map((name, index) => ({
-            name,
-            tempId: name,
-            label: name,
-            columnIndex: index,
-            type: "NUMERIC",
-            width: 8,
-            decimals: 2,
-            align: "left",
-            missing: null,
-            measure: "unknown",
-            role: "input",
-            values: [],
-            columns: 0,
-        }));
+        const allVariables: Variable[] = globalVariables;
 
         const initialUsedNames = new Set(
             [...(data.TargetVar || []), data.CaseTarget].filter(Boolean)
@@ -130,6 +121,11 @@ export const KMedoidsClusterDialog = ({
 
     const handleMoveVariable = useCallback(
         (variable: Variable, fromListId: string, toListId: string) => {
+            if (toListId === "TargetVar" && !isNumericVariable(variable)) {
+                toast.error("variabel harus bertipe numerik");
+                return;
+            }
+
             const fromSetter = listStateSetters[fromListId];
             const toSetter = listStateSetters[toListId];
             const toListConfig = targetListsConfig.find(
@@ -202,7 +198,7 @@ export const KMedoidsClusterDialog = ({
                 }
             });
         },
-        [listStateSetters, targetListsConfig, setAvailableVars]
+        [isNumericVariable, listStateSetters, targetListsConfig, setAvailableVars]
     );
 
     const handleReorderVariable = useCallback(

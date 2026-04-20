@@ -575,20 +575,16 @@ export async function analyzeKMedoidsCluster({
             preprocessing: useStandardization ? "RemoveRow + Z-score" : "RemoveRow",
         });
         
-        // Fixed clustering setup per requested parity:
-        // PAM, Euclidean, k=2, seed=123.
+        // Keep method/distance defaults aligned with current UI behavior.
         const method: ClusteringMethod = "PAM";
         const distanceMetric: DistanceMetric = "euclidean";
         
         // Check if automatic k selection is enabled
-        const isAutomatic = false;
-        if (configData.main.ClusterMode === ClusterMode.Automatic) {
-            console.warn("Automatic k mode ignored: using fixed k=2 for R-parity PAM run.");
-        }
+        const isAutomatic = configData.main.ClusterMode === ClusterMode.Automatic;
         
         if (!isAutomatic) {
             // Validate manual k
-            const manualK = 2;
+            const manualK = configData.main.Cluster ?? 2;
             if (manualK > dataMatrix.length) {
                 throw new Error(
                     `Number of clusters (k=${manualK}) cannot exceed number of valid data points (n=${dataMatrix.length}). ` +
@@ -773,7 +769,8 @@ export async function analyzeKMedoidsCluster({
                 analysisResult,
                 processedDataRows,
                 variables,
-                caseLabelColumnIndex
+                caseLabelColumnIndex,
+                finalMatrix
             );
             
             return analysisResult;
@@ -781,10 +778,11 @@ export async function analyzeKMedoidsCluster({
         } else {
             // ========== MANUAL K SELECTION ==========
             console.log("📊 Running clustering with manual k...");
+            const manualK = configData.main.Cluster ?? 2;
             
             const clusteringInput: ClusteringInput = {
                 data: finalMatrix,
-                n_clusters: 2,
+                n_clusters: manualK,
                 method: method,
                 max_iterations: configData.iterate.MaximumIterations || 100,
                 distance_metric: distanceMetric,

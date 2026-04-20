@@ -142,9 +142,35 @@ async function initializeWasm(wasmPath?: string, requestId?: number): Promise<vo
     try {
         // Import WASM module dynamically
         const wasmImport = await import("@/public/workers/Clustering/K-Medoids/wasm");
-        
-        // Initialize WASM
-        await wasmImport.default();
+
+        // Initialize WASM using explicit public path first. This avoids
+        // brittle relative URL resolution when worker chunks are relocated.
+        const initCandidates: (string | undefined)[] = [
+            wasmPath,
+            "/workers/Clustering/K-Medoids/wasm_bg.wasm",
+            undefined,
+        ];
+        let initialized = false;
+        let lastInitError: unknown = null;
+
+        for (const candidate of initCandidates) {
+            if (initialized) break;
+            try {
+                await wasmImport.default(candidate as any);
+                initialized = true;
+            } catch (initError) {
+                lastInitError = initError;
+                if (candidate) {
+                    console.warn(`[Worker] WASM init failed for path: ${candidate}`, initError);
+                } else {
+                    console.warn("[Worker] WASM init failed using module-relative fallback", initError);
+                }
+            }
+        }
+
+        if (!initialized) {
+            throw lastInitError ?? new Error("Unable to initialize WASM module");
+        }
         wasmModule = wasmImport;
         wasmInitialized = true;
 

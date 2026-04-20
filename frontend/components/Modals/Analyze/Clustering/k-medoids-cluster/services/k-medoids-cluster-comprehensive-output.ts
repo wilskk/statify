@@ -3,7 +3,7 @@ import { useResultStore } from "@/stores/useResultStore";
 import type { Table } from "@/types/Table";
 import type { Variable } from "@/types/Variable";
 import type { KMedoidsOutput, KMedoidsSummary, ObjectAssignment, MedoidInfo, ClusterProfile, IterationHistory, MedoidDistanceMatrix, SilhouetteClusterScore } from "../types/output";
-import { buildCaseProcessingSummary } from "./k-medoids-cluster-guards";
+import { buildCaseProcessingSummary, recoverMedoidsFromMismatch } from "./k-medoids-cluster-guards";
 
 interface ClusteringResult {
     labels: number[];
@@ -266,23 +266,37 @@ export async function generateComprehensiveKMedoidsOutput(
         const origToFiltered = new Array(nTotal).fill(-1);
         validRowIndices.forEach((origIdx, filtIdx) => { origToFiltered[origIdx] = filtIdx; });
 
-        // Clamp result.medoids to the first k entries so all subsequent code
-        // works with exactly k medoid indices regardless of what WASM returned.
+        // Re-map labels early (needed by medoid recovery logic below).
+        const safeLabels: number[] = result.labels.map(l =>
+            (typeof l === 'number' && l >= 0 && l < k) ? l : 0
+        );
+
+        // Clamp result.medoids to the first k entries and recover if invalid.
         // safeMedoids[j] is an index into the FILTERED matrix (0..n-1).
-        const safeMedoids: number[] = result.medoids.slice(0, k);
+        const rawMedoids = Array.isArray(result.medoids) ? result.medoids : [];
+        const slicedMedoids = rawMedoids.slice(0, k);
+        const hasInvalidMedoid = slicedMedoids.some(
+            (m) => !Number.isInteger(m) || m < 0 || m >= n
+        );
+        const hasDuplicateMedoid = new Set(slicedMedoids).size !== slicedMedoids.length;
+        const hasMissingMedoid = slicedMedoids.length < k;
+
+        const safeMedoids: number[] =
+            hasInvalidMedoid || hasDuplicateMedoid || hasMissingMedoid
+                ? (() => {
+                      console.warn(
+                          `[ComprehensiveOutput] Invalid medoid set detected ` +
+                          `(len=${slicedMedoids.length}, unique=${new Set(slicedMedoids).size}, k=${k}). Recovering medoids from labels.`
+                      );
+                      return recoverMedoidsFromMismatch(slicedMedoids, safeLabels, k, n);
+                  })()
+                : slicedMedoids;
 
         // Map WASM medoid indices (filtered) → original row indices.
         // This is what matches R's id.med output (1-based case numbers).
         const safeMedoidsOrig: number[] = safeMedoids.map(fi => validRowIndices[fi] ?? fi);
 
-        // Re-map labels: values returned by the (potentially stale) WASM may
-        // already be in 0..(k-1), but if the stale BUILD phase caused n-many
-        // "medoids" then compute_assignments only examined the first k of them,
-        // so label values are still in 0..(k-1).  Clamp for safety.
         // safeLabels[i] is the cluster for the i-th VALID row (filtIdx i).
-        const safeLabels: number[] = result.labels.map(l =>
-            (typeof l === 'number' && l >= 0 && l < k) ? l : 0
-        );
 
         // Build data matrix aligned with safeLabels (valid rows only, same order as WASM input).
         const dataMatrix = validRowIndices.map((origIdx: number) =>
@@ -630,6 +644,21 @@ export async function generateComprehensiveKMedoidsOutput(
         await yieldToUI();
 
         // Build comprehensive output
+        const resolvedOptimalKMethod: "silhouette" | "elbow" | undefined = automaticKSelection
+            ? (
+                automaticKSelection.method === "Silhouette" ||
+                automaticKSelection.method === "silhouette"
+                    ? "silhouette"
+                    : "elbow"
+            )
+            : config?.main?.ClusterMode === "automatic"
+            ? (
+                config?.main?.AutoKMethod === "elbow"
+                    ? "elbow"
+                    : "silhouette"
+            )
+            : undefined;
+
         const comprehensiveOutput: KMedoidsOutput = {
             summary,
             assignments,
@@ -637,6 +666,7 @@ export async function generateComprehensiveKMedoidsOutput(
             clusterProfiles,
             iterationHistory,
             elbowData,
+            optimalKMethod: resolvedOptimalKMethod,
             medoidDistanceMatrix,
             silhouetteScores: {
                 overall: isFinite(averageSilhouette) ? averageSilhouette : 0,
@@ -654,6 +684,10 @@ export async function generateComprehensiveKMedoidsOutput(
                 showObjectAssignments: config?.options?.ShowObjectAssignments ?? false,
                 showSilhouettePerObject: config?.evaluation?.ShowSilhouettePlot ?? false,
                 showSilhouetteByCluster: config?.evaluation?.ShowSilhouetteByCluster ?? true,
+                // For automatic k mode, always expose the optimal-k chart when score data exists.
+                showOptimalKChart:
+                    (config?.evaluation?.ShowOptimalKChart ?? false) ||
+                    Boolean(automaticKSelection && elbowData && elbowData.length > 0),
                 showOverallQualityAssessment: config?.evaluation?.ShowOverallQualityAssessment ?? true,
                 showConvergenceAlgorithm: config?.results?.ShowConvergenceAlgorithm ?? true,
             },
@@ -782,15 +816,25 @@ export async function generateComprehensiveKMedoidsOutput(
         });
 
         // Medoids table
+        const medoidStandardizedValues = useStandardization
+            ? medoids.flatMap((medoid) =>
+                  variables.map((v) => medoid.standardizedAttributes?.[v.name] ?? 0)
+              )
+            : [];
+        const allMedoidZScoresNearZero =
+            useStandardization &&
+            medoidStandardizedValues.length > 0 &&
+            medoidStandardizedValues.every((v) => Math.abs(v) < 1e-9);
+
         allTables.push({
             key: "medoids",
             title: useStandardization
                 ? "Final Medoids (Standardized Z-score)"
                 : "Final Medoids (Original Scale)",
             columnHeaders: [
-                { header: "Cluster" },
-                { header: "Medoid ID" },
-                ...variables.map(v => ({ header: v.label || v.name }))
+                { header: "Cluster", key: "Cluster" },
+                { header: "Medoid ID", key: "MedoidID" },
+                ...variables.map(v => ({ header: v.label || v.name, key: v.name }))
             ],
             rows: medoids.map(medoid => ({
                 rowHeader: [],
@@ -813,7 +857,13 @@ export async function generateComprehensiveKMedoidsOutput(
                         return [v.name, String(originalValue ?? "-")];
                     })
                 )
-            }))
+            })),
+            ...(allMedoidZScoresNearZero
+                ? {
+                      footer:
+                          "Semua nilai Z-score medoid ~0. Ini biasanya terjadi ketika variabel yang dipakai memiliki variansi sangat kecil/konstan pada data valid setelah preprocessing.",
+                  }
+                : {}),
         });
 
         comprehensiveOutput.tables = allTables;

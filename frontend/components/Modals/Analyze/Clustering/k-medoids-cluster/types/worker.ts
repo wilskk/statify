@@ -230,7 +230,10 @@ export class ClusterWorker {
      * Initialize WASM module in worker
      */
     async init(wasmPath?: string): Promise<void> {
-        await this.sendMessage({ type: "init", wasmPath });
+        await this.sendMessage({
+            type: "init",
+            wasmPath: wasmPath ?? "/workers/Clustering/K-Medoids/wasm_bg.wasm",
+        });
     }
 
     /**

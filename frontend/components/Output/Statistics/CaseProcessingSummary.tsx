@@ -5,7 +5,7 @@ type TableData = {
     title?: string;
     columnHeaders?: Array<{ header: string; key?: string; children?: unknown[] }>;
     rows?: Array<{ rowHeader?: (string | null)[]; [key: string]: unknown }>;
-    note?: string;
+    note?: string | string[];
 };
 
 interface CaseProcessingSummaryProps {
@@ -26,7 +26,47 @@ const CaseProcessingSummary: React.FC<CaseProcessingSummaryProps> = ({ data }) =
         return <div className="text-destructive">Case Processing Summary has no headers</div>;
     }
 
-    return <DataTableRenderer data={JSON.stringify({ tables: [table] })} align="left" />;
+    // Normalize rows for DataTableRenderer:
+    // - Keep only true data rows in tbody
+    // - Move descriptive rows (a./b./c. notes) to footer
+    const sourceRows = table.rows ?? [];
+    const dataRows = sourceRows.filter((row) =>
+        Object.keys(row).some(
+            (k) =>
+                k !== "rowHeader" &&
+                row[k] !== null &&
+                row[k] !== undefined &&
+                String(row[k]).trim() !== ""
+        )
+    );
+
+    const noteRows = sourceRows
+        .filter((row) =>
+            !Object.keys(row).some(
+                (k) =>
+                    k !== "rowHeader" &&
+                    row[k] !== null &&
+                    row[k] !== undefined &&
+                    String(row[k]).trim() !== ""
+            )
+        )
+        .map((row) => (row.rowHeader ?? []).filter(Boolean).join(" ").trim())
+        .filter(Boolean);
+
+    const existingFooterLines =
+        typeof table.note === "string"
+            ? table.note.split("\n")
+            : Array.isArray(table.note)
+            ? table.note
+            : [];
+
+    const normalizedTable: TableData = {
+        ...table,
+        rows: dataRows.map((row) => ({ ...row, rowHeader: [] })),
+        footer: [...existingFooterLines, ...noteRows],
+    } as TableData & { footer?: string[] };
+
+    return <DataTableRenderer data={JSON.stringify({ tables: [normalizedTable] })} align="left" />;
 };
 
 export default CaseProcessingSummary;

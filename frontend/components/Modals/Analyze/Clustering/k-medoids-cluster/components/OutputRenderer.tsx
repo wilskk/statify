@@ -28,6 +28,7 @@ import { PCAClusterPlot } from "./PCAClusterPlot";
 import { ClusterSizeDistribution } from "./ClusterSizeDistribution";
 import { SilhouetteBarChart } from "./SilhouetteBarChart";
 import { SilhouettePerObjectChart } from "./SilhouettePerObjectChart";
+import { SilhouetteKChart } from "./SilhouetteKChart";
 import { ElbowChart } from "./ElbowChart";
 import { ConvergenceChart } from "./ConvergenceChart";
 import { IterationDetailsTable } from "./IterationDetailsTable";
@@ -103,6 +104,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
     const distanceMatrixRef = useRef<HTMLDivElement>(null);
     const silhouetteObjRef = useRef<HTMLDivElement>(null);
     const silhouetteClusterRef = useRef<HTMLDivElement>(null);
+    const optimalKChartRef = useRef<HTMLDivElement>(null);
     const convergenceChartRef = useRef<HTMLDivElement>(null);
 
     // Use variables from output if not provided as prop
@@ -132,10 +134,23 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         output?.visualizationOptions?.showSilhouettePerObject ?? false;
     const showSilhouetteByCluster =
         output?.visualizationOptions?.showSilhouetteByCluster ?? true;
+    const showOptimalKChart =
+        (output?.visualizationOptions?.showOptimalKChart ?? false) ||
+        Boolean(output?.elbowData && output.elbowData.length > 0);
+    const hasOptimalKChartData = Boolean(output?.elbowData && output.elbowData.length > 0);
+    const shouldShowOptimalKCard =
+        showOptimalKChart ||
+        hasOptimalKChartData ||
+        Boolean(output?.optimalKMethod);
     const showOverallQualityAssessment =
         output?.visualizationOptions?.showOverallQualityAssessment ?? true;
     const showConvergenceAlgorithm =
         output?.visualizationOptions?.showConvergenceAlgorithm ?? true;
+    const resolvedOptimalKMethod: "silhouette" | "elbow" =
+        output?.optimalKMethod ??
+        ((output?.elbowData?.some((point) => (point?.totalCost ?? 0) > 0) ?? false)
+            ? "elbow"
+            : "silhouette");
     const hasVisualizationContent =
         showPCAProjection ||
         showClusterScatterPlot ||
@@ -726,22 +741,48 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                             </CardContent>
                         </Card>}
 
-                        {/* Elbow Chart (if available) */}
-                        {output.elbowData && (
+                        {/* Optimal K Chart (if available) */}
+                        {shouldShowOptimalKCard && (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Elbow Method</CardTitle>
+                                    <CardTitle>Grafik K Optimal</CardTitle>
                                     <CardDescription>
-                                        Optimal K selection visualization
+                                        {resolvedOptimalKMethod === "elbow"
+                                            ? "Visualisasi pemilihan jumlah klaster terbaik menggunakan metode Elbow (berdasarkan total cost/inertia)."
+                                            : "Visualisasi pemilihan jumlah klaster terbaik berdasarkan skor silhouette per nilai K."}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <ElbowChart
-                                        data={output.elbowData}
-                                        currentK={output.summary.numClusters}
-                                        width={520}
-                                        height={400}
-                                    />
+                                    {hasOptimalKChartData ? (
+                                        <>
+                                            {renderDownloadActions(optimalKChartRef, "grafik-k-optimal")}
+                                            <div ref={optimalKChartRef}>
+                                                {resolvedOptimalKMethod === "elbow" ? (
+                                                    <ElbowChart
+                                                        data={output.elbowData!}
+                                                        currentK={output.summary.numClusters}
+                                                        method="elbow"
+                                                        width={560}
+                                                        height={380}
+                                                    />
+                                                ) : (
+                                                    <SilhouetteKChart
+                                                        data={(output.elbowData || []).map((point) => ({
+                                                            k: point.k,
+                                                            silhouetteScore: point.silhouetteScore,
+                                                        }))}
+                                                        currentK={output.summary.numClusters}
+                                                        width={560}
+                                                        height={380}
+                                                    />
+                                                )}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                                            Data grafik K optimal belum tersedia pada output ini. Jalankan ulang analisis K-Medoids mode automatic untuk menghasilkan data kurva silhouette/elbow.
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         )}

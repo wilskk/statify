@@ -1,4 +1,5 @@
 import type React from "react";
+import type { Variable } from "@/types/Variable";
 
 /**
  * ========================================
@@ -111,7 +112,7 @@ export type KMedoidsClusterDialogProps = {
         value: string[] | string | boolean | number | ClusterMode | AutoKMethod | DistanceMetric | null
     ) => void;
     data: KMedoidsClusterMainType;
-    globalVariables: string[];
+    globalVariables: Variable[];
 };
 
 /**

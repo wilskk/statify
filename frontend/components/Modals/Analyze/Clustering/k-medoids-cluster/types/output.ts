@@ -137,6 +137,9 @@ export interface KMedoidsOutput {
     
     // Elbow method (if automatic k)
     elbowData?: ElbowPoint[];
+
+    // Method used for automatic k selection
+    optimalKMethod?: "silhouette" | "elbow";
     
     // Distance matrix
     medoidDistanceMatrix: MedoidDistanceMatrix;
@@ -162,6 +165,7 @@ export interface KMedoidsOutput {
         showObjectAssignments: boolean;
         showSilhouettePerObject: boolean;
         showSilhouetteByCluster: boolean;
+        showOptimalKChart: boolean;
         showOverallQualityAssessment: boolean;
         showConvergenceAlgorithm: boolean;
     };
