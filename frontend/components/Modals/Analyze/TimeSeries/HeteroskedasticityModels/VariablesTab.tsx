@@ -26,10 +26,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
 }) => {
     const variableIdKeyToUse: keyof Variable = 'columnIndex';
 
-    // Save state to IndexedDB whenever selected variables change
     useEffect(() => {
         if (selectedVariables.length > 0) {
-            saveFormData("GARCH", { selectedVariables }, "variables");
+            saveFormData("HeteroskedasticityModels", { selectedVariables }, "variables");
         }
     }, [selectedVariables]);
 
@@ -45,7 +44,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             height: '100px',
             draggableItems: true,
             droppable: true,
-            maxItems: 1, // GARCH typically uses one variable
+            maxItems: 1,
         }
     ];
 
@@ -65,10 +64,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const moveToSelectedVariables = useCallback((variable: Variable, targetIndex?: number) => {
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setSelectedVariables(prev => {
-            const newSelected = targetIndex !== undefined 
+            const newSelected = targetIndex !== undefined
                 ? [...prev.slice(0, targetIndex), variable, ...prev.slice(targetIndex)]
                 : [...prev, variable];
-            return newSelected.slice(0, 1); // Keep only first variable for GARCH
+            return newSelected.slice(0, 1);
         });
     }, [setAvailableVariables, setSelectedVariables]);
 

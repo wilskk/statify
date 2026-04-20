@@ -62,35 +62,64 @@ export const useAnalyzeHook = (
                         const logId = await addLog({ log: logMsg });
                         const analyticId = await addAnalytic(logId, { title: `ARCH-LM Test`, note: `Lags=${lags}` });
 
-                        // Add statistic output
-                        // We reuse the existing HomoscedasticityTest component
-                        // It expects a JSON string with specific structure
-                        const outputData = {
-                            title: "Homoscedasticity Test (ARCH-LM)",
-                            description: `Test for ARCH effects in ${variable.name} (Lags: ${lags})`,
-                            isHomoscedastic: result.isHomoscedastic,
-                            tests: {
-                                archLM: {
-                                    testName: "ARCH-LM Test",
-                                    statistic: parseFloat(result.statistic),
-                                    pValue: parseFloat(result.pValue),
-                                    isHomoscedastic: result.isHomoscedastic,
-                                    df: lags
-                                }
+                        const n = residuals.length;
+                        const mean = residuals.reduce((a, b) => a + b, 0) / n;
+                        const variance = residuals.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+                        const stdDev = Math.sqrt(variance);
+                        const isHomo = result.isHomoscedastic;
+
+                        const tables = [
+                            {
+                                title: `ARCH-LM Test: ${variable.name} (Lags = ${lags})`,
+                                columnHeaders: [
+                                    { header: "Test", key: "test" },
+                                    { header: "LM Statistic", key: "stat" },
+                                    { header: "Prob. Chi-Square", key: "prob" },
+                                    { header: "Lags", key: "lags" },
+                                    { header: "Result", key: "result" }
+                                ],
+                                rows: [
+                                    {
+                                        test: "ARCH-LM Test",
+                                        stat: result.statistic,
+                                        prob: result.pValue,
+                                        lags: lags,
+                                        result: isHomo ? "Homoscedastic" : "Heteroscedastic (ARCH effects present)"
+                                    }
+                                ]
                             },
-                            residualStats: {
-                                count: residuals.length,
-                                mean: residuals.reduce((a,b)=>a+b,0)/residuals.length,
-                                stdDev: Math.sqrt(residuals.map(x=>x*x).reduce((a,b)=>a+b,0)/residuals.length - (residuals.reduce((a,b)=>a+b,0)/residuals.length)**2),
-                                min: Math.min(...residuals),
-                                max: Math.max(...residuals)
+                            {
+                                title: "Residual Statistics",
+                                columnHeaders: [
+                                    { header: "Statistic", key: "stat" },
+                                    { header: "Value", key: "val" }
+                                ],
+                                rows: [
+                                    { stat: "Count (N)", val: n },
+                                    { stat: "Mean", val: mean.toFixed(6) },
+                                    { stat: "Std. Deviation", val: stdDev.toFixed(6) },
+                                    { stat: "Minimum", val: Math.min(...residuals).toFixed(6) },
+                                    { stat: "Maximum", val: Math.max(...residuals).toFixed(6) }
+                                ]
+                            },
+                            {
+                                title: "Interpretation",
+                                columnHeaders: [
+                                    { header: "Component", key: "comp" },
+                                    { header: "Description", key: "desc" }
+                                ],
+                                rows: [
+                                    { comp: "H0 (Null Hypothesis)", desc: "No ARCH effects — residuals are homoscedastic" },
+                                    { comp: "Decision", desc: isHomo ? `Fail to reject H0 (p-value > 0.05). No significant ARCH effects detected.` : `Reject H0 (p-value < 0.05). Significant ARCH effects detected.` },
+                                    { comp: "Recommendation", desc: isHomo ? "Residuals appear homoscedastic. ARCH/GARCH modeling may not be necessary." : "Consider ARCH/GARCH models to capture volatility clustering in the residuals." }
+                                ]
                             }
-                        };
+                        ];
 
                         await addStatistic(analyticId, {
                             title: `ARCH-LM Test Output`,
-                            output_data: JSON.stringify(outputData),
-                            components: "HomoscedasticityTest", // Maps to component in Output/Statistics/index.tsx
+                            output_data: JSON.stringify({ tables, charts: [] }),
+                            components: "HomoscedasticityTest",
                             description: `Result of ARCH-LM Test`
                         });
 
