@@ -1,15 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-
-import type {
-  KNNDialogProps,
-  KNNMainType,
-} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
+import React, { useMemo, useState } from "react";
+import { Info } from "lucide-react";
+import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useVariableStore } from "@/stores/useVariableStore";
+import type { KNNDialogProps } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 
 import { useModal } from "@/hooks/useModal";
 import type { Variable } from "@/types/Variable";
@@ -20,16 +13,8 @@ import type { TargetListConfig } from "@/components/Common/VariableListManager";
 export const KNNDialog = ({
   updateFormData,
   data,
-  globalVariables,
+  externalErrors,
 }: KNNDialogProps) => {
-  const [mainState, setMainState] = useState<KNNMainType>({ ...data });
-
-  const [availableVars, setAvailableVars] = useState<Variable[]>([]);
-  const [featureVars, setFeatureVars] = useState<Variable[]>([]);
-  const [targetVar, setTargetVar] = useState<Variable[]>([]);
-  const [focalVars, setFocalVars] = useState<Variable[]>([]);
-  const [caseLabelVars, setCaseLabelVars] = useState<Variable[]>([]);
-
   const [highlightedVariable, setHighlightedVariable] = useState<{
     id: string;
     source: string;
@@ -37,125 +22,142 @@ export const KNNDialog = ({
 
   const { closeModal } = useModal();
 
-  useEffect(() => {
-    setMainState({ ...data });
-  }, [data]);
+  const variables = useVariableStore((state) => state.variables);
 
-  useEffect(() => {
-    const allVariables: Variable[] = globalVariables.map((name, index) => ({
-      name,
-      tempId: name,
-      label: name,
-      columnIndex: index,
-      type: "NUMERIC",
-      width: 8,
-      decimals: 2,
-      align: "left",
-      missing: null,
-      measure: "unknown",
-      role: "input",
-      values: [],
-      columns: 0,
-    }));
+  const allVariables = variables;
 
-    setAvailableVars(allVariables);
-  }, [globalVariables]);
+  const targetVar = data.TargetVar ? [data.TargetVar] : [];
+  const featureVars = data.FeatureVar || [];
+  const focalVars = data.FocalCaseIdenVar ? [data.FocalCaseIdenVar] : [];
+  const caseLabelVars = data.CaseIdenVar ? [data.CaseIdenVar] : [];
 
-  const listStateSetters: Record<
-    string,
-    React.Dispatch<React.SetStateAction<Variable[]>>
-  > = {
-    available: setAvailableVars,
-    TargetVar: setTargetVar,
-    FeatureVar: setFeatureVars,
-    FocalCaseIdenVar: setFocalVars,
-    CaseIdenVar: setCaseLabelVars,
-  };
+  const variableMap = useMemo(() => {
+    return new Map(allVariables.map((v) => [v.name, v]));
+  }, [allVariables]);
 
-  const handleReorderVariable = useCallback(
-    (listId: string, newVariables: Variable[]) => {
-      const setter = listStateSetters[listId];
-      if (setter) setter(newVariables);
-    },
-    [],
-  );
+  const availableVars = useMemo(() => {
+    const used = new Set([
+      data.TargetVar,
+      ...(data.FeatureVar || []),
+      data.FocalCaseIdenVar,
+      data.CaseIdenVar,
+    ]);
+
+    return allVariables.filter((v) => !used.has(v.name));
+  }, [allVariables, data]);
+
+  const isScale = (v: Variable) => v.measure === "scale";
+  const isCategorical = (v: Variable) =>
+    v.measure === "nominal" || v.measure === "ordinal";
 
   const handleMoveVariable = (
     variable: Variable,
     fromListId: string,
     toListId: string,
   ) => {
-    const fromSetter = listStateSetters[fromListId];
-    const toSetter = listStateSetters[toListId];
-
-    if (fromSetter) {
-      fromSetter((prev) => prev.filter((v) => v.name !== variable.name));
+    if (toListId === "TargetVar") {
+      updateFormData("TargetVar", variable.name);
     }
 
-    if (toSetter) {
-      if (toListId === "TargetVar") {
-        toSetter([variable]);
-      } else {
-        toSetter((prev) => [...prev, variable]);
+    if (toListId === "FeatureVar") {
+      if (!featureVars.includes(variable.name)) {
+        updateFormData("FeatureVar", [...featureVars, variable.name]);
       }
+    }
+
+    if (toListId === "FocalCaseIdenVar") {
+      updateFormData("FocalCaseIdenVar", variable.name);
+    }
+
+    if (toListId === "CaseIdenVar") {
+      updateFormData("CaseIdenVar", variable.name);
+    }
+
+    // =========================
+    // REMOVE
+    // =========================
+    if (fromListId === "FeatureVar") {
+      updateFormData(
+        "FeatureVar",
+        featureVars.filter((v) => v !== variable.name),
+      );
+    }
+
+    if (fromListId === "TargetVar") {
+      updateFormData("TargetVar", null);
+    }
+
+    if (fromListId === "FocalCaseIdenVar") {
+      updateFormData("FocalCaseIdenVar", null);
+    }
+
+    if (fromListId === "CaseIdenVar") {
+      updateFormData("CaseIdenVar", null);
     }
   };
 
-  useEffect(() => {
-    const newState: KNNMainType = {
-      ...mainState,
-      TargetVar: targetVar[0]?.name || null,
-      FeatureVar: featureVars.map((v) => v.name),
-      FocalCaseIdenVar: focalVars[0]?.name || null,
-      CaseIdenVar: caseLabelVars[0]?.name || null,
-    };
+  const handleReorderVariable = (listId: string, newVariables: Variable[]) => {
+    if (listId === "FeatureVar") {
+      updateFormData(
+        "FeatureVar",
+        newVariables.map((v) => v.name),
+      );
+    }
+  };
 
-    setMainState(newState);
+  const errors = externalErrors ?? [];
 
-    Object.entries(newState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNMainType, value);
-    });
-  }, [targetVar, featureVars, focalVars, caseLabelVars]);
+  const mapToVariables = (names: string[]) =>
+    names
+      .map((name) => variableMap.get(name))
+      .filter((v): v is Variable => Boolean(v));
 
   const targetListsConfig: TargetListConfig[] = useMemo(
     () => [
       {
         id: "TargetVar",
         title: "Target (Optional):",
-        variables: targetVar,
+        variables: mapToVariables(targetVar),
         maxItems: 1,
         height: "80px",
       },
       {
         id: "FeatureVar",
         title: "Features:",
-        variables: featureVars,
+        variables: mapToVariables(featureVars),
         height: "200px",
       },
       {
         id: "FocalCaseIdenVar",
         title: "Focal Case Identifier (Optional):",
-        variables: focalVars,
+        variables: mapToVariables(focalVars),
         maxItems: 1,
         height: "80px",
       },
       {
         id: "CaseIdenVar",
         title: "Case Label (Optional):",
-        variables: caseLabelVars,
+        variables: mapToVariables(caseLabelVars),
         maxItems: 1,
         height: "80px",
       },
     ],
-    [targetVar, featureVars, focalVars, caseLabelVars],
+    [targetVar, featureVars, focalVars, caseLabelVars, variableMap],
   );
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex-1 overflow-y-auto min-h-0 p-4">
+      <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-3">
+        <div className="flex items-start gap-2 rounded-md border bg-muted/50 p-3 text-sm">
+          <Info className="w-12 h-12 mt-0.5 text-blue-500" />
+          <p>
+            A target is required if you want to make predictions, select the number of nearest neighbors automatically, or select the number of features automatically.
+          </p>
+        </div>
+
         <ResizablePanelGroup
           direction="horizontal"
-          className="h-full min-h-[550px] w-full max-w-2xl rounded-lg border md:min-w-[200px]"
+          className="h-full min-h-[550px] w-full max-w-2xl rounded-lg border"
         >
           <ResizablePanel defaultSize={100}>
             <div className="p-2 h-full min-h-0">
@@ -169,7 +171,41 @@ export const KNNDialog = ({
                 onReorderVariable={handleReorderVariable}
                 showArrowButtons
                 availableListHeight="300px"
+                renderListFooter={(listId) => {
+                  if (listId !== "FeatureVar") return null;
+
+                  return (
+                    <div className="mt-2 px-1">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="normalize"
+                          checked={data.Normalize ?? false}
+                          onChange={(e) =>
+                            updateFormData("Normalize", e.target.checked)
+                          }
+                        />
+                        <label htmlFor="normalize" className="text-sm">
+                          Normalize scale features
+                        </label>
+                      </div>
+                    </div>
+                  );
+                }}
               />
+              <div className="mt-3 space-y-1">
+                {errors.map((err, i) => (
+                  <div key={i} className="text-xs text-red-500">
+                    {err}
+                  </div>
+                ))}
+
+                {errors.length === 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    Select variables for analysis.
+                  </div>
+                )}
+              </div>
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>

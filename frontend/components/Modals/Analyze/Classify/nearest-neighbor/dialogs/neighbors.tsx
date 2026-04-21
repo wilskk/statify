@@ -15,7 +15,12 @@ import type {
   KNNNeighborsType,
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 
-export const KNNNeighbors = ({ updateFormData, data }: KNNNeighborsProps) => {
+export const KNNNeighbors = ({
+  updateFormData,
+  data,
+  hasTarget,
+  targetType,
+}: KNNNeighborsProps) => {
   const [neighborsState, setNeighborsState] = useState<KNNNeighborsType>({
     ...data,
   });
@@ -24,9 +29,24 @@ export const KNNNeighbors = ({ updateFormData, data }: KNNNeighborsProps) => {
     setNeighborsState({ ...data });
   }, [data]);
 
+  useEffect(() => {
+    if (!hasTarget) {
+      handleChange("AutoSelection", false);
+      handleChange("Specify", true);
+      handleChange("Weight", false);
+    }
+  }, [hasTarget]);
+
+  useEffect(() => {
+    if (targetType !== "scale") {
+      handleChange("PredictionsMean", false);
+      handleChange("PredictionsMedian", false);
+    }
+  }, [targetType]);
+
   const handleChange = (
     field: keyof KNNNeighborsType,
-    value: CheckedState | number | boolean | string | null
+    value: CheckedState | number | boolean | string | null,
   ) => {
     setNeighborsState((prev) => ({
       ...prev,
@@ -128,6 +148,7 @@ export const KNNNeighbors = ({ updateFormData, data }: KNNNeighborsProps) => {
                         <RadioGroupItem
                           value="AutoSelection"
                           id="AutoSelection"
+                          disabled={!hasTarget}
                         />
                         <Label htmlFor="AutoSelection">
                           Automatically Select K
@@ -141,7 +162,9 @@ export const KNNNeighbors = ({ updateFormData, data }: KNNNeighborsProps) => {
                             type="number"
                             className="w-[80px]"
                             value={neighborsState.MinK ?? ""}
-                            disabled={!neighborsState.AutoSelection}
+                            disabled={
+                              !neighborsState.AutoSelection || !hasTarget
+                            }
                             onChange={(e) =>
                               handleChange("MinK", Number(e.target.value))
                             }
@@ -173,9 +196,7 @@ export const KNNNeighbors = ({ updateFormData, data }: KNNNeighborsProps) => {
             <ResizablePanel defaultSize={30}>
               <RadioGroup
                 value={
-                  neighborsState.MetricEucli
-                    ? "MetricEucli"
-                    : "MetricManhattan"
+                  neighborsState.MetricEucli ? "MetricEucli" : "MetricManhattan"
                 }
                 onValueChange={handleDistanceGrp}
               >
@@ -200,6 +221,7 @@ export const KNNNeighbors = ({ updateFormData, data }: KNNNeighborsProps) => {
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       checked={neighborsState.Weight}
+                      disabled={!hasTarget}
                       onCheckedChange={(checked) =>
                         handleChange("Weight", checked)
                       }
@@ -217,6 +239,7 @@ export const KNNNeighbors = ({ updateFormData, data }: KNNNeighborsProps) => {
             {/* Prediction */}
             <ResizablePanel defaultSize={20}>
               <RadioGroup
+                disabled={targetType !== "scale"}
                 value={
                   neighborsState.PredictionsMean
                     ? "PredictionsMean"

@@ -19,78 +19,139 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 export const KNNPartition = ({
   updateFormData,
   data,
+  availableVariables,
+  isAutoK,
+  isFeatureSelectionActive,
 }: KNNPartitionProps) => {
   const [partitionState, setPartitionState] = useState<KNNPartitionType>({
     ...data,
+    UseRandomly: data.UseRandomly ?? true,
+    UseVariable: data.UseVariable ?? false,
   });
-const [availableVariables, setAvailableVariables] = useState<string[]>([]);
+
+  const isCrossValidationEnabled = isAutoK && !isFeatureSelectionActive;
 
   useEffect(() => {
-      setPartitionState({ ...data });
+    if (JSON.stringify(data) === JSON.stringify(partitionState)) return;
+    setPartitionState({
+      ...data,
+      UseRandomly: data.UseRandomly ?? true,
+      UseVariable: data.UseVariable ?? false,
+    });
   }, [data]);
 
-  useEffect(() => {
-    const usedVariables = [
-      partitionState.PartitioningVariable,
-      partitionState.VFoldPartitioningVariable,
-    ].filter(Boolean);
+  const partitionMode = partitionState.UseRandomly
+    ? "UseRandomly"
+    : partitionState.UseVariable
+      ? "UseVariable"
+      : "UseRandomly";
 
-    if (!(partitionState.SrcVar === null)) {
-      const updatedVariables = partitionState.SrcVar.filter(
-        (variable) => !usedVariables.includes(variable),
-      );
-      setAvailableVariables(updatedVariables);
+  const foldMode = partitionState.VFoldUseRandomly
+    ? "VFoldUseRandomly"
+    : partitionState.VFoldUsePartitioningVar
+      ? "VFoldUsePartitioningVar"
+      : "VFoldUseRandomly"; // default
+
+  useEffect(() => {
+    if (isCrossValidationEnabled) {
+      setPartitionState((prev) => ({
+        ...prev,
+        VFoldUseRandomly: prev.VFoldUseRandomly ?? true,
+        VFoldUsePartitioningVar: prev.VFoldUsePartitioningVar ?? false,
+        NumPartition: prev.NumPartition ?? 10, // biasanya default 10 folds
+      }));
     }
+  }, [isCrossValidationEnabled]);
+
+  const filteredAvailableVariables = availableVariables.filter(
+    (variable) =>
+      variable !== partitionState.PartitioningVariable &&
+      variable !== partitionState.VFoldPartitioningVariable,
+  );
+
+  useEffect(() => {
+    if (JSON.stringify(partitionState) === JSON.stringify(data)) return;
+
+    Object.entries(partitionState).forEach(([key, value]) => {
+      updateFormData(key as keyof KNNPartitionType, value);
+    });
   }, [partitionState]);
 
   const handleChange = (
     field: keyof KNNPartitionType,
     value: CheckedState | number | boolean | string | null,
   ) => {
-    setPartitionState((prevState) => ({
-      ...prevState,
-      [field]: value,
-    }));
+    setPartitionState((prevState) => {
+      const newState = {
+        ...prevState,
+        [field]: value,
+      };
+
+      //updateFormData(field, value);
+
+      return newState;
+    });
   };
 
   const handleDrop = (target: string, variable: string) => {
     setPartitionState((prev) => {
       const updatedState = { ...prev };
+
       if (target === "PartitioningVariable") {
         updatedState.PartitioningVariable = variable;
-      } else if (target === "VFoldPartitioningVariable") {
-        updatedState.VFoldPartitioningVariable = variable;
+        //updateFormData("PartitioningVariable", variable);
       }
+
+      if (target === "VFoldPartitioningVariable") {
+        updatedState.VFoldPartitioningVariable = variable;
+        // updateFormData("VFoldPartitioningVariable", variable);
+      }
+
       return updatedState;
     });
   };
 
-  const handleRemoveVariable = (target: string, variable?: string) => {
+  const handleRemoveVariable = (target: string) => {
     setPartitionState((prev) => {
       const updatedState = { ...prev };
+
       if (target === "PartitioningVariable") {
-        updatedState.PartitioningVariable = "";
-      } else if (target === "VFoldPartitioningVariable") {
-        updatedState.VFoldPartitioningVariable = "";
+        updatedState.PartitioningVariable = null;
+        // updateFormData("PartitioningVariable", null);
       }
+
+      if (target === "VFoldPartitioningVariable") {
+        updatedState.VFoldPartitioningVariable = null;
+        // updateFormData("VFoldPartitioningVariable", null);
+      }
+
       return updatedState;
     });
   };
 
   const handlePartitionGrp = (value: string) => {
-    setPartitionState((prevState) => ({
-      ...prevState,
+    setPartitionState((prev) => ({
+      ...prev,
       UseRandomly: value === "UseRandomly",
       UseVariable: value === "UseVariable",
+      PartitioningVariable:
+        value === "UseVariable" ? prev.PartitioningVariable : null,
     }));
   };
 
   const handleFoldGrp = (value: string) => {
-    setPartitionState((prevState) => ({
-      ...prevState,
+    const newState = {
       VFoldUseRandomly: value === "VFoldUseRandomly",
       VFoldUsePartitioningVar: value === "VFoldUsePartitioningVar",
+    };
+
+    setPartitionState((prev) => ({
+      ...prev,
+      ...newState,
     }));
+
+    // updateFormData("VFoldUseRandomly", newState.VFoldUseRandomly);
+    // updateFormData("VFoldUsePartitioningVar", newState.VFoldUsePartitioningVar);
   };
 
   return (
@@ -104,19 +165,21 @@ const [availableVariables, setAvailableVariables] = useState<string[]>([]);
             <ResizablePanel defaultSize={40}>
               <ScrollArea>
                 <div className="flex flex-col justify-start items-start h-[510px] gap-1 p-2 overflow-hidden">
-                  {availableVariables.map((variable: string, index: number) => (
-                    <Badge
-                      key={index}
-                      className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                      variant="outline"
-                      draggable
-                      onDragStart={(e) =>
-                        e.dataTransfer.setData("text", variable)
-                      }
-                    >
-                      {variable}
-                    </Badge>
-                  ))}
+                  {filteredAvailableVariables.map(
+                    (variable: string, index: number) => (
+                      <Badge
+                        key={index}
+                        className="w-full text-start text-sm font-light p-2 cursor-pointer"
+                        variant="outline"
+                        draggable
+                        onDragStart={(e) =>
+                          e.dataTransfer.setData("text", variable)
+                        }
+                      >
+                        {variable}
+                      </Badge>
+                    ),
+                  )}
                 </div>
               </ScrollArea>
             </ResizablePanel>
@@ -125,9 +188,7 @@ const [availableVariables, setAvailableVariables] = useState<string[]>([]);
               <ResizablePanelGroup direction="vertical">
                 <ResizablePanel defaultSize={45}>
                   <RadioGroup
-                    value={
-                      partitionState.UseRandomly ? "UseRandomly" : "UseVariable"
-                    }
+                    value={partitionMode}
                     onValueChange={handlePartitionGrp}
                   >
                     <div className="flex flex-col gap-2 p-2">
@@ -140,7 +201,13 @@ const [availableVariables, setAvailableVariables] = useState<string[]>([]);
                           Randomly assign cases to partition
                         </Label>
                       </div>
-                      <div className="flex flex-row gap-1 pl-6">
+                      <div
+                        className={`flex flex-row gap-1 pl-6 ${
+                          !partitionState.UseRandomly
+                            ? "opacity-50 pointer-events-none"
+                            : ""
+                        }`}
+                      >
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="TrainingNumber">Training %:</Label>
                           <Input
@@ -151,7 +218,10 @@ const [availableVariables, setAvailableVariables] = useState<string[]>([]);
                             value={partitionState.TrainingNumber ?? 70}
                             disabled={!partitionState.UseRandomly}
                             onChange={(e) =>
-                              handleChange("TrainingNumber", e.target.value)
+                              handleChange(
+                                "TrainingNumber",
+                                Number(e.target.value),
+                              )
                             }
                           />
                         </div>
@@ -193,7 +263,11 @@ const [availableVariables, setAvailableVariables] = useState<string[]>([]);
                           </Label>
                           <div className="flex w-full items-center space-x-2">
                             <div
-                              className="w-full min-h-[40px] p-2 border rounded"
+                              className={`w-full min-h-[40px] p-2 border rounded ${
+                                !partitionState.UseVariable
+                                  ? "opacity-50 pointer-events-none"
+                                  : ""
+                              }`}
                               onDrop={(e) => {
                                 handleDrop(
                                   "PartitioningVariable",
@@ -232,14 +306,17 @@ const [availableVariables, setAvailableVariables] = useState<string[]>([]);
                 <ResizableHandle />
                 <ResizablePanel defaultSize={38}>
                   <RadioGroup
-                    value={
-                      partitionState.VFoldUseRandomly
-                        ? "VFoldUseRandomly"
-                        : "VFoldUsePartitioningVar"
-                    }
+                    disabled={!isCrossValidationEnabled}
+                    value={foldMode}
                     onValueChange={handleFoldGrp}
                   >
-                    <div className="flex flex-col gap-2 p-2">
+                    <div
+                      className={`flex flex-col gap-2 p-2 ${
+                        !isCrossValidationEnabled
+                          ? "opacity-50 pointer-events-none"
+                          : ""
+                      }`}
+                    >
                       <Label className="font-bold">
                         Cross Validation Folds
                       </Label>
@@ -260,9 +337,12 @@ const [availableVariables, setAvailableVariables] = useState<string[]>([]);
                           className="min-w-2xl w-full"
                           placeholder=""
                           value={partitionState.NumPartition ?? ""}
-                          disabled={!partitionState.VFoldUseRandomly}
+                          disabled={
+                            !isCrossValidationEnabled ||
+                            !partitionState.VFoldUseRandomly
+                          }
                           onChange={(e) =>
-                            handleChange("NumPartition", e.target.value)
+                            handleChange("NumPartition", Number(e.target.value))
                           }
                         />
                       </div>
@@ -281,7 +361,12 @@ const [availableVariables, setAvailableVariables] = useState<string[]>([]);
                         </Label>
                         <div className="flex w-full items-center space-x-2">
                           <div
-                            className="w-full min-h-[40px] p-2 border rounded"
+                            className={`w-full min-h-[40px] p-2 border rounded ${
+                              !isCrossValidationEnabled ||
+                              !partitionState.VFoldUsePartitioningVar
+                                ? "opacity-50 pointer-events-none"
+                                : ""
+                            }`}
                             onDrop={(e) => {
                               handleDrop(
                                 "VFoldPartitioningVariable",

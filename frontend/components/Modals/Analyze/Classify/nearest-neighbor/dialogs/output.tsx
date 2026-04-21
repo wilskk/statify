@@ -17,12 +17,26 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 export const KNNOutput = ({
   updateFormData,
   data,
+  focalCaseVar,
 }: KNNOutputProps) => {
-  const [outputState, setOutputState] = useState<KNNOutputType>({ ...data });
+  const [outputState, setOutputState] = useState<KNNOutputType>({
+    ...data,
+    CaseSummary: data.CaseSummary ?? true,
+    ChartAndTable: data.ChartAndTable ?? true,
+  });
 
   useEffect(() => {
-      setOutputState({ ...data });
+    if (JSON.stringify(data) === JSON.stringify(outputState)) return;
+    setOutputState({ ...data });
   }, [data]);
+
+  useEffect(() => {
+    if (JSON.stringify(outputState) === JSON.stringify(data)) return;
+
+    Object.entries(outputState).forEach(([key, value]) => {
+      updateFormData(key as keyof KNNOutputType, value);
+    });
+  }, [outputState]);
 
   const handleChange = (
     field: keyof KNNOutputType,
@@ -41,6 +55,42 @@ export const KNNOutput = ({
       WriteDataFile: value === "WriteDataFile",
     }));
   };
+
+  const canExportDistance = !!focalCaseVar;
+
+  useEffect(() => {
+    if (!canExportDistance) {
+      setOutputState((prev) => ({
+        ...prev,
+        ExportDistance: false,
+        CreateDataset: false,
+        WriteDataFile: false,
+        DatasetName: null,
+        NewDataFilePath: null,
+      }));
+    }
+  }, [canExportDistance]);
+
+  useEffect(() => {
+    if (!outputState.ExportModelXML) {
+      setOutputState((prev) => ({
+        ...prev,
+        XMLFilePath: null,
+      }));
+    }
+  }, [outputState.ExportModelXML]);
+
+  useEffect(() => {
+    if (!outputState.ExportDistance) {
+      setOutputState((prev) => ({
+        ...prev,
+        CreateDataset: false,
+        WriteDataFile: false,
+        DatasetName: null,
+        NewDataFilePath: null,
+      }));
+    }
+  }, [outputState.ExportDistance]);
 
   return (
     <div className="flex flex-col h-full">
@@ -122,6 +172,7 @@ export const KNNOutput = ({
                     <Checkbox
                       id="ExportDistance"
                       checked={outputState.ExportDistance}
+                      disabled={!canExportDistance}
                       onCheckedChange={(checked) =>
                         handleChange("ExportDistance", checked)
                       }

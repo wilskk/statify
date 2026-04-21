@@ -16,9 +16,18 @@ export const KNNOptions = ({
   });
   const [isContinueDisabled, setIsContinueDisabled] = useState(false);
 
-  useEffect(() => {
-      setOptionsState({ ...data });
-  }, [data]);
+useEffect(() => {
+  if (JSON.stringify(data) === JSON.stringify(optionsState)) return;
+  setOptionsState({ ...data });
+}, [data]);
+
+useEffect(() => {
+  if (JSON.stringify(optionsState) === JSON.stringify(data)) return;
+
+  Object.entries(optionsState).forEach(([key, value]) => {
+    updateFormData(key as keyof KNNOptionsType, value);
+  });
+}, [optionsState]);
 
   const handleTreatGrp = (value: string) => {
     setOptionsState((prevState) => ({

@@ -11,15 +11,16 @@ export type KNNMainType = {
     CaseIdenVar: string | null;
     FocalCaseIdenVar: string | null;
     NormCovar: boolean;
+    Normalize?: boolean;
 };
 
 export type KNNDialogProps = {
     data: KNNMainType;
-    globalVariables: string[];
     updateFormData: (
         field: keyof KNNMainType,
         value: string[] | string | boolean | null
     ) => void;
+    externalErrors?: string[];
 };
 
 /* =========================
@@ -45,6 +46,8 @@ export type KNNNeighborsProps = {
         field: keyof KNNNeighborsType,
         value: number | boolean | null
     ) => void;
+    hasTarget: boolean;
+    targetType: "scale" | "nominal" | "ordinal" | null;
 };
 
 /* =========================
@@ -69,6 +72,7 @@ export type KNNFeaturesProps = {
         field: keyof KNNFeaturesType,
         value: string[] | number | string | boolean | null
     ) => void;
+    hasTarget: boolean;
 };
 
 /* =========================
@@ -76,7 +80,6 @@ export type KNNFeaturesProps = {
 ========================= */
 
 export type KNNPartitionType = {
-    SrcVar: string[] | null;
     PartitioningVariable: string | null;
     UseRandomly: boolean;
     UseVariable: boolean;
@@ -95,6 +98,9 @@ export type KNNPartitionProps = {
         field: keyof KNNPartitionType,
         value: string[] | number | string | boolean | null
     ) => void;
+    availableVariables: string[];
+    isAutoK: boolean;
+    isFeatureSelectionActive: boolean;
 };
 
 /* =========================
@@ -117,6 +123,11 @@ export type KNNSaveProps = {
         field: keyof KNNSaveType,
         value: number | boolean | null
     ) => void;
+    hasTarget: boolean;
+    targetType: "scale" | "nominal" | "ordinal" | null;
+    featureCount: number;
+    isAutoK: boolean;
+    isFeatureSelectionActive: boolean;
 };
 
 /* =========================
@@ -141,6 +152,7 @@ export type KNNOutputProps = {
         field: keyof KNNOutputType,
         value: string | boolean | null
     ) => void;
+    focalCaseVar: string | null;
 };
 
 /* =========================

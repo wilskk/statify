@@ -6,8 +6,8 @@ export async function analyzeKNN({
     dataVariables,
     variables,
 }: KNNAnalysisType) {
-    const TargetVariable = configData.main.DepVar
-        ? [configData.main.DepVar]
+    const TargetVariable = configData.main.TargetVar
+        ? [configData.main.TargetVar]
         : [];
     const FeaturesVariables = configData.main.FeatureVar || [];
     const FocalCaseIdentifierVariable = configData.main.FocalCaseIdenVar
@@ -54,6 +54,39 @@ export async function analyzeKNN({
 
     console.log("configData", configData);
 
+        // 🔥 TAMBAHAN: worker logic
+    return new Promise((resolve, reject) => {
+        console.log("Starting KNN Worker...");
+
+        const worker = new Worker(
+            "/workers/Classify/Nearest-Neighbor/nearestNeighbor.worker.js"
+        );
+
+        worker.onmessage = (e) => {
+            console.log("Worker result:", e.data);
+
+            if (e.data.error) {
+                reject(e.data.error);
+            } else {
+                resolve(e.data.result);
+            }
+
+            worker.terminate();
+        };
+
+        worker.onerror = (err) => {
+            console.error("Worker error:", err);
+            reject(err);
+            worker.terminate();
+        };
+
+        // 👉 kirim data ke worker (sementara kosong dulu juga gapapa)
+        worker.postMessage({
+            configData,
+            slicedDataForTarget,
+            slicedDataForFeatures,
+        });
+    });
     // await init();
     // const knn = new KNNAnalysis(
     //     slicedDataForTarget,
@@ -84,4 +117,4 @@ export async function analyzeKNN({
     // await resultNearestNeighbor({
     //     formattedResult: formattedResults ?? [],
     // });
-}
+    }

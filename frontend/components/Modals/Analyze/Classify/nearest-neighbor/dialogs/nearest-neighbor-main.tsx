@@ -32,11 +32,6 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const variables = useVariableStore((state) => state.variables);
   const dataVariables = useDataStore((state) => state.data);
 
-  const tempVariables = useMemo(
-    () => variables.map((variable) => variable.name),
-    [variables],
-  );
-
   const [formData, setFormData] = useState<KNNType>({
     ...KNNDefault,
   });
@@ -65,27 +60,21 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   }, []);
 
   useEffect(() => {
-    if (formData.main.FeatureVar) {
-      setFormData((prev) => ({
-        ...prev,
-        features: {
-          ...prev.features,
-          ForwardSelection: prev.main.FeatureVar
-            ? [...prev.main.FeatureVar]
-            : [],
-        },
-        partition: {
-          ...prev.partition,
-          SrcVar: prev.main.FeatureVar ? [...prev.main.FeatureVar] : [],
-        },
-      }));
-    }
+    const featureVars = formData.main.FeatureVar ?? [];
+
+    setFormData((prev) => ({
+      ...prev,
+      features: {
+        ...prev.features,
+        ForwardSelection: featureVars,
+      },
+    }));
   }, [formData.main.FeatureVar]);
 
-  const updateFormData = <T extends keyof typeof formData>(
-    section: T,
-    field: keyof (typeof formData)[T],
-    value: unknown,
+  const updateFormData = (
+    section: keyof KNNType,
+    field: string,
+    value: any,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -96,20 +85,15 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     }));
   };
 
-  const executeKNN = async (mainData: KNNMainType) => {
+  const executeKNN = async () => {
     closeModal();
     onClose();
 
     const promise = async () => {
-      const newFormData = {
-        ...formData,
-        main: mainData,
-      };
-
-      await saveFormData("NearestNeighbor", newFormData);
+      await saveFormData("NearestNeighbor", formData);
 
       await analyzeKNN({
-        configData: newFormData,
+        configData: formData,
         dataVariables,
         variables,
       });
@@ -133,12 +117,100 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     }
   };
 
+  const variableMap = useMemo(() => {
+    return new Map(variables.map((v) => [v.name, v]));
+  }, [variables]);
+
+  const availableVariables = useMemo(() => {
+    const used = new Set([
+      formData.main.TargetVar,
+      ...(formData.main.FeatureVar || []),
+      formData.main.FocalCaseIdenVar,
+      formData.main.CaseIdenVar,
+    ]);
+
+    return variables.filter((v) => !used.has(v.name)).map((v) => v.name);
+  }, [variables, formData.main]);
+
+  const targetVariable = formData.main.TargetVar
+    ? variableMap.get(formData.main.TargetVar)
+    : null;
+
+  const hasTarget = !!targetVariable;
+
+  const targetType =
+    targetVariable && targetVariable.measure !== "unknown"
+      ? targetVariable.measure // scale | nominal | ordinal
+      : null;
+
+  const isAutoK = formData.neighbors.AutoSelection;
+  const isFeatureSelectionActive = formData.features.PerformSelection;
+
+  const validation = useMemo(() => {
+    const errors: string[] = [];
+
+    const featureVars = formData.main.FeatureVar ?? [];
+
+    if (featureVars.length === 0) {
+      errors.push("At least one feature variable is required.");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  }, [formData.main]);
+
+  const validateFeatureSelection = () => {
+    const f = formData.features;
+
+    if (!f.PerformSelection) return null;
+
+    const forwardCount = (f.ForwardSelection ?? []).filter(
+      (v) => !(f.ForcedEntryVar ?? []).includes(v),
+    ).length;
+    const forcedCount = (f.ForcedEntryVar ?? []).length;
+
+    const totalFeatures = forwardCount + forcedCount;
+
+    // 🔥 PRIORITAS 1: forward kosong
+    if (forwardCount === 0 && totalFeatures > 0) {
+      return "Feature selection cannot be performed if all features are forced into the model. Move at least one feature to the Forward Selection list or uncheck the Perform feature selection checkbox.";
+    }
+
+    // 🔥 PRIORITAS 2: number kosong
+    if (f.MaxReached && (!f.MaxToSelect || f.MaxToSelect <= 0)) {
+      return "Enter a positive integer for the number of features to select.";
+    }
+
+    // 🔥 PRIORITAS 3: range
+    if (
+      f.MaxReached &&
+      f.MaxToSelect !== null &&
+      f.MaxToSelect > forwardCount
+    ) {
+      return "The number of features to select must be less than or equal to the number of features to evaluate (the number of features in the Forward Selection list).";
+    }
+
+    return null;
+  };
+
+  const featureError = validateFeatureSelection();
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-grow px-6 min-h-0">
         <Tabs
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={(nextTab) => {
+            const error = validateFeatureSelection();
+
+            if (error) {
+              toast.error(error);
+              return;
+            }
+            setActiveTab(nextTab);
+          }}
           className="w-full h-full flex flex-col"
         >
           <TabsList className="grid w-full grid-cols-7 flex-shrink-0">
@@ -172,62 +244,95 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
           </TabsList>
 
           <div className="flex-grow min-h-0">
-            <TabsContent value="variables" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+            <TabsContent
+              value="variables"
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
               <KNNDialog
                 data={formData.main}
-                globalVariables={tempVariables}
                 updateFormData={(field, value) =>
                   updateFormData("main", field, value)
                 }
+                externalErrors={validation.errors}
               />
             </TabsContent>
 
-            <TabsContent value="neighbors" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex">
+            <TabsContent
+              value="neighbors"
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex"
+            >
               <KNNNeighbors
                 data={formData.neighbors}
                 updateFormData={(field, value) =>
                   updateFormData("neighbors", field, value)
                 }
+                hasTarget={hasTarget}
+                targetType={targetType}
               />
             </TabsContent>
 
-            <TabsContent value="features" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+            <TabsContent
+              value="features"
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
               <KNNFeatures
                 data={formData.features}
                 updateFormData={(field, value) =>
                   updateFormData("features", field, value)
                 }
+                hasTarget={hasTarget}
               />
             </TabsContent>
 
-            <TabsContent value="partition" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+            <TabsContent
+              value="partition"
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
               <KNNPartition
                 data={formData.partition}
                 updateFormData={(field, value) =>
                   updateFormData("partition", field, value)
                 }
+                availableVariables={availableVariables}
+                isAutoK={isAutoK}
+                isFeatureSelectionActive={isFeatureSelectionActive}
               />
             </TabsContent>
 
-            <TabsContent value="save" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+            <TabsContent
+              value="save"
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
               <KNNSave
                 data={formData.save}
                 updateFormData={(field, value) =>
                   updateFormData("save", field, value)
                 }
+                hasTarget={hasTarget}
+                targetType={targetType}
+                isAutoK={isAutoK}
+                isFeatureSelectionActive={isFeatureSelectionActive}
+                featureCount={(formData.main.FeatureVar ?? []).length}
               />
             </TabsContent>
 
-            <TabsContent value="output" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+            <TabsContent
+              value="output"
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
               <KNNOutput
                 data={formData.output}
                 updateFormData={(field, value) =>
                   updateFormData("output", field, value)
                 }
+                focalCaseVar={formData.main.FocalCaseIdenVar}
               />
             </TabsContent>
 
-            <TabsContent value="options" className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
+            <TabsContent
+              value="options"
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
               <KNNOptions
                 data={formData.options}
                 updateFormData={(field, value) =>
@@ -241,8 +346,17 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
       <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-4 bg-secondary">
         <Button
-          onClick={() => executeKNN(formData.main)}
-          disabled={!formData.main.TargetVar}
+          onClick={() => {
+            const error = validateFeatureSelection();
+
+            if (error) {
+              toast.error(error);
+              return;
+            }
+
+            executeKNN();
+          }}
+          disabled={!validation.isValid}
         >
           OK
         </Button>

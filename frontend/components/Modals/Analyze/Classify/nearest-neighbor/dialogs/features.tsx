@@ -27,50 +27,66 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 export const KNNFeatures = ({
   updateFormData,
   data,
+  hasTarget,
 }: KNNFeaturesProps) => {
- 
   const [availableVariables, setAvailableVariables] = useState<string[]>([]);
 
   useEffect(() => {
-  const usedVariables = [...(data.ForcedEntryVar || [])].filter(Boolean);
+    const usedVariables = [...(data.ForcedEntryVar || [])].filter(Boolean);
 
-  if (data.ForwardSelection !== null) {
-    const updatedVariables = data.ForwardSelection.filter(
-      (variable) => !usedVariables.includes(variable)
+    const updatedVariables = (data.ForwardSelection || []).filter(
+      (variable) => !usedVariables.includes(variable),
     );
-    setAvailableVariables(updatedVariables);
-  }
-}, [data]);
 
-const handleChange = (
-  field: keyof KNNFeaturesType,
-  value: CheckedState | number | boolean | string | null
-) => {
-  updateFormData(field, value);
-};
+    setAvailableVariables(updatedVariables);
+  }, [data.ForwardSelection, data.ForcedEntryVar]);
+
+  useEffect(() => {
+    if (
+      data.PerformSelection &&
+      data.MaxReached &&
+      (data.MaxToSelect === null || data.MaxToSelect === undefined)
+    ) {
+      updateFormData("MaxToSelect", 1);
+    }
+  }, [data.PerformSelection, data.MaxReached]);
+
+  const handleChange = (
+    field: keyof KNNFeaturesType,
+    value: CheckedState | number | boolean | string | null,
+  ) => {
+    updateFormData(field, value);
+  };
 
   const handleDrop = (target: string, variable: string) => {
     updateFormData("ForcedEntryVar", [
-  ...(data.ForcedEntryVar || []),
-  variable,
-]);
-
+      ...(data.ForcedEntryVar || []),
+      variable,
+    ]);
   };
 
-const handleRemoveVariable = (target: string, variable?: string) => {
-  if (target === "ForcedEntryVar") {
-    const updated = (data.ForcedEntryVar || []).filter(
-      (item) => item !== variable
-    );
+  const handleRemoveVariable = (target: string, variable?: string) => {
+    if (target === "ForcedEntryVar") {
+      const updated = (data.ForcedEntryVar || []).filter(
+        (item) => item !== variable,
+      );
 
-    updateFormData("ForcedEntryVar", updated);
-  }
-};
+      updateFormData("ForcedEntryVar", updated);
+    }
+  };
 
-const handleCriterionGrp = (value: string) => {
-  updateFormData("MaxReached", value === "MaxReached");
-  updateFormData("BelowMin", value === "BelowMin");
-};
+  const handleCriterionGrp = (value: string) => {
+    updateFormData("MaxReached", value === "MaxReached");
+    updateFormData("BelowMin", value === "BelowMin");
+  };
+
+  const canUseFeatureSelection =
+    hasTarget && (data.ForwardSelection ?? []).length > 0;
+
+  const isSelectionActive = data.PerformSelection && canUseFeatureSelection;
+
+  const forwardCount = availableVariables.length;
+  const forcedCount = (data.ForcedEntryVar ?? []).length;
 
   return (
     <div className="flex flex-col h-full">
@@ -87,6 +103,7 @@ const handleCriterionGrp = (value: string) => {
                     <Checkbox
                       id="PerformSelection"
                       checked={data.PerformSelection}
+                      disabled={!canUseFeatureSelection}
                       onCheckedChange={(checked) =>
                         handleChange("PerformSelection", checked)
                       }
@@ -132,7 +149,7 @@ const handleCriterionGrp = (value: string) => {
                                   key={index}
                                   className="w-full text-start text-sm font-light p-2 cursor-pointer"
                                   variant="outline"
-                                  draggable
+                                  draggable={isSelectionActive}
                                   onDragStart={(e) =>
                                     e.dataTransfer.setData("text", variable)
                                   }
@@ -144,14 +161,21 @@ const handleCriterionGrp = (value: string) => {
                           </div>
                         </ScrollArea>
                       </div>
+                      <p className="text-sm text-muted-foreground">
+                        Features to evaluate: {forwardCount}
+                      </p>
                     </div>
                   </ResizablePanel>
                   <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={50}>
                     <div
                       className="flex flex-col w-full gap-2"
-                      onDragOver={(e) => e.preventDefault()}
+                      onDragOver={(e) => {
+                        if (!isSelectionActive) return;
+                        e.preventDefault();
+                      }}
                       onDrop={(e) => {
+                        if (!isSelectionActive) return;
                         const variable = e.dataTransfer.getData("text");
                         handleDrop("ForcedEntryVar", variable);
                       }}
@@ -163,23 +187,22 @@ const handleCriterionGrp = (value: string) => {
                             {data.ForcedEntryVar &&
                             data.ForcedEntryVar.length > 0 ? (
                               <div className="flex flex-col gap-1">
-                                {data.ForcedEntryVar.map(
-                                  (variable, index) => (
-                                    <Badge
-                                      key={index}
-                                      className="text-start text-sm font-light p-2 cursor-pointer"
-                                      variant="outline"
-                                      onClick={() =>
-                                        handleRemoveVariable(
-                                          "ForcedEntryVar",
-                                          variable,
-                                        )
-                                      }
-                                    >
-                                      {variable}
-                                    </Badge>
-                                  ),
-                                )}
+                                {data.ForcedEntryVar.map((variable, index) => (
+                                  <Badge
+                                    key={index}
+                                    className="text-start text-sm font-light p-2 cursor-pointer"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (!isSelectionActive) return;
+                                      handleRemoveVariable(
+                                        "ForcedEntryVar",
+                                        variable,
+                                      );
+                                    }}
+                                  >
+                                    {variable}
+                                  </Badge>
+                                ))}
                               </div>
                             ) : (
                               <span className="text-sm font-light text-gray-500">
@@ -194,6 +217,9 @@ const handleCriterionGrp = (value: string) => {
                         value={data.ForcedEntryVar ?? ""}
                         name="Independents"
                       />
+                      <p className="text-sm text-muted-foreground">
+                        Features to force: {forcedCount}
+                      </p>
                     </div>
                   </ResizablePanel>
                 </ResizablePanelGroup>

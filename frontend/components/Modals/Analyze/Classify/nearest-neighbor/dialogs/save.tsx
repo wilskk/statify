@@ -30,12 +30,76 @@ import { Input } from "@/components/ui/input";
 export const KNNSave = ({
   updateFormData,
   data,
+  hasTarget,
+  targetType,
+  isAutoK,
+  isFeatureSelectionActive,
+  featureCount,
 }: KNNSaveProps) => {
-  const [saveState, setSaveState] = useState<KNNSaveType>({ ...data });
+  const [saveState, setSaveState] = useState<KNNSaveType>({
+    ...data,
+    AutoName: true,
+    CustomName: false,
+    MaxCatsToSave: data.MaxCatsToSave ?? 25,
+  });
 
   useEffect(() => {
-      setSaveState({ ...data });
+    if (JSON.stringify(data) === JSON.stringify(saveState)) return;
+    setSaveState({ ...data, MaxCatsToSave: data.MaxCatsToSave ?? 25 });
   }, [data]);
+
+  useEffect(() => {
+    if (JSON.stringify(saveState) === JSON.stringify(data)) return;
+    Object.entries(saveState).forEach(([key, value]) => {
+      updateFormData(key as keyof KNNSaveType, value);
+    });
+  }, [saveState]);
+
+  const isCategorical = targetType === "nominal" || targetType === "ordinal";
+
+  const noVariables = !hasTarget && featureCount === 0;
+  const onlyFeatures = !hasTarget && featureCount > 0;
+
+  // =======================
+  // ENABLE LOGIC
+  // =======================
+
+  // ❌ default semua mati dulu
+  let canPredict = false;
+  let canProbability = false;
+  let canFold = false;
+
+  // 🔴 Kondisi 1
+  if (noVariables || onlyFeatures) {
+    // cuma partition
+  }
+
+  // 🟡 Kondisi 2 (scale)
+  else if (hasTarget && targetType === "scale") {
+    canPredict = true;
+  }
+
+  // 🟢 Kondisi 3 (categorical)
+  else if (hasTarget && isCategorical) {
+    canPredict = true;
+    canProbability = true;
+  }
+
+  // 🔵 Kondisi 4 (AutoK override)
+  if (isAutoK && !isFeatureSelectionActive) {
+    canPredict = true;
+    canProbability = true;
+    canFold = true;
+  }
+
+  useEffect(() => {
+    setSaveState((prev) => ({
+      ...prev,
+      HasTargetVar: canPredict ? prev.HasTargetVar : false,
+      IsCateTargetVar: canProbability ? prev.IsCateTargetVar : false,
+      RandomAssignToFold: canFold ? prev.RandomAssignToFold : false,
+    }));
+  }, [canPredict, canProbability, canFold]);
 
   const handleChange = (
     field: keyof KNNSaveType,
@@ -117,6 +181,7 @@ export const KNNSave = ({
                   <Checkbox
                     id="HasTargetVar"
                     checked={saveState.HasTargetVar}
+                    disabled={!canPredict}
                     onCheckedChange={(checked) =>
                       handleChange("HasTargetVar", checked)
                     }
@@ -130,14 +195,23 @@ export const KNNSave = ({
                     Predicted Value or Category
                   </label>
                 </TableCell>
-                <TableCell>KNN_PredictedValue</TableCell>
+                <TableCell>
+                  <Input
+                    value="KNN_PredictedValue"
+                    disabled={
+                      saveState.AutoName ||
+                      !canPredict ||
+                      !saveState.HasTargetVar
+                    }
+                  />
+                </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="text-center">
                   <Checkbox
                     id="IsCateTargetVar"
                     checked={saveState.IsCateTargetVar}
-                    disabled={true}
+                    disabled={!canProbability}
                     onCheckedChange={(checked) =>
                       handleChange("IsCateTargetVar", checked)
                     }
@@ -151,13 +225,23 @@ export const KNNSave = ({
                     Predicted Probability (Category Target)
                   </label>
                 </TableCell>
-                <TableCell>KNN_Probablity</TableCell>
+                <TableCell>
+                  <Input
+                    value="KNN_Probability"
+                    disabled={
+                      saveState.AutoName ||
+                      !canProbability ||
+                      !saveState.IsCateTargetVar
+                    }
+                  />
+                </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="text-center">
                   <Checkbox
                     id="RandomAssignToPartition"
                     checked={saveState.RandomAssignToPartition}
+                    disabled={false}
                     onCheckedChange={(checked) =>
                       handleChange("RandomAssignToPartition", checked)
                     }
@@ -171,14 +255,21 @@ export const KNNSave = ({
                     Training/Holdout Partition Variable
                   </label>
                 </TableCell>
-                <TableCell>KNN_Partition</TableCell>
+                <TableCell>
+                  <Input
+                    value="KNN_Partition"
+                    disabled={
+                      saveState.AutoName || !saveState.RandomAssignToPartition
+                    }
+                  />
+                </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="text-center">
                   <Checkbox
                     id="RandomAssignToFold"
                     checked={saveState.RandomAssignToFold}
-                    disabled={true}
+                    disabled={!canFold}
                     onCheckedChange={(checked) =>
                       handleChange("RandomAssignToFold", checked)
                     }
@@ -192,7 +283,16 @@ export const KNNSave = ({
                     Cross-Validation Fold Variable
                   </label>
                 </TableCell>
-                <TableCell>KNN_Fold</TableCell>
+                <TableCell>
+                  <Input
+                    value="KNN_Fold"
+                    disabled={
+                      saveState.AutoName ||
+                      !canFold ||
+                      !saveState.RandomAssignToFold
+                    }
+                  />
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -202,11 +302,13 @@ export const KNNSave = ({
             </Label>
             <Input
               id="MaxCatsToSave"
-              type="text"
+              type="number"
               className="w-[75px]"
-              placeholder=""
+              disabled={!(targetType === "nominal" || targetType === "ordinal")}
               value={saveState.MaxCatsToSave ?? ""}
-              onChange={(e) => handleChange("MaxCatsToSave", e.target.value)}
+              onChange={(e) =>
+                handleChange("MaxCatsToSave", Number(e.target.value))
+              }
             />
           </div>
         </div>
