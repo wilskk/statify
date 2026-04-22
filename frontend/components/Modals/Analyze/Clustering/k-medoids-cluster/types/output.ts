@@ -140,6 +140,12 @@ export interface KMedoidsOutput {
 
     // Method used for automatic k selection
     optimalKMethod?: "silhouette" | "elbow";
+
+    // Cluster mode (manual or automatic k selection)
+    clusterMode?: "manual" | "automatic";
+
+    // Method used in automatic k selection (for routing chart display logic)
+    autoKMethod?: "silhouette" | "elbow";
     
     // Distance matrix
     medoidDistanceMatrix: MedoidDistanceMatrix;
@@ -163,6 +169,9 @@ export interface KMedoidsOutput {
         showDistanceMatrixBetweenMedoids: boolean;
         showClusterMedoids: boolean;
         showObjectAssignments: boolean;
+        showCaseCount: boolean;
+        showTotalCost: boolean;
+        showIterationHistory: boolean;
         showSilhouettePerObject: boolean;
         showSilhouetteByCluster: boolean;
         showOptimalKChart: boolean;

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import type {
     KMedoidsClusterSaveProps,
     KMedoidsClusterSaveType,
@@ -25,16 +24,14 @@ export const KMedoidsClusterSave = ({
         field: keyof KMedoidsClusterSaveType,
         value: CheckedState | number | boolean | string | null
     ) => {
+        const normalizedValue = value === true;
         setSaveState((prevState) => ({
             ...prevState,
-            [field]: value,
+            [field]: normalizedValue,
         }));
-    };
 
-    const handleContinue = () => {
-        Object.entries(saveState).forEach(([key, value]) => {
-            updateFormData(key as keyof KMedoidsClusterSaveType, value);
-        });
+        // Keep parent form state in sync so Analyze uses the latest save options.
+        updateFormData(field, normalizedValue);
     };
 
     return (

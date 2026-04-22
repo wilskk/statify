@@ -177,6 +177,9 @@ export type KMedoidsClusterIterateProps = {
 export type KMedoidsClusterResultsType = {
     /** Tampilkan final medoids (setara "Final Cluster Centers" SPSS) */
     ShowFinalMedoids: boolean;
+
+    /** Tampilkan tabel Cluster Medoids pada tab Data Tables */
+    ShowClusterMedoids: boolean;
     
     /** Tampilkan cluster membership untuk setiap case */
     ShowClusterMembership: boolean;
@@ -285,12 +288,6 @@ export type KMedoidsClusterOptionsType = {
 
     /** Tampilkan panel Distance Matrix Between Medoids pada tab visualisasi output */
     ShowDistanceMatrixBetweenMedoids: boolean;
-
-    /** Tampilkan tabel Cluster Medoids pada tab Data Tables */
-    ShowClusterMedoids: boolean;
-
-    /** Tampilkan tabel Object Assignments pada tab Data Tables */
-    ShowObjectAssignments: boolean;
     
     /** Missing value handling: exclude listwise */
     ExcludeListWise: boolean;

@@ -282,7 +282,10 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
         // AND allows live per-iteration progress callbacks from Rust to JS.
         // Fallback to the serde path for CLARA/CLARANS (not yet in typed API).
         const isPAM = (input.method || "pam").toLowerCase() === "pam";
-        const hasTypedApi = isPAM && typeof wasmModule.run_k_medoids_typed === "function";
+        // Typed path currently hardcodes R-style BUILD initialization in WASM.
+        // If caller requests non-R/random init, force serde path so those flags apply.
+        const requiresCustomPamInit = input.use_build_phase === false || input.use_r_implementation === false;
+        const hasTypedApi = isPAM && !requiresCustomPamInit && typeof wasmModule.run_k_medoids_typed === "function";
 
         // ── k-pipeline verification ──────────────────────────────────────────
         // Log here so we can confirm the k received from the main thread is
@@ -344,7 +347,7 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                 input.distance_metric || "euclidean",
                 BigInt(input.random_seed != null ? Math.trunc(input.random_seed) : -1),
                 input.convergence_tolerance || 0.0,
-                input.n_init || 1,
+                input.n_init ?? 1,
                 onProgress,
                 onInitialMedoids,
             );
@@ -382,10 +385,10 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                 max_iterations: input.max_iterations,
                 distance_metric: input.distance_metric,
                 random_seed: input.random_seed,
-                // n_init is ignored for PAM (BUILD phase is deterministic) but kept
-                // for CLARA/CLARANS; use 1 as default to match the typed-array path.
                 n_init: input.n_init ?? 1,
                 convergence_tolerance: input.convergence_tolerance || 0.0,
+                use_build_phase: input.use_build_phase,
+                use_r_implementation: input.use_r_implementation,
                 clara_num_samples: input.clara_num_samples ?? 5,
                 ...(input.clara_sample_size != null ? { clara_sample_size: input.clara_sample_size } : {}),
             };

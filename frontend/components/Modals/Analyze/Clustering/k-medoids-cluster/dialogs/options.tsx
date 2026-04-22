@@ -121,36 +121,9 @@ export const KMedoidsClusterOptions = ({
 
                     <div className="flex flex-col gap-2 border-t pt-4">
                         <Label className="font-bold">Tables</Label>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="ShowClusterMedoids"
-                                checked={optionsState.ShowClusterMedoids}
-                                onCheckedChange={(checked) =>
-                                    handleChange("ShowClusterMedoids", checked)
-                                }
-                            />
-                            <label
-                                htmlFor="ShowClusterMedoids"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                                Cluster Medoids
-                            </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="ShowObjectAssignments"
-                                checked={optionsState.ShowObjectAssignments}
-                                onCheckedChange={(checked) =>
-                                    handleChange("ShowObjectAssignments", checked)
-                                }
-                            />
-                            <label
-                                htmlFor="ShowObjectAssignments"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                                Object Assignments
-                            </label>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Table visibility is now configured in the Results tab.
+                        </p>
                     </div>
 
                     <div className="flex flex-col gap-2 border-t pt-4">

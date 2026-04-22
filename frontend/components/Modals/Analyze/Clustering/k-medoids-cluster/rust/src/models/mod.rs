@@ -14,6 +14,10 @@ pub struct KMedoidsInput {
     pub n_init: usize, // Number of times to run with different seeds, keep best result
     #[serde(default = "default_convergence_tolerance")]
     pub convergence_tolerance: f64, // Stop if cost improvement < tolerance
+    #[serde(default = "default_use_build_phase")]
+    pub use_build_phase: bool, // PAM: true=BUILD (deterministic), false=random init
+    #[serde(default = "default_use_r_implementation")]
+    pub use_r_implementation: bool, // PAM: true=R-style path, false=native path
     #[serde(default = "default_clara_num_samples")]
     pub clara_num_samples: usize, // CLARA: number of sub-samples (default 5)
     #[serde(default)]
@@ -22,6 +26,8 @@ pub struct KMedoidsInput {
 
 fn default_n_init() -> usize { 10 }
 fn default_convergence_tolerance() -> f64 { 0.0 }
+fn default_use_build_phase() -> bool { true }
+fn default_use_r_implementation() -> bool { true }
 fn default_clara_num_samples() -> usize { 5 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

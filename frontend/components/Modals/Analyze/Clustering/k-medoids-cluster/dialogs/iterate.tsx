@@ -8,7 +8,6 @@ import type {
 } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 import {
     KMedoidsMethod,
-    InitialMedoidsStrategy,
 } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -171,52 +170,6 @@ export const KMedoidsClusterIterate = ({
                             </SelectItem>
                             <SelectItem value={KMedoidsMethod.CLARANS}>
                                 CLARANS (Randomized Search)
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {/* ========== INITIAL MEDOIDS STRATEGY ========== */}
-                <div className="flex flex-col gap-2 border-b pb-4">
-                    <div className="flex items-center gap-2">
-                        <Label className="font-bold">Initial Medoids Selection</Label>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-sm">
-                                    <p className="text-xs">
-                                        <strong>Random:</strong> Random selection (default)<br/>
-                                        <strong>K-Means++:</strong> Smart initialization, better convergence<br/>
-                                        <strong>First K:</strong> First k data points (reproducible)<br/>
-                                        <strong>User Defined:</strong> Manual selection (advanced)
-                                    </p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                    <Select
-                        value={iterateState.InitialStrategy}
-                        onValueChange={(value) =>
-                            handleChange("InitialStrategy", value as InitialMedoidsStrategy)
-                        }
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select initial strategy" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={InitialMedoidsStrategy.Random}>
-                                Random Selection
-                            </SelectItem>
-                            <SelectItem value={InitialMedoidsStrategy.KMeansPlusPlus}>
-                                K-Means++ (Smart Initialization)
-                            </SelectItem>
-                            <SelectItem value={InitialMedoidsStrategy.FirstK}>
-                                First K Data Points
-                            </SelectItem>
-                            <SelectItem value={InitialMedoidsStrategy.UserDefined}>
-                                User Defined (Manual)
                             </SelectItem>
                         </SelectContent>
                     </Select>

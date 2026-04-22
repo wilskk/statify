@@ -4,15 +4,21 @@
  */
 
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { KMedoidsSummary } from "../types/output";
 import { TrendingUp, TrendingDown, Target, BarChart3, CheckCircle2, XCircle } from "lucide-react";
 
 interface SummaryCardsProps {
     summary: KMedoidsSummary;
+    showCaseCount?: boolean;
+    showTotalCost?: boolean;
 }
 
-export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
+export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({
+    summary,
+    showCaseCount = true,
+    showTotalCost = true,
+}) => {
     const avgScore = summary.averageSilhouetteScore ?? 0;
     const averageSwapCost = summary.avgCost ?? (summary.numCases > 0 ? summary.totalCost / summary.numCases : 0);
     const averageBuildCost = summary.buildCost != null && summary.numCases > 0
@@ -40,29 +46,36 @@ export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({ summary }) =
                 </CardContent>
             </Card>
 
-            {/* Average Cost (objective) with total-cost detail */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Average Cost (Objective)</CardTitle>
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="min-w-0">
-                            <div className="text-2xl font-bold">
-                                {averageBuildCost != null && isFinite(averageBuildCost) ? averageBuildCost.toFixed(6) : 'N/A'}
+            {showTotalCost && (
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Cost / Dissimilarity</CardTitle>
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <div className="min-w-0">
+                                <div className="text-2xl font-bold">
+                                    {isFinite(summary.totalCost) ? summary.totalCost.toFixed(4) : "N/A"}
+                                </div>
+                                <p className="text-xs text-muted-foreground">Total Cost (SWAP)</p>
                             </div>
-                            <p className="text-xs text-muted-foreground">Average Cost (BUILD)</p>
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-2xl font-bold">
-                                {isFinite(averageSwapCost) ? averageSwapCost.toFixed(6) : 'N/A'}
+                            <div className="min-w-0">
+                                <div className="text-2xl font-bold">
+                                    {averageBuildCost != null && isFinite(averageBuildCost) ? averageBuildCost.toFixed(6) : 'N/A'}
+                                </div>
+                                <p className="text-xs text-muted-foreground">Average Cost (BUILD)</p>
                             </div>
-                            <p className="text-xs text-muted-foreground">Average Cost (SWAP)</p>
+                            <div className="min-w-0">
+                                <div className="text-2xl font-bold">
+                                    {isFinite(averageSwapCost) ? averageSwapCost.toFixed(6) : 'N/A'}
+                                </div>
+                                <p className="text-xs text-muted-foreground">Average Cost (SWAP)</p>
+                            </div>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Silhouette Score */}
             <Card>
@@ -100,33 +113,35 @@ export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({ summary }) =
                 </CardContent>
             </Card>
 
-            {/* Largest Cluster */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Largest Cluster</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">Cluster {summary.largestCluster?.id ?? 'N/A'}</div>
-                    <p className="text-xs text-muted-foreground">
-                        {summary.largestCluster?.size ?? 0} cases ({summary.largestCluster && summary.numCases ? ((summary.largestCluster.size / summary.numCases) * 100).toFixed(1) : '0'}%)
-                    </p>
-                </CardContent>
-            </Card>
+            {showCaseCount && (
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Largest Cluster</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">Cluster {summary.largestCluster?.id ?? 'N/A'}</div>
+                        <p className="text-xs text-muted-foreground">
+                            {summary.largestCluster?.size ?? 0} cases ({summary.largestCluster && summary.numCases ? ((summary.largestCluster.size / summary.numCases) * 100).toFixed(1) : '0'}%)
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
 
-            {/* Smallest Cluster */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Smallest Cluster</CardTitle>
-                    <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">Cluster {summary.smallestCluster?.id ?? 'N/A'}</div>
-                    <p className="text-xs text-muted-foreground">
-                        {summary.smallestCluster?.size ?? 0} cases ({summary.smallestCluster && summary.numCases ? ((summary.smallestCluster.size / summary.numCases) * 100).toFixed(1) : '0'}%)
-                    </p>
-                </CardContent>
-            </Card>
+            {showCaseCount && (
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Smallest Cluster</CardTitle>
+                        <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">Cluster {summary.smallestCluster?.id ?? 'N/A'}</div>
+                        <p className="text-xs text-muted-foreground">
+                            {summary.smallestCluster?.size ?? 0} cases ({summary.smallestCluster && summary.numCases ? ((summary.smallestCluster.size / summary.numCases) * 100).toFixed(1) : '0'}%)
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 };

@@ -65,6 +65,7 @@ export const KMedoidsClusterIterateDefault: KMedoidsClusterIterateType = {
  */
 export const KMedoidsClusterResultsDefault: KMedoidsClusterResultsType = {
     ShowFinalMedoids: true, // Wajib tampilkan (setara Final Cluster Centers)
+    ShowClusterMedoids: true, // Tabel Cluster Medoids pada Data Tables
     ShowClusterMembership: true, // Wajib tampilkan (per case)
     ShowCaseCount: true, // Wajib tampilkan (Number of Cases)
     ShowIterationHistory: false, // Optional detail
@@ -97,8 +98,6 @@ export const KMedoidsClusterOptionsDefault: KMedoidsClusterOptionsType = {
     ShowClusterSizeDistribution: false, // Default off: tampilkan hanya jika dipilih user
     ShowClusterAttributeProfile: false, // Default off: tampilkan hanya jika dipilih user
     ShowDistanceMatrixBetweenMedoids: false, // Default off: tampilkan hanya jika dipilih user
-    ShowClusterMedoids: true, // Default on: tabel medoids tetap ditampilkan
-    ShowObjectAssignments: false, // Default off: tampilkan hanya jika dipilih user
     ExcludeListWise: true, // Default: listwise deletion
     ExcludePairWise: false,
     Standardize: true, // Default R-like behavior: scale() before pam()

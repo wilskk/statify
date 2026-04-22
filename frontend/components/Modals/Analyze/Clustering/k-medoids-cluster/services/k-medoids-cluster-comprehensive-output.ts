@@ -26,7 +26,12 @@ interface ClusteringResult {
 interface AutomaticKSelection {
     method: string;
     testedRange: { min: number; max: number };
-    scores: Array<{ k: number; score: number }>;
+    scores: Array<{
+        k: number;
+        score: number;
+        silhouetteScore?: number;
+        totalCost?: number;
+    }>;
     optimalK: number;
     optimalScore: number;
 }
@@ -44,6 +49,7 @@ interface KMedoidsAnalysisResult {
         missingByVariable: Record<string, number>;
     };
     automaticKSelection?: AutomaticKSelection;
+    kChartSelection?: AutomaticKSelection;
 }
 
 /**
@@ -199,7 +205,8 @@ export async function generateComprehensiveKMedoidsOutput(
 
     try {
         const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
-        const { result, config, automaticKSelection } = analysisResult;
+        const { result, config, automaticKSelection, kChartSelection } = analysisResult;
+        const chartSelection = automaticKSelection ?? kChartSelection;
 
         if (!result || !result.labels || !Array.isArray(result.labels)) {
             throw new Error("Invalid clustering result structure");
@@ -597,16 +604,30 @@ export async function generateComprehensiveKMedoidsOutput(
               })
             : [{ iteration: 0, totalCost: swapCost, improvement: 0, swapsMade: 0, medoids: result.medoids }];
 
-        // Build elbow data (if automatic k)
-        const elbowData = automaticKSelection
-            ? automaticKSelection.scores.map((item: any) => {
+        const isManualMode = config?.main?.ClusterMode === "manual";
+        const shouldBuildManualOptimalKChart =
+            !automaticKSelection &&
+            isManualMode &&
+            (config?.evaluation?.ShowOptimalKChart ?? false);
+
+        // Build optimal-k chart data.
+        // Automatic mode gets full k-range scores; manual mode gets the selected k point
+        // so the chart can still be shown in output when user chooses k manually.
+        const elbowData = chartSelection
+            ? chartSelection.scores.map((item: any) => {
                   const isSilhouetteMethod =
-                      automaticKSelection.method === "Silhouette" ||
-                      automaticKSelection.method === "silhouette";
+                      chartSelection.method === "Silhouette" ||
+                      chartSelection.method === "silhouette";
+                  const resolvedTotalCost =
+                      item.totalCost != null && isFinite(item.totalCost)
+                          ? item.totalCost
+                          : isSilhouetteMethod
+                          ? 0
+                          : (item.score ?? 0);
                   return {
                       k: item.k,
-                      // totalCost carries the primary metric (WCSS for elbow, or the score for silhouette)
-                      totalCost: isSilhouetteMethod ? 0 : (item.score ?? 0),
+                      // totalCost always carries the elbow/WCSS curve if available.
+                      totalCost: resolvedTotalCost,
                       // silhouetteScore is always the actual silhouette value
                       silhouetteScore:
                           item.silhouetteScore != null && isFinite(item.silhouetteScore)
@@ -616,6 +637,12 @@ export async function generateComprehensiveKMedoidsOutput(
                               : 0,
                   };
               })
+                        : shouldBuildManualOptimalKChart
+                        ? [{
+                                    k,
+                                    totalCost: isFinite(swapCost) ? swapCost : (result.cost ?? 0),
+                                    silhouetteScore: isFinite(averageSilhouette) ? averageSilhouette : 0,
+                            }]
             : undefined;
 
         // Calculate medoid distance matrix in standardized space
@@ -644,14 +671,20 @@ export async function generateComprehensiveKMedoidsOutput(
         await yieldToUI();
 
         // Build comprehensive output
-        const resolvedOptimalKMethod: "silhouette" | "elbow" | undefined = automaticKSelection
+        const resolvedOptimalKMethod: "silhouette" | "elbow" | undefined = chartSelection
             ? (
-                automaticKSelection.method === "Silhouette" ||
-                automaticKSelection.method === "silhouette"
+            chartSelection.method === "Silhouette" ||
+            chartSelection.method === "silhouette"
                     ? "silhouette"
                     : "elbow"
             )
             : config?.main?.ClusterMode === "automatic"
+            ? (
+                config?.main?.AutoKMethod === "elbow"
+                    ? "elbow"
+                    : "silhouette"
+            )
+            : shouldBuildManualOptimalKChart
             ? (
                 config?.main?.AutoKMethod === "elbow"
                     ? "elbow"
@@ -667,6 +700,8 @@ export async function generateComprehensiveKMedoidsOutput(
             iterationHistory,
             elbowData,
             optimalKMethod: resolvedOptimalKMethod,
+            clusterMode: config?.main?.ClusterMode === "automatic" ? "automatic" : "manual",
+            autoKMethod: config?.main?.AutoKMethod === "elbow" ? "elbow" : "silhouette",
             medoidDistanceMatrix,
             silhouetteScores: {
                 overall: isFinite(averageSilhouette) ? averageSilhouette : 0,
@@ -675,19 +710,25 @@ export async function generateComprehensiveKMedoidsOutput(
             },
             tables: [], // Will be populated below
             visualizationOptions: {
+                // Convergence mode always exposes iteration history details.
+                showIterationHistory:
+                    (config?.results?.ShowConvergenceAlgorithm ?? true)
+                        ? true
+                        : (config?.results?.ShowIterationHistory ?? true),
                 showPCAProjection: config?.options?.ShowPCAProjection ?? true,
                 showClusterScatterPlot: config?.options?.ShowClusterScatterPlot ?? false,
                 showClusterSizeDistribution: config?.options?.ShowClusterSizeDistribution ?? false,
                 showClusterAttributeProfile: config?.options?.ShowClusterAttributeProfile ?? false,
                 showDistanceMatrixBetweenMedoids: config?.options?.ShowDistanceMatrixBetweenMedoids ?? false,
-                showClusterMedoids: config?.options?.ShowClusterMedoids ?? true,
-                showObjectAssignments: config?.options?.ShowObjectAssignments ?? false,
+                showClusterMedoids: config?.results?.ShowClusterMedoids ?? true,
+                showObjectAssignments: config?.results?.ShowClusterMembership ?? false,
+                showCaseCount: config?.results?.ShowCaseCount ?? true,
+                // Total Cost is always shown in output.
+                showTotalCost: true,
                 showSilhouettePerObject: config?.evaluation?.ShowSilhouettePlot ?? false,
                 showSilhouetteByCluster: config?.evaluation?.ShowSilhouetteByCluster ?? true,
-                // For automatic k mode, always expose the optimal-k chart when score data exists.
-                showOptimalKChart:
-                    (config?.evaluation?.ShowOptimalKChart ?? false) ||
-                    Boolean(automaticKSelection && elbowData && elbowData.length > 0),
+                // The checkbox in Evaluation tab is the source of truth for visibility.
+                showOptimalKChart: config?.evaluation?.ShowOptimalKChart ?? false,
                 showOverallQualityAssessment: config?.evaluation?.ShowOverallQualityAssessment ?? true,
                 showConvergenceAlgorithm: config?.results?.ShowConvergenceAlgorithm ?? true,
             },

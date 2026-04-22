@@ -112,7 +112,7 @@ fn run_pam_clustering(
         metric,
         max_iterations: input.max_iterations,
         random_seed: input.random_seed,
-        use_build_phase: true,
+        use_build_phase: input.use_build_phase,
         // When the user leaves convergence_tolerance at 0.0 (the default),
         // use exact convergence (epsilon = 0.0) to match R's pam() behaviour.
         // Any positive user-supplied tolerance is forwarded as-is.
@@ -122,7 +122,7 @@ fn run_pam_clustering(
             0.0
         },
         n_init: input.n_init,
-        use_r_implementation: true,
+        use_r_implementation: input.use_r_implementation,
     };
 
     // Run PAM
@@ -417,7 +417,7 @@ pub fn run_k_medoids_typed(
     distance_metric: &str,
     random_seed: i64,
     convergence_tolerance: f64,
-    _n_init: usize,
+    n_init: usize,
     on_progress: Option<js_sys::Function>,
     on_initial_medoids: Option<js_sys::Function>,
 ) -> Result<JsValue, JsValue> {
@@ -472,7 +472,7 @@ pub fn run_k_medoids_typed(
         random_seed: if random_seed >= 0 { Some(random_seed as u64) } else { None },
         use_build_phase: true,
         epsilon: convergence_tolerance,
-        n_init: 1, // BUILD phase is deterministic; multiple inits don't help
+        n_init: n_init.max(1),
         use_r_implementation: true,
     };
 

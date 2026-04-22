@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import * as XLSX from "xlsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,8 +29,8 @@ import { PCAClusterPlot } from "./PCAClusterPlot";
 import { ClusterSizeDistribution } from "./ClusterSizeDistribution";
 import { SilhouetteBarChart } from "./SilhouetteBarChart";
 import { SilhouettePerObjectChart } from "./SilhouettePerObjectChart";
-import { SilhouetteKChart } from "./SilhouetteKChart";
 import { ElbowChart } from "./ElbowChart";
+import { SilhouetteKChart } from "./SilhouetteKChart";
 import { ConvergenceChart } from "./ConvergenceChart";
 import { IterationDetailsTable } from "./IterationDetailsTable";
 import { ConvergenceAlgorithmPanel } from "./ConvergenceAlgorithmPanel";
@@ -105,6 +106,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
     const silhouetteObjRef = useRef<HTMLDivElement>(null);
     const silhouetteClusterRef = useRef<HTMLDivElement>(null);
     const optimalKChartRef = useRef<HTMLDivElement>(null);
+    const silhouetteKChartRef = useRef<HTMLDivElement>(null);
     const convergenceChartRef = useRef<HTMLDivElement>(null);
 
     // Use variables from output if not provided as prop
@@ -130,18 +132,21 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         output?.visualizationOptions?.showClusterMedoids ?? true;
     const showObjectAssignments =
         output?.visualizationOptions?.showObjectAssignments ?? true;
+    const showCaseCount =
+        output?.visualizationOptions?.showCaseCount ?? true;
+    const showTotalCost =
+        output?.visualizationOptions?.showTotalCost ?? true;
+    const showIterationHistory =
+        output?.visualizationOptions?.showIterationHistory ?? true;
     const showSilhouettePerObject =
         output?.visualizationOptions?.showSilhouettePerObject ?? false;
     const showSilhouetteByCluster =
         output?.visualizationOptions?.showSilhouetteByCluster ?? true;
-    const showOptimalKChart =
-        (output?.visualizationOptions?.showOptimalKChart ?? false) ||
-        Boolean(output?.elbowData && output.elbowData.length > 0);
+    const showOptimalKChart = output?.visualizationOptions?.showOptimalKChart;
     const hasOptimalKChartData = Boolean(output?.elbowData && output.elbowData.length > 0);
     const shouldShowOptimalKCard =
-        showOptimalKChart ||
-        hasOptimalKChartData ||
-        Boolean(output?.optimalKMethod);
+        showOptimalKChart ??
+        (hasOptimalKChartData || Boolean(output?.optimalKMethod));
     const showOverallQualityAssessment =
         output?.visualizationOptions?.showOverallQualityAssessment ?? true;
     const showConvergenceAlgorithm =
@@ -151,6 +156,37 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         ((output?.elbowData?.some((point) => (point?.totalCost ?? 0) > 0) ?? false)
             ? "elbow"
             : "silhouette");
+    
+    // Determine which charts to show based on cluster mode
+    const clusterMode = output?.clusterMode ?? "automatic";
+    const autoKMethod = output?.autoKMethod ?? "silhouette";
+    
+    // Logic for determining which optimal K chart to display:
+    // - Automatic Silhouette: show SilhouetteKChart only
+    // - Automatic Elbow: show ElbowChart only
+    // - Manual: show ElbowChart only (with silhouette annotation)
+    const showOnlySilhouetteKChart = clusterMode === "automatic" && autoKMethod === "silhouette";
+    const showOnlyElbowChart = clusterMode === "automatic" && autoKMethod === "elbow";
+    const showElbowChartWithSilhouetteAnnotation = clusterMode === "manual";
+    
+    // Prepare silhouette K chart data
+    const silhouetteKChartData = useMemo(() => {
+        if (!output?.elbowData) return [];
+        return output.elbowData.map(point => ({
+            k: point.k,
+            silhouetteScore: point.silhouetteScore,
+        }));
+    }, [output?.elbowData]);
+
+    // Calculate k optimal from silhouette method
+    const silhouetteOptimalK = useMemo(() => {
+        if (!output?.elbowData || output.elbowData.length === 0) return undefined;
+        const best = output.elbowData.reduce((a, b) => 
+            b.silhouetteScore > a.silhouetteScore ? b : a
+        );
+        return best.k;
+    }, [output?.elbowData]);
+    
     const hasVisualizationContent =
         showPCAProjection ||
         showClusterScatterPlot ||
@@ -245,12 +281,19 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         totalIterations: normalizedIterations,
     };
 
+    const hasStandardizedAssignmentData = useMemo(
+        () =>
+            Boolean(
+                output?.assignments?.some(
+                    (a) => a.standardizedAttributes && Object.keys(a.standardizedAttributes).length > 0
+                )
+            ),
+        [output?.assignments]
+    );
+
     // Memoize assignments table JSON to avoid re-serializing on every render
     const assignmentsTableJson = useMemo(() => {
         if (!output?.assignments) return "{}";
-        const hasStandardizedAssignmentData = output.assignments.some(
-            a => a.standardizedAttributes && Object.keys(a.standardizedAttributes).length > 0
-        );
         return JSON.stringify({ tables: [
             {
                 key: "assignments",
@@ -293,7 +336,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                 }))
             }
         ]});
-    }, [output?.assignments, pagedAssignments, effectiveVariables]);
+    }, [output?.assignments, pagedAssignments, effectiveVariables, hasStandardizedAssignmentData]);
 
     // Memoize medoids table JSON
     const medoidsTableJson = useMemo(() => {
@@ -417,6 +460,42 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         }
     }, [buildSvgFromContainer]);
 
+    const handleDownloadAllAssignmentsExcel = useCallback(() => {
+        if (!output?.assignments || output.assignments.length === 0) return;
+
+        const headers: string[] = [
+            "ID",
+            "Cluster",
+            "Distance",
+            "Silhouette",
+            ...effectiveVariables.map((v) => v.label || v.name),
+            ...(hasStandardizedAssignmentData
+                ? effectiveVariables.map((v) => `${v.label || v.name} (Z-score)`)
+                : []),
+        ];
+
+        const bodyRows = output.assignments.map((a) => [
+            a.isMedoid ? `★ ${a.objectId}` : a.objectId,
+            a.clusterLabel,
+            typeof a.distanceToMedoid === "number" ? Number(a.distanceToMedoid.toFixed(6)) : "N/A",
+            typeof a.silhouetteScore === "number" ? Number(a.silhouetteScore.toFixed(6)) : "N/A",
+            ...effectiveVariables.map((v) => a.attributes?.[v.name] ?? "N/A"),
+            ...(hasStandardizedAssignmentData
+                ? effectiveVariables.map((v) => {
+                      const z = a.standardizedAttributes?.[v.name];
+                      return typeof z === "number" && isFinite(z) ? Number(z.toFixed(6)) : "N/A";
+                  })
+                : []),
+        ]);
+
+        const worksheet = XLSX.utils.aoa_to_sheet([headers, ...bodyRows]);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Object Assignments");
+
+        const filename = `${sanitizeFilename(`object-assignments-all-${output.assignments.length}-rows`)}.xlsx`;
+        XLSX.writeFile(workbook, filename);
+    }, [output?.assignments, effectiveVariables, hasStandardizedAssignmentData]);
+
     const renderDownloadActions = useCallback((
         targetRef: React.RefObject<HTMLDivElement | null>,
         fileName: string
@@ -464,7 +543,11 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
     return (
         <div className="space-y-6">
             {/* Summary Cards */}
-            <KMedoidsSummaryCards summary={summaryForCards} />
+            <KMedoidsSummaryCards
+                summary={summaryForCards}
+                showCaseCount={showCaseCount}
+                showTotalCost={showTotalCost}
+            />
 
             {/* Tabbed Content */}
             <Tabs defaultValue={hasVisualizationContent ? "visualization" : "profiles"} className="w-full">
@@ -661,6 +744,17 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
+                            <div className="mb-3 flex justify-end">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleDownloadAllAssignmentsExcel}
+                                    disabled={totalAssignmentsRows === 0}
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download Excel (Semua Baris)
+                                </Button>
+                            </div>
                             <div className="mb-3 flex flex-col items-center gap-2 text-xs text-muted-foreground">
                                 <span className="text-center">
                                     Rows {totalAssignmentsRows === 0 ? 0 : (currentAssignmentsPage - 1) * ASSIGNMENTS_PAGE_SIZE + 1}
@@ -747,36 +841,61 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                 <CardHeader>
                                     <CardTitle>Grafik K Optimal</CardTitle>
                                     <CardDescription>
-                                        {resolvedOptimalKMethod === "elbow"
-                                            ? "Visualisasi pemilihan jumlah klaster terbaik menggunakan metode Elbow (berdasarkan total cost/inertia)."
-                                            : "Visualisasi pemilihan jumlah klaster terbaik berdasarkan skor silhouette per nilai K."}
+                                        {showOnlySilhouetteKChart && "Grafik Silhouette Score terhadap jumlah klaster (K)."}
+                                        {showOnlyElbowChart && "Grafik Elbow (Total Cost) dan Silhouette terhadap jumlah klaster (K)."}
+                                        {showElbowChartWithSilhouetteAnnotation && "Grafik Elbow dengan keterangan K optimal dari metode Silhouette."}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     {hasOptimalKChartData ? (
                                         <>
-                                            {renderDownloadActions(optimalKChartRef, "grafik-k-optimal")}
-                                            <div ref={optimalKChartRef}>
-                                                {resolvedOptimalKMethod === "elbow" ? (
-                                                    <ElbowChart
-                                                        data={output.elbowData!}
-                                                        currentK={output.summary.numClusters}
-                                                        method="elbow"
-                                                        width={560}
-                                                        height={380}
-                                                    />
-                                                ) : (
-                                                    <SilhouetteKChart
-                                                        data={(output.elbowData || []).map((point) => ({
-                                                            k: point.k,
-                                                            silhouetteScore: point.silhouetteScore,
-                                                        }))}
-                                                        currentK={output.summary.numClusters}
-                                                        width={560}
-                                                        height={380}
-                                                    />
-                                                )}
-                                            </div>
+                                            {/* Automatic Silhouette: show only SilhouetteKChart */}
+                                            {showOnlySilhouetteKChart && (
+                                                <>
+                                                    {renderDownloadActions(silhouetteKChartRef, "grafik-k-optimal-silhouette")}
+                                                    <div ref={silhouetteKChartRef}>
+                                                        <SilhouetteKChart
+                                                            data={silhouetteKChartData}
+                                                            currentK={output.summary.numClusters}
+                                                            width={560}
+                                                            height={400}
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Automatic Elbow: show only ElbowChart */}
+                                            {showOnlyElbowChart && (
+                                                <>
+                                                    {renderDownloadActions(optimalKChartRef, "grafik-k-optimal-elbow")}
+                                                    <div ref={optimalKChartRef}>
+                                                        <ElbowChart
+                                                            data={output.elbowData!}
+                                                            currentK={output.summary.numClusters}
+                                                            method="elbow"
+                                                            width={560}
+                                                            height={400}
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Manual: show only ElbowChart with silhouette annotation */}
+                                            {showElbowChartWithSilhouetteAnnotation && (
+                                                <>
+                                                    {renderDownloadActions(optimalKChartRef, "grafik-k-optimal-elbow")}
+                                                    <div ref={optimalKChartRef}>
+                                                        <ElbowChart
+                                                            data={output.elbowData!}
+                                                            currentK={output.summary.numClusters}
+                                                            method="elbow"
+                                                            silhouetteOptimalK={silhouetteOptimalK}
+                                                            width={560}
+                                                            height={400}
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
                                         </>
                                     ) : (
                                         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
