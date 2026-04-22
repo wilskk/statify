@@ -2,7 +2,7 @@
 
 use wasm_bindgen::JsValue;
 use serde::Serialize;
-use web_sys::console;
+use serde_json::json;
 use crate::models::config::OptionsConfig;
 use crate::stats::display_format::format_factor_matrix;
 use crate::models::result::{
@@ -39,7 +39,7 @@ struct FormatResult {
     inverse_correlation_matrix: Option<FormattedInverseCorrelation>,
     covariance_matrix: Option<FormattedCovariance>,
     inverse_covariance_matrix: Option<FormattedInverseCovariance>,
-    kmo_bartletts_test: Option<KMOBartlettsTest>,
+    kmo_bartletts_test: Option<FormattedKMOBartlettsTest>,
     anti_image_matrices: Option<FormattedAntiImage>,
     communalities: Option<FormattedCommunalities>,
     // total_variance_explained: Option<FormattedTotalVarianceExplained>,
@@ -88,7 +88,7 @@ struct CorrelationEntry {
 #[derive(Serialize)]
 struct VariableValue {
     variable: String,
-    value: f64,
+    value: serde_json::Value,  // Can be number or string ("." for diagonal sig values)
 }
 
 #[derive(Serialize)]
@@ -112,6 +112,14 @@ struct FormattedInverseCovariance {
 struct FormattedAntiImage {
     anti_image_covariance: Vec<CorrelationEntry>,
     anti_image_correlation: Vec<CorrelationEntry>,
+}
+
+#[derive(Serialize)]
+struct FormattedKMOBartlettsTest {
+    kaiser_meyer_olkin: String,      // Formatted with 3 decimals, leading dot if < 1
+    bartletts_test_chi_square: String, // Formatted with 3 decimals
+    df: usize,
+    significance: String,             // "<.001" if very small, else with 3 decimals
 }
 
 #[derive(Serialize)]
@@ -184,6 +192,36 @@ struct ScoreColumn {
     values: Vec<f64>,      // nilai per baris
 }
 
+// Helper function untuk format KMO dan Bartlett's Test values sesuai SPSS format
+fn format_kmo_bartletts(test: &KMOBartlettsTest) -> FormattedKMOBartlettsTest {
+    // Format KMO: 3 desimal dengan leading dot jika < 1 (misal: 0.458 -> ".458")
+    let kaiser_meyer_olkin = if test.kaiser_meyer_olkin < 1.0 {
+        format!(".{:0>3}", ((test.kaiser_meyer_olkin * 1000.0).round() as i32) % 1000)
+    } else {
+        format!("{:.3}", test.kaiser_meyer_olkin)
+    };
+
+    // Format Chi-Square: 3 desimal
+    let bartletts_test_chi_square = format!("{:.3}", test.bartletts_test_chi_square);
+
+    // Format Significance: jika < 0.001 maka "<.001", else 3 desimal dengan leading dot
+    let significance = if test.significance < 0.001 {
+        "<.001".to_string()
+    } else if test.significance >= 1.0 {
+        "1.000".to_string()
+    } else {
+        // Format dengan 3 desimal dan leading dot
+        format!(".{:0>3}", ((test.significance * 1000.0).round() as i32) % 1000)
+    };
+
+    FormattedKMOBartlettsTest {
+        kaiser_meyer_olkin,
+        bartletts_test_chi_square,
+        df: test.df,
+        significance,
+    }
+}
+
 impl FormatResult {
     fn from_analysis_result(result: &FactorAnalysisResult, options: &OptionsConfig) -> Self {
         let correlation_matrix = result.correlation_matrix.as_ref().map(|matrix| {
@@ -200,7 +238,7 @@ impl FormatResult {
                                 .map(|other_var| {
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: json!(*var_values.get(other_var).unwrap_or(&0.0)),
                                     }
                                 })
                                 .collect()
@@ -227,9 +265,16 @@ impl FormatResult {
                                 matrix.variable_order
                                     .iter()
                                     .map(|other_var| {
+                                        // For diagonal elements (i == j), show empty (null) like SPSS does
+                                        let sig_value = if var_name == other_var {
+                                            json!(null)
+                                        } else {
+                                            json!(*var_values.get(other_var).unwrap_or(&0.0))
+                                        };
+
                                         VariableValue {
                                             variable: other_var.clone(),
-                                            value: *var_values.get(other_var).unwrap_or(&0.0),
+                                            value: sig_value,
                                         }
                                     })
                                     .collect()
@@ -262,7 +307,7 @@ impl FormatResult {
                                 .map(|other_var| {
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: json!(*var_values.get(other_var).unwrap_or(&0.0)),
                                     }
                                 })
                                 .collect()
@@ -293,7 +338,7 @@ impl FormatResult {
                                 .map(|other_var| {
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: json!(*var_values.get(other_var).unwrap_or(&0.0)),
                                     }
                                 })
                                 .collect()
@@ -325,7 +370,7 @@ impl FormatResult {
                                 .map(|other_var| {
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: json!(*var_values.get(other_var).unwrap_or(&0.0)),
                                     }
                                 })
                                 .collect()
@@ -357,7 +402,7 @@ impl FormatResult {
                                 .map(|other_var| {
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: json!(*var_values.get(other_var).unwrap_or(&0.0)),
                                     }
                                 })
                                 .collect()
@@ -377,21 +422,12 @@ impl FormatResult {
                     let values = matrices.anti_image_correlation
                         .get(var_name)
                         .map(|var_values| {
-                            console::log_1(&format!("DEBUG CONVERTER: Processing {} row, HashMap keys: {:?}", var_name, var_values.keys().collect::<Vec<_>>()).into());
-                            
                             matrices.variable_order
                                 .iter()
                                 .map(|other_var| {
-                                    let val = *var_values.get(other_var).unwrap_or(&0.0);
-                                    
-                                    // Log diagonal values specifically
-                                    if var_name == other_var {
-                                        console::log_1(&format!("DEBUG CONVERTER: Diagonal {} = {:.10}", var_name, val).into());
-                                    }
-                                    
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: val,
+                                        value: json!(*var_values.get(other_var).unwrap_or(&0.0)),
                                     }
                                 })
                                 .collect()
@@ -417,7 +453,7 @@ impl FormatResult {
                 .map(|var_name| {
                     VariableValue {
                         variable: var_name.clone(),
-                        value: *comm.raw_initial.get(var_name).unwrap_or(&0.0),
+                        value: json!(*comm.raw_initial.get(var_name).unwrap_or(&0.0)),
                     }
                 })
                 .collect();
@@ -427,7 +463,7 @@ impl FormatResult {
                 .map(|var_name| {
                     VariableValue {
                         variable: var_name.clone(),
-                        value: *comm.rescaled_initial.get(var_name).unwrap_or(&0.0),
+                        value: json!(*comm.rescaled_initial.get(var_name).unwrap_or(&0.0)),
                     }
                 })
                 .collect();
@@ -443,7 +479,7 @@ impl FormatResult {
                     .map(|var_name| {
                         VariableValue {
                             variable: var_name.clone(),
-                            value: *comm.extraction.get(var_name).unwrap_or(&0.0),
+                            value: json!(*comm.extraction.get(var_name).unwrap_or(&0.0)),
                         }
                     })
                     .collect()
@@ -458,7 +494,7 @@ impl FormatResult {
                     .map(|var_name| {
                         VariableValue {
                             variable: var_name.clone(),
-                            value: *comm.rescaled_extraction.get(var_name).unwrap_or(&0.0),
+                            value: json!(*comm.rescaled_extraction.get(var_name).unwrap_or(&0.0)),
                         }
                     })
                     .collect()
@@ -516,7 +552,7 @@ impl FormatResult {
                                 .map(|other_var| {
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: json!(*var_values.get(other_var).unwrap_or(&0.0)),
                                     }
                                 })
                                 .collect()
@@ -539,9 +575,16 @@ impl FormatResult {
                             corr.variable_order
                                 .iter()
                                 .map(|other_var| {
+                                    // For diagonal elements (i == j), show empty (null) like SPSS does
+                                    let residual_value = if var_name == other_var {
+                                        json!(null)
+                                    } else {
+                                        json!(*var_values.get(other_var).unwrap_or(&0.0))
+                                    };
+
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: residual_value,
                                     }
                                 })
                                 .collect()
@@ -573,7 +616,7 @@ impl FormatResult {
                                 .map(|other_var| {
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: json!(*var_values.get(other_var).unwrap_or(&0.0)),
                                     }
                                 })
                                 .collect()
@@ -596,9 +639,16 @@ impl FormatResult {
                             cov.variable_order
                                 .iter()
                                 .map(|other_var| {
+                                    // For diagonal elements (i == j), show empty (null) like SPSS does
+                                    let residual_value = if var_name == other_var {
+                                        json!(null)
+                                    } else {
+                                        json!(*var_values.get(other_var).unwrap_or(&0.0))
+                                    };
+
                                     VariableValue {
                                         variable: other_var.clone(),
-                                        value: *var_values.get(other_var).unwrap_or(&0.0),
+                                        value: residual_value,
                                     }
                                 })
                                 .collect()
@@ -817,7 +867,7 @@ impl FormatResult {
             inverse_correlation_matrix,
             covariance_matrix,
             inverse_covariance_matrix,
-            kmo_bartletts_test: result.kmo_bartletts_test.clone(),
+            kmo_bartletts_test: result.kmo_bartletts_test.as_ref().map(|test| format_kmo_bartletts(test)),
             anti_image_matrices,
             communalities,
             // total_variance_explained: result.total_variance_explained.clone(),
@@ -837,3 +887,4 @@ impl FormatResult {
         }
     }
 }
+

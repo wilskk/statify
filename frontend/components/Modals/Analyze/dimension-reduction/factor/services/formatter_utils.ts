@@ -158,6 +158,27 @@ export const fmtEigenvalue = (val: number | undefined | null): string => {
 };
 
 /**
+ * Parse formatted SPSS string value back to numeric value
+ * Used to extract numeric values from already-formatted WASM output
+ * Examples: ".458" -> 0.458, "<.001" -> 0.0001, "67.675" -> 67.675
+ */
+export const parseFormattedValue = (value: string | number | undefined | null): number => {
+  if (value === undefined || value === null) return 1; // Default fallback
+  if (typeof value === "number") return value;
+  if (typeof value !== "string") return 1;
+
+  // Handle special cases
+  if (value === "<.001" || value === "< .001") return 0.0001; // Treat as very small
+  if (value === "1.000") return 1.0;
+
+  // Remove leading dot and parse
+  const cleanValue = value.replace(/^\./g, "0.").trim();
+  const parsed = parseFloat(cleanValue);
+
+  return isNaN(parsed) ? 1 : parsed;
+};
+
+/**
  * Format factor loading dengan presisi yang sesuai
  * Loadings biasanya -1 hingga 1, perlu precision 3 digit
  */
@@ -188,22 +209,27 @@ export const fmtLoading = (val: number | undefined | null): string => {
  * Bartlett's Test harus signifikan (p < 0.05) untuk matrix bukan identity
  */
 export const generateKMODescription = (
-  kmoValue: number,
-  bartlettSig: number,
-  bartlettChiSquare?: number,
+  kmoValue: number | string,
+  bartlettSig: number | string,
+  bartlettChiSquare?: number | string,
   bartlettDf?: number
 ): string => {
-  const isKMOAdequate = kmoValue >= 0.5;
-  const isBartlettSig = bartlettSig < 0.05;
-  const pVal = bartlettSig < 0.001 ? "< .001" : `= ${bartlettSig.toFixed(3)}`;
+  // Parse values from either number or formatted string
+  const kmoNumeric = typeof kmoValue === "string" ? parseFormattedValue(kmoValue) : kmoValue;
+  const bartlettSigNumeric = parseFormattedValue(bartlettSig);
+  const bartlettChiSquareNumeric = typeof bartlettChiSquare === "string" ? parseFormattedValue(bartlettChiSquare) : bartlettChiSquare;
+
+  const isKMOAdequate = kmoNumeric >= 0.5;
+  const isBartlettSig = bartlettSigNumeric < 0.05;
+  const pVal = bartlettSigNumeric < 0.001 ? "< .001" : `= ${bartlettSigNumeric.toFixed(3)}`;
 
   // KMO interpretation label
   let kmoLabel = "unacceptable";
-  if (kmoValue >= 0.9) kmoLabel = "marvelous";
-  else if (kmoValue >= 0.8) kmoLabel = "meritorious";
-  else if (kmoValue >= 0.7) kmoLabel = "middling";
-  else if (kmoValue >= 0.6) kmoLabel = "mediocre";
-  else if (kmoValue >= 0.5) kmoLabel = "miserable";
+  if (kmoNumeric >= 0.9) kmoLabel = "marvelous";
+  else if (kmoNumeric >= 0.8) kmoLabel = "meritorious";
+  else if (kmoNumeric >= 0.7) kmoLabel = "middling";
+  else if (kmoNumeric >= 0.6) kmoLabel = "mediocre";
+  else if (kmoNumeric >= 0.5) kmoLabel = "miserable";
 
   let interpretation = "";
   if (isKMOAdequate && isBartlettSig) {
@@ -214,11 +240,11 @@ export const generateKMODescription = (
     interpretation = "Bartlett's test of sphericity is not significant, indicating the correlation matrix does not differ significantly from an identity matrix.";
   }
 
-  const chiSquareInfo = bartlettChiSquare !== undefined && bartlettDf !== undefined
-    ? `, χ²(${bartlettDf}) = ${bartlettChiSquare.toFixed(3)},`
+  const chiSquareInfo = bartlettChiSquareNumeric !== undefined && bartlettDf !== undefined
+    ? `, χ²(${bartlettDf}) = ${(bartlettChiSquareNumeric as number).toFixed(3)},`
     : ",";
 
-  return `The Kaiser-Meyer-Olkin measure of sampling adequacy was ${kmoValue.toFixed(3)} (${kmoLabel})${chiSquareInfo} and Bartlett's test of sphericity was significant (p ${pVal}). ${interpretation}`;
+  return `The Kaiser-Meyer-Olkin measure of sampling adequacy was ${kmoNumeric.toFixed(3)} (${kmoLabel})${chiSquareInfo} and Bartlett's test of sphericity was significant (p ${pVal}). ${interpretation}`;
 };
 
 /**

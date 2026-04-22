@@ -353,64 +353,44 @@ export async function resultFactorAnalysis({
                 });
             }
 
-            /*
-             * 📊 Component Score Coefficient Matrix Result 📊
-             * */
-            const componentScoreCoefficientMatrix = findTable(
-                "component_score_coefficient_matrix"
-            );
-            const componentScoreCoefficientMatrixRaw = findRawTable(
-                "component_score_coefficient_matrix"
-            );
-            if (componentScoreCoefficientMatrix && componentScoreCoefficientMatrixRaw) {
-                const tableTitle = componentScoreCoefficientMatrixRaw.title;
-                await addStatistic(analyticId, {
-                    title: tableTitle,
-                    description: getTableDescription("component_score_coefficient_matrix", tableTitle),
-                    output_data: componentScoreCoefficientMatrix,
-                    components: tableTitle,
-                });
-            }
+            if (configData.scores.DisplayFactor) {
+                /*
+                 * 📊 Component Score Coefficient Matrix Result 📊
+                 * */
+                const componentScoreCoefficientMatrix = findTable(
+                    "component_score_coefficient_matrix"
+                );
+                const componentScoreCoefficientMatrixRaw = findRawTable(
+                    "component_score_coefficient_matrix"
+                );
+                if (componentScoreCoefficientMatrix && componentScoreCoefficientMatrixRaw) {
+                    const tableTitle = componentScoreCoefficientMatrixRaw.title;
+                    await addStatistic(analyticId, {
+                        title: tableTitle,
+                        description: getTableDescription("component_score_coefficient_matrix", tableTitle),
+                        output_data: componentScoreCoefficientMatrix,
+                        components: tableTitle,
+                    });
+                }
 
-            /*
-             * 📈 Component Score Covariance Matrix Result 📈
-             * */
-            const componentScoreCovarianceMatrix = findTable(
-                "component_score_covariance_matrix"
-            );
-            const componentScoreCovarianceMatrixRaw = findRawTable(
-                "component_score_covariance_matrix"
-            );
-            if (componentScoreCovarianceMatrix && componentScoreCovarianceMatrixRaw) {
-                const tableTitle = componentScoreCovarianceMatrixRaw.title;
-                await addStatistic(analyticId, {
-                    title: tableTitle,
-                    description: getTableDescription("component_score_covariance_matrix", tableTitle),
-                    output_data: componentScoreCovarianceMatrix,
-                    components: tableTitle,
-                });
-            }
-
-            /*
-             * 📐 Loading Plot Logic 📐
-             */
-            // Ambil data dari Rust (sesuai struct baru)
-            const loadingPlotDataRaw = (formattedResult as any).loadingPlotChart;
-
-            if (loadingPlotDataRaw) {
-                // Kita simpan data mentah saja (JSON), karena komponen React yang akan mengolahnya
-                const chartPayload = {
-                    type: "PLOTLY_LOADING_PLOT", // Penanda untuk Frontend merender komponen yg benar
-                    data: loadingPlotDataRaw
-                };
-
-                await addStatistic(analyticId, {
-                    title: `Loading Plot`,
-                    description: `Factor Loadings (${loadingPlotDataRaw.axis_labels.length} Components)`,
-                    // Simpan JSON mentah ini ke database/state
-                    output_data: JSON.stringify(chartPayload),
-                    components: "LoadingPlot", 
-                });
+                /*
+                 * 📈 Component Score Covariance Matrix Result 📈
+                 * */
+                const componentScoreCovarianceMatrix = findTable(
+                    "component_score_covariance_matrix"
+                );
+                const componentScoreCovarianceMatrixRaw = findRawTable(
+                    "component_score_covariance_matrix"
+                );
+                if (componentScoreCovarianceMatrix && componentScoreCovarianceMatrixRaw) {
+                    const tableTitle = componentScoreCovarianceMatrixRaw.title;
+                    await addStatistic(analyticId, {
+                        title: tableTitle,
+                        description: getTableDescription("component_score_covariance_matrix", tableTitle),
+                        output_data: componentScoreCovarianceMatrix,
+                        components: tableTitle,
+                    });
+                }
             }
 
 
@@ -442,6 +422,28 @@ export async function resultFactorAnalysis({
                     description: `Table of Eigenvalues`,
                     output_data: screePlotTable,
                     components: `Scree Plot Data`, // Menggunakan renderer Tabel default
+                });
+            }
+
+              /*
+             * 📐 Loading Plot Logic 📐
+             */
+            // Ambil data dari Rust (sesuai struct baru)
+            const loadingPlotDataRaw = (formattedResult as any).loadingPlotChart;
+
+            if (loadingPlotDataRaw) {
+                // Kita simpan data mentah saja (JSON), karena komponen React yang akan mengolahnya
+                const chartPayload = {
+                    type: "PLOTLY_LOADING_PLOT", // Penanda untuk Frontend merender komponen yg benar
+                    data: loadingPlotDataRaw
+                };
+
+                await addStatistic(analyticId, {
+                    title: `Loading Plot`,
+                    description: `Factor Loadings (${loadingPlotDataRaw.axis_labels.length} Components)`,
+                    // Simpan JSON mentah ini ke database/state
+                    output_data: JSON.stringify(chartPayload),
+                    components: "LoadingPlot", 
                 });
             }
         };

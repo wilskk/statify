@@ -293,29 +293,31 @@ pub fn run_analysis(
     // Inisialisasi variabel untuk menampung skor akhir (nilai per responden)
     let mut factor_scores = None;
 
-    // Step 13: Calculate Component Score Coefficient Matrix AND Calculate Actual Scores
+    // Step 13: Calculate Component Score Coefficient Matrix
+    // Matrix diperlukan untuk 2 kebutuhan:
+    // 1) DisplayFactor: tampilkan tabel coefficient/covariance matrix
+    // 2) SaveVar: hitung factor scores untuk disimpan sebagai variabel baru
     let mut component_score_coefficient_matrix = None;
-    if config.scores.save_var {
+    if config.scores.display_factor || config.scores.save_var {
         executed_functions.push("calculate_component_score_coefficient_matrix".to_string());
         match core::calculate_component_score_coefficient_matrix(&filtered_data, config) {
             Ok(matrix) => {
-                // Penting: Kita clone matrix ini agar bisa digunakan untuk perhitungan skor
-                // sebelum kepemilikannya (ownership) dipindahkan ke variabel component_score_coefficient_matrix
-                let matrix_for_calculation = matrix.clone();
+                // Simpan matriks ke hasil hanya saat user meminta ditampilkan.
+                if config.scores.display_factor {
+                    component_score_coefficient_matrix = Some(matrix.clone());
+                }
 
-                // 1. Simpan Matriks Koefisien untuk Laporan
-                component_score_coefficient_matrix = Some(matrix);
-
-                // 2. Hitung Skor Faktor Aktual (Data Baru) menggunakan Matriks Koefisien tadi
-                executed_functions.push("calculate_factor_scores".to_string());
-                match core::calculate_factor_scores(&filtered_data, config, &matrix_for_calculation) {
-                    Ok(scores) => {
-                        factor_scores = Some(scores);
-                        web_sys::console::log_1(&"Factor scores calculated successfully".into());
-                    }
-
-                    Err(e) => {
-                        error_collector.add_error("calculate_factor_scores", &e);
+                // Hitung factor scores hanya saat user meminta Save as variables.
+                if config.scores.save_var {
+                    executed_functions.push("calculate_factor_scores".to_string());
+                    match core::calculate_factor_scores(&filtered_data, config, &matrix) {
+                        Ok(scores) => {
+                            factor_scores = Some(scores);
+                            web_sys::console::log_1(&"Factor scores calculated successfully".into());
+                        }
+                        Err(e) => {
+                            error_collector.add_error("calculate_factor_scores", &e);
+                        }
                     }
                 }
             }
@@ -327,9 +329,9 @@ pub fn run_analysis(
         }
     }
 
-    // Step 14: Calculate Component Score Covariance Matrix if scores are saved
+    // Step 14: Calculate Component Score Covariance Matrix only when display is requested
     let mut component_score_covariance_matrix = None;
-    if config.scores.save_var {
+    if config.scores.display_factor {
         executed_functions.push("calculate_component_score_covariance_matrix".to_string());
         match core::calculate_component_score_covariance_matrix(&filtered_data, config) {
             Ok(matrix) => {

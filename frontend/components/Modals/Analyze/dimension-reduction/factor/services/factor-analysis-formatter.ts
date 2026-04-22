@@ -3,7 +3,7 @@
 // PERBAIKAN 4/1/2026
 
 import * as math from "mathjs";
-import {formatDisplayNumber} from "@/hooks/useFormatter";
+import {formatDisplayNumber, formatCorrelationValue} from "@/hooks/useFormatter";
 import {ResultJson, Table} from "@/types/Table";
 import {FactorType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
 import {
@@ -36,6 +36,32 @@ const EXTRACTION_METHOD_MAP: Record<string, string> = {
 
 function getExtractionMethodDisplayName(methodValue: string): string {
     return EXTRACTION_METHOD_MAP[methodValue] || methodValue;
+}
+
+/**
+ * SPSS-like formatting for Component/Factor Score Covariance Matrix.
+ * - Always 4 decimals
+ * - Suppress scientific notation
+ * - Avoid negative zero from floating-point precision noise
+ */
+function formatScoreCovarianceMatrixValue(value: number | undefined | null): string {
+    if (value === undefined || value === null || isNaN(value)) return ".";
+    if (!isFinite(value)) return value > 0 ? "Infinity" : "-Infinity";
+
+    const normalized = Math.abs(value) < 1e-12 ? 0 : value;
+
+    if (normalized === 0) {
+        return ".0000";
+    }
+
+    const fixed = normalized.toFixed(4);
+
+    // SPSS style: no leading zero for values with |x| < 1
+    if (Math.abs(normalized) < 1) {
+        return fixed.replace(/^(-?)0\./, "$1.");
+    }
+
+    return fixed;
 }
 
 /**
@@ -176,7 +202,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                 };
 
                 entry.values.forEach((val: any, colIndex: number) => {
-                    rowData[`var_${colIndex}`] = formatDisplayNumber(val.value);
+                    rowData[`var_${colIndex}`] = formatCorrelationValue(val.value);
                 });
 
                 table.rows.push(rowData);
@@ -196,7 +222,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                     };
 
                     entry.values.forEach((val: any, colIndex: number) => {
-                        rowData[`var_${colIndex}`] = formatDisplayNumber(
+                        rowData[`var_${colIndex}`] = formatCorrelationValue(
                             val.value
                         );
                     });
@@ -1390,8 +1416,11 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         resultJson.tables.push(table);
     }
 
+    // 12-13. Score matrices are displayed only when user selects DisplayFactor
+    const shouldDisplayScoreMatrices = configData?.scores?.DisplayFactor ?? true;
+
     // 12. Component Score Coefficient Matrix
-    if (data.component_score_coefficient_matrix) {
+    if (shouldDisplayScoreMatrices && data.component_score_coefficient_matrix) {
         const extractedComponents =
             data.component_score_coefficient_matrix.components[0]?.values
                 .length || 0;
@@ -1451,7 +1480,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     }
 
     // 13. Component Score Covariance Matrix
-    if (data.component_score_covariance_matrix) {
+    if (shouldDisplayScoreMatrices && data.component_score_covariance_matrix) {
         const components =
             data.component_score_covariance_matrix.components.length;
 
@@ -1483,7 +1512,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             };
 
             for (let j = 0; j < components; j++) {
-                rowData[`component_${j + 1}`] = formatDisplayNumber(
+                rowData[`component_${j + 1}`] = formatScoreCovarianceMatrixValue(
                     data.component_score_covariance_matrix.components[i][j]
                 );
             }
