@@ -7,10 +7,21 @@ use crate::models::config::{
 };
 use crate::models::result::{CategoricalCoding, FrequencyCount};
 
+/// Represents a logical variable group in the design matrix.
+/// For numeric variables: one group with one column.
+/// For categorical variables with k categories: one group with k-1 columns.
+#[derive(Debug, Clone)]
+pub struct VariableGroup {
+    pub name: String,               // Original variable name (e.g., "ChestPain")
+    pub column_indices: Vec<usize>, // Indices into the design matrix columns
+    pub is_categorical: bool,
+}
+
 pub struct DesignMatrixResult {
     pub matrix: DMatrix<f64>,
     pub feature_names: Vec<String>,
     pub codings: Vec<CategoricalCoding>,
+    pub variable_groups: Vec<VariableGroup>,
 }
 
 /// Helper: Generate Polynomial Contrasts using Gram-Schmidt Orthogonalization
@@ -80,6 +91,7 @@ pub fn build(
     let mut final_columns: Vec<DVector<f64>> = Vec::new();
     let mut final_names: Vec<String> = Vec::new();
     let mut codings_report: Vec<CategoricalCoding> = Vec::new();
+    let mut variable_groups: Vec<VariableGroup> = Vec::new();
 
     let cat_map: HashMap<usize, &CategoricalVarConfig> = config
         .categorical_variables
@@ -312,10 +324,19 @@ pub fn build(
             }
 
             // === 6. Finalisasi Output ===
+            let group_start_idx = final_columns.len();
             for (d_vec, d_name) in dummy_columns.into_iter().zip(dummy_names.into_iter()) {
                 final_columns.push(DVector::from_vec(d_vec));
                 final_names.push(d_name);
             }
+            let group_end_idx = final_columns.len();
+
+            // Build variable group for this categorical variable
+            variable_groups.push(VariableGroup {
+                name: col_name.clone(),
+                column_indices: (group_start_idx..group_end_idx).collect(),
+                is_categorical: true,
+            });
 
             let mut category_counts: Vec<FrequencyCount> = Vec::new();
             for (i, cat_label) in categories.iter().enumerate() {
@@ -334,9 +355,15 @@ pub fn build(
                 categories: category_counts,
             });
         } else {
-            // Numeric
+            // Numeric — single column group
+            let col_idx_in_final = final_columns.len();
             final_columns.push(col_data);
-            final_names.push(col_name);
+            final_names.push(col_name.clone());
+            variable_groups.push(VariableGroup {
+                name: col_name,
+                column_indices: vec![col_idx_in_final],
+                is_categorical: false,
+            });
         }
     }
 
@@ -350,5 +377,6 @@ pub fn build(
         matrix: result_matrix,
         feature_names: final_names,
         codings: codings_report,
+        variable_groups,
     })
 }
