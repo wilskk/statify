@@ -24,6 +24,7 @@ pub fn run(
     config: &LogisticConfig,
     feature_names: &[String],
     codings: Option<Vec<CategoricalCoding>>,
+    _variable_groups: &[crate::stats::design_matrix::VariableGroup],
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
