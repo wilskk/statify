@@ -35,7 +35,7 @@ pub fn init_panic_hook() {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
     
-    console::log_1(&"K-Medoids WASM module initialized with panic hook".into());
+    console::log_1(&"K-Medoids WASM module v1.0.1 initialized with panic hook".into());
 }
 
 #[wasm_bindgen]
@@ -61,6 +61,7 @@ pub fn run_k_medoids(input_value: JsValue) -> Result<JsValue, JsValue> {
         .map_err(|e| JsValue::from_str(&e))?;
 
     // Run clustering based on method
+    console::log_1(&format!("[run_k_medoids] Calling method: {}", input.method).into());
     let output = match input.method.to_lowercase().as_str() {
         "pam" => run_pam_clustering(&input, metric)?,
         "clara" => run_clara_clustering(&input, metric)?,
@@ -69,6 +70,7 @@ pub fn run_k_medoids(input_value: JsValue) -> Result<JsValue, JsValue> {
             "Unknown method: {}. Supported: PAM, CLARA, CLARANS", input.method
         ))),
     };
+    console::log_1(&"[run_k_medoids] Clustering successful".into());
 
     console::log_1(&format!("Clustering complete! Iterations: {}, Converged: {}",
         output.iterations, output.converged).into());
@@ -112,7 +114,7 @@ fn run_pam_clustering(
         metric,
         max_iterations: input.max_iterations,
         random_seed: input.random_seed,
-        use_build_phase: input.use_build_phase,
+        use_build_phase: input.use_build_phase.unwrap_or(true),
         // When the user leaves convergence_tolerance at 0.0 (the default),
         // use exact convergence (epsilon = 0.0) to match R's pam() behaviour.
         // Any positive user-supplied tolerance is forwarded as-is.
@@ -122,12 +124,14 @@ fn run_pam_clustering(
             0.0
         },
         n_init: input.n_init,
-        use_r_implementation: input.use_r_implementation,
+        use_r_implementation: input.use_r_implementation.unwrap_or(true),
     };
 
     // Run PAM
+    console::log_1(&"[run_pam_clustering] Starting PAM...".into());
     let result = run_pam(&input.data, &config)
         .map_err(|e| JsValue::from_str(&e))?;
+    console::log_1(&"[run_pam_clustering] PAM finished".into());
 
     // Medoid coordinate vectors (cloned from input data by index)
     let medoids: Vec<Vec<f64>> = result.medoids.iter()
@@ -156,6 +160,10 @@ fn run_pam_clustering(
         cost_history: result.cost_history,
         silhouette_scores: result.silhouette_scores,
         medoid_history: result.medoid_history,
+        // PAM does not use CLARA sampling
+        sample_costs: vec![],
+        sample_pam_iterations: vec![],
+        clara_best_sample_index: 0,
     })
 }
 
@@ -180,8 +188,10 @@ fn run_clara_clustering(
     };
 
     // Run CLARA
+    console::log_1(&"[run_clara_clustering] Starting CLARA...".into());
     let result = run_clara(&input.data, &config)
         .map_err(|e| JsValue::from_str(&e))?;
+    console::log_1(&"[run_clara_clustering] CLARA finished".into());
 
     // Medoid coordinate vectors
     let medoids: Vec<Vec<f64>> = result.medoids.iter()
@@ -201,6 +211,23 @@ fn run_clara_clustering(
         })
         .collect();
 
+    // Collect per-sample costs from the sampling history
+    let sample_costs: Vec<f64> = result.samples.iter().map(|s| s.cost).collect();
+    let sample_pam_iterations: Vec<usize> = result.samples.iter().map(|s| s.pam_iterations).collect();
+    let clara_best_sample_index = result.best_sample_index;
+
+    // Log per-sample costs so the browser console confirms the data is present
+    for s in &result.samples {
+        console::log_1(&format!(
+            "[CLARA] Sample {}/{}: cost={:.4} pam_iters={}",
+            s.sample_index, result.samples_tried, s.cost, s.pam_iterations
+        ).into());
+    }
+    console::log_1(&format!(
+        "[CLARA] Best sample: #{} cost={:.4}",
+        clara_best_sample_index, result.total_cost
+    ).into());
+
     Ok(KMedoidsOutput {
         cluster_assignments: result.assignments,
         medoids_indices: result.medoids,
@@ -216,9 +243,15 @@ fn run_clara_clustering(
         total_cost_swap: result.total_cost,
         iterations: result.samples_tried,
         converged: true,
-        cost_history: vec![],
+        // cost_history reused to carry per-sample costs so existing TypeScript
+        // code that reads result.cost_history still gets the data even before
+        // it is updated to use the new sample_costs field.
+        cost_history: sample_costs.clone(),
         silhouette_scores: vec![], // CLARA uses sampling; silhouette skipped in WASM
         medoid_history: vec![],
+        sample_costs,
+        sample_pam_iterations,
+        clara_best_sample_index,
     })
 }
 
@@ -268,8 +301,12 @@ fn run_clarans_clustering(
         iterations: result.local_searches,
         converged: true,
         cost_history: vec![],
-        silhouette_scores: vec![], // CLARA uses sampling; silhouette skipped in WASM
+        silhouette_scores: vec![], // CLARANS uses random search; silhouette skipped in WASM
         medoid_history: vec![],
+        // CLARANS does not use CLARA sampling
+        sample_costs: vec![],
+        sample_pam_iterations: vec![],
+        clara_best_sample_index: 0,
     })
 }
 

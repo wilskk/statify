@@ -53,7 +53,7 @@ export function run_k_medoids_range(input_value: any): any;
  *     iterations:          number,
  *     converged:           boolean }
  */
-export function run_k_medoids_typed(flat_data: Float64Array, n_rows: number, n_cols: number, n_clusters: number, method: string, max_iterations: number, distance_metric: string, random_seed: bigint, convergence_tolerance: number, _n_init: number, on_progress?: Function | null, on_initial_medoids?: Function | null): any;
+export function run_k_medoids_typed(flat_data: Float64Array, n_rows: number, n_cols: number, n_clusters: number, method: string, max_iterations: number, distance_metric: string, random_seed: bigint, convergence_tolerance: number, n_init: number, on_progress?: Function | null, on_initial_medoids?: Function | null): any;
 
 export function test_connection(): string;
 

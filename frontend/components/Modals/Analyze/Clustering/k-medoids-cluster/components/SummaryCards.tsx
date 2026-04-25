@@ -12,15 +12,19 @@ interface SummaryCardsProps {
     summary: KMedoidsSummary;
     showCaseCount?: boolean;
     showTotalCost?: boolean;
+    algorithmMethod?: string;
 }
 
 export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({
     summary,
     showCaseCount = true,
     showTotalCost = true,
+    algorithmMethod,
 }) => {
+    const isClaraMethod = (algorithmMethod || "").toUpperCase() === "CLARA";
     const avgScore = summary.averageSilhouetteScore ?? 0;
-    const averageSwapCost = summary.avgCost ?? (summary.numCases > 0 ? summary.totalCost / summary.numCases : 0);
+    const totalSwapCost = summary.swapCost ?? summary.totalCost;
+    const averageSwapCost = summary.avgCost ?? (summary.numCases > 0 ? totalSwapCost / summary.numCases : 0);
     const averageBuildCost = summary.buildCost != null && summary.numCases > 0
         ? summary.buildCost / summary.numCases
         : null;
@@ -56,7 +60,7 @@ export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div className="min-w-0">
                                 <div className="text-2xl font-bold">
-                                    {isFinite(summary.totalCost) ? summary.totalCost.toFixed(4) : "N/A"}
+                                    {isFinite(totalSwapCost) ? totalSwapCost.toFixed(4) : "N/A"}
                                 </div>
                                 <p className="text-xs text-muted-foreground">Total Cost (SWAP)</p>
                             </div>
@@ -95,20 +99,22 @@ export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({
                 </CardContent>
             </Card>
 
-            {/* Convergence Status */}
+            {/* Convergence Status or Jumlah Sampling */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Convergence</CardTitle>
-                    {summary.converged ? (
+                    <CardTitle className="text-sm font-medium">
+                        {isClaraMethod ? "Jumlah Sampling" : "Convergence"}
+                    </CardTitle>
+                    {!isClaraMethod && (summary.converged ? (
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                     ) : (
                         <XCircle className="h-4 w-4 text-yellow-600" />
-                    )}
+                    ))}
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{summary.totalIterations}</div>
                     <p className="text-xs text-muted-foreground">
-                        {summary.converged ? "Converged successfully" : "Max iterations reached"}
+                        {isClaraMethod ? "Jumlah kali sampling dilakukan" : (summary.converged ? "Converged successfully" : "Max iterations reached")}
                     </p>
                 </CardContent>
             </Card>

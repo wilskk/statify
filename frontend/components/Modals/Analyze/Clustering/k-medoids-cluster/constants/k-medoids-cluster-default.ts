@@ -71,6 +71,7 @@ export const KMedoidsClusterResultsDefault: KMedoidsClusterResultsType = {
     ShowIterationHistory: false, // Optional detail
     ShowTotalCost: true, // Transparency metric
     ShowConvergenceAlgorithm: true, // Default on: tampilkan tab & panel konvergensi algoritma
+    ShowSamplingHistory: true, // Default on: tampilkan histori sampling khusus untuk CLARA
 };
 
 /**

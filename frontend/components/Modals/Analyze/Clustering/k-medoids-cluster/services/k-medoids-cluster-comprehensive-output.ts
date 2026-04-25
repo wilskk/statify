@@ -21,6 +21,12 @@ interface ClusteringResult {
     cost_history?: number[];
     /** Medoid indices at each step: [0]=initial, [i]=after swap i. */
     medoid_history?: number[][];
+    /** CLARA: cost per sample on the full dataset (length = num_samples). Empty for PAM/CLARANS. */
+    sample_costs?: number[];
+    /** CLARA: pam iterations per sample. */
+    sample_pam_iterations?: number[];
+    /** CLARA: 1-based index of the best sample. 0 means N/A (PAM/CLARANS). */
+    clara_best_sample_index?: number;
 }
 
 interface AutomaticKSelection {
@@ -213,6 +219,7 @@ export async function generateComprehensiveKMedoidsOutput(
         }
 
         const method = config.iterate.Method || "PAM";
+        const normalizedMethod = String(method).toUpperCase();
         const useStandardization =
             config?.options?.Standardize ??
             config?.iterate?.Standardize ??
@@ -670,6 +677,64 @@ export async function generateComprehensiveKMedoidsOutput(
         // Yield before building comprehensive output object + tables
         await yieldToUI();
 
+        const claraNumSamples = config?.iterate?.NumSamples ?? 5;
+        const claraConfiguredSampleSize = config?.iterate?.SampleSize ?? (40 + 2 * k);
+        const claraEffectiveSampleSize = Math.min(claraConfiguredSampleSize, n);
+
+        // ── Priority 1: dedicated sample_costs field (new WASM builds) ──
+        // ── Priority 2: cost_history fallback (also populated by new WASM for CLARA) ──
+        const rawSampleCosts: number[] | undefined =
+            normalizedMethod === "CLARA"
+                ? (() => {
+                    // Primary: result.sample_costs sent by new WASM builds
+                    if (Array.isArray(result.sample_costs) && result.sample_costs.length > 0) {
+                        console.log("[ComprehensiveOutput] CLARA: using result.sample_costs =", result.sample_costs);
+                        return (result.sample_costs as number[]).filter(
+                            (c: unknown) => typeof c === "number" && isFinite(c as number)
+                        );
+                    }
+                    // Fallback: cost_history is also set to per-sample costs by the same WASM update
+                    if (Array.isArray(result.cost_history) && result.cost_history.length > 0) {
+                        console.log("[ComprehensiveOutput] CLARA: falling back to result.cost_history =", result.cost_history);
+                        return (result.cost_history as number[]).filter(
+                            (c: unknown) => typeof c === "number" && isFinite(c as number)
+                        );
+                    }
+                    console.warn("[ComprehensiveOutput] CLARA: no sample costs found in result — samplingCosts will be undefined");
+                    return undefined;
+                })()
+                : undefined;
+
+        const claraSamplingCosts = rawSampleCosts && rawSampleCosts.length > 0 ? rawSampleCosts : undefined;
+
+        // Prefer the 1-based best-sample index sent by WASM; compute from min cost as fallback.
+        const claraBestSampleIndex: number | undefined =
+            normalizedMethod === "CLARA"
+                ? (() => {
+                    // Primary: WASM-computed best sample index
+                    if (
+                        typeof result.clara_best_sample_index === "number" &&
+                        result.clara_best_sample_index > 0
+                    ) {
+                        return result.clara_best_sample_index;
+                    }
+                    // Fallback: derive from minimum cost
+                    if (claraSamplingCosts && claraSamplingCosts.length > 0) {
+                        return claraSamplingCosts.findIndex(
+                            (cost) => cost === Math.min(...claraSamplingCosts)
+                        ) + 1;
+                    }
+                    return undefined;
+                })()
+                : undefined;
+
+        console.log("[ComprehensiveOutput] CLARA convergence summary:", {
+            claraSamplingCosts,
+            claraBestSampleIndex,
+            claraNumSamples,
+            claraEffectiveSampleSize,
+        });
+
         // Build comprehensive output
         const resolvedOptimalKMethod: "silhouette" | "elbow" | undefined = chartSelection
             ? (
@@ -698,6 +763,32 @@ export async function generateComprehensiveKMedoidsOutput(
             medoids,
             clusterProfiles,
             iterationHistory,
+            algorithmMethod: normalizedMethod,
+            claraConvergence: normalizedMethod === "CLARA"
+                ? {
+                    numSamples: claraNumSamples,
+                    sampleSize: claraEffectiveSampleSize,
+                    bestTotalCost: swapCost,
+                    bestCost: swapCost,
+                    ...(typeof claraBestSampleIndex === "number" && claraBestSampleIndex > 0
+                        ? { bestSampleIndex: claraBestSampleIndex }
+                        : {}),
+                    ...(claraSamplingCosts && claraSamplingCosts.length > 0
+                        ? {
+                            samplingCosts: claraSamplingCosts,
+                            samples: claraSamplingCosts.map((cost: number, idx: number) => ({
+                                sampleIndex: idx + 1,
+                                sampleSize: claraEffectiveSampleSize,
+                                cost,
+                                // Use the per-sample PAM iterations sent from WASM
+                                pamIterations: (Array.isArray(result.sample_pam_iterations) && result.sample_pam_iterations.length > idx)
+                                    ? result.sample_pam_iterations[idx]
+                                    : (result.iterations ?? 0),
+                            })),
+                        }
+                        : {}),
+                }
+                : undefined,
             elbowData,
             optimalKMethod: resolvedOptimalKMethod,
             clusterMode: config?.main?.ClusterMode === "automatic" ? "automatic" : "manual",
@@ -731,6 +822,7 @@ export async function generateComprehensiveKMedoidsOutput(
                 showOptimalKChart: config?.evaluation?.ShowOptimalKChart ?? false,
                 showOverallQualityAssessment: config?.evaluation?.ShowOverallQualityAssessment ?? true,
                 showConvergenceAlgorithm: config?.results?.ShowConvergenceAlgorithm ?? true,
+                showSamplingHistory: config?.results?.ShowSamplingHistory ?? true,
             },
             variables: variables.map(v => ({ name: v.name, label: v.label || v.name }))
         };

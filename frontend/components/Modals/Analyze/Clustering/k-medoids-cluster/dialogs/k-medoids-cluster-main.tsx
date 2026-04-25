@@ -305,6 +305,7 @@ export const KMedoidsClusterContainer = ({
                         >
                             <KMedoidsClusterIterate
                                 data={formData.iterate}
+                                mainData={formData.main}
                                 updateFormData={(field, value) =>
                                     updateFormData("iterate", field, value)
                                 }
@@ -317,6 +318,7 @@ export const KMedoidsClusterContainer = ({
                         >
                             <KMedoidsClusterResults
                                 data={formData.results}
+                                iterateData={formData.iterate}
                                 updateFormData={(field, value) =>
                                     updateFormData("results", field, value)
                                 }
@@ -389,7 +391,8 @@ export const KMedoidsClusterContainer = ({
                             !formData.main.TargetVar || 
                             formData.main.TargetVar.length === 0 ||
                             (formData.main.ClusterMode === ClusterMode.Manual && (!formData.main.Cluster || formData.main.Cluster < 2)) ||
-                            (formData.main.ClusterMode === ClusterMode.Automatic && (!formData.main.AutoKMin || !formData.main.AutoKMax || formData.main.AutoKMin >= formData.main.AutoKMax))
+                            (formData.main.ClusterMode === ClusterMode.Automatic && (!formData.main.AutoKMin || !formData.main.AutoKMax || formData.main.AutoKMin >= formData.main.AutoKMax)) ||
+                            (formData.iterate.Method === "CLARA" && formData.iterate.SampleSize !== null && formData.iterate.SampleSize <= (formData.main.ClusterMode === ClusterMode.Automatic ? (formData.main.AutoKMax ?? 10) : (formData.main.Cluster ?? 2)))
                         }
                     >
                         OK

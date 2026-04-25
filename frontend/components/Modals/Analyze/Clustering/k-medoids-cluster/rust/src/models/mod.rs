@@ -14,10 +14,10 @@ pub struct KMedoidsInput {
     pub n_init: usize, // Number of times to run with different seeds, keep best result
     #[serde(default = "default_convergence_tolerance")]
     pub convergence_tolerance: f64, // Stop if cost improvement < tolerance
-    #[serde(default = "default_use_build_phase")]
-    pub use_build_phase: bool, // PAM: true=BUILD (deterministic), false=random init
-    #[serde(default = "default_use_r_implementation")]
-    pub use_r_implementation: bool, // PAM: true=R-style path, false=native path
+    #[serde(default)]
+    pub use_build_phase: Option<bool>, // PAM: Some(true)=BUILD (deterministic), Some(false)=random init, None=true
+    #[serde(default)]
+    pub use_r_implementation: Option<bool>, // PAM: Some(true)=R-style path, Some(false)=native path, None=true
     #[serde(default = "default_clara_num_samples")]
     pub clara_num_samples: usize, // CLARA: number of sub-samples (default 5)
     #[serde(default)]
@@ -59,6 +59,16 @@ pub struct KMedoidsOutput {
     /// Mirrors cost_history layout so UI can show exact medoids per iteration.
     #[serde(default)]
     pub medoid_history: Vec<Vec<usize>>,
+    /// Per-sample costs for CLARA (length = num_samples). Empty for PAM/CLARANS.
+    /// Each entry is the total cost on the full dataset for that sample's medoids.
+    #[serde(default)]
+    pub sample_costs: Vec<f64>,
+    /// Per-sample PAM iterations for CLARA.
+    #[serde(default)]
+    pub sample_pam_iterations: Vec<usize>,
+    /// 1-based index of the best sample (lowest cost) for CLARA. 0 means N/A.
+    #[serde(default)]
+    pub clara_best_sample_index: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

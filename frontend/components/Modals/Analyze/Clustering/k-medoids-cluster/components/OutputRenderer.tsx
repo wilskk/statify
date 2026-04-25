@@ -14,14 +14,15 @@ import type { KMedoidsOutput } from "../types/output";
 import { KMedoidsSummaryCards } from "./SummaryCards";
 import { ClusterProfilesComponent } from "./ClusterProfiles";
 import { DistanceMatrixHeatmap } from "./DistanceMatrix";
-import { 
-    formatScatterPlotData, 
-    formatDonutChartData, 
+import {
+    formatScatterPlotData,
+    formatDonutChartData,
     formatRadarChartData,
     formatConvergenceChartData,
     formatSilhouetteBarChartData,
     formatElbowChartData,
-    ChartCard 
+    formatClaraSamplingAsConvergenceData,
+    ChartCard
 } from "./ChartFormatters";
 import { KMedoidsRadarChart } from "./RadarChart";
 import { ClusterScatterPlot } from "./ClusterScatterPlot";
@@ -151,16 +152,33 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         output?.visualizationOptions?.showOverallQualityAssessment ?? true;
     const showConvergenceAlgorithm =
         output?.visualizationOptions?.showConvergenceAlgorithm ?? true;
+    const showSamplingHistory = 
+        output?.visualizationOptions?.showSamplingHistory ?? true;
+    const isClaraMethod = (output?.algorithmMethod || "").toUpperCase() === "CLARA";
+    const claraNumSamples = output?.claraConvergence?.numSamples ?? 0;
+    const claraCosts = output?.claraConvergence?.samplingCosts ?? [];
+    const claraDisplayRows = useMemo(
+        () => Array.from({ length: claraNumSamples }, (_, idx) => ({
+            sampleNumber: idx + 1,
+            cost: claraCosts[idx],
+        })),
+        [claraNumSamples, claraCosts]
+    );
+    const claraBestSample =
+        output?.claraConvergence?.bestSampleIndex ??
+        (claraCosts.length > 0
+            ? (claraCosts.findIndex((cost) => cost === Math.min(...claraCosts)) + 1)
+            : undefined);
     const resolvedOptimalKMethod: "silhouette" | "elbow" =
         output?.optimalKMethod ??
         ((output?.elbowData?.some((point) => (point?.totalCost ?? 0) > 0) ?? false)
             ? "elbow"
             : "silhouette");
-    
+
     // Determine which charts to show based on cluster mode
     const clusterMode = output?.clusterMode ?? "automatic";
     const autoKMethod = output?.autoKMethod ?? "silhouette";
-    
+
     // Logic for determining which optimal K chart to display:
     // - Automatic Silhouette: show SilhouetteKChart only
     // - Automatic Elbow: show ElbowChart only
@@ -168,7 +186,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
     const showOnlySilhouetteKChart = clusterMode === "automatic" && autoKMethod === "silhouette";
     const showOnlyElbowChart = clusterMode === "automatic" && autoKMethod === "elbow";
     const showElbowChartWithSilhouetteAnnotation = clusterMode === "manual";
-    
+
     // Prepare silhouette K chart data
     const silhouetteKChartData = useMemo(() => {
         if (!output?.elbowData) return [];
@@ -181,12 +199,12 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
     // Calculate k optimal from silhouette method
     const silhouetteOptimalK = useMemo(() => {
         if (!output?.elbowData || output.elbowData.length === 0) return undefined;
-        const best = output.elbowData.reduce((a, b) => 
+        const best = output.elbowData.reduce((a, b) =>
             b.silhouetteScore > a.silhouetteScore ? b : a
         );
         return best.k;
     }, [output?.elbowData]);
-    
+
     const hasVisualizationContent =
         showPCAProjection ||
         showClusterScatterPlot ||
@@ -294,48 +312,50 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
     // Memoize assignments table JSON to avoid re-serializing on every render
     const assignmentsTableJson = useMemo(() => {
         if (!output?.assignments) return "{}";
-        return JSON.stringify({ tables: [
-            {
-                key: "assignments",
-                title: "Cluster Assignments",
-                columnHeaders: [
-                    { header: "ID" },
-                    { header: "Cluster" },
-                    { header: "Distance" },
-                    { header: "Silhouette" },
-                    ...effectiveVariables.map(v => ({ header: v.label || v.name, key: v.name })),
-                    ...(hasStandardizedAssignmentData
-                        ? effectiveVariables.map(v => ({
-                              header: `${v.label || v.name} (Z-score)`,
-                              key: `${v.name}_zscore`,
-                          }))
-                        : [])
-                ],
-                rows: pagedAssignments.map(a => ({
-                    rowHeader: [],
-                    ID: a.isMedoid ? `★ ${a.objectId}` : a.objectId,
-                    Cluster: a.clusterLabel,
-                    Distance: typeof a.distanceToMedoid === 'number' ? a.distanceToMedoid.toFixed(4) : 'N/A',
-                    Silhouette: typeof a.silhouetteScore === 'number' ? a.silhouetteScore.toFixed(3) : 'N/A',
-                    ...Object.fromEntries(
-                        effectiveVariables.map(v => [v.name, a.attributes[v.name] ?? 'N/A'])
-                    ),
-                    ...Object.fromEntries(
-                        hasStandardizedAssignmentData
-                            ? effectiveVariables.map(v => {
-                                  const standardizedValue = a.standardizedAttributes?.[v.name];
-                                  return [
-                                      `${v.name}_zscore`,
-                                      typeof standardizedValue === 'number' && isFinite(standardizedValue)
-                                          ? standardizedValue.toFixed(4)
-                                          : 'N/A',
-                                  ];
-                              })
-                            : []
-                    ),
-                }))
-            }
-        ]});
+        return JSON.stringify({
+            tables: [
+                {
+                    key: "assignments",
+                    title: "Cluster Assignments",
+                    columnHeaders: [
+                        { header: "ID" },
+                        { header: "Cluster" },
+                        { header: "Distance" },
+                        { header: "Silhouette" },
+                        ...effectiveVariables.map(v => ({ header: v.label || v.name, key: v.name })),
+                        ...(hasStandardizedAssignmentData
+                            ? effectiveVariables.map(v => ({
+                                header: `${v.label || v.name} (Z-score)`,
+                                key: `${v.name}_zscore`,
+                            }))
+                            : [])
+                    ],
+                    rows: pagedAssignments.map(a => ({
+                        rowHeader: [],
+                        ID: a.isMedoid ? `★ ${a.objectId}` : a.objectId,
+                        Cluster: a.clusterLabel,
+                        Distance: typeof a.distanceToMedoid === 'number' ? a.distanceToMedoid.toFixed(4) : 'N/A',
+                        Silhouette: typeof a.silhouetteScore === 'number' ? a.silhouetteScore.toFixed(3) : 'N/A',
+                        ...Object.fromEntries(
+                            effectiveVariables.map(v => [v.name, a.attributes[v.name] ?? 'N/A'])
+                        ),
+                        ...Object.fromEntries(
+                            hasStandardizedAssignmentData
+                                ? effectiveVariables.map(v => {
+                                    const standardizedValue = a.standardizedAttributes?.[v.name];
+                                    return [
+                                        `${v.name}_zscore`,
+                                        typeof standardizedValue === 'number' && isFinite(standardizedValue)
+                                            ? standardizedValue.toFixed(4)
+                                            : 'N/A',
+                                    ];
+                                })
+                                : []
+                        ),
+                    }))
+                }
+            ]
+        });
     }, [output?.assignments, pagedAssignments, effectiveVariables, hasStandardizedAssignmentData]);
 
     // Memoize medoids table JSON
@@ -482,9 +502,9 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
             ...effectiveVariables.map((v) => a.attributes?.[v.name] ?? "N/A"),
             ...(hasStandardizedAssignmentData
                 ? effectiveVariables.map((v) => {
-                      const z = a.standardizedAttributes?.[v.name];
-                      return typeof z === "number" && isFinite(z) ? Number(z.toFixed(6)) : "N/A";
-                  })
+                    const z = a.standardizedAttributes?.[v.name];
+                    return typeof z === "number" && isFinite(z) ? Number(z.toFixed(6)) : "N/A";
+                })
                 : []),
         ]);
 
@@ -540,6 +560,15 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         );
     }
 
+    console.log("CLARA DEBUG", {
+        isClaraMethod,
+        algorithmMethod: output?.algorithmMethod,
+        claraConvergence: output?.claraConvergence,
+        samples: output?.claraConvergence?.samples,
+        samplingCosts: output?.claraConvergence?.samplingCosts,
+        numSamples: output?.claraConvergence?.numSamples,
+    });
+
     return (
         <div className="space-y-6">
             {/* Summary Cards */}
@@ -547,26 +576,30 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                 summary={summaryForCards}
                 showCaseCount={showCaseCount}
                 showTotalCost={showTotalCost}
+                algorithmMethod={output?.algorithmMethod}
             />
 
             {/* Tabbed Content */}
             <Tabs defaultValue={hasVisualizationContent ? "visualization" : "profiles"} className="w-full">
                 <TabsList
-                    className={`grid w-full ${
-                        hasVisualizationContent
-                            ? showConvergenceAlgorithm
-                                ? "grid-cols-5"
-                                : "grid-cols-4"
-                            : showConvergenceAlgorithm
-                                ? "grid-cols-4"
-                                : "grid-cols-3"
-                    }`}
+                    className={`grid w-full ${hasVisualizationContent
+                        ? (showConvergenceAlgorithm && !isClaraMethod) || (showSamplingHistory && isClaraMethod)
+                            ? "grid-cols-5"
+                            : "grid-cols-4"
+                        : (showConvergenceAlgorithm && !isClaraMethod) || (showSamplingHistory && isClaraMethod)
+                            ? "grid-cols-4"
+                            : "grid-cols-3"
+                        }`}
                 >
                     {hasVisualizationContent && <TabsTrigger value="visualization">Visualization</TabsTrigger>}
                     <TabsTrigger value="profiles">Cluster Profiles</TabsTrigger>
                     <TabsTrigger value="tables">Data Tables</TabsTrigger>
                     <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
-                    {showConvergenceAlgorithm && <TabsTrigger value="convergence">Convergence</TabsTrigger>}
+                    {((showConvergenceAlgorithm && !isClaraMethod) || (showSamplingHistory && isClaraMethod)) && (
+                        <TabsTrigger value="convergence">
+                            {isClaraMethod ? "Histori Sampling" : "Convergence"}
+                        </TabsTrigger>
+                    )}
                 </TabsList>
 
                 {/* VISUALIZATION TAB */}
@@ -917,7 +950,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                         <div className="text-sm text-muted-foreground">Overall Silhouette Score</div>
                                         <div className="text-3xl font-bold">{output.silhouetteScores?.overall != null ? output.silhouetteScores.overall.toFixed(3) : 'N/A'}</div>
                                     </div>
-                                    
+
                                     <div className="space-y-2">
                                         <div className="text-sm font-medium">Interpretation Guide:</div>
                                         <div className="space-y-1 text-sm text-muted-foreground">
@@ -945,63 +978,188 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                     </div>
                 </TabsContent>
 
-                {/* CONVERGENCE TAB */}
-                {showConvergenceAlgorithm && (
+                {/* CONVERGENCE / SAMPLING TAB */}
+                {((showConvergenceAlgorithm && !isClaraMethod) || (showSamplingHistory && isClaraMethod)) && (
                     <TabsContent value="convergence" className="space-y-4">
-                        {/* Tabel iterasi Init → Konvergen */}
-                        <Card>
-                            <CardContent className="pt-6">
-                                <ConvergenceAlgorithmPanel
-                                    data={output.iterationHistory}
-                                    medoids={output.medoids}
-                                    converged={output.summary.converged}
-                                />
-                            </CardContent>
-                        </Card>
+                        {isClaraMethod ? (
+                            <>
+                                {/* ── 1. SUMMARY METRICS ── */}
+                                {(() => {
+                                    const samples = output.claraConvergence?.samples;
+                                    const fallbackCosts = output.claraConvergence?.samplingCosts ?? [];
+                                    const hasSamples = samples && samples.length > 0;
+                                    const hasCosts = fallbackCosts.length > 0;
+                                    const bestCostVal = output.claraConvergence?.bestCost ?? 0;
+                                    const worstCost = hasSamples ? Math.max(...samples.map(s => s.cost)) : hasCosts ? Math.max(...fallbackCosts) : 0;
+                                    const bestCost = hasSamples ? Math.min(...samples.map(s => s.cost)) : hasCosts ? Math.min(...fallbackCosts) : bestCostVal;
+                                    const avgPamIter = hasSamples
+                                        ? (samples.reduce((sum, s) => sum + (s.pamIterations ?? 0), 0) / samples.length).toFixed(1)
+                                        : "—";
+                                    const costReduction = worstCost > 0 ? `${(((worstCost - bestCost) / worstCost) * 100).toFixed(0)}%` : "—";
+                                    return (
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                            {[
+                                                { label: "Total Samples", value: output.claraConvergence?.numSamples ?? "—", sub: "sampling runs" },
+                                                { label: "Best Cost", value: bestCostVal > 0 ? bestCostVal.toFixed(4) : "—", sub: claraBestSample != null ? `sample ${claraBestSample}` : "" },
+                                                { label: "Avg PAM Iterations", value: avgPamIter, sub: "per sample" },
+                                                { label: "Cost Reduction", value: costReduction, sub: "worst → best" },
+                                            ].map(({ label, value, sub }) => (
+                                                <Card key={label}>
+                                                    <CardContent className="pt-4">
+                                                        <p className="text-xs text-muted-foreground">{label}</p>
+                                                        <p className="text-2xl font-semibold">{String(value)}</p>
+                                                        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
 
-                        {/* Grafik konvergensi dual-axis (Total Cost + Improvement) */}
-                        {output.iterationHistory && output.iterationHistory.length > 0 && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Grafik Konvergensi</CardTitle>
-                                    <CardDescription>
-                                        Total Cost (biru) dan Improvement per iterasi (kuning) — dari Init hingga konvergen
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {renderDownloadActions(convergenceChartRef, "grafik-konvergensi")}
-                                    <div ref={convergenceChartRef}>
-                                        <ConvergenceChart
+                                {/* ── 2. COST CONVERGENCE CHART ── */}
+                                {(() => {
+                                    const samples = output.claraConvergence?.samples;
+                                    const fallbackCosts = output.claraConvergence?.samplingCosts ?? [];
+                                    const hasSamples = samples && samples.length > 0;
+                                    const hasCosts = fallbackCosts.length > 0;
+                                    if (!hasSamples && !hasCosts) return null;
+                                    const chartData = hasSamples
+                                        ? formatClaraSamplingAsConvergenceData(samples)
+                                        : fallbackCosts.map((cost, idx) => ({
+                                            iteration: idx + 1,
+                                            totalCost: cost,
+                                            improvement: idx === 0 ? 0 : fallbackCosts[idx - 1] - cost,
+                                            swapsMade: 0,
+                                        }));
+                                    return (
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Cost per Sampling Run</CardTitle>
+                                                <CardDescription>Total cost tiap sampling — titik terbaik ditandai hijau</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                {renderDownloadActions(convergenceChartRef, "clara-cost-convergence")}
+                                                <div ref={convergenceChartRef}>
+                                                    <ConvergenceChart data={chartData} converged={true} width={580} height={340} />
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })()}
+
+                                {/* ── 3. SAMPLING HISTORY TABLE ── */}
+                                {(() => {
+                                    const samples = output.claraConvergence?.samples;
+                                    const fallbackCosts = output.claraConvergence?.samplingCosts ?? [];
+                                    const hasSamples = samples && samples.length > 0;
+                                    const hasCosts = fallbackCosts.length > 0;
+                                    if (!hasSamples && !hasCosts) return null;
+                                    const bestCostVal = output.claraConvergence?.bestCost ?? (hasCosts ? Math.min(...fallbackCosts) : 0);
+                                    const rows = hasSamples
+                                        ? samples.map(s => ({ idx: s.sampleIndex, size: s.sampleSize ?? "—", cost: s.cost, pamIter: s.pamIterations ?? "—" }))
+                                        : fallbackCosts.map((cost, i) => ({ idx: i + 1, size: "—", cost, pamIter: "—" }));
+                                    return (
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Sampling History</CardTitle>
+                                                <CardDescription>Rincian tiap sampling run — baris hijau adalah solusi terbaik</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm border-collapse">
+                                                        <thead>
+                                                            <tr className="bg-muted text-muted-foreground text-xs">
+                                                                <th className="p-2 border text-left">Sample</th>
+                                                                <th className="p-2 border text-left">Sample Size</th>
+                                                                <th className="p-2 border text-left">Total Cost</th>
+                                                                <th className="p-2 border text-left">PAM Iterations</th>
+                                                                <th className="p-2 border text-left">vs Best</th>
+                                                                <th className="p-2 border text-left">Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {rows.map((r) => {
+                                                                const isBest = r.cost === bestCostVal;
+                                                                const delta = !isBest && bestCostVal > 0
+                                                                    ? `+${(((r.cost - bestCostVal) / bestCostVal) * 100).toFixed(1)}%`
+                                                                    : "—";
+                                                                return (
+                                                                    <tr key={r.idx} className={isBest ? "bg-green-50 font-medium" : ""}>
+                                                                        <td className={`p-2 border ${isBest ? "text-green-900" : ""}`}>{r.idx}</td>
+                                                                        <td className={`p-2 border ${isBest ? "text-green-900" : ""}`}>{r.size}</td>
+                                                                        <td className={`p-2 border font-mono ${isBest ? "text-green-900" : ""}`}>{Number(r.cost).toFixed(4)}</td>
+                                                                        <td className={`p-2 border ${isBest ? "text-green-900" : ""}`}>{r.pamIter}</td>
+                                                                        <td className="p-2 border text-muted-foreground">{delta}</td>
+                                                                        <td className="p-2 border">
+                                                                            {isBest ? (
+                                                                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded">★ Best</span>
+                                                                            ) : (
+                                                                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">run</span>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })()}
+                            </>
+                        ) : (
+                            <>
+                                <Card>
+                                    <CardContent className="pt-6">
+                                        <ConvergenceAlgorithmPanel
                                             data={output.iterationHistory}
+                                            medoids={output.medoids}
                                             converged={output.summary.converged}
-                                            width={580}
-                                            height={340}
                                         />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
+                                    </CardContent>
+                                </Card>
 
-                        {/* Tabel histori detail per iterasi */}
-                        {output.iterationHistory && output.iterationHistory.length > 0 && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Histori Iterasi</CardTitle>
-                                    <CardDescription>
-                                        Rincian perubahan Total Cost, Improvement, dan jumlah Swap dari Init sampai konvergen
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <IterationDetailsTable
-                                        data={output.iterationHistory}
-                                        converged={output.summary.converged}
-                                    />
-                                </CardContent>
-                            </Card>
+                                {output.iterationHistory && output.iterationHistory.length > 0 && (
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Grafik Konvergensi</CardTitle>
+                                            <CardDescription>Total Cost (biru) dan Improvement per iterasi (kuning)</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {renderDownloadActions(convergenceChartRef, "grafik-konvergensi")}
+                                            <div ref={convergenceChartRef}>
+                                                <ConvergenceChart
+                                                    data={output.iterationHistory}
+                                                    converged={output.summary.converged}
+                                                    width={580}
+                                                    height={340}
+                                                />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {output.iterationHistory && output.iterationHistory.length > 0 && (
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Histori Iterasi</CardTitle>
+                                            <CardDescription>Rincian perubahan dari Init sampai konvergen</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <IterationDetailsTable
+                                                data={output.iterationHistory}
+                                                converged={output.summary.converged}
+                                            />
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </>
                         )}
                     </TabsContent>
                 )}
+
             </Tabs>
         </div>
     );
-};
+}

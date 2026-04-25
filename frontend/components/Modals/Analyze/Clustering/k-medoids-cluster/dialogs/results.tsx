@@ -31,6 +31,7 @@ import {
 export const KMedoidsClusterResults = ({
     updateFormData,
     data,
+    iterateData,
 }: KMedoidsClusterResultsProps) => {
     const [resultsState, setResultsState] = useState<KMedoidsClusterResultsType>({
         ...data,
@@ -149,27 +150,52 @@ export const KMedoidsClusterResults = ({
                 <div className="flex flex-col gap-3 w-full">
                     <Label className="font-semibold">Additional Information (Optional)</Label>
 
-                    <div className="flex items-start space-x-2">
-                        <Checkbox
-                            id="ShowConvergenceAlgorithm"
-                            checked={resultsState.ShowConvergenceAlgorithm}
-                            onCheckedChange={(checked) =>
-                                handleChange("ShowConvergenceAlgorithm", checked)
-                            }
-                        />
-                        <div className="flex-1">
-                            <label
-                                htmlFor="ShowConvergenceAlgorithm"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                                Konvergensi Algoritma
-                            </label>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Tampilkan output konvergensi algoritma: panel status konvergensi, grafik biaya per iterasi,
-                                dan tabel histori iterasi.
-                            </p>
+                    {iterateData?.Method !== "CLARA" && (
+                        <div className="flex items-start space-x-2">
+                            <Checkbox
+                                id="ShowConvergenceAlgorithm"
+                                checked={resultsState.ShowConvergenceAlgorithm}
+                                onCheckedChange={(checked) =>
+                                    handleChange("ShowConvergenceAlgorithm", checked)
+                                }
+                            />
+                            <div className="flex-1">
+                                <label
+                                    htmlFor="ShowConvergenceAlgorithm"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                >
+                                    Konvergensi Algoritma
+                                </label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Tampilkan output konvergensi algoritma: panel status konvergensi, grafik biaya per iterasi,
+                                    dan tabel histori iterasi.
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {iterateData?.Method === "CLARA" && (
+                        <div className="flex items-start space-x-2">
+                            <Checkbox
+                                id="ShowSamplingHistory"
+                                checked={resultsState.ShowSamplingHistory}
+                                onCheckedChange={(checked) =>
+                                    handleChange("ShowSamplingHistory", checked)
+                                }
+                            />
+                            <div className="flex-1">
+                                <label
+                                    htmlFor="ShowSamplingHistory"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                >
+                                    Histori Sampling (CLARA)
+                                </label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Tampilkan grafik dan tabel histori biaya (cost) untuk setiap sampel yang diambil pada metode CLARA.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
             

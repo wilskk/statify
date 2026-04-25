@@ -166,6 +166,7 @@ export type KMedoidsClusterIterateProps = {
         value: string | boolean | number | null
     ) => void;
     data: KMedoidsClusterIterateType;
+    mainData: KMedoidsClusterMainType;
 };
 
 /**
@@ -195,6 +196,9 @@ export type KMedoidsClusterResultsType = {
 
     /** Tampilkan output Konvergensi Algoritma (tab convergence + chart + detail iterasi) */
     ShowConvergenceAlgorithm: boolean;
+
+    /** Tampilkan output Histori Sampling (khusus CLARA) */
+    ShowSamplingHistory: boolean;
 };
 
 export type KMedoidsClusterResultsProps = {
@@ -203,6 +207,7 @@ export type KMedoidsClusterResultsProps = {
         value: boolean | null
     ) => void;
     data: KMedoidsClusterResultsType;
+    iterateData: KMedoidsClusterIterateType;
 };
 
 /**

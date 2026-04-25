@@ -384,15 +384,16 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                 method: input.method,
                 max_iterations: input.max_iterations,
                 distance_metric: input.distance_metric,
-                random_seed: input.random_seed,
+                ...(input.random_seed != null ? { random_seed: input.random_seed } : {}),
                 n_init: input.n_init ?? 1,
                 convergence_tolerance: input.convergence_tolerance || 0.0,
-                use_build_phase: input.use_build_phase,
-                use_r_implementation: input.use_r_implementation,
+                use_build_phase: input.use_build_phase ?? true,
+                use_r_implementation: input.use_r_implementation ?? true,
                 clara_num_samples: input.clara_num_samples ?? 5,
                 ...(input.clara_sample_size != null ? { clara_sample_size: input.clara_sample_size } : {}),
             };
             sendProgress("clustering", 40, `Running ${input.method} algorithm…`);
+            console.log("WASM Input:", wasmInput);
             result = wasmModule.run_k_medoids(wasmInput);
         }
 
@@ -529,6 +530,14 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
             distances_to_medoids,
             silhouetteScore,
             wcssScore,
+            // CLARA-specific: per-sample costs on the full dataset (empty for PAM/CLARANS)
+            sample_costs: Array.isArray(result.sample_costs) ? result.sample_costs : [],
+            // CLARA-specific: per-sample PAM iterations
+            sample_pam_iterations: Array.isArray(result.sample_pam_iterations) ? result.sample_pam_iterations : [],
+            // CLARA-specific: 1-based index of the best sample (0 = N/A for PAM/CLARANS)
+            clara_best_sample_index: typeof result.clara_best_sample_index === "number"
+                ? result.clara_best_sample_index
+                : 0,
         };
         
         console.log("[Worker] Mapped result:", {

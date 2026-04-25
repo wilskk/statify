@@ -117,6 +117,32 @@ export interface SilhouetteClusterScore {
 }
 
 /**
+ * CLARA-specific convergence summary for output panel.
+ */
+export interface ClaraConvergenceInfo {
+    numSamples: number;
+    sampleSize: number;
+    bestTotalCost: number;
+    bestCost?: number;
+    /** 1-based sample number with the best (minimum) cost. */
+    bestSampleIndex?: number;
+    /** Optional per-sampling costs, if available from runtime/build. */
+    samplingCosts?: number[];
+    /** Detailed sampling history with PAM iterations per sample. */
+    samples?: Array<{
+        sampleIndex: number;
+        sampleSize: number;
+        cost: number;
+        pamIterations: number;
+    }>;
+    /** Medoid stability tracking: how often each object was selected as medoid across samples. */
+    medoidFrequency?: {
+        objectId: string;
+        frequency: number;
+    }[];
+}
+
+/**
  * Complete K-Medoids output data structure
  */
 export interface KMedoidsOutput {
@@ -134,6 +160,12 @@ export interface KMedoidsOutput {
     
     // Iteration history
     iterationHistory: IterationHistory[];
+
+    // Algorithm metadata (for output routing)
+    algorithmMethod?: string;
+
+    // CLARA convergence details (shown instead of PAM iteration panel)
+    claraConvergence?: ClaraConvergenceInfo;
     
     // Elbow method (if automatic k)
     elbowData?: ElbowPoint[];
@@ -177,6 +209,7 @@ export interface KMedoidsOutput {
         showOptimalKChart: boolean;
         showOverallQualityAssessment: boolean;
         showConvergenceAlgorithm: boolean;
+        showSamplingHistory: boolean;
     };
     
     // Variable information (for rendering)

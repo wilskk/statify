@@ -42,6 +42,7 @@ import { useDataStore } from "@/stores/useDataStore";
 export const KMedoidsClusterIterate = ({
     updateFormData,
     data,
+    mainData,
 }: KMedoidsClusterIterateProps) => {
     const [iterateState, setIterateState] = useState<KMedoidsClusterIterateType>({
         ...data,
@@ -56,6 +57,13 @@ export const KMedoidsClusterIterate = ({
         (dataCount > 1000 && n_init > 3) ||
         (dataCount > 2000);
 
+    // Calculate maximum k possible based on clustering mode
+    const maxK = mainData.ClusterMode === "automatic" 
+        ? (mainData.AutoKMax ?? 10) 
+        : (mainData.Cluster ?? 2);
+    // CLARA requires sample_size > k.
+    const minSampleSize = maxK + 1;
+
     useEffect(() => {
         setIterateState({ ...data });
     }, [data]);
@@ -68,48 +76,8 @@ export const KMedoidsClusterIterate = ({
             ...prevState,
             [field]: value,
         }));
-    };
-
-    const handleContinue = () => {
-        // Validasi MaximumIterations
-        if (iterateState.MaximumIterations && iterateState.MaximumIterations < 1) {
-            toast.warning("Maximum iterations must be >= 1.");
-            return;
-        }
-        
-        // Validasi NumberOfInitializations
-        if (iterateState.NumberOfInitializations && iterateState.NumberOfInitializations < 1) {
-            toast.warning("Number of initializations must be >= 1.");
-            return;
-        }
-        
-        // Validasi CLARA parameters (jika method = CLARA)
-        if (iterateState.Method === KMedoidsMethod.CLARA) {
-            if (iterateState.SampleSize && iterateState.SampleSize < 10) {
-                toast.warning("CLARA sample size must be >= 10.");
-                return;
-            }
-            if (iterateState.NumSamples && iterateState.NumSamples < 1) {
-                toast.warning("Number of samples must be >= 1.");
-                return;
-            }
-        }
-        
-        // Validasi CLARANS parameters (jika method = CLARANS)
-        if (iterateState.Method === KMedoidsMethod.CLARANS) {
-            if (iterateState.NumLocal && iterateState.NumLocal < 1) {
-                toast.warning("Number of local minima must be >= 1.");
-                return;
-            }
-            if (iterateState.MaxNeighbor && iterateState.MaxNeighbor < 1) {
-                toast.warning("Maximum neighbors must be >= 1.");
-                return;
-            }
-        }
-        
-        Object.entries(iterateState).forEach(([key, value]) => {
-            updateFormData(key as keyof KMedoidsClusterIterateType, value);
-        });
+        // Keep parent form state in sync so Execute uses the latest iterate config.
+        updateFormData(field, value);
     };
 
     return (
@@ -270,14 +238,24 @@ export const KMedoidsClusterIterate = ({
                             <Input
                                 type="number"
                                 value={iterateState.SampleSize || ""}
-                                min={10}
-                                placeholder="Auto: 40 + 2k"
-                                onChange={(e) =>
-                                    handleChange("SampleSize", Number(e.target.value))
-                                }
+                                min={minSampleSize}
+                                placeholder={`Auto: 40 + 2k`}
+                                onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    if (e.target.value === "") {
+                                        handleChange("SampleSize", null);
+                                    } else {
+                                        handleChange("SampleSize", val);
+                                    }
+                                }}
                             />
+                            {iterateState.SampleSize !== null && iterateState.SampleSize <= maxK && (
+                                <p className="text-xs text-red-500 font-medium">
+                                    Error: Sample size must be greater than number of clusters (k={maxK}).
+                                </p>
+                            )}
                             <p className="text-xs text-muted-foreground">
-                                Size of random sample (leave empty for auto: 40 + 2k)
+                                Size of random sample (leave empty for auto: 40 + 2k, min: {minSampleSize})
                             </p>
                         </div>
                         

@@ -120,13 +120,6 @@ export const KMedoidsClusterOptions = ({
                     </div>
 
                     <div className="flex flex-col gap-2 border-t pt-4">
-                        <Label className="font-bold">Tables</Label>
-                        <p className="text-xs text-muted-foreground">
-                            Table visibility is now configured in the Results tab.
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 border-t pt-4">
                         <Label className="font-bold">Preprocessing</Label>
                         <div className="flex items-center space-x-2">
                             <Checkbox
