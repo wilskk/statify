@@ -10,8 +10,8 @@ import UnitRootTest from '@/components/Modals/Analyze/TimeSeries/UnitRootTest';
 import BoxJenkinsModel from '@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel';
 import ARDL from '@/components/Modals/Analyze/TimeSeries/ARDL';
 import ECM from '@/components/Modals/Analyze/TimeSeries/ECM';
-import ARCH from '@/components/Modals/Analyze/TimeSeries/ARCH';
-import GARCH from '@/components/Modals/Analyze/TimeSeries/GARCH';
+import ARCH from '@/components/Modals/Analyze/TimeSeries/HeteroskedasticityModels';
+import GARCH from '@/components/Modals/Analyze/TimeSeries/HeteroskedasticityModels';
 import HomoscedasticityTest from '@/components/Modals/Analyze/TimeSeries/HomoscedasticityTest';
 import HeteroskedasticityModels from '@/components/Modals/Analyze/TimeSeries/HeteroskedasticityModels';
 

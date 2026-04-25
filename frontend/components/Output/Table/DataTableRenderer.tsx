@@ -29,9 +29,13 @@ interface TableData {
 
 interface DataTableProps {
   data: string;
+  align?: "left" | "center";
 }
 
-const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
+const DataTableRenderer: React.FC<DataTableProps> = ({
+  data,
+  align = "center",
+}) => {
   const [copied, setCopied] = useState<Record<string, boolean>>({});
   const uid = useId();
 
@@ -45,6 +49,8 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
   if (!parsedData.tables || !Array.isArray(parsedData.tables)) {
     return <div className="text-destructive">Invalid tables format</div>;
   }
+
+  const justifyClass = align === "left" ? "justify-start" : "justify-center";
 
   const getLeafColumnCount = (col: ColumnHeader): number => {
     if (!col.children || col.children.length === 0) return 1;
@@ -396,7 +402,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
         const tableDomId = `data-table-${uid}-${tableIndex}`;
         return (
           <div key={tableIndex} className="mb-4">
-            <div className="flex items-center justify-end gap-2 mb-2">
+            <div className={`mb-2 flex items-center ${justifyClass} gap-2`}>
               <button
                 className="p-2 bg-white rounded-md shadow-sm hover:bg-gray-100"
                 onClick={() => handleCopyTable(tableDomId)}
@@ -427,83 +433,87 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 <span className="text-xs">SVG</span>
               </button>
             </div>
-            <table
-              id={tableDomId}
-              className="border-collapse border border-border text-sm rounded-md min-w-max"
-            >
-              <thead>
-                <tr>
-                  <th
-                    colSpan={Math.max(1, rowHeaderCount + leafCols.length)}
-                    className="border border-border bg-muted px-2 py-2 text-center font-semibold"
-                  >
-                    {renderContent(title)}
-                  </th>
-                </tr>
-                {levels.map((cols, lvlIndex) =>
-                  renderColumnHeaderRow(cols, lvlIndex, maxDepth)
-                )}
-              </thead>
-              <tbody>
-                {flatRows.map((row, rowIndex) => {
-                  const allDataNull = leafCols.every(
-                    (k) => row[k] === null || row[k] === undefined
-                  );
-                  const headers = row.rowHeader || [];
-                  if (allDataNull && headers.every((h) => h !== ""))
-                    return null;
-                  return (
-                    <tr key={rowIndex}>
-                      {renderRowHeaderCells(
-                        row,
-                        rowIndex,
-                        flatRows,
-                        rowHeaderCount
-                      )}
-                      {leafCols.map((colKey, i) => (
-                        <td
-                          key={i}
-                          className="border border-border px-2 py-1 text-center text-sm whitespace-nowrap"
-                        >
-                          {renderContent(row[colKey] ?? "")}
-                        </td>
-                      ))}
+            <div className="w-full overflow-x-auto">
+              <div className={`flex ${justifyClass}`}>
+                <table
+                  id={tableDomId}
+                  className="border-collapse border border-border text-sm rounded-md min-w-max"
+                >
+                  <thead>
+                    <tr>
+                      <th
+                        colSpan={Math.max(1, rowHeaderCount + leafCols.length)}
+                        className="border border-border bg-muted px-2 py-2 text-center font-semibold"
+                      >
+                        {renderContent(title)}
+                      </th>
                     </tr>
-                  );
-                })}
-              </tbody>
-
-              {table.footer && (
-                <tfoot>
-                  {(() => {
-                    const lines: string[] =
-                      typeof table.footer === "string"
-                        ? table.footer.split("\n")
-                        : Array.isArray(table.footer)
-                        ? table.footer
-                        : [];
-
-                    return (
-                      <tr>
-                        <td
-                          colSpan={Math.max(
-                            1,
-                            rowHeaderCount + leafCols.length
+                    {levels.map((cols, lvlIndex) =>
+                      renderColumnHeaderRow(cols, lvlIndex, maxDepth)
+                    )}
+                  </thead>
+                  <tbody>
+                    {flatRows.map((row, rowIndex) => {
+                      const allDataNull = leafCols.every(
+                        (k) => row[k] === null || row[k] === undefined
+                      );
+                      const headers = row.rowHeader || [];
+                      if (allDataNull && headers.every((h) => h !== ""))
+                        return null;
+                      return (
+                        <tr key={rowIndex}>
+                          {renderRowHeaderCells(
+                            row,
+                            rowIndex,
+                            flatRows,
+                            rowHeaderCount
                           )}
-                          className="border-0 border-t border-border px-3 py-2 text-left text-xs text-muted-foreground leading-5"
-                        >
-                          {lines.map((line, idx) => (
-                            <p key={`footer-line-${idx}`}>
-                              {renderContent(line)}
-                            </p>
+                          {leafCols.map((colKey, i) => (
+                            <td
+                              key={i}
+                              className="border border-border px-2 py-1 text-center text-sm whitespace-nowrap"
+                            >
+                              {renderContent(row[colKey] ?? "")}
+                            </td>
                           ))}
-                        </td>
-                      </tr>
-                    );
-                  })()}
-                </tfoot>
-              )}
-            </table>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+
+                  {table.footer && (
+                    <tfoot>
+                      {(() => {
+                        const lines: string[] =
+                          typeof table.footer === "string"
+                            ? table.footer.split("\n")
+                            : Array.isArray(table.footer)
+                            ? table.footer
+                            : [];
+
+                        return (
+                          <tr>
+                            <td
+                              colSpan={Math.max(
+                                1,
+                                rowHeaderCount + leafCols.length
+                              )}
+                              className="border-0 border-t border-border px-3 py-2 text-left text-xs text-muted-foreground leading-5"
+                            >
+                              {lines.map((line, idx) => (
+                                <p key={`footer-line-${idx}`}>
+                                  {renderContent(line)}
+                                </p>
+                              ))}
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
           </div>
         );
       })}

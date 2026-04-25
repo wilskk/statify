@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
 const KMedoidsOutputRenderer = dynamic(
-  () => import("@/components/Modals/Analyze/Classify/k-medoids-cluster/components/OutputRenderer").then(m => ({ default: m.KMedoidsOutputRenderer })),
+  () => import("@/components/Modals/Analyze/Clustering/k-medoids-cluster/components/OutputRenderer").then(m => ({ default: m.KMedoidsOutputRenderer })),
   { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading...</div> }
 );
 const TiptapEditor = dynamic(
