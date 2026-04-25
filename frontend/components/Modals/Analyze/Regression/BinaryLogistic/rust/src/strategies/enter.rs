@@ -20,6 +20,7 @@ pub fn run(
     config: &LogisticConfig,
     feature_names: &[String],
     codings: Option<Vec<CategoricalCoding>>,
+    _variable_groups: &[crate::stats::design_matrix::VariableGroup],
 ) -> Result<LogisticResult, Box<dyn Error>> {
     let n_samples = x_raw.nrows();
     let n_features = x_raw.ncols();
