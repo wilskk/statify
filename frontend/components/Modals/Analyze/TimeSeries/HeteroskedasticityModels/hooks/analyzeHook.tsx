@@ -133,48 +133,46 @@ export const useAnalyzeHook = (
 
                         // 2. Prepare Charts
                         const charts = [];
-                        const varianceData = result.variance || [];
-                        const periods = Array.from({ length: varianceData.length }, (_, i) => ({
-                            index: i + 1,
-                            variance: varianceData[i],
-                            residual: result.residuals ? result.residuals[i] : 0
-                        }));
+                        const varianceData: number[] = result.variance || [];
+                        const residualsData: number[] = result.residuals || [];
 
-                        // Conditional Variance Chart
-                        const varianceChart = ChartService.createChartJSON({
-                            chartType: "Line Chart",
-                            chartData: periods,
-                            chartVariables: {
-                                x: ["index"],
-                                y: ["variance"]
-                            },
-                            chartMetadata: {
-                                title: "Conditional Variance",
-                                subtitle: `${modelType} Process`
-                            },
-                            chartConfig: {
-                                axisLabels: { x: "Time", y: "Variance" }
-                            }
-                        });
-                        charts.push(varianceChart);
+                        if (varianceData.length > 0) {
+                            const varianceChartData = varianceData.map((v, i) => ({
+                                category: String(i + 1),
+                                value: v
+                            }));
+                            const varianceChart = ChartService.createChartJSON({
+                                chartType: "Line Chart",
+                                chartData: varianceChartData,
+                                chartMetadata: {
+                                    title: "Conditional Variance",
+                                    subtitle: `${modelType} Process`
+                                },
+                                chartConfig: {
+                                    axisLabels: { x: "Time", y: "Variance" }
+                                }
+                            });
+                            charts.push(varianceChart);
+                        }
 
-                         // Residuals Chart
-                        const residualsChart = ChartService.createChartJSON({
-                            chartType: "Line Chart",
-                            chartData: periods,
-                            chartVariables: {
-                                x: ["index"],
-                                y: ["residual"]
-                            },
-                            chartMetadata: {
-                                title: "Residuals",
-                                subtitle: `${modelType} Process`
-                            },
-                            chartConfig: {
-                                axisLabels: { x: "Time", y: "Residual" }
-                            }
-                        });
-                        charts.push(residualsChart);
+                        if (residualsData.length > 0) {
+                            const residualsChartData = residualsData.map((r, i) => ({
+                                category: String(i + 1),
+                                value: r
+                            }));
+                            const residualsChart = ChartService.createChartJSON({
+                                chartType: "Line Chart",
+                                chartData: residualsChartData,
+                                chartMetadata: {
+                                    title: "Residuals",
+                                    subtitle: `${modelType} Process`
+                                },
+                                chartConfig: {
+                                    axisLabels: { x: "Time", y: "Residual" }
+                                }
+                            });
+                            charts.push(residualsChart);
+                        }
 
                         // 3. Dispatch Results directly to Output Output
                         const logMsg = `${modelType} Estimation on ${variable.name}`;
