@@ -31,7 +31,7 @@ interface DataTableProps {
   data: string;
 }
 
-  const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
+const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
   const [copied, setCopied] = useState<Record<string, boolean>>({});
   const uid = useId();
 
@@ -427,7 +427,7 @@ interface DataTableProps {
                 <span className="text-xs">SVG</span>
               </button>
             </div>
-             <table
+            <table
               id={tableDomId}
               className="border-collapse border border-border text-sm rounded-md min-w-max"
             >
@@ -469,7 +469,7 @@ interface DataTableProps {
                         </td>
                       ))}
                     </tr>
-                    );
+                  );
                 })}
               </tbody>
 
@@ -497,7 +497,7 @@ interface DataTableProps {
                               {renderContent(line)}
                             </p>
                           ))}
-                           </td>
+                        </td>
                       </tr>
                     );
                   })()}
