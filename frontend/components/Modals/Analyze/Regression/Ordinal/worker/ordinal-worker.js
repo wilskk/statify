@@ -45,34 +45,56 @@ self.onmessage = function (e) {
       ...theta.map((t, i) => {
         const se = 0.1;
         const w = t / se;
+        // return {
+        //   group: "Threshold",
+        //   variable: `[${i + 1}]`,
+        //   estimate: t,
+        //   stdError: se,
+        //   wald: w * w,
+        //   sig: Math.exp(-0.5 * w * w),
+        //   lower: t - z * se,
+        //   upper: t + z * se
+        // };
         return {
           group: "Threshold",
-          variable: `[${i + 1}]`,
-          estimate: t,
-          stdError: se,
-          wald: w * w,
-          sig: Math.exp(-0.5 * w * w),
-          lower: t - z * se,
-          upper: t + z * se
+          variable: undefined,
+          estimate: undefined,
+          stdError: undefined,
+          wald: undefined,
+          sig: undefined,
+          lower: undefined,
+          upper: undefined,
         };
       }),
       ...beta.map((b, i) => {
         const se = 0.1;
         const w = b / se;
+        // return {
+        //   group: "Location",
+        //   variable: featureNames[i],
+        //   estimate: b,
+        //   stdError: se,
+        //   wald: w * w,
+        //   sig: Math.exp(-0.5 * w * w),
+        //   lower: b - z * se,
+        //   upper: b + z * se,
+        //   tes: "hasil tes",
+        // };
         return {
           group: "Location",
-          variable: featureNames[i],
-          estimate: b,
-          stdError: se,
-          wald: w * w,
-          sig: Math.exp(-0.5 * w * w),
-          lower: b - z * se,
-          upper: b + z * se
+          variable: undefined,
+          estimate: undefined,
+          stdError: undefined,
+          wald: undefined,
+          sig: undefined,
+          lower: undefined,
+          upper: undefined,
         };
       })
     ];
 
     self.postMessage({ type: "SUCCESS", payload: results });
+    // self.postMessage({ type: "SUCCESS", payload: [{group: "something group", variable: "somethin variable"}] });
 
   } catch (err) {
     self.postMessage({ type: "ERROR", payload: err.message });
