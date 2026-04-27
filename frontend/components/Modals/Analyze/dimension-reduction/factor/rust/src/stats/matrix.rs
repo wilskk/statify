@@ -631,8 +631,8 @@ pub fn calculate_anti_image_matrices(
         for j in 0..n_vars {
             let other_var = &var_names[j];
 
-            // Anti-image covariance: elemen dari inverse correlation matrix
-            let cov_value = inverse[(i, j)];
+            // Anti-image covariance: dihitung dari inverse correlation matrix
+            let cov_value = inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)]);
             var_cov.insert(other_var.clone(), cov_value);
 
             // Anti-image correlation
