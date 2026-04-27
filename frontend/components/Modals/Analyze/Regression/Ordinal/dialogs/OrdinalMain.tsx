@@ -131,7 +131,7 @@ const OrdinalMain: React.FC = () => {
 
             // 🔥 BUAT LOG
             const logId = await addLog({
-              log: `ORDINAL REGRESSION VARIABLES ${options.dependent!.name}`,
+              log: `ORDINAL REGRESSION VARIABLES ${options.dependent!.id}`,
             });
 
             // 🔥 BUAT ANALYTIC
@@ -190,16 +190,36 @@ const OrdinalMain: React.FC = () => {
       };
 
       // 🔥 PREPARE DATA
-      const depName = options.dependent.name;
+      const depColIndex = options.dependent.columnIndex;
+
+      if (typeof depColIndex !== "number") {
+        throw new Error("Dependent tidak memiliki columnIndex yang valid.");
+      }
+
+      // gunakan columnIndex untuk semua feature (factors + covariates)
+      const featureColIdxs = features.map((f) => {
+        const idx = (f as any).columnIndex;
+        if (typeof idx !== "number") {
+          throw new Error(`Feature "${f.name}" tidak memiliki columnIndex yang valid.`);
+        }
+        return idx;
+      });
 
       const categories = Array.from(
-        new Set(data.map((d: any) => d[depName]))
+        new Set(data.map((row: any) => row?.[depColIndex]))
       );
 
       const dataset = data.map((row: any) => ({
-        y: categories.indexOf(row[depName]) + 1,
-        x: features.map((f) => Number(row[f.name]) || 0),
+        y: categories.indexOf(row?.[depColIndex]) + 1,
+        x: featureColIdxs.map((idx) => Number(row?.[idx]) || 0),
       }));
+
+      // ...existing code...
+      const depValues = data.map((row: any) => row?.[depColIndex]);
+      if (depValues.some((v) => v === undefined || v === null || v === "")) {
+        throw new Error("Variabel dependen mengandung nilai kosong (missing). Bersihkan data dulu.");
+      };
+      // ...existing code...
 
       worker.postMessage({
         data: dataset,
