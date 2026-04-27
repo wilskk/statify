@@ -4,6 +4,7 @@ import type { Variable } from "@/types/Variable";
 import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 import { useResultStore } from "@/stores/useResultStore";
+import { getTimeSeriesWorker } from "@/utils/timeseriesWorkerPool";
 
 export const useAnalyzeHook = (
     selectedVariables: Variable[],
@@ -42,10 +43,9 @@ export const useAnalyzeHook = (
 
             console.log(`Running ARCH-LM Test with ${residuals.length} residuals and ${lags} lags`);
 
-            // Use Web Worker
-            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
+            const client = getTimeSeriesWorker();
 
-            worker.onmessage = async (e) => {
+            client.onMessage(async (e) => {
                 const { status, result, error } = e.data;
                 
                 if (status === "success") {
@@ -130,27 +130,26 @@ export const useAnalyzeHook = (
                         console.error("Error processing results:", err);
                         setErrorMsg("Error processing results for display.");
                     } finally {
-                         worker.terminate();
+                         client.release();
                          setIsCalculating(false);
                     }
 
                 } else {
                     setErrorMsg(error || "Unknown worker error");
                     toast.error(`Test Failed: ${error}`);
-                    worker.terminate();
+                    client.release();
                     setIsCalculating(false);
                 }
-            };
+            });
 
-            worker.onerror = (err) => {
+            client.onError((err) => {
                 console.error("Worker connection error:", err);
                 setErrorMsg("Failed to connect to worker");
                 setIsCalculating(false);
-                worker.terminate();
-            };
+                client.release();
+            });
 
-            // Send payload to worker
-            worker.postMessage({
+            client.post({
                 type: "ARCH_LM", 
                 payload: {
                     residuals: residuals,
