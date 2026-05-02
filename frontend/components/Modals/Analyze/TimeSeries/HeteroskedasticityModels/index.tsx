@@ -10,7 +10,7 @@ import { useDataStore } from "@/stores/useDataStore";
 import type { Variable } from "@/types/Variable";
 import { useTimeHook } from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeHook";
 import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/HeteroskedasticityModels/hooks/analyzeHook";
-import VariablesTab from "@/components/Modals/Analyze/TimeSeries/GARCH/VariablesTab";
+import VariablesTab from "@/components/Modals/Analyze/TimeSeries/HeteroskedasticityModels/VariablesTab";
 import TimeTab from "@/components/Modals/Analyze/TimeSeries/TimeSeriesTimeTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 import type { DataRow } from "@/types/Data";

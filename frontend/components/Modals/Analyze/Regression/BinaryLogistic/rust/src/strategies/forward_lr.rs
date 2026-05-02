@@ -5,8 +5,9 @@ use crate::models::result::{
     StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, fit_with_history, FittedModel, FittingWarnings, IterationRecord};
-use crate::stats::score_test::calculate_score_test;
-// --- TAMBAHAN IMPORT ---
+use crate::stats::score_test::{calculate_score_test, calculate_group_score_test};
+use crate::stats::design_matrix::VariableGroup;
+use crate::stats::wald::calculate_joint_wald_test;
 use crate::stats::hosmer_lemeshow;
 use crate::stats::casewise;
 use crate::stats::correlation_of_estimates;
@@ -25,11 +26,13 @@ pub fn run(
     config: &LogisticConfig,
     feature_names: &[String],
     codings: Option<Vec<CategoricalCoding>>,
+    variable_groups: &[VariableGroup],
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
     let n_total_vars = x_matrix.ncols();
 
     let mut included_indices: Vec<usize> = Vec::new();
+    let mut included_group_indices: Vec<usize> = Vec::new();
     let mut steps_history: Vec<StepHistory> = Vec::new();
     let mut steps_details: Vec<StepDetail> = Vec::new();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
@@ -125,7 +128,8 @@ pub fn run(
         prev_n_vars,
         feature_names, // Pass feature names
         config,        // Pass config for re-fitting
-        block_0_iter_history, // BARU: Iteration history
+        block_0_iter_history,
+        variable_groups,
     );
     steps_details.push(step0_detail);
 
@@ -154,28 +158,40 @@ pub fn run(
             break;
         }
 
-        let mut best_candidate_idx = None;
+        let mut best_candidate_group_idx = None;
         let mut best_score_stat = 0.0;
 
-        // A. FORWARD ENTRY (Score Test)
-        // SPSS selects the variable with the LARGEST Score statistic among
-        // those meeting the p_entry threshold.
+        // A. FORWARD ENTRY (Score Test - Group-aware)
         let current_x_for_score = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
 
-        for i in 0..n_total_vars {
-            if !included_indices.contains(&i) {
-                let candidate_col = x_matrix.column(i).into_owned();
-                let (stat, p_val) = calculate_score_test(
-                    &current_model.residuals,
-                    &current_model.weights,
-                    &current_x_for_score,
-                    &candidate_col,
-                    &current_model.covariance_matrix,
-                );
+        for (g_idx, group) in variable_groups.iter().enumerate() {
+            if !included_group_indices.contains(&g_idx) {
+                let (stat, _df, p_val) = if group.column_indices.len() == 1 {
+                    let candidate_col = x_matrix.column(group.column_indices[0]).into_owned();
+                    let (s, p) = calculate_score_test(
+                        &current_model.residuals,
+                        &current_model.weights,
+                        &current_x_for_score,
+                        &candidate_col,
+                        &current_model.covariance_matrix,
+                    );
+                    (s, 1, p)
+                } else {
+                    let cols: Vec<DVector<f64>> = group.column_indices.iter()
+                        .map(|&ci| x_matrix.column(ci).into_owned()).collect();
+                    let candidate_matrix = DMatrix::from_columns(&cols);
+                    calculate_group_score_test(
+                        &current_model.residuals,
+                        &current_model.weights,
+                        &current_x_for_score,
+                        &candidate_matrix,
+                        &current_model.covariance_matrix,
+                    )
+                };
 
                 if p_val < config.p_entry && stat > best_score_stat {
                     best_score_stat = stat;
-                    best_candidate_idx = Some(i);
+                    best_candidate_group_idx = Some(g_idx);
                 }
             }
         }
@@ -184,9 +200,13 @@ pub fn run(
         let mut step_iter_history: Option<Vec<IterationRecord>> = None;
 
         // Jika ada kandidat masuk
-        if let Some(idx_in) = best_candidate_idx {
-            let mut trial_indices = included_indices.clone();
-            trial_indices.push(idx_in);
+        if let Some(g_idx_in) = best_candidate_group_idx {
+            let group_in = &variable_groups[g_idx_in];
+            let mut trial_group_indices = included_group_indices.clone();
+            trial_group_indices.push(g_idx_in);
+
+            let trial_indices: Vec<usize> = trial_group_indices.iter()
+                .flat_map(|&gi| variable_groups[gi].column_indices.iter().copied()).collect();
 
             let trial_x = build_design_matrix(x_matrix, &trial_indices, n_samples, config.include_constant);
 
@@ -212,7 +232,7 @@ pub fn run(
                 steps_history.push(StepHistory {
                     step: step_count,
                     action: "Entered".to_string(),
-                    variable: feature_names[idx_in].clone(), // Nama Asli
+                    variable: group_in.name.clone(), // Nama Asli
                     score_statistic: best_score_stat,
                     improvement_chi_sq: best_score_stat,
                     model_log_likelihood: new_model.final_log_likelihood,
@@ -227,6 +247,7 @@ pub fn run(
                 prev_log_likelihood = current_model.final_log_likelihood;
                 prev_n_vars = included_indices.len();
 
+                included_group_indices = trial_group_indices.clone();
                 included_indices = trial_indices.clone();
                 current_model = new_model;
                 variable_added = true;
@@ -269,7 +290,7 @@ pub fn run(
                 let step_detail = calculate_step_snapshot(
                     step_count,
                     "Entered".to_string(),
-                    Some(feature_names[idx_in].clone()),
+                    Some(group_in.name.clone()),
                     &current_model,
                     x_matrix,
                     y_vector,
@@ -279,7 +300,8 @@ pub fn run(
                     prev_n_vars,
                     feature_names,
                     config,
-                    step_history_block, // BARU: Iteration history
+                    step_history_block,
+                    variable_groups,
                 );
                 steps_details.push(step_detail);
             }
@@ -287,19 +309,22 @@ pub fn run(
 
         // B. BACKWARD REMOVAL (Likelihood Ratio Test)
         // Berbeda dengan Conditional/Wald, LR menghitung selisih Log Likelihood
-        if variable_added && included_indices.len() > 1 {
+        if variable_added && included_group_indices.len() > 1 {
             let mut worst_idx_loc = None;
             let mut max_p_val = 0.0;
             let mut lr_stat_removed = 0.0;
             let mut reduced_model_candidate: Option<FittedModel> = None;
             let mut removal_iter_history_candidate: Option<Vec<IterationRecord>> = None;
 
-            for (k, &original_idx) in included_indices.iter().enumerate() {
+            for (loc, &g_idx) in included_group_indices.iter().enumerate() {
                 // Jangan buang variabel yang baru saja masuk di step yang sama
-                if Some(original_idx) != best_candidate_idx {
-                    // Buat model sementara tanpa variabel k
-                    let mut trial_indices_remove = included_indices.clone();
-                    trial_indices_remove.remove(k);
+                if Some(g_idx) != best_candidate_group_idx {
+                    // Buat model sementara tanpa grup k
+                    let mut trial_group_indices_remove = included_group_indices.clone();
+                    trial_group_indices_remove.remove(loc);
+
+                    let trial_indices_remove: Vec<usize> = trial_group_indices_remove.iter()
+                        .flat_map(|&gi| variable_groups[gi].column_indices.iter().copied()).collect();
 
                     let trial_x_remove =
                         build_design_matrix(x_matrix, &trial_indices_remove, n_samples, config.include_constant);
@@ -332,11 +357,12 @@ pub fn run(
                                 .abs();
 
                         // Hitung Sig
-                        let p_val_remove = 1.0 - chi_dist_1df.cdf(lr_stat);
+                        let group_df = variable_groups[g_idx].column_indices.len() as f64;
+                        let p_val_remove = 1.0 - ChiSquared::new(group_df).unwrap_or(chi_dist_1df.clone()).cdf(lr_stat);
 
                         if p_val_remove > config.p_removal && p_val_remove > max_p_val {
                             max_p_val = p_val_remove;
-                            worst_idx_loc = Some(k);
+                            worst_idx_loc = Some(loc);
                             lr_stat_removed = lr_stat;
                             reduced_model_candidate = Some(temp_model);
                             removal_iter_history_candidate = temp_iter_history;
@@ -350,19 +376,22 @@ pub fn run(
                 // SPSS assigns each action (entry/removal) its own step number
                 step_count += 1;
 
-                let removed_var_idx = included_indices[loc];
+                let removed_group_idx = included_group_indices[loc];
+                let removed_group_name = variable_groups[removed_group_idx].name.clone();
 
                 // Update tracker sebelum update current
                 prev_log_likelihood = current_model.final_log_likelihood;
                 prev_n_vars = included_indices.len();
 
-                included_indices.remove(loc);
+                included_group_indices.remove(loc);
+                included_indices = included_group_indices.iter()
+                    .flat_map(|&gi| variable_groups[gi].column_indices.iter().copied()).collect();
 
                 if let Some(reduced_model) = reduced_model_candidate {
                     steps_history.push(StepHistory {
                         step: step_count,
                         action: "Removed".to_string(),
-                        variable: feature_names[removed_var_idx].clone(), // Nama Asli
+                        variable: removed_group_name.clone(), // Nama Asli
                         score_statistic: 0.0,
                         improvement_chi_sq: lr_stat_removed, // Change in -2LL
                         model_log_likelihood: reduced_model.final_log_likelihood,
@@ -413,7 +442,7 @@ pub fn run(
                     let step_detail = calculate_step_snapshot(
                         step_count,
                         "Removed".to_string(),
-                        Some(feature_names[removed_var_idx].clone()),
+                        Some(removed_group_name),
                         &current_model,
                         x_matrix,
                         y_vector,
@@ -423,7 +452,8 @@ pub fn run(
                         prev_n_vars,
                         feature_names,
                         config,
-                        removal_history_block, // BARU: Iteration history
+                        removal_history_block,
+                        variable_groups,
                     );
                     steps_details.push(step_detail);
                 }
@@ -692,28 +722,30 @@ fn calculate_model_if_term_removed(
     current_model_ll: f64,
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
-    included_indices: &[usize],
     null_log_likelihood: f64, // <-- PASS NULL LL
     config: &LogisticConfig,
-    feature_names: &[String],
     n_samples: usize,
+    variable_groups: &[VariableGroup],
+    included_group_indices: &[usize],
 ) -> Option<Vec<ModelIfTermRemovedRow>> {
-    if included_indices.is_empty() {
+    if included_group_indices.is_empty() {
         return None;
     }
 
     let mut rows = Vec::new();
-    let chi_dist = ChiSquared::new(1.0).unwrap();
 
-    for (i, &idx_to_remove) in included_indices.iter().enumerate() {
-        // 1. Buat subset index tanpa variabel ini
-        let mut subset_indices = included_indices.to_vec();
-        subset_indices.remove(i);
+    for (loc, &g_idx) in included_group_indices.iter().enumerate() {
+        let group = &variable_groups[g_idx];
+        // 1. Buat subset index tanpa grup ini
+        let mut subset_groups = included_group_indices.to_vec();
+        subset_groups.remove(loc);
+        
+        let subset_indices: Vec<usize> = subset_groups.iter()
+            .flat_map(|&gi| variable_groups[gi].column_indices.iter().copied()).collect();
 
         let reduced_ll;
 
-        // 2. Jika subset kosong, berarti kembali ke Null Model (Hanya Intercept)
-        // Gunakan nilai Null LL yang sudah dihitung di awal untuk presisi maksimal
+        // 2. Jika subset kosong, berarti kembali ke Null Model
         if subset_indices.is_empty() {
             reduced_ll = null_log_likelihood;
         } else {
@@ -737,23 +769,18 @@ fn calculate_model_if_term_removed(
         // Safety: Jika sangat kecil, anggap 0
         let change_val_clean = if change_val < 1e-9 { 0.0 } else { change_val };
 
+        let group_df = group.column_indices.len() as f64;
         let sig = if change_val_clean > 0.0 {
-            1.0 - chi_dist.cdf(change_val_clean)
+            1.0 - ChiSquared::new(group_df).unwrap_or(ChiSquared::new(1.0).unwrap()).cdf(change_val_clean)
         } else {
             1.0
         };
 
-        let label = if idx_to_remove < feature_names.len() {
-            feature_names[idx_to_remove].clone()
-        } else {
-            format!("Var_{}", idx_to_remove)
-        };
-
         rows.push(ModelIfTermRemovedRow {
-            label,
+            label: group.name.clone(),
             model_log_likelihood: reduced_ll,
             change_in_neg2ll: change_val_clean,
-            df: 1,
+            df: group_df as i32,
             sig_change: sig,
         });
     }
@@ -766,19 +793,12 @@ fn calculate_model_if_term_removed(
 }
 
 fn calculate_step_snapshot(
-    step: usize,
-    action: String,
-    variable_changed: Option<String>,
-    model: &FittedModel,
-    full_x: &DMatrix<f64>,
-    y_vector: &DVector<f64>,
-    included_indices: &[usize],
-    null_ll: f64,
-    prev_ll: f64,
-    prev_n_vars: usize,
-    feature_names: &[String],
-    config: &LogisticConfig,
-    iteration_history: Option<IterationHistoryBlock>, // BARU: Iteration history
+    step: usize, action: String, variable_changed: Option<String>,
+    model: &FittedModel, full_x: &DMatrix<f64>, y_vector: &DVector<f64>,
+    included_indices: &[usize], null_ll: f64, prev_ll: f64, prev_n_vars: usize,
+    feature_names: &[String], config: &LogisticConfig,
+    iteration_history: Option<IterationHistoryBlock>,
+    variable_groups: &[VariableGroup],
 ) -> StepDetail {
     let n = y_vector.len();
     let n_total_vars = full_x.ncols();
@@ -789,157 +809,97 @@ fn calculate_step_snapshot(
     let cox_snell = 1.0 - (diff * (2.0 / n as f64)).exp();
 
     let summary = ModelSummary {
-        log_likelihood: model.final_log_likelihood,
-        cox_snell_r_square: cox_snell,
+        log_likelihood: model.final_log_likelihood, cox_snell_r_square: cox_snell,
         nagelkerke_r_square: calculate_nagelkerke(null_ll, model.final_log_likelihood, n),
-        converged: model.converged,
-        iterations: model.iterations,
+        converged: model.converged, iterations: model.iterations,
     };
 
-    // --- 1. MODEL / BLOCK OMNIBUS (Vs Null) ---
     let chi_sq_model = 2.0 * (model.final_log_likelihood - null_ll).abs();
     let df_model = included_indices.len() as i32;
-    let sig_model = if df_model > 0 {
-        1.0 - ChiSquared::new(df_model as f64).unwrap().cdf(chi_sq_model)
-    } else {
-        1.0
-    };
+    let sig_model = if df_model > 0 { 1.0 - ChiSquared::new(df_model as f64).unwrap().cdf(chi_sq_model) } else { 1.0 };
+    let omni_tests_model = OmniTests { chi_square: chi_sq_model, df: df_model, sig: sig_model };
 
-    let omni_tests_model = OmniTests {
-        chi_square: chi_sq_model,
-        df: df_model,
-        sig: sig_model,
-    };
-
-    // --- 2. STEP OMNIBUS (Vs Previous Step) ---
-    // SPSS convention: positive when variable entered (model improves),
-    // negative when variable removed (model worsens)
     let chi_sq_step = 2.0 * (model.final_log_likelihood - prev_ll);
     let df_step = (included_indices.len() as i32 - prev_n_vars as i32).abs();
     let sig_step = if df_step > 0 && chi_sq_step.abs() > 1e-9 {
         1.0 - ChiSquared::new(df_step as f64).unwrap().cdf(chi_sq_step.abs())
-    } else {
-        1.0
-    };
+    } else { 1.0 };
+    let omni_tests_step = OmniTests { chi_square: chi_sq_step, df: df_step, sig: sig_step };
 
-    let omni_tests_step = OmniTests {
-        chi_square: chi_sq_step,
-        df: df_step,
-        sig: sig_step,
-    };
+    // Compute included_group_indices from included_indices
+    let included_group_indices: Vec<usize> = variable_groups.iter().enumerate()
+        .filter(|(_, g)| g.column_indices.iter().any(|ci| included_indices.contains(ci)))
+        .map(|(gi, _)| gi).collect();
 
-    // --- 3. MODEL IF TERM REMOVED ---
     let model_if_term_removed = calculate_model_if_term_removed(
-        model.final_log_likelihood,
-        full_x,
-        y_vector,
-        included_indices,
-        null_ll, // PASS NULL LL
-        config,
-        feature_names,
-        n,
+        model.final_log_likelihood, full_x, y_vector, null_ll, config, n, variable_groups, &included_group_indices,
     );
 
-    // Classification Table
     let class_table = table::calculate_classification_table(&model.predictions, y_vector, config.cutoff);
 
-    // 5. Variables In Equation
+    // Variables In Equation (Group-aware)
     let mut variables_in = Vec::new();
-    
-    // Tambahkan Constant hanya jika include_constant = true
+    let beta_offset = if config.include_constant { 1 } else { 0 };
+
     if config.include_constant {
-        // PERBAIKAN: Untuk Step 0 (Null Model), gunakan formula ANALITIK untuk Wald
-        // yang lebih presisi daripada covariance matrix dari IRLS
         let (b_int, se_int, wald_int) = if step == 0 && included_indices.is_empty() {
-            // Block 0: Null Model - gunakan formula analitik
             let n_positive: f64 = y_vector.iter().filter(|&&y| y > 0.5).count() as f64;
             let n_total: f64 = y_vector.len() as f64;
             let p = (n_positive / n_total).clamp(1e-10, 1.0 - 1e-10);
-            
-            // Beta0 = ln(p / (1-p))
             let beta_0 = (p / (1.0 - p)).ln();
-            // Var(β₀) = 1 / (n × p × (1-p)) - Fisher Information exact formula
-            let variance_beta0 = 1.0 / (n_total * p * (1.0 - p));
-            let se_0 = variance_beta0.sqrt();
+            let se_0 = (1.0 / (n_total * p * (1.0 - p))).sqrt();
             let wald_0 = if se_0 > 1e-12 { (beta_0 / se_0).powi(2) } else { 0.0 };
-            
             (beta_0, se_0, wald_0)
         } else {
-            // Block 1+: Gunakan hasil dari IRLS
-            let b = model.beta[0];
-            let se = model.covariance_matrix[(0, 0)].sqrt();
+            let b = model.beta[0]; let se = model.covariance_matrix[(0, 0)].sqrt();
             let wald = if se > 1e-12 { (b / se).powi(2) } else { 0.0 };
             (b, se, wald)
         };
-        
         variables_in.push(VariableRow {
-            label: "Constant".to_string(),
-            b: b_int,
-            error: se_int,
-            wald: wald_int,
-            df: 1,
-            sig: 1.0 - chi_dist_1df.cdf(wald_int),
-            exp_b: b_int.exp(),
-            lower_ci: (b_int - z_score * se_int).exp(),
-            upper_ci: (b_int + z_score * se_int).exp(),
+            label: "Constant".to_string(), b: b_int, error: se_int, wald: wald_int, df: 1,
+            sig: 1.0 - chi_dist_1df.cdf(wald_int), exp_b: b_int.exp(),
+            lower_ci: (b_int - z_score * se_int).exp(), upper_ci: (b_int + z_score * se_int).exp(),
         });
     }
 
-    // Offset untuk beta index tergantung apakah ada constant
-    let beta_offset = if config.include_constant { 1 } else { 0 };
-    
-    for (k, &idx) in included_indices.iter().enumerate() {
-        let beta_idx = k + beta_offset;
-        let b = model.beta[beta_idx];
-        let se = model.covariance_matrix[(beta_idx, beta_idx)].sqrt();
-        let wald = if se > 1e-12 { (b / se).powi(2) } else { 0.0 };
-
-        let label = if idx < feature_names.len() {
-            feature_names[idx].clone()
-        } else {
-            format!("Var_{}", idx + 1)
-        };
-
-        variables_in.push(VariableRow {
-            label,
-            b,
-            error: se,
-            wald,
-            df: 1,
-            sig: 1.0 - chi_dist_1df.cdf(wald),
-            exp_b: b.exp(),
-            lower_ci: (b - z_score * se).exp(),
-            upper_ci: (b + z_score * se).exp(),
-        });
+    for &g_idx in &included_group_indices {
+        let group = &variable_groups[g_idx];
+        let beta_indices: Vec<usize> = group.column_indices.iter()
+            .filter_map(|&col_idx| included_indices.iter().position(|&c| c == col_idx).map(|pos| pos + beta_offset))
+            .collect();
+        if group.column_indices.len() > 1 && !beta_indices.is_empty() {
+            let (jw, jd, js) = calculate_joint_wald_test(&model.beta, &model.covariance_matrix, &beta_indices);
+            variables_in.push(VariableRow { label: group.name.clone(), b: 0.0, error: 0.0, wald: jw, df: jd, sig: js, exp_b: 0.0, lower_ci: 0.0, upper_ci: 0.0 });
+        }
+        for &col_idx in &group.column_indices {
+            if let Some(pos) = included_indices.iter().position(|&c| c == col_idx) {
+                let bi = pos + beta_offset; let b = model.beta[bi]; let se = model.covariance_matrix[(bi, bi)].sqrt();
+                let wald = if se > 1e-12 { (b / se).powi(2) } else { 0.0 };
+                let label = if col_idx < feature_names.len() { feature_names[col_idx].clone() } else { format!("Var_{}", col_idx + 1) };
+                variables_in.push(VariableRow { label, b, error: se, wald, df: 1, sig: 1.0 - chi_dist_1df.cdf(wald), exp_b: b.exp(), lower_ci: (b - z_score * se).exp(), upper_ci: (b + z_score * se).exp() });
+            }
+        }
     }
 
-    // Variables Not In Equation
+    // Variables Not In Equation (Group-aware)
     let mut variables_not_in = Vec::new();
     let current_design_matrix = build_design_matrix(full_x, included_indices, n, config.include_constant);
 
-    for i in 0..n_total_vars {
-        if !included_indices.contains(&i) {
-            let candidate_col = full_x.column(i).into_owned();
-            let (stat, p_val) = calculate_score_test(
-                &model.residuals,
-                &model.weights,
-                &current_design_matrix,
-                &candidate_col,
-                &model.covariance_matrix,
-            );
-
-            let label = if i < feature_names.len() {
-                feature_names[i].clone()
-            } else {
-                format!("Var_{}", i + 1)
-            };
-
-            variables_not_in.push(VariableNotInEquation {
-                label,
-                score: stat,
-                df: 1,
-                sig: p_val,
-            });
+    for (g_idx, group) in variable_groups.iter().enumerate() {
+        if included_group_indices.contains(&g_idx) { continue; }
+        if group.column_indices.len() > 1 {
+            let cols: Vec<DVector<f64>> = group.column_indices.iter().map(|&ci| full_x.column(ci).into_owned()).collect();
+            let cm = DMatrix::from_columns(&cols);
+            let (gs, gd, gp) = calculate_group_score_test(&model.residuals, &model.weights, &current_design_matrix, &cm, &model.covariance_matrix);
+            variables_not_in.push(VariableNotInEquation { label: group.name.clone(), score: gs, df: gd, sig: gp });
+        }
+        for &col_idx in &group.column_indices {
+            if !included_indices.contains(&col_idx) {
+                let candidate_col = full_x.column(col_idx).into_owned();
+                let (stat, p_val) = calculate_score_test(&model.residuals, &model.weights, &current_design_matrix, &candidate_col, &model.covariance_matrix);
+                let label = if col_idx < feature_names.len() { feature_names[col_idx].clone() } else { format!("Var_{}", col_idx + 1) };
+                variables_not_in.push(VariableNotInEquation { label, score: stat, df: 1, sig: p_val });
+            }
         }
     }
 

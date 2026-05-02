@@ -13,6 +13,8 @@ use crate::stats::{
     casewise, classification_plot, correlation_of_estimates, hosmer_lemeshow, irls,
     saved_predictions, score_test, table,
 };
+use crate::stats::design_matrix::VariableGroup;
+use crate::stats::wald::calculate_joint_wald_test;
 
 pub fn run(
     x_raw: &DMatrix<f64>,
@@ -20,6 +22,7 @@ pub fn run(
     config: &LogisticConfig,
     feature_names: &[String],
     codings: Option<Vec<CategoricalCoding>>,
+    variable_groups: &[VariableGroup],
 ) -> Result<LogisticResult, Box<dyn Error>> {
     let n_samples = x_raw.nrows();
     let n_features = x_raw.ncols();
@@ -153,37 +156,60 @@ pub fn run(
     let class_table_null =
         table::calculate_classification_table(&null_model.predictions, y_vector, config.cutoff);
 
-    // --- 3. SCORE TEST ---
+    // --- 3. SCORE TEST (Group-aware) ---
     let mut vars_not_in_eq_null = Vec::new();
-    let prob_null = if null_model.predictions.len() > 0 {
+    let prob_null = if !null_model.predictions.is_empty() {
         null_model.predictions[0]
     } else {
         0.5
     };
 
-    for i in 0..n_features {
-        let col = x_raw.column(i);
-        let col_vec: DVector<f64> = col.into();
+    for group in variable_groups.iter() {
+        // For multi-column groups (categorical): emit group omnibus row first
+        if group.column_indices.len() > 1 {
+            let cols: Vec<DVector<f64>> = group.column_indices.iter()
+                .map(|&ci| x_raw.column(ci).into_owned())
+                .collect();
+            let x_group = DMatrix::from_columns(&cols);
+            let (group_stat, group_df, group_sig) = score_test::calculate_single_group_score_test(
+                &x_group,
+                y_vector,
+                prob_null,
+                config.include_constant,
+            );
+            vars_not_in_eq_null.push(VariableNotInEquation {
+                label: group.name.clone(),
+                score: group_stat,
+                df: group_df,
+                sig: group_sig,
+            });
+        }
 
-        let (score_stat, _, sig_val) = score_test::calculate_single_score_test(
-            &col_vec,
-            y_vector,
-            prob_null,
-            config.include_constant,
-        );
+        // Emit individual rows for each column in the group
+        for &col_idx in &group.column_indices {
+            let col = x_raw.column(col_idx);
+            let col_vec: DVector<f64> = col.into();
 
-        let label = if i < feature_names.len() {
-            feature_names[i].clone()
-        } else {
-            format!("Var_{}", i + 1)
-        };
+            let (score_stat, _, sig_val) = score_test::calculate_single_score_test(
+                &col_vec,
+                y_vector,
+                prob_null,
+                config.include_constant,
+            );
 
-        vars_not_in_eq_null.push(VariableNotInEquation {
-            label,
-            score: score_stat,
-            df: 1,
-            sig: sig_val,
-        });
+            let label = if col_idx < feature_names.len() {
+                feature_names[col_idx].clone()
+            } else {
+                format!("Var_{}", col_idx + 1)
+            };
+
+            vars_not_in_eq_null.push(VariableNotInEquation {
+                label,
+                score: score_stat,
+                df: 1,
+                sig: sig_val,
+            });
+        }
     }
 
     let (g_chi, g_df, g_sig) = score_test::calculate_global_score_test_with_constant(
@@ -327,49 +353,88 @@ pub fn run(
     let classification_table =
         table::calculate_classification_table(&full_model.predictions, y_vector, config.cutoff);
 
-    // Variables in Equation
+    // Variables in Equation (Group-aware)
     let mut variables_rows = Vec::new();
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
     let chi_dist_1df = ChiSquared::new(1.0)?;
+    let beta_offset = if config.include_constant { 1 } else { 0 };
 
-    for (i, &beta) in full_model.beta.iter().enumerate() {
-        let cov_val = full_model.covariance_matrix[(i, i)];
-        let std_error = if cov_val > 0.0 { cov_val.sqrt() } else { 0.0 };
-        let wald = if std_error > 1e-12 {
-            (beta / std_error).powi(2)
-        } else {
-            0.0
-        };
-        let sig = if wald > 0.0 {
-            1.0 - chi_dist_1df.cdf(wald)
-        } else {
-            1.0
-        };
-        let lower_ci = (beta - z_score * std_error).exp();
-        let upper_ci = (beta + z_score * std_error).exp();
-
-        let label = if config.include_constant && i == 0 {
-            "Constant".to_string()
-        } else {
-            let feature_idx = if config.include_constant { i - 1 } else { i };
-            if feature_idx < feature_names.len() {
-                feature_names[feature_idx].clone()
-            } else {
-                format!("Var_{}", feature_idx + 1)
-            }
-        };
+    // Add Constant first (Statify convention)
+    if config.include_constant {
+        let b = full_model.beta[0];
+        let cov_val = full_model.covariance_matrix[(0, 0)];
+        let se = if cov_val > 0.0 { cov_val.sqrt() } else { 0.0 };
+        let wald = if se > 1e-12 { (b / se).powi(2) } else { 0.0 };
+        let sig = if wald > 0.0 { 1.0 - chi_dist_1df.cdf(wald) } else { 1.0 };
 
         variables_rows.push(VariableRow {
-            label,
-            b: beta,
-            error: std_error,
+            label: "Constant".to_string(),
+            b,
+            error: se,
             wald,
             df: 1,
             sig,
-            exp_b: beta.exp(),
-            lower_ci,
-            upper_ci,
+            exp_b: b.exp(),
+            lower_ci: (b - z_score * se).exp(),
+            upper_ci: (b + z_score * se).exp(),
         });
+    }
+
+    // Emit group rows for each variable group
+    for group in variable_groups.iter() {
+        // Find beta indices for this group's columns
+        // In Enter method, all columns are included, so col_idx maps directly to beta_offset + col_idx
+        let beta_indices: Vec<usize> = group.column_indices.iter()
+            .map(|&col_idx| col_idx + beta_offset)
+            .collect();
+
+        // For multi-column groups (categorical): emit group omnibus row first
+        if group.column_indices.len() > 1 {
+            let (joint_wald, joint_df, joint_sig) = calculate_joint_wald_test(
+                &full_model.beta,
+                &full_model.covariance_matrix,
+                &beta_indices,
+            );
+            variables_rows.push(VariableRow {
+                label: group.name.clone(),
+                b: 0.0,
+                error: 0.0,
+                wald: joint_wald,
+                df: joint_df,
+                sig: joint_sig,
+                exp_b: 0.0,
+                lower_ci: 0.0,
+                upper_ci: 0.0,
+            });
+        }
+
+        // Emit individual rows for each column in the group
+        for &col_idx in &group.column_indices {
+            let beta_idx = col_idx + beta_offset;
+            let b = full_model.beta[beta_idx];
+            let cov_val = full_model.covariance_matrix[(beta_idx, beta_idx)];
+            let se = if cov_val > 0.0 { cov_val.sqrt() } else { 0.0 };
+            let wald = if se > 1e-12 { (b / se).powi(2) } else { 0.0 };
+            let sig = if wald > 0.0 { 1.0 - chi_dist_1df.cdf(wald) } else { 1.0 };
+
+            let label = if col_idx < feature_names.len() {
+                feature_names[col_idx].clone()
+            } else {
+                format!("Var_{}", col_idx + 1)
+            };
+
+            variables_rows.push(VariableRow {
+                label,
+                b,
+                error: se,
+                wald,
+                df: 1,
+                sig,
+                exp_b: b.exp(),
+                lower_ci: (b - z_score * se).exp(),
+                upper_ci: (b + z_score * se).exp(),
+            });
+        }
     }
 
     let hl_result = if config.hosmer_lemeshow {

@@ -57,7 +57,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             height: '100px',
             draggableItems: true,
             droppable: true,
-            maxItems: 1,
+            // maxItems: unlimited
         }
     ];
 
@@ -88,7 +88,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
         if (toListId === 'dependent') {
             setDependentVariable([variable]); // Only one item
         } else if (toListId === 'independent') {
-            setIndependentVariable([variable]); // Only one item
+            setIndependentVariable(prev => [...prev, variable]); // Allow multiple
         } else if (toListId === 'available') {
             setAvailableVariables(prev => [...prev, variable]);
         }

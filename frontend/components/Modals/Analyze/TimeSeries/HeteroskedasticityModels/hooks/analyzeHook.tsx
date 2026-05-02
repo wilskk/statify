@@ -5,6 +5,7 @@ import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
+import { getTimeSeriesWorker } from "@/utils/timeseriesWorkerPool";
 
 export const useAnalyzeHook = (
     selectedVariables: Variable[],
@@ -46,10 +47,9 @@ export const useAnalyzeHook = (
 
             console.log(`Running ${modelType}(${pOrder},${qOrder}) with ${returns.length} observations`);
 
-            // Use Web Worker
-            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
+            const client = getTimeSeriesWorker();
 
-            worker.onmessage = async (e) => {
+            client.onMessage(async (e) => {
                 const { status, result, error } = e.data;
                 
                 if (status === "success") {
@@ -133,48 +133,46 @@ export const useAnalyzeHook = (
 
                         // 2. Prepare Charts
                         const charts = [];
-                        const varianceData = result.variance || [];
-                        const periods = Array.from({ length: varianceData.length }, (_, i) => ({
-                            index: i + 1,
-                            variance: varianceData[i],
-                            residual: result.residuals ? result.residuals[i] : 0
-                        }));
+                        const varianceData: number[] = result.variance || [];
+                        const residualsData: number[] = result.residuals || [];
 
-                        // Conditional Variance Chart
-                        const varianceChart = ChartService.createChartJSON({
-                            chartType: "Line Chart",
-                            chartData: periods,
-                            chartVariables: {
-                                x: ["index"],
-                                y: ["variance"]
-                            },
-                            chartMetadata: {
-                                title: "Conditional Variance",
-                                subtitle: `${modelType} Process`
-                            },
-                            chartConfig: {
-                                axisLabels: { x: "Time", y: "Variance" }
-                            }
-                        });
-                        charts.push(varianceChart);
+                        if (varianceData.length > 0) {
+                            const varianceChartData = varianceData.map((v, i) => ({
+                                category: String(i + 1),
+                                value: v
+                            }));
+                            const varianceChart = ChartService.createChartJSON({
+                                chartType: "Line Chart",
+                                chartData: varianceChartData,
+                                chartMetadata: {
+                                    title: "Conditional Variance",
+                                    subtitle: `${modelType} Process`
+                                },
+                                chartConfig: {
+                                    axisLabels: { x: "Time", y: "Variance" }
+                                }
+                            });
+                            charts.push(varianceChart);
+                        }
 
-                         // Residuals Chart
-                        const residualsChart = ChartService.createChartJSON({
-                            chartType: "Line Chart",
-                            chartData: periods,
-                            chartVariables: {
-                                x: ["index"],
-                                y: ["residual"]
-                            },
-                            chartMetadata: {
-                                title: "Residuals",
-                                subtitle: `${modelType} Process`
-                            },
-                            chartConfig: {
-                                axisLabels: { x: "Time", y: "Residual" }
-                            }
-                        });
-                        charts.push(residualsChart);
+                        if (residualsData.length > 0) {
+                            const residualsChartData = residualsData.map((r, i) => ({
+                                category: String(i + 1),
+                                value: r
+                            }));
+                            const residualsChart = ChartService.createChartJSON({
+                                chartType: "Line Chart",
+                                chartData: residualsChartData,
+                                chartMetadata: {
+                                    title: "Residuals",
+                                    subtitle: `${modelType} Process`
+                                },
+                                chartConfig: {
+                                    axisLabels: { x: "Time", y: "Residual" }
+                                }
+                            });
+                            charts.push(residualsChart);
+                        }
 
                         // 3. Dispatch Results directly to Output Output
                         const logMsg = `${modelType} Estimation on ${variable.name}`;
@@ -195,27 +193,26 @@ export const useAnalyzeHook = (
                         console.error("Error processing results:", err);
                         setErrorMsg("Error processing results for display.");
                     } finally {
-                         worker.terminate();
+                         client.release();
                          setIsCalculating(false);
                     }
 
                 } else {
                     setErrorMsg(error || "Unknown worker error");
                     toast.error(`Estimation Failed: ${error}`);
-                    worker.terminate();
+                    client.release();
                     setIsCalculating(false);
                 }
-            };
+            });
 
-            worker.onerror = (err) => {
+            client.onError((err) => {
                 console.error("Worker connection error:", err);
                 setErrorMsg("Failed to connect to worker");
                 setIsCalculating(false);
-                worker.terminate();
-            };
+                client.release();
+            });
 
-            // Send payload to worker
-            worker.postMessage({
+            client.post({
                 type: modelType, 
                 payload: {
                     data: returns,
