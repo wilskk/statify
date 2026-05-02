@@ -1,7 +1,12 @@
-import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import type {
     MultivariateAnalysisType
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate-worker";
+import { transformMultivariateResult } from "./multivariate-analysis-formatter";
+import { resultMultivariateAnalysis } from "./multivariate-analysis-output";
+import init, {
+    MultivariateAnalysis,
+} from "@/components/Modals/Analyze/general-linear-model/multivariate/rust/pkg";
 
 export async function analyzeMultivariate({
     configData,
@@ -44,34 +49,36 @@ export async function analyzeMultivariate({
     const varDefsForCovariate = getVarDefs(variables, CovariateVariables);
     const varDefsForWlsWeight = getVarDefs(variables, WlsWeightVariable);
 
-    console.log(configData);
+    await init();
 
-    // await init();
-    // const multivariate = new MultivariateAnalysis(
-    //     slicedDataForDependent,
-    //     slicedDataForFixFactor,
-    //     slicedDataForCovariate,
-    //     slicedDataForWlsWeight,
-    //     varDefsForDependent,
-    //     varDefsForFixFactor,
-    //     varDefsForCovariate,
-    //     varDefsForWlsWeight,
-    //     configData
-    // );
+    const multivariate = new MultivariateAnalysis(
+        slicedDataForDependent,
+        slicedDataForFixFactor,
+        slicedDataForCovariate,
+        slicedDataForWlsWeight,
+        varDefsForDependent,
+        varDefsForFixFactor,
+        varDefsForCovariate,
+        varDefsForWlsWeight,
+        configData
+    );
 
-    // const results = multivariate.get_formatted_results();
-    // const error = multivariate.get_all_errors();
+    const results = multivariate.get_formatted_results();
+    const errorsString = multivariate.get_all_errors();
 
-    // console.log("Results", results);
-    // console.log(error);
+    let errors: string[] = [];
+    if (errorsString) {
+        errors = errorsString
+            .split("\n")
+            .filter((line: string) => line.trim() !== "");
+    }
 
-    // const formattedResults = transformMultivariateResult(results);
-    // console.log("formattedResults", formattedResults);
+    const formattedResults = transformMultivariateResult(results, errors);
 
     /*
      * 🎉 Final Result Process 🎯
      * */
-    // await resultMultivariateAnalysis({
-    //     formattedResult: formattedResults ?? [],
-    // });
+    await resultMultivariateAnalysis({
+        formattedResult: formattedResults ?? [],
+    });
 }

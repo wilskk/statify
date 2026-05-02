@@ -35,7 +35,6 @@ pub fn calculate_box_test(
     }
 
     let dependent_vars = config.main.dep_var.as_ref().unwrap();
-    let factors = config.main.fix_factor.as_ref().unwrap();
 
     // Step 2: Get all factor combinations to identify groups
     let combinations = get_factor_combinations(data, config)?;
@@ -47,7 +46,6 @@ pub fn calculate_box_test(
     let mut group_covariance_matrices: Vec<
         (HashMap<String, String>, DMatrix<f64>, usize)
     > = Vec::new();
-    let mut total_n = 0;
 
     for combo in &combinations {
         let mut group_data: Vec<Vec<f64>> = Vec::new();
@@ -78,7 +76,6 @@ pub fn calculate_box_test(
         // Need at least n > p (number of variables) for a valid covariance matrix
         if group_data.len() > dependent_vars.len() {
             let n = group_data.len();
-            total_n += n;
 
             // Calculate covariance matrix for this group
             let cov_matrix = calculate_covariance_matrix(&group_data);
@@ -105,9 +102,9 @@ pub fn calculate_box_test(
 
     // Step 5: Calculate Box's M statistic
     let mut box_m = 0.0;
-    let mut ln_det_pooled = 0.0;
 
     // Try to get determinant of pooled matrix
+    let ln_det_pooled;
     match matrix_determinant(&from_dmatrix(&pooled_cov_matrix)) {
         Ok(det) => {
             if det <= 0.0 {
@@ -138,45 +135,36 @@ pub fn calculate_box_test(
 
     box_m = -box_m;
 
-    // Step 6: Calculate F approximation
+    // Step 6: Calculate approximation with Box's correction factor.
     let g = group_covariance_matrices.len(); // Number of groups
+    let df1 = (p * (p + 1) * (g - 1)) / 2;
 
-    // Calculate C
     let mut sum_reciprocal = 0.0;
     for (_, _, n) in &group_covariance_matrices {
         let df = n - 1;
         sum_reciprocal += 1.0 / (df as f64);
     }
 
-    let c1 =
-        (2.0 * (p as f64).powi(2) + 3.0 * (p as f64) - 1.0) /
-        (6.0 * ((p as f64) + 1.0) * ((g as f64) - 1.0));
-    let c2 = (1.0 - c1) * sum_reciprocal - 1.0 / (total_df as f64);
+    let c =
+        ((2.0 * (p as f64).powi(2) + 3.0 * (p as f64) - 1.0) /
+            (6.0 * ((p as f64) + 1.0) * ((g as f64) - 1.0))) *
+        (sum_reciprocal - (1.0 / (total_df as f64)));
 
-    let f_statistic;
-    let df1;
-    let df2;
+    let chi_square = ((1.0 - c) * box_m).max(0.0);
 
-    if c2 > 0.0 {
-        // Use F approximation
-        let f_multiplier = ((g as f64) - 1.0) * ((p as f64) + 1.0) * ((p as f64) / 2.0);
-        f_statistic = (box_m * (1.0 - c1 - c2 / box_m)) / f_multiplier;
-        df1 = (p * (p + 1) * (g - 1)) / 2;
-        df2 = ((df1 as f64) * (1.0 - c1 - c2 / box_m)).ceil() as f64;
+    // Use an F-like scaled statistic for the displayed "F" column while keeping
+    // significance derived from an F distribution with residual df.
+    let (f_statistic, df2, significance) = if total_df > 0 {
+        let f_statistic = chi_square / (df1 as f64);
+        let df2 = total_df as f64;
+        let significance = calculate_f_significance(df1, total_df, f_statistic);
+        (f_statistic, df2, significance)
     } else {
-        // Use chi-square approximation
-        f_statistic = box_m / c1;
-        df1 = (p * (p + 1) * (g - 1)) / 2;
-        df2 = 0.0; // Not used for chi-square
-    }
-
-    // Step 7: Calculate significance
-    let significance = if df2 > 0.0 {
-        calculate_f_significance(df1, df2 as usize, f_statistic)
-    } else {
-        // Chi-square approximation
-        1.0 - chi_square_cdf(f_statistic, df1 as f64)
+        let significance = 1.0 - chi_square_cdf(chi_square, df1 as f64);
+        (chi_square, 0.0, significance)
     };
+
+    // Step 7: Assemble result
 
     // Create the result
     Ok(BoxTest {

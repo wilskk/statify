@@ -134,7 +134,7 @@ impl MultivariateAnalysis {
 
         // Validate important configuration
         if config.main.dep_var.is_none() {
-            let msg = "Dependent variable must be selected for univariate analysis".to_string();
+            let msg = "Dependent variable must be selected for multivariate analysis".to_string();
             error_collector.add_error("config.validation.dep_var", &msg);
             return Err(string_to_js_error(msg));
         }

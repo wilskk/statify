@@ -187,6 +187,75 @@ pub fn extract_dependent_value(record: &DataRecord, dep_var_name: &str) -> Optio
     })
 }
 
+/// Merge per-variable record slots into one record-per-row by row index.
+///
+/// `getSlicedData` on the JS side produces `Vec<Vec<DataRecord>>` where the
+/// outer Vec is per-variable and each record contains a single variable's
+/// value. Statistical code expects a single record-per-row containing all
+/// variables (DV, factors, covariates, WLS), so we zip the slots by row
+/// index and union their `values` HashMaps.
+pub fn merge_records(data: &AnalysisData) -> Vec<DataRecord> {
+    let mut max_rows = 0;
+
+    let count_rows = |slots: &Vec<Vec<DataRecord>>, max: &mut usize| {
+        for slot in slots {
+            if slot.len() > *max {
+                *max = slot.len();
+            }
+        }
+    };
+
+    count_rows(&data.dependent_data, &mut max_rows);
+    count_rows(&data.fix_factor_data, &mut max_rows);
+    if let Some(covariate_data) = &data.covariate_data {
+        count_rows(covariate_data, &mut max_rows);
+    }
+    if let Some(wls_data) = &data.wls_data {
+        count_rows(wls_data, &mut max_rows);
+    }
+
+    let mut merged = Vec::with_capacity(max_rows);
+    for i in 0..max_rows {
+        let mut values: HashMap<String, DataValue> = HashMap::new();
+
+        for slot in &data.dependent_data {
+            if let Some(record) = slot.get(i) {
+                for (k, v) in &record.values {
+                    values.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        for slot in &data.fix_factor_data {
+            if let Some(record) = slot.get(i) {
+                for (k, v) in &record.values {
+                    values.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        if let Some(covariate_data) = &data.covariate_data {
+            for slot in covariate_data {
+                if let Some(record) = slot.get(i) {
+                    for (k, v) in &record.values {
+                        values.insert(k.clone(), v.clone());
+                    }
+                }
+            }
+        }
+        if let Some(wls_data) = &data.wls_data {
+            for slot in wls_data {
+                if let Some(record) = slot.get(i) {
+                    for (k, v) in &record.values {
+                        values.insert(k.clone(), v.clone());
+                    }
+                }
+            }
+        }
+
+        merged.push(DataRecord { values });
+    }
+    merged
+}
+
 /// Convert DataValue to String representation
 pub fn data_value_to_string(value: &DataValue) -> String {
     match value {
@@ -719,12 +788,14 @@ pub fn build_design_matrix_and_response(
     let mut x_matrix = Vec::new();
     let mut y_vector = Vec::new();
 
-    // Collect all records
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(y_value) = extract_dependent_value(record, dependent_var) {
-                // Build design matrix row for this record
-                let mut x_row = Vec::new();
+    // Build merged per-row records so factor/covariate values align with the
+    // dependent value at the same row index.
+    let merged = merge_records(data);
+
+    for record in &merged {
+        if let Some(y_value) = extract_dependent_value(record, dependent_var) {
+            // Build design matrix row for this record
+            let mut x_row = Vec::new();
 
                 // Add intercept if included in the model
                 if config.model.intercept {
@@ -834,10 +905,9 @@ pub fn build_design_matrix_and_response(
                     }
                 }
 
-                // Add this record to the design matrix and response vector
-                x_matrix.push(x_row);
-                y_vector.push(y_value);
-            }
+            // Add this record to the design matrix and response vector
+            x_matrix.push(x_row);
+            y_vector.push(y_value);
         }
     }
 

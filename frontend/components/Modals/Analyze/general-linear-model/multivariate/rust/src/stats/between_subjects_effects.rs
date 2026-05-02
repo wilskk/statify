@@ -13,7 +13,6 @@ use super::core::{
     calculate_observed_power,
     generate_interaction_terms,
     get_factor_levels,
-    parse_interaction_term,
     to_dmatrix,
     to_dvector,
 };
@@ -167,11 +166,9 @@ pub fn calculate_tests_between_subjects_effects(
         // If there are factors, calculate Type I, II, III, or IV SS for each
         if let Some(factors) = &config.main.fix_factor {
             for factor in factors {
-                // This would be a more complex calculation based on the SS type
-                // For simplicity, we're using a placeholder approach here
-                // In a real implementation, you'd need to compute the appropriate SS based on the model
                 let factor_cols = get_factor_columns(&x_matrix, factor, data, config)?;
-                let factor_df = factor_cols.len() - 1; // Degrees of freedom for the factor
+                // Each encoded column contributes one numerator df.
+                let factor_df = factor_cols.len();
 
                 if factor_df > 0 {
                     // Calculate factor SS based on the SS type
@@ -247,7 +244,7 @@ pub fn calculate_tests_between_subjects_effects(
                 for term in &interaction_terms {
                     // Determine columns for this interaction
                     let interaction_cols = get_interaction_columns(&x_matrix, term, data, config)?;
-                    let interaction_df = interaction_cols.len() - 1;
+                    let interaction_df = interaction_cols.len();
 
                     if interaction_df > 0 {
                         // Calculate interaction SS based on the SS type
@@ -355,7 +352,6 @@ pub fn calculate_type_i_ss(
 ) -> Result<f64, String> {
     // Type I SS (sequential) calculation
     // Simplified implementation - compute SS by fitting models with and without the factor
-    let n = y_vector.len();
     let full_model_ss = fit_model_and_get_ss(&x_matrix, &y_vector)?;
 
     // Create reduced model without the factor columns
@@ -381,21 +377,11 @@ pub fn calculate_type_ii_ss(
     y_vector: &Vec<f64>,
     factor: &str,
     factor_cols: &Vec<usize>,
-    data: &AnalysisData,
+    _data: &AnalysisData,
     config: &MultivariateConfig
 ) -> Result<f64, String> {
     // Type II SS calculation
     // Adjusted for all other appropriate effects
-
-    // Get all other main effects
-    let mut other_effects = Vec::new();
-    if let Some(factors) = &config.main.fix_factor {
-        for other_factor in factors {
-            if other_factor != factor {
-                other_effects.push(other_factor.clone());
-            }
-        }
-    }
 
     // Create a model with all main effects except the current factor
     let mut reduced_x = Vec::new();
@@ -419,7 +405,7 @@ pub fn calculate_type_ii_ss(
 pub fn calculate_type_iii_ss(
     x_matrix: &Vec<Vec<f64>>,
     y_vector: &Vec<f64>,
-    effect: &str,
+    _effect: &str,
     effect_cols: &Vec<usize>,
     _data: &AnalysisData,
     _config: &MultivariateConfig
@@ -523,11 +509,6 @@ pub fn get_factor_columns(
         }
     }
 
-    // Skip covariates
-    if let Some(covariates) = &config.main.covar {
-        col_start += covariates.len();
-    }
-
     // If no columns found, this could mean it's an interaction term
     if factor_cols.is_empty() && factor.contains('*') {
         factor_cols = get_interaction_columns(x_matrix, factor, data, config)?;
@@ -543,9 +524,11 @@ pub fn get_interaction_columns(
     data: &AnalysisData,
     config: &MultivariateConfig
 ) -> Result<Vec<usize>, String> {
-    // For simplicity, return a subset of columns based on a heuristic
-    // In a real implementation, this would need to be more sophisticated
     let mut interaction_cols = Vec::new();
+
+    if x_matrix.is_empty() || x_matrix[0].is_empty() {
+        return Ok(interaction_cols);
+    }
 
     // Start after all main effects
     let mut col_start = 0;
@@ -569,31 +552,16 @@ pub fn get_interaction_columns(
         col_start += covariates.len();
     }
 
-    // Now we should be at the interaction columns
-    // This is a simplified approach - in reality you'd need to know the exact design matrix structure
-    let interaction_factors = parse_interaction_term(interaction_term);
-    let num_factors = interaction_factors.len();
-
-    // Assume 3 columns per 2-way interaction, 7 columns per 3-way interaction, etc.
-    // This is just a placeholder logic - real implementation would depend on actual design matrix construction
-    let estimated_cols = match num_factors {
-        2 => 3,
-        3 => 7,
-        _ => 15,
-    };
-
-    // Find columns for this specific interaction
+    // Interaction columns are appended in the same order as generate_interaction_terms.
     if let Some(factors) = &config.main.fix_factor {
         if factors.len() > 1 {
             let interaction_terms = generate_interaction_terms(factors);
             let pos = interaction_terms.iter().position(|t| t == interaction_term);
 
             if let Some(idx) = pos {
-                let interaction_start = col_start + idx * estimated_cols;
-                for i in 0..estimated_cols {
-                    if interaction_start + i < x_matrix[0].len() {
-                        interaction_cols.push(interaction_start + i);
-                    }
+                let interaction_col = col_start + idx;
+                if interaction_col < x_matrix[0].len() {
+                    interaction_cols.push(interaction_col);
                 }
             }
         }

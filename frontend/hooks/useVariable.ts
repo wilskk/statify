@@ -57,13 +57,6 @@ export function getSlicedData({
         variables,
         selectedVariables: names,
     });
-    
-    // Debug logging
-    console.log("[getSlicedData] Input - dataVariables rows:", dataVariables?.length);
-    console.log("[getSlicedData] Input - variables:", variables?.map(v => ({ name: v.name, columnIndex: v.columnIndex })));
-    console.log("[getSlicedData] Input - selectedVariables:", names);
-    console.log("[getSlicedData] Calculated maxIndex:", maxIndex);
-    
     const newSlicedData: Record<string, string | number | null>[][] = [];
 
     names.forEach((varName) => {
@@ -96,7 +89,6 @@ export function getSlicedData({
         newSlicedData.push(slicedDataForVar);
     });
 
-    console.log("[getSlicedData] Output - newSlicedData:", newSlicedData);
     return newSlicedData;
 }
 
@@ -113,6 +105,18 @@ export function getVarDefs(
 
     names.forEach((varName) => {
         const varDef = variables.find((v) => v.name === varName);
+
+        const normalizedValueLabels = Array.isArray(varDef?.values)
+            ? varDef.values.map((valueLabel) => ({
+                  id: valueLabel?.id,
+                  variable_name: varDef?.name ?? varName,
+                  value: valueLabel?.value ?? null,
+                  label:
+                      valueLabel?.label ??
+                      String(valueLabel?.value ?? ""),
+              }))
+            : [];
+
         const varDefObj = {
             id: varDef?.id,
             columnIndex: varDef?.columnIndex ?? 0,
@@ -121,8 +125,9 @@ export function getVarDefs(
             width: varDef?.width ?? 0,
             decimals: varDef?.decimals ?? 0,
             label: varDef?.label ?? "",
-            values: varDef?.values ?? [],
-            missing: varDef?.missing ?? [],
+            values: normalizedValueLabels,
+            // Rust GLM schema expects `missing` as an array of values.
+            missing: [],
             columns: varDef?.columns ?? 0,
             align: varDef?.align ?? "left",
             measure: varDef?.measure ?? "unknown",

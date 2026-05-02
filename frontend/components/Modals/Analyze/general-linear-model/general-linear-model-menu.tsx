@@ -23,7 +23,6 @@ const GeneralLinearModelMenu: React.FC = () => {
                     Univariate
                 </MenubarItem>
                 <MenubarItem
-                    disabled={true}
                     onClick={() => openModal(ModalType.ModalMultivariate)}
                 >
                     Multivariate
