@@ -112,20 +112,18 @@ export async function resultMultivariateAnalysis({
                 });
             }
 
-            // ── Tests of Between-Subjects Effects (one per DV) ───────────
-            const tbsTables = formattedResult.tables.filter((t: Table) =>
-                t.key.startsWith("tests_between_subjects_effects_")
-            );
-            for (const table of tbsTables) {
+            // ── Tests of Between-Subjects Effects (combined table) ───────
+            const tbsTable = findTable("tests_between_subjects_effects");
+            if (tbsTable) {
                 const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: table.note || "",
+                    title: tbsTable.title,
+                    note: tbsTable.note || "",
                 });
                 await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.interpretation || table.title,
-                    output_data: JSON.stringify({ tables: [table] }),
-                    components: table.title,
+                    title: tbsTable.title,
+                    description: tbsTable.interpretation || tbsTable.title,
+                    output_data: JSON.stringify({ tables: [tbsTable] }),
+                    components: tbsTable.title,
                 });
             }
 
@@ -183,23 +181,6 @@ export async function resultMultivariateAnalysis({
                 t.key.startsWith("sscp_matrix_")
             );
             for (const table of sscpTables) {
-                const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: table.note || "",
-                });
-                await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.interpretation || table.title,
-                    output_data: JSON.stringify({ tables: [table] }),
-                    components: table.title,
-                });
-            }
-
-            // ── Univariate Tests ──────────────────────────────────────────
-            const univariateTables = formattedResult.tables.filter((t: Table) =>
-                t.key.startsWith("univariate_tests_")
-            );
-            for (const table of univariateTables) {
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
                     note: table.note || "",

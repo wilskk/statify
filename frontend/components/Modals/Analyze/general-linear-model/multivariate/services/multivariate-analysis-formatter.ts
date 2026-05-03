@@ -20,7 +20,6 @@ export function transformMultivariateResult(
     formatBetweenSubjectsSSCP(data, resultJson);
     formatResidualMatrix(data, resultJson);
     formatSSCPMatrix(data, resultJson);
-    formatUnivariateTests(data, resultJson);
     formatContrastCoefficients(data, resultJson);
     formatGeneralEstimableFunction(data, resultJson);
     formatPosthocTests(data, resultJson);
@@ -46,6 +45,8 @@ function formatBetweenSubjectsFactors(data: any, resultJson: ResultJson) {
             { header: "N", key: "n" },
         ],
         rows: [],
+        interpretation:
+            "This table displays the levels of each between-subjects factor and the number of cases (N) at each level. It provides a summary of the categorical structure of the data used in the analysis.",
     };
 
     Object.entries(data.between_subjects_factors).forEach(
@@ -82,6 +83,8 @@ function formatDescriptiveStatistics(data: any, resultJson: ResultJson) {
                     { header: "N", key: "n" },
                 ],
                 rows: [],
+                interpretation:
+                    "This table displays the mean, standard deviation, and count (N) for the dependent variable, broken down by each level of the specified factors and their combinations.",
             };
 
             function flattenGroups(gs: any[], depth: number) {
@@ -128,6 +131,8 @@ function formatBoxTest(data: any, resultJson: ResultJson) {
             { rowHeader: [], stat_label: "Sig.",    stat_value: formatSig(b.significance) },
         ],
         note: b.description || "Tests the null hypothesis that the observed covariance matrices of the dependent variables are equal across groups.",
+        interpretation:
+            "Tests the assumption of homogeneity of covariance matrices across groups. A non-significant result (Sig. > .05) supports the multivariate assumption that the variance-covariance matrices are equal across groups.",
     };
 
     resultJson.tables.push(table);
@@ -152,6 +157,8 @@ function formatBartlettTest(data: any, resultJson: ResultJson) {
             { rowHeader: [], stat_label: "Sig.",               stat_value: formatSig(b.significance) },
         ],
         note: b.description,
+        interpretation:
+            "Tests the sphericity of the residual covariance matrix. A significant result (Sig. < .05) indicates that the dependent variables are sufficiently correlated to justify a multivariate analysis.",
     };
 
     resultJson.tables.push(table);
@@ -177,6 +184,8 @@ function formatLeveneTest(data: any, resultJson: ResultJson) {
                 { header: "Sig.", key: "significance" },
             ],
             rows: [],
+            interpretation:
+                "Tests the null hypothesis that the error variance of the dependent variable is equal across groups. A non-significant result (Sig. > .05) supports the homogeneity-of-variance assumption required for between-subjects analyses.",
         };
 
         const leveneList: any[] = lt.levene || [];
@@ -219,6 +228,8 @@ function formatMultivariateTests(data: any, resultJson: ResultJson) {
         ],
         rows: [],
         note: mt.design,
+        interpretation:
+            "Tests the joint effect of each predictor on the combined dependent variables using four multivariate statistics (Pillai's Trace, Wilks' Lambda, Hotelling's Trace, Roy's Largest Root). A significant Sig. (< .05) indicates that the effect significantly influences the joint distribution of the dependent variables.",
     };
 
     const testOrder = [
@@ -260,62 +271,137 @@ function formatTestsBetweenSubjectsEffects(data: any, resultJson: ResultJson) {
     if (!data.tests_of_between_subjects_effects) return;
 
     const tbs = data.tests_of_between_subjects_effects;
+    // Structure from Rust: effects: { [dvName]: { [sourceName]: entry } }
     const effects: Record<string, Record<string, any>> = tbs.effects || {};
 
-    const dvNames = new Set<string>();
-    Object.values(effects).forEach((effectByDv: any) => {
-        Object.keys(effectByDv).forEach((dv) => dvNames.add(dv));
+    // DV names are the outer keys (preserves insertion order).
+    const dvNames: string[] = Object.keys(effects);
+
+    // Source names are the inner keys; collect across all DVs preserving order.
+    const sourceNames: string[] = [];
+    const seenSrc = new Set<string>();
+    dvNames.forEach((dv) => {
+        Object.keys(effects[dv] || {}).forEach((src) => {
+            if (!seenSrc.has(src)) {
+                seenSrc.add(src);
+                sourceNames.push(src);
+            }
+        });
     });
 
-    dvNames.forEach((dvName) => {
+    // Order sources to match SPSS: Corrected Model, Intercept, [factors/covariates],
+    // Error, Total, Corrected Total.
+    const sourceOrder = (name: string): number => {
+        const n = name.toLowerCase();
+        if (n === "corrected model") return 0;
+        if (n === "intercept") return 1;
+        if (n === "error") return 3;
+        if (n === "total") return 4;
+        if (n === "corrected total") return 5;
+        return 2;
+    };
+    sourceNames.sort((a, b) => sourceOrder(a) - sourceOrder(b));
+
+    // Synthesize "Total" source (uncorrected): SS_total = SS_intercept + SS_corrected_total,
+    // df_total = df_corrected_total + 1. Rust currently doesn't compute it.
+    const totalEntries: Record<string, { sum_of_squares: number; df: number }> = {};
+    dvNames.forEach((dv) => {
+        const intercept = effects[dv]?.["Intercept"];
+        const correctedTotal = effects[dv]?.["Corrected Total"];
+        if (intercept && correctedTotal) {
+            totalEntries[dv] = {
+                sum_of_squares:
+                    (intercept.sum_of_squares ?? 0) +
+                    (correctedTotal.sum_of_squares ?? 0),
+                df: (correctedTotal.df ?? 0) + 1,
+            };
+        }
+    });
+    if (Object.keys(totalEntries).length > 0 && !seenSrc.has("Total")) {
+        const ctIdx = sourceNames.indexOf("Corrected Total");
+        if (ctIdx >= 0) {
+            sourceNames.splice(ctIdx, 0, "Total");
+        } else {
+            sourceNames.push("Total");
+        }
+    }
+
+    // Build R Squared footnote for each DV (matches SPSS a/b/c suffixes).
+    const noteLetters = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    const noteLines: string[] = [];
+    dvNames.forEach((dvName, idx) => {
         const rSq = tbs.r_squared?.[dvName];
         const adjRSq = tbs.adjusted_r_squared?.[dvName];
-        const note = [
-            rSq !== undefined ? `R Squared = ${formatDisplayNumber(rSq)}` : "",
-            adjRSq !== undefined
-                ? `(Adjusted R Squared = ${formatDisplayNumber(adjRSq)})`
-                : "",
-        ]
-            .filter(Boolean)
-            .join(" ");
+        if (rSq === undefined && adjRSq === undefined) return;
+        const letter = noteLetters[idx] || "";
+        const parts: string[] = [];
+        if (rSq !== undefined) parts.push(`R Squared = ${formatDisplayNumber(rSq)}`);
+        if (adjRSq !== undefined)
+            parts.push(`(Adjusted R Squared = ${formatDisplayNumber(adjRSq)})`);
+        noteLines.push(
+            `${letter ? letter + ". " : ""}${parts.join(" ")} — ${dvName}`
+        );
+    });
 
-        const table: Table = {
-            key: `tests_between_subjects_effects_${dvName}`,
-            title: `Tests of Between-Subjects Effects — Dependent Variable: ${dvName}`,
-            columnHeaders: [
-                { header: "Source", key: "source" },
-                { header: "Type III Sum of Squares", key: "sum_of_squares" },
-                { header: "df", key: "df" },
-                { header: "Mean Square", key: "mean_square" },
-                { header: "F", key: "f_value" },
-                { header: "Sig.", key: "significance" },
-                { header: "Partial Eta Squared", key: "partial_eta_squared" },
-                { header: "Noncent. Parameter", key: "noncent_parameter" },
-                { header: "Observed Power", key: "observed_power" },
-            ],
-            rows: [],
-            note,
-        };
+    const table: Table = {
+        key: "tests_between_subjects_effects",
+        title: "Tests of Between-Subjects Effects",
+        columnHeaders: [
+            { header: "Source", key: "source" },
+            { header: "Dependent Variable", key: "dependent_variable" },
+            { header: "Type III Sum of Squares", key: "sum_of_squares" },
+            { header: "df", key: "df" },
+            { header: "Mean Square", key: "mean_square" },
+            { header: "F", key: "f_value" },
+            { header: "Sig.", key: "significance" },
+            { header: "Partial Eta Squared", key: "partial_eta_squared" },
+            { header: "Noncent. Parameter", key: "noncent_parameter" },
+            { header: "Observed Power", key: "observed_power" },
+        ],
+        rows: [],
+        note: noteLines.join("\n"),
+        interpretation:
+            "This table tests the hypothesis that each effect (e.g., factor or interaction) in the model is null. A significant F-value (Sig. < .05) suggests that the effect significantly contributes to explaining the variance in the dependent variable. The Partial Eta Squared indicates the proportion of variance uniquely explained by that effect.",
+    };
 
-        Object.entries(effects).forEach(([effectName, effectByDv]: [string, any]) => {
-            const entry = effectByDv[dvName];
+    sourceNames.forEach((sourceName) => {
+        const lower = sourceName.toLowerCase();
+        // SPSS leaves these stats blank for Error, Total, and Corrected Total.
+        const blankInferential =
+            lower === "error" || lower === "total" || lower === "corrected total";
+        // Mean Square is also blank for Total and Corrected Total (but shown for Error).
+        const blankMeanSquare = lower === "total" || lower === "corrected total";
+
+        dvNames.forEach((dvName, dvIdx) => {
+            const entry =
+                sourceName === "Total"
+                    ? totalEntries[dvName]
+                    : effects[dvName]?.[sourceName];
             if (!entry) return;
             table.rows.push({
                 rowHeader: [],
-                source: effectName,
+                // Show source label only on the first DV row of the group (SPSS merges).
+                source: dvIdx === 0 ? sourceName : "",
+                dependent_variable: dvName,
                 sum_of_squares: formatDisplayNumber(entry.sum_of_squares),
-                df: String(entry.df),
-                mean_square: formatDisplayNumber(entry.mean_square),
-                f_value: formatDisplayNumber(entry.f_value),
-                significance: formatSig(entry.significance),
-                partial_eta_squared: formatDisplayNumber(entry.partial_eta_squared),
-                noncent_parameter: formatDisplayNumber(entry.noncent_parameter),
-                observed_power: formatDisplayNumber(entry.observed_power),
+                df: entry.df !== undefined && entry.df !== null ? String(entry.df) : "",
+                mean_square: blankMeanSquare ? "" : formatDisplayNumber(entry.mean_square),
+                f_value: blankInferential ? "" : formatDisplayNumber(entry.f_value),
+                significance: blankInferential ? "" : formatSig(entry.significance),
+                partial_eta_squared: blankInferential
+                    ? ""
+                    : formatDisplayNumber(entry.partial_eta_squared),
+                noncent_parameter: blankInferential
+                    ? ""
+                    : formatDisplayNumber(entry.noncent_parameter),
+                observed_power: blankInferential
+                    ? ""
+                    : formatDisplayNumber(entry.observed_power),
             });
         });
-
-        resultJson.tables.push(table);
     });
+
+    resultJson.tables.push(table);
 }
 
 // ── 8. Parameter Estimates ────────────────────────────────────────────────────
@@ -347,6 +433,8 @@ function formatParameterEstimates(data: any, resultJson: ResultJson) {
                 { header: "Observed Power", key: "observed_power" },
             ],
             rows: [],
+            interpretation:
+                "Displays the regression coefficient (B), standard error, t-statistic, significance, and 95% confidence interval for each model parameter. A significant Sig. (< .05) indicates that the parameter contributes significantly to predicting the dependent variable.",
         };
 
         entries.forEach((entry: any) => {
@@ -395,6 +483,8 @@ function formatBetweenSubjectsSSCP(data: any, resultJson: ResultJson) {
             ],
             rows: [],
             note: sscp.based_on,
+            interpretation:
+                "Sums-of-squares-and-cross-products (SSCP) matrix for the specified effect. Diagonal entries are sums of squares; off-diagonal entries are cross-products between dependent variables. These matrices form the basis of the multivariate test statistics.",
         };
 
         dvNames.forEach((rowDv) => {
@@ -426,6 +516,8 @@ function formatResidualMatrix(data: any, resultJson: ResultJson) {
         ],
         rows: [],
         note: rm.description,
+        interpretation:
+            "Sums-of-squares-and-cross-products matrix of the residuals (the E matrix). It serves as the error term for multivariate test statistics and provides the basis for examining correlations among the dependent variables after fitting the model.",
     };
 
     dvNames.forEach((rowDv) => {
@@ -458,6 +550,8 @@ function formatSSCPMatrix(data: any, resultJson: ResultJson) {
                 ...dvNames.map((dv) => ({ header: dv, key: `col_${dv}` })),
             ],
             rows: [],
+            interpretation:
+                "Sums-of-squares-and-cross-products matrix per effect category, showing how the variability for that effect is distributed across and between the dependent variables.",
         };
 
         dvNames.forEach((rowDv) => {
@@ -472,58 +566,7 @@ function formatSSCPMatrix(data: any, resultJson: ResultJson) {
     });
 }
 
-// ── 12. Univariate Tests ──────────────────────────────────────────────────────
-function formatUnivariateTests(data: any, resultJson: ResultJson) {
-    if (!data.univariate_tests) return;
-
-    const ut = data.univariate_tests;
-    const tests: Record<string, any[]> = ut.tests || {};
-
-    Object.entries(tests).forEach(([effectName, entries]: [string, any[]]) => {
-        const table: Table = {
-            key: `univariate_tests_${effectName}`,
-            title: `Univariate Tests — ${effectName}`,
-            columnHeaders: [
-                { header: "Dependent Variable", key: "source" },
-                { header: "Sum of Squares", key: "sum_of_squares" },
-                { header: "df", key: "df" },
-                { header: "Mean Square", key: "mean_square" },
-                { header: "F", key: "f" },
-                { header: "Sig.", key: "significance" },
-                { header: "Partial Eta Squared", key: "partial_eta_squared" },
-                { header: "Noncent. Parameter", key: "noncent_parameter" },
-                { header: "Observed Power", key: "observed_power" },
-            ],
-            rows: [],
-            note: ut.alpha !== undefined ? `Computed using alpha = ${ut.alpha}` : undefined,
-        };
-
-        entries.forEach((entry: any) => {
-            table.rows.push({
-                rowHeader: [],
-                source: entry.source,
-                sum_of_squares: formatDisplayNumber(entry.sum_of_squares),
-                df: String(entry.df),
-                mean_square: entry.mean_square != null ? formatDisplayNumber(entry.mean_square) : "",
-                f: entry.f != null ? formatDisplayNumber(entry.f) : "",
-                significance: entry.significance != null ? formatSig(entry.significance) : "",
-                partial_eta_squared: entry.partial_eta_squared != null
-                    ? formatDisplayNumber(entry.partial_eta_squared)
-                    : "",
-                noncent_parameter: entry.noncent_parameter != null
-                    ? formatDisplayNumber(entry.noncent_parameter)
-                    : "",
-                observed_power: entry.observed_power != null
-                    ? formatDisplayNumber(entry.observed_power)
-                    : "",
-            });
-        });
-
-        resultJson.tables.push(table);
-    });
-}
-
-// ── 13. Contrast Coefficients ─────────────────────────────────────────────────
+// ── 12. Contrast Coefficients ─────────────────────────────────────────────────
 function formatContrastCoefficients(data: any, resultJson: ResultJson) {
     if (!data.contrast_coefficients) return;
 
@@ -536,6 +579,8 @@ function formatContrastCoefficients(data: any, resultJson: ResultJson) {
             { header: "Coefficient", key: "coefficient" },
         ],
         rows: [],
+        interpretation:
+            "This matrix provides the coefficients for the linear combinations of model parameters that form the basis for testing the hypothesis for the chosen contrast. Each row corresponds to a specific contrast.",
     };
 
     const params: string[] = cc.parameter || [];
@@ -571,6 +616,8 @@ function formatGeneralEstimableFunction(data: any, resultJson: ResultJson) {
         ],
         rows: [],
         note: gef.design,
+        interpretation:
+            "Displays the linear combinations of model parameters that are estimable, given the chosen model and Sum of Squares method. Each row defines an estimable function used in hypothesis testing.",
     };
 
     rowKeys.forEach((rowKey) => {
@@ -611,6 +658,8 @@ function formatPosthocTests(data: any, resultJson: ResultJson) {
                 },
             ],
             rows: [],
+            interpretation:
+                "Pairwise comparisons of factor level means with adjusted significance values and confidence intervals. A significant Sig. (< .05) indicates a statistically significant difference between the two means after correcting for multiple comparisons.",
         };
 
         tests.forEach((entry: any) => {
@@ -660,6 +709,8 @@ function formatHomogeneousSubsets(data: any, resultJson: ResultJson) {
                 ],
                 rows: [],
                 note: subsets.notes?.join(" "),
+                interpretation:
+                    "Groups factor levels into subsets whose means are not statistically different from one another. Levels appearing in the same subset are not significantly different at the chosen alpha level.",
             };
 
             groups.forEach((g: any) => {
@@ -706,6 +757,8 @@ function formatEmmeans(data: any, resultJson: ResultJson) {
                 },
             ],
             rows: [],
+            interpretation:
+                "This table shows the Estimated Marginal Means (EMMs) — the adjusted means for each level of the factor, controlling for other variables in the model. Useful for interpreting effects after accounting for covariates.",
         };
 
         entries.forEach((entry: any) => {
@@ -740,6 +793,8 @@ function formatSpreadVsLevel(data: any, resultJson: ResultJson) {
                 { header: "Spread (Std. Deviation)", key: "spread_standard_deviation" },
             ],
             rows: [],
+            interpretation:
+                "Pairs each group's mean against its standard deviation. A systematic relationship between spread and level suggests that variance differs by group, which violates the homogeneity-of-variance assumption.",
         };
 
         points.forEach((p: any) => {
@@ -773,6 +828,8 @@ function formatSavedVariables(data: any, resultJson: ResultJson) {
             ...varNames.map((v) => ({ header: v, key: v })),
         ],
         rows: [],
+        interpretation:
+            "Per-case predicted values, residuals, and diagnostic measures saved as new variables based on the fitted model. Useful for inspecting the model's fit and identifying influential observations.",
     };
 
     for (let i = 0; i < n; i++) {
@@ -790,13 +847,49 @@ function formatSavedVariables(data: any, resultJson: ResultJson) {
 function formatErrors(errors: string[], resultJson: ResultJson) {
     if (!errors || errors.length === 0) return;
 
+    if (errors.length === 1 && errors[0] === "No errors occurred.") {
+        resultJson.tables.push({
+            key: "error_table",
+            title: "Errors Logs",
+            columnHeaders: [{ header: "Message", key: "message" }],
+            rows: [{ rowHeader: [], message: "No errors occurred." }],
+            interpretation: "Errors logs from the analysis.",
+        });
+        return;
+    }
+
     const table: Table = {
         key: "error_table",
-        title: "Analysis Warnings / Errors",
-        columnHeaders: [{ header: "Message", key: "message" }],
-        rows: errors.map((e) => ({ rowHeader: [], message: e })),
+        title: "Errors Logs",
+        columnHeaders: [
+            { header: "Context", key: "context" },
+            { header: "Message", key: "message" },
+        ],
+        rows: [],
         interpretation: "Errors logs from the analysis.",
     };
+
+    let currentContext = "";
+    let isFirstRowForContext = true;
+
+    const errorLines =
+        errors[0] === "Error Summary:" ? errors.slice(1) : errors;
+
+    errorLines.forEach((line: string) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("Context: ")) {
+            currentContext = trimmed.replace("Context: ", "").trim();
+            isFirstRowForContext = true;
+        } else if (trimmed) {
+            const message = trimmed.replace(/^\d+\.\s*/, "");
+            table.rows.push({
+                rowHeader: [],
+                context: isFirstRowForContext ? currentContext : "",
+                message,
+            });
+            isFirstRowForContext = false;
+        }
+    });
 
     resultJson.tables.push(table);
 }
