@@ -28,7 +28,6 @@ const GeneralLinearModelMenu: React.FC = () => {
                     Multivariate
                 </MenubarItem>
                 <MenubarItem
-                    disabled={true}
                     onClick={() => openModal(ModalType.ModalRepeatedMeasures)}
                 >
                     Repeated Measures
