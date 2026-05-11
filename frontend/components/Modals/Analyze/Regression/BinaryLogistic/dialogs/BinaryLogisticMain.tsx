@@ -449,19 +449,26 @@ export const BinaryLogisticMain = () => {
     const queueDfBetaVariables = (): void => {
       if (!variableNames?.influence_dfbeta?.length) return;
 
-      // Find the next available DfBeta suffix
+      // DfBeta names from Rust look like "DFB0_1", "DFB1_1".
+      // We extract the base name ("DFB0", "DFB1") and find the next available suffix.
       let dfbetaSuffix = 1;
       while (true) {
-        const anyExists = variableNames.influence_dfbeta.some((_, idx) => 
-          existingVarNames.has(`DFB${idx}_${dfbetaSuffix}`.toUpperCase())
-        );
+        const anyExists = variableNames.influence_dfbeta.some((rustName) => {
+          const baseName = rustName.split('_')[0];
+          return existingVarNames.has(`${baseName}_${dfbetaSuffix}`.toUpperCase());
+        });
         if (!anyExists) break;
         dfbetaSuffix++;
       }
 
       for (let i = 0; i < variableNames.influence_dfbeta.length; i++) {
-        const varName = `DFB${i}_${dfbetaSuffix}`;
-        const label = i === 0 ? "DfBeta for constant" : `DfBeta for B${i}`;
+        const rustName = variableNames.influence_dfbeta[i];
+        const baseName = rustName.split('_')[0]; // "DFB0" or "DFB1", etc.
+        const varName = `${baseName}_${dfbetaSuffix}`;
+        
+        const isConstant = baseName === "DFB0";
+        const paramIndex = baseName.replace("DFB", "");
+        const label = isConstant ? "DfBeta for constant" : `DfBeta for B${paramIndex}`;
         
         const values = rows.map((row) => row.influence_dfbeta?.[i]);
         if (values.every((v) => v === undefined)) continue;
