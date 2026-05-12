@@ -240,13 +240,12 @@ export function transformDiscriminantResult(data: any): ResultJson {
         resultJson.tables.push(table);
     }
 
-    // 5. Pooled Within-Groups Matrices
+    // 5a. Pooled Within-Groups Covariance Matrix
     if (data.pooled_matrices) {
         const table: Table = {
-            key: "pooled_within_groups_matrices",
-            title: "Pooled Within-Groups Matrices",
+            key: "pooled_covariance_matrix",
+            title: "Pooled Within-Groups Covariance Matrix",
             columnHeaders: [
-                { header: "", key: "matrix_type" },
                 { header: "", key: "var" },
                 ...data.pooled_matrices.variables.map(
                     (variable: string, index: number) => ({
@@ -258,41 +257,47 @@ export function transformDiscriminantResult(data: any): ResultJson {
             rows: [],
         };
 
-        // Covariance matrix
-        table.rows.push({ rowHeader: ["Covariance"] });
-
         for (let i = 0; i < data.pooled_matrices.variables.length; i++) {
             const entry = data.pooled_matrices.covariance[i];
-
-            // Create rowData with properly defined rowHeader
             const rowData: any = {
-                rowHeader: ["", entry.variable], // Add variable name to rowHeader
+                rowHeader: [entry.variable],
             };
 
             for (let j = 0; j < entry.values.length; j++) {
-                rowData[`var_${j}`] = formatDisplayNumber(
-                    entry.values[j].value
-                );
+                rowData[`var_${j}`] = formatDisplayNumber(entry.values[j].value);
             }
 
             table.rows.push(rowData);
         }
 
-        // Correlation matrix
-        table.rows.push({ rowHeader: ["Correlation"] });
+        resultJson.tables.push(table);
+    }
+
+    // 5b. Pooled Within-Groups Correlation Matrix
+    if (data.pooled_matrices) {
+        const table: Table = {
+            key: "pooled_correlation_matrix",
+            title: "Pooled Within-Groups Correlation Matrix",
+            columnHeaders: [
+                { header: "", key: "var" },
+                ...data.pooled_matrices.variables.map(
+                    (variable: string, index: number) => ({
+                        header: variable,
+                        key: `var_${index}`,
+                    })
+                ),
+            ],
+            rows: [],
+        };
 
         for (let i = 0; i < data.pooled_matrices.variables.length; i++) {
             const entry = data.pooled_matrices.correlation[i];
-
-            // Create rowData with properly defined rowHeader
             const rowData: any = {
-                rowHeader: ["", entry.variable], // Add variable name to rowHeader
+                rowHeader: [entry.variable],
             };
 
             for (let j = 0; j < entry.values.length; j++) {
-                rowData[`var_${j}`] = formatDisplayNumber(
-                    entry.values[j].value
-                );
+                rowData[`var_${j}`] = formatDisplayNumber(entry.values[j].value);
             }
 
             table.rows.push(rowData);

@@ -240,10 +240,17 @@ pub fn calculate_pooled_matrices(
 
     // Extract analyzed dataset
     let dataset = extract_analyzed_dataset(data, config)?;
-    let variables = &config.main.independent_variables;
+
+    // Exclude grouping variable from pooled matrices output
+    let grouping_var = &config.main.grouping_variable;
+    let variables: Vec<String> = config.main.independent_variables
+        .iter()
+        .filter(|v| *v != grouping_var)
+        .cloned()
+        .collect();
 
     // Calculate pooled within-groups covariance matrix
-    let pooled_cov_matrix = calculate_pooled_within_matrix(&dataset, variables);
+    let pooled_cov_matrix = calculate_pooled_within_matrix(&dataset, &variables);
 
     // Convert covariance matrix to HashMap format
     let mut covariance = HashMap::new();
