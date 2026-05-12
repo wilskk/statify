@@ -37,7 +37,7 @@ const ClassifyMenu: React.FC = () => {
                     Tree
                 </MenubarItem>
                 <MenubarItem
-                    disabled={true}
+                    // disabled={true}
                     onClick={() => openModal(ModalType.ModalDiscriminant)}
                 >
                     Discriminant

@@ -58,6 +58,8 @@ struct FormattedGroupStatistics {
     variables: Vec<String>,
     means: Vec<GroupValue>,
     std_deviations: Vec<GroupValue>,
+    unweighted_n: Vec<GroupValue>,
+    weighted_n: Vec<GroupValue>,
 }
 
 #[derive(Serialize)]
@@ -243,13 +245,33 @@ impl FormatResult {
     fn from_analysis_result(result: &DiscriminantResult) -> Self {
         // Transform GroupStatistics
         let group_statistics = result.group_statistics.as_ref().map(|stats| {
+            // Debug: log raw stats to see if unweighted_n/weighted_n are populated
+            web_sys::console::log_1(&format!("Raw GroupStatistics - groups: {:?}", stats.groups).into());
+            web_sys::console::log_1(&format!("Raw GroupStatistics - variables: {:?}", stats.variables).into());
+            web_sys::console::log_1(&format!("Raw GroupStatistics - unweighted_n keys: {:?}", stats.unweighted_n.keys().collect::<Vec<_>>()).into());
+            web_sys::console::log_1(&format!("Raw GroupStatistics - weighted_n keys: {:?}", stats.weighted_n.keys().collect::<Vec<_>>()).into());
+
+            for var in &stats.variables {
+                if let Some(n_values) = stats.unweighted_n.get(var) {
+                    web_sys::console::log_1(&format!("  {} unweighted_n: {:?}", var, n_values).into());
+                }
+                if let Some(n_values) = stats.weighted_n.get(var) {
+                    web_sys::console::log_1(&format!("  {} weighted_n: {:?}", var, n_values).into());
+                }
+            }
+
             let means = stats.variables
                 .iter()
-                .enumerate()
-                .map(|(i, var)| {
+                .map(|var| {
                     let values = stats.groups
                         .iter()
-                        .map(|group| { stats.means.get(var).unwrap_or(&vec![0.0])[i] })
+                        .enumerate()
+                        .map(|(j, _group)| {
+                            stats.means.get(var)
+                                .and_then(|v| v.get(j))
+                                .copied()
+                                .unwrap_or(0.0)
+                        })
                         .collect();
 
                     GroupValue {
@@ -261,11 +283,58 @@ impl FormatResult {
 
             let std_deviations = stats.variables
                 .iter()
-                .enumerate()
-                .map(|(i, var)| {
+                .map(|var| {
                     let values = stats.groups
                         .iter()
-                        .map(|group| { stats.std_deviations.get(var).unwrap_or(&vec![0.0])[i] })
+                        .enumerate()
+                        .map(|(j, _group)| {
+                            stats.std_deviations.get(var)
+                                .and_then(|v| v.get(j))
+                                .copied()
+                                .unwrap_or(0.0)
+                        })
+                        .collect();
+
+                    GroupValue {
+                        variable: var.clone(),
+                        values,
+                    }
+                })
+                .collect();
+
+            let unweighted_n = stats.variables
+                .iter()
+                .map(|var| {
+                    let values = stats.groups
+                        .iter()
+                        .enumerate()
+                        .map(|(j, _group)| {
+                            stats.unweighted_n.get(var)
+                                .and_then(|v| v.get(j))
+                                .copied()
+                                .unwrap_or(0.0)
+                        })
+                        .collect();
+
+                    GroupValue {
+                        variable: var.clone(),
+                        values,
+                    }
+                })
+                .collect();
+
+            let weighted_n = stats.variables
+                .iter()
+                .map(|var| {
+                    let values = stats.groups
+                        .iter()
+                        .enumerate()
+                        .map(|(j, _group)| {
+                            stats.weighted_n.get(var)
+                                .and_then(|v| v.get(j))
+                                .copied()
+                                .unwrap_or(0.0)
+                        })
                         .collect();
 
                     GroupValue {
@@ -280,6 +349,8 @@ impl FormatResult {
                 variables: stats.variables.clone(),
                 means,
                 std_deviations,
+                unweighted_n,
+                weighted_n,
             }
         });
 

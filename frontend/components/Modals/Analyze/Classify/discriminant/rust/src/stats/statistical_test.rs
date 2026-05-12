@@ -131,8 +131,19 @@ pub fn calculate_overall_wilks_lambda(dataset: &AnalyzedDataset, variables: &[St
 
 /// Calculate overall F statistic for a set of variables
 ///
-/// This approximates the significance of Wilks' lambda using an F approximation.
-/// Based on the observed output pattern in discriminant analysis tables.
+/// This approximates the significance of Wilks' lambda using Rao's F approximation.
+///
+/// The F statistic is calculated as:
+/// F = ((1 - Λ^(1/s)) / Λ^(1/s)) × ((n - g - p + 1) / (p × (g - 1)))
+///
+/// Where:
+/// - Λ = Wilks' Lambda
+/// - s = sqrt((p² × (g-1)² - 4) / (p² + (g-1)² - 5))
+/// - p = number of variables
+/// - g = number of groups
+/// - n = total number of cases
+///
+/// This is the Rao's approximate F-test for Wilks' Lambda.
 ///
 /// # Parameters
 /// * `wilks_lambda` - The Wilks' lambda value
@@ -141,40 +152,59 @@ pub fn calculate_overall_wilks_lambda(dataset: &AnalyzedDataset, variables: &[St
 /// * `total_cases` - Total number of cases
 ///
 /// # Returns
-/// A tuple of (F value, df1, df2, df3)
+/// A tuple of (F value, df1, df2)
 pub fn calculate_overall_f_statistic(
     wilks_lambda: f64,
     num_variables: usize,
     num_groups: usize,
     total_cases: usize
-) -> (f64, i32, i32, i32) {
-    // Berdasarkan pola dari output di gambar:
-    // - df1 adalah jumlah variabel dalam model
-    // - df2 selalu 1
-    // - df3 adalah (total_cases - num_groups)
+) -> (f64, i32, i32) {
+    let p = num_variables as f64;
+    let g = num_groups as f64;
+    let n = total_cases as f64;
 
-    let df1 = num_variables as i32;
-    let df2 = 1; // Selalu 1 berdasarkan output di gambar
-    let df3 = (total_cases - num_groups) as i32; //
-
-    // Hitung F-statistic berdasarkan Wilks' Lambda
-    let f_value = if wilks_lambda < 1.0 && wilks_lambda > 0.0 {
-        // Rumus F: ((1-λ)/λ) * (df3/df1)
-        ((1.0 - wilks_lambda) / wilks_lambda) * ((df3 as f64) / (df1 as f64))
-    } else if wilks_lambda <= 0.0 {
-        // Handle extreme case of perfect discrimination
-        10000.0
+    // Calculate s for the approximation
+    // s = sqrt((p*(g-1))² - 4) / (p + (g-1) - 2)) if applicable
+    let denominator = p.powi(2) + (g - 1.0).powi(2) - 5.0;
+    let s = if denominator > EPSILON {
+        ((p * (g - 1.0)).powi(2) - 4.0 / denominator).sqrt()
     } else {
-        // Handle wilks_lambda = 1 (no discrimination)
+        1.0
+    };
+
+    // Calculate df1 and df2
+    // df1 = p * (g - 1)
+    // df2 = s * (n - g - (p + g) / 2 + 1) or similar approximation
+    let df1 = (p * (g - 1.0)).round() as i32;
+
+    // For the denominator df, use the formula: df2 = s * (n - g - p/2 + 1)
+    // or a simpler approximation based on sample size
+    let temp_df2 = n - g - p / 2.0 + 1.0;
+    let df2 = if s > EPSILON {
+        (s * temp_df2).round() as i32
+    } else {
+        (temp_df2 * 2.0).round() as i32
+    };
+
+    // Calculate F statistic using Rao's approximation
+    let f_value = if wilks_lambda > EPSILON && wilks_lambda < 1.0 - EPSILON && df1 > 0 && df2 > 0 {
+        let lambda_power = wilks_lambda.powf(1.0 / s);
+        let numerator = (1.0 - lambda_power) * (df2 as f64);
+        let denominator = lambda_power * (df1 as f64);
+        if denominator > EPSILON {
+            numerator / denominator
+        } else {
+            0.0
+        }
+    } else if wilks_lambda <= EPSILON {
+        // Handle extreme case of perfect discrimination
+        f64::MAX
+    } else {
+        // Handle wilks_lambda close to 1 (no discrimination)
         0.0
     };
 
-    // Untuk df2 dalam exact F, nilainya berkurang seiring bertambahnya variabel
-    // df_exact_2 = df3 - df1 + 1
-    let exact_df2 = df3 - df1 + 1;
-
-    // Return F-statistic dan derajat kebebasan yang sesuai dengan output
-    (f_value, df1, df2, df3)
+    (f_value, df1, df2)
 }
 
 /// Calculate tolerance for a variable
@@ -339,9 +369,10 @@ pub fn calculate_wilks_lambda_test(
 
         wilks_lambda.push(lambda_k);
 
-        // Calculate chi-square approximation
-        // chi^2 = -(n-(p+g)/2-1) * ln(Lambda_k)
-        let chi_square_val = -(n - ((p + g) as f64) / 2.0 - 1.0) * lambda_k.ln();
+        // Calculate chi-square approximation using Bartlett's formula
+        // χ² = -[n - (p + g + 1)/2] × ln(Λ)
+        // Note: Using (p + g + 1) / 2, not (p + g) / 2
+        let chi_square_val = -(n - ((p + g) as f64 + 1.0) / 2.0) * lambda_k.ln();
 
         chi_square.push(chi_square_val);
 

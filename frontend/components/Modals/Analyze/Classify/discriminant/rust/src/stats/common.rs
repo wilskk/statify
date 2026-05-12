@@ -168,22 +168,17 @@ pub fn extract_grouped_data(
     for var_name in independent_variables {
         let mut group_values: HashMap<String, Vec<f64>> = HashMap::new();
 
-        // Find this variable in independent_data
-        if
-            let Some((var_idx, _)) = data.independent_data
-                .iter()
-                .enumerate()
-                .find(
-                    |(idx, _)|
-                        *idx < independent_variables.len() &&
-                        &independent_variables[*idx] == var_name
-                )
-        {
-            let var_data = &data.independent_data[var_idx];
+        // FIX: Find the correct variable in independent_data by checking if the variable name exists in records
+        // Previously, the code used index matching which could be wrong if variable order differs
+        let var_data_opt = data.independent_data.iter().find(|records| {
+            // Check if this record group contains the variable we're looking for
+            records.iter().any(|record| record.values.contains_key(var_name))
+        });
 
+        if let Some(var_data) = var_data_opt {
             for group_label in &group_labels {
-                let values = if let Some(indices) = group_mappings.get(group_label) {
-                    indices
+                if let Some(indices) = group_mappings.get(group_label) {
+                    let values: Vec<f64> = indices
                         .iter()
                         .filter_map(|&idx| {
                             if idx < var_data.len() {
@@ -196,12 +191,39 @@ pub fn extract_grouped_data(
                             }
                             None
                         })
-                        .collect()
-                } else {
-                    Vec::new()
-                };
+                        .collect();
 
-                group_values.insert(group_label.clone(), values);
+                    group_values.insert(group_label.clone(), values);
+                }
+            }
+        } else {
+            // Fallback: try to find by index if variable not found by name
+            // This handles the case where independent_data is organized by variable position
+            if let Some(var_idx) = independent_variables.iter().position(|v| v == var_name) {
+                if var_idx < data.independent_data.len() {
+                    let var_data = &data.independent_data[var_idx];
+
+                    for group_label in &group_labels {
+                        if let Some(indices) = group_mappings.get(group_label) {
+                            let values: Vec<f64> = indices
+                                .iter()
+                                .filter_map(|&idx| {
+                                    if idx < var_data.len() {
+                                        if
+                                            let Some(DataValue::Number(val)) =
+                                                var_data[idx].values.get(var_name)
+                                        {
+                                            return Some(*val);
+                                        }
+                                    }
+                                    None
+                                })
+                                .collect();
+
+                            group_values.insert(group_label.clone(), values);
+                        }
+                    }
+                }
             }
         }
 

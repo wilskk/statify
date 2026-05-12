@@ -6,7 +6,7 @@ use crate::models::{
     result::DiscriminantResult,
 };
 use crate::stats::core;
-use crate::utils::format_result;
+use crate::utils::converter::format_result;
 use crate::utils::log::FunctionLogger;
 use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
 

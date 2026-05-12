@@ -289,12 +289,15 @@ pub fn solve_eigenvalue_problem(
 ///
 /// This matrix represents the variance and covariance between group means.
 ///
+/// Note: This is the SSCP (Sum of Squares and Cross Products) matrix, not the covariance.
+/// To get the covariance matrix, divide by (n - g).
+///
 /// # Parameters
 /// * `dataset` - The analyzed dataset
 /// * `variables` - The variables to include in the matrix
 ///
 /// # Returns
-/// The between-groups covariance matrix
+/// The between-groups SSCP matrix
 fn calculate_between_groups_matrix(
     dataset: &AnalyzedDataset,
     variables: &[String]
@@ -302,44 +305,34 @@ fn calculate_between_groups_matrix(
     let num_vars = variables.len();
     let mut between_groups = DMatrix::zeros(num_vars, num_vars);
 
-    // Create index pairs for parallel processing
-    let indices: Vec<(usize, usize)> = (0..num_vars)
-        .flat_map(|i| (0..num_vars).map(move |j| (i, j)))
-        .collect();
+    // Compute the between-groups SSCP matrix
+    // Formula: B_ij = Σ n_g × (x̄_gi - x̄_i) × (x̄_gj - x̄_j)
+    // This is consistent with the formula in calculate_between_within_matrices
 
-    // Process in parallel
-    let between_contributions: Vec<(usize, usize, f64)> = indices
-        .par_iter()
-        .map(|&(i, j)| {
-            let var1 = &variables[i];
-            let var2 = &variables[j];
+    for (i, var_i) in variables.iter().enumerate() {
+        for (j, var_j) in variables.iter().enumerate() {
             let mut sum = 0.0;
 
             for group in &dataset.group_labels {
                 if
                     let (Some(values), Some(group_mean_i), Some(group_mean_j)) = (
-                        dataset.group_data.get(var1).and_then(|g| g.get(group)),
-                        dataset.group_means.get(group).and_then(|m| m.get(var1)),
-                        dataset.group_means.get(group).and_then(|m| m.get(var2)),
+                        dataset.group_data.get(var_i).and_then(|g| g.get(group)),
+                        dataset.group_means.get(group).and_then(|m| m.get(var_i)),
+                        dataset.group_means.get(group).and_then(|m| m.get(var_j)),
                     )
                 {
                     let n = values.len() as f64;
                     if n > 0.0 {
-                        let overall_mean_i = dataset.overall_means.get(var1).unwrap_or(&0.0);
-                        let overall_mean_j = dataset.overall_means.get(var2).unwrap_or(&0.0);
+                        let overall_mean_i = dataset.overall_means.get(var_i).unwrap_or(&0.0);
+                        let overall_mean_j = dataset.overall_means.get(var_j).unwrap_or(&0.0);
                         sum +=
                             n * (group_mean_i - overall_mean_i) * (group_mean_j - overall_mean_j);
                     }
                 }
             }
 
-            (i, j, sum)
-        })
-        .collect();
-
-    // Combine results
-    for (i, j, value) in between_contributions {
-        between_groups[(i, j)] = value;
+            between_groups[(i, j)] = sum;
+        }
     }
 
     between_groups
@@ -349,6 +342,11 @@ fn calculate_between_groups_matrix(
 ///
 /// This function calculates the unstandardized and standardized coefficients
 /// for the discriminant functions.
+///
+/// Standardized coefficients are calculated as:
+/// Standardized = Unstandardized × sqrt(pooled_within_covariance[i][i])
+///
+/// This makes the coefficients comparable across variables with different scales.
 ///
 /// # Parameters
 /// * `eigenvectors` - Eigenvectors from the eigenvalue problem
@@ -368,7 +366,8 @@ pub fn process_discriminant_coefficients(
 ) -> (HashMap<String, Vec<f64>>, HashMap<String, Vec<f64>>) {
     let num_vars = variables.len();
 
-    // Extract standard deviations for standardization
+    // Extract standard deviations from pooled within-groups covariance matrix diagonal
+    // Standardized coefficient = Unstandardized × Pooled_StD
     let std_devs: Vec<f64> = (0..num_vars).map(|i| pooled_within[(i, i)].sqrt()).collect();
 
     // Unstandardized coefficients
@@ -389,7 +388,8 @@ pub fn process_discriminant_coefficients(
         })
         .collect();
 
-    // Standardized coefficients
+    // Standardized coefficients = Unstandardized × Pooled_Within_StD
+    // This follows SPSS convention for standardized canonical discriminant function coefficients
     let standardized_coefficients: HashMap<String, Vec<f64>> = variables
         .iter()
         .enumerate()
@@ -413,6 +413,7 @@ pub fn process_discriminant_coefficients(
         .collect();
 
     // Calculate constants for each function
+    // Constant = -Σ(coef × mean) for each function
     let mut constants = Vec::with_capacity(num_functions);
 
     for func_idx in 0..num_functions {

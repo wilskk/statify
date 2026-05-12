@@ -167,6 +167,18 @@ export function transformDiscriminantResult(data: any): ResultJson {
                             (entry: any) => entry.variable === variableName
                         );
 
+                    // Find the corresponding unweighted_n entry
+                    const unweightedNEntry =
+                        data.group_statistics.unweighted_n?.find(
+                            (entry: any) => entry.variable === variableName
+                        );
+
+                    // Find the corresponding weighted_n entry
+                    const weightedNEntry =
+                        data.group_statistics.weighted_n?.find(
+                            (entry: any) => entry.variable === variableName
+                        );
+
                     if (stdDevEntry) {
                         table.rows.push({
                             rowHeader: [group, variableName],
@@ -176,8 +188,16 @@ export function transformDiscriminantResult(data: any): ResultJson {
                             std_deviation: formatDisplayNumber(
                                 stdDevEntry.values[groupIndex]
                             ),
-                            unweighted: "Invalid",
-                            weighted: "Invalid",
+                            unweighted: unweightedNEntry
+                                ? formatDisplayNumber(
+                                      unweightedNEntry.values[groupIndex]
+                                  )
+                                : "Invalid",
+                            weighted: weightedNEntry
+                                ? formatDisplayNumber(
+                                      weightedNEntry.values[groupIndex]
+                                  )
+                                : "Invalid",
                         });
                     }
                 });

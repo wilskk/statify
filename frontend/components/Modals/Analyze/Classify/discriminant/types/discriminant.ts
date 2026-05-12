@@ -26,6 +26,9 @@ export type DiscriminantDialogProps = {
     globalVariables: string[];
     onContinue: (mainState: DiscriminantMainType) => void;
     onReset: () => void;
+    onClose: () => void;
+    isLoading?: boolean;
+    error?: string | null;
 };
 
 export type DiscriminantDefineRangeType = {
