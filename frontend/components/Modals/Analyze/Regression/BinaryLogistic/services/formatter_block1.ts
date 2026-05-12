@@ -275,19 +275,23 @@ export const formatBlock1 = (
 
     // Build rows - include CI values only if needed
     const varsInRows = varsIn.map((row: VariableRow) => {
+      // Detect group omnibus row (categorical parent):
+      // These have df > 1, and b/error/exp_b are all 0 (placeholder values)
+      const isGroupRow = row.df > 1 && row.b === 0 && row.error === 0 && row.exp_b === 0;
+
       const baseRow: any = {
         rowHeader: ["Step 1", getRealVariableName(row.label)],
-        b: safeFixed(row.b),
-        se: safeFixed(row.error),
+        b: isGroupRow ? "" : safeFixed(row.b),
+        se: isGroupRow ? "" : safeFixed(row.error),
         wald: safeFixed(row.wald),
         df: row.df ? row.df.toString() : "1",
         sig: fmtSig(row.sig),
-        expb: safeFixed(row.exp_b),
+        expb: isGroupRow ? "" : safeFixed(row.exp_b),
       };
 
       if (ciForExpB) {
-        baseRow.lo = safeFixed(row.lower_ci);
-        baseRow.up = safeFixed(row.upper_ci);
+        baseRow.lo = isGroupRow ? "" : safeFixed(row.lower_ci);
+        baseRow.up = isGroupRow ? "" : safeFixed(row.upper_ci);
       }
 
       return baseRow;
@@ -432,19 +436,22 @@ export const formatBlock1 = (
 
       // 4. Variables In Rows
       stepDetail.variables_in_equation.forEach((row: VariableRow) => {
+        // Detect group omnibus row (categorical parent)
+        const isGroupRow = row.df > 1 && row.b === 0 && row.error === 0 && row.exp_b === 0;
+
         const rowData: any = {
           rowHeader: [currentStepLabel, getRealVariableName(row.label)],
-          b: safeFixed(row.b),
-          se: safeFixed(row.error),
+          b: isGroupRow ? "" : safeFixed(row.b),
+          se: isGroupRow ? "" : safeFixed(row.error),
           wald: safeFixed(row.wald),
           df: row.df.toString(),
           sig: fmtSig(row.sig),
-          expb: safeFixed(row.exp_b),
+          expb: isGroupRow ? "" : safeFixed(row.exp_b),
         };
 
         if (ciForExpB) {
-          rowData.lo = safeFixed(row.lower_ci);
-          rowData.up = safeFixed(row.upper_ci);
+          rowData.lo = isGroupRow ? "" : safeFixed(row.lower_ci);
+          rowData.up = isGroupRow ? "" : safeFixed(row.upper_ci);
         }
 
         varsInRows.push(rowData);

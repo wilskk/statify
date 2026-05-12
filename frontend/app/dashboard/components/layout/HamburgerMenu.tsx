@@ -632,15 +632,16 @@ const HamburgerMenu: React.FC = () => {
                           Error Correction Model
                         </DrawerMenuItem>
                         <DrawerMenuItem
-                          onClick={() => openModal(ModalType.ARCH)}
+                          onClick={() => openModal(ModalType.HomoscedasticityTest)}
                         >
-                          Autoregressive Conditional Heteroscedasticity
+                          Homoscedasticity Test (ARCH-LM)
                         </DrawerMenuItem>
                         <DrawerMenuItem
-                          onClick={() => openModal(ModalType.GARCH)}
+                          onClick={() => openModal(ModalType.HeteroskedasticityModels)}
                         >
-                          Generalized Autoregressive Conditional Heteroscedasticity
+                          Heteroscedasticity Models (ARCH/GARCH)
                         </DrawerMenuItem>
+
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>

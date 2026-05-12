@@ -5,6 +5,7 @@ pub mod utils;
 
 use models::config::{LogisticConfig, RegressionMethod};
 use nalgebra::{DMatrix, DVector};
+use stats::design_matrix::VariableGroup;
 use wasm_bindgen::prelude::*;
 
 // Helper untuk format error ke JS
@@ -69,12 +70,13 @@ pub fn calculate_binary_logistic(
     let x_processed = design_result.matrix;
     let final_features = design_result.feature_names;
     let codings = Some(design_result.codings); // Kita bungkus dalam Option
+    let variable_groups = design_result.variable_groups;
 
     // D. Router Metode Regresi
     // Perhatikan: Kita sekarang mengirimkan `x_processed`, `final_features`, dan `codings`
     let result = match config.method {
         RegressionMethod::Enter => {
-            strategies::enter::run(&x_processed, &y_vector, &config, &final_features, codings)
+            strategies::enter::run(&x_processed, &y_vector, &config, &final_features, codings, &variable_groups)
                 .map_err(|e| api_error(&format!("Error di Metode Enter: {}", e)))?
         }
 
@@ -84,11 +86,12 @@ pub fn calculate_binary_logistic(
             &config,
             &final_features,
             codings,
+            &variable_groups,
         )
         .map_err(|e| api_error(&format!("Error di Metode Forward Conditional: {:?}", e)))?,
 
         RegressionMethod::ForwardLR => {
-            strategies::forward_lr::run(&x_processed, &y_vector, &config, &final_features, codings)
+            strategies::forward_lr::run(&x_processed, &y_vector, &config, &final_features, codings, &variable_groups)
                 .map_err(|e| api_error(&format!("Error di Metode Forward LR: {:?}", e)))?
         }
 
@@ -98,6 +101,7 @@ pub fn calculate_binary_logistic(
             &config,
             &final_features,
             codings,
+            &variable_groups,
         )
         .map_err(|e| api_error(&format!("Error di Metode Forward Wald: {:?}", e)))?,
 
@@ -107,11 +111,12 @@ pub fn calculate_binary_logistic(
             &config,
             &final_features,
             codings,
+            &variable_groups,
         )
         .map_err(|e| api_error(&format!("Error di Metode Backward Conditional: {:?}", e)))?,
 
         RegressionMethod::BackwardLR => {
-            strategies::backward_lr::run(&x_processed, &y_vector, &config, &final_features, codings)
+            strategies::backward_lr::run(&x_processed, &y_vector, &config, &final_features, codings, &variable_groups)
                 .map_err(|e| api_error(&format!("Error di Metode Backward LR: {:?}", e)))?
         }
 
@@ -121,6 +126,7 @@ pub fn calculate_binary_logistic(
             &config,
             &final_features,
             codings,
+            &variable_groups,
         )
         .map_err(|e| api_error(&format!("Error di Metode Backward Wald: {:?}", e)))?,
     };

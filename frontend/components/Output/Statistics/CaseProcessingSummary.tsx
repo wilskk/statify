@@ -4,11 +4,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 type ColumnHeader = { header: string; key?: string };
 type TableRow = { rowHeader?: (string | null)[];[key: string]: unknown };
+
 type TableData = {
     title?: string;
     columnHeaders?: ColumnHeader[];
     rows?: TableRow[];
-    note?: string;
+    note?: string | string[];
 };
 
 interface CaseProcessingSummaryProps {
@@ -27,11 +28,9 @@ const CaseProcessingSummary: React.FC<CaseProcessingSummaryProps> = ({ data }) =
     const table = parsed?.tables?.[0];
     const headers = table?.columnHeaders ?? [];
     const rows = table?.rows ?? [];
-
     if (!headers.length) {
         return <div className="text-destructive">Case Processing Summary has no headers</div>;
     }
-
     const colKeys = headers.map((h) => h.key || h.header);
 
     const displayHeader = (header: string): string => {
