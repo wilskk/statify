@@ -30,6 +30,18 @@ export const KNNNeighbors = ({
   }, [data]);
 
   useEffect(() => {
+    if (!neighborsState.AutoSelection) {
+      if (neighborsState.MinK !== null) updateFormData("MinK", null);
+      if (neighborsState.MaxK !== null) updateFormData("MaxK", null);
+    }
+  }, [
+    neighborsState.AutoSelection,
+    neighborsState.MinK,
+    neighborsState.MaxK,
+    updateFormData,
+  ]);
+
+  useEffect(() => {
     if (!hasTarget) {
       handleChange("AutoSelection", false);
       handleChange("Specify", true);
@@ -41,8 +53,10 @@ export const KNNNeighbors = ({
     if (targetType !== "scale") {
       handleChange("PredictionsMean", false);
       handleChange("PredictionsMedian", false);
+    } else if (!neighborsState.PredictionsMean && !neighborsState.PredictionsMedian) {
+      handleChange("PredictionsMean", true);
     }
-  }, [targetType]);
+  }, [targetType, neighborsState.PredictionsMean, neighborsState.PredictionsMedian]);
 
   const handleChange = (
     field: keyof KNNNeighborsType,
@@ -57,9 +71,12 @@ export const KNNNeighbors = ({
   };
 
   const handleSpecifyGrp = (value: string) => {
+    const isAutoSelection = value === "AutoSelection";
     const newState = {
       Specify: value === "Specify",
-      AutoSelection: value === "AutoSelection",
+      AutoSelection: isAutoSelection,
+      MinK: isAutoSelection ? (neighborsState.MinK ?? 3) : null,
+      MaxK: isAutoSelection ? (neighborsState.MaxK ?? 5) : null,
     };
 
     setNeighborsState((prev) => ({
@@ -69,6 +86,8 @@ export const KNNNeighbors = ({
 
     updateFormData("Specify", newState.Specify);
     updateFormData("AutoSelection", newState.AutoSelection);
+    updateFormData("MinK", newState.MinK);
+    updateFormData("MaxK", newState.MaxK);
   };
 
   const handleDistanceGrp = (value: string) => {
@@ -241,9 +260,9 @@ export const KNNNeighbors = ({
               <RadioGroup
                 disabled={targetType !== "scale"}
                 value={
-                  neighborsState.PredictionsMean
-                    ? "PredictionsMean"
-                    : "PredictionsMedian"
+                  neighborsState.PredictionsMedian
+                    ? "PredictionsMedian"
+                    : "PredictionsMean"
                 }
                 onValueChange={handlePredictionsGrp}
               >

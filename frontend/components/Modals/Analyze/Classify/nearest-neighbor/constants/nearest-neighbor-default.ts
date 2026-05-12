@@ -2,7 +2,6 @@ import type {
     KNNFeaturesType,
     KNNMainType,
     KNNNeighborsType,
-    KNNOptionsType,
     KNNOutputType,
     KNNPartitionType,
     KNNSaveType,
@@ -10,7 +9,7 @@ import type {
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 
 export const KNNMainDefault: KNNMainType = {
-    DepVar: null,
+    TargetVar: null,
     FeatureVar: null,
     CaseIdenVar: null,
     FocalCaseIdenVar: null,
@@ -21,8 +20,8 @@ export const KNNNeighborsDefault: KNNNeighborsType = {
     Specify: true,
     AutoSelection: false,
     SpecifyK: 3,
-    MinK: 3,
-    MaxK: 5,
+    MinK: null,
+    MaxK: null,
     MetricEucli: true,
     MetricManhattan: false,
     Weight: false,
@@ -43,7 +42,6 @@ export const KNNFeaturesDefault: KNNFeaturesType = {
 };
 
 export const KNNPartitionDefault: KNNPartitionType = {
-    SrcVar: null,
     PartitioningVariable: null,
     UseRandomly: true,
     UseVariable: false,
@@ -78,11 +76,6 @@ export const KNNOutputDefault: KNNOutputType = {
     DatasetName: null,
 };
 
-export const KNNOptionsDefault: KNNOptionsType = {
-    Exclude: true,
-    Include: false,
-};
-
 export const KNNDefault: KNNType = {
     main: KNNMainDefault,
     neighbors: KNNNeighborsDefault,
@@ -90,5 +83,4 @@ export const KNNDefault: KNNType = {
     partition: KNNPartitionDefault,
     save: KNNSaveDefault,
     output: KNNOutputDefault,
-    options: KNNOptionsDefault,
 };

@@ -1,13 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type {
   KNNSaveProps,
   KNNSaveType,
@@ -34,7 +25,6 @@ export const KNNSave = ({
   targetType,
   isAutoK,
   isFeatureSelectionActive,
-  featureCount,
 }: KNNSaveProps) => {
   const [saveState, setSaveState] = useState<KNNSaveType>({
     ...data,
@@ -57,40 +47,12 @@ export const KNNSave = ({
 
   const isCategorical = targetType === "nominal" || targetType === "ordinal";
 
-  const noVariables = !hasTarget && featureCount === 0;
-  const onlyFeatures = !hasTarget && featureCount > 0;
+  const canPredict = hasTarget;
+  const canProbability = hasTarget && isCategorical;
+  const canFold = hasTarget && isAutoK && !isFeatureSelectionActive;
+  const canEditMaxCatsToSave = canProbability && saveState.IsCateTargetVar;
 
-  // =======================
-  // ENABLE LOGIC
-  // =======================
-
-  // ❌ default semua mati dulu
-  let canPredict = false;
-  let canProbability = false;
-  let canFold = false;
-
-  // 🔴 Kondisi 1
-  if (noVariables || onlyFeatures) {
-    // cuma partition
-  }
-
-  // 🟡 Kondisi 2 (scale)
-  else if (hasTarget && targetType === "scale") {
-    canPredict = true;
-  }
-
-  // 🟢 Kondisi 3 (categorical)
-  else if (hasTarget && isCategorical) {
-    canPredict = true;
-    canProbability = true;
-  }
-
-  // 🔵 Kondisi 4 (AutoK override)
-  if (isAutoK && !isFeatureSelectionActive) {
-    canPredict = true;
-    canProbability = true;
-    canFold = true;
-  }
+  // Predictions need a target; probabilities only apply to categorical targets.
 
   useEffect(() => {
     setSaveState((prev) => ({
@@ -117,6 +79,22 @@ export const KNNSave = ({
       AutoName: value === "AutoName",
       CustomName: value === "CustomName",
     }));
+  };
+
+  const handleMaxCatsToSaveChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const rawValue = event.target.value;
+
+    if (rawValue === "") {
+      handleChange("MaxCatsToSave", null);
+      return;
+    }
+
+    const numericValue = Number(rawValue);
+    if (!Number.isFinite(numericValue)) return;
+
+    handleChange("MaxCatsToSave", Math.max(1, Math.trunc(numericValue)));
   };
 
   return (
@@ -303,12 +281,12 @@ export const KNNSave = ({
             <Input
               id="MaxCatsToSave"
               type="number"
+              min={1}
+              step={1}
               className="w-[75px]"
-              disabled={!(targetType === "nominal" || targetType === "ordinal")}
+              disabled={!canEditMaxCatsToSave}
               value={saveState.MaxCatsToSave ?? ""}
-              onChange={(e) =>
-                handleChange("MaxCatsToSave", Number(e.target.value))
-              }
+              onChange={handleMaxCatsToSaveChange}
             />
           </div>
         </div>

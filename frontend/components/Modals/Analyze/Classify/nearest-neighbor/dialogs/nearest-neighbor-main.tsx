@@ -9,7 +9,6 @@ import { KNNFeatures } from "@/components/Modals/Analyze/Classify/nearest-neighb
 import { KNNPartition } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/partition";
 import { KNNSave } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/save";
 import { KNNOutput } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/output";
-import { KNNOptions } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/options";
 
 import type {
   KNNContainerProps,
@@ -27,6 +26,11 @@ import { analyzeKNN } from "@/components/Modals/Analyze/Classify/nearest-neighbo
 import { clearFormData, getFormData, saveFormData } from "@/hooks/useIndexedDB";
 
 import { toast } from "sonner";
+
+const stripRemovedConfig = (data: KNNType & { options?: unknown }): KNNType => {
+  const { options, ...config } = data;
+  return config;
+};
 
 export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const variables = useVariableStore((state) => state.variables);
@@ -46,7 +50,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
       if (savedData) {
         const { id, ...formDataWithoutId } = savedData;
-        setFormData(formDataWithoutId);
+        setFormData(stripRemovedConfig(formDataWithoutId));
       } else {
         setFormData({ ...KNNDefault });
       }
@@ -90,10 +94,12 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     onClose();
 
     const promise = async () => {
-      await saveFormData("NearestNeighbor", formData);
+      const configData = stripRemovedConfig(formData);
+
+      await saveFormData("NearestNeighbor", configData);
 
       await analyzeKNN({
-        configData: formData,
+        configData,
         dataVariables,
         variables,
       });
@@ -151,6 +157,10 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
     const featureVars = formData.main.FeatureVar ?? [];
 
+    if (!formData.main.TargetVar) {
+      errors.push("A target variable is required for KNN classification.");
+    }
+
     if (featureVars.length === 0) {
       errors.push("At least one feature variable is required.");
     }
@@ -173,17 +183,14 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
     const totalFeatures = forwardCount + forcedCount;
 
-    // 🔥 PRIORITAS 1: forward kosong
     if (forwardCount === 0 && totalFeatures > 0) {
       return "Feature selection cannot be performed if all features are forced into the model. Move at least one feature to the Forward Selection list or uncheck the Perform feature selection checkbox.";
     }
 
-    // 🔥 PRIORITAS 2: number kosong
     if (f.MaxReached && (!f.MaxToSelect || f.MaxToSelect <= 0)) {
       return "Enter a positive integer for the number of features to select.";
     }
 
-    // 🔥 PRIORITAS 3: range
     if (
       f.MaxReached &&
       f.MaxToSelect !== null &&
@@ -213,7 +220,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
           }}
           className="w-full h-full flex flex-col"
         >
-          <TabsList className="grid w-full grid-cols-7 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
             <TabsTrigger value="variables" className="min-w-0">
               <span className="truncate block w-full">Variables</span>
             </TabsTrigger>
@@ -238,9 +245,6 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
               <span className="truncate block w-full">Output</span>
             </TabsTrigger>
 
-            <TabsTrigger value="options" className="min-w-0">
-              <span className="truncate block w-full">Options</span>
-            </TabsTrigger>
           </TabsList>
 
           <div className="flex-grow min-h-0">
@@ -329,17 +333,6 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
               />
             </TabsContent>
 
-            <TabsContent
-              value="options"
-              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
-            >
-              <KNNOptions
-                data={formData.options}
-                updateFormData={(field, value) =>
-                  updateFormData("options", field, value)
-                }
-              />
-            </TabsContent>
           </div>
         </Tabs>
       </div>

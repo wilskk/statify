@@ -116,7 +116,7 @@ export const KNNDialog = ({
     () => [
       {
         id: "TargetVar",
-        title: "Target (Optional):",
+        title: "Target:",
         variables: mapToVariables(targetVar),
         maxItems: 1,
         height: "80px",
@@ -151,7 +151,7 @@ export const KNNDialog = ({
         <div className="flex items-start gap-2 rounded-md border bg-muted/50 p-3 text-sm">
           <Info className="w-12 h-12 mt-0.5 text-blue-500" />
           <p>
-            A target is required if you want to make predictions, select the number of nearest neighbors automatically, or select the number of features automatically.
+            A target is required for KNN classification.
           </p>
         </div>
 

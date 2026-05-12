@@ -1,0 +1,214 @@
+use std::collections::HashMap;
+
+use crate::models::data::{DataValue, KnnData};
+
+use super::distance::find_k_nearest_neighbors;
+
+pub fn calculate_knn_error(
+    knn_data: &KnnData,
+    k: usize,
+    use_euclidean: bool,
+    excluded_features: Option<&[usize]>,
+    weights: Option<&[f64]>,
+    use_median: bool,
+) -> Result<f64, String> {
+    if knn_data.target_values.is_empty()
+        || knn_data
+            .target_values
+            .iter()
+            .all(|v| matches!(v, DataValue::Null))
+    {
+        return Err("Target values are required for error calculation".to_string());
+    }
+
+    let target_is_categorical = knn_data
+        .target_values
+        .iter()
+        .all(|v| matches!(v, DataValue::Text(_) | DataValue::Boolean(_)));
+
+    let mut category_map = HashMap::new();
+
+    if target_is_categorical {
+        for value in &knn_data.target_values {
+            let category = match value {
+                DataValue::Text(s) => s.clone(),
+                DataValue::Boolean(b) => b.to_string(),
+                _ => continue,
+            };
+
+            if !category_map.contains_key(&category) {
+                let next_idx = category_map.len();
+                category_map.insert(category, next_idx);
+            }
+        }
+    }
+
+    let n_categories = category_map.len();
+    let mut total_error = 0.0;
+    let mut total_cases = 0;
+
+    let modified_data =
+        prepare_data_with_excluded_features(&knn_data.data_matrix, excluded_features);
+
+    for (idx, point) in knn_data.data_matrix.iter().enumerate() {
+        if !knn_data.training_indices.contains(&idx) {
+            continue;
+        }
+
+        let modified_point = prepare_point_with_excluded_features(point, excluded_features);
+        let train_indices: Vec<usize> = knn_data
+            .training_indices
+            .iter()
+            .filter(|&&i| i != idx)
+            .copied()
+            .collect();
+
+        let neighbors = find_k_nearest_neighbors(
+            &modified_point,
+            &modified_data,
+            &train_indices,
+            k,
+            use_euclidean,
+            weights,
+        );
+
+        if target_is_categorical {
+            total_error += calculate_classification_error(
+                idx,
+                &neighbors,
+                &knn_data.target_values,
+                &category_map,
+                n_categories,
+            );
+        } else {
+            total_error +=
+                calculate_regression_error(idx, &neighbors, &knn_data.target_values, use_median);
+        }
+
+        total_cases += 1;
+    }
+
+    if total_cases > 0 {
+        Ok(total_error / (total_cases as f64))
+    } else {
+        Ok(0.0)
+    }
+}
+
+fn prepare_data_with_excluded_features(
+    data_matrix: &[Vec<f64>],
+    excluded_features: Option<&[usize]>,
+) -> Vec<Vec<f64>> {
+    data_matrix
+        .iter()
+        .map(|row| prepare_point_with_excluded_features(row, excluded_features))
+        .collect()
+}
+
+fn prepare_point_with_excluded_features(
+    point: &[f64],
+    excluded_features: Option<&[usize]>,
+) -> Vec<f64> {
+    match excluded_features {
+        Some(excluded) => point
+            .iter()
+            .enumerate()
+            .filter_map(|(j, &val)| {
+                if excluded.contains(&j) {
+                    None
+                } else {
+                    Some(val)
+                }
+            })
+            .collect(),
+        None => point.to_vec(),
+    }
+}
+
+fn calculate_classification_error(
+    idx: usize,
+    neighbors: &[(usize, f64)],
+    target_values: &[DataValue],
+    category_map: &HashMap<String, usize>,
+    n_categories: usize,
+) -> f64 {
+    let actual_value = &target_values[idx];
+    let actual_cat = match actual_value {
+        DataValue::Text(s) => category_map.get(s),
+        DataValue::Boolean(b) => category_map.get(&b.to_string()),
+        _ => return 0.0,
+    };
+
+    if let Some(&actual_cat_idx) = actual_cat {
+        let mut vote_counts = vec![0; n_categories];
+
+        for &(neighbor_idx, _) in neighbors {
+            let neighbor_value = &target_values[neighbor_idx];
+            let neighbor_cat = match neighbor_value {
+                DataValue::Text(s) => category_map.get(s),
+                DataValue::Boolean(b) => category_map.get(&b.to_string()),
+                _ => continue,
+            };
+
+            if let Some(&cat_idx) = neighbor_cat {
+                vote_counts[cat_idx] += 1;
+            }
+        }
+
+        if let Some((predicted_cat, _)) = vote_counts
+            .iter()
+            .enumerate()
+            .max_by_key(|&(_, count)| count)
+        {
+            if predicted_cat != actual_cat_idx {
+                1.0
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        }
+    } else {
+        0.0
+    }
+}
+
+fn calculate_regression_error(
+    idx: usize,
+    neighbors: &[(usize, f64)],
+    target_values: &[DataValue],
+    use_median: bool,
+) -> f64 {
+    let actual_value = match &target_values[idx] {
+        DataValue::Number(n) => *n,
+        _ => return 0.0,
+    };
+
+    let values: Vec<f64> = neighbors
+        .iter()
+        .filter_map(|&(neighbor_idx, _)| match target_values[neighbor_idx] {
+            DataValue::Number(val) => Some(val),
+            _ => None,
+        })
+        .collect();
+
+    if values.is_empty() {
+        return 0.0;
+    }
+
+    let predicted = if use_median {
+        let mut sorted_values = values.clone();
+        sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        let n = sorted_values.len();
+        if n % 2 == 1 {
+            sorted_values[n / 2]
+        } else {
+            (sorted_values[n / 2 - 1] + sorted_values[n / 2]) / 2.0
+        }
+    } else {
+        values.iter().sum::<f64>() / (values.len() as f64)
+    };
+
+    (actual_value - predicted).powi(2)
+}

@@ -129,17 +129,28 @@ export function transformNearestNeighborResult(data: any): ResultJson {
             rows: [],
         };
 
-        // Add each predictor importance as a row
-        if (data.predictor_importance.predictors) {
-            data.predictor_importance.predictors.forEach((item: any) => {
-                if (item.predictor && item.importance !== undefined) {
-                    table.rows.push({
-                        rowHeader: [item.predictor],
-                        importance: formatDisplayNumber(item.importance),
-                    });
-                }
+        const predictors = data.predictor_importance.predictors;
+        const predictorRows = Array.isArray(predictors)
+            ? predictors
+            : Object.entries(predictors ?? {}).map(([predictor, importance]) => ({
+                predictor,
+                importance,
+            }));
+
+        predictorRows
+            .map((item: any) => ({
+                predictor: item.predictor ?? item.name,
+                importance: item.importance ?? item.value,
+            }))
+            .filter((item: any) => item.predictor && item.importance !== undefined)
+            .sort((a: any, b: any) => Number(b.importance) - Number(a.importance))
+            .forEach((item: any) => {
+                table.rows.push({
+                    rowHeader: [item.predictor],
+                    predictor: item.predictor,
+                    importance: formatDisplayNumber(item.importance),
+                });
             });
-        }
 
         resultJson.tables.push(table);
     }
@@ -352,16 +363,22 @@ export function transformNearestNeighborResult(data: any): ResultJson {
 
     // 7. Nearest Neighbors
     if (data.nearest_neighbors?.focal_neighbor_sets) {
+        const kValue = data.nearest_neighbors.k_value ?? 3;
         const table: Table = {
             key: "nearest_neighbors",
             title: "k Nearest Neighbors and Distances",
             columnHeaders: [
                 { header: "Focal Record", key: "focal_record" },
+                { header: "K", key: "k_value" },
+                { header: "Distance Metric", key: "distance_metric" },
+                { header: "Weighting", key: "weighting" },
+                { header: "Prediction Method", key: "prediction_method" },
+                { header: "Predicted Value", key: "predicted_value" },
                 {
                     header: "Nearest Neighbors",
                     key: "neighbors",
                     children: Array.from(
-                        { length: 3 }, // Use 3 for k value since that's what's in the data
+                        { length: kValue },
                         (_, i) => ({
                             header: (i + 1).toString(),
                             key: `neighbor_${i + 1}`,
@@ -372,7 +389,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
                     header: "Nearest Distances",
                     key: "distances",
                     children: Array.from(
-                        { length: 3 }, // Use 3 for k value
+                        { length: kValue },
                         (_, i) => ({
                             header: (i + 1).toString(),
                             key: `distance_${i + 1}`,
@@ -392,11 +409,24 @@ export function transformNearestNeighborResult(data: any): ResultJson {
             ) {
                 const rowData: any = {
                     rowHeader: [record.focal_record.toString()],
+                    focal_record: record.focal_record.toString(),
+                    k_value: formatDisplayNumber(kValue),
+                    distance_metric: data.nearest_neighbors.distance_metric ?? "",
+                    weighting: data.nearest_neighbors.weighting_enabled
+                        ? "Enabled"
+                        : "Disabled",
+                    prediction_method:
+                        data.nearest_neighbors.prediction_method ?? "",
+                    predicted_value:
+                        record.predicted_value !== undefined &&
+                        record.predicted_value !== null
+                            ? formatPredictionValue(record.predicted_value)
+                            : "",
                 };
 
                 // Add neighbors
                 record.neighbors.forEach((neighbor: any, index: number) => {
-                    rowData[`neighbor_${index + 1}`] = neighbor.id
+                    rowData[`neighbor_${index + 1}`] = neighbor.id !== undefined && neighbor.id !== null
                         ? neighbor.id.toString()
                         : "";
                 });
@@ -428,10 +458,12 @@ export function transformNearestNeighborResult(data: any): ResultJson {
             rows: [],
         };
 
+        const peerFeatures = normalizeFeatureEntries(data.peers_chart.features);
+
         // Process each feature
-        if (data.peers_chart.features) {
-            data.peers_chart.features.forEach((feature: any) => {
-                if (feature.feature && feature.values) {
+        if (peerFeatures.length > 0) {
+            peerFeatures.forEach((feature: any) => {
+                if (feature.feature && Array.isArray(feature.values)) {
                     // Get focal neighbor sets to determine which records are focal
                     const focalRecords = new Set(
                         data.peers_chart.focal_neighbor_sets.map(
@@ -449,6 +481,8 @@ export function transformNearestNeighborResult(data: any): ResultJson {
                                     feature.feature,
                                     recordId.toString(),
                                 ],
+                                feature: feature.feature,
+                                record_id: recordId.toString(),
                                 value: formatDisplayNumber(feature.values[i]),
                                 is_focal: focalRecords.has(recordId)
                                     ? "Yes"
@@ -480,10 +514,9 @@ export function transformNearestNeighborResult(data: any): ResultJson {
         };
 
         // Process feature pairs for quadrant map
-        if (
-            data.quadrant_map.features &&
-            data.quadrant_map.features.length >= 2
-        ) {
+        const quadrantFeatures = normalizeFeatureEntries(data.quadrant_map.features);
+
+        if (quadrantFeatures.length >= 2) {
             // Get focal records set
             const focalRecords = new Set(
                 data.quadrant_map.focal_neighbor_sets.map(
@@ -492,14 +525,14 @@ export function transformNearestNeighborResult(data: any): ResultJson {
             );
 
             // We need to pair features for the quadrant map
-            for (let i = 0; i < data.quadrant_map.features.length; i++) {
+            for (let i = 0; i < quadrantFeatures.length; i++) {
                 for (
                     let j = i + 1;
-                    j < data.quadrant_map.features.length;
+                    j < quadrantFeatures.length;
                     j++
                 ) {
-                    const featureX = data.quadrant_map.features[i];
-                    const featureY = data.quadrant_map.features[j];
+                    const featureX = quadrantFeatures[i];
+                    const featureY = quadrantFeatures[j];
 
                     if (
                         featureX &&
@@ -524,6 +557,9 @@ export function transformNearestNeighborResult(data: any): ResultJson {
                                     featureY.feature,
                                     recordId.toString(),
                                 ],
+                                feature_x: featureX.feature,
+                                feature_y: featureY.feature,
+                                record_id: recordId.toString(),
                                 x_value: formatDisplayNumber(
                                     featureX.values[k]
                                 ),
@@ -544,4 +580,38 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     }
 
     return resultJson;
+}
+
+function formatPredictionValue(value: any): string | null {
+    if (typeof value === "number") {
+        return formatDisplayNumber(value);
+    }
+
+    if (typeof value === "boolean") {
+        return value ? "true" : "false";
+    }
+
+    if (value === null || typeof value === "undefined") {
+        return "";
+    }
+
+    return String(value);
+}
+
+function normalizeFeatureEntries(features: any): Array<{ feature: string; values: any[] }> {
+    if (Array.isArray(features)) {
+        return features
+            .map((feature: any) => ({
+                feature: feature.feature ?? feature.name,
+                values: feature.values,
+            }))
+            .filter((feature: any) => feature.feature && Array.isArray(feature.values));
+    }
+
+    return Object.entries(features ?? {})
+        .map(([feature, values]) => ({
+            feature,
+            values: Array.isArray(values) ? values : [],
+        }))
+        .filter((feature) => feature.feature && feature.values.length > 0);
 }

@@ -32,14 +32,35 @@ export const KNNFeatures = ({
   const [availableVariables, setAvailableVariables] = useState<string[]>([]);
 
   useEffect(() => {
-    const usedVariables = [...(data.ForcedEntryVar || [])].filter(Boolean);
+    const usedVariables = [...(data.ForcedEntryVar ?? [])].filter(Boolean);
 
-    const updatedVariables = (data.ForwardSelection || []).filter(
+    const updatedVariables = (data.ForwardSelection ?? []).filter(
       (variable) => !usedVariables.includes(variable),
     );
 
     setAvailableVariables(updatedVariables);
   }, [data.ForwardSelection, data.ForcedEntryVar]);
+
+  useEffect(() => {
+    const forcedCount = (data.ForcedEntryVar ?? []).length;
+    const forwardCount = (data.ForwardSelection ?? []).filter(
+      (variable) => !(data.ForcedEntryVar ?? []).includes(variable),
+    ).length;
+
+    if (data.FeaturesToEvaluate !== forwardCount) {
+      updateFormData("FeaturesToEvaluate", forwardCount);
+    }
+
+    if (data.ForcedFeatures !== forcedCount) {
+      updateFormData("ForcedFeatures", forcedCount);
+    }
+  }, [
+    data.ForwardSelection,
+    data.ForcedEntryVar,
+    data.FeaturesToEvaluate,
+    data.ForcedFeatures,
+    updateFormData,
+  ]);
 
   useEffect(() => {
     if (
@@ -49,7 +70,7 @@ export const KNNFeatures = ({
     ) {
       updateFormData("MaxToSelect", 1);
     }
-  }, [data.PerformSelection, data.MaxReached]);
+  }, [data.PerformSelection, data.MaxReached, data.MaxToSelect, updateFormData]);
 
   const handleChange = (
     field: keyof KNNFeaturesType,
@@ -59,15 +80,17 @@ export const KNNFeatures = ({
   };
 
   const handleDrop = (target: string, variable: string) => {
+    if (!variable || (data.ForcedEntryVar ?? []).includes(variable)) return;
+
     updateFormData("ForcedEntryVar", [
-      ...(data.ForcedEntryVar || []),
+      ...(data.ForcedEntryVar ?? []),
       variable,
     ]);
   };
 
   const handleRemoveVariable = (target: string, variable?: string) => {
     if (target === "ForcedEntryVar") {
-      const updated = (data.ForcedEntryVar || []).filter(
+      const updated = (data.ForcedEntryVar ?? []).filter(
         (item) => item !== variable,
       );
 

@@ -155,27 +155,6 @@ export type KNNOutputProps = {
     focalCaseVar: string | null;
 };
 
-/* =========================
-   OPTIONS TAB
-========================= */
-
-export type KNNOptionsType = {
-    Exclude: boolean;
-    Include: boolean;
-};
-
-export type KNNOptionsProps = {
-    data: KNNOptionsType;
-    updateFormData: (
-        field: keyof KNNOptionsType,
-        value: string | boolean | null
-    ) => void;
-};
-
-/* =========================
-   GLOBAL STATE
-========================= */
-
 export type KNNType = {
     main: KNNMainType;
     neighbors: KNNNeighborsType;
@@ -183,7 +162,6 @@ export type KNNType = {
     partition: KNNPartitionType;
     save: KNNSaveType;
     output: KNNOutputType;
-    options: KNNOptionsType;
 };
 
 /* =========================
