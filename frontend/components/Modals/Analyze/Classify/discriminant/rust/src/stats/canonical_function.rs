@@ -4,22 +4,18 @@
 //! which are linear combinations of the original variables that maximize
 //! the separation between groups.
 
-use std::collections::HashMap;
 use nalgebra::DMatrix;
 use rayon::prelude::*;
+use std::collections::HashMap;
 
 use crate::models::{
-    result::{ CanonicalFunctions, EigenDescription },
-    AnalysisData,
-    DiscriminantConfig,
+    result::{CanonicalFunctions, EigenDescription},
+    AnalysisData, DiscriminantConfig,
 };
 
 use super::core::{
-    calculate_pooled_within_matrix,
-    calculate_stepwise_statistics,
-    extract_analyzed_dataset,
-    AnalyzedDataset,
-    EPSILON,
+    calculate_pooled_within_matrix, calculate_stepwise_statistics, extract_analyzed_dataset,
+    AnalyzedDataset, EPSILON,
 };
 
 /// Calculate eigenvalues and eigenvectors for discriminant functions
@@ -35,19 +31,22 @@ use super::core::{
 /// An EigenDescription containing eigenvalues, eigenvectors, and related statistics
 pub fn calculate_eigen_statistics(
     data: &AnalysisData,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<EigenDescription, String> {
     web_sys::console::log_1(&"Executing calculate_eigen_statistics".into());
 
     // Extract analyzed dataset
     let dataset = extract_analyzed_dataset(data, config)?;
 
-    // Determine which variables to use
-    let variables_to_use = if config.main.stepwise {
-        get_stepwise_selected_variables(data, config)?
-    } else {
-        config.main.independent_variables.clone()
-    };
+    // Exclude grouping variable from canonical function calculation
+    let grouping_var = &config.main.grouping_variable;
+    let variables_to_use: Vec<String> = config
+        .main
+        .independent_variables
+        .iter()
+        .filter(|v| *v != grouping_var)
+        .cloned()
+        .collect();
 
     // Calculate number of discriminant functions
     let num_functions = std::cmp::min(dataset.num_groups - 1, variables_to_use.len());
@@ -63,11 +62,8 @@ pub fn calculate_eigen_statistics(
     let between_groups = calculate_between_groups_matrix(&dataset, &variables_to_use);
 
     // Solve eigenvalue problem
-    let (eigenvalues, eigenvectors) = solve_eigenvalue_problem(
-        &pooled_within,
-        &between_groups,
-        num_functions
-    );
+    let (eigenvalues, eigenvectors) =
+        solve_eigenvalue_problem(&pooled_within, &between_groups, num_functions);
 
     // Calculate variance statistics
     let (variance_percentage, cumulative_percentage) = calculate_variance_percentages(&eigenvalues);
@@ -92,7 +88,9 @@ pub fn calculate_eigen_statistics(
         .collect();
 
     // Create function names (Function 1, Function 2, etc.)
-    let functions: Vec<String> = (1..=num_functions).map(|i| format!("Function {}", i)).collect();
+    let functions: Vec<String> = (1..=num_functions)
+        .map(|i| format!("Function {}", i))
+        .collect();
 
     Ok(EigenDescription {
         functions,
@@ -117,7 +115,7 @@ pub fn calculate_eigen_statistics(
 /// A CanonicalFunctions object containing coefficients and function values
 pub fn calculate_canonical_functions(
     data: &AnalysisData,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<CanonicalFunctions, String> {
     web_sys::console::log_1(&"Executing calculate_canonical_functions".into());
 
@@ -127,12 +125,15 @@ pub fn calculate_canonical_functions(
     // Extract analyzed dataset
     let dataset = extract_analyzed_dataset(data, config)?;
 
-    // Determine which variables to use
-    let variables_to_use = if config.main.stepwise {
-        get_stepwise_selected_variables(data, config)?
-    } else {
-        config.main.independent_variables.clone()
-    };
+    // Exclude grouping variable from canonical function calculation
+    let grouping_var = &config.main.grouping_variable;
+    let variables_to_use: Vec<String> = config
+        .main
+        .independent_variables
+        .iter()
+        .filter(|v| *v != grouping_var)
+        .cloned()
+        .collect();
 
     // Calculate number of discriminant functions
     let num_functions = std::cmp::min(dataset.num_groups - 1, variables_to_use.len());
@@ -163,7 +164,7 @@ pub fn calculate_canonical_functions(
         &variables_to_use,
         &pooled_within,
         &dataset.overall_means,
-        num_functions
+        num_functions,
     );
 
     // Calculate function at group centroids
@@ -171,7 +172,7 @@ pub fn calculate_canonical_functions(
         &dataset,
         &eigenvectors,
         &variables_to_use,
-        num_functions
+        num_functions,
     );
 
     // Return only the fields defined in the CanonicalFunctions struct from result.rs
@@ -197,90 +198,63 @@ pub fn calculate_canonical_functions(
 pub fn solve_eigenvalue_problem(
     pooled_within: &DMatrix<f64>,
     between_groups: &DMatrix<f64>,
-    num_functions: usize
+    num_functions: usize,
 ) -> (Vec<f64>, Vec<Vec<f64>>) {
     let n = pooled_within.nrows();
 
-    // Compute the Cholesky decomposition of the within-groups matrix
-    let w_cholesky = match pooled_within.clone().cholesky() {
-        Some(chol) => chol,
-        None => {
-            // If Cholesky fails, add a small regularization to the diagonal
-            let mut regularized = pooled_within.clone();
-            for i in 0..n {
-                regularized[(i, i)] += EPSILON;
-            }
-            regularized
-                .clone()
-                .cholesky()
-                .unwrap_or_else(|| {
-                    // If still fails, use eigendecomposition approach
-                    let eigen = regularized.symmetric_eigen();
-                    let d = eigen.eigenvalues;
-                    let v = eigen.eigenvectors;
+    // 1. Hitung W^(-1/2) menggunakan Symmetric Eigen Decomposition (Aman untuk kondisi singular/multikolinear)
+    let eigen_w = pooled_within.clone().symmetric_eigen();
+    let d_w = eigen_w.eigenvalues;
+    let v_w = eigen_w.eigenvectors;
 
-                    let mut d_inv_sqrt = DMatrix::zeros(n, n);
-                    for i in 0..n {
-                        if d[i] > EPSILON {
-                            d_inv_sqrt[(i, i)] = 1.0 / d[i].sqrt();
-                        }
-                    }
-
-                    let pseudo_chol = v.clone() * d_inv_sqrt * v.transpose();
-                    nalgebra::Cholesky
-                        ::new(pseudo_chol)
-                        .unwrap_or_else(||
-                            panic!(
-                                "Failed to compute Cholesky decomposition even with regularization"
-                            )
-                        )
-                })
+    let mut d_w_inv_sqrt = DMatrix::zeros(n, n);
+    for i in 0..n {
+        // Gunakan threshold epsilon yang rasional untuk memotong (truncate) zero eigenvalues
+        if d_w[i] > 1e-9 {
+            d_w_inv_sqrt[(i, i)] = 1.0 / d_w[i].sqrt();
+        } else {
+            d_w_inv_sqrt[(i, i)] = 0.0; // Mencegah pembagian dengan nol (pseudo-inverse logic)
         }
-    };
+    }
 
-    // Compute W^(-1/2)
-    let w_inv_sqrt = w_cholesky.inverse();
+    // W^(-1/2) = V * D^(-1/2) * V^T
+    let w_inv_sqrt = &v_w * &d_w_inv_sqrt * v_w.transpose();
 
-    // Transform to standard eigenvalue problem: W^(-1/2) * B * W^(-1/2)
+    // 2. Transformasi matriks: W^(-1/2) * B * W^(-1/2)
     let transformed = &w_inv_sqrt * between_groups * &w_inv_sqrt;
 
-    // Get eigendecomposition
-    let eigen = transformed.symmetric_eigen();
-    let mut eigenvalues: Vec<f64> = eigen.eigenvalues.as_slice().to_vec();
-    let eigenvectors_matrix = eigen.eigenvectors;
+    // 3. Dekomposisi eigen dari matriks yang ditransformasi
+    let eigen_b = transformed.symmetric_eigen();
+    let eigenvalues_raw = eigen_b.eigenvalues;
+    let eigenvectors_raw = eigen_b.eigenvectors;
 
-    // Sort eigenvalues in descending order
+    // nalgebra mengurutkan ascending secara default. Kita butuh descending (dari varians terbesar).
     let mut indices: Vec<usize> = (0..n).collect();
-    indices.sort_by(|&i, &j|
-        eigenvalues[j].partial_cmp(&eigenvalues[i]).unwrap_or(std::cmp::Ordering::Equal)
-    );
+    indices.sort_by(|&i, &j| {
+        eigenvalues_raw[j]
+            .partial_cmp(&eigenvalues_raw[i])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
-    eigenvalues = indices
-        .iter()
-        .map(|&i| eigenvalues[i])
-        .collect();
+    let mut eigenvalues = Vec::with_capacity(num_functions);
+    let mut eigenvectors: Vec<Vec<f64>> = vec![vec![0.0; num_functions]; n];
 
-    // Prepare eigenvectors matrix
-    let mut eigenvectors: Vec<Vec<f64>> = Vec::with_capacity(n);
-    for _ in 0..n {
-        eigenvectors.push(vec![0.0; num_functions]);
-    }
+    let actual_functions = num_functions.min(n);
 
-    // Transform eigenvectors back to original problem
-    for func_idx in 0..num_functions.min(indices.len()) {
-        let idx = indices[func_idx];
-        let transformed_eigenvector = eigenvectors_matrix.column(idx);
+    for func_idx in 0..actual_functions {
+        let orig_idx = indices[func_idx];
+        eigenvalues.push(eigenvalues_raw[orig_idx]);
 
-        // v = W^(-1/2) * transformed_v
-        let original_eigenvector = &w_inv_sqrt * transformed_eigenvector;
+        // Ekstraksi kolom vektor eigen yang berkorespondensi
+        let transformed_v = eigenvectors_raw.column(orig_idx);
+
+        // Kembalikan ke ruang aslinya: V_original = W^(-1/2) * V_transformed
+        let original_v = &w_inv_sqrt * transformed_v;
 
         for var_idx in 0..n {
-            eigenvectors[var_idx][func_idx] = original_eigenvector[var_idx];
+            eigenvectors[var_idx][func_idx] = original_v[var_idx];
         }
     }
-
-    // Keep only the top num_functions eigenvalues
-    eigenvalues.truncate(num_functions);
 
     (eigenvalues, eigenvectors)
 }
@@ -300,7 +274,7 @@ pub fn solve_eigenvalue_problem(
 /// The between-groups SSCP matrix
 fn calculate_between_groups_matrix(
     dataset: &AnalyzedDataset,
-    variables: &[String]
+    variables: &[String],
 ) -> DMatrix<f64> {
     let num_vars = variables.len();
     let mut between_groups = DMatrix::zeros(num_vars, num_vars);
@@ -314,13 +288,11 @@ fn calculate_between_groups_matrix(
             let mut sum = 0.0;
 
             for group in &dataset.group_labels {
-                if
-                    let (Some(values), Some(group_mean_i), Some(group_mean_j)) = (
-                        dataset.group_data.get(var_i).and_then(|g| g.get(group)),
-                        dataset.group_means.get(group).and_then(|m| m.get(var_i)),
-                        dataset.group_means.get(group).and_then(|m| m.get(var_j)),
-                    )
-                {
+                if let (Some(values), Some(group_mean_i), Some(group_mean_j)) = (
+                    dataset.group_data.get(var_i).and_then(|g| g.get(group)),
+                    dataset.group_means.get(group).and_then(|m| m.get(var_i)),
+                    dataset.group_means.get(group).and_then(|m| m.get(var_j)),
+                ) {
                     let n = values.len() as f64;
                     if n > 0.0 {
                         let overall_mean_i = dataset.overall_means.get(var_i).unwrap_or(&0.0);
@@ -362,13 +334,15 @@ pub fn process_discriminant_coefficients(
     variables: &[String],
     pooled_within: &DMatrix<f64>,
     overall_means: &HashMap<String, f64>,
-    num_functions: usize
+    num_functions: usize,
 ) -> (HashMap<String, Vec<f64>>, HashMap<String, Vec<f64>>) {
     let num_vars = variables.len();
 
     // Extract standard deviations from pooled within-groups covariance matrix diagonal
     // Standardized coefficient = Unstandardized × Pooled_StD
-    let std_devs: Vec<f64> = (0..num_vars).map(|i| pooled_within[(i, i)].sqrt()).collect();
+    let std_devs: Vec<f64> = (0..num_vars)
+        .map(|i| pooled_within[(i, i)].sqrt())
+        .collect();
 
     // Unstandardized coefficients
     let mut coefficients: HashMap<String, Vec<f64>> = variables
@@ -394,13 +368,16 @@ pub fn process_discriminant_coefficients(
         .iter()
         .enumerate()
         .map(|(var_idx, var)| {
-            let std_dev = if var_idx < std_devs.len() { std_devs[var_idx] } else { 1.0 };
+            let std_dev = if var_idx < std_devs.len() {
+                std_devs[var_idx]
+            } else {
+                1.0
+            };
             let std_coef_values: Vec<f64> = (0..num_functions)
                 .map(|func_idx| {
-                    if
-                        var_idx < eigenvectors.len() &&
-                        func_idx < eigenvectors[var_idx].len() &&
-                        std_dev > EPSILON
+                    if var_idx < eigenvectors.len()
+                        && func_idx < eigenvectors[var_idx].len()
+                        && std_dev > EPSILON
                     {
                         eigenvectors[var_idx][func_idx] * std_dev
                     } else {
@@ -451,15 +428,24 @@ pub fn process_discriminant_coefficients(
 /// A vector of selected variable names
 pub fn get_stepwise_selected_variables(
     data: &AnalysisData,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<Vec<String>, String> {
+    let grouping_var = &config.main.grouping_variable;
+
     if !config.main.stepwise {
-        return Ok(config.main.independent_variables.clone());
+        return Ok(config
+            .main
+            .independent_variables
+            .iter()
+            .filter(|v| *v != grouping_var)
+            .cloned()
+            .collect());
     }
 
     match calculate_stepwise_statistics(data, config) {
         Ok(stepwise_stats) => {
-            let final_step = stepwise_stats.variables_in_analysis
+            let final_step = stepwise_stats
+                .variables_in_analysis
                 .keys()
                 .filter_map(|k| k.parse::<i32>().ok())
                 .max()
@@ -467,21 +453,37 @@ pub fn get_stepwise_selected_variables(
                 .to_string();
 
             if let Some(vars_in_model) = stepwise_stats.variables_in_analysis.get(&final_step) {
-                let selected_vars: Vec<String> = vars_in_model
-                    .iter()
-                    .map(|v| v.variable.clone())
-                    .collect();
+                let selected_vars: Vec<String> =
+                    vars_in_model.iter().map(|v| v.variable.clone()).collect();
 
                 if selected_vars.is_empty() {
-                    Ok(config.main.independent_variables.clone())
+                    Ok(config
+                        .main
+                        .independent_variables
+                        .iter()
+                        .filter(|v| *v != grouping_var)
+                        .cloned()
+                        .collect())
                 } else {
                     Ok(selected_vars)
                 }
             } else {
-                Ok(config.main.independent_variables.clone())
+                Ok(config
+                    .main
+                    .independent_variables
+                    .iter()
+                    .filter(|v| *v != grouping_var)
+                    .cloned()
+                    .collect())
             }
         }
-        Err(_) => Ok(config.main.independent_variables.clone()),
+        Err(_) => Ok(config
+            .main
+            .independent_variables
+            .iter()
+            .filter(|v| *v != grouping_var)
+            .cloned()
+            .collect()),
     }
 }
 
@@ -502,40 +504,41 @@ pub fn calculate_function_at_group_centroids(
     dataset: &AnalyzedDataset,
     eigenvectors: &[Vec<f64>],
     variables: &[String],
-    num_functions: usize
+    num_functions: usize,
 ) -> HashMap<String, Vec<f64>> {
     let mut function_at_centroids = HashMap::new();
 
     // Process each group in parallel
-    let results: Vec<(String, Vec<f64>)> = dataset.group_labels
+    let results: Vec<(String, Vec<f64>)> = dataset
+        .group_labels
         .par_iter()
         .map(|group| {
             let mut centroid_values = vec![0.0; num_functions];
 
             for func_idx in 0..num_functions {
                 // First add constant (negative sum of coefficient * overall_mean)
-                let constant = variables
-                    .iter()
-                    .enumerate()
-                    .fold(0.0, |acc, (var_idx, variable)| {
-                        if var_idx < eigenvectors.len() && func_idx < eigenvectors[var_idx].len() {
-                            acc -
-                                eigenvectors[var_idx][func_idx] *
-                                    dataset.overall_means.get(variable).copied().unwrap_or(0.0)
-                        } else {
-                            acc
-                        }
-                    });
+                let constant =
+                    variables
+                        .iter()
+                        .enumerate()
+                        .fold(0.0, |acc, (var_idx, variable)| {
+                            if var_idx < eigenvectors.len()
+                                && func_idx < eigenvectors[var_idx].len()
+                            {
+                                acc - eigenvectors[var_idx][func_idx]
+                                    * dataset.overall_means.get(variable).copied().unwrap_or(0.0)
+                            } else {
+                                acc
+                            }
+                        });
 
                 centroid_values[func_idx] = constant;
 
                 // Then add variable contributions
                 for (var_idx, variable) in variables.iter().enumerate() {
                     if var_idx < eigenvectors.len() && func_idx < eigenvectors[var_idx].len() {
-                        if
-                            let Some(group_mean) = dataset.group_means
-                                .get(group)
-                                .and_then(|m| m.get(variable))
+                        if let Some(group_mean) =
+                            dataset.group_means.get(group).and_then(|m| m.get(variable))
                         {
                             centroid_values[func_idx] +=
                                 group_mean * eigenvectors[var_idx][func_idx];

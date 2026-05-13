@@ -418,7 +418,7 @@ fn compute_df2(c1: f64, c2: f64, df1: f64) -> f64 {
     if denominator > EPSILON {
         (df1 + 2.0) / denominator
     } else {
-        df1 * 2.0 // Fallback if denominator is too small
+        df1 * 2.0 
     }
 }
 
