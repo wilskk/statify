@@ -13,7 +13,7 @@ import { Download } from "lucide-react";
 import type { KMedoidsOutput } from "../types/output";
 import { KMedoidsSummaryCards } from "./SummaryCards";
 import { ClusterProfilesComponent } from "./ClusterProfiles";
-import { DistanceMatrixHeatmap } from "./DistanceMatrix";
+import { DistanceMatrixHeatmap, DistanceMatrixTable } from "./DistanceMatrix";
 import {
     formatScatterPlotData,
     formatDonutChartData,
@@ -129,6 +129,8 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         output?.visualizationOptions?.showClusterAttributeProfile ?? true;
     const showDistanceMatrixBetweenMedoids =
         output?.visualizationOptions?.showDistanceMatrixBetweenMedoids ?? true;
+    const showDistanceMatrixTable =
+        output?.visualizationOptions?.showDistanceMatrixTable ?? false;
     const showClusterMedoids =
         output?.visualizationOptions?.showClusterMedoids ?? true;
     const showObjectAssignments =
@@ -309,6 +311,12 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         [output?.assignments]
     );
 
+    const assignmentsNormalizationLabel = output?.normalizationMethod === "zscore"
+        ? "Z-score"
+        : output?.normalizationMethod === "minmax"
+        ? "Min-Max"
+        : "Standardized";
+
     // Memoize assignments table JSON to avoid re-serializing on every render
     const assignmentsTableJson = useMemo(() => {
         if (!output?.assignments) return "{}";
@@ -316,7 +324,9 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
             tables: [
                 {
                     key: "assignments",
-                    title: "Cluster Assignments",
+                    title: hasStandardizedAssignmentData
+                        ? `Cluster Assignments (${assignmentsNormalizationLabel})`
+                        : "Cluster Assignments",
                     columnHeaders: [
                         { header: "ID" },
                         { header: "Cluster" },
@@ -325,7 +335,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                         ...effectiveVariables.map(v => ({ header: v.label || v.name, key: v.name })),
                         ...(hasStandardizedAssignmentData
                             ? effectiveVariables.map(v => ({
-                                header: `${v.label || v.name} (Z-score)`,
+                                header: `${v.label || v.name} (${assignmentsNormalizationLabel})`,
                                 key: `${v.name}_zscore`,
                             }))
                             : [])
@@ -490,7 +500,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
             "Silhouette",
             ...effectiveVariables.map((v) => v.label || v.name),
             ...(hasStandardizedAssignmentData
-                ? effectiveVariables.map((v) => `${v.label || v.name} (Z-score)`)
+                ? effectiveVariables.map((v) => `${v.label || v.name} (${assignmentsNormalizationLabel})`)
                 : []),
         ];
 
@@ -515,6 +525,65 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         const filename = `${sanitizeFilename(`object-assignments-all-${output.assignments.length}-rows`)}.xlsx`;
         XLSX.writeFile(workbook, filename);
     }, [output?.assignments, effectiveVariables, hasStandardizedAssignmentData]);
+
+    const handleDownloadDistanceMatrixCsv = useCallback(() => {
+        if (!output?.distanceMatrix) return;
+
+        const { labels, clusters, distances } = output.distanceMatrix;
+        const header = ["Label", "Cluster", ...labels.map((label, idx) => `C${clusters[idx]} ${label}`)];
+
+        const rows = distances.map((row, rowIdx) => [
+            labels[rowIdx],
+            `C${clusters[rowIdx]}`,
+            ...row.map((value) =>
+                value != null && isFinite(value) ? value.toFixed(6) : ""
+            ),
+        ]);
+
+        const escapeCsv = (value: string) => {
+            if (value.includes("\"") || value.includes(",") || value.includes("\n")) {
+                return `"${value.replace(/\"/g, '""')}"`;
+            }
+            return value;
+        };
+
+        const csvContent = [header, ...rows]
+            .map((row) => row.map((cell) => escapeCsv(String(cell))).join(","))
+            .join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${sanitizeFilename("distance-matrix")}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }, [output?.distanceMatrix]);
+
+    const handleDownloadDistanceMatrixExcel = useCallback(() => {
+        if (!output?.distanceMatrix) return;
+
+        const { labels, clusters, distances } = output.distanceMatrix;
+        const header = ["Label", "Cluster", ...labels.map((label, idx) => `C${clusters[idx]} ${label}`)];
+
+        const rows = distances.map((row, rowIdx) => [
+            labels[rowIdx],
+            `C${clusters[rowIdx]}`,
+            ...row.map((value) =>
+                value != null && isFinite(value) ? Number(value.toFixed(6)) : ""
+            ),
+        ]);
+
+        const worksheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Distance Matrix");
+
+        const filename = `${sanitizeFilename("distance-matrix")}.xlsx`;
+        XLSX.writeFile(workbook, filename);
+    }, [output?.distanceMatrix]);
+
 
     const renderDownloadActions = useCallback((
         targetRef: React.RefObject<HTMLDivElement | null>,
@@ -639,7 +708,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                             <CardHeader>
                                 <CardTitle>Cluster Scatter Plot</CardTitle>
                                 <CardDescription>
-                                    2D visualization of clusters. Centroids marked with ⊗
+                                    2D visualization of clusters. Setiap titik diwarnai sesuai klasternya; bintang (★) menandai medoid.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -745,6 +814,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                 />
                             </div>
                         </div>}
+
                     </div>
                 </TabsContent>}
 
@@ -764,7 +834,11 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <DataTableRenderer data={medoidsTableJson} align="left" />
+                            <div className="flex justify-center">
+                                <div className="w-fit max-w-full overflow-x-auto">
+                                    <DataTableRenderer data={medoidsTableJson} />
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>}
 
@@ -815,9 +889,46 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                     </Button>
                                 </div>
                             </div>
-                            <DataTableRenderer data={assignmentsTableJson} />
+                            <div className="flex justify-center">
+                                <div className="w-fit max-w-full overflow-x-auto">
+                                    <DataTableRenderer data={assignmentsTableJson} />
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>}
+
+                    {/* Distance Matrix Table */}
+                    {showDistanceMatrixTable && output.distanceMatrix && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Distance Matrix</CardTitle>
+                                <CardDescription>
+                                    Sorted by cluster to highlight block patterns along the diagonal.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="mb-3 flex justify-end gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDownloadDistanceMatrixExcel}
+                                    >
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Download Excel
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDownloadDistanceMatrixCsv}
+                                    >
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Download CSV
+                                    </Button>
+                                </div>
+                                <DistanceMatrixTable matrix={output.distanceMatrix} pageSize={50} />
+                            </CardContent>
+                        </Card>
+                    )}
                 </TabsContent>
 
                 {/* EVALUATION TAB */}

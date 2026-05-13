@@ -56,7 +56,7 @@ export async function resultKMedoidsCluster(
 
         // Collect all tables
         const allTables: Table[] = [];
-        
+
         // 📊 Case Processing Summary
         const validCases = dataVariables.length;
         allTables.push({
@@ -223,7 +223,7 @@ export async function resultKMedoidsCluster(
         // Create single analytic with all results
         const analyticId = await addAnalytic(logId, {
             title: `K-Medoids Cluster Analysis`,
-            note: automaticKSelection 
+            note: automaticKSelection
                 ? `Automatic k selection: k=${automaticKSelection.optimalK} (${automaticKSelection.method})`
                 : `Manual k selection: k=${config.main.Cluster}, Algorithm: ${method}`,
         });

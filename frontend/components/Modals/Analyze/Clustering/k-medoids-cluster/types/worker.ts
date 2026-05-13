@@ -27,6 +27,10 @@ export interface ClusteringInput {
     clara_num_samples?: number;
     /** CLARA: explicit sample size per sub-sample (default: 40 + 2*k) */
     clara_sample_size?: number;
+    /** CLARANS: number of local searches to perform (default: 2) */
+    clarans_num_local?: number;
+    /** CLARANS: maximum number of neighbors to check per search (default: max(250, 1.25% of n*k)) */
+    clarans_max_neighbors?: number;
 }
 
 /**

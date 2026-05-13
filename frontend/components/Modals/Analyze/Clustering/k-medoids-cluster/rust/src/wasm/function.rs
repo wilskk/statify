@@ -261,7 +261,14 @@ fn run_clarans_clustering(
     metric: DistanceMetric,
 ) -> Result<KMedoidsOutput, JsValue> {
     // Configure CLARANS
-    let config = CLARANSConfig::new(input.n_clusters, input.data.len(), metric);
+    let mut config = CLARANSConfig::new(input.n_clusters, input.data.len(), metric);
+    
+    // Override with user values if provided
+    config.num_local = input.clarans_num_local;
+    if let Some(max_neighbors) = input.clarans_max_neighbors {
+        config.max_neighbors = max_neighbors;
+    }
+    config.random_seed = input.random_seed;
 
     // Run CLARANS
     let result = run_clarans(&input.data, &config)

@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { NormalizationMethod } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 import type {
     KMedoidsClusterOptionsProps,
     KMedoidsClusterOptionsType,
 } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 
 export const KMedoidsClusterOptions = ({
@@ -15,10 +17,16 @@ export const KMedoidsClusterOptions = ({
 }: KMedoidsClusterOptionsProps) => {
     const [optionsState, setOptionsState] = useState<KMedoidsClusterOptionsType>({
         ...data,
+        NormalizationMethod:
+            data.NormalizationMethod ?? (data.Standardize ? "zscore" : "none"),
     });
 
     useEffect(() => {
-        setOptionsState({ ...data });
+        setOptionsState({
+            ...data,
+            NormalizationMethod:
+                data.NormalizationMethod ?? (data.Standardize ? "zscore" : "none"),
+        });
     }, [data]);
 
     const handleChange = (
@@ -31,6 +39,29 @@ export const KMedoidsClusterOptions = ({
             [field]: normalizedValue,
         }));
         updateFormData(field, normalizedValue);
+    };
+
+    const handleNormalizationChange = (value: string) => {
+        const normalizedValue = (value || "none") as NormalizationMethod;
+        const shouldStandardize = normalizedValue === "zscore";
+
+        setOptionsState((prevState) => ({
+            ...prevState,
+            NormalizationMethod: normalizedValue,
+            Standardize: shouldStandardize,
+        }));
+
+        updateFormData("NormalizationMethod", normalizedValue);
+        updateFormData("Standardize", shouldStandardize);
+    };
+
+    const handleNormalizationToggle = (value: NormalizationMethod) => {
+        if (optionsState.NormalizationMethod === value) {
+            handleNormalizationChange("none");
+            return;
+        }
+
+        handleNormalizationChange(value);
     };
 
     return (
@@ -114,28 +145,66 @@ export const KMedoidsClusterOptions = ({
                                 Distance Matrix Between Medoids
                             </label>
                         </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 border-t pt-4">
+                        <Label className="font-bold">Data Tables</Label>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="ShowDistanceMatrixTable"
+                                checked={optionsState.ShowDistanceMatrixTable}
+                                onCheckedChange={(checked) =>
+                                    handleChange("ShowDistanceMatrixTable", checked)
+                                }
+                            />
+                            <label
+                                htmlFor="ShowDistanceMatrixTable"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                Tabel Matriks Jarak (Semua Objek)
+                            </label>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                            2D visualization of clusters. Centroids marked with ⊗
+                            Tabel dipaginasi untuk menjaga performa.
                         </p>
                     </div>
 
                     <div className="flex flex-col gap-2 border-t pt-4">
                         <Label className="font-bold">Preprocessing</Label>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="StandardizeDataZScore"
-                                checked={optionsState.Standardize}
-                                onCheckedChange={(checked) =>
-                                    handleChange("Standardize", checked)
+                        <RadioGroup
+                            value={optionsState.NormalizationMethod}
+                            onValueChange={handleNormalizationChange}
+                            className="gap-3"
+                        >
+                            <div
+                                className="flex items-center space-x-2"
+                                onClick={() =>
+                                    handleNormalizationToggle(NormalizationMethod.ZScore)
                                 }
-                            />
-                            <label
-                                htmlFor="StandardizeDataZScore"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             >
-                                Standarisasi Data (Z-score)
-                            </label>
-                        </div>
+                                <RadioGroupItem id="NormalizationZScore" value="zscore" />
+                                <Label
+                                    htmlFor="NormalizationZScore"
+                                    className="text-sm font-medium leading-none"
+                                >
+                                    Standarisasi Data (Z-score)
+                                </Label>
+                            </div>
+                            <div
+                                className="flex items-center space-x-2"
+                                onClick={() =>
+                                    handleNormalizationToggle(NormalizationMethod.MinMax)
+                                }
+                            >
+                                <RadioGroupItem id="NormalizationMinMax" value="minmax" />
+                                <Label
+                                    htmlFor="NormalizationMinMax"
+                                    className="text-sm font-medium leading-none"
+                                >
+                                    Normalisasi Min-Max (0-1)
+                                </Label>
+                            </div>
+                        </RadioGroup>
                     </div>
                 </div>
             </div>

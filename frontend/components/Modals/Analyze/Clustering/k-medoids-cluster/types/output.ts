@@ -106,6 +106,15 @@ export interface MedoidDistanceMatrix {
 }
 
 /**
+ * Full distance matrix for all valid cases (sorted by cluster)
+ */
+export interface DistanceMatrix {
+    labels: string[];
+    clusters: number[];
+    distances: number[][];
+}
+
+/**
  * Silhouette score details per cluster
  */
 export interface SilhouetteClusterScore {
@@ -164,6 +173,9 @@ export interface KMedoidsOutput {
     // Algorithm metadata (for output routing)
     algorithmMethod?: string;
 
+    // Normalization method used for preprocessing
+    normalizationMethod?: "none" | "zscore" | "minmax";
+
     // CLARA convergence details (shown instead of PAM iteration panel)
     claraConvergence?: ClaraConvergenceInfo;
     
@@ -181,6 +193,9 @@ export interface KMedoidsOutput {
     
     // Distance matrix
     medoidDistanceMatrix: MedoidDistanceMatrix;
+
+    // Full distance matrix (optional)
+    distanceMatrix?: DistanceMatrix;
     
     // Silhouette scores
     silhouetteScores: {
@@ -199,6 +214,7 @@ export interface KMedoidsOutput {
         showClusterSizeDistribution: boolean;
         showClusterAttributeProfile: boolean;
         showDistanceMatrixBetweenMedoids: boolean;
+        showDistanceMatrixTable: boolean;
         showClusterMedoids: boolean;
         showObjectAssignments: boolean;
         showCaseCount: boolean;

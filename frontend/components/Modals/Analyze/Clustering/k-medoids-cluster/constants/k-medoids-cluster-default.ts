@@ -13,6 +13,7 @@ import {
     InitialMedoidsStrategy,
     ClusterMode,
     AutoKMethod,
+    NormalizationMethod,
 } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 
 /**
@@ -57,7 +58,8 @@ export const KMedoidsClusterIterateDefault: KMedoidsClusterIterateType = {
     NumSamples: 5, // Only for CLARA: jumlah sampling iterations
     NumLocal: 2, // Only for CLARANS: jumlah local minima
     MaxNeighbor: null, // Only for CLARANS: akan di-set auto = max(250, 1.25% of n*(k-1))
-    Standardize: true, // Apply Z-score standardization before clustering
+    Standardize: false, // Default: no normalization unless user selects
+    NormalizationMethod: NormalizationMethod.None,
 };
 
 /**
@@ -99,9 +101,11 @@ export const KMedoidsClusterOptionsDefault: KMedoidsClusterOptionsType = {
     ShowClusterSizeDistribution: false, // Default off: tampilkan hanya jika dipilih user
     ShowClusterAttributeProfile: false, // Default off: tampilkan hanya jika dipilih user
     ShowDistanceMatrixBetweenMedoids: false, // Default off: tampilkan hanya jika dipilih user
+    ShowDistanceMatrixTable: false, // Default off: tampilkan hanya jika dipilih user
     ExcludeListWise: true, // Default: listwise deletion
     ExcludePairWise: false,
-    Standardize: true, // Default R-like behavior: scale() before pam()
+    Standardize: false, // Default: no normalization unless user selects
+    NormalizationMethod: NormalizationMethod.None,
 };
 
 export const KMedoidsClusterDefault: KMedoidsClusterType = {

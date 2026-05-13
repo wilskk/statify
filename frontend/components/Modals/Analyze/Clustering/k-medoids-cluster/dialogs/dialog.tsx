@@ -48,13 +48,13 @@ export const KMedoidsClusterDialog = ({
         id: string;
         source: string;
     } | null>(null);
-    
+
     // Use ref to avoid re-creating callbacks when updateFormData changes
     const updateFormDataRef = useRef(updateFormData);
     useEffect(() => {
         updateFormDataRef.current = updateFormData;
     }, [updateFormData]);
-    
+
     const listStateSetters: Record<
         string,
         React.Dispatch<React.SetStateAction<Variable[]>>
@@ -250,7 +250,7 @@ export const KMedoidsClusterDialog = ({
                         </div>
                     </div>
                 </div>
-                
+
                 <div className="min-h-[400px]">
                     <VariableListManager
                         availableVariables={availableVars}
@@ -272,146 +272,146 @@ export const KMedoidsClusterDialog = ({
                     </div>
                     <div className="space-y-4 p-4">
 
-                                {/* ===== MODE SELECTOR ===== */}
-                                <div className="space-y-2">
-                                    <Label className="font-semibold text-sm">Number of Clusters (k)</Label>
-                                    <RadioGroup
-                                        value={mainState.ClusterMode}
-                                        onValueChange={(val) =>
-                                            handleChange("ClusterMode", val as ClusterMode)
-                                        }
-                                        className="flex flex-col gap-2"
-                                    >
-                                        {/* --- MANUAL --- */}
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value={ClusterMode.Manual} id="mode-manual" />
-                                            <Label htmlFor="mode-manual" className="cursor-pointer font-normal">
-                                                Manual
-                                            </Label>
-                                        </div>
-
-                                        {mainState.ClusterMode === ClusterMode.Manual && (
-                                            <div className="flex items-center gap-3 ml-6">
-                                                <Label className="text-sm text-muted-foreground w-20">k =</Label>
-                                                <Input
-                                                    id="kmedoids-number-of-clusters"
-                                                    type="number"
-                                                    placeholder="2"
-                                                    value={mainState.Cluster ?? ""}
-                                                    min={2}
-                                                    onChange={(e) =>
-                                                        handleChange("Cluster", Number(e.target.value))
-                                                    }
-                                                    className="w-24"
-                                                />
-                                                <span className="text-xs text-muted-foreground">(min: 2)</span>
-                                            </div>
-                                        )}
-
-                                        {/* --- AUTOMATIC --- */}
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value={ClusterMode.Automatic} id="mode-auto" />
-                                            <Label htmlFor="mode-auto" className="cursor-pointer font-normal">
-                                                Automatic (find optimal k)
-                                            </Label>
-                                        </div>
-
-                                        {mainState.ClusterMode === ClusterMode.Automatic && (
-                                            <div className="space-y-3 ml-6 border-l-2 border-muted pl-4">
-                                                {/* Range */}
-                                                <div className="flex items-center gap-3">
-                                                    <Label className="text-sm text-muted-foreground w-20">k range:</Label>
-                                                    <Input
-                                                        id="kmedoids-auto-kmin"
-                                                        type="number"
-                                                        placeholder="2"
-                                                        value={mainState.AutoKMin ?? ""}
-                                                        min={2}
-                                                        max={(mainState.AutoKMax ?? 10) - 1}
-                                                        onChange={(e) =>
-                                                            handleChange("AutoKMin", Number(e.target.value))
-                                                        }
-                                                        className="w-20"
-                                                    />
-                                                    <span className="text-xs text-muted-foreground">to</span>
-                                                    <Input
-                                                        id="kmedoids-auto-kmax"
-                                                        type="number"
-                                                        placeholder="10"
-                                                        value={mainState.AutoKMax ?? ""}
-                                                        min={(mainState.AutoKMin ?? 2) + 1}
-                                                        onChange={(e) =>
-                                                            handleChange("AutoKMax", Number(e.target.value))
-                                                        }
-                                                        className="w-20"
-                                                    />
-                                                </div>
-                                                {/* Method */}
-                                                <div className="flex items-center gap-3">
-                                                    <Label className="text-sm text-muted-foreground w-20">Method:</Label>
-                                                    <Select
-                                                        value={mainState.AutoKMethod}
-                                                        onValueChange={(val) =>
-                                                            handleChange("AutoKMethod", val as AutoKMethod)
-                                                        }
-                                                    >
-                                                        <SelectTrigger className="w-52">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value={AutoKMethod.Silhouette}>
-                                                                Silhouette Score
-                                                            </SelectItem>
-                                                            <SelectItem value={AutoKMethod.Elbow}>
-                                                                Elbow Method
-                                                            </SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Sistem akan mengevaluasi setiap k dari kMin
-                                                    hingga kMax dan memilih k dengan skor terbaik.
-                                                </p>
-                                            </div>
-                                        )}
-                                    </RadioGroup>
+                        {/* ===== MODE SELECTOR ===== */}
+                        <div className="space-y-2">
+                            <Label className="font-semibold text-sm">Number of Clusters (k)</Label>
+                            <RadioGroup
+                                value={mainState.ClusterMode}
+                                onValueChange={(val) =>
+                                    handleChange("ClusterMode", val as ClusterMode)
+                                }
+                                className="flex flex-col gap-2"
+                            >
+                                {/* --- MANUAL --- */}
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value={ClusterMode.Manual} id="mode-manual" />
+                                    <Label htmlFor="mode-manual" className="cursor-pointer font-normal">
+                                        Manual
+                                    </Label>
                                 </div>
 
-                                {/* ===== DISTANCE METRIC ===== */}
-                                <div className="space-y-2 border-t pt-4">
-                                    <div className="flex items-center gap-2">
-                                        <Label className="font-semibold text-sm">Distance Measure</Label>
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger>
-                                                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs">
-                                                    <p className="text-xs">
-                                                        <strong>Euclidean:</strong> Geometric distance, magnitude-sensitive. Best for continuous numeric data.<br/>
-                                                        <strong>Manhattan:</strong> City-block distance, more robust to outliers.
-                                                    </p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
+                                {mainState.ClusterMode === ClusterMode.Manual && (
+                                    <div className="flex items-center gap-3 ml-6">
+                                        <Label className="text-sm text-muted-foreground w-20">k =</Label>
+                                        <Input
+                                            id="kmedoids-number-of-clusters"
+                                            type="number"
+                                            placeholder="2"
+                                            value={mainState.Cluster ?? ""}
+                                            min={2}
+                                            onChange={(e) =>
+                                                handleChange("Cluster", Number(e.target.value))
+                                            }
+                                            className="w-24"
+                                        />
+                                        <span className="text-xs text-muted-foreground">(min: 2)</span>
                                     </div>
-                                    <RadioGroup
-                                        value={mainState.DistanceMetric}
-                                        onValueChange={(value) =>
-                                            handleChange("DistanceMetric", value as DistanceMetric)
-                                        }
-                                    >
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value={DistanceMetric.Euclidean} id="euclidean" />
-                                            <Label htmlFor="euclidean" className="cursor-pointer font-normal">Euclidean distance</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value={DistanceMetric.Manhattan} id="manhattan" />
-                                            <Label htmlFor="manhattan" className="cursor-pointer font-normal">Manhattan distance (City-block)</Label>
-                                        </div>
-                                    </RadioGroup>
+                                )}
+
+                                {/* --- AUTOMATIC --- */}
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value={ClusterMode.Automatic} id="mode-auto" />
+                                    <Label htmlFor="mode-auto" className="cursor-pointer font-normal">
+                                        Automatic (find optimal k)
+                                    </Label>
                                 </div>
+
+                                {mainState.ClusterMode === ClusterMode.Automatic && (
+                                    <div className="space-y-3 ml-6 border-l-2 border-muted pl-4">
+                                        {/* Range */}
+                                        <div className="flex items-center gap-3">
+                                            <Label className="text-sm text-muted-foreground w-20">k range:</Label>
+                                            <Input
+                                                id="kmedoids-auto-kmin"
+                                                type="number"
+                                                placeholder="2"
+                                                value={mainState.AutoKMin ?? ""}
+                                                min={2}
+                                                max={(mainState.AutoKMax ?? 10) - 1}
+                                                onChange={(e) =>
+                                                    handleChange("AutoKMin", Number(e.target.value))
+                                                }
+                                                className="w-20"
+                                            />
+                                            <span className="text-xs text-muted-foreground">to</span>
+                                            <Input
+                                                id="kmedoids-auto-kmax"
+                                                type="number"
+                                                placeholder="10"
+                                                value={mainState.AutoKMax ?? ""}
+                                                min={(mainState.AutoKMin ?? 2) + 1}
+                                                onChange={(e) =>
+                                                    handleChange("AutoKMax", Number(e.target.value))
+                                                }
+                                                className="w-20"
+                                            />
+                                        </div>
+                                        {/* Method */}
+                                        <div className="flex items-center gap-3">
+                                            <Label className="text-sm text-muted-foreground w-20">Method:</Label>
+                                            <Select
+                                                value={mainState.AutoKMethod}
+                                                onValueChange={(val) =>
+                                                    handleChange("AutoKMethod", val as AutoKMethod)
+                                                }
+                                            >
+                                                <SelectTrigger className="w-52">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value={AutoKMethod.Silhouette}>
+                                                        Silhouette Score
+                                                    </SelectItem>
+                                                    <SelectItem value={AutoKMethod.Elbow}>
+                                                        Elbow Method
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Sistem akan mengevaluasi setiap k dari kMin
+                                            hingga kMax dan memilih k dengan skor terbaik.
+                                        </p>
+                                    </div>
+                                )}
+                            </RadioGroup>
+                        </div>
+
+                        {/* ===== DISTANCE METRIC ===== */}
+                        <div className="space-y-2 border-t pt-4">
+                            <div className="flex items-center gap-2">
+                                <Label className="font-semibold text-sm">Distance Measure</Label>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>
+                                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs">
+                                            <p className="text-xs">
+                                                <strong>Euclidean:</strong> Geometric distance, magnitude-sensitive. Best for continuous numeric data.<br />
+                                                <strong>Manhattan:</strong> City-block distance, more robust to outliers.
+                                            </p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </div>
+                            <RadioGroup
+                                value={mainState.DistanceMetric}
+                                onValueChange={(value) =>
+                                    handleChange("DistanceMetric", value as DistanceMetric)
+                                }
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value={DistanceMetric.Euclidean} id="euclidean" />
+                                    <Label htmlFor="euclidean" className="cursor-pointer font-normal">Euclidean distance</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value={DistanceMetric.Manhattan} id="manhattan" />
+                                    <Label htmlFor="manhattan" className="cursor-pointer font-normal">Manhattan distance (City-block)</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -2,7 +2,7 @@
 import { useResultStore } from "@/stores/useResultStore";
 import type { Table } from "@/types/Table";
 import type { Variable } from "@/types/Variable";
-import type { KMedoidsOutput, KMedoidsSummary, ObjectAssignment, MedoidInfo, ClusterProfile, IterationHistory, MedoidDistanceMatrix, SilhouetteClusterScore } from "../types/output";
+import type { KMedoidsOutput, KMedoidsSummary, ObjectAssignment, MedoidInfo, ClusterProfile, IterationHistory, MedoidDistanceMatrix, DistanceMatrix, SilhouetteClusterScore } from "../types/output";
 import { buildCaseProcessingSummary, recoverMedoidsFromMismatch } from "./k-medoids-cluster-guards";
 
 interface ClusteringResult {
@@ -58,6 +58,29 @@ interface KMedoidsAnalysisResult {
     kChartSelection?: AutomaticKSelection;
 }
 
+type NormalizationKind = "none" | "zscore" | "minmax";
+
+function resolveNormalizationMethod(config: any): NormalizationKind {
+    const methodFromOptions = config?.options?.NormalizationMethod as NormalizationKind | undefined;
+    const methodFromIterate = config?.iterate?.NormalizationMethod as NormalizationKind | undefined;
+
+    if (methodFromOptions) return methodFromOptions;
+    if (methodFromIterate) return methodFromIterate;
+
+    const hasStandardizeFlag =
+        config?.options?.Standardize !== undefined ||
+        config?.iterate?.Standardize !== undefined;
+    const standardizeFlag =
+        config?.options?.Standardize ??
+        config?.iterate?.Standardize;
+
+    if (hasStandardizeFlag) {
+        return standardizeFlag ? "zscore" : "none";
+    }
+
+    return "none";
+}
+
 /**
  * Calculate Euclidean distance between two points
  * Returns 0 if points are invalid
@@ -73,13 +96,38 @@ function euclideanDistance(p1: number[], p2: number[]): number {
 }
 
 /**
+ * Calculate Manhattan distance between two points
+ */
+function manhattanDistance(p1: number[], p2: number[]): number {
+    if (!p1 || !p2 || p1.length !== p2.length) return 0;
+    let sum = 0;
+    for (let i = 0; i < p1.length; i++) {
+        sum += Math.abs((p1[i] || 0) - (p2[i] || 0));
+    }
+    return sum;
+}
+
+type DistanceMetricKind = "euclidean" | "manhattan";
+
+function calculateDistance(
+    p1: number[],
+    p2: number[],
+    metric: DistanceMetricKind
+): number {
+    return metric === "manhattan"
+        ? manhattanDistance(p1, p2)
+        : euclideanDistance(p1, p2);
+}
+
+/**
  * Calculate silhouette score for a single object (TypeScript fallback)
  */
 function calculateObjectSilhouette(
     objectIdx: number,
     cluster: number,
     dataMatrix: number[][],
-    labels: number[]
+    labels: number[],
+    metric: DistanceMetricKind
 ): number {
     const n = dataMatrix.length;
     const point = dataMatrix[objectIdx];
@@ -88,7 +136,7 @@ function calculateObjectSilhouette(
     let sameClusterDistances: number[] = [];
     for (let j = 0; j < n; j++) {
         if (labels[j] === cluster && j !== objectIdx) {
-            sameClusterDistances.push(euclideanDistance(point, dataMatrix[j]));
+            sameClusterDistances.push(calculateDistance(point, dataMatrix[j], metric));
         }
     }
     
@@ -104,7 +152,7 @@ function calculateObjectSilhouette(
         let otherDistances: number[] = [];
         for (let j = 0; j < n; j++) {
             if (labels[j] === otherCluster) {
-                otherDistances.push(euclideanDistance(point, dataMatrix[j]));
+                otherDistances.push(calculateDistance(point, dataMatrix[j], metric));
             }
         }
         
@@ -130,6 +178,7 @@ function calculateObjectSilhouette(
 async function calculateSilhouetteScoresAsync(
     dataMatrix: number[][],
     labels: number[],
+    metric: DistanceMetricKind,
     chunkSize: number = 50
 ): Promise<number[]> {
     const n = dataMatrix.length;
@@ -140,7 +189,7 @@ async function calculateSilhouetteScoresAsync(
         
         // Calculate chunk
         for (let j = i; j < end; j++) {
-            scores[j] = calculateObjectSilhouette(j, labels[j], dataMatrix, labels);
+            scores[j] = calculateObjectSilhouette(j, labels[j], dataMatrix, labels, metric);
         }
         
         // Yield to browser to keep UI responsive
@@ -157,7 +206,8 @@ async function calculateSilhouetteScoresAsync(
  */
 function calculateMedoidDistanceMatrix(
     standardizedMatrix: number[][],
-    medoidFilteredIndices: number[]
+    medoidFilteredIndices: number[],
+    metric: DistanceMetricKind
 ): MedoidDistanceMatrix {
     const k = medoidFilteredIndices.length;
     const distances: number[][] = Array(k).fill(0).map(() => Array(k).fill(0));
@@ -169,7 +219,7 @@ function calculateMedoidDistanceMatrix(
             const point1 = standardizedMatrix[medoid1] || [];
             const point2 = standardizedMatrix[medoid2] || [];
             
-            const dist = euclideanDistance(point1, point2);
+            const dist = calculateDistance(point1, point2, metric);
             distances[i][j] = dist;
             distances[j][i] = dist;
         }
@@ -179,6 +229,38 @@ function calculateMedoidDistanceMatrix(
         clusterLabels: Array.from({ length: k }, (_, i) => i + 1),
         distances
     };
+}
+
+/**
+ * Build full distance matrix for all valid rows (sorted by cluster label)
+ */
+async function buildDistanceMatrix(
+    clusteringMatrix: number[][],
+    orderedFilteredIndices: number[],
+    labels: string[],
+    clusters: number[],
+    metric: DistanceMetricKind,
+    yieldToUI: () => Promise<void>
+): Promise<DistanceMatrix> {
+    const n = orderedFilteredIndices.length;
+    const distances: number[][] = Array(n).fill(0).map(() => Array(n).fill(0));
+
+    for (let i = 0; i < n; i++) {
+        const idxI = orderedFilteredIndices[i];
+        const pointI = clusteringMatrix[idxI] || [];
+        for (let j = i + 1; j < n; j++) {
+            const idxJ = orderedFilteredIndices[j];
+            const pointJ = clusteringMatrix[idxJ] || [];
+            const dist = calculateDistance(pointI, pointJ, metric);
+            distances[i][j] = dist;
+            distances[j][i] = dist;
+        }
+        if (i % 25 === 0) {
+            await yieldToUI();
+        }
+    }
+
+    return { labels, clusters, distances };
 }
 
 /**
@@ -220,10 +302,15 @@ export async function generateComprehensiveKMedoidsOutput(
 
         const method = config.iterate.Method || "PAM";
         const normalizedMethod = String(method).toUpperCase();
-        const useStandardization =
-            config?.options?.Standardize ??
-            config?.iterate?.Standardize ??
-            true;
+        const normalizationMethod = resolveNormalizationMethod(config);
+        const distanceMetric: DistanceMetricKind =
+            config?.main?.DistanceMetric === "manhattan" ? "manhattan" : "euclidean";
+        const useNormalization = normalizationMethod !== "none";
+        const normalizationLabel = normalizationMethod === "zscore"
+            ? "Z-score"
+            : normalizationMethod === "minmax"
+            ? "Min-Max"
+            : "Tanpa normalisasi";
 
         // ── Authoritative k: prefer config value over WASM-derived medoid count ──
         // result.medoids.length MUST equal the configured k.  If they differ it
@@ -333,7 +420,11 @@ export async function generateComprehensiveKMedoidsOutput(
         if (result.silhouette_scores && result.silhouette_scores.length === n) {
             silhouetteScores = result.silhouette_scores;
         } else {
-            silhouetteScores = await calculateSilhouetteScoresAsync(clusteringMatrix, safeLabels);
+            silhouetteScores = await calculateSilhouetteScoresAsync(
+                clusteringMatrix,
+                safeLabels,
+                distanceMetric
+            );
         }
 
         const averageSilhouette = silhouetteScores.reduce((a, b) => a + b, 0) / silhouetteScores.length;
@@ -411,7 +502,7 @@ export async function generateComprehensiveKMedoidsOutput(
                 const medoidPoint = medoidFiltIdx != null && clusteringMatrix[medoidFiltIdx] ? clusteringMatrix[medoidFiltIdx] : [];
                 const objectPoint = clusteringMatrix[filtIdx] || [];
                 distanceToMedoid = medoidPoint.length > 0 && objectPoint.length > 0
-                    ? euclideanDistance(objectPoint, medoidPoint)
+                    ? calculateDistance(objectPoint, medoidPoint, distanceMetric)
                     : 0;
             }
 
@@ -439,9 +530,42 @@ export async function generateComprehensiveKMedoidsOutput(
                     ? silhouetteScores[filtIdx]
                     : 0,
                 attributes,
-                standardizedAttributes: useStandardization ? standardizedAttributes : undefined,
+                standardizedAttributes: useNormalization ? standardizedAttributes : undefined,
             };
         });
+
+        const shouldBuildDistanceMatrix =
+            config?.options?.ShowDistanceMatrixTable ?? false;
+        let distanceMatrix: DistanceMatrix | undefined;
+
+        if (shouldBuildDistanceMatrix) {
+            const orderMeta = validRowIndices.map((origIdx, filtIdx) => {
+                const row = dataVariables[origIdx];
+                return {
+                    filtIdx,
+                    origIdx,
+                    label: getCaseLabel(row, origIdx + 1),
+                    clusterLabel: (safeLabels[filtIdx] ?? 0) + 1,
+                };
+            });
+
+            orderMeta.sort((a, b) =>
+                a.clusterLabel - b.clusterLabel || a.origIdx - b.origIdx
+            );
+
+            const orderedFilteredIndices = orderMeta.map(item => item.filtIdx);
+            const orderedLabels = orderMeta.map(item => item.label);
+            const orderedClusters = orderMeta.map(item => item.clusterLabel);
+
+            distanceMatrix = await buildDistanceMatrix(
+                clusteringMatrix,
+                orderedFilteredIndices,
+                orderedLabels,
+                orderedClusters,
+                distanceMetric,
+                yieldToUI
+            );
+        }
 
         // Single source of truth (R-compatible): gunakan nilai dari WASM.
         // Jangan hitung ulang total cost di JS agar tidak menyimpang dari R.
@@ -656,7 +780,8 @@ export async function generateComprehensiveKMedoidsOutput(
         // (same space used for PAM clustering).
         const medoidDistanceMatrix = calculateMedoidDistanceMatrix(
             clusteringMatrix,
-            safeMedoids
+            safeMedoids,
+            distanceMetric
         );
 
         // Silhouette scores per cluster
@@ -764,6 +889,7 @@ export async function generateComprehensiveKMedoidsOutput(
             clusterProfiles,
             iterationHistory,
             algorithmMethod: normalizedMethod,
+            normalizationMethod,
             claraConvergence: normalizedMethod === "CLARA"
                 ? {
                     numSamples: claraNumSamples,
@@ -794,6 +920,7 @@ export async function generateComprehensiveKMedoidsOutput(
             clusterMode: config?.main?.ClusterMode === "automatic" ? "automatic" : "manual",
             autoKMethod: config?.main?.AutoKMethod === "elbow" ? "elbow" : "silhouette",
             medoidDistanceMatrix,
+            distanceMatrix,
             silhouetteScores: {
                 overall: isFinite(averageSilhouette) ? averageSilhouette : 0,
                 perCluster: silhouettePerCluster,
@@ -811,6 +938,7 @@ export async function generateComprehensiveKMedoidsOutput(
                 showClusterSizeDistribution: config?.options?.ShowClusterSizeDistribution ?? false,
                 showClusterAttributeProfile: config?.options?.ShowClusterAttributeProfile ?? false,
                 showDistanceMatrixBetweenMedoids: config?.options?.ShowDistanceMatrixBetweenMedoids ?? false,
+                showDistanceMatrixTable: config?.options?.ShowDistanceMatrixTable ?? false,
                 showClusterMedoids: config?.results?.ShowClusterMedoids ?? true,
                 showObjectAssignments: config?.results?.ShowClusterMembership ?? false,
                 showCaseCount: config?.results?.ShowCaseCount ?? true,
@@ -841,66 +969,22 @@ export async function generateComprehensiveKMedoidsOutput(
         allTables.push({
             key: "case_processing_summary",
             title: "Case Processing Summary",
-            columnHeaders: [
-                {
-                    header: "Cases",
-                    key: "cases",
-                    children: [
-                        {
-                            header: "Valid",
-                            key: "valid",
-                            children: [
-                                { header: "N", key: "valid_n" },
-                                { header: "Percent", key: "valid_percent" },
-                            ],
-                        },
-                        {
-                            header: "Missing",
-                            key: "missing",
-                            children: [
-                                { header: "N", key: "missing_n" },
-                                { header: "Percent", key: "missing_percent" },
-                            ],
-                        },
-                        {
-                            header: "Total",
-                            key: "total",
-                            children: [
-                                { header: "N", key: "total_n" },
-                                { header: "Percent", key: "total_percent" },
-                            ],
-                        },
-                    ],
-                },
-            ],
+            columnHeaders: [{ header: "Metric" }, { header: "Value" }],
             rows: [
-                {
-                    rowHeader: [""],
-                    valid_n: caseSummary.validN.toString(),
-                    valid_percent: caseSummary.validPercent,
-                    missing_n: caseSummary.missingN.toString(),
-                    missing_percent: caseSummary.missingPercent,
-                    total_n: caseSummary.totalN.toString(),
-                    total_percent: caseSummary.totalPercent,
-                },
-                {
-                    rowHeader: [`a. ${method} Method`],
-                },
-                {
-                    rowHeader: [`b. Data awal: ${caseSummary.initialN}`],
-                },
-                {
-                    rowHeader: [`c. Setelah preprocessing: ${caseSummary.preprocessedN}`],
-                },
-                {
-                    rowHeader: [`d. Missing rows dibuang: ${caseSummary.missingRowsRemoved}`],
-                },
-                {
-                    rowHeader: [`e. Outlier rows dibuang (IQR): ${caseSummary.outlierRowsRemoved}`],
-                },
-                {
-                    rowHeader: [`f. Missing per variabel: ${caseSummary.missingVariablesText}`],
-                },
+                { rowHeader: [], Metric: "Valid (N)", Value: caseSummary.validN.toString() },
+                { rowHeader: [], Metric: "Valid (%)", Value: caseSummary.validPercent },
+                { rowHeader: [], Metric: "Missing (N)", Value: caseSummary.missingN.toString() },
+                { rowHeader: [], Metric: "Missing (%)", Value: caseSummary.missingPercent },
+                { rowHeader: [], Metric: "Total (N)", Value: caseSummary.totalN.toString() },
+                { rowHeader: [], Metric: "Total (%)", Value: caseSummary.totalPercent },
+                { rowHeader: [], Metric: "Method", Value: `${method} Method` },
+                { rowHeader: [], Metric: "Distance Measure", Value: config.main.DistanceMetric || "Euclidean" },
+                { rowHeader: [], Metric: "Data awal", Value: caseSummary.initialN.toString() },
+                { rowHeader: [], Metric: "Setelah preprocessing", Value: caseSummary.preprocessedN.toString() },
+                { rowHeader: [], Metric: "Missing rows dibuang", Value: caseSummary.missingRowsRemoved.toString() },
+                { rowHeader: [], Metric: "Outlier rows dibuang (IQR)", Value: caseSummary.outlierRowsRemoved.toString() },
+                { rowHeader: [], Metric: "Missing per variabel", Value: caseSummary.missingVariablesText },
+                { rowHeader: [], Metric: "Metode normalisasi", Value: normalizationLabel },
             ],
         });
 
@@ -912,6 +996,7 @@ export async function generateComprehensiveKMedoidsOutput(
             rows: [
                 { rowHeader: [], Metric: "Number of Clusters", Value: k.toString() },
                 { rowHeader: [], Metric: "Total Cases", Value: n.toString() },
+                { rowHeader: [], Metric: "Normalization", Value: normalizationLabel },
                 { rowHeader: [], Metric: "Average Cost (BUILD)", Value: buildCost != null && n > 0 ? (buildCost / n).toFixed(6) : "N/A" },
                 { rowHeader: [], Metric: "Average Cost (Objective)", Value: avgCost.toFixed(6) },
                 { rowHeader: [], Metric: "Total Cost (BUILD)", Value: buildCost != null ? buildCost.toFixed(4) : "N/A" },
@@ -949,20 +1034,20 @@ export async function generateComprehensiveKMedoidsOutput(
         });
 
         // Medoids table
-        const medoidStandardizedValues = useStandardization
+        const medoidStandardizedValues = useNormalization
             ? medoids.flatMap((medoid) =>
                   variables.map((v) => medoid.standardizedAttributes?.[v.name] ?? 0)
               )
             : [];
         const allMedoidZScoresNearZero =
-            useStandardization &&
+            useNormalization &&
             medoidStandardizedValues.length > 0 &&
             medoidStandardizedValues.every((v) => Math.abs(v) < 1e-9);
 
         allTables.push({
             key: "medoids",
-            title: useStandardization
-                ? "Final Medoids (Standardized Z-score)"
+            title: useNormalization
+                ? `Final Medoids (${normalizationLabel})`
                 : "Final Medoids (Original Scale)",
             columnHeaders: [
                 { header: "Cluster", key: "Cluster" },
@@ -975,7 +1060,7 @@ export async function generateComprehensiveKMedoidsOutput(
                 MedoidID: `★ ${medoid.objectId}`,
                 ...Object.fromEntries(
                     variables.map(v => {
-                        if (useStandardization) {
+                        if (useNormalization) {
                             const standardizedValue = medoid.standardizedAttributes?.[v.name];
                             if (typeof standardizedValue === 'number' && isFinite(standardizedValue)) {
                                 return [v.name, standardizedValue.toFixed(4)];
@@ -991,7 +1076,7 @@ export async function generateComprehensiveKMedoidsOutput(
                     })
                 )
             })),
-            ...(allMedoidZScoresNearZero
+                        ...(allMedoidZScoresNearZero && normalizationMethod === "zscore"
                 ? {
                       footer:
                           "Semua nilai Z-score medoid ~0. Ini biasanya terjadi ketika variabel yang dipakai memiliki variansi sangat kecil/konstan pada data valid setelah preprocessing.",

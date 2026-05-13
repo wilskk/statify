@@ -149,7 +149,7 @@ export const KMedoidsClusterContainer = ({
             const progressToast = toast.loading(
                 `Initializing clustering... (${dataSize} cases, ${n_init} runs)`
             );
-            
+
             try {
                 const result = await analyzeKMedoidsCluster({
                     configData: newFormData,
@@ -159,13 +159,13 @@ export const KMedoidsClusterContainer = ({
                     useWorker: true, // Try to use web worker (auto-fallback to direct if not available)
                     onProgress: (progress) => {
                         // Update toast with progress
-                        const statusMsg = progress.stage === "clustering" 
+                        const statusMsg = progress.stage === "clustering"
                             ? `${progress.message} (running in background)`
                             : progress.message;
                         toast.loading(statusMsg, { id: progressToast });
                     },
                 });
-                
+
                 toast.dismiss(progressToast);
 
                 if (result.success) {
@@ -388,7 +388,7 @@ export const KMedoidsClusterContainer = ({
                     <Button
                         onClick={handleRunWithMissingCheck}
                         disabled={
-                            !formData.main.TargetVar || 
+                            !formData.main.TargetVar ||
                             formData.main.TargetVar.length === 0 ||
                             (formData.main.ClusterMode === ClusterMode.Manual && (!formData.main.Cluster || formData.main.Cluster < 2)) ||
                             (formData.main.ClusterMode === ClusterMode.Automatic && (!formData.main.AutoKMin || !formData.main.AutoKMax || formData.main.AutoKMin >= formData.main.AutoKMax)) ||

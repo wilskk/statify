@@ -22,6 +22,10 @@ pub struct KMedoidsInput {
     pub clara_num_samples: usize, // CLARA: number of sub-samples (default 5)
     #[serde(default)]
     pub clara_sample_size: Option<usize>, // CLARA: explicit sample size (default: 40 + 2*k)
+    #[serde(default = "default_clarans_num_local")]
+    pub clarans_num_local: usize, // CLARANS: number of local searches (default 2)
+    #[serde(default)]
+    pub clarans_max_neighbors: Option<usize>, // CLARANS: explicit max neighbors
 }
 
 fn default_n_init() -> usize { 10 }
@@ -29,6 +33,7 @@ fn default_convergence_tolerance() -> f64 { 0.0 }
 fn default_use_build_phase() -> bool { true }
 fn default_use_r_implementation() -> bool { true }
 fn default_clara_num_samples() -> usize { 5 }
+fn default_clarans_num_local() -> usize { 2 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KMedoidsOutput {

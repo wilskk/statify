@@ -37,6 +37,8 @@ mod tests {
             use_r_implementation: Some(true),
             clara_num_samples: 5,
             clara_sample_size: None,
+            clarans_num_local: 2,
+            clarans_max_neighbors: None,
         };
 
         assert!(validate_input(&input).is_err());
@@ -57,6 +59,8 @@ mod tests {
             use_r_implementation: Some(true),
             clara_num_samples: 5,
             clara_sample_size: None,
+            clarans_num_local: 2,
+            clarans_max_neighbors: None,
         };
 
         assert!(validate_input(&input).is_err());
@@ -77,6 +81,8 @@ mod tests {
             use_r_implementation: Some(true),
             clara_num_samples: 5,
             clara_sample_size: None,
+            clarans_num_local: 2,
+            clarans_max_neighbors: None,
         };
 
         assert!(validate_input(&input).is_ok());

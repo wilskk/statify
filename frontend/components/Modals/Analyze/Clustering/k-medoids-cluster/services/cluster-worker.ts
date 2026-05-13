@@ -23,7 +23,22 @@ function workerEuclidean(a: number[], b: number[]): number {
     return Math.sqrt(s);
 }
 
-function computeSilhouette(data: number[][], labels: number[], nClusters: number): number {
+function workerManhattan(a: number[], b: number[]): number {
+    let s = 0;
+    for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
+    return s;
+}
+
+function workerDistance(a: number[], b: number[], metric: "euclidean" | "manhattan"): number {
+    return metric === "manhattan" ? workerManhattan(a, b) : workerEuclidean(a, b);
+}
+
+function computeSilhouette(
+    data: number[][],
+    labels: number[],
+    nClusters: number,
+    metric: "euclidean" | "manhattan"
+): number {
     const n = data.length;
     if (nClusters <= 1 || nClusters >= n || n === 0) return 0;
 
@@ -52,7 +67,7 @@ function computeSilhouette(data: number[][], labels: number[], nClusters: number
         const same = clusters[ci];
         let a = 0;
         if (same.length > 1) {
-            for (const j of same) if (i !== j) a += workerEuclidean(sampleData[i], sampleData[j]);
+            for (const j of same) if (i !== j) a += workerDistance(sampleData[i], sampleData[j], metric);
             a /= (same.length - 1);
         }
         let b = Infinity;
@@ -61,7 +76,7 @@ function computeSilhouette(data: number[][], labels: number[], nClusters: number
             const op = clusters[oc];
             if (op.length === 0) continue;
             let d = 0;
-            for (const j of op) d += workerEuclidean(sampleData[i], sampleData[j]);
+            for (const j of op) d += workerDistance(sampleData[i], sampleData[j], metric);
             b = Math.min(b, d / op.length);
         }
         total += b === Infinity ? 0 : (b - a) / Math.max(a, b);
@@ -69,11 +84,17 @@ function computeSilhouette(data: number[][], labels: number[], nClusters: number
     return total / sn;
 }
 
-function computeWCSS(data: number[][], labels: number[], medoidIndices: number[]): number {
+function computeWCSS(
+    data: number[][],
+    labels: number[],
+    medoidIndices: number[],
+    metric: "euclidean" | "manhattan"
+): number {
     let wcss = 0;
     for (let i = 0; i < data.length; i++) {
         const m = medoidIndices[labels[i]];
-        wcss += workerEuclidean(data[i], data[m]) ** 2;
+        const dist = workerDistance(data[i], data[m], metric);
+        wcss += metric === "manhattan" ? dist : dist ** 2;
     }
     return wcss;
 }
@@ -84,7 +105,12 @@ function computeWCSS(data: number[][], labels: number[], medoidIndices: number[]
  * points — avoids O(n²) cost for large datasets while keeping representative scores.
  */
 const MAX_PER_OBJECT = 2000;
-function computeSilhouettePerObject(data: number[][], labels: number[], nClusters: number): number[] {
+function computeSilhouettePerObject(
+    data: number[][],
+    labels: number[],
+    nClusters: number,
+    metric: "euclidean" | "manhattan"
+): number[] {
     const n = data.length;
     if (nClusters <= 1 || nClusters >= n || n === 0) return new Array(n).fill(0);
 
@@ -112,7 +138,7 @@ function computeSilhouettePerObject(data: number[][], labels: number[], nCluster
         const same = clusters[ci];
         let a = 0;
         if (same.length > 1) {
-            for (const j of same) if (i !== j) a += workerEuclidean(data[i], data[j]);
+            for (const j of same) if (i !== j) a += workerDistance(data[i], data[j], metric);
             a /= same.length - 1;
         }
         let b = Infinity;
@@ -121,7 +147,7 @@ function computeSilhouettePerObject(data: number[][], labels: number[], nCluster
             const op = clusters[oc];
             if (op.length === 0) continue;
             let d = 0;
-            for (const j of op) d += workerEuclidean(data[i], data[j]);
+            for (const j of op) d += workerDistance(data[i], data[j], metric);
             b = Math.min(b, d / op.length);
         }
         scores[i] = b === Infinity ? 0 : (b - a) / Math.max(a, b);
@@ -391,6 +417,8 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                 use_r_implementation: input.use_r_implementation ?? true,
                 clara_num_samples: input.clara_num_samples ?? 5,
                 ...(input.clara_sample_size != null ? { clara_sample_size: input.clara_sample_size } : {}),
+                clarans_num_local: input.clarans_num_local ?? 2,
+                ...(input.clarans_max_neighbors != null ? { clarans_max_neighbors: input.clarans_max_neighbors } : {}),
             };
             sendProgress("clustering", 40, `Running ${input.method} algorithm…`);
             console.log("WASM Input:", wasmInput);
@@ -468,13 +496,23 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
 
         // Priority 3: JS fallback (O(n²) in worker thread — non-blocking for main UI)
         if (silhouettePerObject.length !== resolvedData.length) {
-            silhouettePerObject = computeSilhouettePerObject(resolvedData, labels, input.n_clusters);
+            silhouettePerObject = computeSilhouettePerObject(
+                resolvedData,
+                labels,
+                input.n_clusters,
+                input.distance_metric || "euclidean"
+            );
         }
         silhouetteScore = silhouettePerObject.length > 0
             ? silhouettePerObject.reduce((s, v) => s + v, 0) / silhouettePerObject.length
             : 0;
 
-        const wcssScore = computeWCSS(resolvedData, labels, medoids);
+        const wcssScore = computeWCSS(
+            resolvedData,
+            labels,
+            medoids,
+            input.distance_metric || "euclidean"
+        );
 
         // distances_to_medoids from WASM is the authoritative source — computed
         // from the exact same distance matrix used for PAM (matches R pam() output).
@@ -646,6 +684,7 @@ async function runClusteringRange(input: ClusteringRangeInput, requestId?: numbe
 
         // Map WASM output and compute silhouette/WCSS in worker (off main thread).
         // Use rangeData for scoring — labels/medoids are indices into rangeData.
+        const metric = input.distance_metric || "euclidean";
         const items: ClusteringRangeItem[] = rawResults.map((item: any) => {
             const labels: number[] = item.cluster_assignments || [];
             const medoids: number[] = item.medoids_indices || [];
@@ -654,7 +693,7 @@ async function runClusteringRange(input: ClusteringRangeInput, requestId?: numbe
             // Fall back to the JS computation only if the field is absent (old build).
             const silhouetteScore = typeof item.silhouette_overall === "number"
                 ? item.silhouette_overall
-                : computeSilhouette(rangeData, labels, k);
+                : computeSilhouette(rangeData, labels, k, metric);
             return {
                 k,
                 labels,
@@ -664,9 +703,13 @@ async function runClusteringRange(input: ClusteringRangeInput, requestId?: numbe
                 converged: item.converged || false,
                 cost_history: item.cost_history || [],
                 silhouetteScore,
-                wcssScore: computeWCSS(rangeData, labels, medoids),
+                wcssScore: computeWCSS(rangeData, labels, medoids, metric),
             };
         });
+
+        console.log(`[Worker] Auto-k score details (metric=${metric}):`,
+            items.map((item) => ({ k: item.k, silhouette: item.silhouetteScore, wcss: item.wcssScore }))
+        );
 
         sendProgress("complete", 100, "Range analysis complete!");
         postMessage({ type: "range_success", results: items, requestId } as WorkerResponseMessage);

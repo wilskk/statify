@@ -28,11 +28,11 @@ export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({
     const averageBuildCost = summary.buildCost != null && summary.numCases > 0
         ? summary.buildCost / summary.numCases
         : null;
-    const silhouetteQuality = 
+    const silhouetteQuality =
         avgScore >= 0.7 ? { label: "Very Strong", color: "text-green-600" } :
-        avgScore >= 0.5 ? { label: "Strong", color: "text-blue-600" } :
-        avgScore >= 0.3 ? { label: "Moderate", color: "text-yellow-600" } :
-        { label: "Weak", color: "text-red-600" };
+            avgScore >= 0.5 ? { label: "Strong", color: "text-blue-600" } :
+                avgScore >= 0.3 ? { label: "Moderate", color: "text-yellow-600" } :
+                    { label: "Weak", color: "text-red-600" };
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -57,21 +57,21 @@ export const KMedoidsSummaryCards: React.FC<SummaryCardsProps> = ({
                         <BarChart3 className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 xl:grid-cols-3 xl:gap-5">
                             <div className="min-w-0">
-                                <div className="text-2xl font-bold">
+                                <div className="text-base font-bold leading-tight tabular-nums sm:text-lg xl:text-xl">
                                     {isFinite(totalSwapCost) ? totalSwapCost.toFixed(4) : "N/A"}
                                 </div>
                                 <p className="text-xs text-muted-foreground">Total Cost (SWAP)</p>
                             </div>
                             <div className="min-w-0">
-                                <div className="text-2xl font-bold">
+                                <div className="text-base font-bold leading-tight tabular-nums sm:text-lg xl:text-xl">
                                     {averageBuildCost != null && isFinite(averageBuildCost) ? averageBuildCost.toFixed(6) : 'N/A'}
                                 </div>
                                 <p className="text-xs text-muted-foreground">Average Cost (BUILD)</p>
                             </div>
                             <div className="min-w-0">
-                                <div className="text-2xl font-bold">
+                                <div className="text-base font-bold leading-tight tabular-nums sm:text-lg xl:text-xl">
                                     {isFinite(averageSwapCost) ? averageSwapCost.toFixed(6) : 'N/A'}
                                 </div>
                                 <p className="text-xs text-muted-foreground">Average Cost (SWAP)</p>

@@ -43,6 +43,12 @@ type ZScoreResult = {
     stdDevs: number[];
 };
 
+type MinMaxResult = {
+    matrix: number[][];
+    mins: number[];
+    maxs: number[];
+};
+
 let wasmInitialized = false;
 let wasmModuleCache: WasmModule | null = null;
 let wasmImportPromise: Promise<WasmModule> | null = null;
@@ -163,6 +169,62 @@ function standardizeZScore(matrix: number[][]): ZScoreResult {
 }
 
 /**
+ * Normalize matrix with Min-Max scaling to [0, 1] per variable.
+ */
+function normalizeMinMax(matrix: number[][]): MinMaxResult {
+    if (matrix.length === 0) {
+        return { matrix: [], mins: [], maxs: [] };
+    }
+
+    const nCols = matrix[0].length;
+    const mins = Array.from({ length: nCols }, (_, col) =>
+        Math.min(...matrix.map(row => row[col]))
+    );
+    const maxs = Array.from({ length: nCols }, (_, col) =>
+        Math.max(...matrix.map(row => row[col]))
+    );
+
+    const normalized = matrix.map(row =>
+        row.map((value, col) => {
+            const range = maxs[col] - mins[col];
+            if (range > 1e-12) {
+                return (value - mins[col]) / range;
+            }
+            return 0.5;
+        })
+    );
+
+    return {
+        matrix: normalized,
+        mins,
+        maxs,
+    };
+}
+
+type NormalizationKind = "none" | "zscore" | "minmax";
+
+function resolveNormalizationMethod(configData: KMedoidsClusterType): NormalizationKind {
+    const methodFromOptions = configData.options?.NormalizationMethod as NormalizationKind | undefined;
+    const methodFromIterate = configData.iterate?.NormalizationMethod as NormalizationKind | undefined;
+
+    if (methodFromOptions) return methodFromOptions;
+    if (methodFromIterate) return methodFromIterate;
+
+    const hasStandardizeFlag =
+        configData.options?.Standardize !== undefined ||
+        configData.iterate?.Standardize !== undefined;
+    const standardizeFlag =
+        configData.options?.Standardize ??
+        configData.iterate?.Standardize;
+
+    if (hasStandardizeFlag) {
+        return standardizeFlag ? "zscore" : "none";
+    }
+
+    return "none";
+}
+
+/**
  * Calculate Euclidean distance between two points
  */
 function euclideanDistance(p1: number[], p2: number[]): number {
@@ -171,6 +233,23 @@ function euclideanDistance(p1: number[], p2: number[]): number {
         sum += Math.pow(p1[i] - p2[i], 2);
     }
     return Math.sqrt(sum);
+}
+
+/**
+ * Calculate Manhattan distance between two points
+ */
+function manhattanDistance(p1: number[], p2: number[]): number {
+    let sum = 0;
+    for (let i = 0; i < p1.length; i++) {
+        sum += Math.abs(p1[i] - p2[i]);
+    }
+    return sum;
+}
+
+function calculateDistance(p1: number[], p2: number[], metric: DistanceMetric): number {
+    return metric === "manhattan"
+        ? manhattanDistance(p1, p2)
+        : euclideanDistance(p1, p2);
 }
 
 /**
@@ -184,7 +263,8 @@ const MAX_SILHOUETTE_SAMPLE = 300;
 function calculateSilhouetteScore(
     data: number[][],
     labels: number[],
-    n_clusters: number
+    n_clusters: number,
+    metric: DistanceMetric
 ): number {
     if (!labels || !Array.isArray(labels) || labels.length === 0) return 0;
     const n = data.length;
@@ -228,7 +308,7 @@ function calculateSilhouetteScore(
         if (cluster.length > 1) {
             for (const j of cluster) {
                 if (i !== j) {
-                    a += euclideanDistance(sampleData[i], sampleData[j]);
+                    a += calculateDistance(sampleData[i], sampleData[j], metric);
                 }
             }
             a /= (cluster.length - 1);
@@ -242,7 +322,7 @@ function calculateSilhouetteScore(
             if (otherPoints.length === 0) continue;
             let avgDist = 0;
             for (const j of otherPoints) {
-                avgDist += euclideanDistance(sampleData[i], sampleData[j]);
+                avgDist += calculateDistance(sampleData[i], sampleData[j], metric);
             }
             avgDist /= otherPoints.length;
             b = Math.min(b, avgDist);
@@ -261,13 +341,15 @@ function calculateSilhouetteScore(
 function calculateWCSS(
     data: number[][],
     labels: number[],
-    medoidIndices: number[]
+    medoidIndices: number[],
+    metric: DistanceMetric
 ): number {
     let wcss = 0;
     for (let i = 0; i < data.length; i++) {
         const clusterIdx = labels[i];
         const medoidIdx = medoidIndices[clusterIdx];
-        wcss += Math.pow(euclideanDistance(data[i], data[medoidIdx]), 2);
+        const dist = calculateDistance(data[i], data[medoidIdx], metric);
+        wcss += metric === "euclidean" ? dist * dist : dist;
     }
     return wcss;
 }
@@ -621,19 +703,15 @@ export async function analyzeKMedoidsCluster({
         const dataMatrix = missingHandled.matrix;
         const processedDataRows = missingHandled.rows;
 
-        const useStandardization =
-            configData.options?.Standardize ??
-            configData.iterate?.Standardize ??
-            true;
+        const normalizationMethod = resolveNormalizationMethod(configData);
 
-        const standardized = useStandardization
+        const normalized = normalizationMethod === "zscore"
             ? standardizeZScore(dataMatrix)
-            : {
-                  matrix: dataMatrix,
-                  means: [],
-                  stdDevs: [],
-              };
-        const standardizedMatrix = standardized.matrix;
+            : normalizationMethod === "minmax"
+            ? normalizeMinMax(dataMatrix)
+            : { matrix: dataMatrix };
+
+        const standardizedMatrix = normalized.matrix;
 
         const preprocessingSummary: PreprocessingSummary = {
             initialN: dataVariables.length,
@@ -660,7 +738,12 @@ export async function analyzeKMedoidsCluster({
             rows: finalMatrix.length,
             cols: finalMatrix[0]?.length,
             hasValidData: finalMatrix.length > 0 && finalMatrix[0].length > 0,
-            preprocessing: useStandardization ? "RemoveRow + Z-score" : "RemoveRow",
+            preprocessing:
+                normalizationMethod === "zscore"
+                    ? "RemoveRow + Z-score"
+                    : normalizationMethod === "minmax"
+                    ? "RemoveRow + Min-Max"
+                    : "RemoveRow",
         });
         
         // Respect user-selected method and distance metric from dialog settings.
@@ -753,8 +836,18 @@ export async function analyzeKMedoidsCluster({
                         iterations: item.iterations || 0,
                         converged: item.converged || false,
                         cost_history: item.cost_history || [],
-                        silhouetteScore: calculateSilhouetteScore(finalMatrix, item.cluster_assignments || [], item.k),
-                        wcssScore: calculateWCSS(finalMatrix, item.cluster_assignments || [], item.medoids_indices || []),
+                        silhouetteScore: calculateSilhouetteScore(
+                            finalMatrix,
+                            item.cluster_assignments || [],
+                            item.k,
+                            distanceMetric
+                        ),
+                        wcssScore: calculateWCSS(
+                            finalMatrix,
+                            item.cluster_assignments || [],
+                            item.medoids_indices || [],
+                            distanceMetric
+                        ),
                     }));
                 }
             } else {
@@ -783,6 +876,8 @@ export async function analyzeKMedoidsCluster({
                         convergence_tolerance: configData.iterate.ConvergenceCriterion || 0.0,
                         clara_num_samples: configData.iterate.NumSamples ?? 5,
                         ...(configData.iterate.SampleSize ? { clara_sample_size: configData.iterate.SampleSize } : {}),
+                        clarans_num_local: configData.iterate.NumLocal ?? 2,
+                        ...(configData.iterate.MaxNeighbor ? { clarans_max_neighbors: configData.iterate.MaxNeighbor } : {}),
                         ...(autoWorker ? {} : { data: finalMatrix }),
                     };
 
@@ -794,10 +889,10 @@ export async function analyzeKMedoidsCluster({
                         const labels = perKResult.labels || [];
                         const medoids = perKResult.medoids || [];
                         const silhouetteScore = labels.length > 0
-                            ? calculateSilhouetteScore(finalMatrix, labels, k)
+                            ? calculateSilhouetteScore(finalMatrix, labels, k, distanceMetric)
                             : -1;
                         const wcssScore = labels.length > 0
-                            ? calculateWCSS(finalMatrix, labels, medoids)
+                            ? calculateWCSS(finalMatrix, labels, medoids, distanceMetric)
                             : Infinity;
 
                         rangeResults.push({
@@ -827,6 +922,14 @@ export async function analyzeKMedoidsCluster({
                     }
                 }
             }
+
+            console.log(`[Analysis] Auto-k score details (metric=${distanceMetric}):`,
+                rangeResults.map((item) => ({
+                    k: item.k,
+                    silhouette: item.silhouetteScore,
+                    wcss: item.wcssScore,
+                }))
+            );
 
             // Map range results into the existing arrays shapes
             for (const item of rangeResults) {
@@ -895,6 +998,8 @@ export async function analyzeKMedoidsCluster({
                 convergence_tolerance: configData.iterate.ConvergenceCriterion || 0.0,
                 clara_num_samples: configData.iterate.NumSamples ?? 5,
                 ...(configData.iterate.SampleSize ? { clara_sample_size: configData.iterate.SampleSize } : {}),
+                clarans_num_local: configData.iterate.NumLocal ?? 2,
+                ...(configData.iterate.MaxNeighbor ? { clarans_max_neighbors: configData.iterate.MaxNeighbor } : {}),
             };
             let finalResult: any;
             if (autoWorker) {
@@ -975,6 +1080,8 @@ export async function analyzeKMedoidsCluster({
                 use_r_implementation: false,
                 clara_num_samples: configData.iterate.NumSamples ?? 5,
                 ...(configData.iterate.SampleSize ? { clara_sample_size: configData.iterate.SampleSize } : {}),
+                clarans_num_local: configData.iterate.NumLocal ?? 2,
+                ...(configData.iterate.MaxNeighbor ? { clarans_max_neighbors: configData.iterate.MaxNeighbor } : {}),
             };
 
             // ── k-pipeline verification (main thread side) ────────────────
@@ -1097,8 +1204,18 @@ export async function analyzeKMedoidsCluster({
                             iterations: item.iterations || 0,
                             converged: item.converged || false,
                             cost_history: item.cost_history || [],
-                            silhouetteScore: calculateSilhouetteScore(finalMatrix, item.cluster_assignments || [], item.k),
-                            wcssScore: calculateWCSS(finalMatrix, item.cluster_assignments || [], item.medoids_indices || []),
+                            silhouetteScore: calculateSilhouetteScore(
+                                finalMatrix,
+                                item.cluster_assignments || [],
+                                item.k,
+                                distanceMetric
+                            ),
+                            wcssScore: calculateWCSS(
+                                finalMatrix,
+                                item.cluster_assignments || [],
+                                item.medoids_indices || [],
+                                distanceMetric
+                            ),
                         }));
                     }
 
