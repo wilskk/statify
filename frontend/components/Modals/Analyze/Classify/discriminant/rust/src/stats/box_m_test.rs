@@ -53,17 +53,25 @@ pub fn calculate_box_m_test(
 
     let independent_variables = &config.main.independent_variables;
 
+    // Exclude grouping variable from Box's M calculation
+    let grouping_var = &config.main.grouping_variable;
+    let variables: Vec<String> = independent_variables
+        .iter()
+        .filter(|v| *v != grouping_var)
+        .cloned()
+        .collect();
+
     // Compute per-group covariance matrices and log determinants
     let (group_covs, group_log_dets, group_sizes) = compute_group_covariances(
         &dataset,
-        independent_variables
+        &variables
     )?;
 
     if group_covs.is_empty() {
         return Err("No valid groups for Box's M test".to_string());
     }
 
-    let p = independent_variables.len(); // Number of variables
+    let p = variables.len(); // Number of variables
     let k = group_covs.len(); // Number of groups
     let total_sample_size: usize = group_sizes.iter().sum();
 
@@ -89,8 +97,19 @@ pub fn calculate_box_m_test(
 
     // γM where γ = (1-ρ-f₂/f₁)/f₁
     let b = compute_b_factor(c1, c2, v1, v2);
-    let f_approx = if b > EPSILON && box_m > EPSILON {
-        if c2 > c1 * c1 { box_m / b } else { (v2 * box_m) / (v1 * (b - box_m)) }
+
+    // f approximation
+    let f_approx = if box_m > EPSILON {
+        if c2 > c1 * c1 {
+            box_m/b
+        } else {
+            // F = (f2 * M) / (f1 * (b - M))
+            if b > box_m {
+                (v2 * box_m) / (v1 * (b - box_m))
+            } else {
+                0.0
+            }
+        }
     } else {
         0.0
     };
@@ -311,7 +330,6 @@ fn compute_c1_factor(p: usize, k: usize, group_sizes: &[usize], total_sample_siz
     let p_f64 = p as f64;
     let k_f64 = k as f64;
 
-    // Calculate sum for group sizes
     let mut sum1 = 0.0;
     for &size in group_sizes {
         if size > 1 {
@@ -328,9 +346,9 @@ fn compute_c1_factor(p: usize, k: usize, group_sizes: &[usize], total_sample_siz
     let denominator = 6.0 * (p_f64 + 1.0) * (k_f64 - 1.0);
 
     if denominator > EPSILON {
-        1.0 - numerator / denominator
+        numerator / denominator // <-- Diperbaiki: Hapus "1.0 -"
     } else {
-        1.0
+        0.0
     }
 }
 
@@ -395,7 +413,7 @@ fn compute_b_factor(c1: f64, c2: f64, v1: f64, v2: f64) -> f64 {
 /// # Returns
 /// The second degrees of freedom (df2)
 fn compute_df2(c1: f64, c2: f64, df1: f64) -> f64 {
-    let denominator = if c1 > EPSILON { (c1 - c2 / c1).abs() } else { c2.abs() };
+    let denominator = (c2 - c1 * c1).abs();
 
     if denominator > EPSILON {
         (df1 + 2.0) / denominator
