@@ -106,7 +106,7 @@ fn handle_missing_values(
                 if valid.is_empty() {
                     0.0
                 } else {
-                    valid.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                    valid.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
                     valid[valid.len() / 2]
                 }
             })

@@ -111,7 +111,30 @@ async function initializeWasm(wasmPath, requestId) {
   }
   try {
     const wasmImport = await import("@/public/workers/Clustering/K-Medoids/wasm");
-    await wasmImport.default();
+    const initCandidates = [
+      wasmPath,
+      "/workers/Clustering/K-Medoids/wasm_bg.wasm",
+      void 0
+    ];
+    let initialized = false;
+    let lastInitError = null;
+    for (const candidate of initCandidates) {
+      if (initialized) break;
+      try {
+        await wasmImport.default(candidate);
+        initialized = true;
+      } catch (initError) {
+        lastInitError = initError;
+        if (candidate) {
+          console.warn(`[Worker] WASM init failed for path: ${candidate}`, initError);
+        } else {
+          console.warn("[Worker] WASM init failed using module-relative fallback", initError);
+        }
+      }
+    }
+    if (!initialized) {
+      throw lastInitError || new Error("Unable to initialize WASM module");
+    }
     wasmModule = wasmImport;
     wasmInitialized = true;
     if (typeof wasmModule.initThreadPool === "function") {
