@@ -5,6 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { INDONESIAN_STOPWORDS, ENGLISH_STOPWORDS } from "./constants/stopwords";
 
 interface OptionsTabProps {
   config: any;
@@ -49,32 +50,50 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({ config, setConfig }) => 
             <RadioGroup 
               value={config.stopwords.method} 
               onValueChange={(val) => handleNestedConfigChange("stopwords", "method", val)}
-              className="flex flex-col space-y-1"
+              className="flex w-full space-x-8"
             >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="none" id="sw-none" />
-                <Label htmlFor="sw-none" className="font-normal cursor-pointer">None</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="indonesian" id="sw-id" />
-                <Label htmlFor="sw-id" className="font-normal cursor-pointer">Indonesian</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="english" id="sw-en" />
-                <Label htmlFor="sw-en" className="font-normal cursor-pointer">English</Label>
-              </div>
-              <div className="flex items-start space-x-2 mt-2">
-                <RadioGroupItem value="custom" id="sw-custom" className="mt-1" />
-                <div className="flex flex-col w-full max-w-sm space-y-2">
-                  <Label htmlFor="sw-custom" className="font-normal cursor-pointer">Custom</Label>
-                  <Textarea 
-                    disabled={config.stopwords.method !== "custom"}
-                    value={config.stopwords.customList}
-                    onChange={(e) => handleNestedConfigChange("stopwords", "customList", e.target.value)}
-                    placeholder="Enter stopwords, one per line..."
-                    className="h-32 text-sm disabled:opacity-50"
-                  />
+              {/* Kiri: Pilihan Standar */}
+              <div className="flex flex-col space-y-3 pt-1">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="none" id="sw-none" />
+                  <Label htmlFor="sw-none" className="font-normal cursor-pointer">None</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="indonesian" id="sw-id" />
+                  <Label htmlFor="sw-id" className="font-normal cursor-pointer">Indonesian</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="english" id="sw-en" />
+                  <Label htmlFor="sw-en" className="font-normal cursor-pointer">English</Label>
+                </div>
+              </div>
+
+              {/* Kanan: Custom dan Textarea */}
+              <div className="flex flex-col w-full max-w-sm space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="custom" id="sw-custom" />
+                  <Label htmlFor="sw-custom" className="font-normal cursor-pointer">Custom</Label>
+                </div>
+                <Textarea 
+                  value={
+                    config.stopwords.method === "none" ? "" :
+                    config.stopwords.method === "indonesian" ? INDONESIAN_STOPWORDS.join("\n") :
+                    config.stopwords.method === "english" ? ENGLISH_STOPWORDS.join("\n") :
+                    config.stopwords.customList
+                  }
+                  onChange={(e) => {
+                    setConfig((prev: any) => ({
+                      ...prev,
+                      stopwords: {
+                        ...prev.stopwords,
+                        method: "custom",
+                        customList: e.target.value
+                      }
+                    }));
+                  }}
+                  placeholder={config.stopwords.method === "none" ? "Ketik kata di sini untuk membuat custom stopwords..." : "Enter stopwords, one per line..."}
+                  className="h-32 text-sm"
+                />
               </div>
             </RadioGroup>
           </div>
@@ -157,34 +176,65 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({ config, setConfig }) => 
           </div>
 
           {/* Vectorization Method */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold">Vectorization Method</h3>
-            <RadioGroup 
-              value={config.vectorizationMethod} 
-              onValueChange={(val) => handleConfigChange("vectorizationMethod", val)}
-              className="flex flex-col space-y-1"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="binary" id="vec-binary" />
-                <Label htmlFor="vec-binary" className="font-normal cursor-pointer">Binary (0/1)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="wordCount" id="vec-wordCount" />
-                <Label htmlFor="vec-wordCount" className="font-normal cursor-pointer">Word Count</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="tf" id="vec-tf" />
-                <Label htmlFor="vec-tf" className="font-normal cursor-pointer">TF</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="idf" id="vec-idf" />
-                <Label htmlFor="vec-idf" className="font-normal cursor-pointer">IDF</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="tfidf" id="vec-tfidf" />
-                <Label htmlFor="vec-tfidf" className="font-normal cursor-pointer">TF-IDF</Label>
-              </div>
-            </RadioGroup>
+            
+            {/* Term Frequency (TF) */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Term Frequency (TF)</Label>
+              <RadioGroup 
+                value={config.vectorization.tfMethod} 
+                onValueChange={(val) => handleNestedConfigChange("vectorization", "tfMethod", val)}
+                className="grid grid-cols-2 gap-2 pt-1"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="none" id="vec-none" disabled={config.vectorization.idfMethod === "none"} />
+                  <Label htmlFor="vec-none" className={`font-normal cursor-pointer text-sm ${config.vectorization.idfMethod === "none" ? "opacity-50" : ""}`}>None</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="binary" id="vec-binary" />
+                  <Label htmlFor="vec-binary" className="font-normal cursor-pointer text-sm">Binary (0/1)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="raw" id="vec-raw" />
+                  <Label htmlFor="vec-raw" className="font-normal cursor-pointer text-sm">Raw TF (Word Count)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="normalized" id="vec-normalized" />
+                  <Label htmlFor="vec-normalized" className="font-normal cursor-pointer text-sm">Normalized TF</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="log" id="vec-log" />
+                  <Label htmlFor="vec-log" className="font-normal cursor-pointer text-sm">Log TF</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Inverse Document Frequency (IDF) */}
+            <div className="space-y-2 pt-2">
+              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Inverse Document Frequency (IDF)</Label>
+              <RadioGroup 
+                value={config.vectorization.idfMethod} 
+                onValueChange={(val) => handleNestedConfigChange("vectorization", "idfMethod", val)}
+                className="grid grid-cols-2 gap-2 pt-1"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="none" id="idf-none" disabled={config.vectorization.tfMethod === "none"} />
+                  <Label htmlFor="idf-none" className={`font-normal cursor-pointer text-sm ${config.vectorization.tfMethod === "none" ? "opacity-50" : ""}`}>None</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="idf" id="idf-standard" />
+                  <Label htmlFor="idf-standard" className="font-normal cursor-pointer text-sm">Standard IDF</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="smooth" id="idf-smooth" />
+                  <Label htmlFor="idf-smooth" className="font-normal cursor-pointer text-sm">Smooth IDF</Label>
+                </div>
+              </RadioGroup>
+              <p className="text-[10px] text-muted-foreground mt-2 leading-tight">
+                {/* * Hint: Untuk mendapatkan hasil TF-IDF standar, kombinasikan <span className="font-medium text-foreground">Log TF</span> dengan <span className="font-medium text-foreground">Smooth IDF</span> (Default). */}
+              </p>
+            </div>
           </div>
           
         </div>

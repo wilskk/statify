@@ -6,34 +6,39 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useStringToWordVector } from "./hooks/useStringToWordVector";
 import { VariablesTab } from "./VariablesTab";
 import { OptionsTab } from "./OptionsTab";
-import { toast } from "sonner"; // For validation alerts if needed
+import { toast } from "sonner";
+import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 /**
- * Komponen Content 
+ * Komponen Content
  * Berisi tabulasi dan logic, namun TIDAK membungkus dirinya sendiri dengan `Dialog`.
  * Ini agar Sidebar bisa merendernya dengan lebar penuh dengan rapi!.
  */
 const StringToWordVectorContent: React.FC<BaseModalProps> = ({ onClose }) => {
-    const { 
+    const {
         availableVariables,
         selectedVariable,
         highlightedVariable,
         setHighlightedVariable,
         moveToTarget,
         removeTarget,
-        config, 
-        setConfig 
+        config,
+        setConfig,
+        isLoading,
+        result,
+        error,
+        runVectorizer,
+        saveToDataset
     } = useStringToWordVector();
-    
-    // UI state similar to Binary Logistic
+
     const [activeTab, setActiveTab] = React.useState("variables");
 
-    const handleRun = () => {
+    const handleRun = async () => {
         if (!selectedVariable) {
-            toast.error("Please select a target variable first.");
+            toast.error("Pilih variabel teks terlebih dahulu.");
             return;
         }
-        console.log("Menjalankan worker dengan config:", config, "Target:", selectedVariable);
+        await runVectorizer();
     };
 
     return (
@@ -44,10 +49,10 @@ const StringToWordVectorContent: React.FC<BaseModalProps> = ({ onClose }) => {
                         <TabsTrigger value="variables">Variables</TabsTrigger>
                         <TabsTrigger value="options">Options</TabsTrigger>
                     </TabsList>
-                    
+
                     <div className="flex-grow min-h-0 overflow-hidden">
                         <TabsContent value="variables" className="h-full mt-0 pt-2">
-                            <VariablesTab 
+                            <VariablesTab
                                 availableVariables={availableVariables}
                                 selectedVariable={selectedVariable}
                                 highlightedVariable={highlightedVariable}
@@ -56,21 +61,76 @@ const StringToWordVectorContent: React.FC<BaseModalProps> = ({ onClose }) => {
                                 onRemoveTarget={removeTarget}
                             />
                         </TabsContent>
-                        
+
                         <TabsContent value="options" className="h-full mt-0 pt-2">
-                            <OptionsTab 
+                            <OptionsTab
                                 config={config}
                                 setConfig={setConfig}
                             />
                         </TabsContent>
                     </div>
                 </Tabs>
+
+                {/* ── Area Hasil ────────────────────────────────────────────── */}
+                {isLoading && (
+                    <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Memproses... Harap tunggu.</span>
+                    </div>
+                )}
+
+                {error && !isLoading && (
+                    <div className="mt-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                        <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold">[{error.code}]</p>
+                            <p>{error.message}</p>
+                        </div>
+                    </div>
+                )}
+
+                {result && !isLoading && !error && (
+                    <div className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm space-y-1">
+                        <div className="flex items-center gap-2 font-semibold text-foreground mb-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <span>Berhasil!</span>
+                        </div>
+                        <p className="text-muted-foreground">
+                            Metode: <span className="font-mono text-foreground">{result.stats.method.toUpperCase()}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                            Dokumen: <span className="font-mono text-foreground">{result.stats.total_documents}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                            Vocabulary: <span className="font-mono text-foreground">{result.stats.vocabulary_size} terms</span>
+                        </p>
+                        <p className="text-muted-foreground text-xs mt-1">
+                            {result.vocabulary.slice(0, 10).join(", ")}{result.vocabulary.length > 10 ? ` ... (+${result.vocabulary.length - 10} lainnya)` : ""}
+                        </p>
+                        <Button
+                            className="w-full mt-3"
+                            onClick={saveToDataset}
+                            disabled={isLoading}
+                        >
+                            Tambahkan ke Dataset
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Footer Form Action Buttons */}
             <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0 space-x-4">
-                <Button variant="outline" onClick={onClose}>Cancel</Button>
-                <Button onClick={handleRun}>Run Computation</Button>
+                <Button variant="outline" onClick={onClose} disabled={isLoading}>Cancel</Button>
+                <Button onClick={handleRun} disabled={isLoading || !selectedVariable}>
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                        </>
+                    ) : (
+                        "Run Computation"
+                    )}
+                </Button>
             </div>
         </div>
     );

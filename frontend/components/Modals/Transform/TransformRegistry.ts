@@ -7,7 +7,6 @@ import {
 } from "./recode";
 import ComputeVariableModal from "./ComputeVariable/ComputeVariableModal";
 import StringToWordVectorModal from "./StringToWordVector/StringToWordVectorModal";
-
 /**
  * TRANSFORM_MODAL_COMPONENTS - Registry for transform modal components
  *
